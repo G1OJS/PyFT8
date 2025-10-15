@@ -1,7 +1,7 @@
 
-from lib.FT8_demodulator import FT8Demodulator
-from lib.FT8_decoder import FT8_decode
-from lib.waterfall import Waterfall
+from src.FT8_demodulator import FT8Demodulator
+from src.FT8_decoder import FT8_decode
+from src.waterfall import Waterfall
 
 demod = FT8Demodulator()
 wf = Waterfall(demod.specbuff)
