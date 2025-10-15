@@ -22,7 +22,7 @@ class SpectrumBuffer:
                 self.dB[hop_idx,:] = 10*np.log10(self.power[hop_idx,:] + 1e-12)
 
 class Signal:
-    def __init__(self):
+    def __init__(self, hops_persymb, fbins_pertone):
         self.fbin_idx = None
         self.tbin_idx = None
         self.costas_score = -1e9
@@ -30,9 +30,12 @@ class Signal:
         self.bits = None
         self.freq = None
         self.dt = None
+        # passed through only for graphics:
         self.num_symbols = 0
         self.hz_pertone = 0
         self.symbol_secs=0
+        self.hops_persymb = hops_persymb
+        self.fbins_pertone = fbins_pertone
 
 class FT8Demodulator:
     def __init__(self, sample_rate = 12000, hops_persymb =4 , fbins_pertone = 1):
@@ -57,7 +60,7 @@ class FT8Demodulator:
         tbin_search_idxs = range(int(np.searchsorted(self.specbuff.times, t0)), int(np.searchsorted(self.specbuff.times, t1)))
         candidates = []
         for fbin_idx in fbin_search_idxs:
-            c = Signal()
+            c = Signal(self.hops_persymb, self.fbins_pertone)
             for tbin_idx in tbin_search_idxs:
                 score = self._costas_score(tbin_idx, fbin_idx)
                 if(score > c.costas_score):

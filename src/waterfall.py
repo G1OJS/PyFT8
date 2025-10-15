@@ -12,6 +12,7 @@ class Waterfall:
         self.ax.set_title('FT8 waterfall')
         self.ax.set_xlim(f0, f1)
         self.ax.set_ylim(t0, t1)
+        self.candidate_plots=[]
         #plt.pause(0.5)
 
     def update(self, wf, title = "FT8 Waterfall", candidates = None):
@@ -19,32 +20,34 @@ class Waterfall:
         self.im.autoscale()
         [p.remove() for p in reversed(self.ax.patches)]
         if(candidates):
-            for c in candidates:
+            for i, c in enumerate(candidates):
                 rect = patches.Rectangle((c.freq-0.5*c.hz_pertone, c.dt-0.5*c.symbol_secs), 8*c.hz_pertone, c.num_symbols * c.symbol_secs, linewidth=1, edgecolor='r', facecolor='none')
                 self.ax.add_patch(rect)
+               # if(i==0): self.candidate_plots.append(show_candidate(wf,c))
         self.ax.set_title(title)
         self.fig.canvas.draw_idle()
         self.fig.canvas.flush_events()
         plt.pause(0.5)
+      #  for f in self.candidate_plots:
+         #   plt.close(f)
 
 def show_candidate(wf, candidate):
-    import matplotlib.pyplot as plt
-    import matplotlib.patches as patches
+    costas = [3, 1, 4, 0, 6, 5, 2]
     t0_idx = candidate.tbin_idx
     f0_idx = candidate.fbin_idx
-    t1_idx = t0_idx + modulation['num_symbols'] * demod_params['hops_persymb']
-    f1_idx = f0_idx + 8 * demod_params['fbins_per_tone']
+    t1_idx = t0_idx + candidate.num_symbols * candidate.hops_persymb
+    f1_idx = f0_idx + 8 * candidate.fbins_pertone
     cwf = wf.dB[t0_idx:t1_idx, f0_idx:f1_idx]
     fig, ax = plt.subplots(figsize=(5, 10))
     ax.imshow(cwf,aspect='auto',origin='lower',cmap='inferno',interpolation='none')
-    for i, tone in enumerate(modulation['costas']):
+    for i, tone in enumerate(costas):
         for j in [0,36,72]:
-            rect = patches.Rectangle((tone-0.5, (i+j-0.5)*demod_params['hops_persymb']),
-                                     1, demod_params['hops_persymb'], linewidth=2, facecolor='none',
+            rect = patches.Rectangle((tone-0.5, (i+j-0.5)*candidate.hops_persymb),
+                                     1, candidate.hops_persymb, linewidth=2, facecolor='none',
                                      edgecolor='black' )
             ax.add_patch(rect)
     ax.set_xlabel('Tone')
     ax.set_ylabel('Hop')
     ax.set_title('FT8 candidate')
-
-    plt.show()
+    plt.pause(0.1)
+    return fig
