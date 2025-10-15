@@ -1,4 +1,4 @@
-from lib.FT8_decoder import unpack_ft8_c28, unpack_ft8_g15
+from src.FT8_decoder import unpack_ft8_c28, unpack_ft8_g15
 from string import ascii_uppercase as ltrs, digits as digs
 
 def pack_ft8_c28(callsign):
