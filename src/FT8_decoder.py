@@ -47,7 +47,7 @@ def FT8_decode(signals, ldpc = False):
         c28_b = int(''.join(str(b) for b in bits[29:57]), 2)
         g15  = int(''.join(str(b) for b in bits[58:74]), 2)
         msg = f"{unpack_ft8_c28(c28_a)} {unpack_ft8_c28(c28_b)} {unpack_ft8_g15(g15)}"
-        text += f"{signal.freq :6.1f} {signal.dt :6.2f} {i3} {g15} {msg} \n"
+        text += f"{signal.freq :6.1f} {signal.dt :6.2f} {i3} {signal.costas_score :6.2f} {msg} \n"
     return text
 
 

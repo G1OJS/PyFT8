@@ -38,7 +38,7 @@ class Signal:
         self.fbins_pertone = fbins_pertone
 
 class FT8Demodulator:
-    def __init__(self, sample_rate = 12000, hops_persymb =4 , fbins_pertone = 1):
+    def __init__(self, sample_rate = 12000, hops_persymb =3 , fbins_pertone = 1):
         self.sample_rate = sample_rate
         self.hops_persymb = hops_persymb
         self.fbins_pertone = fbins_pertone
@@ -52,7 +52,7 @@ class FT8Demodulator:
         self.specbuff = SpectrumBuffer(int(self.frame_seconds * self.hops_persymb * self.symbols_persec), self.samples_perhop,
                                        np.hanning(self.FFT_size), self.frame_seconds, self.sample_rate)
 
-    def get_candidates(self, topN=100, t0=0, t1=1.5, f0=100, f1=4000):
+    def get_candidates(self, topN=100, t0=0, t1=1.5, f0=100, f1=3300):
         fbin_search_idxs = range(int(np.searchsorted(self.specbuff.freqs, f0)), int(np.searchsorted(self.specbuff.freqs, f1)))
         tbin_search_idxs = range(int(np.searchsorted(self.specbuff.times, t0)), int(np.searchsorted(self.specbuff.times, t1)))
         candidates = []
@@ -69,7 +69,7 @@ class FT8Demodulator:
             c.num_symbols = self.num_symbols
             c.hz_pertone = self.hz_pertone
             c.symbol_secs = 1 / self.symbols_persec
-            if(c.costas_score>0): candidates.append(c)
+            if(c.costas_score>0.045): candidates.append(c)
         candidates.sort(key=lambda c: -c.costas_score)
 
         to_delete = []
@@ -87,14 +87,16 @@ class FT8Demodulator:
     
     def _costas_score(self, t0_idx, f0_idx):
         score = 0.0
+        norm = 0.0
         f_idxs = range(f0_idx, f0_idx + len(self.costas) * self.fbins_pertone)
         for i, tone in enumerate(self.costas):
             t_idx = t0_idx + i * self.hops_persymb
             for j, f_idx in enumerate(f_idxs):
                 mult = 1 if (int(j/self.fbins_pertone) == tone) else -1/7
                 pwr = self.specbuff.power[t_idx, f_idx]
+                norm += pwr
                 score += pwr * mult
-        return score
+        return score / norm
 
     def _demodulate(self, candidate):
         candidate.symbols = [0] * self.num_symbols

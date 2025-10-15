@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
 class Waterfall:
-    def __init__(self, wf, t0=0, t1=15, f0=100, f1=4000):
+    def __init__(self, wf, t0=0, t1=15, f0=100, f1=3500):
         self.fig, self.ax = plt.subplots(figsize=(10, 3))
         self.im = self.ax.imshow(wf.power ,aspect='auto',origin='lower',
                         extent=[wf.freqs[0], wf.freqs[-1], wf.times[0], wf.times[-1]],cmap='inferno',interpolation='none')

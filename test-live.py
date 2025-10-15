@@ -10,7 +10,7 @@ from src.waterfall import Waterfall
 
 SAMPLE_RATE = 12000
 CYCLE = 15.0
-SHORT_CYCLE = 14
+SHORT_CYCLE = 14.5
 FRAMES_PER_CYCLE = int(SAMPLE_RATE * SHORT_CYCLE)
 BRIDGE_FILE = 'audio.wav'
 FLAG_FILE = 'audio.txt'
