@@ -23,7 +23,7 @@ class Waterfall:
             for i, c in enumerate(candidates):
                 rect = patches.Rectangle((c.freq-0.5*c.hz_pertone, c.dt-0.5*c.symbol_secs), 8*c.hz_pertone, c.num_symbols * c.symbol_secs, linewidth=2, edgecolor='w', facecolor='none')
                 self.ax.add_patch(rect)
-               # if(i==0): self.candidate_plots.append(show_candidate(wf,c))
+                if(i<1): self.candidate_plots.append(show_candidate(wf,c))
         self.ax.set_title(title)
         self.fig.canvas.draw_idle()
         self.fig.canvas.flush_events()
@@ -39,15 +39,18 @@ def show_candidate(wf, candidate):
     f1_idx = f0_idx + 8 * candidate.fbins_pertone
     cwf = wf.dB[t0_idx:t1_idx, f0_idx:f1_idx]
     fig, ax = plt.subplots(figsize=(5, 10))
-    ax.imshow(cwf,aspect='auto',origin='lower',cmap='inferno',interpolation='none')
+    ax.imshow(cwf,aspect='auto',origin='lower',cmap='inferno',interpolation='none',
+              extent = [-0.5, 7.5, 0, candidate.num_symbols * candidate.hops_persymb])
     for i, tone in enumerate(costas):
         for j in [0,36,72]:
-            rect = patches.Rectangle((tone-0.5, (i+j-0.5)*candidate.hops_persymb),
-                                     1, candidate.hops_persymb, linewidth=2, facecolor='none',
+            rect = patches.Rectangle((tone -0.5, (i+j-0.5)*candidate.hops_persymb),
+                                      1, candidate.hops_persymb, linewidth=2, facecolor='none',
                                      edgecolor='black' )
             ax.add_patch(rect)
+    ax.set_xlim(-0.5, 7.5)
+    ax.set_ylim(0,  candidate.num_symbols * candidate.hops_persymb)
     ax.set_xlabel('Tone')
     ax.set_ylabel('Hop')
-    ax.set_title('FT8 candidate')
+    ax.set_title(f"FT8 candidate @ {candidate.freq} costas = {candidate.costas_score}")
     plt.pause(0.1)
     return fig

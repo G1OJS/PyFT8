@@ -38,14 +38,14 @@ class Signal:
         self.fbins_pertone = fbins_pertone
 
 class FT8Demodulator:
-    def __init__(self, sample_rate = 12000, hops_persymb =3 , fbins_pertone = 1):
+    def __init__(self, sample_rate = 12000, hops_persymb =3 , fbins_pertone = 2):
         self.sample_rate = sample_rate
         self.hops_persymb = hops_persymb
         self.fbins_pertone = fbins_pertone
         self.frame_seconds = 15
         self.symbols_persec = 6.25
         self.samples_perhop = int(self.sample_rate / (self.symbols_persec * self.hops_persymb))
-        self.FFT_size = int(self.sample_rate // self.symbols_persec)
+        self.FFT_size = int(self.fbins_pertone * self.sample_rate // self.symbols_persec)
         self.hz_pertone = 6.25
         self.num_symbols = 79
         self.costas = [3, 1, 4, 0, 6, 5, 2]
@@ -69,7 +69,7 @@ class FT8Demodulator:
             c.num_symbols = self.num_symbols
             c.hz_pertone = self.hz_pertone
             c.symbol_secs = 1 / self.symbols_persec
-            if(c.costas_score>0.045): candidates.append(c)
+            if(c.costas_score>0.0): candidates.append(c)
         candidates.sort(key=lambda c: -c.costas_score)
 
         to_delete = []
@@ -88,11 +88,12 @@ class FT8Demodulator:
     def _costas_score(self, t0_idx, f0_idx):
         score = 0.0
         norm = 0.0
-        f_idxs = range(f0_idx, f0_idx + len(self.costas) * self.fbins_pertone)
-        for i, tone in enumerate(self.costas):
-            t_idx = t0_idx + i * self.hops_persymb
-            for j, f_idx in enumerate(f_idxs):
-                mult = 1 if (int(j/self.fbins_pertone) == tone) else -1/7
+        n_fbins = len(self.costas) * self.fbins_pertone
+        for iHop, iCostasTone in enumerate(self.costas):
+            t_idx = t0_idx + iHop * self.hops_persymb
+            for iFbin in range(n_fbins):
+                f_idx = f0_idx + iFbin
+                mult = 1 if (int(iFbin/self.fbins_pertone) == iCostasTone) else -1/7
                 pwr = self.specbuff.power[t_idx, f_idx]
                 norm += pwr
                 score += pwr * mult
@@ -103,12 +104,12 @@ class FT8Demodulator:
         for sym_idx in range(self.num_symbols):
             t_idx = candidate.tbin_idx + sym_idx * self.hops_persymb
             if t_idx >= self.specbuff.power.shape[0]: break  
-            tone_powers = [0]*8
-            for tone in range(8):
-                f_idx = int(round(candidate.fbin_idx + tone * self.fbins_pertone))
+            fbin_powers = [0]*8*self.fbins_pertone
+            for fbin in range(8*self.fbins_pertone):
+                f_idx = candidate.fbin_idx + fbin
                 f_idx = np.clip(f_idx, 0, self.specbuff.power.shape[1] - 1)
-                tone_powers[tone] = self.specbuff.power[t_idx, f_idx]
-            candidate.symbols[sym_idx] = int(np.argmax(tone_powers))
+                fbin_powers[fbin] = self.specbuff.power[t_idx, f_idx]
+            candidate.symbols[sym_idx] = int(np.argmax(fbin_powers) / self.fbins_pertone)
 
 
 
