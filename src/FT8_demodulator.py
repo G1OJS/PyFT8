@@ -52,9 +52,6 @@ class FT8Demodulator:
         self.specbuff = SpectrumBuffer(int(self.frame_seconds * self.hops_persymb * self.symbols_persec), self.samples_perhop,
                                        np.hanning(self.FFT_size), self.frame_seconds, self.sample_rate)
 
-    def reset(self):
-        self.hop_idx = 0
-
     def get_candidates(self, topN=100, t0=0, t1=1.5, f0=100, f1=4000):
         fbin_search_idxs = range(int(np.searchsorted(self.specbuff.freqs, f0)), int(np.searchsorted(self.specbuff.freqs, f1)))
         tbin_search_idxs = range(int(np.searchsorted(self.specbuff.times, t0)), int(np.searchsorted(self.specbuff.times, t1)))
@@ -62,7 +59,7 @@ class FT8Demodulator:
         for fbin_idx in fbin_search_idxs:
             c = Signal(self.hops_persymb, self.fbins_pertone)
             for tbin_idx in tbin_search_idxs:
-                score = self._costas_score(tbin_idx, fbin_idx)
+                score = max(self._costas_score(tbin_idx, fbin_idx), self._costas_score(36+tbin_idx, fbin_idx), self._costas_score(72+tbin_idx, fbin_idx))
                 if(score > c.costas_score):
                     c.costas_score = score
                     c.tbin_idx = tbin_idx
@@ -74,7 +71,14 @@ class FT8Demodulator:
             c.symbol_secs = 1 / self.symbols_persec
             if(c.costas_score>0): candidates.append(c)
         candidates.sort(key=lambda c: -c.costas_score)
-        return candidates[0:topN]
+
+        to_delete = []
+        for i, c in enumerate(candidates):
+            for j in range(i+1, len(candidates)):
+                if(abs(c.freq-candidates[j].freq) < 25):
+                    to_delete.append(c if c.costas_score < candidates[j].costas_score else candidates[j]) 
+        cands = [c for c in candidates if not c in to_delete]
+        return cands[0:topN]
 
     def demodulate(self, candidates):
         for c in candidates:

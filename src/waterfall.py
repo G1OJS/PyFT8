@@ -21,7 +21,7 @@ class Waterfall:
         [p.remove() for p in reversed(self.ax.patches)]
         if(candidates):
             for i, c in enumerate(candidates):
-                rect = patches.Rectangle((c.freq-0.5*c.hz_pertone, c.dt-0.5*c.symbol_secs), 8*c.hz_pertone, c.num_symbols * c.symbol_secs, linewidth=1, edgecolor='r', facecolor='none')
+                rect = patches.Rectangle((c.freq-0.5*c.hz_pertone, c.dt-0.5*c.symbol_secs), 8*c.hz_pertone, c.num_symbols * c.symbol_secs, linewidth=2, edgecolor='w', facecolor='none')
                 self.ax.add_patch(rect)
                # if(i==0): self.candidate_plots.append(show_candidate(wf,c))
         self.ax.set_title(title)
