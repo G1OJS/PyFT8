@@ -7,6 +7,11 @@ understand how FT8 works. I'm keen to avoid simply copying code from other peopl
 solutions keeping code as tight and minimal as possible, whilst experimenting with different candidate selection algorithms
 and decoding approaches.
 
+## Approach
+You won't find many comments in the code; I try to make things as obvious as possible via variable names and logical structure.
+Also - this is mainly my plaything. Do feel free however to get in touch and ask how anything works. I might add some diagrams
+etc at some point too - especially if I find an approach that seems to offer something improved and/or very compact.
+
 ## Limitations
 In pursuit of tight code, I've concentrated on core standard messages, leaving out some of the less-used features.
 
