@@ -4,6 +4,8 @@ __pycache__/
 *$py.class
 
 
+audio.wav
+
 # Distribution / packaging
 .Python
 build/
