@@ -51,15 +51,18 @@ threading.Thread(target=audioloop).start()
 
 demod = FT8Demodulator()
 wf = Waterfall(demod.specbuff)
-
+t = time.time()
 
 while True:
     while not os.path.exists(FLAG_FILE):
+        t = time.time()
         time.sleep(0.1)
     audio = read_wav(BRIDGE_FILE)
     os.remove(FLAG_FILE)
     demod.specbuff.load_TFGrid(audio)
-    candidates = demod.get_candidates(topN=5)
-    wf.update(demod.specbuff, candidates = candidates)
+    candidates = demod.get_candidates(topN=15)
+    timestr = time.strftime("%H:%M:%S", time.gmtime(t))
+    wf.update(demod.specbuff, candidates = candidates, title = f"FT8 Waterfall {timestr}")
+    print(f"{timestr} -------------")
     demod.demodulate(candidates)
     print(FT8_decode(candidates, ldpc = False))
