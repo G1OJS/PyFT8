@@ -5,7 +5,8 @@ __pycache__/
 
 
 audio.wav
-wsjtx_op/
+wsjtx.txt
+pyft8.txt
 
 # Distribution / packaging
 .Python
