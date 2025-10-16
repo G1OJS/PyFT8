@@ -16,7 +16,7 @@ def wsjtx_tailer():
     for line in follow(r"C:\Users\drala\AppData\Local\WSJT-X\ALL.txt"):
         if(cycle != line[7:13]):
             cycle = line[7:13]
-            with open('last wsjtx output.txt', 'wa') as f:
+            with open('last wsjtx output.txt', 'a') as f:
                 for l in wsjtx_lines:
                     f.write(f"{l}\n")
             wsjtx_lines=[]
