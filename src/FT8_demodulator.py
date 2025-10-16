@@ -38,7 +38,7 @@ class Signal:
         self.fbins_pertone = fbins_pertone
 
 class FT8Demodulator:
-    def __init__(self, sample_rate = 12000, hops_persymb = 3 , fbins_pertone = 2):
+    def __init__(self, sample_rate = 12000, hops_persymb = 2 , fbins_pertone = 2):
         self.sample_rate = sample_rate
         self.hops_persymb = hops_persymb
         self.fbins_pertone = fbins_pertone
