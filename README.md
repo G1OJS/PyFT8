@@ -27,3 +27,6 @@ and distributed under the GNU General Public License v3 (GPL-3.0), hence the use
 Also thanks to [Robert Morris](https://github.com/rtmrtmrtmrtm) for: 
  - [basicft8](https://github.com/rtmrtmrtmrtm/basicft8) - the first code I properly read (note: applies to FT8 pre V2)
  - [weakmon](https://github.com/rtmrtmrtmrtm/weakmon/) - much good information
+
+Other useful resources:
+ - [VK3JPK's FT8 notes](https://github.com/vk3jpk/ft8-notes)
