@@ -30,11 +30,11 @@ def unpack_ft8_g15(g15):
         c, d = divmod(nn,10)
         return f"{chr(65+a)}{chr(65+b)}{c}{d}"
     r = g15 - 32400
-    txt = ['','','RRR','R73','73']
+    txt = ['','','RRR','RR73','73']
     if 0 <= r <= 4: return txt[r]
     snr = r-35 if r<=85 else r-35-101
     if(snr>50): return ''
-    return f"{snr:02d}"
+    return str(snr).zfill(3)
 
 def FT8_decode(signals, ldpc = False):
     output = []
