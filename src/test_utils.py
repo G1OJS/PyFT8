@@ -15,17 +15,17 @@ def wsjtx_tailer():
     for line in follow(r"C:\Users\drala\AppData\Local\WSJT-X\ALL.txt"):
         if(cycle != line[7:13]):
             cycle = line[7:13]
-            with open('last wsjtx output.txt', 'w') as f:
+            with open('last_wsjtx_output.txt', 'w') as f:
                 f.write(f"{line}\n")
         else:
-            with open('last wsjtx output.txt', 'a') as f:
+            with open('last_wsjtx_output.txt', 'a') as f:
                 f.write(f"{line}\n")            
 
 
 def wsjtx_compare(lines):
     loc_patterns, wsj_patterns = set(), set()
     matched_msgs, unmatched_msgs = [],[]
-    with open('last wsjtx output.txt', 'r') as f:
+    with open('last_wsjtx_output.txt', 'r') as f:
         wsjt = f.readlines()
     for wsjtline in wsjt:
         l = wsjtline[48:]

@@ -5,7 +5,7 @@ __pycache__/
 
 
 audio.wav
-last wsjtx output.txt
+last_wsjtx_output.txt
 
 # Distribution / packaging
 .Python
