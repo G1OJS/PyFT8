@@ -47,4 +47,4 @@ def wsjtx_compare(lines):
     AB = len(matches)
     AnotB = len(loc_only)
     pc = AB/B if B>0 else 0
-    print(f"wsjt:{A} matched: {AB} ({pc:.1%}) unmatched: {B}")
+    print(f"wsjt:{B} matched: {AB} ({pc:.1%}) unmatched: {AnotB}")
