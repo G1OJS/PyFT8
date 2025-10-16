@@ -15,11 +15,13 @@ SHORT_CYCLE = 14.5
 FRAMES_PER_CYCLE = int(SAMPLE_RATE * SHORT_CYCLE)
 BRIDGE_FILE = 'audio.wav'
 FLAG_FILE = 'audio.txt'
+PyFT8_file = "pyft8.txt"
+wsjtx_file = "wsjtx.txt"
 
 pya = pyaudio.PyAudio()
 
 def tstrcyclestart_str(cycle_offset):
-    return time.strftime("%H%M%S", time.gmtime(15*cycle_offset + 15*int(time.time() / 15)))
+    return time.strftime("%Y%m%d_%H%M%S", time.gmtime(15*cycle_offset + 15*int(time.time() / 15)))
 
 def tstrNow():
     return time.strftime("%H:%M:%S", time.gmtime(time.time()))
@@ -64,13 +66,16 @@ demod = FT8Demodulator()
 wf = Waterfall(demod.specbuff)
 t = time.time()
 
+with open(wsjtx_file, 'w') as f:
+    f.write("")
+with open(PyFT8_file, 'w') as f:
+    f.write("")
+    
 while True:
     print(f"{tstrNow()} Decoder waiting for audio file")
     while not os.path.exists(FLAG_FILE):
         time.sleep(0.1)
     cyclestart_str = tstrcyclestart_str(0)
-    cyclestartnext_str = tstrcyclestart_str(1)
-    cyclestartprev_str = tstrcyclestart_str(-1)
     audio = read_wav(BRIDGE_FILE)
     os.remove(FLAG_FILE)
     print(f"{tstrNow()} Demodulator has read audio file")
@@ -81,9 +86,10 @@ while True:
     print(f"{cyclestart_str} -------------")
     demod.demodulate(candidates)
     print(f"{tstrNow()} Decoded results:")
-    output = FT8_decode(candidates, ldpc = False)
-    for l in output:
-        print(l)
-    wsjtx_compare(output, cyclestartprev_str)
-    wsjtx_compare(output, cyclestart_str)
-    wsjtx_compare(output, cyclestartnext_str)
+    output = FT8_decode(candidates, cyclestart_str)
+    for line in output:
+        print(line)
+        with open(PyFT8_file, 'a') as f:
+            f.write(f"{line}\n")
+    wsjtx_compare()
+

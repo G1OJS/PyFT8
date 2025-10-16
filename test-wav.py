@@ -21,7 +21,9 @@ demod.specbuff.load_TFGrid(audio)
 candidates = demod.get_candidates(topN=5)
 wf.update(demod.specbuff, candidates = candidates, show_n_candidates = 3)
 demod.demodulate(candidates)
-print(FT8_decode(candidates, ldpc = False))
+output = FT8_decode(candidates, ldpc = False)
+for l in output:
+     print(l)
 
 
 

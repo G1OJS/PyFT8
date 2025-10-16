@@ -5,12 +5,6 @@ def get_bits(signal):
     payload = signal.symbols[7:36] + signal.symbols[43:72]
     return [b for sym in payload for b in graycode[sym]]
 
-def ldpc_check(codeword):
-    from functools import reduce
-    from operator import xor
-    from src.Nm import Nm
-    return all( reduce(xor, (codeword[i-1] for i in e if i != 0), 0) == 0 for e in Nm)
-
 def crc(a91):
     div = [ 1,   1, 0,   0, 1, 1, 1,   0, 1, 0, 1,   0, 1, 1, 1 ]
     code = np.zeros(len(div)-1, dtype=np.int32)
@@ -50,12 +44,10 @@ def unpack_ft8_g15(g15):
     if(snr>50): return ''
     return str(snr).zfill(3)
 
-def FT8_decode(signals, ldpc = False):
+def FT8_decode(signals, cyclestart_str):
     output = []
     for signal in signals:
         bits = get_bits(signal)
-      #  if(not ldpc_check(bits)):
-      #      continue
         if(not crc(bits[0:91])):
             continue
         i3 = 4*bits[74]+2*bits[75]+bits[76]
@@ -63,7 +55,7 @@ def FT8_decode(signals, ldpc = False):
         c28_b = int(''.join(str(b) for b in bits[29:57]), 2)
         g15  = int(''.join(str(b) for b in bits[58:74]), 2)
         msg = f"{unpack_ft8_c28(c28_a)} {unpack_ft8_c28(c28_b)} {unpack_ft8_g15(g15)}"
-        info = f"{signal.freq :6.1f} {signal.dt :6.2f} {i3} {signal.costas_score :6.2f}"
+        info = f"{cyclestart_str} {signal.freq :6.1f} {signal.dt :6.2f} {i3} {signal.costas_score :6.2f}"
         output.append({'info':info, 'msg':msg})
     return output
 
