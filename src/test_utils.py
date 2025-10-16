@@ -38,8 +38,13 @@ def wsjtx_compare(lines):
         wsj_patterns.add(wsj_pattern)
         if(wsj_pattern in loc_patterns):
             l += " ***"
-        print(l.replace('\n',''))
+     #   print(l.replace('\n',''))
 
     matches = loc_patterns.intersection(wsj_patterns)
-    pc = len(matches)/len(wsj_patterns) if len(wsj_patterns)>0 else 0
-    print(f"{pc:.1%}")
+    loc_only = loc_patterns.difference(wsj_patterns)
+    A = len(loc_patterns)
+    B = len(wsj_patterns)
+    AB = len(matches)
+    AnotB = len(loc_only)
+    pc = AB/B if B>0 else 0
+    print(f"wsjt:{A} matched: {AB} ({pc:.1%}) unmatched: {B}")
