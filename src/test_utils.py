@@ -1,4 +1,5 @@
 import time
+import os
 
 def wsjtx_tailer():
     cycle = ''
@@ -15,17 +16,26 @@ def wsjtx_tailer():
     for line in follow(r"C:\Users\drala\AppData\Local\WSJT-X\ALL.txt"):
         if(cycle != line[7:13]):
             cycle = line[7:13]
-            with open('last_wsjtx_output.txt', 'w') as f:
+            wsjtx_file = f"wsjtx_op/{cycle}.txt"
+            with open(wsjtx_file, 'w') as f:
                 f.write(f"{line}\n")
         else:
-            with open('last_wsjtx_output.txt', 'a') as f:
+            with open(wsjtx_file, 'a') as f:
                 f.write(f"{line}\n")            
 
 
-def wsjtx_compare(lines):
+def wsjtx_compare(lines, cycle_str):
     loc_patterns, wsj_patterns = set(), set()
     matched_msgs, unmatched_msgs = [],[]
-    with open('last_wsjtx_output.txt', 'r') as f:
+    wsjtx_file = f"wsjtx_op/{cycle_str}.txt"
+    
+    # if we're too quick for wsjt-x, wait until 2 secs after file arrives
+    if not os.path.exists(wsjtx_file):
+        while not os.path.exists(wsjtx_file):
+            time.sleep(0.1)
+        time.sleep(2)
+        
+    with open(wsjtx_file, 'r') as f:
         wsjt = f.readlines()
     for wsjtline in wsjt:
         l = wsjtline[48:]
@@ -40,15 +50,9 @@ def wsjtx_compare(lines):
             unmatched_msgs.append(l)
         loc_patterns.add(loc_pattern)
 
-    print("wsjt-x:")
-    for l in wsjt:
-        print(l.replace('\n',''))
-    print("Matched with wsjt-x:")
-    for l in matched_msgs:
-        print(l)
-    print("Not matched with wsjt-x:")
-    for l in unmatched_msgs:
-        print(l)
+  #  print("wsjt-x:")
+  #  for l in wsjt:
+  #      print(l.replace('\n',''))
 
     matches = loc_patterns.intersection(wsj_patterns)
     loc_only = loc_patterns.difference(wsj_patterns)
@@ -57,4 +61,7 @@ def wsjtx_compare(lines):
     both = len(matches)
     loc_only = len(loc_only)
     pc = loc/wsj if wsj>0 else 0
-    print(f"wsjt:{wsj} above: {loc} ({pc:.1%}) matched: {both} unmatched: {loc_only}")
+    print(f"wsjt cycle {cycle_str}: {wsj} decoder: {loc} ({pc:.1%}) matched: {both} unmatched: {loc_only}")
+  #  print("Not matched with wsjt-x:")
+  #  for l in unmatched_msgs:
+  #      print(l)

@@ -54,8 +54,8 @@ def FT8_decode(signals, ldpc = False):
     output = []
     for signal in signals:
         bits = get_bits(signal)
-        if(not ldpc_check(bits)):
-            continue
+      #  if(not ldpc_check(bits)):
+      #      continue
         if(not crc(bits[0:91])):
             continue
         i3 = 4*bits[74]+2*bits[75]+bits[76]

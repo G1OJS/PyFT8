@@ -18,6 +18,9 @@ FLAG_FILE = 'audio.txt'
 
 pya = pyaudio.PyAudio()
 
+def tstrcyclestart_str(cycle_offset):
+    return time.strftime("%H%M%S", time.gmtime(15*cycle_offset + 15*int(time.time() / 15)))
+
 def tstrNow():
     return time.strftime("%H:%M:%S", time.gmtime(time.time()))
 
@@ -65,17 +68,21 @@ while True:
     print(f"{tstrNow()} Decoder waiting for audio file")
     while not os.path.exists(FLAG_FILE):
         time.sleep(0.1)
-    timestr = tstrNow()
+    cyclestart_str = tstrcyclestart_str(0)
+    cyclestartnext_str = tstrcyclestart_str(1)
+    cyclestartprev_str = tstrcyclestart_str(-1)
     audio = read_wav(BRIDGE_FILE)
     os.remove(FLAG_FILE)
     print(f"{tstrNow()} Decoder has read audio file")
     demod.specbuff.load_TFGrid(audio)
     candidates = demod.get_candidates(topN=25)
     print(f"{tstrNow()} Decoder found {len(candidates)} candidates")
-    wf.update(demod.specbuff, candidates = candidates, title = f"FT8 Waterfall {timestr}")
-    print(f"{timestr} -------------")
+    wf.update(demod.specbuff, candidates = candidates, title = f"FT8 Waterfall {cyclestart_str}")
+    print(f"{cyclestart_str} -------------")
     demod.demodulate(candidates)
     output = FT8_decode(candidates, ldpc = False)
     for l in output:
         print(l)
-    wsjtx_compare(output)
+    wsjtx_compare(output, cyclestartprev_str)
+    wsjtx_compare(output, cyclestart_str)
+    wsjtx_compare(output, cyclestartnext_str)
