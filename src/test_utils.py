@@ -22,6 +22,8 @@ def wsjtx_tailer():
             wsjtx_lines=[]
         wsjtx_lines.append(line)
 
+# sync issue - need wsjt-x previous cycle?
+
 def wsjtx_compare(lines):
     with open('last wsjtx output.txt', 'r') as f:
         wsjt = f.readlines()
@@ -30,6 +32,6 @@ def wsjtx_compare(lines):
     for wsjtline in wsjt:
         tot +=1
         for myline in lines:
-            if(myline['msg'] in wsjtline):
+            if(myline['msg'].replace(' ','') in wsjtline.replace(' ','')):
                 match +=1
     print(f"{match} {tot}")
