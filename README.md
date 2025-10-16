@@ -23,3 +23,10 @@ Protocol details are based on information publicly described by the WSJT-X autho
 Some constants and tables (e.g. Costas synchronization sequence, LDPC structure, message packing scheme) are derived from 
 the publicly available WSJT-X source code and FT8 protocol descriptions. Original WSJT-X source is © the WSJT Development Group 
 and distributed under the GNU General Public License v3 (GPL-3.0), hence the use of GPL-3.0 in this repository.
+
+Also thanks to [Robert Morris](https://github.com/rtmrtmrtmrtm) for: 
+ - [basicft8](https://github.com/rtmrtmrtmrtm/basicft8) - the first code I properly read (note: applies to FT8 pre V2)
+ - [weakmon](https://github.com/rtmrtmrtmrtm/weakmon/) - much good information
+
+Other useful resources:
+ - [VK3JPK's FT8 notes](https://github.com/vk3jpk/ft8-notes)
