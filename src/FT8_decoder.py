@@ -1,3 +1,5 @@
+import numpy as np
+
 def get_bits(signal):
     graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
     payload = signal.symbols[7:36] + signal.symbols[43:72]
@@ -8,6 +10,24 @@ def ldpc_check(codeword):
     from operator import xor
     from src.Nm import Nm
     return all( reduce(xor, (codeword[i-1] for i in e if i != 0), 0) == 0 for e in Nm)
+
+def crc(msg, div, code=None):
+    if code is None:
+        code = np.zeros(len(div)-1, dtype=np.int32)
+    assert len(code) == len(div) - 1
+    msg = np.append(msg, code)
+    div = np.array(div, dtype=np.int32)
+    divlen = len(div)
+    for i in range(len(msg)-len(code)):
+        if msg[i] == 1:
+            msg[i:i+divlen] = np.mod(msg[i:i+divlen] + div, 2)
+    return msg[-len(code):]
+
+def check_crc(a91):
+    crc14poly = [ 1,   1, 0,   0, 1, 1, 1,   0, 1, 0, 1,   0, 1, 1, 1 ]
+    padded = np.append(a91[0:77], np.zeros(5, dtype=np.int32))
+    cksum = crc(padded, crc14poly)
+    return np.array_equal(cksum, a91[-14:])
 
 def unpack_ft8_c28(c28):
     from string import ascii_uppercase as ltrs, digits as digs
@@ -41,6 +61,8 @@ def FT8_decode(signals, ldpc = False):
     for signal in signals:
         bits = get_bits(signal)
         if(not ldpc_check(bits)):
+            continue
+        if(not check_crc(bits[0:91])):
             continue
         i3 = 4*bits[74]+2*bits[75]+bits[76]
         c28_a = int(''.join(str(b) for b in bits[0:28]), 2)
