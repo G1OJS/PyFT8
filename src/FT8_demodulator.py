@@ -50,7 +50,7 @@ class FT8Demodulator:
         self.num_symbols = 79
         self.costas = [3, 1, 4, 0, 6, 5, 2]
         self.specbuff = SpectrumBuffer(int(self.frame_seconds * self.hops_persymb * self.symbols_persec), self.samples_perhop,
-                                       np.hanning(self.FFT_size), self.frame_seconds, self.sample_rate)
+                                       np.kaiser(self.FFT_size,14), self.frame_seconds, self.sample_rate)
 
     def get_candidates(self, topN=100, t0=0, t1=1.5, f0=100, f1=3300):
         fbin_search_idxs = range(int(np.searchsorted(self.specbuff.freqs, f0)), int(np.searchsorted(self.specbuff.freqs, f1)))

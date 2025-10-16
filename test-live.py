@@ -7,6 +7,7 @@ import threading
 from src.FT8_demodulator import FT8Demodulator
 from src.FT8_decoder import FT8_decode
 from src.waterfall import Waterfall
+from src.test_utils import wsjtx_tailer, wsjtx_compare
 
 SAMPLE_RATE = 12000
 CYCLE = 15.0
@@ -31,7 +32,7 @@ def dumpwav(filename, data):
 def audioloop():
     print(f"{tstrNow()} Audio capture thread running...")
     while True:
-        print(f"{tstrNow()} Audio capture waiting for cycle start")
+        print(f"{tstrNow()} Audio capture waiting for cycle start\n")
         t = time.time()
         t_to_next = CYCLE - (t % CYCLE)
         time.sleep(t_to_next)
@@ -54,6 +55,7 @@ def read_wav(filename, sample_rate = 12000):
      return audio
 
 threading.Thread(target=audioloop).start()
+threading.Thread(target=wsjtx_tailer).start()
 
 demod = FT8Demodulator()
 wf = Waterfall(demod.specbuff)
@@ -73,4 +75,7 @@ while True:
     wf.update(demod.specbuff, candidates = candidates, title = f"FT8 Waterfall {timestr}")
     print(f"{timestr} -------------")
     demod.demodulate(candidates)
-    print(FT8_decode(candidates, ldpc = False))
+    output = FT8_decode(candidates, ldpc = False)
+    for l in output:
+        print(l)
+    wsjtx_compare(output)

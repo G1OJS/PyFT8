@@ -19,7 +19,7 @@ def read_wav(filename, chunk_size=1024, sample_rate = 12000):
 audio = read_wav('tests/210703_133430.wav')
 demod.specbuff.load_TFGrid(audio)
 candidates = demod.get_candidates(topN=5)
-wf.update(demod.specbuff, candidates = candidates)
+wf.update(demod.specbuff, candidates = candidates, show_n_candidates = 3)
 demod.demodulate(candidates)
 print(FT8_decode(candidates, ldpc = False))
 

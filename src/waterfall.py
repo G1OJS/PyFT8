@@ -15,7 +15,7 @@ class Waterfall:
         self.candidate_plots=[]
         #plt.pause(0.5)
 
-    def update(self, wf, title = "FT8 Waterfall", candidates = None):
+    def update(self, wf, title = "FT8 Waterfall", candidates = None, show_n_candidates = 0):
         self.im.set_data(wf.power)
         self.im.autoscale()
         [p.remove() for p in reversed(self.ax.patches)]
@@ -23,13 +23,11 @@ class Waterfall:
             for i, c in enumerate(candidates):
                 rect = patches.Rectangle((c.freq-0.5*c.hz_pertone, c.dt-0.5*c.symbol_secs), 8*c.hz_pertone, c.num_symbols * c.symbol_secs, linewidth=2, edgecolor='w', facecolor='none')
                 self.ax.add_patch(rect)
-                if(i<1): self.candidate_plots.append(show_candidate(wf,c))
+                if(i<show_n_candidates): self.candidate_plots.append(show_candidate(wf,c))
         self.ax.set_title(title)
         self.fig.canvas.draw_idle()
         self.fig.canvas.flush_events()
         plt.pause(0.5)
-      #  for f in self.candidate_plots:
-         #   plt.close(f)
 
 def show_candidate(wf, candidate):
     costas = [3, 1, 4, 0, 6, 5, 2]
@@ -40,7 +38,7 @@ def show_candidate(wf, candidate):
     cwf = wf.dB[t0_idx:t1_idx, f0_idx:f1_idx]
     fig, ax = plt.subplots(figsize=(5, 10))
     ax.imshow(cwf,aspect='auto',origin='lower',cmap='inferno',interpolation='none',
-              extent = [-0.5, 7.5, 0, candidate.num_symbols * candidate.hops_persymb])
+              extent = [-0.5, 7.5, -0.5,-0.5+ candidate.num_symbols * candidate.hops_persymb])
     for i, tone in enumerate(costas):
         for j in [0,36,72]:
             rect = patches.Rectangle((tone -0.5, (i+j-0.5)*candidate.hops_persymb),
@@ -48,7 +46,7 @@ def show_candidate(wf, candidate):
                                      edgecolor='black' )
             ax.add_patch(rect)
     ax.set_xlim(-0.5, 7.5)
-    ax.set_ylim(0,  candidate.num_symbols * candidate.hops_persymb)
+    ax.set_ylim(-0.5, -0.5+ candidate.num_symbols * candidate.hops_persymb)
     ax.set_xlabel('Tone')
     ax.set_ylabel('Hop')
     ax.set_title(f"FT8 candidate @ {candidate.freq} costas = {candidate.costas_score}")
