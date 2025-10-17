@@ -5,7 +5,6 @@ import pyaudio
 import wave
 import threading
 from PyFT8.FT8_demodulator import FT8Demodulator
-from PyFT8.FT8_decoder import FT8_decode
 from PyFT8.waterfall import Waterfall
 from PyFT8.test_utils import wsjtx_tailer, wsjtx_compare
 
@@ -16,9 +15,7 @@ FRAMES_PER_CYCLE = int(SAMPLE_RATE * SHORT_CYCLE)
 BRIDGE_FILE = 'audio.wav'
 FLAG_FILE = 'audio.txt'
 PyFT8_file = "pyft8.txt"
-PyFT8_llr_file = "pyft8_llr.txt"
 wsjtx_file = "wsjtx.txt"
-
 pya = pyaudio.PyAudio()
 
 def tstrcyclestart_str(cycle_offset):
@@ -71,8 +68,7 @@ with open(wsjtx_file, 'w') as f:
     f.write("")
 with open(PyFT8_file, 'w') as f:
     f.write("")
-with open(PyFT8_llr_file, 'w') as f:
-    f.write("")    
+
 while True:
     print(f"{tstrNow()} Decoder waiting for audio file")
     while not os.path.exists(FLAG_FILE):
@@ -82,40 +78,16 @@ while True:
     os.remove(FLAG_FILE)
     print(f"{tstrNow()} Demodulator has read audio file")
     demod.specbuff.load_TFGrid(audio)
-    candidates = demod.get_candidates(topN=25)
+    candidates = demod.get_candidates(topN=20)
     print(f"{tstrNow()} Demodulator found {len(candidates)} candidates")
     wf.update(demod.specbuff, candidates = candidates, title = f"FT8 Waterfall {cyclestart_str}")
     print(f"{cyclestart_str} =================================")
 
-    print(f"Max power -------------")
-    demod.demodulate(candidates)
+    output = demod.demodulate(candidates,  cyclestart_str)
     print(f"{tstrNow()} Decoded results:")
-    output = FT8_decode(candidates, cyclestart_str)
-    for line in output:
-        print(line)
+    for l in output:
+        print(f"{l}")
         with open(PyFT8_file, 'a') as f:
-            f.write(f"{line}\n")
+            f.write(f"{l}\n")
     wsjtx_compare(wsjtx_file,PyFT8_file)
-
-    """
-    print(f"LLR -------------")
-    demod.demodulate(candidates, llr = True, ldpc = False)
-    print(f"{tstrNow()} Decoded results:")
-    output = FT8_decode(candidates, cyclestart_str)
-    for line in output:
-        print(line)
-        with open(PyFT8_llr_file, 'a') as f:
-            f.write(f"{line}\n")
-    wsjtx_compare(wsjtx_file,PyFT8_llr_file)
-    """
-    
-    print(f"LLR and LDPC -------------")
-    demod.demodulate(candidates, llr = True, ldpc = True)
-    print(f"{tstrNow()} Decoded results:")
-    output = FT8_decode(candidates, cyclestart_str)
-    for line in output:
-        print(line)
-        with open(PyFT8_llr_file, 'a') as f:
-            f.write(f"{line}\n")
-    wsjtx_compare(wsjtx_file,PyFT8_llr_file)
 

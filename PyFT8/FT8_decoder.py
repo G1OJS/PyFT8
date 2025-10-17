@@ -1,17 +1,5 @@
 import numpy as np
 
-def crc(a91):
-    div = [ 1,   1, 0,   0, 1, 1, 1,   0, 1, 0, 1,   0, 1, 1, 1 ]
-    code = np.zeros(len(div)-1, dtype=np.int32)
-    msg = np.append(a91[0:77], np.zeros(5, dtype=np.int32))
-    msg = np.append(msg, code)
-    div = np.array(div, dtype=np.int32)
-    divlen = len(div)
-    for i in range(len(msg)-len(code)):
-        if msg[i] == 1:
-            msg[i:i+divlen] = np.mod(msg[i:i+divlen] + div, 2)
-    return np.array_equal(msg[-len(code):], a91[-14:])
-
 def unpack_ft8_c28(c28):
     from string import ascii_uppercase as ltrs, digits as digs
     if c28<3: return ["DE", 'QRZ','CQ'][c28]
@@ -39,22 +27,15 @@ def unpack_ft8_g15(g15):
     if(snr>50): return ''
     return str(snr).zfill(3)
 
-def FT8_decode(signals, cyclestart_str):
-    output = []
-    for signal in signals:
-        bits = signal.bits
-        if(not bits):
-            continue
-        if(not crc(bits[0:91])):
-            continue
-        i3 = 4*bits[74]+2*bits[75]+bits[76]
-        c28_a = int(''.join(str(b) for b in bits[0:28]), 2)
-        c28_b = int(''.join(str(b) for b in bits[29:57]), 2)
-        g15  = int(''.join(str(b) for b in bits[58:74]), 2)
-        msg = f"{unpack_ft8_c28(c28_a)} {unpack_ft8_c28(c28_b)} {unpack_ft8_g15(g15)}"
-        info = f"{cyclestart_str} {signal.freq :6.1f} {signal.dt :6.2f} {i3} {signal.costas_score :6.2f}"
-        output.append({'info':info, 'msg':msg})
-    return output
+def FT8_decode(signal, cyclestart_str):
+    bits = signal.bits
+    i3 = 4*bits[74]+2*bits[75]+bits[76]
+    c28_a = int(''.join(str(b) for b in bits[0:28]), 2)
+    c28_b = int(''.join(str(b) for b in bits[29:57]), 2)
+    g15  = int(''.join(str(b) for b in bits[58:74]), 2)
+    msg = f"{unpack_ft8_c28(c28_a)} {unpack_ft8_c28(c28_b)} {unpack_ft8_g15(g15)}"
+    info = f"{cyclestart_str} {signal.freq :6.1f} {signal.dt :6.2f} {i3} {signal.costas_score :6.2f} {signal.demod}"
+    return {'info':info, 'msg':msg}
 
 
 

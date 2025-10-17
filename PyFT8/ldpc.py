@@ -26,9 +26,6 @@ def decode174_91(llr):
     tov = np.zeros((ncw, N))        # check->message messages
     apmask = np.zeros(N, dtype=int) # 1 = freeze this bit
 
-    ncnt = 0
-    nclast = 0
-
     for it in range(maxiterations + 1):
         zn = np.copy(llr)
         mask = (apmask != 1)
@@ -61,18 +58,6 @@ def decode174_91(llr):
                 pass
 
             return message91
-
-        # heuristic break logic preserved from original
-        if it > 0:
-            nd = ncheck - nclast
-            if nd < 0:
-                ncnt = 0
-            else:
-                ncnt += 1
-            if ncnt >= 5 and it >= 10 and ncheck > 15:
-                break
-
-        nclast = ncheck
 
         # compute toc = messages from variable node -> check node
         # For each check node j, for each connected variable i
@@ -130,5 +115,5 @@ def decode174_91(llr):
                 tov[kk, var] = alpha * new_val + (1 - alpha) * tov[kk, var]
 
     # failed to decode
-    return None
+    return []
 

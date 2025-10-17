@@ -1,5 +1,20 @@
 import numpy as np
 from PyFT8.ldpc import decode174_91
+from PyFT8.FT8_decoder import FT8_decode
+
+def crc(bits):
+    if(len(bits)<91): return False
+    a91=bits[0:91]
+    div = [ 1,   1, 0,   0, 1, 1, 1,   0, 1, 0, 1,   0, 1, 1, 1 ]
+    code = np.zeros(len(div)-1, dtype=np.int32)
+    msg = np.append(a91[0:77], np.zeros(5, dtype=np.int32))
+    msg = np.append(msg, code)
+    div = np.array(div, dtype=np.int32)
+    divlen = len(div)
+    for i in range(len(msg)-len(code)):
+        if msg[i] == 1:
+            msg[i:i+divlen] = np.mod(msg[i:i+divlen] + div, 2)
+    return np.array_equal(msg[-len(code):], a91[-14:])
 
 class SpectrumBuffer:
     def __init__(self, nHops, samples_perhop, hop_window, frame_secs, sample_rate):
@@ -28,6 +43,7 @@ class Signal:
         self.tbin_idx = None
         self.costas_score = -1e9
         self.bits = []
+        self.demod = None
         self.freq = None
         self.dt = None
         # passed through only for graphics:
@@ -80,16 +96,19 @@ class FT8Demodulator:
         cands = [c for c in candidates if not c in to_delete]
         return cands[0:topN]
 
-    def demodulate(self, candidates, llr = False, ldpc=False):
+    def demodulate(self, candidates, cyclestart_str):
+        output = []
         for c in candidates:
-            if(llr):
-                if(ldpc):
-                    self._demodulate_llrldpc(c)
-                else:
-                    self._demodulate_llr(c)
+            self._demodulate(c)
+            if(crc(c.bits)):
+                c.demod = "Max pwr"
+                output.append(FT8_decode(c, cyclestart_str))
             else:
-                self._demodulate(c)
-        return candidates
+                self._demodulate_llrldpc(c)
+                if(crc(c.bits)):
+                    c.demod = "LLR-LDPC"
+                    output.append(FT8_decode(c, cyclestart_str))
+        return output
     
     def _costas_score(self, t0_idx, f0_idx):
         score = 0.0
@@ -117,30 +136,8 @@ class FT8Demodulator:
                 f_idx = np.clip(f_idx, 0, self.specbuff.power.shape[1] - 1)
                 fbin_powers[fbin] = self.specbuff.power[t_idx, f_idx]
             payload_symbols.append(int(np.argmax(fbin_powers) / self.fbins_pertone))
-
         graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
         candidate.bits = [b for sym in payload_symbols for b in graycode[sym]]
-
-    def _demodulate_llr(self, candidate):
-        import math
-        candidate.bits = []
-        payload_idxs = list(range(7,36)) + list(range(43,72))
-        for sym_idx in payload_idxs:
-            t_idx = candidate.tbin_idx + sym_idx * self.hops_persymb
-            if t_idx >= self.specbuff.complex.shape[0]: break
-            pwrs = [0.0]*8
-            Z = self.specbuff.complex[t_idx, : ]
-            for i,p in enumerate(pwrs):
-                Zslice = Z[candidate.fbin_idx+ i*self.fbins_pertone:candidate.fbin_idx+(i+1)*self.fbins_pertone]
-                pwrs[i] = abs(sum(Zslice))**2
-                
-            LLRs=[0.0,0.0,0.0]
-            graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
-            for k in range(len(LLRs)):
-                s1 = sum(p for i,p in enumerate(pwrs) if graycode[i][k]==1)
-                s0 = sum(p for i,p in enumerate(pwrs) if graycode[i][k]==0)
-                LLRs[k] = math.log((s1 + 1e-12)/(s0 + 1e-12))
-            candidate.bits.extend([1 if L>0 else 0 for L in LLRs])
 
     def _demodulate_llrldpc(self, candidate):
         import math
@@ -171,4 +168,4 @@ class FT8Demodulator:
                 s0 = max0 + math.log(sum(math.exp(v - max0) for v in s0_vals))
                 LLRs.append(s1 - s0)
             LLR174s.extend(LLRs)
-        candidate.bits=decode174_91(LLR174s)
+        candidate.bits = decode174_91(LLR174s)
