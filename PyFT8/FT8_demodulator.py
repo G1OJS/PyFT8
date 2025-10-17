@@ -38,7 +38,7 @@ class Signal:
         self.fbins_pertone = fbins_pertone
 
 class FT8Demodulator:
-    def __init__(self, sample_rate = 12000, hops_persymb = 2 , fbins_pertone = 3):
+    def __init__(self, sample_rate = 12000, hops_persymb = 3 , fbins_pertone = 3):
         self.sample_rate = sample_rate
         self.hops_persymb = hops_persymb
         self.fbins_pertone = fbins_pertone
@@ -121,31 +121,6 @@ class FT8Demodulator:
         graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
         candidate.bits = [b for sym in payload_symbols for b in graycode[sym]]
 
-
-    def _demodulate_llrldpc(self, candidate):
-        import math
-        LLR174s=[]
-        payload_idxs = list(range(7,36)) + list(range(43,72))
-        for sym_idx in payload_idxs:
-            t_idx = candidate.tbin_idx + sym_idx * self.hops_persymb
-            if t_idx >= self.specbuff.complex.shape[0]: break
-            pwrs = [0.0]*8
-            Z = self.specbuff.complex[t_idx,candidate.fbin_idx: candidate.fbin_idx+8*self.fbins_pertone]
-            for i,p in enumerate(pwrs):
-                Zslice = Z[i*self.fbins_pertone:(i+1)*self.fbins_pertone]
-                pwrs[i] = abs(sum(Zslice))**2
-                
-            LLR3s=[0.0,0.0,0.0]
-            graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
-            for k in range(len(LLR3s)):
-                s1 = sum(p for i,p in enumerate(pwrs) if graycode[i][k]==1)
-                s0 = sum(p for i,p in enumerate(pwrs) if graycode[i][k]==0)
-                LLR3s[k] = math.log((s1 + 1e-12)/(s0 + 1e-12))
-            LLR174s.extend(LLR3s)
-        candidate.bits=decode174_91(LLR174s)
-
-
-
     def _demodulate_llr(self, candidate):
         import math
         candidate.bits = []
@@ -154,9 +129,9 @@ class FT8Demodulator:
             t_idx = candidate.tbin_idx + sym_idx * self.hops_persymb
             if t_idx >= self.specbuff.complex.shape[0]: break
             pwrs = [0.0]*8
-            Z = self.specbuff.complex[t_idx,candidate.fbin_idx: candidate.fbin_idx+8*self.fbins_pertone]
+            Z = self.specbuff.complex[t_idx, : ]
             for i,p in enumerate(pwrs):
-                Zslice = Z[i*self.fbins_pertone:(i+1)*self.fbins_pertone]
+                Zslice = Z[candidate.fbin_idx+ i*self.fbins_pertone:candidate.fbin_idx+(i+1)*self.fbins_pertone]
                 pwrs[i] = abs(sum(Zslice))**2
                 
             LLRs=[0.0,0.0,0.0]
@@ -167,3 +142,33 @@ class FT8Demodulator:
                 LLRs[k] = math.log((s1 + 1e-12)/(s0 + 1e-12))
             candidate.bits.extend([1 if L>0 else 0 for L in LLRs])
 
+    def _demodulate_llrldpc(self, candidate):
+        import math
+        LLR174s=[]
+        payload_idxs = list(range(7,36)) + list(range(43,72))
+        for sym_idx in payload_idxs:
+            t_idx = candidate.tbin_idx + sym_idx * self.hops_persymb
+            if t_idx >= self.specbuff.complex.shape[0]: break
+            pwrs = [0.0]*8
+            Z = self.specbuff.complex[t_idx, : ]
+            for i,p in enumerate(pwrs):
+                Zslice = Z[candidate.fbin_idx+ i*self.fbins_pertone:candidate.fbin_idx+(i+1)*self.fbins_pertone]
+                pwrs[i] = abs(sum(Zslice))**2
+
+            noise_bins = np.concatenate([Z[:candidate.fbin_idx], Z[candidate.fbin_idx+8*self.fbins_pertone:]])
+            sigma2 = .01+np.median(np.abs(noise_bins)**2)
+
+            pwrs_scaled = [p / sigma2 for p in pwrs]
+            LLRs = []
+            graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
+            for k in range(3):
+                # use stable log-sum-exp
+                s1_vals = [v for i,v in enumerate(pwrs_scaled) if graycode[i][k]==1]
+                s0_vals = [v for i,v in enumerate(pwrs_scaled) if graycode[i][k]==0]
+                max1 = max(s1_vals)
+                max0 = max(s0_vals)
+                s1 = max1 + math.log(sum(math.exp(v - max1) for v in s1_vals))
+                s0 = max0 + math.log(sum(math.exp(v - max0) for v in s0_vals))
+                LLRs.append(s1 - s0)
+            LLR174s.extend(LLRs)
+        candidate.bits=decode174_91(LLR174s)

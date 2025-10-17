@@ -87,7 +87,6 @@ while True:
     wf.update(demod.specbuff, candidates = candidates, title = f"FT8 Waterfall {cyclestart_str}")
     print(f"{cyclestart_str} =================================")
 
-    """
     print(f"Max power -------------")
     demod.demodulate(candidates)
     print(f"{tstrNow()} Decoded results:")
@@ -97,6 +96,7 @@ while True:
         with open(PyFT8_file, 'a') as f:
             f.write(f"{line}\n")
     wsjtx_compare(wsjtx_file,PyFT8_file)
+
     """
     print(f"LLR -------------")
     demod.demodulate(candidates, llr = True, ldpc = False)
@@ -107,7 +107,8 @@ while True:
         with open(PyFT8_llr_file, 'a') as f:
             f.write(f"{line}\n")
     wsjtx_compare(wsjtx_file,PyFT8_llr_file)
-
+    """
+    
     print(f"LLR and LDPC -------------")
     demod.demodulate(candidates, llr = True, ldpc = True)
     print(f"{tstrNow()} Decoded results:")
