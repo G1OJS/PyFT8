@@ -82,6 +82,7 @@ class FT8Demodulator:
     def demodulate(self, candidates):
         for c in candidates:
             self._demodulate(c)
+            self._demodulate_llr(c)
         return candidates
     
     def _costas_score(self, t0_idx, f0_idx):
@@ -110,10 +111,10 @@ class FT8Demodulator:
                 fbin_powers[fbin] = self.specbuff.power[t_idx, f_idx]
             candidate.symbols[sym_idx] = int(np.argmax(fbin_powers) / self.fbins_pertone)
 
-            payload = candidate.symbols[7:36] + candidate.symbols[43:72]
-            graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
-            candidate.bits = [b for sym in payload for b in graycode[sym]]
-    
+        payload = candidate.symbols[7:36] + candidate.symbols[43:72]
+        graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
+        candidate.bits = [b for sym in payload for b in graycode[sym]]
+
 
 
 
