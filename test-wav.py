@@ -20,7 +20,7 @@ audio = read_wav('tests/210703_133430.wav')
 demod.specbuff.load_TFGrid(audio)
 candidates = demod.get_candidates(topN=5)
 wf.update(demod.specbuff, candidates = candidates, show_n_candidates = 3)
-demod.demodulate(candidates)
+demod.demodulate(candidates, llr=True, ldpc=True)
 output = FT8_decode(candidates, "000000")
 for l in output:
      print(l)

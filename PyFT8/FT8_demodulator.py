@@ -1,4 +1,5 @@
 import numpy as np
+from PyFT8.ldpc import decode174_91
 
 class SpectrumBuffer:
     def __init__(self, nHops, samples_perhop, hop_window, frame_secs, sample_rate):
@@ -79,10 +80,13 @@ class FT8Demodulator:
         cands = [c for c in candidates if not c in to_delete]
         return cands[0:topN]
 
-    def demodulate(self, candidates, llr = False):
+    def demodulate(self, candidates, llr = False, ldpc=False):
         for c in candidates:
             if(llr):
-                self._demodulate_llr(c)
+                if(ldpc):
+                    self._demodulate_llrldpc(c)
+                else:
+                    self._demodulate_llr(c)
             else:
                 self._demodulate(c)
         return candidates
@@ -116,6 +120,30 @@ class FT8Demodulator:
 
         graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
         candidate.bits = [b for sym in payload_symbols for b in graycode[sym]]
+
+
+    def _demodulate_llrldpc(self, candidate):
+        import math
+        LLR174s=[]
+        payload_idxs = list(range(7,36)) + list(range(43,72))
+        for sym_idx in payload_idxs:
+            t_idx = candidate.tbin_idx + sym_idx * self.hops_persymb
+            if t_idx >= self.specbuff.complex.shape[0]: break
+            pwrs = [0.0]*8
+            Z = self.specbuff.complex[t_idx,candidate.fbin_idx: candidate.fbin_idx+8*self.fbins_pertone]
+            for i,p in enumerate(pwrs):
+                Zslice = Z[i*self.fbins_pertone:(i+1)*self.fbins_pertone]
+                pwrs[i] = abs(sum(Zslice))**2
+                
+            LLR3s=[0.0,0.0,0.0]
+            graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
+            for k in range(len(LLR3s)):
+                s1 = sum(p for i,p in enumerate(pwrs) if graycode[i][k]==1)
+                s0 = sum(p for i,p in enumerate(pwrs) if graycode[i][k]==0)
+                LLR3s[k] = math.log((s1 + 1e-12)/(s0 + 1e-12))
+            LLR174s.extend(LLR3s)
+        candidate.bits=decode174_91(LLR174s)
+
 
 
     def _demodulate_llr(self, candidate):
