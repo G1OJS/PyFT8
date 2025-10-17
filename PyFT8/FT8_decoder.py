@@ -1,10 +1,5 @@
 import numpy as np
 
-def get_bits(signal):
-    graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
-    payload = signal.symbols[7:36] + signal.symbols[43:72]
-    return [b for sym in payload for b in graycode[sym]]
-
 def crc(a91):
     div = [ 1,   1, 0,   0, 1, 1, 1,   0, 1, 0, 1,   0, 1, 1, 1 ]
     code = np.zeros(len(div)-1, dtype=np.int32)
@@ -47,7 +42,7 @@ def unpack_ft8_g15(g15):
 def FT8_decode(signals, cyclestart_str):
     output = []
     for signal in signals:
-        bits = get_bits(signal)
+        bits = signal.bits
         if(not crc(bits[0:91])):
             continue
         i3 = 4*bits[74]+2*bits[75]+bits[76]
