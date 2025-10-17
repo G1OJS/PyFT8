@@ -8,6 +8,9 @@ audio.wav
 wsjtx.txt
 pyft8.txt
 
+*.wav
+*.txt
+
 # Distribution / packaging
 .Python
 build/
