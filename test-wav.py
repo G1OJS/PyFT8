@@ -1,7 +1,7 @@
 
-from src.FT8_demodulator import FT8Demodulator
-from src.FT8_decoder import FT8_decode
-from src.waterfall import Waterfall
+from PyFT8.FT8_demodulator import FT8Demodulator
+from PyFT8.FT8_decoder import FT8_decode
+from PyFT8.waterfall import Waterfall
 
 demod = FT8Demodulator()
 wf = Waterfall(demod.specbuff)
@@ -21,7 +21,7 @@ demod.specbuff.load_TFGrid(audio)
 candidates = demod.get_candidates(topN=5)
 wf.update(demod.specbuff, candidates = candidates, show_n_candidates = 3)
 demod.demodulate(candidates)
-output = FT8_decode(candidates, ldpc = False)
+output = FT8_decode(candidates, "000000")
 for l in output:
      print(l)
 
