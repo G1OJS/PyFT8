@@ -37,7 +37,7 @@ class Signal:
         self.fbins_pertone = fbins_pertone
 
 class FT8Demodulator:
-    def __init__(self, sample_rate = 12000, hops_persymb = 2 , fbins_pertone = 1):
+    def __init__(self, sample_rate = 12000, hops_persymb = 2 , fbins_pertone = 3):
         self.sample_rate = sample_rate
         self.hops_persymb = hops_persymb
         self.fbins_pertone = fbins_pertone
@@ -120,6 +120,7 @@ class FT8Demodulator:
 
     def _demodulate_llr(self, candidate):
         import math
+        candidate.bits = []
         payload_idxs = list(range(7,36)) + list(range(43,72))
         for sym_idx in payload_idxs:
             t_idx = candidate.tbin_idx + sym_idx * self.hops_persymb
@@ -127,15 +128,14 @@ class FT8Demodulator:
             pwrs = [0.0]*8
             Z = self.specbuff.complex[t_idx,candidate.fbin_idx: candidate.fbin_idx+8*self.fbins_pertone]
             for i,p in enumerate(pwrs):
-                zsum = sum(Z[i*self.fbins_pertone:(i+1)*self.fbins_pertone])
-                pwrs[i] = abs(zsum)**2
+                Zslice = Z[i*self.fbins_pertone:(i+1)*self.fbins_pertone]
+                pwrs[i] = abs(sum(Zslice))**2
                 
             LLRs=[0.0,0.0,0.0]
             graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
-            for k, L in enumerate(LLRs):
+            for k in range(len(LLRs)):
                 s1 = sum(p for i,p in enumerate(pwrs) if graycode[i][k]==1)
                 s0 = sum(p for i,p in enumerate(pwrs) if graycode[i][k]==0)
                 LLRs[k] = math.log((s1 + 1e-12)/(s0 + 1e-12))
-
             candidate.bits.extend([1 if L>0 else 0 for L in LLRs])
 

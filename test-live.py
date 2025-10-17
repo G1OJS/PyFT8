@@ -16,6 +16,7 @@ FRAMES_PER_CYCLE = int(SAMPLE_RATE * SHORT_CYCLE)
 BRIDGE_FILE = 'audio.wav'
 FLAG_FILE = 'audio.txt'
 PyFT8_file = "pyft8.txt"
+PyFT8_llr_file = "pyft8_llr.txt"
 wsjtx_file = "wsjtx.txt"
 
 pya = pyaudio.PyAudio()
@@ -70,7 +71,8 @@ with open(wsjtx_file, 'w') as f:
     f.write("")
 with open(PyFT8_file, 'w') as f:
     f.write("")
-    
+with open(PyFT8_llr_file, 'w') as f:
+    f.write("")    
 while True:
     print(f"{tstrNow()} Decoder waiting for audio file")
     while not os.path.exists(FLAG_FILE):
@@ -84,19 +86,24 @@ while True:
     print(f"{tstrNow()} Demodulator found {len(candidates)} candidates")
     wf.update(demod.specbuff, candidates = candidates, title = f"FT8 Waterfall {cyclestart_str}")
     print(f"{cyclestart_str} =================================")
+
     print(f"Max power -------------")
     demod.demodulate(candidates, llr = False)
     print(f"{tstrNow()} Decoded results:")
     output = FT8_decode(candidates, cyclestart_str)
     for line in output:
         print(line)
+        with open(PyFT8_file, 'a') as f:
+            f.write(f"{line}\n")
+    wsjtx_compare(wsjtx_file,PyFT8_file)
+
     print(f"LLR -------------")
     demod.demodulate(candidates, llr = True)
     print(f"{tstrNow()} Decoded results:")
     output = FT8_decode(candidates, cyclestart_str)
     for line in output:
         print(line)
-        with open(PyFT8_file, 'a') as f:
+        with open(PyFT8_llr_file, 'a') as f:
             f.write(f"{line}\n")
-    wsjtx_compare()
+    wsjtx_compare(wsjtx_file,PyFT8_llr_file)
 

@@ -19,11 +19,9 @@ def wsjtx_tailer():
         with open(wsjtx_file, 'a') as f:
                 f.write(f"{line}\n")
            
-def wsjtx_compare():
+def wsjtx_compare(wsjtx_file, PyFT8_file):
     PyFT8_patterns, wsj_patterns = set(), set()
     matched_msgs, unmatched_msgs = [],[]
-    wsjtx_file = "wsjtx.txt"
-    PyFT8_file = "pyft8.txt"
         
     with open(wsjtx_file, 'r') as f:
         wsjt = f.readlines()
