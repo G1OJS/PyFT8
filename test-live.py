@@ -83,8 +83,15 @@ while True:
     candidates = demod.get_candidates(topN=25)
     print(f"{tstrNow()} Demodulator found {len(candidates)} candidates")
     wf.update(demod.specbuff, candidates = candidates, title = f"FT8 Waterfall {cyclestart_str}")
-    print(f"{cyclestart_str} -------------")
-    demod.demodulate(candidates)
+    print(f"{cyclestart_str} =================================")
+    print(f"Max power -------------")
+    demod.demodulate(candidates, llr = False)
+    print(f"{tstrNow()} Decoded results:")
+    output = FT8_decode(candidates, cyclestart_str)
+    for line in output:
+        print(line)
+    print(f"LLR -------------")
+    demod.demodulate(candidates, llr = True)
     print(f"{tstrNow()} Decoded results:")
     output = FT8_decode(candidates, cyclestart_str)
     for line in output:

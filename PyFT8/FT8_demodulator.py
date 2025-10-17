@@ -26,7 +26,7 @@ class Signal:
         self.fbin_idx = None
         self.tbin_idx = None
         self.costas_score = -1e9
-        self.bits = None
+        self.bits = []
         self.freq = None
         self.dt = None
         # passed through only for graphics:
@@ -37,7 +37,7 @@ class Signal:
         self.fbins_pertone = fbins_pertone
 
 class FT8Demodulator:
-    def __init__(self, sample_rate = 12000, hops_persymb = 2 , fbins_pertone = 2):
+    def __init__(self, sample_rate = 12000, hops_persymb = 2 , fbins_pertone = 1):
         self.sample_rate = sample_rate
         self.hops_persymb = hops_persymb
         self.fbins_pertone = fbins_pertone
@@ -79,9 +79,12 @@ class FT8Demodulator:
         cands = [c for c in candidates if not c in to_delete]
         return cands[0:topN]
 
-    def demodulate(self, candidates):
+    def demodulate(self, candidates, llr = False):
         for c in candidates:
-            self._demodulate(c)
+            if(llr):
+                self._demodulate_llr(c)
+            else:
+                self._demodulate(c)
         return candidates
     
     def _costas_score(self, t0_idx, f0_idx):
@@ -99,7 +102,7 @@ class FT8Demodulator:
         return score / norm
 
     def _demodulate(self, candidate):
-        candidate.symbols = [] 
+        payload_symbols = []
         payload_idxs = list(range(7,36)) + list(range(43,72))
         for sym_idx in payload_idxs:
             t_idx = candidate.tbin_idx + sym_idx * self.hops_persymb
@@ -109,12 +112,30 @@ class FT8Demodulator:
                 f_idx = candidate.fbin_idx + fbin
                 f_idx = np.clip(f_idx, 0, self.specbuff.power.shape[1] - 1)
                 fbin_powers[fbin] = self.specbuff.power[t_idx, f_idx]
-            candidate.symbols.append(int(np.argmax(fbin_powers) / self.fbins_pertone))
+            payload_symbols.append(int(np.argmax(fbin_powers) / self.fbins_pertone))
 
         graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
-        candidate.bits = [b for sym in candidate.symbols for b in graycode[sym]]
+        candidate.bits = [b for sym in payload_symbols for b in graycode[sym]]
 
 
+    def _demodulate_llr(self, candidate):
+        import math
+        payload_idxs = list(range(7,36)) + list(range(43,72))
+        for sym_idx in payload_idxs:
+            t_idx = candidate.tbin_idx + sym_idx * self.hops_persymb
+            if t_idx >= self.specbuff.complex.shape[0]: break
+            pwrs = [0.0]*8
+            Z = self.specbuff.complex[t_idx,candidate.fbin_idx: candidate.fbin_idx+8*self.fbins_pertone]
+            for i,p in enumerate(pwrs):
+                zsum = sum(Z[i*self.fbins_pertone:(i+1)*self.fbins_pertone])
+                pwrs[i] = abs(zsum)**2
+                
+            LLRs=[0.0,0.0,0.0]
+            graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
+            for k, L in enumerate(LLRs):
+                s1 = sum(p for i,p in enumerate(pwrs) if graycode[i][k]==1)
+                s0 = sum(p for i,p in enumerate(pwrs) if graycode[i][k]==0)
+                LLRs[k] = math.log((s1 + 1e-12)/(s0 + 1e-12))
 
-
+            candidate.bits.extend([1 if L>0 else 0 for L in LLRs])
 
