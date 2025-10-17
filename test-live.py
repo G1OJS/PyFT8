@@ -4,10 +4,10 @@ import numpy as np
 import pyaudio
 import wave
 import threading
-from src.FT8_demodulator import FT8Demodulator
-from src.FT8_decoder import FT8_decode
-from src.waterfall import Waterfall
-from src.test_utils import wsjtx_tailer, wsjtx_compare
+from PyFT8.FT8_demodulator import FT8Demodulator
+from PyFT8.FT8_decoder import FT8_decode
+from PyFT8.waterfall import Waterfall
+from PyFT8.test_utils import wsjtx_tailer, wsjtx_compare
 
 SAMPLE_RATE = 12000
 CYCLE = 15.0
