@@ -82,7 +82,6 @@ class FT8Demodulator:
     def demodulate(self, candidates):
         for c in candidates:
             self._demodulate(c)
-            self._demodulate_llr(c)
         return candidates
     
     def _costas_score(self, t0_idx, f0_idx):
