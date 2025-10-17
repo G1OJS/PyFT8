@@ -30,3 +30,4 @@ Also thanks to [Robert Morris](https://github.com/rtmrtmrtmrtm) for:
 
 Other useful resources:
  - [VK3JPK's FT8 notes](https://github.com/vk3jpk/ft8-notes)
+ - [Web-888 FT8 skimmer](https://www.rx-888.com/web/design/digi.html)
