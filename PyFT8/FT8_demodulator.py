@@ -99,8 +99,9 @@ class FT8Demodulator:
         return score / norm
 
     def _demodulate(self, candidate):
-        candidate.symbols = [0] * self.num_symbols
-        for sym_idx in range(self.num_symbols):
+        candidate.symbols = [] 
+        payload_idxs = list(range(7,36)) + list(range(43,72))
+        for sym_idx in payload_idxs:
             t_idx = candidate.tbin_idx + sym_idx * self.hops_persymb
             if t_idx >= self.specbuff.power.shape[0]: break  
             fbin_powers = [0]*8*self.fbins_pertone
@@ -108,11 +109,10 @@ class FT8Demodulator:
                 f_idx = candidate.fbin_idx + fbin
                 f_idx = np.clip(f_idx, 0, self.specbuff.power.shape[1] - 1)
                 fbin_powers[fbin] = self.specbuff.power[t_idx, f_idx]
-            candidate.symbols[sym_idx] = int(np.argmax(fbin_powers) / self.fbins_pertone)
+            candidate.symbols.append(int(np.argmax(fbin_powers) / self.fbins_pertone))
 
-        payload = candidate.symbols[7:36] + candidate.symbols[43:72]
         graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
-        candidate.bits = [b for sym in payload for b in graycode[sym]]
+        candidate.bits = [b for sym in candidate.symbols for b in graycode[sym]]
 
 
 
