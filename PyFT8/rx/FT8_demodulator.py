@@ -27,7 +27,6 @@ class SpectrumBuffer:
         self.times = frame_secs * np.arange(self.nHops) / self.nHops
         self.complex = np.zeros((self.nHops, self.nFreqs), dtype=np.complex64)
         self.power = np.zeros((self.nHops, self.nFreqs), dtype=np.float32)
-        self.dB = self.power
 
     def load_TFGrid(self, audio):
         for hop_idx in range(self.nHops):
@@ -35,7 +34,6 @@ class SpectrumBuffer:
             if(s0 + self.FFT_size < len(audio)):
                 self.complex[hop_idx,:] = np.fft.rfft(audio[s0 : s0 + self.FFT_size] * self.hop_window)
                 self.power[hop_idx,:] = np.abs(self.complex[hop_idx,:])**2
-                self.dB[hop_idx,:] = 10*np.log10(self.power[hop_idx,:] + 1e-12)
 
 class Signal:
     def __init__(self, hops_persymb, fbins_pertone):
@@ -57,7 +55,7 @@ class Signal:
         self.spectrum = None
 
 class FT8Demodulator:
-    def __init__(self, sample_rate = 12000, hops_persymb = 3 , fbins_pertone = 3):
+    def __init__(self, sample_rate = 12000, hops_persymb = 2 , fbins_pertone = 2):
         self.sample_rate = sample_rate
         self.hops_persymb = hops_persymb
         self.fbins_pertone = fbins_pertone
@@ -67,9 +65,23 @@ class FT8Demodulator:
         self.FFT_size = int(self.fbins_pertone * self.sample_rate // self.symbols_persec)
         self.hz_pertone = 6.25
         self.num_symbols = 79
-        self.costas = [3, 1, 4, 0, 6, 5, 2]
+        self.csync = self.generate_costas()
         self.specbuff = SpectrumBuffer(int(self.frame_seconds * self.hops_persymb * self.symbols_persec), self.samples_perhop,
                                        np.kaiser(self.FFT_size,14), self.frame_seconds, self.sample_rate)
+
+    def generate_costas(self):
+        costas = [3, 1, 4, 0, 6, 5, 2]
+        csync = np.zeros((len(costas)*self.hops_persymb, 7*self.fbins_pertone), dtype=np.int16)
+        for i in range(len(costas) * self.hops_persymb):
+          for j in range(7*self.fbins_pertone):
+            symb_idx = int(i/self.hops_persymb)
+            csync[i,j] = 1 if int(j/self.fbins_pertone) == costas[symb_idx] else -1/6
+        return csync
+
+    def _costas_score(self, t0_idx, f0_idx):
+        score = np.sum(self.csync * np.abs(self.specbuff.complex[t0_idx:t0_idx + 7*self.hops_persymb, f0_idx:f0_idx+7*self.fbins_pertone]))
+ #       score = np.abs(np.sum(self.csync * self.specbuff.complex[t0_idx:t0_idx + 7*self.hops_persymb, f0_idx:f0_idx+7*self.fbins_pertone]))
+        return score
 
     def get_candidates(self, topN=100, t0=0, t1=1.5, f0=100, f1=3300):
         fbin_search_idxs = range(int(np.searchsorted(self.specbuff.freqs, f0)), int(np.searchsorted(self.specbuff.freqs, f1)))
@@ -79,10 +91,11 @@ class FT8Demodulator:
             c = Signal(self.hops_persymb, self.fbins_pertone)
             for tbin_idx in tbin_search_idxs:
                 score = max(self._costas_score(tbin_idx, fbin_idx), self._costas_score(36+tbin_idx, fbin_idx), self._costas_score(72+tbin_idx, fbin_idx))
+                #score = self._costas_score(tbin_idx, fbin_idx)
                 if(score > c.costas_score):
                     c.costas_score = score
                     c.tbin_idx = tbin_idx
-                    c.fbin_idx = fbin_idx
+                    c.fbin_idx = fbin_idx   
             c.freq = self.specbuff.freqs[c.fbin_idx]
             c.dt = self.specbuff.times[c.tbin_idx]
             c.num_symbols = self.num_symbols
@@ -94,8 +107,7 @@ class FT8Demodulator:
             t0 = max(0, tbin_idx - 2)
             t1 = min(self.specbuff.complex.shape[1], tbin_idx + 2 + self.hops_persymb*self.num_symbols)
             c.spectrum = self.specbuff.complex[f0:f1, t0:t1]
-
-            if(c.costas_score>0.0): candidates.append(c)
+            candidates.append(c)
         candidates.sort(key=lambda c: -c.costas_score)
 
         to_delete = []
@@ -107,6 +119,7 @@ class FT8Demodulator:
         return cands[0:topN]
 
     def demodulate(self, candidates, cyclestart_str):
+
         output = []
         for c in candidates:
             self._demodulate(c)
@@ -120,19 +133,7 @@ class FT8Demodulator:
                     output.append(FT8_decode(c, cyclestart_str))
         return output
     
-    def _costas_score(self, t0_idx, f0_idx):
-        score = 0.0
-        norm = 0.0
-        n_fbins = len(self.costas) * self.fbins_pertone
-        for iHop, iCostasTone in enumerate(self.costas):
-            t_idx = t0_idx + iHop * self.hops_persymb
-            for iFbin in range(n_fbins):
-                f_idx = f0_idx + iFbin
-                mult = 1 if (int(iFbin/self.fbins_pertone) == iCostasTone) else -1/7
-                pwr = self.specbuff.power[t_idx, f_idx]
-                norm += pwr
-                score += pwr * mult
-        return score / norm
+
 
     def _demodulate(self, candidate):
         payload_symbols = []
@@ -144,7 +145,8 @@ class FT8Demodulator:
             for fbin in range(8*self.fbins_pertone):
                 f_idx = candidate.fbin_idx + fbin
                 f_idx = np.clip(f_idx, 0, self.specbuff.power.shape[1] - 1)
-                fbin_powers[fbin] = self.specbuff.power[t_idx, f_idx]
+                for i in range(self.hops_persymb):
+                    fbin_powers[fbin] += self.specbuff.power[t_idx+i, f_idx]
             payload_symbols.append(int(np.argmax(fbin_powers) / self.fbins_pertone))
         graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
         candidate.bits = [b for sym in payload_symbols for b in graycode[sym]]
@@ -157,7 +159,7 @@ class FT8Demodulator:
             t_idx = candidate.tbin_idx + sym_idx * self.hops_persymb
             if t_idx >= self.specbuff.complex.shape[0]: break
             pwrs = [0.0]*8
-            Z = self.specbuff.complex[t_idx, : ]
+            Z = self.specbuff.complex[t_idx:t_idx+self.hops_persymb, : ]
             for i,p in enumerate(pwrs):
                 Zslice = Z[candidate.fbin_idx+ i*self.fbins_pertone:candidate.fbin_idx+(i+1)*self.fbins_pertone]
                 pwrs[i] = abs(sum(Zslice))**2
