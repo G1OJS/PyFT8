@@ -1,4 +1,4 @@
-
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.colors import LogNorm
@@ -26,7 +26,9 @@ class Waterfall:
         [p.remove() for p in reversed(self.ax.patches)]
         if(candidates):
             for i, c in enumerate(candidates):
-                rect = patches.Rectangle((c.freq-0.5*c.hz_pertone, c.dt-0.5*c.symbol_secs), 8*c.hz_pertone, c.num_symbols * c.symbol_secs, linewidth=2, edgecolor='w', facecolor='none')
+                rect = patches.Rectangle((c.freq-0.5*c.hz_pertone, c.dt-0.5*c.symbol_secs),
+                                         8*c.hz_pertone, c.num_symbols * c.symbol_secs,
+                                         linewidth=2, edgecolor='w', facecolor='none')
                 self.ax.add_patch(rect)
                 if(i<show_n_candidates): self.candidate_plots.append(show_candidate(wf,c))
         self.ax.set_title(title)
@@ -40,20 +42,25 @@ def show_candidate(wf, candidate):
     f0_idx = candidate.fbin_idx
     t1_idx = t0_idx + candidate.num_symbols * candidate.hops_persymb
     f1_idx = f0_idx + 8 * candidate.fbins_pertone
-    cwf = wf.power[t0_idx:t1_idx, f0_idx:f1_idx]
-    fig, ax = plt.subplots(figsize=(5, 10))
-    ax.imshow(cwf,aspect='auto',origin='lower',cmap='inferno',interpolation='none',norm=LogNorm(),
+    fig, axs = plt.subplots(1,2)
+    cpwr = wf.power[t0_idx:t1_idx, f0_idx:f1_idx]
+    cphs = np.angle(wf.complex[t0_idx:t1_idx, f0_idx:f1_idx])
+    axs[0].imshow(cpwr,aspect='auto',origin='lower',cmap='inferno',interpolation='none',norm=LogNorm(),
               extent = [-0.5, 7.5, -0.5,-0.5+ candidate.num_symbols * candidate.hops_persymb])
-    for i, tone in enumerate(costas):
-        for j in [0,36,72]:
-            rect = patches.Rectangle((tone -0.5, (i+j-0.5)*candidate.hops_persymb),
+    axs[1].imshow(cphs,aspect='auto',origin='lower',cmap='inferno',interpolation='none',norm=LogNorm(),
+              extent = [-0.5, 7.5, -0.5,-0.5+ candidate.num_symbols * candidate.hops_persymb])
+    for iax in [0,1]:
+        for i, tone in enumerate(costas):
+            for j in [0,36,72]:
+                rect = patches.Rectangle((tone -0.5, (i+j-0.5)*candidate.hops_persymb),
                                       1, candidate.hops_persymb, linewidth=2, facecolor='none',
                                      edgecolor='black' )
-            ax.add_patch(rect)
-    ax.set_xlim(-0.5, 7.5)
-    ax.set_ylim(-0.5, -0.5+ candidate.num_symbols * candidate.hops_persymb)
-    ax.set_xlabel('Tone')
-    ax.set_ylabel('Hop')
-    ax.set_title(f"FT8 candidate @ {candidate.freq} costas = {candidate.costas_score}")
+                axs[iax].add_patch(rect)
+            
+        axs[iax].set_xlim(-0.5, 7.5)
+        axs[iax].set_ylim(-0.5, -0.5+ candidate.num_symbols * candidate.hops_persymb)
+        axs[iax].set_xlabel('Tone')
+        axs[iax].set_ylabel('Hop')
+    axs[0].set_title(f"FT8 candidate @ {candidate.freq} costas = {candidate.costas_score}")
     plt.pause(0.1)
     return fig

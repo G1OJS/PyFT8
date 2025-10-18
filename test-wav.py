@@ -16,14 +16,26 @@ def read_wav(filename, chunk_size=1024, sample_rate = 12000):
      return audio
           
 audio = read_wav('tests/210703_133430.wav')
+#audio = read_wav('tests/G1OJS_583Hz.wav')
+
 demod.specbuff.load_TFGrid(audio)
-candidates = demod.get_candidates(topN=1)
-wf.update(demod.specbuff, candidates = candidates, show_n_candidates = 1)
+candidates = demod.get_candidates(topN=10)
+c=candidates[0]
+#c.freq = 583
+#c.fbin_idx = int(c.freq/(6.25/demod.fbins_pertone))
+#c.tbin_idx = 3
+#c.dt = c.tbin_idx/(6.25*demod.hops_persymb)
+wf.update(demod.specbuff, candidates = candidates, show_n_candidates = 0)
 output = demod.demodulate(candidates, "000000")
 for l in output:
      print(l)
 
-
+import numpy as np
+#for tidx in range(8):
+#     print(tidx)
+#     for fidx in range(8):
+#          z = demod.specbuff.complex[tidx+c.tbin_idx * self.hops_persymb, fidx+c.fbin_idx * fbins_pertone]
+#          print(np.abs(z), np.angle(z)*180/3.141)
 
 
 
