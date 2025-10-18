@@ -86,7 +86,7 @@ while True:
     print(f"{cyclestart_str} =================================")
 
     output = demod.demodulate(candidates,  cyclestart_str)
-    if(len(l)>0 and not decodes):
+    if(len(output)>0 and not decodes):
         decodes = True
         reset_compare()
     print(f"{tstrNow()} Decoded results:")
