@@ -55,7 +55,7 @@ class Signal:
         self.spectrum = None
 
 class FT8Demodulator:
-    def __init__(self, sample_rate = 12000, hops_persymb = 2 , fbins_pertone = 2):
+    def __init__(self, sample_rate = 12000, hops_persymb = 4 , fbins_pertone = 3):
         self.sample_rate = sample_rate
         self.hops_persymb = hops_persymb
         self.fbins_pertone = fbins_pertone
@@ -80,7 +80,6 @@ class FT8Demodulator:
 
     def _costas_score(self, t0_idx, f0_idx):
         score = np.sum(self.csync * np.abs(self.specbuff.complex[t0_idx:t0_idx + 7*self.hops_persymb, f0_idx:f0_idx+7*self.fbins_pertone]))
- #       score = np.abs(np.sum(self.csync * self.specbuff.complex[t0_idx:t0_idx + 7*self.hops_persymb, f0_idx:f0_idx+7*self.fbins_pertone]))
         return score
 
     def get_candidates(self, topN=100, t0=0, t1=1.5, f0=100, f1=3300):
@@ -91,7 +90,6 @@ class FT8Demodulator:
             c = Signal(self.hops_persymb, self.fbins_pertone)
             for tbin_idx in tbin_search_idxs:
                 score = max(self._costas_score(tbin_idx, fbin_idx), self._costas_score(36+tbin_idx, fbin_idx), self._costas_score(72+tbin_idx, fbin_idx))
-                #score = self._costas_score(tbin_idx, fbin_idx)
                 if(score > c.costas_score):
                     c.costas_score = score
                     c.tbin_idx = tbin_idx
@@ -119,7 +117,6 @@ class FT8Demodulator:
         return cands[0:topN]
 
     def demodulate(self, candidates, cyclestart_str):
-
         output = []
         for c in candidates:
             self._demodulate(c)
@@ -132,8 +129,6 @@ class FT8Demodulator:
                     c.demod = "LLR-LDPC"
                     output.append(FT8_decode(c, cyclestart_str))
         return output
-    
-
 
     def _demodulate(self, candidate):
         payload_symbols = []
@@ -159,19 +154,18 @@ class FT8Demodulator:
             t_idx = candidate.tbin_idx + sym_idx * self.hops_persymb
             if t_idx >= self.specbuff.complex.shape[0]: break
             pwrs = [0.0]*8
-            Z = self.specbuff.complex[t_idx:t_idx+self.hops_persymb, : ]
-            for i,p in enumerate(pwrs):
-                Zslice = Z[candidate.fbin_idx+ i*self.fbins_pertone:candidate.fbin_idx+(i+1)*self.fbins_pertone]
-                pwrs[i] = abs(sum(Zslice))**2
-
-            noise_bins = np.concatenate([Z[:candidate.fbin_idx], Z[candidate.fbin_idx+8*self.fbins_pertone:]])
-            sigma2 = .01+np.median(np.abs(noise_bins)**2)
-
+            sigma2 = 0.001
+            for k in range(self.hops_persymb):
+                Z = self.specbuff.complex[t_idx+k, : ]
+                for i,p in enumerate(pwrs):
+                    Zslice = Z[candidate.fbin_idx+ i*self.fbins_pertone:candidate.fbin_idx+(i+1)*self.fbins_pertone]
+                    pwrs[i] += abs(sum(Zslice))**2
+                noise_bins = np.concatenate([Z[:candidate.fbin_idx], Z[candidate.fbin_idx+8*self.fbins_pertone:]])
+                sigma2 += np.median(np.abs(noise_bins)**2)
             pwrs_scaled = [p / sigma2 for p in pwrs]
             LLRs = []
             graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
             for k in range(3):
-                # use stable log-sum-exp
                 s1_vals = [v for i,v in enumerate(pwrs_scaled) if graycode[i][k]==1]
                 s0_vals = [v for i,v in enumerate(pwrs_scaled) if graycode[i][k]==0]
                 max1 = max(s1_vals)
