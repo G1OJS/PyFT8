@@ -10,6 +10,10 @@ pyft8.txt
 
 *.wav
 *.txt
+*.npz
+dumps/
+
+
 
 # Distribution / packaging
 .Python

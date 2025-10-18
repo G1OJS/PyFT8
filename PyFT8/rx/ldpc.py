@@ -1,7 +1,5 @@
 import numpy as np
 
-import numpy as np
-
 def safe_atanh(x, eps=1e-12):
     # clip to avoid |x| >= 1 domain errors
     x = np.clip(x, -1 + eps, 1 - eps)
@@ -24,12 +22,10 @@ def decode174_91(llr):
     toc = np.zeros((7, M))          # message -> check messages
     tanhtoc = np.zeros((7, M))
     tov = np.zeros((ncw, N))        # check->message messages
-    apmask = np.zeros(N, dtype=int) # 1 = freeze this bit
 
     for it in range(maxiterations + 1):
         zn = np.copy(llr)
-        mask = (apmask != 1)
-        zn[mask] += tov.sum(axis=0)[mask]
+        zn += tov.sum(axis=0)
         
         cw = (zn > 0).astype(int)
         # syndrome
@@ -56,7 +52,6 @@ def decode174_91(llr):
             except NameError:
                 # dmin/ntype not defined: ignore
                 pass
-
             return message91
 
         # compute toc = messages from variable node -> check node

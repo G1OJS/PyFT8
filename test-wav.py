@@ -1,6 +1,6 @@
 
-from PyFT8.FT8_demodulator import FT8Demodulator
-from PyFT8.waterfall import Waterfall
+from PyFT8.rx.FT8_demodulator import FT8Demodulator
+from PyFT8.rx.waterfall import Waterfall
 
 demod = FT8Demodulator()
 wf = Waterfall(demod.specbuff)

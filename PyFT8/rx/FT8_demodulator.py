@@ -1,6 +1,6 @@
 import numpy as np
-from PyFT8.ldpc import decode174_91
-from PyFT8.FT8_decoder import FT8_decode
+from PyFT8.rx.ldpc import decode174_91
+from PyFT8.rx.FT8_decoder import FT8_decode
 
 def crc(bits):
     if(len(bits)<91): return False
@@ -52,6 +52,9 @@ class Signal:
         self.symbol_secs=0
         self.hops_persymb = hops_persymb
         self.fbins_pertone = fbins_pertone
+        # for debugging:
+        self.llr = None
+        self.spectrum = None
 
 class FT8Demodulator:
     def __init__(self, sample_rate = 12000, hops_persymb = 3 , fbins_pertone = 3):
@@ -85,6 +88,13 @@ class FT8Demodulator:
             c.num_symbols = self.num_symbols
             c.hz_pertone = self.hz_pertone
             c.symbol_secs = 1 / self.symbols_persec
+            #for debugging output:
+            f0 = max(0, fbin_idx - 2)
+            f1 = min(self.specbuff.complex.shape[0], fbin_idx + 2 + 8*self.fbins_pertone)
+            t0 = max(0, tbin_idx - 2)
+            t1 = min(self.specbuff.complex.shape[1], tbin_idx + 2 + self.hops_persymb*self.num_symbols)
+            c.spectrum = self.specbuff.complex[f0:f1, t0:t1]
+
             if(c.costas_score>0.0): candidates.append(c)
         candidates.sort(key=lambda c: -c.costas_score)
 
@@ -168,4 +178,5 @@ class FT8Demodulator:
                 s0 = max0 + math.log(sum(math.exp(v - max0) for v in s0_vals))
                 LLRs.append(s1 - s0)
             LLR174s.extend(LLRs)
+        candidate.llr = LLR174s
         candidate.bits = decode174_91(LLR174s)
