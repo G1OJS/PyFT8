@@ -76,6 +76,7 @@ class FT8Demodulator:
         for i in range(len(costas)):
             # in fortran this is added as delta phi and mutliplied by the actual tone index
             # and applied in the time domain - this needs more thinking
+            # - maybe record a wsjtx Tx (perfect) and look at that on different grids -> conjugate = csync
           phi=i*twopi/self.hops_persymb 
           for j in range(7*self.fbins_pertone):
             symb_idx = int(j/self.fbins_pertone)
