@@ -42,17 +42,8 @@ def decode174_91(llr):
         # success
         if ncheck == 0:
             message91 = cw[:K].tolist()
-
-            # compute dmin and ntype if present (preserve old behavior)
-            try:
-                hdec = (llr > 0).astype(int)
-                nxor = np.bitwise_xor(hdec, cw)
-                dmin[0] = np.sum(nxor * np.abs(llr))
-                ntype[0] = 1
-            except NameError:
-                # dmin/ntype not defined: ignore
-                pass
-            return message91
+            if(sum(message91)>0):
+                return message91
 
         # compute toc = messages from variable node -> check node
         # For each check node j, for each connected variable i

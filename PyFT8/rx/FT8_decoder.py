@@ -46,7 +46,7 @@ def dump_candidate(c, cycle):
     meta=np.array([cycle, c.freq, c.dt, c.costas_score, c.hops_persymb, c.fbins_pertone]),
     llr=np.array(c.llr),
     bits=np.array(c.bits),
-    spectrum=c.spectrum)
+    spectrum=np.array(c.spectrum))
         
 
 
