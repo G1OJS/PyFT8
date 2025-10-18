@@ -145,7 +145,8 @@ class FT8Demodulator:
             for fbin in range(8*self.fbins_pertone):
                 f_idx = candidate.fbin_idx + fbin
                 f_idx = np.clip(f_idx, 0, self.specbuff.power.shape[1] - 1)
-                fbin_powers[fbin] = self.specbuff.power[t_idx, f_idx]
+                for i in range(self.hops_persymb):
+                    fbin_powers[fbin] += self.specbuff.power[t_idx+i, f_idx]
             payload_symbols.append(int(np.argmax(fbin_powers) / self.fbins_pertone))
         graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
         candidate.bits = [b for sym in payload_symbols for b in graycode[sym]]
@@ -158,7 +159,7 @@ class FT8Demodulator:
             t_idx = candidate.tbin_idx + sym_idx * self.hops_persymb
             if t_idx >= self.specbuff.complex.shape[0]: break
             pwrs = [0.0]*8
-            Z = self.specbuff.complex[t_idx, : ]
+            Z = self.specbuff.complex[t_idx:t_idx+self.hops_persymb, : ]
             for i,p in enumerate(pwrs):
                 Zslice = Z[candidate.fbin_idx+ i*self.fbins_pertone:candidate.fbin_idx+(i+1)*self.fbins_pertone]
                 pwrs[i] = abs(sum(Zslice))**2
