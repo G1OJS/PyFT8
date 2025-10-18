@@ -1,12 +1,13 @@
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from matplotlib.colors import LogNorm
 
 class Waterfall:
     def __init__(self, wf, t0=0, t1=15, f0=100, f1=3500):
         self.fig, self.ax = plt.subplots(figsize=(10, 3))
         self.im = self.ax.imshow(wf.power ,aspect='auto',origin='lower',
-                        extent=[wf.freqs[0], wf.freqs[-1], wf.times[0], wf.times[-1]],cmap='inferno',interpolation='none')
+                        extent=[wf.freqs[0], wf.freqs[-1], wf.times[0], wf.times[-1]],cmap='inferno',interpolation='none', norm=LogNorm())
         self.ax.set_xlabel('Frequency (Hz)')
         self.ax.set_ylabel('Time (s)')
         self.ax.set_title('FT8 waterfall')
@@ -17,6 +18,10 @@ class Waterfall:
 
     def update(self, wf, title = "FT8 Waterfall", candidates = None, show_n_candidates = 0):
         self.im.set_data(wf.power)
+        #vmax = wf.power.max()
+        #dBrange = 50
+        #vmin = vmax * 10**(-dBrange/20)  
+        #self.im.set_norm(LogNorm(vmin=vmin, vmax=vmax))
         self.im.autoscale()
         [p.remove() for p in reversed(self.ax.patches)]
         if(candidates):
@@ -35,9 +40,9 @@ def show_candidate(wf, candidate):
     f0_idx = candidate.fbin_idx
     t1_idx = t0_idx + candidate.num_symbols * candidate.hops_persymb
     f1_idx = f0_idx + 8 * candidate.fbins_pertone
-    cwf = wf.dB[t0_idx:t1_idx, f0_idx:f1_idx]
+    cwf = wf.power[t0_idx:t1_idx, f0_idx:f1_idx]
     fig, ax = plt.subplots(figsize=(5, 10))
-    ax.imshow(cwf,aspect='auto',origin='lower',cmap='inferno',interpolation='none',
+    ax.imshow(cwf,aspect='auto',origin='lower',cmap='inferno',interpolation='none',norm=LogNorm(),
               extent = [-0.5, 7.5, -0.5,-0.5+ candidate.num_symbols * candidate.hops_persymb])
     for i, tone in enumerate(costas):
         for j in [0,36,72]:
