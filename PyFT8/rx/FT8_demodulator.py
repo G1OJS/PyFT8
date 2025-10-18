@@ -75,7 +75,7 @@ class FT8Demodulator:
         csync = np.zeros((len(costas)*self.hops_persymb, 7*self.fbins_pertone), dtype=np.complex64)
         for i in range(len(costas)):
           phi=0.0
-          dphi=twopi*costas[i]/32.0 
+          dphi=twopi*costas[i]/self.hops_persymb 
           for j in range(7*self.fbins_pertone):
             csync[i:i+self.hops_persymb,j] = np.exp(1j*phi) 
             phi += dphi
