@@ -17,8 +17,8 @@ def read_wav(filename, chunk_size=1024, sample_rate = 12000):
           
 audio = read_wav('tests/210703_133430.wav')
 demod.specbuff.load_TFGrid(audio)
-candidates = demod.get_candidates(topN=5)
-wf.update(demod.specbuff, candidates = candidates, show_n_candidates = 3)
+candidates = demod.get_candidates(topN=1)
+wf.update(demod.specbuff, candidates = candidates, show_n_candidates = 1)
 output = demod.demodulate(candidates, "000000")
 for l in output:
      print(l)

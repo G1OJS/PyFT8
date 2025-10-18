@@ -74,11 +74,13 @@ class FT8Demodulator:
         twopi=6.282
         csync = np.zeros((len(costas)*self.hops_persymb, 7*self.fbins_pertone), dtype=np.complex64)
         for i in range(len(costas)):
-          phi=0.0
-          dphi=twopi*costas[i]/self.hops_persymb 
+            # in fortran this is added as delta phi and mutliplied by the actual tone index
+            # and applied in the time domain - this needs more thinking
+          phi=i*twopi/self.hops_persymb 
           for j in range(7*self.fbins_pertone):
-            csync[i:i+self.hops_persymb,j] = np.exp(1j*phi) 
-            phi += dphi
+            symb_idx = int(j/self.fbins_pertone)
+            a = 1 if j == costas[symb_idx] else -1/6
+            csync[i:i+self.hops_persymb,j] = a* np.exp(1j*phi)
         return csync
 
     def get_candidates(self, topN=100, t0=0, t1=1.5, f0=100, f1=3300):
@@ -132,7 +134,9 @@ class FT8Demodulator:
         return output
     
     def _costas_score(self, t0_idx, f0_idx):
-        score = np.sum(self.csync * np.conjugate(self.specbuff.complex[t0_idx:t0_idx + self.hops_persymb, f0_idx:f0_idx+7*self.fbins_pertone]))
+    #    score = np.sum(self.csync * np.conjugate(self.specbuff.complex[t0_idx:t0_idx + self.hops_persymb, f0_idx:f0_idx+7*self.fbins_pertone]))
+        score = np.sum(self.csync * np.log(np.abs(self.specbuff.complex[t0_idx:t0_idx + self.hops_persymb, f0_idx:f0_idx+7*self.fbins_pertone])))
+    #    score = np.sum(self.csync * (np.abs(self.specbuff.complex[t0_idx:t0_idx + self.hops_persymb, f0_idx:f0_idx+7*self.fbins_pertone])))
         return score
 
     def _demodulate(self, candidate):
