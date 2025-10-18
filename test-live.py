@@ -64,11 +64,13 @@ demod = FT8Demodulator()
 wf = Waterfall(demod.specbuff)
 t = time.time()
 
-with open(wsjtx_file, 'w') as f:
-    f.write("")
-with open(PyFT8_file, 'w') as f:
-    f.write("")
+def reset_compare():
+    with open(wsjtx_file, 'w') as f:
+        f.write("")
+    with open(PyFT8_file, 'w') as f:
+        f.write("")
 
+decodes=False
 while True:
     print(f"{tstrNow()} Decoder waiting for audio file")
     while not os.path.exists(FLAG_FILE):
@@ -84,6 +86,9 @@ while True:
     print(f"{cyclestart_str} =================================")
 
     output = demod.demodulate(candidates,  cyclestart_str)
+    if(len(l)>0 and not decodes):
+        decodes = True
+        reset_compare()
     print(f"{tstrNow()} Decoded results:")
     for l in output:
         print(f"{l}")
