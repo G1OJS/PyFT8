@@ -71,7 +71,6 @@ class FT8Demodulator:
 
     def generate_costas(self):
         costas = [3, 1, 4, 0, 6, 5, 2]
-        twopi=6.282
         csync = np.zeros((len(costas)*self.hops_persymb, 7*self.fbins_pertone), dtype=np.int16)
         for i in range(len(costas) * self.hops_persymb):
           for j in range(7*self.fbins_pertone):
