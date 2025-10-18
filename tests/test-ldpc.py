@@ -1,4 +1,6 @@
 import numpy as np
+import sys
+sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 from PyFT8.rx.ldpc import decode174_91
 
 
