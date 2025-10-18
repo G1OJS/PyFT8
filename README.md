@@ -29,5 +29,6 @@ Also thanks to [Robert Morris](https://github.com/rtmrtmrtmrtm) for:
  - [weakmon](https://github.com/rtmrtmrtmrtm/weakmon/) - much good information
 
 Other useful resources:
+ - [W4KEK WSJT-x git mirror](https://www.repo.radio/w4kek/WSJT-X)
  - [VK3JPK's FT8 notes](https://github.com/vk3jpk/ft8-notes)
  - [Web-888 FT8 skimmer](https://www.rx-888.com/web/design/digi.html)
