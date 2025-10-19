@@ -45,23 +45,23 @@ class Signal:
         self.demod = None
 
 class FT8Demodulator:
-    def __init__(self, sample_rate = 12000, hops_persymb = 4 , fbins_pertone = 3):
-        self.frame_secs = 15
+    def __init__(self, sample_rate = 12000, hops_persymb = 3 , fbins_pertone = 3):
+        self.frame_secs = 15 # move to signal class
         self.sample_rate = sample_rate
         self.hops_persymb = hops_persymb
         self.fbins_pertone = fbins_pertone
-        self.symbols_persec = 6.25
-        self.tones_persymb = 8
+        self.symbols_persec = 6.25 # move to signal class
+        self.tones_persymb = 8 # move to signal class
         self.FFT_size = int(self.fbins_pertone * self.sample_rate // self.symbols_persec)
-        self.num_symbols = 79
-        self.costas = [3, 1, 4, 0, 6, 5, 2]
-        self.csync = self._generate_csync()
+        self.num_symbols = 79 # move to signal class
+        self.costas = [3, 1, 4, 0, 6, 5, 2] # move to signal class
+        self.csync = self._generate_csync() # move to signal class
         self.specbuff = SpectrumBuffer(nHops        = int(self.hops_persymb * self.symbols_persec * self.frame_secs),
                                        length_secs  = self.frame_secs,
                                        nFreqs       = self.FFT_size // 2 + 1,
                                        width_Hz     = self.sample_rate/2)
 
-    def _generate_csync(self):
+    def _generate_csync(self): # move to signal class
         csync_len = len(self.costas)*self.hops_persymb
         csync_wid = len(self.costas)*self.fbins_pertone
         csync = np.zeros((csync_len, csync_wid), dtype=np.int16)
