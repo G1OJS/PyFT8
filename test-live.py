@@ -60,7 +60,7 @@ def read_wav(filename, sample_rate = 12000):
 threading.Thread(target=audioloop).start()
 threading.Thread(target=wsjtx_tailer).start()
 
-demod = FT8Demodulator(hops_persymb = 3, fbins_pertone = 5)
+demod = FT8Demodulator(hops_persymb = 2, fbins_pertone = 3)
 wf = Waterfall(demod.specbuff, demod.hops_persymb, demod.fbins_pertone, demod.costas)
 t = time.time()
 

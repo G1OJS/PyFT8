@@ -16,13 +16,15 @@ def decode174_91(llr):
     K = 91
     M = N - K
 
-    maxiterations = 30
+    maxiterations = 10
 
     llr = np.asarray(llr, dtype=float)
+    
     toc = np.zeros((7, M))          # message -> check messages
     tanhtoc = np.zeros((7, M))
     tov = np.zeros((ncw, N))        # check->message messages
 
+    info = []
     for it in range(maxiterations + 1):
         zn = np.copy(llr)
         zn += tov.sum(axis=0)
@@ -39,10 +41,12 @@ def decode174_91(llr):
             if synd[chk] != 0:
                 ncheck += 1
 
+        info.append(ncheck)
         # success
         if ncheck == 0:
             message91 = cw[:K].tolist()
             if(sum(message91)>0):
+                print(f"Success: {info}")
                 return message91
 
         # compute toc = messages from variable node -> check node
@@ -96,10 +100,11 @@ def decode174_91(llr):
 
                 # inverse tanh (clipped)
                 y = safe_atanh(-Tmn)
-                alpha = 0.3   # 0 < alpha <= 1 ; try 0.3..0.9. lower = more damping
+                alpha = 1   # 0 < alpha <= 1 ; try 0.3..0.9. lower = more damping
                 new_val = 2.0 * safe_atanh(-Tmn)
                 tov[kk, var] = alpha * new_val + (1 - alpha) * tov[kk, var]
 
     # failed to decode
+    print(f"Failure: {info}")
     return []
 
