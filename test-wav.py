@@ -3,7 +3,7 @@ from PyFT8.rx.FT8_demodulator import FT8Demodulator
 from PyFT8.rx.waterfall import Waterfall
 
 demod = FT8Demodulator()
-wf = Waterfall(demod.specbuff)
+wf = Waterfall(demod.specbuff, demod.hops_persymb, demod.fbins_pertone, demod.costas)
 
 def read_wav(filename, chunk_size=1024, sample_rate = 12000):
      import wave
@@ -18,27 +18,14 @@ def read_wav(filename, chunk_size=1024, sample_rate = 12000):
 audio = read_wav('tests/210703_133430.wav')
 #audio = read_wav('tests/G1OJS_583Hz.wav')
 
-demod.specbuff.load_TFGrid(audio)
+demod.load(audio)
 candidates = demod.get_candidates(topN=10)
-c=candidates[0]
-#c.freq = 583
-#c.fbin_idx = int(c.freq/(6.25/demod.fbins_pertone))
-#c.tbin_idx = 3
-#c.dt = c.tbin_idx/(6.25*demod.hops_persymb)
-wf.update(demod.specbuff, candidates = candidates, show_n_candidates = 1)
 output = demod.demodulate(candidates, "000000")
+wf.update(candidates = candidates, show_n_candidates = 1)
 for l in output:
      print(l)
 
 import numpy as np
-#for tidx in range(8):
-#     print(tidx)
-#     for fidx in range(8):
-#          z = demod.specbuff.complex[tidx+c.tbin_idx * self.hops_persymb, fidx+c.fbin_idx * fbins_pertone]
-#          print(np.abs(z), np.angle(z)*180/3.141)
-
-
-
 #133430  17  0.3 2571 ~  W1FC F5BZB -08
 #133430  15 -0.1 2157 ~  WM3PEN EA6VQ -09
 #133430  -3 -0.8 1197 ~  CQ F5RXL IN94      France

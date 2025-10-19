@@ -17,143 +17,139 @@ def crc(bits):
     return np.array_equal(msg[-len(code):], a91[-14:])
 
 class SpectrumBuffer:
-    def __init__(self, nHops, samples_perhop, hop_window, frame_secs, sample_rate):
+    def __init__(self, nHops = 0, length_secs = 0, nFreqs = 0, width_Hz = 0):
+        self.length_secs = length_secs
+        self.width_Hz = width_Hz
         self.nHops = nHops
-        self.samples_perhop = samples_perhop
-        self.hop_window = hop_window
-        self.FFT_size = len(self.hop_window)
-        self.nFreqs = self.FFT_size // 2 + 1
-        self.freqs = np.fft.rfftfreq(self.FFT_size, 1.0 / sample_rate)
-        self.times = frame_secs * np.arange(self.nHops) / self.nHops
+        self.nFreqs = nFreqs
+        self.freqs = self.width_Hz * np.arange(self.nFreqs) / self.nFreqs
+        self.times = self.length_secs * np.arange(self.nHops) / self.nHops
         self.complex = np.zeros((self.nHops, self.nFreqs), dtype=np.complex64)
         self.power = np.zeros((self.nHops, self.nFreqs), dtype=np.float32)
 
-    def load_TFGrid(self, audio):
-        for hop_idx in range(self.nHops):
-            s0 = hop_idx*self.samples_perhop
-            if(s0 + self.FFT_size < len(audio)):
-                self.complex[hop_idx,:] = np.fft.rfft(audio[s0 : s0 + self.FFT_size] * self.hop_window)
-                self.power[hop_idx,:] = np.abs(self.complex[hop_idx,:])**2
-
 class Signal:
-    def __init__(self, hops_persymb, fbins_pertone):
+    def __init__(self, num_symbols, tones_persymb, symbols_persec):
         self.fbin_idx = None
         self.tbin_idx = None
-        self.costas_score = -1e9
-        self.bits = []
-        self.demod = None
+        self.search_score = -1e9
+        self.num_symbols = num_symbols
+        self.symbols_persec = symbols_persec
+        self.tones_persymb = tones_persymb 
+        self.power_grid = None
+        self.llr = None
+        self.payload_symbol_idxs = list(range(7,36)) + list(range(43,72))
+        self.payload_symbols=[]
+        self.payload_bits = []
         self.freq = None
         self.dt = None
-        # passed through only for graphics:
-        self.num_symbols = 0
-        self.hz_pertone = 0
-        self.symbol_secs=0
-        self.hops_persymb = hops_persymb
-        self.fbins_pertone = fbins_pertone
-        # for debugging:
-        self.llr = None
-        self.spectrum = None
+        self.demod = None
 
 class FT8Demodulator:
     def __init__(self, sample_rate = 12000, hops_persymb = 4 , fbins_pertone = 3):
+        self.frame_secs = 15
         self.sample_rate = sample_rate
         self.hops_persymb = hops_persymb
         self.fbins_pertone = fbins_pertone
-        self.frame_seconds = 15
         self.symbols_persec = 6.25
-        self.samples_perhop = int(self.sample_rate / (self.symbols_persec * self.hops_persymb))
+        self.tones_persymb = 8
         self.FFT_size = int(self.fbins_pertone * self.sample_rate // self.symbols_persec)
-        self.hz_pertone = 6.25
         self.num_symbols = 79
-        self.csync = self.generate_costas()
-        self.specbuff = SpectrumBuffer(int(self.frame_seconds * self.hops_persymb * self.symbols_persec), self.samples_perhop,
-                                       np.kaiser(self.FFT_size,14), self.frame_seconds, self.sample_rate)
+        self.costas = [3, 1, 4, 0, 6, 5, 2]
+        self.csync = self._generate_csync()
+        self.specbuff = SpectrumBuffer(nHops        = int(self.hops_persymb * self.symbols_persec * self.frame_secs),
+                                       length_secs  = self.frame_secs,
+                                       nFreqs       = self.FFT_size // 2 + 1,
+                                       width_Hz     = self.sample_rate/2)
 
-    def generate_costas(self):
-        costas = [3, 1, 4, 0, 6, 5, 2]
-        csync = np.zeros((len(costas)*self.hops_persymb, 7*self.fbins_pertone), dtype=np.int16)
-        for i in range(len(costas) * self.hops_persymb):
-          for j in range(7*self.fbins_pertone):
-            symb_idx = int(i/self.hops_persymb)
-            csync[i,j] = 1 if int(j/self.fbins_pertone) == costas[symb_idx] else -1/6
+    def _generate_csync(self):
+        csync_len = len(self.costas)*self.hops_persymb
+        csync_wid = len(self.costas)*self.fbins_pertone
+        csync = np.zeros((csync_len, csync_wid), dtype=np.int16)
+        for t_idx in range(csync_len):
+          for f_idx in range(csync_wid):
+            symb_idx = int(t_idx / self.hops_persymb)
+            tone_idx = int(f_idx / self.fbins_pertone)
+            csync[t_idx, f_idx] = 1 if tone_idx == self.costas[symb_idx] else -1/(len(self.costas)-1)
         return csync
-
-    def _costas_score(self, t0_idx, f0_idx):
-        score = np.sum(self.csync * np.abs(self.specbuff.complex[t0_idx:t0_idx + 7*self.hops_persymb, f0_idx:f0_idx+7*self.fbins_pertone]))
+    
+    def load(self, audio):
+        for hop_idx in range(self.specbuff.nHops):
+            samp_idx = int(hop_idx * self.sample_rate / (self.symbols_persec * self.hops_persymb))
+            if(samp_idx + self.FFT_size < len(audio)):
+                self.specbuff.complex[hop_idx,:] = np.fft.rfft(audio[samp_idx : samp_idx + self.FFT_size] * np.kaiser(self.FFT_size,14))
+                self.specbuff.power[hop_idx,:] = np.abs(self.specbuff.complex[hop_idx,:])**2
+                
+    def _get_search_score(self, t0_idx, f0_idx):
+        score = 0.0
+        for symb_idx in [0, 36, 72]:
+            t_idx = t0_idx + symb_idx * self.hops_persymb
+            score += np.sum(self.csync * np.abs(self.specbuff.complex[t_idx:t_idx + self.csync.shape[0], f0_idx:f0_idx + self.csync.shape[1]]))
         return score
 
+    def _get_downsampled_power(self, candidate):
+        candidate.power_grid = np.zeros((candidate.num_symbols, candidate.tones_persymb), dtype=np.float32)
+        for specbuff_t_idx in range(candidate.tbin_idx, candidate.tbin_idx+candidate.num_symbols*self.hops_persymb):
+            for specbuff_f_idx in range(candidate.fbin_idx, candidate.fbin_idx + candidate.tones_persymb * self.fbins_pertone):
+                candidate_t_idx = int((specbuff_t_idx - candidate.tbin_idx) / self.hops_persymb)
+                candidate_f_idx = int((specbuff_f_idx - candidate.fbin_idx) / self.fbins_pertone)
+                candidate.power_grid[candidate_t_idx, candidate_f_idx] += self.specbuff.power[specbuff_t_idx, specbuff_f_idx]
+        
     def get_candidates(self, topN=100, t0=0, t1=1.5, f0=100, f1=3300):
         fbin_search_idxs = range(int(np.searchsorted(self.specbuff.freqs, f0)), int(np.searchsorted(self.specbuff.freqs, f1)))
         tbin_search_idxs = range(int(np.searchsorted(self.specbuff.times, t0)), int(np.searchsorted(self.specbuff.times, t1)))
         candidates = []
         for fbin_idx in fbin_search_idxs:
-            c = Signal(self.hops_persymb, self.fbins_pertone)
+            c = Signal(self.num_symbols, self.tones_persymb, self.symbols_persec)
             for tbin_idx in tbin_search_idxs:
-                score = max(self._costas_score(tbin_idx, fbin_idx), self._costas_score(36+tbin_idx, fbin_idx), self._costas_score(72+tbin_idx, fbin_idx))
-                if(score > c.costas_score):
-                    c.costas_score = score
-                    c.tbin_idx = tbin_idx
-                    c.fbin_idx = fbin_idx   
+                score = self._get_search_score(tbin_idx, fbin_idx)
+                if(score > c.search_score):
+                    c.search_score, c.tbin_idx, c.fbin_idx = score, tbin_idx, fbin_idx 
+            if(c.search_score>0):
+                candidates.append(c)
+                
+        candidates.sort(key=lambda c: -c.search_score)
+        to_delete = []
+        for c1_idx, c1 in enumerate(candidates):
+            for c2_idx in range(c1_idx+1, len(candidates)):
+                c2 = candidates[c2_idx]
+                if(abs(c1.fbin_idx - c2.fbin_idx) < 0.5 * c.tones_persymb * self.fbins_pertone):
+                    to_delete.append(c1 if c1.search_score < c2.search_score else c2) 
+        cands = [c for c in candidates if not c in to_delete][0:topN]
+        for c in cands:
+            self._get_downsampled_power(c)
             c.freq = self.specbuff.freqs[c.fbin_idx]
             c.dt = self.specbuff.times[c.tbin_idx]
-            c.num_symbols = self.num_symbols
-            c.hz_pertone = self.hz_pertone
-            c.symbol_secs = 1 / self.symbols_persec
-            #for debugging output:
-            f0 = max(0, fbin_idx - 2)
-            f1 = min(self.specbuff.complex.shape[0], fbin_idx + 2 + 8*self.fbins_pertone)
-            t0 = max(0, tbin_idx - 2)
-            t1 = min(self.specbuff.complex.shape[1], tbin_idx + 2 + self.hops_persymb*self.num_symbols)
-            c.spectrum = self.specbuff.complex[f0:f1, t0:t1]
-            candidates.append(c)
-        candidates.sort(key=lambda c: -c.costas_score)
-
-        to_delete = []
-        for i, c in enumerate(candidates):
-            for j in range(i+1, len(candidates)):
-                if(abs(c.freq-candidates[j].freq) < 25):
-                    to_delete.append(c if c.costas_score < candidates[j].costas_score else candidates[j]) 
-        cands = [c for c in candidates if not c in to_delete]
-        return cands[0:topN]
+        return cands
 
     def demodulate(self, candidates, cyclestart_str):
         output = []
         for c in candidates:
             self._demodulate(c)
-            if(crc(c.bits)):
+            if(crc(c.payload_bits)):
                 c.demod = "Max pwr"
                 output.append(FT8_decode(c, cyclestart_str))
              #   print(c.fbin_idx, c.freq, c.tbin_idx, c.dt)
              #   print(c.bits)
             else:
                 self._demodulate_llrldpc(c)
-                if(crc(c.bits)):
+                if(crc(c.payload_bits)):
                     c.demod = "LLR-LDPC"
                     output.append(FT8_decode(c, cyclestart_str))
 
         return output
 
     def _demodulate(self, candidate):
-        payload_symbols = []
-        payload_idxs = list(range(7,36)) + list(range(43,72))
-        for sym_idx in payload_idxs:
-            t_idx = candidate.tbin_idx + sym_idx * self.hops_persymb
-            if t_idx >= self.specbuff.power.shape[0]: break  
-            fbin_powers = [0]*8*self.fbins_pertone
-            for fbin in range(8*self.fbins_pertone):
-                f_idx = candidate.fbin_idx + fbin
-                f_idx = np.clip(f_idx, 0, self.specbuff.power.shape[1] - 1)
-                for i in range(self.hops_persymb):
-                    fbin_powers[fbin] += self.specbuff.power[t_idx+i, f_idx]
-            payload_symbols.append(int(np.argmax(fbin_powers) / self.fbins_pertone))
+        for sym_idx in candidate.payload_symbol_idxs:
+            tone_powers = candidate.power_grid[sym_idx, :]
+            candidate.payload_symbols.append(np.argmax(tone_powers))
         graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
-        candidate.bits = [b for sym in payload_symbols for b in graycode[sym]]
+        candidate.payload_bits = [b for sym in candidate.payload_symbols for b in graycode[sym]]
 
     def _demodulate_llrldpc(self, candidate):
         import math
         LLR174s=[]
-        payload_idxs = list(range(7,36)) + list(range(43,72))
-        for sym_idx in payload_idxs:
+        payload_symbol_idxs = list(range(7,36)) + list(range(43,72))
+        for sym_idx in payload_symbol_idxs:
             t_idx = candidate.tbin_idx + sym_idx * self.hops_persymb
             if t_idx >= self.specbuff.complex.shape[0]: break
             pwrs = [0.0]*8
@@ -178,4 +174,4 @@ class FT8Demodulator:
                 LLRs.append(s1 - s0)
             LLR174s.extend(LLRs)
         candidate.llr = LLR174s
-        candidate.bits = decode174_91(LLR174s)
+        candidate.payload_bits = decode174_91(LLR174s)
