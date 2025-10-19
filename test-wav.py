@@ -25,7 +25,7 @@ c=candidates[0]
 #c.fbin_idx = int(c.freq/(6.25/demod.fbins_pertone))
 #c.tbin_idx = 3
 #c.dt = c.tbin_idx/(6.25*demod.hops_persymb)
-wf.update(demod.specbuff, candidates = candidates, show_n_candidates = 0)
+wf.update(demod.specbuff, candidates = candidates, show_n_candidates = 1)
 output = demod.demodulate(candidates, "000000")
 for l in output:
      print(l)

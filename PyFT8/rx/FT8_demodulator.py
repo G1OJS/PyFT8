@@ -123,11 +123,14 @@ class FT8Demodulator:
             if(crc(c.bits)):
                 c.demod = "Max pwr"
                 output.append(FT8_decode(c, cyclestart_str))
+             #   print(c.fbin_idx, c.freq, c.tbin_idx, c.dt)
+             #   print(c.bits)
             else:
                 self._demodulate_llrldpc(c)
                 if(crc(c.bits)):
                     c.demod = "LLR-LDPC"
                     output.append(FT8_decode(c, cyclestart_str))
+
         return output
 
     def _demodulate(self, candidate):
