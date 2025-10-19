@@ -22,20 +22,21 @@ class SpectrumBuffer:
         self.width_Hz = width_Hz
         self.nHops = nHops
         self.nFreqs = nFreqs
-        self.freqs = self.width_Hz * np.arange(self.nFreqs) / self.nFreqs
-        self.times = self.length_secs * np.arange(self.nHops) / self.nHops
-        self.complex = np.zeros((self.nHops, self.nFreqs), dtype=np.complex64)
-        self.power = np.zeros((self.nHops, self.nFreqs), dtype=np.float32)
+        self.freqs = self.width_Hz * np.arange(self.nFreqs) / (self.nFreqs -1)
+        self.times = self.length_secs * np.arange(self.nHops) / (self.nHops -1)
+        self.complex = np.zeros((self.nHops, self.nFreqs), dtype=np.complex64)+1
+        self.power = np.zeros((self.nHops, self.nFreqs), dtype=np.float32)+1
+
 
 class Signal:
-    def __init__(self, num_symbols, tones_persymb, symbols_persec):
+    def __init__(self, num_symbols =79, tones_persymb = 8, symbols_persec = 6.25):
         self.fbin_idx = None
         self.tbin_idx = None
         self.search_score = -1e9
         self.num_symbols = num_symbols
         self.symbols_persec = symbols_persec
         self.tones_persymb = tones_persymb 
-        self.power_grid = None
+        self.power_grid = np.zeros((self.num_symbols, self.tones_persymb), dtype=np.float32)
         self.llr = None
         self.payload_symbol_idxs = list(range(7,36)) + list(range(43,72))
         self.payload_symbols=[]
@@ -77,17 +78,17 @@ class FT8Demodulator:
             samp_idx = int(hop_idx * self.sample_rate / (self.symbols_persec * self.hops_persymb))
             if(samp_idx + self.FFT_size < len(audio)):
                 self.specbuff.complex[hop_idx,:] = np.fft.rfft(audio[samp_idx : samp_idx + self.FFT_size] * np.kaiser(self.FFT_size,14))
-                self.specbuff.power[hop_idx,:] = np.abs(self.specbuff.complex[hop_idx,:])**2
                 
     def _get_search_score(self, t0_idx, f0_idx):
         score = 0.0
         for symb_idx in [0, 36, 72]:
             t_idx = t0_idx + symb_idx * self.hops_persymb
-            score += np.sum(self.csync * np.abs(self.specbuff.complex[t_idx:t_idx + self.csync.shape[0], f0_idx:f0_idx + self.csync.shape[1]]))
+            block_score = np.sum(self.csync * np.abs(self.specbuff.complex[t_idx:t_idx + self.csync.shape[0], f0_idx:f0_idx + self.csync.shape[1]]))
+            #score = block_score if block_score > score else score
+            score += block_score
         return score
 
     def _get_downsampled_power(self, candidate):
-        candidate.power_grid = np.zeros((candidate.num_symbols, candidate.tones_persymb), dtype=np.float32)
         for specbuff_t_idx in range(candidate.tbin_idx, candidate.tbin_idx+candidate.num_symbols*self.hops_persymb):
             for specbuff_f_idx in range(candidate.fbin_idx, candidate.fbin_idx + candidate.tones_persymb * self.fbins_pertone):
                 candidate_t_idx = int((specbuff_t_idx - candidate.tbin_idx) / self.hops_persymb)
@@ -95,6 +96,7 @@ class FT8Demodulator:
                 candidate.power_grid[candidate_t_idx, candidate_f_idx] += self.specbuff.power[specbuff_t_idx, specbuff_f_idx]
         
     def get_candidates(self, topN=100, t0=0, t1=1.5, f0=100, f1=3300):
+        self.specbuff.power = np.abs(self.specbuff.complex)**2 # precalculate to avoid recalc during search
         fbin_search_idxs = range(int(np.searchsorted(self.specbuff.freqs, f0)), int(np.searchsorted(self.specbuff.freqs, f1)))
         tbin_search_idxs = range(int(np.searchsorted(self.specbuff.times, t0)), int(np.searchsorted(self.specbuff.times, t1)))
         candidates = []

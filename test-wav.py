@@ -2,7 +2,7 @@
 from PyFT8.rx.FT8_demodulator import FT8Demodulator
 from PyFT8.rx.waterfall import Waterfall
 
-demod = FT8Demodulator()
+demod = FT8Demodulator(hops_persymb = 3 , fbins_pertone = 3)
 wf = Waterfall(demod.specbuff, demod.hops_persymb, demod.fbins_pertone, demod.costas)
 
 def read_wav(filename, chunk_size=1024, sample_rate = 12000):
