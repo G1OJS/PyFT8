@@ -20,8 +20,8 @@ audio = read_wav('tests/210703_133430.wav')
 
 demod.load(audio)
 candidates = demod.get_candidates(topN=10)
-wf.update(candidates = candidates, show_n_candidates = 3)
 output = demod.demodulate(candidates, "000000")
+wf.update(candidates = candidates, show_n_candidates = 1)
 for l in output:
      print(l)
 

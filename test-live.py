@@ -61,7 +61,7 @@ threading.Thread(target=audioloop).start()
 threading.Thread(target=wsjtx_tailer).start()
 
 demod = FT8Demodulator()
-wf = Waterfall(demod.specbuff)
+wf = Waterfall(demod.specbuff, demod.hops_persymb, demod.fbins_pertone, demod.costas)
 t = time.time()
 
 def reset_compare():
@@ -79,10 +79,10 @@ while True:
     audio = read_wav(BRIDGE_FILE)
     os.remove(FLAG_FILE)
     print(f"{tstrNow()} Demodulator has read audio file")
-    demod.specbuff.load_TFGrid(audio)
+    demod.load(audio)
     candidates = demod.get_candidates(topN=20)
     print(f"{tstrNow()} Demodulator found {len(candidates)} candidates")
-    wf.update(demod.specbuff, candidates = candidates, title = f"FT8 Waterfall {cyclestart_str}")
+    wf.update(candidates = candidates, title = f"FT8 Waterfall {cyclestart_str}")
     print(f"{cyclestart_str} =================================")
 
     output = demod.demodulate(candidates,  cyclestart_str)

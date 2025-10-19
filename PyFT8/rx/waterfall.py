@@ -63,6 +63,6 @@ class Waterfall:
 
         im2 = axs[1].imshow(c.power_grid, aspect='auto',origin='lower',
                         extent=[-0.5, -0.5 + c.tones_persymb, -0.5, -0.5 + c.num_symbols] ,cmap='inferno',interpolation='none', norm=LogNorm())
-        
+
         plt.pause(0.5)
         return plt

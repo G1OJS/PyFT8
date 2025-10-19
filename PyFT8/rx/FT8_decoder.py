@@ -28,13 +28,13 @@ def unpack_ft8_g15(g15):
     return str(snr).zfill(3)
 
 def FT8_decode(signal, cyclestart_str):
-    bits = signal.bits
+    bits = signal.payload_bits
     i3 = 4*bits[74]+2*bits[75]+bits[76]
     c28_a = int(''.join(str(b) for b in bits[0:28]), 2)
     c28_b = int(''.join(str(b) for b in bits[29:57]), 2)
     g15  = int(''.join(str(b) for b in bits[58:74]), 2)
     msg = f"{unpack_ft8_c28(c28_a)} {unpack_ft8_c28(c28_b)} {unpack_ft8_g15(g15)}"
-    info = f"{cyclestart_str} {signal.freq :6.1f} {signal.dt :6.2f} {i3} {signal.costas_score :6.2f} {signal.demod}"
+    info = f"{cyclestart_str} {signal.freq :6.1f} {signal.dt :6.2f} {i3} {signal.search_score :6.2f} {signal.demod}"
     if(signal.demod == "LLR-LDPC"):
         dump_candidate(signal, cyclestart_str)
     return {'info':info, 'msg':msg}
@@ -43,10 +43,10 @@ def FT8_decode(signal, cyclestart_str):
 def dump_candidate(c, cycle):
     np.savez_compressed(
        f"dumps/candidate_{cycle}_{c.freq}.npz",
-    meta=np.array([cycle, c.freq, c.dt, c.costas_score, c.hops_persymb, c.fbins_pertone]),
+    meta=np.array([cycle, c.freq, c.dt, c.search_score]),
     llr=np.array(c.llr),
-    bits=np.array(c.bits),
-    spectrum=np.array(c.spectrum))
+    bits=np.array(c.payload_bits),
+    spectrum=np.array(c.power_grid))
         
 
 

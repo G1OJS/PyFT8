@@ -40,10 +40,12 @@ class Signal:
         self.payload_symbol_idxs = list(range(7,36)) + list(range(43,72))
         self.payload_symbols=[]
         self.payload_bits = []
+        self.freq = None
+        self.dt = None
         self.demod = None
 
 class FT8Demodulator:
-    def __init__(self, sample_rate = 12000, hops_persymb = 1 , fbins_pertone = 1):
+    def __init__(self, sample_rate = 12000, hops_persymb = 4 , fbins_pertone = 3):
         self.frame_secs = 15
         self.sample_rate = sample_rate
         self.hops_persymb = hops_persymb
@@ -80,7 +82,7 @@ class FT8Demodulator:
     def _get_search_score(self, t0_idx, f0_idx):
         score = 0.0
         for symb_idx in [0, 36, 72]:
-            t_idx = t0_idx + symb_idx & self.hops_persymb
+            t_idx = t0_idx + symb_idx * self.hops_persymb
             score += np.sum(self.csync * np.abs(self.specbuff.complex[t_idx:t_idx + self.csync.shape[0], f0_idx:f0_idx + self.csync.shape[1]]))
         return score
 
@@ -110,11 +112,13 @@ class FT8Demodulator:
         for c1_idx, c1 in enumerate(candidates):
             for c2_idx in range(c1_idx+1, len(candidates)):
                 c2 = candidates[c2_idx]
-                if(abs(c1.fbin_idx - c2.fbin_idx) < 0.5 * c.tones_persymb):
+                if(abs(c1.fbin_idx - c2.fbin_idx) < 0.5 * c.tones_persymb * self.fbins_pertone):
                     to_delete.append(c1 if c1.search_score < c2.search_score else c2) 
         cands = [c for c in candidates if not c in to_delete][0:topN]
         for c in cands:
             self._get_downsampled_power(c)
+            c.freq = self.specbuff.freqs[c.fbin_idx]
+            c.dt = self.specbuff.times[c.tbin_idx]
         return cands
 
     def demodulate(self, candidates, cyclestart_str):
@@ -136,7 +140,7 @@ class FT8Demodulator:
             tone_powers = candidate.power_grid[sym_idx, :]
             candidate.payload_symbols.append(np.argmax(tone_powers))
         graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
-        candidate.bits = [b for sym in candidate.payload_symbols for b in graycode[sym]]
+        candidate.payload_bits = [b for sym in candidate.payload_symbols for b in graycode[sym]]
 
     def _demodulate_llrldpc(self, candidate):
         import math
@@ -167,4 +171,4 @@ class FT8Demodulator:
                 LLRs.append(s1 - s0)
             LLR174s.extend(LLRs)
         candidate.llr = LLR174s
-        candidate.bits = decode174_91(LLR174s)
+        candidate.payload_bits = decode174_91(LLR174s)
