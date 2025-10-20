@@ -1,11 +1,12 @@
 import numpy as np
 from PyFT8.rx.ldpc import decode174_91
 from PyFT8.rx.FT8_decoder import FT8_decode
+from PyFT8.FT8_constants import kGRAY_MAP_TUPLES
 
 def crc(bits):
     if(len(bits)<91): return False
     a91=bits[0:91]
-    div = [ 1,   1, 0,   0, 1, 1, 1,   0, 1, 0, 1,   0, 1, 1, 1 ]
+    div = [ 1,1,0,0,1,1,1,0,1,0,1,0,1,1,1]
     code = np.zeros(len(div)-1, dtype=np.int32)
     msg = np.append(a91[0:77], np.zeros(5, dtype=np.int32))
     msg = np.append(msg, code)
@@ -26,7 +27,6 @@ class SpectrumBuffer:
         self.times = self.length_secs * np.arange(self.nHops) / (self.nHops -1)
         self.complex = np.zeros((self.nHops, self.nFreqs), dtype=np.complex64)+1
         self.power = np.zeros((self.nHops, self.nFreqs), dtype=np.float32)+1
-
 
 class Signal:
     def __init__(self, num_symbols =79, tones_persymb = 8, symbols_persec = 6.25):
@@ -144,8 +144,7 @@ class FT8Demodulator:
         for sym_idx in candidate.payload_symbol_idxs:
             tone_powers = candidate.power_grid[sym_idx, :]
             candidate.payload_symbols.append(np.argmax(tone_powers))
-        graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
-        candidate.payload_bits = [b for sym in candidate.payload_symbols for b in graycode[sym]]
+        candidate.payload_bits = [b for sym in candidate.payload_symbols for b in kGRAY_MAP_TUPLES[sym]]
 
     def _demodulate_llrldpc(self, candidate):
         import math
@@ -165,10 +164,10 @@ class FT8Demodulator:
                 sigma2 += np.median(np.abs(noise_bins)**2)
             pwrs_scaled = [p / sigma2 for p in pwrs]
             LLRs = []
-            graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
+            
             for k in range(3):
-                s1_vals = [v for i,v in enumerate(pwrs_scaled) if graycode[i][k]==1]
-                s0_vals = [v for i,v in enumerate(pwrs_scaled) if graycode[i][k]==0]
+                s1_vals = [v for i,v in enumerate(pwrs_scaled) if kGRAY_MAP_TUPLES[i][k]==1]
+                s0_vals = [v for i,v in enumerate(pwrs_scaled) if kGRAY_MAP_TUPLES[i][k]==0]
                 max1 = max(s1_vals)
                 max0 = max(s0_vals)
                 s1 = max1 + math.log(sum(math.exp(v - max1) for v in s1_vals))

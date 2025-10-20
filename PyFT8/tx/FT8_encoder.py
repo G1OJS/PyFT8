@@ -3,20 +3,7 @@ import sys
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 import numpy as np
 from itertools import islice
-from PyFT8.tx.FT8_ldpc_generator import generator_matrix_rows
-
-
-# --- constants ---------------------------------------------------
-crc_bits = 14
-crc_polynomial = 0x2757
-msg_bits = 77
-crc_padded_bits = msg_bits + crc_bits
-#graycode = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
-gray_map = [0,1,3,2,6,4,5,7]
-costas = [3,1,4,0,6,5,2]
-generator_matrix = [int(row, 16) for row in generator_matrix_rows]
-
-# --- utility -----------------------------------------------------
+from PyFT8.FT8_constants import kCRC_BITS, kCRC_POLY, kMSG_BITS, kGRAY_MAP, kCOSTAS, kGEN
 
 def pack_ft8_c28(call):
     from string import ascii_uppercase as ltrs, digits as digs
@@ -50,10 +37,10 @@ def parity(x: int) -> int:
     return bin(x).count('1') & 1
 
 def crc14(msg: int) -> int:
-    poly = crc_polynomial
+    poly = kCRC_POLY
     reg = 0
-    for i in range(msg_bits):
-        bit = ((msg >> (msg_bits - 1 - i)) & 1) ^ ((reg >> 13) & 1)
+    for i in range(kMSG_BITS):
+        bit = ((msg >> (kMSG_BITS - 1 - i)) & 1) ^ ((reg >> 13) & 1)
         reg = ((reg << 1) & 0x3fff)
         if bit:
             reg ^= poly
@@ -63,7 +50,7 @@ def ldpc_encode(msg_crc: int) -> int:
     # enforce Python ints
     msg_crc = int(msg_crc)
     parity_bits = 0
-    for row in map(int, generator_matrix):
+    for row in map(int, kGEN):
         bit = bin(msg_crc & row).count("1") & 1
         parity_bits = (parity_bits << 1) | bit
     return (msg_crc << 83) | parity_bits
@@ -72,16 +59,16 @@ def gray_encode(bits: int) -> list[int]:
     syms = []
     for _ in range(174 // 3):
         chunk = bits & 0x7
-        syms.insert(0, gray_map[chunk])
+        syms.insert(0, kGRAY_MAP[chunk])
         bits >>= 3
     return syms
 
-def add_costas(syms: list[int]) -> list[int]:
-    return costas + syms[:29] + costas + syms[29:] + costas
+def add_kCOSTAS(syms: list[int]) -> list[int]:
+    return kCOSTAS + syms[:29] + kCOSTAS + syms[29:] + kCOSTAS
 
 def encode_bits77(bits77):
     msg_crc = (bits77 << 14) | crc14(bits77)
     bits174 = ldpc_encode(msg_crc)
     syms = gray_encode(bits174)
-    symbols = add_costas(syms)
+    symbols = add_kCOSTAS(syms)
     return symbols
