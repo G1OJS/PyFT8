@@ -34,26 +34,22 @@ def pack_ft8_g15(txt):
     return v
 
 
-def crc14(bits_n):
-    bits = ghlp.int_to_bits(bits_n,77) + [0]*14
-    div = [1,1,0,0,1,1,1,0,1,0,1,0,1,1,1]
-    code = np.zeros(len(div)-1, dtype=np.int32)
-    msg = np.append(bits, np.zeros(5, dtype=np.int32))
-    msg = np.append(msg, code)
-    div = np.array(div, dtype=np.int32)
-    divlen = len(div)
-    for i in range(len(msg)-len(code)):
-        if msg[i] == 1:
-            msg[i:i+divlen] = np.mod(msg[i:i+divlen] + div, 2)
-    return ghlp.bits_to_int(msg[-14:])
+def crc14_wsjt(bits77: int) -> int:
+    # Generator polynomial (0x2757), width 14, init=0, refin=false, refout=false
+    poly = 0x2757
+    width = 14
+    mask = (1 << width) - 1
 
-def crc14_(msg: int) -> int:
-    poly = kCRC_POLY
+    # Pad to 96 bits (77 + 14 + 5)
+    nbits = 96
+
     reg = 0
-    for i in range(kMSG_BITS):
-        bit = ((msg >> (kMSG_BITS - 1 - i)) & 1) ^ ((reg >> 13) & 1)
-        reg = ((reg << 1) & 0x3fff)
-        if bit:
+    for i in range(nbits):
+        # bits77 is expected MSB-first (bit 76 first)
+        inbit = ((bits77 >> (76 - i)) & 1) if i < 77 else 0
+        bit14 = (reg >> (width - 1)) & 1
+        reg = ((reg << 1) & mask) | inbit
+        if bit14:
             reg ^= poly
     return reg
 
@@ -78,7 +74,7 @@ def add_kCOSTAS(syms: list[int]) -> list[int]:
     return kCOSTAS + syms[:29] + kCOSTAS + syms[29:] + kCOSTAS
 
 def encode_bits77(bits77):
-    crc = crc14(bits77)
+    crc = crc14_wsjt(bits77)
     msg_crc = (bits77 << 14) | crc
     bits174, parity = ldpc_encode(msg_crc)
     syms = gray_encode(bits174)
