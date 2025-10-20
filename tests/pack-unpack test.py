@@ -65,7 +65,17 @@ print("1110000111111100010100110101011100010000001111010000111100011100101000101
 print(len("11100001111111000101001101010111000100000011110100001111000111001010001010001"))
 print(f"{bits77:077b}")
 
-symbols = encode_bits77(bits77)
+
+symbols, crc_bits, ldpc_bits = encode_bits77(bits77)
+print("CRC expected / produced:")
+print("00111100110010")
+print(f"{crc_bits:014b}")
+
+print("LDPC Parity Bits expected / produced:")
+print("01101010111110101110000011111111010100101110011011100110010000000000011100010000001")
+print(f"{ldpc_bits:083b}")
+
+print(f"Payload symbols  expexted: {'7027413236410076024143535324211637464027735642254300025301'}")
 print(f"Payload symbols modulated: {''.join([str(symbols[idx]) for idx in signal.payload_symbol_idxs])}")
 for t_idx, symbol in enumerate(symbols):
     for tbin in range(demod.hops_persymb):

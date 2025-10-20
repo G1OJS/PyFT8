@@ -4,6 +4,7 @@ sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 import numpy as np
 from itertools import islice
 from PyFT8.FT8_constants import kCRC_BITS, kCRC_POLY, kMSG_BITS, kGRAY_MAP, kCOSTAS, kGEN
+import PyFT8.FT8_global_helpers as ghlp
 
 def pack_ft8_c28(call):
     from string import ascii_uppercase as ltrs, digits as digs
@@ -33,10 +34,20 @@ def pack_ft8_g15(txt):
     return v
 
 
-def parity(x: int) -> int:
-    return bin(x).count('1') & 1
+def crc14(bits_n):
+    bits = ghlp.int_to_bits(bits_n,77) + [0]*14
+    div = [1,1,0,0,1,1,1,0,1,0,1,0,1,1,1]
+    code = np.zeros(len(div)-1, dtype=np.int32)
+    msg = np.append(bits, np.zeros(5, dtype=np.int32))
+    msg = np.append(msg, code)
+    div = np.array(div, dtype=np.int32)
+    divlen = len(div)
+    for i in range(len(msg)-len(code)):
+        if msg[i] == 1:
+            msg[i:i+divlen] = np.mod(msg[i:i+divlen] + div, 2)
+    return ghlp.bits_to_int(msg[-14:])
 
-def crc14(msg: int) -> int:
+def crc14_(msg: int) -> int:
     poly = kCRC_POLY
     reg = 0
     for i in range(kMSG_BITS):
@@ -53,7 +64,7 @@ def ldpc_encode(msg_crc: int) -> int:
     for row in map(int, kGEN):
         bit = bin(msg_crc & row).count("1") & 1
         parity_bits = (parity_bits << 1) | bit
-    return (msg_crc << 83) | parity_bits
+    return (msg_crc << 83) | parity_bits, parity_bits
 
 def gray_encode(bits: int) -> list[int]:
     syms = []
@@ -67,8 +78,9 @@ def add_kCOSTAS(syms: list[int]) -> list[int]:
     return kCOSTAS + syms[:29] + kCOSTAS + syms[29:] + kCOSTAS
 
 def encode_bits77(bits77):
-    msg_crc = (bits77 << 14) | crc14(bits77)
-    bits174 = ldpc_encode(msg_crc)
+    crc = crc14(bits77)
+    msg_crc = (bits77 << 14) | crc
+    bits174, parity = ldpc_encode(msg_crc)
     syms = gray_encode(bits174)
     symbols = add_kCOSTAS(syms)
-    return symbols
+    return symbols, crc, parity
