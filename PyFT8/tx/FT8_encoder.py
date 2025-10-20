@@ -55,7 +55,6 @@ def gray_encode(bits: int) -> list[int]:
     for _ in range(174 // 3):
         chunk = bits & 0x7
         syms.insert(0, kGRAY_MAP[chunk])
-
         bits >>= 3
     return syms
 

@@ -79,8 +79,8 @@ print("Bits174:")
 print("111000011111110001010011010101110001000000111101000011110001110010100010100010011110011001001101010111110101110000011111111010100101110011011100110010000000000011100010000001")
 print(f"{bits174_int:0174b}")
 
-print(f"Payload symbols  expexted: {'7027413236410076024143535324211637464027735642254300025301'}")
-print(f"Payload symbols modulated: {''.join([str(symbols[idx]) for idx in signal.payload_symbol_idxs])}")
+print(f"Payload symbols  expected:   {'7027413236410076024143535324211637464027735642254300025301'}")
+print(f"Payload symbols modulated:   {''.join([str(symbols[idx]) for idx in signal.payload_symbol_idxs])}")
 
 # 'modulate' onto channel grid
 for t_idx, symbol in enumerate(symbols):
