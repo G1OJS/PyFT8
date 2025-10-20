@@ -57,7 +57,7 @@ def check_crc(bits91):
 
 def append_crc(bits77_int):
     """Append 14-bit WSJT-X CRC to a 77-bit message, returning a 91-bit list."""
-    crc_int = crc14_wsjt(bits77_int)
-    msg_crc_int = (bits77_int << 14) | crc_int
-    return msg_crc_int, crc_int
+    bits14_int = crc14_wsjt(bits77_int)
+    bits91_int = (bits77_int << 14) | bits14_int
+    return bits91_int, bits14_int
 

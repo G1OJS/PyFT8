@@ -33,10 +33,18 @@ def pack_ft8_g15(txt):
     v = v * 10 + int(txt[3])
     return v
 
+def reverse_Bits(n, no_of_bits):
+    result = 0
+    for i in range(no_of_bits):
+        result <<= 1
+        result |= n & 1
+        n >>= 1
+    return result
+
 def ldpc_encode(msg_crc: int) -> int:
-    # enforce Python ints
     msg_crc = int(msg_crc)
     parity_bits = 0
+    print(f"{msg_crc:0100b}")
     for row in map(int, kGEN):
         bit = bin(msg_crc & row).count("1") & 1
         parity_bits = (parity_bits << 1) | bit
@@ -47,6 +55,7 @@ def gray_encode(bits: int) -> list[int]:
     for _ in range(174 // 3):
         chunk = bits & 0x7
         syms.insert(0, kGRAY_MAP[chunk])
+
         bits >>= 3
     return syms
 
@@ -54,11 +63,11 @@ def add_kCOSTAS(syms: list[int]) -> list[int]:
     return kCOSTAS + syms[:29] + kCOSTAS + syms[29:] + kCOSTAS
 
 def encode_bits77(bits77_int):
-    msg_crc_int, crc_int = ghlp.append_crc(bits77_int)
-    bits174_int, parity_int = ldpc_encode(msg_crc_int)
+    bits91_int, bits14_int = ghlp.append_crc(bits77_int)
+    bits174_int, bits83_int = ldpc_encode(bits91_int)
     syms = gray_encode(bits174_int)
     symbols = add_kCOSTAS(syms)
-    return symbols, crc_int, parity_int
+    return symbols, bits174_int, bits91_int, bits14_int, bits83_int
 
 
 
