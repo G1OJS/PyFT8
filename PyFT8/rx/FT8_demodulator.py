@@ -114,17 +114,15 @@ class FT8Demodulator:
         output = []
         for c in candidates:
             c.payload_bits = []
-          #  self._demodulate(c)
-          #  if(ghlp.check_crc(c.payload_bits)):
-          #      c.demod = "Max pwr"
-          #      print("Max-PWR-CRC")
-          #      output.append(FT8_decode(c, cyclestart_str))
-          #  else:
-            self._demodulate_llrldpc(c)
+            self._demodulate(c)
             if(ghlp.check_crc(c.payload_bits)):
-                c.demod = "LLR-LDPC"
-                print("LCPD-CRC")
+                c.demod = "Max pwr"
                 output.append(FT8_decode(c, cyclestart_str))
+            else:
+                self._demodulate_llrldpc(c)
+                if(ghlp.check_crc(c.payload_bits)):
+                    c.demod = "LLR-LDPC"
+                    output.append(FT8_decode(c, cyclestart_str))
         return output
 
     def _demodulate(self, candidate):

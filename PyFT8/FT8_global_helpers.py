@@ -43,8 +43,8 @@ def crc14_wsjt(bits77: int) -> int:
         reg = ((reg << 1) & mask) | inbit
         if bit14:
             reg ^= poly
-    print(bits_to_str(int_to_bits(bits77,77)))
-    print(bits_to_str(int_to_bits(reg,14)))
+ #   print(bits_to_str(int_to_bits(bits77,77)))
+ #   print(bits_to_str(int_to_bits(reg,14)))
     return reg
         
 def check_crc(bits91):
