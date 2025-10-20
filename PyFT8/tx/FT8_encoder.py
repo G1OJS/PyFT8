@@ -33,28 +33,15 @@ def pack_ft8_g15(txt):
     v = v * 10 + int(txt[3])
     return v
 
-
-def crc14_wsjt(bits77: int) -> int:
-    # Generator polynomial (0x2757), width 14, init=0, refin=false, refout=false
-    poly = 0x2757
-    width = 14
-    mask = (1 << width) - 1
-
-    # Pad to 96 bits (77 + 14 + 5)
-    nbits = 96
-
-    reg = 0
-    for i in range(nbits):
-        # bits77 is expected MSB-first (bit 76 first)
-        inbit = ((bits77 >> (76 - i)) & 1) if i < 77 else 0
-        bit14 = (reg >> (width - 1)) & 1
-        reg = ((reg << 1) & mask) | inbit
-        if bit14:
-            reg ^= poly
-    return reg
+def reverse_Bits(n, no_of_bits):
+    result = 0
+    for i in range(no_of_bits):
+        result <<= 1
+        result |= n & 1
+        n >>= 1
+    return result
 
 def ldpc_encode(msg_crc: int) -> int:
-    # enforce Python ints
     msg_crc = int(msg_crc)
     parity_bits = 0
     for row in map(int, kGEN):
@@ -73,10 +60,13 @@ def gray_encode(bits: int) -> list[int]:
 def add_kCOSTAS(syms: list[int]) -> list[int]:
     return kCOSTAS + syms[:29] + kCOSTAS + syms[29:] + kCOSTAS
 
-def encode_bits77(bits77):
-    crc = crc14_wsjt(bits77)
-    msg_crc = (bits77 << 14) | crc
-    bits174, parity = ldpc_encode(msg_crc)
-    syms = gray_encode(bits174)
+def encode_bits77(bits77_int):
+    bits91_int, bits14_int = ghlp.append_crc(bits77_int)
+    bits174_int, bits83_int = ldpc_encode(bits91_int)
+    syms = gray_encode(bits174_int)
     symbols = add_kCOSTAS(syms)
-    return symbols, crc, parity
+    return symbols, bits174_int, bits91_int, bits14_int, bits83_int
+
+
+
+

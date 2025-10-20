@@ -34,7 +34,7 @@ def decode174_91(llr):
         info.append(ncheck)
         # success
         if ncheck == 0:
-            message91 = cw[:kK].tolist()
+            message91 = cw.tolist()
             if(sum(message91)>0):
                 print(f"Success: {info}")
                 return message91
