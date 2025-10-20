@@ -27,3 +27,37 @@ def bits_to_str(bits):
 def str_to_bits(s):
     """Convert '0101...' string to NumPy array of bits."""
     return np.array([int(ch) for ch in s], dtype=np.int32)
+
+def crc14_wsjt(bits77: int) -> int:
+    # Generator polynomial (0x2757), width 14, init=0, refin=false, refout=false
+    poly = 0x2757
+    width = 14
+    mask = (1 << width) - 1
+
+    # Pad to 96 bits (77 + 14 + 5)
+    nbits = 96
+
+    reg = 0
+    for i in range(nbits):
+        # bits77 is expected MSB-first (bit 76 first)
+        inbit = ((bits77 >> (76 - i)) & 1) if i < 77 else 0
+        bit14 = (reg >> (width - 1)) & 1
+        reg = ((reg << 1) & mask) | inbit
+        if bit14:
+            reg ^= poly
+    return reg
+        
+def check_crc(bits91):
+    """Return True if the 91-bit message (77 data + 14 CRC) passes WSJT-X CRC-14."""
+    msg_bits = bits91[:77]
+    crc_bits = bits91[77:91]  
+    new_crc = crc14_wsjt(bits_to_int(msg_bits))
+    return np.array_equal(int_to_bits(new_crc, 14), crc_bits)
+
+
+def append_crc(bits77_int):
+    """Append 14-bit WSJT-X CRC to a 77-bit message, returning a 91-bit list."""
+    crc_int = crc14_wsjt(bits77_int)
+    msg_crc_int = (bits77_int << 14) | crc_int
+    return msg_crc_int, crc_int
+

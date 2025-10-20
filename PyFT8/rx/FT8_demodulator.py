@@ -2,20 +2,7 @@ import numpy as np
 from PyFT8.rx.ldpc import decode174_91
 from PyFT8.rx.FT8_decoder import FT8_decode
 from PyFT8.FT8_constants import kGRAY_MAP_TUPLES
-
-def crc(bits):
-    if(len(bits)<91): return False
-    a91=bits[0:91]
-    div = [ 1,1,0,0,1,1,1,0,1,0,1,0,1,1,1]
-    code = np.zeros(len(div)-1, dtype=np.int32)
-    msg = np.append(a91[0:77], np.zeros(5, dtype=np.int32))
-    msg = np.append(msg, code)
-    div = np.array(div, dtype=np.int32)
-    divlen = len(div)
-    for i in range(len(msg)-len(code)):
-        if msg[i] == 1:
-            msg[i:i+divlen] = np.mod(msg[i:i+divlen] + div, 2)
-    return np.array_equal(msg[-len(code):], a91[-14:])
+import PyFT8.FT8_global_helpers as ghlp
 
 class SpectrumBuffer:
     def __init__(self, nHops = 0, length_secs = 0, nFreqs = 0, width_Hz = 0):
@@ -127,14 +114,14 @@ class FT8Demodulator:
         output = []
         for c in candidates:
             self._demodulate(c)
-            if(crc(c.payload_bits)):
+            if(ghlp.check_crc(c.payload_bits)):
                 c.demod = "Max pwr"
                 output.append(FT8_decode(c, cyclestart_str))
              #   print(c.fbin_idx, c.freq, c.tbin_idx, c.dt)
              #   print(c.bits)
             else:
                 self._demodulate_llrldpc(c)
-                if(crc(c.payload_bits)):
+                if(ghlp.check_crc(c.payload_bits)):
                     c.demod = "LLR-LDPC"
                     output.append(FT8_decode(c, cyclestart_str))
 
