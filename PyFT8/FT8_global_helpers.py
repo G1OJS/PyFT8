@@ -33,10 +33,8 @@ def crc14_wsjt(bits77: int) -> int:
     poly = 0x2757
     width = 14
     mask = (1 << width) - 1
-
     # Pad to 96 bits (77 + 14 + 5)
     nbits = 96
-
     reg = 0
     for i in range(nbits):
         # bits77 is expected MSB-first (bit 76 first)
@@ -45,14 +43,19 @@ def crc14_wsjt(bits77: int) -> int:
         reg = ((reg << 1) & mask) | inbit
         if bit14:
             reg ^= poly
+    print(bits_to_str(int_to_bits(bits77,77)))
+    print(bits_to_str(int_to_bits(reg,14)))
     return reg
         
 def check_crc(bits91):
     """Return True if the 91-bit message (77 data + 14 CRC) passes WSJT-X CRC-14."""
-    msg_bits = bits91[:77]
-    crc_bits = bits91[77:91]  
-    new_crc = crc14_wsjt(bits_to_int(msg_bits))
-    return np.array_equal(int_to_bits(new_crc, 14), crc_bits)
+    msg_bits = bits91[0:77][::-1]
+    crc_bits = bits91[77:91][::-1]  
+    new_crc = int_to_bits(crc14_wsjt(bits_to_int(msg_bits)),14)
+ #   print(bits_to_str(msg_bits))
+ #   print(bits_to_str(crc_bits))
+ #   print(bits_to_str(new_crc))
+    return np.array_equal(new_crc, crc_bits)
 
 
 def append_crc(bits77_int):

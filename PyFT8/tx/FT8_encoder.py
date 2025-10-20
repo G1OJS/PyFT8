@@ -44,7 +44,6 @@ def reverse_Bits(n, no_of_bits):
 def ldpc_encode(msg_crc: int) -> int:
     msg_crc = int(msg_crc)
     parity_bits = 0
-    print(f"{msg_crc:0100b}")
     for row in map(int, kGEN):
         bit = bin(msg_crc & row).count("1") & 1
         parity_bits = (parity_bits << 1) | bit

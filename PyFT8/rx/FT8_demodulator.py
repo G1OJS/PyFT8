@@ -113,15 +113,18 @@ class FT8Demodulator:
     def demodulate(self, candidates, cyclestart_str):
         output = []
         for c in candidates:
-            self._demodulate(c)
+            c.payload_bits = []
+          #  self._demodulate(c)
+          #  if(ghlp.check_crc(c.payload_bits)):
+          #      c.demod = "Max pwr"
+          #      print("Max-PWR-CRC")
+          #      output.append(FT8_decode(c, cyclestart_str))
+          #  else:
+            self._demodulate_llrldpc(c)
             if(ghlp.check_crc(c.payload_bits)):
-                c.demod = "Max pwr"
+                c.demod = "LLR-LDPC"
+                print("LCPD-CRC")
                 output.append(FT8_decode(c, cyclestart_str))
-            else:
-                self._demodulate_llrldpc(c)
-                if(ghlp.check_crc(c.payload_bits)):
-                    c.demod = "LLR-LDPC"
-                    output.append(FT8_decode(c, cyclestart_str))
         return output
 
     def _demodulate(self, candidate):
@@ -129,7 +132,7 @@ class FT8Demodulator:
             tone_powers = candidate.power_grid[sym_idx, :]
             candidate.payload_symbols.append(np.argmax(tone_powers))
         candidate.payload_bits = [b for sym in candidate.payload_symbols for b in kGRAY_MAP_TUPLES[sym]]
-
+        
     def _demodulate_llrldpc(self, candidate):
         import math
         LLR174s=[]
