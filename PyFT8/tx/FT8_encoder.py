@@ -3,7 +3,7 @@ import sys
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 import numpy as np
 from itertools import islice
-from PyFT8.FT8_constants import kCRC_BITS, kCRC_POLY, kMSG_BITS, kGRAY_MAP, kCOSTAS, kGEN
+from PyFT8.FT8_constants import kCRC_BITS, kCRC_POLY, kMSG_BITS, kGRAY_MAP, kCOSTAS, kMN
 import PyFT8.FT8_global_helpers as ghlp
 
 def pack_ft8_c28(call):
@@ -33,7 +33,7 @@ def pack_ft8_g15(txt):
     v = v * 10 + int(txt[3])
     return v
 
-def ldpc_encode(msg_crc: int) -> int:
+def ldpc_encode_old(msg_crc: int) -> int:
     # enforce Python ints
     msg_crc = int(msg_crc)
     parity_bits = 0
@@ -41,6 +41,17 @@ def ldpc_encode(msg_crc: int) -> int:
         bit = bin(msg_crc & row).count("1") & 1
         parity_bits = (parity_bits << 1) | bit
     return (msg_crc << 83) | parity_bits, parity_bits
+
+def ldpc_encode(bits91_int: int) -> int:
+    parity = 0
+    for i in range(83):
+        a, b, c = map(int, kMN[i])
+        b0 = (bits91_int >> (90 - a)) & 1
+        b1 = (bits91_int >> (90 - b)) & 1
+        b2 = (bits91_int >> (90 - c)) & 1
+        bit = b0 ^ b1 ^ b2
+        parity = (parity << 1) | bit 
+    return (bits91_int << 83) | parity, parity
 
 def gray_encode(bits: int) -> list[int]:
     syms = []
