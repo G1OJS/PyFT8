@@ -101,6 +101,10 @@ kMSG_BITS = 77
 kGRAY_MAP = [0,1,3,2,6,4,5,7]
 kGRAY_MAP_TUPLES = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
 kCOSTAS = [3,1,4,0,6,5,2]
-kGEN = [int(row, 16) for row in generator_matrix_rows]
+kGEN = np.array([int(row, 16) for row in generator_matrix_rows])
 
+#print(kMN.shape)
+#print(kNM.shape)
+#print(kGEN.shape)
 
+#print(kGEN)
