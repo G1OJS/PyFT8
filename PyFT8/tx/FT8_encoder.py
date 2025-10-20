@@ -13,7 +13,7 @@ def pack_ft8_c28(call):
     charmap = [' ' + digs + ltrs, digs + ltrs, digs + ' ' * 17] + [' ' + ltrs] * 3
     factors = np.array([36*10*27**3, 10*27**3, 27**3, 27**2, 27, 1])
     indices = np.array([cmap.index(call[i]) for i, cmap in enumerate(charmap)])
-    return np.sum(factors * indices) + 2_063_592 + 4_194_304
+    return int(np.sum(factors * indices) + 2_063_592 + 4_194_304)
 
 def pack_ft8_g15(txt):
     # 'RR73', '-9', 'R-9', 'RRR' not sure ...
@@ -31,7 +31,7 @@ def pack_ft8_g15(txt):
     v = v * 18 + (ord(txt[1].upper()) - 65)
     v = v * 10 + int(txt[2])
     v = v * 10 + int(txt[3])
-    return v
+    return int(v)
 
 def reverse_Bits(n, no_of_bits):
     result = 0

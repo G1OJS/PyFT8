@@ -45,14 +45,11 @@ print(f"Expected:  QF22 111001010001010")
 print(f"Generated: QF22 {g15:015b}")
 
 bits77 = (c28a<<28+1+2+15+3) | (c28b<<2+15+3)|(0<<15+3)|(g15<< 3)|(i3)
-bits77 = 0b11100001111111000101001101010111000100000011110100001111000111001010001010001
-
 print("bits expected / bits encoded")
 print("11100001111111000101001101010111000100000011110100001111000111001010001010001")
 print(f"{bits77:077b}")
 
 symbols, bits174_int, bits91_int, bits14_int, bits83_int = encode_bits77(bits77)
-
 print("CRC expected / produced:")
 print("00111100110010")
 print(f"{bits14_int:014b}")
