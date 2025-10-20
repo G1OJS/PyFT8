@@ -81,14 +81,16 @@ print(f"{bits174_int:0174b}")
 
 print(f"Payload symbols  expexted: {'7027413236410076024143535324211637464027735642254300025301'}")
 print(f"Payload symbols modulated: {''.join([str(symbols[idx]) for idx in signal.payload_symbol_idxs])}")
+
+# 'modulate' onto channel grid
 for t_idx, symbol in enumerate(symbols):
     for tbin in range(demod.hops_persymb):
         for fbin in range(demod.fbins_pertone):
             t = tbin_idx + t_idx * demod.hops_persymb + tbin
             f = fbin_idx + symbol * demod.fbins_pertone + (fbin - demod.fbins_pertone//2)
             demod.specbuff.complex[t, f] = 500000
-
-
+            
+# 'demodulate' as with any audio frame
 candidates = demod.get_candidates(topN=1, f0=0)
 output = demod.demodulate(candidates, "000000")
 wf.update(candidates = candidates, show_n_candidates = 3)
@@ -96,7 +98,7 @@ print(f"Payload symbols demodulated: {''.join([str(int(s)) for s in candidates[0
 
 print("bits expected / bits decoded")
 print("11100001111111000101001101010111000100000011110100001111000111001010001010001")
-print([int(b) for b in candidates[0].payload_bits])
+print(''.join([str(int(b)) for b in candidates[0].payload_bits]))
 
 for l in output:
      print(l)
