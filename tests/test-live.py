@@ -72,7 +72,7 @@ demod = FT8Demodulator(sample_rate=12000)
 wf = Waterfall(demod.spectrum, f1=4000)
 wf.update_main()
 
-decodes=None
+no_decodes_before = True
 while True:
     print(f"{tstrNow()} Decoder waiting for audio file")
     while not os.path.exists(FLAG_FILE):
@@ -85,14 +85,14 @@ while True:
     candidates = demod.find_candidates(topN=20)
     print(f"Found {len(candidates)} candidates")
     wf.update_main(candidates=candidates)
-    wf.show_zoom(candidates=candidates)
 
     print(f"{cyclestart_str} =================================")
     print("Demodulating")
     decodes = demod.demodulate(candidates, cyclestart_str = cyclestart_str)
     print(f"Decoded {len(decodes)} signals\n")
 
-    if(any(decodes)):
+    if(any(decodes) and no_decodes_before):
+        no_decodes_before = False
         reset_compare()
     print(f"{tstrNow()} Decoded results:")
     for l in decodes:
