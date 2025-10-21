@@ -89,7 +89,7 @@ while True:
 
     print(f"{cyclestart_str} =================================")
     print("Demodulating")
-    decodes = demod.demodulate(candidates, cyclestart_str="TEST")
+    decodes = demod.demodulate(candidates, cyclestart_str = cyclestart_str)
     print(f"Decoded {len(decodes)} signals\n")
 
     if(any(decodes)):
