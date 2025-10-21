@@ -95,6 +95,6 @@ def decode174_91(llr):
                 tov[kk, var] = alpha * new_val + (1 - alpha) * tov[kk, var]
 
     # failed to decode
-    print(f"Failure: {info}")
+   # print(f"Failure: {info}")
     return []
 

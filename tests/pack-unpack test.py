@@ -1,7 +1,7 @@
 import numpy as np
 import sys
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
-from PyFT8.rx.FT8_demodulator import Signal, FT8Demodulator
+from PyFT8.rx.FT8_demodulator import FT8Demodulator
 from PyFT8.rx.waterfall import Waterfall
 from PyFT8.rx.FT8_decoder import unpack_ft8_c28, unpack_ft8_g15
 from PyFT8.tx.FT8_encoder import pack_ft8_c28, pack_ft8_g15, encode_bits77
@@ -21,8 +21,10 @@ def read_wav(filename, chunk_size=1024, sample_rate = 12000):
 audio = read_wav('210703_133430.wav')
 
 demod = FT8Demodulator(hops_persymb = 1, fbins_pertone = 1)
-demod.load(audio)
-wf = Waterfall(demod.specbuff, demod.hops_persymb, demod.fbins_pertone, demod.costas, f0=0)
+demod.spectrum.feed_audio(audio)
+wf = Waterfall(demod.spectrum, f1=4000)
+wf.update_main()  # initial spectrum display
+
 tbin_idx = 4*demod.hops_persymb # 4 = random time offset
 fbin_idx = 480
 
@@ -72,17 +74,19 @@ for t_idx, symbol in enumerate(symbols):
         for fbin in range(demod.fbins_pertone):
             t = tbin_idx + t_idx * demod.hops_persymb + tbin
             f = fbin_idx + symbol * demod.fbins_pertone + (fbin - demod.fbins_pertone//2)
-            demod.specbuff.complex[t, f] = 500000
+            demod.spectrum.complex[t, f] = 500000
 
 # 'demodulate' as with any audio frame
-candidates = demod.get_candidates(topN=5, f0=0)
-output = demod.demodulate(candidates, "000000")
+candidates = demod.find_candidates(topN=5)
+wf.update_main(candidates=candidates)
+wf.show_zoom(candidates=candidates)
+print(f"Found {len(candidates)} candidates")
+decodes = demod.demodulate(candidates, cyclestart_str="TEST")
 
-wf.update(candidates = candidates, show_n_candidates = 3)
 print(f"Payload symbols demodulated: {''.join([str(int(s)) for s in candidates[0].payload_symbols])}")
 print("bits expected / bits decoded")
 print("11100001111111000101001101010111000100000011110100001111000111001010001010001")
 print(ghlp.bits_to_str(candidates[0].payload_bits))
-for l in output:
+for l in decodes:
      print(l)
 

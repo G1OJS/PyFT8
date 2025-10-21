@@ -4,6 +4,8 @@ import numpy as np
 import pyaudio
 import wave
 import threading
+import sys
+sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 from PyFT8.rx.FT8_demodulator import FT8Demodulator
 from PyFT8.rx.waterfall import Waterfall
 from PyFT8.rx.test_utils import wsjtx_tailer, wsjtx_compare
@@ -60,17 +62,17 @@ def read_wav(filename, sample_rate = 12000):
 threading.Thread(target=audioloop).start()
 threading.Thread(target=wsjtx_tailer).start()
 
-demod = FT8Demodulator(hops_persymb = 2, fbins_pertone = 3)
-wf = Waterfall(demod.specbuff, demod.hops_persymb, demod.fbins_pertone, demod.costas)
-t = time.time()
-
 def reset_compare():
     with open(wsjtx_file, 'w') as f:
         f.write("")
     with open(PyFT8_file, 'w') as f:
         f.write("")
 
-decodes=False
+demod = FT8Demodulator(sample_rate=12000)
+wf = Waterfall(demod.spectrum, f1=4000)
+wf.update_main()
+
+no_decodes_before = True
 while True:
     print(f"{tstrNow()} Decoder waiting for audio file")
     while not os.path.exists(FLAG_FILE):
@@ -79,18 +81,21 @@ while True:
     audio = read_wav(BRIDGE_FILE)
     os.remove(FLAG_FILE)
     print(f"{tstrNow()} Demodulator has read audio file")
-    demod.load(audio)
-    candidates = demod.get_candidates(topN=20)
-    print(f"{tstrNow()} Demodulator found {len(candidates)} candidates")
-    wf.update(candidates = candidates, title = f"FT8 Waterfall {cyclestart_str}")
-    print(f"{cyclestart_str} =================================")
+    demod.spectrum.feed_audio(audio)
+    candidates = demod.find_candidates(topN=20)
+    print(f"Found {len(candidates)} candidates")
+    wf.update_main(candidates=candidates)
 
-    output = demod.demodulate(candidates,  cyclestart_str)
-    if(len(output)>0 and not decodes):
-        decodes = True
+    print(f"{cyclestart_str} =================================")
+    print("Demodulating")
+    decodes = demod.demodulate(candidates, cyclestart_str = cyclestart_str)
+    print(f"Decoded {len(decodes)} signals\n")
+
+    if(any(decodes) and no_decodes_before):
+        no_decodes_before = False
         reset_compare()
     print(f"{tstrNow()} Decoded results:")
-    for l in output:
+    for l in decodes:
         print(f"{l}")
         with open(PyFT8_file, 'a') as f:
             f.write(f"{l}\n")
