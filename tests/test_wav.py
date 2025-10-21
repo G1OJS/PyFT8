@@ -15,18 +15,18 @@ if audio.ndim > 1:
 
 # --- Init demodulator and spectrum ---
 demod = FT8Demodulator(sample_rate=sr)
-demod.feed_audio(audio)
+demod.spectrum.feed_audio(audio)
 
 # --- Optional visualisation ---
-#wf = Waterfall(demod.spectrum, f1=4000)
-#wf.update_main()  # initial spectrum display
+wf = Waterfall(demod.spectrum, f1=4000)
+wf.update_main()  # initial spectrum display
 
 # --- Find candidates ---
-candidates = demod.find_candidates()
+candidates = demod.find_candidates(topN=2)
 print(f"Found {len(candidates)} candidates")
 
 # --- Draw candidate boxes on waterfall ---
-#wf.update_main(candidates=candidates)
+wf.update_main(candidates=candidates)
 
 # --- Demodulate each candidate ---
 #decodes = demod.demodulate(candidates, cyclestart_str="TEST")

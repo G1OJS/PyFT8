@@ -1,15 +1,14 @@
 """
 FT8_demodulator.py
 ------------------
-Audio → Spectrum → Candidates → Bits.
+Audio → spectrum → Candidates → Bits.
 
 Refactored to use new datagrids framework:
-    Spectrum / Candidate / Bounds.with_from_physical()
+    spectrum / Candidate / Bounds.with_from_physical()
 """
 
 import math
 import numpy as np
-from scipy.signal import get_window
 
 from PyFT8.datagrids import Spectrum, Bounds, Candidate
 from PyFT8.signaldefs import FT8
@@ -18,86 +17,65 @@ from PyFT8.rx.FT8_decoder import FT8_decode
 from PyFT8.FT8_constants import kGRAY_MAP_TUPLES
 # from PyFT8.bitfield import BitField  # later, for CRC
 
-
 class FT8Demodulator:
-    def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=3, spec=FT8):
+    def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=3, sigspec=FT8):
         # ---- Configuration ----
         self.sample_rate = sample_rate
         self.fbins_pertone = fbins_pertone
         self.hops_persymb = hops_persymb
-        self.spec = spec
+        self.sigspec = sigspec
 
-        # ---- Spectrum setup ----
+        # ---- spectrum setup ----
         self.spectrum = Spectrum(
             sample_rate=self.sample_rate,
             fbins_pertone=self.fbins_pertone,
             hops_persymb=self.hops_persymb,
-            spec=self.spec
+            sigspec=self.sigspec
         )
 
         # ---- FFT precompute ----
         self.FFT_size = self.spectrum.FFT_size
-        self._window = get_window("hann", self.FFT_size)
-        self._hop_size = int(self.sample_rate / (self.spec.symbols_persec * self.hops_persymb)) 
+        self._hop_size = int(self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb)) 
 
         # ---- Costas sync mask ----
         self._csync = self._generate_csync()
 
     # ======================================================
-    # Audio → Spectrum
-    # ======================================================
-    def feed_audio(self, audio: np.ndarray):
-        """
-        Fill Spectrum.complex from a block of real audio samples.
-        """
-        nfft = self.FFT_size
-        hop = self._hop_size
-        nhops = self.spectrum.nHops
-        spec = np.zeros((nhops, nfft // 2 + 1), dtype=np.complex64)
-
-        for i in range(nhops):
-            s = i * hop
-            e = s + nfft
-            if e > len(audio):
-                break
-            frame = audio[s:e] * self._window
-            spec[i, :] = np.fft.rfft(frame)
-
-        self.spectrum.complex = spec  # .power is property
-
-    # ======================================================
     # Candidate search
     # ======================================================
     def find_candidates(self, t0=0.0, t1=1.5, f0=100.0, f1=3300.0, topN=50):
-        """
-        Sweep a time/freq region for Costas sync patterns.
-        Returns list of Candidate objects with .score and .best_score set.
+        """ Sweep a time/freq region for Costas sync patterns.
+            Returns list of Candidate objects fully set.
         """
         region = Bounds.from_physical(self.spectrum, t0, t1, f0, f1)
-        cs_h, cs_w = self._csync.shape
         candidates = []
-
-        for fbin in region.f_range:
-            cand = Candidate(self.spectrum, 0, cs_h, fbin, fbin + cs_w)
-            for tbin in region.t_range:
-                if not region.contains_window(tbin, fbin, (cs_h, cs_w)):
-                    continue
-                cand.move_to(tbin, fbin)
-                cand.score = self._score_at(cand)
-            if cand.best_score > 0:
-                cand.freq = self.spectrum.freqs[cand.bounds.f0_idx]
-                cand.dt = self.spectrum.times[cand.bounds.t0_idx]
-                candidates.append(cand.freeze())
+        for f0_idx in region.f_idx_range:
+            max_score = -1e10
+            for t_idx in region.t_idx_range:
+                score = self._csync_score(t_idx, f0_idx)
+                if(score > max_score):
+                    max_score = score
+                    t0_idx = t_idx
+            if max_score > 0:
+                candidates.append(Candidate(self.sigspec, self.spectrum, t0_idx, f0_idx, max_score))
 
         # sort and de-duplicate
-        candidates.sort(key=lambda c: -c.best_score)
+        candidates.sort(key=lambda c: -c.score)
+        min_sep_fbins = 0.5 * self.sigspec.tones_persymb * self.fbins_pertone
         uniq = []
         for c in candidates:
-            if not any(abs(c.bounds.f0_idx - u.bounds.f0_idx)
-                       < 0.5 * self.spec.tones_persymb * self.fbins_pertone
-                       for u in uniq):
+            if not any(abs(c.bounds.f0_idx - u.bounds.f0_idx) < min_sep_fbins for u in uniq):
                 uniq.append(c)
         return uniq[:topN]
+
+    def _csync_score(self, t0_idx, f0_idx):
+        score = 0.0
+        for symb_idx in [0, 36, 72]:
+            t_idx = t0_idx + symb_idx * self.hops_persymb
+            block_score = np.sum(self._csync * np.abs(self.spectrum.complex[t_idx:t_idx + self._csync.shape[0], f0_idx:f0_idx + self._csync.shape[1]]))
+            #score = block_score if block_score > score else score
+            score += block_score
+        return score  
 
     # ======================================================
     # Demodulation
@@ -137,20 +115,10 @@ class FT8Demodulator:
 
         return mask
 
-
-    def _score_at(self, cand: Candidate):
-        """Return correlation score of Costas mask at candidate location."""
-        t0, f0 = cand.bounds.t0_idx, cand.bounds.f0_idx
-        th, fw = self._csync.shape
-        t1, f1 = min(t0+th, self.spectrum.nHops), min(f0+fw, self.spectrum.nFreqs)
-        blk = np.abs(self.spectrum.complex[t0:t1, f0:f1])
-        cs = self._csync[:blk.shape[0], :blk.shape[1]]
-        return float(np.sum(cs * blk))
-
     def _downsample_power(self, cand: Candidate):
         """Reduce fine grid → (num_symbols × tones)."""
         fine = cand.extract_power()
-        nsyms, ntones = self.spec.num_symbols, self.spec.tones_persymb
+        nsyms, ntones = self.sigspec.num_symbols, self.sigspec.tones_persymb
         grid = np.zeros((nsyms, ntones), np.float32)
         for s in range(nsyms):
             t0 = s * self.hops_persymb
@@ -176,16 +144,16 @@ class FT8Demodulator:
             t_idx = cand.bounds.t0_idx + sym * self.hops_persymb
             if t_idx >= self.spectrum.complex.shape[0]:
                 break
-            pwrs = [0.0] * self.spec.tones_persymb
+            pwrs = [0.0] * self.sigspec.tones_persymb
             sigma2 = 0.001
             for k in range(self.hops_persymb):
                 Z = self.spectrum.complex[t_idx + k, :]
-                for i in range(self.spec.tones_persymb):
+                for i in range(self.sigspec.tones_persymb):
                     f0 = cand.bounds.f0_idx + i * self.fbins_pertone
                     f1 = f0 + self.fbins_pertone
                     pwrs[i] += abs(np.sum(Z[f0:f1])) ** 2
                 left = Z[:cand.bounds.f0_idx]
-                right = Z[cand.bounds.f0_idx + self.spec.tones_persymb*self.fbins_pertone:]
+                right = Z[cand.bounds.f0_idx + self.sigspec.tones_persymb*self.fbins_pertone:]
                 if left.size + right.size:
                     sigma2 += np.median(np.abs(np.concatenate([left, right])) ** 2)
             pwrs_scaled = [p/sigma2 for p in pwrs]

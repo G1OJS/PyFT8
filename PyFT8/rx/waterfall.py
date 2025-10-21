@@ -12,7 +12,7 @@ class Waterfall:
         self.costas = costas
         self.hops_persymb = spectrum.hops_persymb
         self.fbins_pertone = spectrum.fbins_pertone
-        self.t0, self.t1 = t0, t1 or spectrum.spec.frame_secs
+        self.t0, self.t1 = t0, t1 or spectrum.sigspec.frame_secs
         self.f0, self.f1 = f0, f1 or (spectrum.sample_rate / 2)
         self.dt = spectrum.dt
         self.df = spectrum.df
