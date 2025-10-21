@@ -76,12 +76,13 @@ class FT8Demodulator:
         return score
 
     def _get_downsampled_power(self, candidate):
+        norm = 1/(self.hops_persymb*self.fbins_pertone)
         for specbuff_t_idx in range(candidate.tbin_idx, candidate.tbin_idx+candidate.num_symbols*self.hops_persymb):
+            candidate_t_idx = int((specbuff_t_idx - candidate.tbin_idx) / self.hops_persymb)
             for specbuff_f_idx in range(candidate.fbin_idx, candidate.fbin_idx + candidate.tones_persymb * self.fbins_pertone):
-                candidate_t_idx = int((specbuff_t_idx - candidate.tbin_idx) / self.hops_persymb)
                 candidate_f_idx = int((specbuff_f_idx - candidate.fbin_idx) / self.fbins_pertone)
-                candidate.power_grid[candidate_t_idx, candidate_f_idx] += self.specbuff.power[specbuff_t_idx, specbuff_f_idx]
-        
+                candidate.power_grid[candidate_t_idx, candidate_f_idx] += norm*self.specbuff.power[specbuff_t_idx, specbuff_f_idx]
+
     def get_candidates(self, topN=100, t0=0, t1=1.5, f0=100, f1=3300):
         self.specbuff.power = np.abs(self.specbuff.complex)**2 # precalculate to avoid recalc during search
         fbin_search_idxs = range(int(np.searchsorted(self.specbuff.freqs, f0)), int(np.searchsorted(self.specbuff.freqs, f1)))
