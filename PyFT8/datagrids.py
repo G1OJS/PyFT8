@@ -8,7 +8,6 @@ Classes:
     Bounds     – defines index/physical coordinate limits for 2D data
     Spectrum   – owns the complex FFT grid and derived quantities
     Candidate  – represents a rectangular region of interest
-    Waterfall  – provides a visual or logical view over a Spectrum
 """
 
 from dataclasses import dataclass
@@ -114,12 +113,10 @@ class Bounds:
     def extent(self):
         """Matplotlib extent = [xleft, xright, ybottom, ytop]."""
         return [self.f0, self.fn, self.t0, self.tn]
-
-                
+     
 # ============================================================
 # Candidate
 # ============================================================
-
 
 class Candidate:
     def __init__(self, sigspec, spectrum, t0_idx, f0_idx, score=None, cycle_start=None, demodulated_by=None):
@@ -152,19 +149,3 @@ class Candidate:
         pgrid = norm * sub.sum(axis=(1, 3))
         return pgrid.astype(np.float32)
         
-
-# ============================================================
-# Waterfall
-# ============================================================
-
-class Waterfall:
-    """
-    A visual or analytical view over a Spectrum.
-    """
-    def __init__(self, spectrum):
-        self.spectrum = spectrum
-        self.bounds = spectrum.bounds
-
-    def imshow_args(self):
-        """Return (data, extent) tuple for matplotlib imshow()."""
-        return self.spectrum.power, self.bounds.extent

@@ -85,11 +85,7 @@ class Waterfall:
         Create per-candidate zoom boxes (gridded subplots).
         Optionally overlay LLRs if candidate.llr is present.
         """
-        max_candidates = 5
-        n = len(candidates[:max_candidates])
-        if n == 0:
-            return
-
+        n = len(candidates)
         rows = int(np.ceil(n / cols))
         zoom_fig, axes = plt.subplots(rows, cols, figsize=(3.5 * cols, 5 * rows))
         axes = np.atleast_1d(axes).flatten()
