@@ -4,7 +4,7 @@ sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 import numpy as np
 from itertools import islice
 from PyFT8.FT8_constants import kCRC_BITS, kCRC_POLY, kMSG_BITS, kGRAY_MAP, kCOSTAS, kGEN
-import PyFT8.FT8_global_helpers as ghlp
+import PyFT8.FT8_crc as crc
 
 def pack_ft8_c28(call):
     from string import ascii_uppercase as ltrs, digits as digs
@@ -61,7 +61,7 @@ def add_kCOSTAS(syms: list[int]) -> list[int]:
     return kCOSTAS + syms[:29] + kCOSTAS + syms[29:] + kCOSTAS
 
 def encode_bits77(bits77_int):
-    bits91_int, bits14_int = ghlp.append_crc(bits77_int)
+    bits91_int, bits14_int = crc.append_crc(bits77_int)
     bits174_int, bits83_int = ldpc_encode(bits91_int)
     syms = gray_encode(bits174_int)
     symbols = add_kCOSTAS(syms)

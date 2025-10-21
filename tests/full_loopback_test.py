@@ -1,12 +1,9 @@
 import numpy as np
 import sys
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
-from PyFT8.rx.FT8_demodulator import FT8Demodulator
+from PyFT8.rx.FT8_demodulator import FT8Demodulator, unpack_ft8_c28, unpack_ft8_g15
 from PyFT8.rx.waterfall import Waterfall
-from PyFT8.rx.FT8_decoder import unpack_ft8_c28, unpack_ft8_g15
 from PyFT8.tx.FT8_encoder import pack_ft8_c28, pack_ft8_g15, encode_bits77
-import PyFT8.FT8_global_helpers as ghlp
-#77 bits and back
 
 def read_wav(filename, chunk_size=1024, sample_rate = 12000):
      import wave
@@ -86,7 +83,7 @@ decodes = demod.demodulate(candidates, cyclestart_str="TEST")
 print(f"Payload symbols demodulated: {''.join([str(int(s)) for s in candidates[0].payload_symbols])}")
 print("bits expected / bits decoded")
 print("11100001111111000101001101010111000100000011110100001111000111001010001010001")
-print(ghlp.bits_to_str(candidates[0].payload_bits))
+print(''.join(str(int(b)) for b in candidates[0].payload_bits))
 for l in decodes:
      print(l)
 

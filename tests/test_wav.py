@@ -4,7 +4,6 @@ sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 import numpy as np
 from PyFT8.rx.FT8_demodulator import FT8Demodulator
 from PyFT8.rx.waterfall import Waterfall
-from PyFT8.rx.FT8_decoder import FT8_decode   # existing decoder
 from scipy.io import wavfile
 
 # --- Load a known FT8 WAV file ---

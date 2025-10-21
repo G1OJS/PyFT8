@@ -12,10 +12,9 @@ import numpy as np
 
 from PyFT8.datagrids import Spectrum, Bounds, Candidate
 from PyFT8.signaldefs import FT8
-from PyFT8.rx.ldpc import decode174_91
-from PyFT8.rx.FT8_decoder import FT8_decode
+from PyFT8.rx.decode174_91 import decode174_91
 from PyFT8.FT8_constants import kGRAY_MAP_TUPLES
-# from PyFT8.bitfield import BitField  # later, for CRC
+import PyFT8.FT8_crc as crc
 
 class FT8Demodulator:
     def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=3, sigspec=FT8):
@@ -85,14 +84,14 @@ class FT8Demodulator:
         for c in candidates:
            # print(f"Candidate at {c.bounds.f0}Hz")
             bits = self._demodulate_max_power(c)
-            if self._check_crc_bits(bits):
+            if crc.check_crc(bits):
                 c.demodulated_by = 'Max power'
                 c.payload_bits = bits
                 out.append(FT8_decode(c, cyclestart_str))
                 continue
 
             bits = self._demodulate_llrldpc(c)
-            if self._check_crc_bits(bits):
+            if crc.check_crc(bits):
                 c.demodulated_by = "LLR-LDPC"
                 c.payload_bits = bits
                 out.append(FT8_decode(c, cyclestart_str))
@@ -154,10 +153,45 @@ class FT8Demodulator:
                 LLR174s.append(s1v - s0v)
         return decode174_91(LLR174s)
 
-    def _check_crc_bits(self, bits):
-        """Temporary CRC hook; replace with BitField.crc14_wsjt() later."""
-        try:
-            import PyFT8.FT8_global_helpers as ghlp
-            return ghlp.check_crc(bits)
-        except Exception:
-            return False
+# ======================================================
+# FT8 Unpacking functions
+# ======================================================
+
+def unpack_ft8_c28(c28):
+    from string import ascii_uppercase as ltrs, digits as digs
+    if c28<3: return ["DE", 'QRZ','CQ'][c28]
+    n = c28 - 2_063_592 - 4_194_304 # NTOKENS, MAX22
+    if n >= 0:
+        charmap = [' ' + digs + ltrs, digs + ltrs, digs + ' ' * 17] + [' ' + ltrs] * 3
+        divisors = [36*10*27**3, 10*27**3, 27**3, 27**2, 27, 1]
+        indices = []
+        for d in divisors:
+            i, n = divmod(n, d)
+            indices.append(i)
+        callsign = ''.join(t[i] for t, i in zip(charmap, indices)).lstrip()
+        return callsign if ' ' not in callsign.strip() else False
+
+def unpack_ft8_g15(g15):
+    if g15 < 32400:
+        a, nn = divmod(g15,1800)
+        b, nn = divmod(nn,100)
+        c, d = divmod(nn,10)
+        return f"{chr(65+a)}{chr(65+b)}{c}{d}"
+    r = g15 - 32400
+    txt = ['','','RRR','RR73','73']
+    if 0 <= r <= 4: return txt[r]
+    snr = r-35 if r<=85 else r-35-101
+    if(snr>50): return ''
+    return str(snr).zfill(3)
+
+def FT8_decode(signal, cyclestart_str):
+    bits = signal.payload_bits
+    i3 = 4*bits[74]+2*bits[75]+bits[76]
+    c28_a = int(''.join(str(b) for b in bits[0:28]), 2)
+    c28_b = int(''.join(str(b) for b in bits[29:57]), 2)
+    g15  = int(''.join(str(b) for b in bits[58:74]), 2)
+    msg = f"{unpack_ft8_c28(c28_a)} {unpack_ft8_c28(c28_b)} {unpack_ft8_g15(g15)}"
+    freq, dt = signal.bounds.f0, signal.bounds.t0
+    info = f"{cyclestart_str} {signal.bounds.f0 :6.1f} {signal.bounds.t0 :6.2f} {i3} {signal.score :6.2f} {signal.demodulated_by}"
+    return {'info':info, 'msg':msg}
+
