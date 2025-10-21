@@ -119,9 +119,7 @@ class FT8Demodulator:
         return mask
 
     def _demodulate_max_power(self, cand: Candidate):
-        print("Downsample power")
         pgrid = cand.power_grid
-        print("Get bits")
         payload_idxs = list(range(7, 36)) + list(range(43, 72))
         symbols = [int(np.argmax(pgrid[i, :])) for i in payload_idxs]
         bits = [b for sym in symbols for b in kGRAY_MAP_TUPLES[sym]]

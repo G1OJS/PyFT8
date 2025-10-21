@@ -86,6 +86,7 @@ class Waterfall:
                 origin="lower",
                 aspect="auto",
                 cmap="inferno",
+                interpolation='none',
                 norm=LogNorm()
             )
             ax.set_title(f"f={c.bounds.f0:.0f}Hz  t={c.bounds.t0:.2f}s")

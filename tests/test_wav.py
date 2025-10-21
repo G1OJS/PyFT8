@@ -34,7 +34,6 @@ print("Demodulating")
 decodes = demod.demodulate(candidates, cyclestart_str="TEST")
 print(f"Decoded {len(decodes)} signals\n")
 
-
 # --- Show results ---
 for d in decodes:
     print(d["info"], "→", d["msg"])
