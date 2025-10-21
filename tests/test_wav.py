@@ -18,20 +18,20 @@ demod = FT8Demodulator(sample_rate=sr)
 demod.feed_audio(audio)
 
 # --- Optional visualisation ---
-wf = Waterfall(demod.spectrum, f1=4000)
-wf.update_main()  # initial spectrum display
+#wf = Waterfall(demod.spectrum, f1=4000)
+#wf.update_main()  # initial spectrum display
 
 # --- Find candidates ---
 candidates = demod.find_candidates()
 print(f"Found {len(candidates)} candidates")
 
 # --- Draw candidate boxes on waterfall ---
-wf.update_main(candidates=candidates)
+#wf.update_main(candidates=candidates)
 
 # --- Demodulate each candidate ---
-decodes = demod.demodulate(candidates, cyclestart_str="TEST")
-print(f"Decoded {len(decodes)} signals\n")
+#decodes = demod.demodulate(candidates, cyclestart_str="TEST")
+#print(f"Decoded {len(decodes)} signals\n")
 
 # --- Show results ---
-for d in decodes:
-    print(d["info"], "→", d["msg"])
+#for d in decodes:
+#    print(d["info"], "→", d["msg"])
