@@ -21,39 +21,70 @@ import numpy as np
 
 @dataclass
 class Bounds:
-    """Defines index and physical coordinate limits for a 2-D grid."""
-    t0_idx: int
-    tn_idx: int
-    f0_idx: int
-    fn_idx: int
-    t0: float
-    tn: float
-    f0: float
-    fn: float
+    def __init__(self, t0_idx, tn_idx, f0_idx, fn_idx,
+                 t0=None, tn=None, f0=None, fn=None):
+        self.t0_idx, self.tn_idx = int(t0_idx), int(tn_idx)
+        self.f0_idx, self.fn_idx = int(f0_idx), int(fn_idx)
+        self.t0, self.tn = float(t0) if t0 is not None else None, float(tn) if tn is not None else None
+        self.f0, self.fn = float(f0) if f0 is not None else None, float(fn) if fn is not None else None
 
-    # ---- Convenience properties ----
+    # ------------------------------------------------------
+    # Alternate constructors
+    # ------------------------------------------------------
+    @classmethod
+    def from_physical(cls, spectrum, t0=None, t1=None, f0=None, f1=None):
+        """
+        Build a Bounds from physical time/frequency limits.
+        """
+        times, freqs = spectrum.times, spectrum.freqs
+        t0 = 0 if t0 is None else float(t0)
+        t1 = times[-1] if t1 is None else float(t1)
+        f0 = 0 if f0 is None else float(f0)
+        f1 = freqs[-1] if f1 is None else float(f1)
+
+        t0_idx = int(np.searchsorted(times, t0))
+        t1_idx = int(np.searchsorted(times, t1))
+        f0_idx = int(np.searchsorted(freqs, f0))
+        f1_idx = int(np.searchsorted(freqs, f1))
+        return cls(t0_idx, t1_idx, f0_idx, f1_idx, t0, t1, f0, f1)
+
+    @classmethod
+    def full(cls, spectrum):
+        """Convenience: entire spectrum area."""
+        return cls.from_physical(spectrum)
+
+    # ------------------------------------------------------
+    # Derived convenience
+    # ------------------------------------------------------
+    @property
+    def t_range(self): return range(self.t0_idx, self.tn_idx)
+    @property
+    def f_range(self): return range(self.f0_idx, self.fn_idx)
+
     @property
     def extent(self):
-        """Extent in matplotlib imshow format: [xleft, xright, ybottom, ytop]."""
+        """Matplotlib extent = [xleft, xright, ybottom, ytop]."""
         return [self.f0, self.fn, self.t0, self.tn]
 
-    @property
-    def t_range(self):
-        """Range of time indices."""
-        return range(self.t0_idx, self.tn_idx)
+    def clamp_to(self, spectrum):
+        """Clamp indices to valid spectrum extents."""
+        self.tn_idx = min(self.tn_idx, spectrum.nHops)
+        self.fn_idx = min(self.fn_idx, spectrum.nFreqs)
+        return self
 
-    @property
-    def f_range(self):
-        """Range of frequency indices."""
-        return range(self.f0_idx, self.fn_idx)
-
-    @property
-    def width_f(self):
-        return self.fn - self.f0
-
-    @property
-    def height_t(self):
-        return self.tn - self.t0
+    def contains_window(self, t_idx: int, f_idx: int, window_shape):
+        """
+        Return True if a rectangular window (of shape (height, width))
+        positioned with its top-left corner at (t_idx, f_idx)
+        fits fully inside these bounds.
+        """
+        h, w = window_shape
+        return (
+            t_idx >= self.t0_idx and
+            f_idx >= self.f0_idx and
+            (t_idx + h) <= self.tn_idx and
+            (f_idx + w) <= self.fn_idx
+        )
 
 
 # ============================================================
@@ -132,27 +163,65 @@ class Spectrum:
 # ============================================================
 
 class Candidate:
-    """
-    Represents a rectangular region of interest within a Spectrum.
-    Typically used for a detected FT8/FT4 signal candidate.
-    """
-
     def __init__(self, spectrum, t0_idx, tn_idx, f0_idx, fn_idx):
         self.spectrum = spectrum
-        t = spectrum.times
-        f = spectrum.freqs
-        dt, df = spectrum.dt, spectrum.df
-        self.bounds = Bounds(
-            t0_idx, tn_idx, f0_idx, fn_idx,
-            t[t0_idx], t[tn_idx - 1] + dt,
-            f[f0_idx], f[fn_idx - 1] + df
-        )
+        self.bounds = Bounds(t0_idx, tn_idx, f0_idx, fn_idx,
+                             spectrum.times[t0_idx],
+                             spectrum.times[min(tn_idx, spectrum.nHops - 1)],
+                             spectrum.freqs[f0_idx],
+                             spectrum.freqs[min(fn_idx, spectrum.nFreqs - 1)])
+        # data & results
+        self.power_grid = None
+        self.llr = None
+        self.payload_bits = []
+        self.payload_symbols = []
+        self.freq = None
+        self.dt = None
 
-    def extract_power(self):
-        """Return power subgrid for this candidate."""
-        t0, tn = self.bounds.t0_idx, self.bounds.tn_idx
-        f0, fn = self.bounds.f0_idx, self.bounds.fn_idx
-        return self.spectrum.power[t0:tn, f0:fn]
+        # score tracking
+        self._score = float("-inf")
+        self._best_score = float("-inf")
+
+    # ------------------------------------------------------
+    # Score property
+    # ------------------------------------------------------
+    @property
+    def score(self) -> float:
+        """Latest computed search/detection score."""
+        return self._score
+
+    @score.setter
+    def score(self, value: float):
+        """Assign and update best_score if higher."""
+        self._score = float(value)
+        if value > self._best_score:
+            self._best_score = float(value)
+
+    @property
+    def best_score(self) -> float:
+        """Highest score seen so far (sticky max)."""
+        return self._best_score
+
+    def move_to(self, t0_idx: int, f0_idx: int):
+        """Re-position candidate bounds and clamp to Spectrum extents."""
+        h = self.bounds.tn_idx - self.bounds.t0_idx
+        w = self.bounds.fn_idx - self.bounds.f0_idx
+        self.bounds.t0_idx = int(t0_idx)
+        self.bounds.f0_idx = int(f0_idx)
+        self.bounds.tn_idx = min(self.bounds.t0_idx + h, self.spectrum.nHops)
+        self.bounds.fn_idx = min(self.bounds.f0_idx + w, self.spectrum.nFreqs)
+        # update physical
+        self.bounds.t0 = self.spectrum.times[self.bounds.t0_idx]
+        self.bounds.tn = self.spectrum.times[self.bounds.tn_idx - 1]
+        self.bounds.f0 = self.spectrum.freqs[self.bounds.f0_idx]
+        self.bounds.fn = self.spectrum.freqs[self.bounds.fn_idx - 1]
+
+    def copy(self):
+        import copy
+        return copy.deepcopy(self)
+
+    freeze = copy
+
 
 
 # ============================================================

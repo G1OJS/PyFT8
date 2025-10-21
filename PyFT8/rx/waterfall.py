@@ -1,64 +1,107 @@
-import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.colors import LogNorm
+import numpy as np
 
 class Waterfall:
-    def __init__(self, specbuff, hops_persymb, fbins_pertone, costas, t0=0, t1=15, f0=100, f1=3500):
-        self.f0, self.f1, self.t0, self.t1 = t0, t1, f0, f1
+    def __init__(self, spectrum, costas=None, t0=0, t1=None, f0=100, f1=None):
+        """
+        Main FT8 waterfall display with candidate zooms and optional overlays.
+        """
+        self.spectrum = spectrum
         self.costas = costas
-        self.hops_persymb = hops_persymb
-        self.fbins_pertone = fbins_pertone
-        self.specbuff = specbuff
-        self.fig, self.ax = plt.subplots(figsize=(10, 3))
-        self.dt = self.specbuff.length_secs / (self.specbuff.nHops - 1)
-        self.df = self.specbuff.width_Hz / (self.specbuff.nFreqs - 1)
-        self.extent = [self.specbuff.freqs[0], self.specbuff.freqs[-1]+self.df,
-                       self.specbuff.times[0],  self.specbuff.times[-1]+self.dt]
-        self.im = self.ax.imshow(self.specbuff.power, aspect='auto',origin='lower',
-                        extent=self.extent,cmap='inferno',interpolation='none', norm=LogNorm())
-        self.ax.set_xlabel('Frequency (Hz)')
-        self.ax.set_ylabel('Time (s)')
-        self.ax.set_xlim(f0, f1)
-        self.ax.set_ylim(t0, t1)
-        self.candidate_plots=[]
+        self.hops_persymb = spectrum.hops_persymb
+        self.fbins_pertone = spectrum.fbins_pertone
+        self.t0, self.t1 = t0, t1 or spectrum.spec.frame_secs
+        self.f0, self.f1 = f0, f1 or (spectrum.sample_rate / 2)
+        self.dt = spectrum.dt
+        self.df = spectrum.df
+        self.extent = spectrum.bounds.extent
 
-    def update(self, title = "FT8 Waterfall", candidates = None, show_n_candidates = 0):
-        pwr = np.abs(self.specbuff.complex)**2
-        self.im.set_data(pwr)
-        self.im.autoscale()
-        [p.remove() for p in reversed(self.ax.patches)]
+        # Main figure
+        self.fig, self.ax_main = plt.subplots(figsize=(10, 3))
+        self.im = self.ax_main.imshow(
+            spectrum.power,
+            origin="lower",
+            aspect="auto",
+            extent=self.extent,
+            cmap="inferno",
+            interpolation="none",
+            norm=LogNorm()
+        )
+        self.ax_main.set_xlabel("Frequency (Hz)")
+        self.ax_main.set_ylabel("Time (s)")
+        self.ax_main.set_xlim(self.f0, self.f1)
+        self.ax_main.set_ylim(self.t0, self.t1)
 
-        if(candidates):
-            for i, c in enumerate(candidates):
-                t0_c = self.specbuff.times[c.tbin_idx]
-                f0_c = self.specbuff.freqs[c.fbin_idx]
-                dt_c = self.specbuff.times[c.tbin_idx + self.hops_persymb * c.num_symbols - 1] - self.specbuff.times[c.tbin_idx] + self.dt
-                df_c = self.specbuff.freqs[c.fbin_idx + self.fbins_pertone * c.tones_persymb - 1] - self.specbuff.freqs[c.fbin_idx] + self.df
-                rect = patches.Rectangle((f0_c, t0_c), df_c, dt_c, linewidth=2, edgecolor='w', facecolor='none')
-                self.ax.add_patch(rect)
-                if(i<show_n_candidates):
-                    self.candidate_plots.append(self.show_zoom(c, t0_c, t0_c+dt_c, f0_c, f0_c+df_c))
-                    
-        self.ax.set_title(title)
-        plt.pause(0.5)
+        self.zoom_axes = []
+        self._candidate_patches = []
 
-    def show_zoom(self, c, t0, t1, f0, f1):
-        fig, axs = plt.subplots(2,1,figsize=(2, 5))
-        im = axs[0].imshow(self.specbuff.power, aspect='auto',origin='lower',
-                        extent=self.extent, cmap='inferno',interpolation='none', norm=LogNorm())
-        for symb_idx, tone_idx in enumerate(self.costas):
-            for symb_copy_idx in [symb_idx, symb_idx+36, symb_idx+72]:
-                t0_sync = self.specbuff.times[c.tbin_idx + symb_copy_idx * self.hops_persymb]
-                f0_sync = self.specbuff.freqs[c.fbin_idx + tone_idx * self.fbins_pertone]
-                dt_sync = self.hops_persymb * self.dt
-                df_sync = self.fbins_pertone * self.df
-                rect = patches.Rectangle((f0_sync, t0_sync),  df_sync, dt_sync, edgecolor='black', facecolor= 'none' )
-                axs[0].add_patch(rect)
-        axs[0].set_title(f"{f0:.1f}Hz")
-        axs[0].set_xlim(f0, f1)
-        axs[0].set_ylim(t0, t1)
+    # ----------------------------------------------------------
+    def update_main(self, candidates=None):
+        """Refresh main waterfall and draw candidate rectangles."""
+        self.im.set_data(self.spectrum.power)
+        [p.remove() for p in reversed(self._candidate_patches)]
+        self._candidate_patches.clear()
 
-        im2 = axs[1].imshow(c.power_grid, aspect='auto',origin='lower', cmap='inferno',interpolation='none', norm=im.norm)
-        plt.pause(0.5)
-        return plt
+        if candidates:
+            for c in candidates:
+                rect = patches.Rectangle(
+                    (c.bounds.f0, c.bounds.t0),
+                    c.bounds.fn - c.bounds.f0,
+                    c.bounds.tn - c.bounds.t0,
+                    linewidth=1.2,
+                    edgecolor="lime",
+                    facecolor="none"
+                )
+                self.ax_main.add_patch(rect)
+                self._candidate_patches.append(rect)
+
+        self.fig.canvas.draw_idle()
+        plt.pause(0.001)
+
+    # ----------------------------------------------------------
+    def show_zoom(self, candidates, llr_overlay=False, cols=3):
+        """
+        Create per-candidate zoom boxes (gridded subplots).
+        Optionally overlay LLRs if candidate.llr is present.
+        """
+        n = len(candidates)
+        if n == 0:
+            return
+
+        rows = int(np.ceil(n / cols))
+        zoom_fig, axes = plt.subplots(rows, cols, figsize=(3.5 * cols, 3 * rows))
+        axes = np.atleast_1d(axes).flatten()
+        self.zoom_axes = axes
+
+        for i, c in enumerate(candidates):
+            ax = axes[i]
+            pwr = c.extract_power()
+            ax.imshow(
+                pwr,
+                origin="lower",
+                aspect="auto",
+                cmap="inferno",
+                norm=LogNorm()
+            )
+            ax.set_title(f"f={c.bounds.f0:.0f}Hz  t={c.bounds.t0:.2f}s")
+            ax.set_xlabel("Tone index")
+            ax.set_ylabel("Symbol")
+
+            if llr_overlay and c.llr is not None:
+                # Normalise and reshape LLRs (174 → 58×3 pattern if needed)
+                llr = np.array(c.llr, dtype=np.float32)
+                llr_img = llr.reshape(-1, 3) if llr.size % 3 == 0 else llr[:, None]
+                ax.imshow(
+                    llr_img.T,
+                    alpha=0.4,
+                    cmap="bwr",
+                    aspect="auto"
+                )
+
+        for ax in axes[n:]:
+            ax.axis("off")
+
+        zoom_fig.tight_layout()
+        plt.show()
