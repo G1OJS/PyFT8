@@ -19,7 +19,7 @@ class Waterfall:
         self.extent = spectrum.bounds.extent
 
         # Main figure
-        self.fig, self.ax_main = plt.subplots(figsize=(10, 3))
+        self.fig, self.ax_main = plt.subplots(figsize=(10, 4))
         self.im = self.ax_main.imshow(
             spectrum.power,
             origin="lower",
@@ -29,6 +29,7 @@ class Waterfall:
             interpolation="none",
             norm=LogNorm()
         )
+        self.ax_main.set_title("Waterfall")
         self.ax_main.set_xlabel("Frequency (Hz)")
         self.ax_main.set_ylabel("Time (s)")
         self.ax_main.set_xlim(self.f0, self.f1)
@@ -36,14 +37,18 @@ class Waterfall:
 
         self.zoom_axes = []
         self._candidate_patches = []
+        self.fig.tight_layout()
         plt.show(block=False)
-        plt.pause(0.001)
+        plt.pause(0.1)
 
     # ----------------------------------------------------------
-    def update_main(self, candidates=None):
+    def update_main(self, candidates=None, cyclestart_str=None):
         """Refresh main waterfall and draw candidate rectangles."""
         self.im.set_data(self.spectrum.power)
+        self.im.autoscale()
         self.im.norm.vmin = self.im.norm.vmax/1000000
+        if(cyclestart_str):
+            self.ax_main.set_title(f"Cycle starting {cyclestart_str}")
         [p.remove() for p in reversed(self._candidate_patches)]
         self._candidate_patches.clear()
 
@@ -62,7 +67,7 @@ class Waterfall:
 
         self.fig.canvas.draw_idle()
         self.fig.canvas.flush_events()  # <-- forces actual draw
-        plt.pause(0.001)
+        plt.pause(0.1)
 
     # ----------------------------------------------------------
     def show_zoom(self, candidates, llr_overlay=False, cols=3):
