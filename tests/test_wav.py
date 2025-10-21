@@ -29,9 +29,10 @@ print(f"Found {len(candidates)} candidates")
 wf.update_main(candidates=candidates)
 
 # --- Demodulate each candidate ---
-#decodes = demod.demodulate(candidates, cyclestart_str="TEST")
-#print(f"Decoded {len(decodes)} signals\n")
+print("Demodulating")
+decodes = demod.demodulate(candidates, cyclestart_str="TEST")
+print(f"Decoded {len(decodes)} signals\n")
 
 # --- Show results ---
-#for d in decodes:
-#    print(d["info"], "→", d["msg"])
+for d in decodes:
+    print(d["info"], "→", d["msg"])

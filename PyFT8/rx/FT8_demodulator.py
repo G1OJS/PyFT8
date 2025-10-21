@@ -117,24 +117,19 @@ class FT8Demodulator:
 
     def _downsample_power(self, cand: Candidate):
         """Reduce fine grid → (num_symbols × tones)."""
-        fine = cand.extract_power()
-        nsyms, ntones = self.sigspec.num_symbols, self.sigspec.tones_persymb
-        grid = np.zeros((nsyms, ntones), np.float32)
-        for s in range(nsyms):
-            t0 = s * self.hops_persymb
-            t1 = t0 + self.hops_persymb
-            for t in range(ntones):
-                f0 = t * self.fbins_pertone
-                f1 = f0 + self.fbins_pertone
-                grid[s, t] = np.max(fine[t0:t1, f0:f1])
-        cand.power_grid = grid
-        return grid
+        pgrid = np.zeros((cand.bounds.nTimes, cand.bounds.nFreqs), dtype = np.float32)
+        for dt_idx, t_idx in enumerate(cand.bounds.t_idx_range):
+            for df_idx, f_idx in enumerate(cand.bounds.f_idx_range):
+                pgrid[int(dt_idx/self.hops_persymb), int(df_idx/self.fbins_pertone)] += self.spectrum.power[t_idx, f_idx]
+                    
+        return pgrid
 
     def _demodulate_max_power(self, cand: Candidate):
-        grid = self._downsample_power(cand)
+        pgrid = self._downsample_power(cand)
         payload_idxs = list(range(7, 36)) + list(range(43, 72))
-        symbols = [int(np.argmax(grid[i, :])) for i in payload_idxs]
+        symbols = [int(np.argmax(pgrid[i, :])) for i in payload_idxs]
         bits = [b for sym in symbols for b in kGRAY_MAP_TUPLES[sym]]
+        cand.demodulated_by = 'Max power'
         return bits
 
     def _demodulate_llrldpc(self, cand: Candidate):

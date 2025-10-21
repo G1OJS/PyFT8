@@ -96,12 +96,11 @@ class Spectrum:
 
 @dataclass
 class Bounds:
-    def __init__(self, spectrum, t0_idx, tn_idx, f0_idx, fn_idx,
-                 t0=None, tn=None, f0=None, fn=None):
+    def __init__(self, spectrum, t0_idx, tn_idx, f0_idx, fn_idx, t0=None, tn=None, f0=None, fn=None):
         self.t0_idx, self.tn_idx = int(t0_idx), int(tn_idx)
         self.f0_idx, self.fn_idx = int(f0_idx), int(fn_idx)
-        self.t0, self.tn = float(t0) if t0 is not None else spectrum.times[t0_idx], float(tn) if tn is not None else spectrum.times[tn_idx]
-        self.f0, self.fn = float(f0) if f0 is not None else spectrum.freqs[f0_idx], float(fn) if fn is not None else spectrum.freqs[fn_idx]
+        self.t0, self.tn = spectrum.times[t0_idx] if t0 is None else float(t0), spectrum.times[tn_idx] if tn is None else float(tn) 
+        self.f0, self.fn = spectrum.freqs[f0_idx] if f0 is None else float(f0), spectrum.freqs[fn_idx] if fn is None else float(fn)
 
     @classmethod
     def from_physical(cls, spectrum, t0=None, t1=None, f0=None, f1=None):
@@ -113,6 +112,10 @@ class Bounds:
     @property
     def f_idx_range(self): return range(self.f0_idx, self.fn_idx)
     @property
+    def nTimes(self): return len(self.t_idx_range)
+    @property
+    def nFreqs(self): return len(self.f_idx_range)
+    @property
     def extent(self):
         """Matplotlib extent = [xleft, xright, ybottom, ytop]."""
         return [self.f0, self.fn, self.t0, self.tn]
@@ -123,7 +126,7 @@ class Bounds:
 # ============================================================
 
 class Candidate:
-    def __init__(self, sigspec, spectrum, t0_idx, f0_idx, score):
+    def __init__(self, sigspec, spectrum, t0_idx, f0_idx, score=None, cycle_start=None, demodulated_by=None):
         self.llr = None
         self.payload_bits = []
         self.payload_symbols = []
@@ -131,6 +134,8 @@ class Candidate:
         self.sigspec = sigspec
         self.bounds = Bounds(spectrum, t0_idx, t0_idx + sigspec.num_symbols * spectrum.hops_persymb,
                                        f0_idx, f0_idx + sigspec.tones_persymb * spectrum.fbins_pertone)
+        self.cycle_start = cycle_start
+        self.demodulated_by = demodulated_by
         
 
 # ============================================================
