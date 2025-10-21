@@ -70,6 +70,7 @@ def reset_compare():
 
 demod = FT8Demodulator(sample_rate=12000)
 wf = Waterfall(demod.spectrum, f1=4000)
+wf.update_main()
 
 no_decodes_before = True
 while True:
@@ -81,10 +82,9 @@ while True:
     os.remove(FLAG_FILE)
     print(f"{tstrNow()} Demodulator has read audio file")
     demod.spectrum.feed_audio(audio)
-    
     candidates = demod.find_candidates(topN=20)
     print(f"Found {len(candidates)} candidates")
-    wf.update_main(candidates=candidates, cyclestart_str = cyclestart_str)
+    wf.update_main(candidates=candidates)
 
     print(f"{cyclestart_str} =================================")
     print("Demodulating")
