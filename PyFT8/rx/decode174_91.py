@@ -37,7 +37,7 @@ def decode174_91(llr):
         if ncheck == 0:
             message91 = cw.tolist()
             if(sum(message91)>0):
-                print(f"Success: {info}")
+                #print(f"Success: {info}")
                 return message91
 
         # compute toc = messages from variable node -> check node
@@ -96,6 +96,6 @@ def decode174_91(llr):
                 tov[kk, var] = alpha * new_val + (1 - alpha) * tov[kk, var]
 
     # failed to decode
-    print(f"Failure: {info}")
+    #print(f"Failure: {info}")
     return []
 

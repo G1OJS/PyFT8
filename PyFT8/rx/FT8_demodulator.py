@@ -71,7 +71,7 @@ class FT8Demodulator:
         score = 0.0
         for symb_idx in [0, 36, 72]: # magic numbers; move to a 'costas object' per mode
             t_idx = t0_idx + symb_idx * self.hops_persymb
-            block_score = np.sum(self._csync * np.abs(self.spectrum.complex[t_idx:t_idx + self._csync.shape[0], f0_idx:f0_idx + self._csync.shape[1]]))
+            block_score = np.sum(self._csync * self.spectrum.power[t_idx:t_idx + self._csync.shape[0], f0_idx:f0_idx + self._csync.shape[1]])
             score = block_score if block_score > score else score
             #score += block_score
         return score  
@@ -136,7 +136,8 @@ class FT8Demodulator:
                 for i in range(self.sigspec.tones_persymb):
                     f0 = cand.bounds.f0_idx + i * self.fbins_pertone
                     f1 = f0 + self.fbins_pertone
-                    pwrs[i] += abs(np.sum(Z[f0:f1])) ** 2
+                  #  pwrs[i] += abs(np.sum(Z[f0:f1])) ** 2
+                    pwrs[i] += np.sum(abs(Z[f0:f1])) ** 2
                 left = Z[:cand.bounds.f0_idx]
                 right = Z[cand.bounds.f0_idx + self.sigspec.tones_persymb*self.fbins_pertone:]
                 if left.size + right.size:

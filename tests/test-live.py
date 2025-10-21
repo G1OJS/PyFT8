@@ -116,7 +116,7 @@ def reset_compare():
     with open(PyFT8_file, 'w') as f:
         f.write("")
 
-demod = FT8Demodulator(sample_rate=12000)
+demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
 wf = Waterfall(demod.spectrum, f1=4000)
 
 no_decodes_before = True
@@ -130,7 +130,7 @@ while True:
     print(f"{tstrNow()} Demodulator has read audio file")
     demod.spectrum.feed_audio(audio)
     
-    candidates = demod.find_candidates(topN=20)
+    candidates = demod.find_candidates(topN=40)
     print(f"Found {len(candidates)} candidates")
     wf.update_main(candidates=candidates, cyclestart_str = cyclestart_str)
 
