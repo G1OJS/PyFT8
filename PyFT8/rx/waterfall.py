@@ -29,7 +29,7 @@ class Waterfall:
             interpolation="none",
             norm=LogNorm()
         )
-        self.ax_main.set_title("Waterfall")
+        self.ax_main.set_title("FT8 Waterfall")
         self.ax_main.set_xlabel("Frequency (Hz)")
         self.ax_main.set_ylabel("Time (s)")
         self.ax_main.set_xlim(self.f0, self.f1)
@@ -48,7 +48,7 @@ class Waterfall:
         self.im.autoscale()
         self.im.norm.vmin = self.im.norm.vmax/1000000
         if(cyclestart_str):
-            self.ax_main.set_title(f"Cycle starting {cyclestart_str}")
+            self.ax_main.set_title(f"FT8 Waterfall for {cyclestart_str}")
         [p.remove() for p in reversed(self._candidate_patches)]
         self._candidate_patches.clear()
 
