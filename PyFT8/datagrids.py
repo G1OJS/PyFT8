@@ -125,6 +125,7 @@ class Bounds:
 # Candidate
 # ============================================================
 
+
 class Candidate:
     def __init__(self, sigspec, spectrum, t0_idx, f0_idx, score=None, cycle_start=None, demodulated_by=None):
         self.llr = None
@@ -132,10 +133,29 @@ class Candidate:
         self.payload_symbols = []
         self.score = score
         self.sigspec = sigspec
+        self.spectrum = spectrum
         self.bounds = Bounds(spectrum, t0_idx, t0_idx + sigspec.num_symbols * spectrum.hops_persymb,
                                        f0_idx, f0_idx + sigspec.tones_persymb * spectrum.fbins_pertone)
         self.cycle_start = cycle_start
         self.demodulated_by = demodulated_by
+
+    @property
+    def power_grid(self):
+        norm = 1.0 / (self.spectrum.hops_persymb * self.spectrum.fbins_pertone)
+        t0_idx, tn_idx = self.bounds.t0_idx, self.bounds.tn_idx
+        f0_idx, fn_idx = self.bounds.f0_idx, self.bounds.fn_idx
+        
+        sub = self.spectrum.power[t0_idx:tn_idx, f0_idx:fn_idx]
+        ntFine, nfFine = sub.shape
+        ntTrim = ntFine - (ntFine % self.spectrum.hops_persymb)
+        nfTrim = nfFine - (nfFine % self.spectrum.fbins_pertone)
+        sub = sub[:ntTrim, :nfTrim]
+        nTimes = ntTrim // self.spectrum.hops_persymb
+        nFreqs = nfTrim // self.spectrum.fbins_pertone
+        sub = sub.reshape(nTimes, self.spectrum.hops_persymb, nFreqs, self.spectrum.fbins_pertone)
+
+        pgrid = norm * sub.sum(axis=(1, 3))
+        return pgrid.astype(np.float32)
         
 
 # ============================================================

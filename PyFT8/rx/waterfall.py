@@ -36,6 +36,8 @@ class Waterfall:
 
         self.zoom_axes = []
         self._candidate_patches = []
+        plt.show(block=False)
+        plt.pause(0.001)
 
     # ----------------------------------------------------------
     def update_main(self, candidates=None):
@@ -58,6 +60,7 @@ class Waterfall:
                 self._candidate_patches.append(rect)
 
         self.fig.canvas.draw_idle()
+        self.fig.canvas.flush_events()  # <-- forces actual draw
         plt.pause(0.001)
 
     # ----------------------------------------------------------
@@ -77,7 +80,7 @@ class Waterfall:
 
         for i, c in enumerate(candidates):
             ax = axes[i]
-            pwr = c.extract_power()
+            pwr = c.power_grid
             ax.imshow(
                 pwr,
                 origin="lower",
@@ -104,4 +107,6 @@ class Waterfall:
             ax.axis("off")
 
         zoom_fig.tight_layout()
-        plt.show()
+        self.fig.canvas.draw_idle()
+        self.fig.canvas.flush_events()  # <-- forces actual draw
+        plt.pause(0.001)

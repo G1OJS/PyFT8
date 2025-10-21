@@ -35,7 +35,7 @@ def FT8_decode(signal, cyclestart_str):
     g15  = int(''.join(str(b) for b in bits[58:74]), 2)
     msg = f"{unpack_ft8_c28(c28_a)} {unpack_ft8_c28(c28_b)} {unpack_ft8_g15(g15)}"
     freq, dt = signal.bounds.f0, signal.bounds.t0
-    info = f"{cyclestart_str} {signal.bounds.f0 :6.1f} {signal.bounds.t0 :6.2f} {i3} {signal.score :6.2f} {signal.demod}"
+    info = f"{cyclestart_str} {signal.bounds.f0 :6.1f} {signal.bounds.t0 :6.2f} {i3} {signal.score :6.2f} {signal.demodulated_by}"
     return {'info':info, 'msg':msg}
 
         

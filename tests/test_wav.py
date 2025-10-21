@@ -22,16 +22,18 @@ wf = Waterfall(demod.spectrum, f1=4000)
 wf.update_main()  # initial spectrum display
 
 # --- Find candidates ---
-candidates = demod.find_candidates(topN=2)
+candidates = demod.find_candidates(topN=5)
 print(f"Found {len(candidates)} candidates")
 
 # --- Draw candidate boxes on waterfall ---
 wf.update_main(candidates=candidates)
+wf.show_zoom(candidates=candidates)
 
 # --- Demodulate each candidate ---
 print("Demodulating")
 decodes = demod.demodulate(candidates, cyclestart_str="TEST")
 print(f"Decoded {len(decodes)} signals\n")
+
 
 # --- Show results ---
 for d in decodes:

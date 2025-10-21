@@ -83,18 +83,21 @@ class FT8Demodulator:
     def demodulate(self, candidates, cyclestart_str):
         out = []
         for c in candidates:
+            print(f"Candidate at {c.bounds.f0}Hz")
             bits = self._demodulate_max_power(c)
             if self._check_crc_bits(bits):
-                c.demod = "Max power"
+                c.demodulated_by = 'Max power'
                 c.payload_bits = bits
                 out.append(FT8_decode(c, cyclestart_str))
                 continue
 
             bits = self._demodulate_llrldpc(c)
             if self._check_crc_bits(bits):
-                c.demod = "LLR-LDPC"
+                c.demodulated_by = "LLR-LDPC"
                 c.payload_bits = bits
                 out.append(FT8_decode(c, cyclestart_str))
+
+                
         return out
 
     # ======================================================
@@ -115,21 +118,13 @@ class FT8Demodulator:
 
         return mask
 
-    def _downsample_power(self, cand: Candidate):
-        """Reduce fine grid → (num_symbols × tones)."""
-        pgrid = np.zeros((cand.bounds.nTimes, cand.bounds.nFreqs), dtype = np.float32)
-        for dt_idx, t_idx in enumerate(cand.bounds.t_idx_range):
-            for df_idx, f_idx in enumerate(cand.bounds.f_idx_range):
-                pgrid[int(dt_idx/self.hops_persymb), int(df_idx/self.fbins_pertone)] += self.spectrum.power[t_idx, f_idx]
-                    
-        return pgrid
-
     def _demodulate_max_power(self, cand: Candidate):
-        pgrid = self._downsample_power(cand)
+        print("Downsample power")
+        pgrid = cand.power_grid
+        print("Get bits")
         payload_idxs = list(range(7, 36)) + list(range(43, 72))
         symbols = [int(np.argmax(pgrid[i, :])) for i in payload_idxs]
         bits = [b for sym in symbols for b in kGRAY_MAP_TUPLES[sym]]
-        cand.demodulated_by = 'Max power'
         return bits
 
     def _demodulate_llrldpc(self, cand: Candidate):
