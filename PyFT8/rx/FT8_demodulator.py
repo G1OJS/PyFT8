@@ -83,7 +83,7 @@ class FT8Demodulator:
     def demodulate(self, candidates, cyclestart_str):
         out = []
         for c in candidates:
-            print(f"Candidate at {c.bounds.f0}Hz")
+           # print(f"Candidate at {c.bounds.f0}Hz")
             bits = self._demodulate_max_power(c)
             if self._check_crc_bits(bits):
                 c.demodulated_by = 'Max power'

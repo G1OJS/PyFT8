@@ -43,6 +43,7 @@ class Waterfall:
     def update_main(self, candidates=None):
         """Refresh main waterfall and draw candidate rectangles."""
         self.im.set_data(self.spectrum.power)
+        self.im.norm.vmin = self.im.norm.vmax/1000000
         [p.remove() for p in reversed(self._candidate_patches)]
         self._candidate_patches.clear()
 
