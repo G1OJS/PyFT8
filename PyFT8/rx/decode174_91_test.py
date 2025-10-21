@@ -2,17 +2,12 @@ import numpy as np
 
 from PyFT8.FT8_constants import kNCW, kNRW, kMN, kNM, kN, kK, kM
 
-def safe_atanh(x, eps=1e-12):
-    # clip to avoid |x| >= 1 domain errors
-    x = np.clip(x, -1 + eps, 1 - eps)
-    return np.arctanh(x)
-
 def decode174_91(llr):
-    maxiterations = 10
-    llr = np.asarray(llr, dtype=float)
-    toc = np.zeros((7, kM))          # message -> check messages
-    tanhtoc = np.zeros((7, kM))
-    tov = np.zeros((kNCW, kN))        # check->message messages
+    maxiterations = 100
+    llr = np.asarray(llr, dtype=np.float32)
+    toc = np.zeros((7, kM), dtype=np.float32)
+    tov = np.zeros((kNCW, kN), dtype=np.float32)
+    tov_tmp = np.zeros((kM, kN), dtype=np.float32)  # 7 = max(kNRW)
 
     info = []
     for it in range(maxiterations + 1):
@@ -60,40 +55,36 @@ def decode174_91(llr):
                     tov_val = tov[tov_idx, ibj]
                     toc[i_local, j] -= tov_val
 
-        # tanh of half negative (matching original)
+        alpha = 0.9
         for j in range(kM):
-            tanhtoc[:kNRW[j], j] = np.tanh(-toc[:kNRW[j], j] / 2.0)
+            deg = kNRW[j]
+            msgs = toc[:deg, j]
 
-        # compute tov (check->variable messages)
-        # for each variable node j, it connects to kNCW checks (kMN[j, :])
+            # overall sign of product
+            sign_all = np.sign(msgs).prod()
+            absmsg = np.abs(msgs)
+
+            # smallest and second-smallest magnitudes
+            i_min1 = np.argmin(absmsg)
+            min1 = absmsg[i_min1]
+            tmp = absmsg.copy(); tmp[i_min1] = np.inf
+            min2 = tmp.min()
+
+            # send message to each variable connected to this check
+            for i_local in range(deg):
+                var = int(kNM[j, i_local])
+                mag = min2 if i_local == i_min1 else min1
+                sgn = sign_all * np.sign(msgs[i_local])
+                tov_tmp[j, var] = alpha * sgn * mag
+
+        # after the loop, make tov the same shape as before by summing over checks
+        tov = np.zeros((kNCW, kN), dtype=np.float32)
         for var in range(kN):
-            # iterate check-positions kk for this variable
-            for kk in range(kNCW):
-                chknum = kMN[var, kk]
-                if chknum == 0:
-                    # sentinel / unused
-                    tov[kk, var] = 0.0
-                    continue
-                ichk = int(chknum)   # check index 0-based
-                # build mask over the neighbours of check ichk excluding current variable 'var'
-                neigh_count = kNRW[ichk]
-                neigh_vars = kNM[ichk, :neigh_count]  
-                # mask which entries are not equal to this var index
-                mask = (neigh_vars != var)
-                if mask.sum() == 0:
-                    # no other neighbours => product is 1? set small value
-                    Tmn = 0.0
-                else:
-                    # product of tanh values for other edges
-                    tvals = tanhtoc[:neigh_count, ichk][mask]
-                    # product; make sure to handle empty product
-                    Tmn = np.prod(tvals) if tvals.size > 0 else 0.0
+            # collect all non-zero entries from tov_tmp[:, var]
+            nonzero_msgs = tov_tmp[:, var][tov_tmp[:, var] != 0]
+            count = min(len(nonzero_msgs), kNCW)
+            tov[:count, var] = nonzero_msgs[:count]
 
-                # inverse tanh (clipped)
-                y = safe_atanh(-Tmn)
-                alpha = 1   # 0 < alpha <= 1 ; try 0.3..0.9. lower = more damping
-                new_val = 2.0 * safe_atanh(-Tmn)
-                tov[kk, var] = alpha * new_val + (1 - alpha) * tov[kk, var]
 
     # failed to decode
     print(f"Failure: {info}")
