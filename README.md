@@ -1,5 +1,6 @@
 # Python FT8 demodulator and decoder 
-<img width="931" height="288" alt="Capture" src="https://github.com/user-attachments/assets/0b95fc5c-64e5-4d10-8702-252830a82546" />
+
+<img width="981" height="382" alt="Capture" src="https://github.com/user-attachments/assets/8eb7c645-ab75-4e4f-8ce9-1dae6045e6ba" />
 
 ## Purpose
 This is code that I'm playing with mainly for my own understanding, but I really hope it's helpful to anyone who wants to 
