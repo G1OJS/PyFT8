@@ -138,7 +138,8 @@ while True:
     print("Demodulating")
     decodes = demod.demodulate(candidates, cyclestart_str = cyclestart_str)
     print(f"Decoded {len(decodes)} signals\n")
-
+    wf.show_decodes(decodes)
+    
     if(any(decodes) and no_decodes_before):
         no_decodes_before = False
         reset_compare()

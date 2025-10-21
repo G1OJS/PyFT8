@@ -4,12 +4,12 @@ from matplotlib.colors import LogNorm
 import numpy as np
 
 class Waterfall:
-    def __init__(self, spectrum, costas=None, t0=0, t1=None, f0=100, f1=None):
+    def __init__(self, spectrum, t0=0, t1=None, f0=100, f1=None):
         """
         Main FT8 waterfall display with candidate zooms and optional overlays.
         """
         self.spectrum = spectrum
-        self.costas = costas
+        self.costas = spectrum.sigspec.costas
         self.hops_persymb = spectrum.hops_persymb
         self.fbins_pertone = spectrum.fbins_pertone
         self.t0, self.t1 = t0, t1 or spectrum.sigspec.frame_secs
@@ -19,7 +19,8 @@ class Waterfall:
         self.extent = spectrum.bounds.extent
 
         # Main figure
-        self.fig, self.ax_main = plt.subplots(figsize=(10, 4))
+        self.fig, (self.ax_main, self.textaxis) = plt.subplots(2,1,figsize=(10, 4))
+        self.textaxis.axis('off')
         self.im = self.ax_main.imshow(
             spectrum.power,
             origin="lower",
@@ -54,13 +55,9 @@ class Waterfall:
 
         if candidates:
             for c in candidates:
-                rect = patches.Rectangle(
-                    (c.bounds.f0, c.bounds.t0),
-                    c.bounds.fn - c.bounds.f0,
-                    c.bounds.tn - c.bounds.t0,
-                    linewidth=1.2,
-                    edgecolor="lime",
-                    facecolor="none"
+                rect = patches.Rectangle( (c.bounds.f0, c.bounds.t0),
+                  c.bounds.fn - c.bounds.f0,c.bounds.tn - c.bounds.t0,
+                  linewidth=1.2,edgecolor="lime", facecolor="none"
                 )
                 self.ax_main.add_patch(rect)
                 self._candidate_patches.append(rect)
@@ -70,19 +67,38 @@ class Waterfall:
         plt.pause(0.1)
 
     # ----------------------------------------------------------
+    def show_decodes(self, decodes):
+        """Update the text panel with latest decode messages."""
+        self.textaxis.axis('off')
+        self.textaxis.clear()
+        lines = [d['msg'] for d in decodes]
+        self.textaxis.text(0, 1, "\n".join(lines),
+                               va='top', family='monospace', fontsize=9)
+        self.fig.canvas.draw()
+        self.textaxis.axis('off')
+        self.fig.canvas.flush_events()
+        self.textaxis.axis('off')
+        
+    # ----------------------------------------------------------
     def show_zoom(self, candidates, llr_overlay=False, cols=3):
         """
         Create per-candidate zoom boxes (gridded subplots).
         Optionally overlay LLRs if candidate.llr is present.
         """
-        n = len(candidates)
+        max_candidates = 5
+        n = len(candidates[:max_candidates])
         if n == 0:
             return
 
         rows = int(np.ceil(n / cols))
-        zoom_fig, axes = plt.subplots(rows, cols, figsize=(3.5 * cols, 3 * rows))
+        zoom_fig, axes = plt.subplots(rows, cols, figsize=(3.5 * cols, 5 * rows))
         axes = np.atleast_1d(axes).flatten()
         self.zoom_axes = axes
+
+        # Precompute Costas skeleton (symbol, tone index pairs)
+        costas_pairs = [(symb_idx + offset, tone)
+                        for offset in (0, 36, 72) # magic numbers; move to a 'costas object' per mode
+                        for symb_idx, tone in enumerate(self.costas)]
 
         for i, c in enumerate(candidates):
             ax = axes[i]
@@ -98,6 +114,14 @@ class Waterfall:
             ax.set_title(f"f={c.bounds.f0:.0f}Hz  t={c.bounds.t0:.2f}s")
             ax.set_xlabel("Tone index")
             ax.set_ylabel("Symbol")
+
+            # --- Costas rectangles ---
+            for symb_idx, tone_idx in costas_pairs:
+                rect = patches.Rectangle(
+                    (tone_idx - 0.5, symb_idx - 0.5), 1, 1,
+                    edgecolor='lime', facecolor='none', linewidth=1.2
+                )
+                ax.add_patch(rect)
 
             if llr_overlay and c.llr is not None:
                 # Normalise and reshape LLRs (174 → 58×3 pattern if needed)

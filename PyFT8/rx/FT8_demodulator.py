@@ -69,11 +69,11 @@ class FT8Demodulator:
 
     def _csync_score(self, t0_idx, f0_idx):
         score = 0.0
-        for symb_idx in [0, 36, 72]:
+        for symb_idx in [0, 36, 72]: # magic numbers; move to a 'costas object' per mode
             t_idx = t0_idx + symb_idx * self.hops_persymb
             block_score = np.sum(self._csync * np.abs(self.spectrum.complex[t_idx:t_idx + self._csync.shape[0], f0_idx:f0_idx + self._csync.shape[1]]))
-            #score = block_score if block_score > score else score
-            score += block_score
+            score = block_score if block_score > score else score
+            #score += block_score
         return score  
 
     # ======================================================
