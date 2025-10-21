@@ -73,12 +73,7 @@ class Spectrum:
 
         # ---- Data arrays ----
         self.complex = np.zeros((self.nHops, self.nFreqs), np.complex64)
-
-
-    @property
-    def power(self):
-        """Power per bin (|complex|^2)."""
-        return np.abs(self.complex) ** 2
+        self.power = np.zeros((self.nHops, self.nFreqs), np.float32)
 
     def feed_audio(self, audio: np.ndarray):
         """ Fill complex from a block of real audio samples. """
@@ -87,7 +82,7 @@ class Spectrum:
             sample_idxn = sample_idx0 + self.FFT_size
             if(sample_idxn < len(audio)):
                 self.complex[hop_idx,:] = np.fft.rfft(audio[sample_idx0:sample_idxn] * np.kaiser(self.FFT_size,14))
-
+                self.power = np.abs(self.complex) ** 2
 
 
 # ============================================================
