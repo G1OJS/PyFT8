@@ -8,7 +8,7 @@ def safe_atanh(x, eps=1e-12):
     return np.arctanh(x)
 
 def decode174_91(llr):
-    maxiterations = 10
+    maxiterations = 5
     llr = np.asarray(llr, dtype=float)
     toc = np.zeros((7, kM))          # message -> check messages
     tanhtoc = np.zeros((7, kM))
