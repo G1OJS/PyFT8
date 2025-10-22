@@ -24,13 +24,15 @@ def decode174_91(llr):
         ncheck = 0
         synd = np.zeros(kM, dtype=int)
         for chk in range(kM):
+            # get variable indices for this check, skip padding
+            vars_idx = kNM[chk, :]
+            vars_idx = vars_idx[vars_idx >= 0]  # skip any -1 entries
+
             # sum variable nodes participating in this check
-            # kNM stores 1-based variable indices in each row; use first kNRW[chk] entries
-            # note that synd doesn't *need* to be an array unless it's used for debugging
-            vars_idx = kNM[chk, :kNRW[chk]]
             synd[chk] = int(np.sum(cw[vars_idx]) % 2)
             if synd[chk] != 0:
                 ncheck += 1
+
 
         info.append(ncheck)
         # success
