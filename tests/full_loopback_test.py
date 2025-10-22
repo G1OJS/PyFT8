@@ -66,12 +66,14 @@ print(f"Payload symbols  expected:   {'70274132364100760241435353242116374640277
 print(f"Channel symbols modulated:   {''.join([str(s) for s in symbols])}")
 
 # 'modulate' onto channel grid
+m = np.max(abs(demod.spectrum.complex))
 for t_idx, symbol in enumerate(symbols):
     for tbin in range(demod.hops_persymb):
         for fbin in range(demod.fbins_pertone):
             t = tbin_idx + t_idx * demod.hops_persymb + tbin
             f = fbin_idx + symbol * demod.fbins_pertone + (fbin - demod.fbins_pertone//2)
-            demod.spectrum.complex[t, f] = 500000
+            demod.spectrum.complex[t, f] = m
+            demod.spectrum.power[t, f] = m**2
 
 # 'demodulate' as with any audio frame
 candidates = demod.find_candidates(topN=5)
