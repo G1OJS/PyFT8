@@ -2,112 +2,86 @@ import numpy as np
 
 from PyFT8.FT8_constants import kNCW, kNRW, kMN, kNM, kN, kK, kM
 
+def fast_atanh(x, eps=1e-12):
+    x = np.clip(x, -1 + eps, 1 - eps)
+    return 0.5 * np.log((1 + x) / (1 - x))
+
 def safe_atanh(x, eps=1e-12):
-    # clip to avoid |x| >= 1 domain errors
     x = np.clip(x, -1 + eps, 1 - eps)
     return np.arctanh(x)
 
-def decode174_91(llr):
-    maxiterations = 70
+def decode174_91(llr, maxiterations = 50, alpha = 1.0):
     llr = np.asarray(llr, dtype=float)
-    toc = np.zeros((7, kM))          # message -> check messages
+    toc = np.zeros((7, kM))             # message -> check messages
     tanhtoc = np.zeros((7, kM))
-    tov = np.zeros((kNCW, kN))        # check->message messages
-
-    nclast = 0
-    nstall = 0
-
-    info = []
-    zn = np.copy(llr)
-    rng = np.max(llr) - np.min(llr)
-    mult = rng * 5000 / 200000
+    tov = np.zeros((kNCW, kN))          # check -> message messages
+    nclast, nstall = 0, 0               # stall condition variables
+    info = []                           # record the progression of ncheck
+    zn = np.copy(llr)                   # working copy of llrs
+    rng = np.max(llr) - np.min(llr)     # indication of scale of llrs
+    mult = rng * 5000 / 200000          # empricical multiplier for tov, proportional to llr scale
     for it in range(maxiterations + 1):
         for i in range(kN):
             zn[i] += mult*sum(tov[:,i])
 
         cw = (zn > 0).astype(int)
-        # syndrome
-        ncheck = 0
-        synd = np.zeros(kM, dtype=int)
+        ncheck = 0                      # syndrome: sum variable nodes participating in this check.
         for chk in range(kM):
-            # sum variable nodes participating in this check
-            # kNM stores 1-based variable indices in each row; use first kNRW[chk] entries
-            # note that synd doesn't *need* to be an array unless it's used for debugging
             vars_idx = kNM[chk, :kNRW[chk]]
-            synd[chk] = int(np.sum(cw[vars_idx]) % 2)
-            if synd[chk] != 0:
+            if( int(np.sum(cw[vars_idx]) % 2)):
                 ncheck += 1
 
         info.append(ncheck)
-        # success
         if ncheck == 0:
             message91 = cw.tolist()
             if(sum(message91)>0):
                # print(f"Success: {info}")
                 return message91, it
 
-        # early exit condition
         nstall = 0 if ncheck < nclast else nstall +1
         nclast = ncheck
-        if(nstall > 15 or ncheck > 20):
+        if(nstall > 15 or ncheck > 20):         # early exit condition
          #   print(f"Failure: {info}")
             return [], it
         
-
         # compute toc = messages from variable node -> check node
-        # For each check node j, for each connected variable i
+        # For each check node j, for each connected variable i subtract messages from checks (tov)
+        # that correspond to other checks connected to variable ibj (connections specified by kMN[ibj, :])
         for j in range(kM):
-            for i_local in range(kNRW[j]):         # 0 .. kNRW[j]-1
-                ibj = int(kNM[j, i_local])         # variable node index (0-based)
+            for i_local in range(kNRW[j]):    
+                ibj = int(kNM[j, i_local])   
                 toc[i_local, j] = zn[ibj]
-                # subtract messages from checks (tov) that correspond to other checks connected to variable ibj
-                # kMN[ibj, :] lists checks (1-based) that connect to variable ibj
                 for kk in range(kNCW):
                     chknum = kMN[ibj, kk]
-                    if chknum == 0:
-                        # if kMN uses 0 as sentinel for "no more checks", skip
+                    if chknum == 0 or chknum == (j + 1): # kMN = 0 means "skip this check" (true?)
                         continue
-                    if chknum == (j + 1):
-                        # skip the current check (do not subtract its message)
-                        continue
-                    tov_idx = kk
-                    tov_val = tov[tov_idx, ibj]
-                    toc[i_local, j] -= tov_val
+                    toc[i_local, j] -= tov[kk, ibj]
 
-        # tanh of half negative (matching original)
+        # tanh of half negative (what's this?)
         for j in range(kM):
             tanhtoc[:kNRW[j], j] = np.tanh(-toc[:kNRW[j], j] / 2.0)
 
-        # compute tov (check->variable messages)
+        # compute tov (check -> variable messages)
         # for each variable node j, it connects to kNCW checks (kMN[j, :])
-        for var in range(kN):
-            # iterate check-positions kk for this variable
+        for variable_node in range(kN):
             for kk in range(kNCW):
-                chknum = kMN[var, kk]
+                chknum = kMN[variable_node, kk]
                 if chknum == 0:
-                    # sentinel / unused
-                    tov[kk, var] = 0.0
+                    tov[kk, variable_node] = 0.0
                     continue
-                ichk = int(chknum)   # check index 0-based
+                ichk = int(chknum)
                 # build mask over the neighbours of check ichk excluding current variable 'var'
                 neigh_count = kNRW[ichk]
                 neigh_vars = kNM[ichk, :neigh_count]  
-                # mask which entries are not equal to this var index
-                mask = (neigh_vars != var)
+                mask = (neigh_vars != variable_node)
                 if mask.sum() == 0:
-                    # no other neighbours => product is 1? set small value
                     Tmn = 0.0
                 else:
-                    # product of tanh values for other edges
                     tvals = tanhtoc[:neigh_count, ichk][mask]
-                    # product; make sure to handle empty product
                     Tmn = np.prod(tvals) if tvals.size > 0 else 0.0
-
-                # inverse tanh (clipped)
                 y = safe_atanh(-Tmn)
-                alpha = 1   # 0 < alpha <= 1 ; try 0.3..0.9. lower = more damping
                 new_val = 2.0 * safe_atanh(-Tmn)
-                tov[kk, var] = alpha * new_val + (1 - alpha) * tov[kk, var]
+                tov[kk, variable_node] = alpha * new_val + (1 - alpha) * tov[kk, variable_node]
 
     # failed to decode
    # print(f"Failure: {info}")
