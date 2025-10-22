@@ -150,6 +150,7 @@ class FT8Demodulator:
                 s1v = m1 + math.log(sum(math.exp(v-m1) for v in s1))
                 s0v = m0 + math.log(sum(math.exp(v-m0) for v in s0))
                 LLR174s.append(s1v - s0v)
+            cand.llr = LLR174s
         return decode174_91(LLR174s)
 
 # ======================================================
