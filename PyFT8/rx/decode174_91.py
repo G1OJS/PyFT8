@@ -10,12 +10,11 @@ def safe_atanh(x, eps=1e-12):
     x = np.clip(x, -1 + eps, 1 - eps)
     return np.arctanh(x)
 
-def decode174_91(llr, maxiterations = 50, alpha = 1.0):
-    llr = np.asarray(llr, dtype=float)
-    toc = np.zeros((7, kM))             # message -> check messages
-    tanhtoc = np.zeros((7, kM))
-    tov = np.zeros((kNCW, kN))          # check -> message messages
-    nclast, nstall = 0, 0               # stall condition variables
+def decode174_91(llr, maxiterations = 50, alpha = 1.0, nstall_max = 12, ncheck_max = 30):
+    toc = np.zeros((7, kM), dtype=np.float32)       # message -> check messages
+    tanhtoc = np.zeros((7, kM), dtype=np.float64)
+    tov = np.zeros((kNCW, kN), dtype=np.float32)    # check -> message messages
+    nclast, nstall = 0, 0                           # stall condition variables
     info = []                           # record the progression of ncheck
     zn = np.copy(llr)                   # working copy of llrs
     rng = np.max(llr) - np.min(llr)     # indication of scale of llrs
@@ -40,7 +39,7 @@ def decode174_91(llr, maxiterations = 50, alpha = 1.0):
 
         nstall = 0 if ncheck < nclast else nstall +1
         nclast = ncheck
-        if(nstall > 15 or ncheck > 20):         # early exit condition
+        if(nstall > nstall_max or ncheck > ncheck_max):         # early exit condition
          #   print(f"Failure: {info}")
             return [], it
         
