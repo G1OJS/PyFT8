@@ -18,6 +18,8 @@ import PyFT8.FT8_crc as crc
 
 class FT8Demodulator:
     def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=3, sigspec=FT8):
+        # ft8c.f90 uses 4 hops per symbol and 2.5Hz fbins (2.5 bins per tone)
+        
         # ---- Configuration ----
         self.sample_rate = sample_rate
         self.fbins_pertone = fbins_pertone
@@ -123,6 +125,8 @@ class FT8Demodulator:
         return bits
 
     def _demodulate_llrldpc(self, cand: Candidate):
+        #use sum of powers consistent with four2a.f90 e.g. 
+        #'s2(i) = abs(cs(graymap(i1), ks) + cs(graymap(i2), ks+1) + cs(graymap(i3), ks+2))'
         LLR174s = []
         payload_idxs = list(range(7, 36)) + list(range(43, 72))
         for sym in payload_idxs:
@@ -136,7 +140,6 @@ class FT8Demodulator:
                 for i in range(self.sigspec.tones_persymb):
                     f0 = cand.bounds.f0_idx + i * self.fbins_pertone
                     f1 = f0 + self.fbins_pertone
-                  #  pwrs[i] += abs(np.sum(Z[f0:f1])) ** 2
                     pwrs[i] += np.sum(abs(Z[f0:f1])) ** 2
                 left = Z[:cand.bounds.f0_idx]
                 right = Z[cand.bounds.f0_idx + self.sigspec.tones_persymb*self.fbins_pertone:]
@@ -150,8 +153,6 @@ class FT8Demodulator:
                 s1v = m1 + math.log(sum(math.exp(v-m1) for v in s1))
                 s0v = m0 + math.log(sum(math.exp(v-m0) for v in s0))
                 LLR174s.append(s1v - s0v)
-    #    print(cand.bounds.f0)
-    #    print([float(l) for l in LLR174s])
         return decode174_91(LLR174s)
 
 # ======================================================
