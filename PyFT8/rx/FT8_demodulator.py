@@ -19,27 +19,28 @@ import PyFT8.FT8_crc as crc
 class FT8Demodulator:
     def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=3, sigspec=FT8):
         # ft8c.f90 uses 4 hops per symbol and 2.5Hz fbins (2.5 bins per tone)
-        
         # ---- Configuration ----
         self.sample_rate = sample_rate
         self.fbins_pertone = fbins_pertone
         self.hops_persymb = hops_persymb
         self.sigspec = sigspec
-
         # ---- spectrum setup ----
-        self.spectrum = Spectrum(
-            sample_rate=self.sample_rate,
-            fbins_pertone=self.fbins_pertone,
-            hops_persymb=self.hops_persymb,
-            sigspec=self.sigspec
-        )
-
+        self.spectrum = Spectrum( fbins_pertone=self.fbins_pertone, hops_persymb=self.hops_persymb,
+                                  sample_rate=self.sample_rate, sigspec=self.sigspec)
         # ---- FFT precompute ----
         self.FFT_size = self.spectrum.FFT_size
         self._hop_size = int(self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb)) 
-
         # ---- Costas sync mask ----
-        self._csync = self._generate_csync()
+        costas = [3, 1, 4, 0, 6, 5, 2]
+        n = len(costas)
+        h = n * self.hops_persymb
+        w = n * self.fbins_pertone
+        csync = np.full((h, w), -1/(n - 1), np.float32)
+        for sym_idx, tone in enumerate(costas):
+            t0 = sym_idx * self.hops_persymb
+            f0 = tone * self.fbins_pertone
+            csync[t0:t0+self.hops_persymb, f0:f0+self.fbins_pertone] = 1.0
+        self._csync = csync
 
     # ======================================================
     # Candidate search
@@ -59,7 +60,6 @@ class FT8Demodulator:
                     t0_idx = t_idx
             if max_score > 0:
                 candidates.append(Candidate(self.sigspec, self.spectrum, t0_idx, f0_idx, max_score))
-
         # sort and de-duplicate
         candidates.sort(key=lambda c: -c.score)
         min_sep_fbins = 0.5 * self.sigspec.tones_persymb * self.fbins_pertone
@@ -90,32 +90,17 @@ class FT8Demodulator:
                 c.payload_bits = bits
                 out.append(FT8_decode(c, cyclestart_str))
                 continue
-
             bits, n_its = self._demodulate_llrldpc(c)
             if crc.check_crc(bits):
                 c.demodulated_by = f"LLR-LDPC ({n_its})"
                 c.payload_bits = bits
                 out.append(FT8_decode(c, cyclestart_str))
-                
         return out
 
     # ======================================================
     # Internals
     # ======================================================
-    def _generate_csync(self):
-        """Generate a single 7×7 Costas block mask"""
-        costas = [3, 1, 4, 0, 6, 5, 2]
-        n = len(costas)
-        h = n * self.hops_persymb
-        w = n * self.fbins_pertone
-        mask = np.full((h, w), -1/(n - 1), np.float32)
 
-        for sym_idx, tone in enumerate(costas):
-            t0 = sym_idx * self.hops_persymb
-            f0 = tone * self.fbins_pertone
-            mask[t0:t0+self.hops_persymb, f0:f0+self.fbins_pertone] = 1.0
-
-        return mask
 
     def _demodulate_max_power(self, cand: Candidate):
         pgrid = cand.power_grid
@@ -125,33 +110,43 @@ class FT8Demodulator:
         return bits
 
     def _demodulate_llrldpc(self, cand: Candidate):
-        #use sum of powers consistent with four2a.f90 e.g. 
-        #'s2(i) = abs(cs(graymap(i1), ks) + cs(graymap(i2), ks+1) + cs(graymap(i3), ks+2))'
+        # Initialize the list for LLR values
         LLR174s = []
         payload_idxs = list(range(7, 36)) + list(range(43, 72))
+        spectrum_complex = self.spectrum.complex  # Cached for faster access
+        # Loop through the payload symbols
         for sym in payload_idxs:
             t_idx = cand.bounds.t0_idx + sym * self.hops_persymb
-            if t_idx >= self.spectrum.complex.shape[0]:
+            if t_idx >= spectrum_complex.shape[0]:
                 break
-            pwrs = [0.0] * self.sigspec.tones_persymb
+            # Initialize power array
+            pwrs = np.zeros(self.sigspec.tones_persymb)
             sigma2 = 0.001
+            # Loop over hops
             for k in range(self.hops_persymb):
-                Z = self.spectrum.complex[t_idx + k, :]
+                Z = spectrum_complex[t_idx + k, :]
+                # Use vectorized summing for the frequency bins
                 for i in range(self.sigspec.tones_persymb):
                     f0 = cand.bounds.f0_idx + i * self.fbins_pertone
                     f1 = f0 + self.fbins_pertone
-                    pwrs[i] += np.sum(abs(Z[f0:f1])) ** 2
+                    pwrs[i] += np.sum(np.abs(Z[f0:f1])) ** 2
+                # Calculate sigma2 efficiently
                 left = Z[:cand.bounds.f0_idx]
-                right = Z[cand.bounds.f0_idx + self.sigspec.tones_persymb*self.fbins_pertone:]
+                right = Z[cand.bounds.f0_idx + self.sigspec.tones_persymb * self.fbins_pertone:]
                 if left.size + right.size:
                     sigma2 += np.median(np.abs(np.concatenate([left, right])) ** 2)
-            pwrs_scaled = [p/sigma2 for p in pwrs]
+            # Scale the power values
+            pwrs_scaled = pwrs / sigma2
+            # Efficient LLR computation
             for k in range(3):
                 s1 = [v for i, v in enumerate(pwrs_scaled) if kGRAY_MAP_TUPLES[i][k]]
                 s0 = [v for i, v in enumerate(pwrs_scaled) if not kGRAY_MAP_TUPLES[i][k]]
-                m1, m0 = max(s1), max(s0)
-                s1v = m1 + math.log(sum(math.exp(v-m1) for v in s1))
-                s0v = m0 + math.log(sum(math.exp(v-m0) for v in s0))
+                # Use log-sum-exp trick to avoid overflow and improve efficiency
+                m1 = max(s1)
+                m0 = max(s0)
+                s1v = m1 + math.log(np.sum(np.exp(np.array(s1) - m1)))
+                s0v = m0 + math.log(np.sum(np.exp(np.array(s0) - m0)))
+                # Append the LLR value
                 LLR174s.append(s1v - s0v)
         return decode174_91(LLR174s)
 
