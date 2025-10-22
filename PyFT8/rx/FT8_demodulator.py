@@ -83,72 +83,36 @@ class FT8Demodulator:
     # ======================================================
     def demodulate(self, candidates, cyclestart_str):
         out = []
+        payload_symb_idxs = list(range(7, 36)) + list(range(43, 72)) # move this to sigspec
         for c in candidates:
-            bits = self._demodulate_max_power(c)
+            # try getting payload symbols' tones & bits from max of each symbol's tone powers
+            pgrid = c.power_grid
+            tone_numbs = [int(np.argmax(pgrid[symbol_idx, :])) for symbol_idx in payload_symb_idxs]
+            bits = [b for tone_numb in tone_numbs for b in kGRAY_MAP_TUPLES[tone_numb]]
             if crc.check_crc(bits):
                 c.demodulated_by = 'Max power'
                 c.payload_bits = bits
                 out.append(FT8_decode(c, cyclestart_str))
                 continue
-            bits, n_its = self._demodulate_llrldpc(c)
+            # if that didn't pass crc, try getting llrs and feeding to ldpc
+            LLR174s = []
+            for symb_idx in payload_symb_idxs:
+                sigma2 = np.median(self.spectrum.power[symb_idx*self.hops_persymb,:]) 
+                tone_powers_scaled = pgrid[symb_idx, :] / sigma2
+                for k in range(3):
+                    s1 = [v for i, v in enumerate(tone_powers_scaled) if kGRAY_MAP_TUPLES[i][k]]
+                    s0 = [v for i, v in enumerate(tone_powers_scaled) if not kGRAY_MAP_TUPLES[i][k]]
+                    m1 = max(s1)
+                    m0 = max(s0)
+                    s1v = m1 + math.log(np.sum(np.exp(np.array(s1) - m1)))
+                    s0v = m0 + math.log(np.sum(np.exp(np.array(s0) - m0)))
+                    LLR174s.append(s1v - s0v)
+            bits, n_its = decode174_91(LLR174s)
             if crc.check_crc(bits):
                 c.demodulated_by = f"LLR-LDPC ({n_its})"
                 c.payload_bits = bits
                 out.append(FT8_decode(c, cyclestart_str))
         return out
-
-    # ======================================================
-    # Internals
-    # ======================================================
-
-
-    def _demodulate_max_power(self, cand: Candidate):
-        pgrid = cand.power_grid
-        payload_idxs = list(range(7, 36)) + list(range(43, 72))
-        symbols = [int(np.argmax(pgrid[i, :])) for i in payload_idxs]
-        bits = [b for sym in symbols for b in kGRAY_MAP_TUPLES[sym]]
-        return bits
-
-    def _demodulate_llrldpc(self, cand: Candidate):
-        # Initialize the list for LLR values
-        LLR174s = []
-        payload_idxs = list(range(7, 36)) + list(range(43, 72))
-        spectrum_complex = self.spectrum.complex  # Cached for faster access
-        # Loop through the payload symbols
-        for sym in payload_idxs:
-            t_idx = cand.bounds.t0_idx + sym * self.hops_persymb
-            if t_idx >= spectrum_complex.shape[0]:
-                break
-            # Initialize power array
-            pwrs = np.zeros(self.sigspec.tones_persymb)
-            sigma2 = 0.001
-            # Loop over hops
-            for k in range(self.hops_persymb):
-                Z = spectrum_complex[t_idx + k, :]
-                # Use vectorized summing for the frequency bins
-                for i in range(self.sigspec.tones_persymb):
-                    f0 = cand.bounds.f0_idx + i * self.fbins_pertone
-                    f1 = f0 + self.fbins_pertone
-                    pwrs[i] += np.sum(np.abs(Z[f0:f1])) ** 2
-                # Calculate sigma2 efficiently
-                left = Z[:cand.bounds.f0_idx]
-                right = Z[cand.bounds.f0_idx + self.sigspec.tones_persymb * self.fbins_pertone:]
-                if left.size + right.size:
-                    sigma2 += np.median(np.abs(np.concatenate([left, right])) ** 2)
-            # Scale the power values
-            pwrs_scaled = pwrs / sigma2
-            # Efficient LLR computation
-            for k in range(3):
-                s1 = [v for i, v in enumerate(pwrs_scaled) if kGRAY_MAP_TUPLES[i][k]]
-                s0 = [v for i, v in enumerate(pwrs_scaled) if not kGRAY_MAP_TUPLES[i][k]]
-                # Use log-sum-exp trick to avoid overflow and improve efficiency
-                m1 = max(s1)
-                m0 = max(s0)
-                s1v = m1 + math.log(np.sum(np.exp(np.array(s1) - m1)))
-                s0v = m0 + math.log(np.sum(np.exp(np.array(s0) - m0)))
-                # Append the LLR value
-                LLR174s.append(s1v - s0v)
-        return decode174_91(LLR174s)
 
 # ======================================================
 # FT8 Unpacking functions
