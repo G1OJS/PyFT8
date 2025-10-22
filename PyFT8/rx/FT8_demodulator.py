@@ -17,7 +17,7 @@ from PyFT8.FT8_constants import kGRAY_MAP_TUPLES
 import PyFT8.FT8_crc as crc
 
 class FT8Demodulator:
-    def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=3, sigspec=FT8):
+    def __init__(self, sample_rate=12000, fbins_pertone=4, hops_persymb=3, sigspec=FT8):
         # ft8c.f90 uses 4 hops per symbol and 2.5Hz fbins (2.5 bins per tone)
         # ---- Configuration ----
         self.sample_rate = sample_rate
@@ -33,14 +33,14 @@ class FT8Demodulator:
         # ---- Costas sync mask ----
         costas = [3, 1, 4, 0, 6, 5, 2]
         n = len(costas)
-        h = n * self.hops_persymb
-        w = n * self.fbins_pertone
+        h, w = n * self.hops_persymb, n * self.fbins_pertone
         csync = np.full((h, w), -1/(n - 1), np.float32)
         for sym_idx, tone in enumerate(costas):
             t0 = sym_idx * self.hops_persymb
             f0 = tone * self.fbins_pertone
             csync[t0:t0+self.hops_persymb, f0:f0+self.fbins_pertone] = 1.0
         self._csync = csync
+        self._csync_threshold = 1e10 * self.fbins_pertone * self.hops_persymb
 
     # ======================================================
     # Candidate search
@@ -58,7 +58,7 @@ class FT8Demodulator:
                 if(score > max_score):
                     max_score = score
                     t0_idx = t_idx
-            if max_score > 0:
+            if max_score > self._csync_threshold:
                 candidates.append(Candidate(self.sigspec, self.spectrum, t0_idx, f0_idx, max_score))
         # sort and de-duplicate
         candidates.sort(key=lambda c: -c.score)

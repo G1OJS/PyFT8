@@ -2,13 +2,10 @@ import numpy as np
 
 from PyFT8.FT8_constants import kNCW, kNRW, kMN, kNM, kN, kK, kM
 
-def fast_atanh(x, eps=1e-12):
-    x = np.clip(x, -1 + eps, 1 - eps)
-    return 0.5 * np.log((1 + x) / (1 - x))
-
 def safe_atanh(x, eps=1e-12):
     x = np.clip(x, -1 + eps, 1 - eps)
-    return np.arctanh(x)
+    return 0.5 * np.log((1 + x) / (1 - x))
+  #  return np.arctanh(x)
 
 def decode174_91(llr, maxiterations = 50, alpha = 1.0, nstall_max = 12, ncheck_max = 30):
     toc = np.zeros((7, kM), dtype=np.float32)       # message -> check messages
