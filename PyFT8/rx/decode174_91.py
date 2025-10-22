@@ -41,13 +41,13 @@ def decode174_91(llr):
         if ncheck == 0:
             message91 = cw.tolist()
             if(sum(message91)>0):
-                print(f"Success: {info}")
+                #print(f"Success: {info}")
                 return message91
 
         # check for stall condition
         ncnt = 0 if ncheck < nclast else ncnt +1
-        if (ncnt > 5 and it > 10 and ncheck > 15):
-            print(f"Failure: {info}")
+        if (ncnt > 5 and it > 5 and ncheck > 10):
+           # print(f"Failure: {info}")
             return []
 
         # compute toc = messages from variable node -> check node
@@ -106,6 +106,6 @@ def decode174_91(llr):
                 tov[kk, var] = alpha * new_val + (1 - alpha) * tov[kk, var]
 
     # failed to decode
-    print(f"Failure: {info}")
+   # print(f"Failure: {info}")
     return []
 
