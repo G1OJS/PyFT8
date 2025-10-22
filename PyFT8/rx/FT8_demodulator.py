@@ -40,7 +40,7 @@ class FT8Demodulator:
             f0 = tone * self.fbins_pertone
             csync[t0:t0+self.hops_persymb, f0:f0+self.fbins_pertone] = 1.0
         self._csync = csync
-        self._csync_threshold = 1e10 * self.fbins_pertone * self.hops_persymb
+        self._csync_threshold = 1e9 * self.fbins_pertone * self.hops_persymb
 
     # ======================================================
     # Candidate search

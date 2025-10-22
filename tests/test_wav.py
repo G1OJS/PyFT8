@@ -13,7 +13,7 @@ if audio.ndim > 1:
     audio = np.mean(audio, axis=1)  # ensure mono
 
 # --- Init demodulator and spectrum ---
-demod = FT8Demodulator(sample_rate=sr, fbins_pertone=2, hops_persymb=2)
+demod = FT8Demodulator(sample_rate=sr, fbins_pertone=3, hops_persymb=3)
 demod.spectrum.feed_audio(audio)
 
 # --- Optional visualisation ---

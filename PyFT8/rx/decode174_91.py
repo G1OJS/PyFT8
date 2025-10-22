@@ -7,7 +7,7 @@ def safe_atanh(x, eps=1e-12):
     return 0.5 * np.log((1 + x) / (1 - x))
   #  return np.arctanh(x)
 
-def decode174_91(llr, maxiterations = 50, alpha = 1.0, nstall_max = 12, ncheck_max = 30):
+def decode174_91(llr, maxiterations = 50, alpha = 0.05, gamma = 0.03, nstall_max = 12, ncheck_max = 30):
     toc = np.zeros((7, kM), dtype=np.float32)       # message -> check messages
     tanhtoc = np.zeros((7, kM), dtype=np.float64)
     tov = np.zeros((kNCW, kN), dtype=np.float32)    # check -> message messages
@@ -15,7 +15,7 @@ def decode174_91(llr, maxiterations = 50, alpha = 1.0, nstall_max = 12, ncheck_m
     info = []                           # record the progression of ncheck
     zn = np.copy(llr)                   # working copy of llrs
     rng = np.max(llr) - np.min(llr)     # indication of scale of llrs
-    mult = rng * 5000 / 200000          # empricical multiplier for tov, proportional to llr scale
+    mult = rng * gamma          # empricical multiplier for tov, proportional to llr scale
     for it in range(maxiterations + 1):
         for i in range(kN):
             zn[i] += mult*sum(tov[:,i])
