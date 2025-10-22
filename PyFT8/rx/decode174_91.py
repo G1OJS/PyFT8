@@ -8,17 +8,23 @@ def safe_atanh(x, eps=1e-12):
     return np.arctanh(x)
 
 def decode174_91(llr):
-    maxiterations = 5
+    maxiterations = 70
     llr = np.asarray(llr, dtype=float)
     toc = np.zeros((7, kM))          # message -> check messages
     tanhtoc = np.zeros((7, kM))
     tov = np.zeros((kNCW, kN))        # check->message messages
 
+    nclast = 0
+    nstall = 0
+
     info = []
+    zn = np.copy(llr)
+    rng = np.max(llr) - np.min(llr)
+    mult = rng * 5000 / 200000
     for it in range(maxiterations + 1):
-        zn = np.copy(llr)
-        zn += tov.sum(axis=0)
-        
+        for i in range(kN):
+            zn[i] += mult*sum(tov[:,i])
+
         cw = (zn > 0).astype(int)
         # syndrome
         ncheck = 0
@@ -37,8 +43,16 @@ def decode174_91(llr):
         if ncheck == 0:
             message91 = cw.tolist()
             if(sum(message91)>0):
-                #print(f"Success: {info}")
-                return message91
+               # print(f"Success: {info}")
+                return message91, it
+
+        # early exit condition
+        nstall = 0 if ncheck < nclast else nstall +1
+        nclast = ncheck
+        if(nstall > 15 or ncheck > 20):
+         #   print(f"Failure: {info}")
+            return [], it
+        
 
         # compute toc = messages from variable node -> check node
         # For each check node j, for each connected variable i
@@ -96,6 +110,6 @@ def decode174_91(llr):
                 tov[kk, var] = alpha * new_val + (1 - alpha) * tov[kk, var]
 
     # failed to decode
-    #print(f"Failure: {info}")
-    return []
+   # print(f"Failure: {info}")
+    return [], it
 

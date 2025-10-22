@@ -82,16 +82,16 @@ class FT8Demodulator:
     def demodulate(self, candidates, cyclestart_str):
         out = []
         for c in candidates:
-           # bits = self._demodulate_max_power(c)
-           # if crc.check_crc(bits):
-           #     c.demodulated_by = 'Max power'
-           #     c.payload_bits = bits
-           #     out.append(FT8_decode(c, cyclestart_str))
-           #     continue
-
-            bits = self._demodulate_llrldpc(c)
+            bits = self._demodulate_max_power(c)
             if crc.check_crc(bits):
-                c.demodulated_by = "LLR-LDPC"
+                c.demodulated_by = 'Max power'
+                c.payload_bits = bits
+                out.append(FT8_decode(c, cyclestart_str))
+                continue
+
+            bits, n_its = self._demodulate_llrldpc(c)
+            if crc.check_crc(bits):
+                c.demodulated_by = f"LLR-LDPC ({n_its})"
                 c.payload_bits = bits
                 out.append(FT8_decode(c, cyclestart_str))
                 

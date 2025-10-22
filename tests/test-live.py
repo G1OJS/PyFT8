@@ -130,7 +130,7 @@ while True:
     print(f"{tstrNow()} Demodulator has read audio file")
     demod.spectrum.feed_audio(audio)
     
-    candidates = demod.find_candidates(topN=40)
+    candidates = demod.find_candidates(topN=30)
     print(f"Found {len(candidates)} candidates")
     wf.update_main(candidates=candidates, cyclestart_str = cyclestart_str)
 

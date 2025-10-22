@@ -26,7 +26,7 @@ print(f"Found {len(candidates)} candidates")
 
 # --- Draw candidate boxes on waterfall ---
 wf.update_main(candidates=candidates)
-wf.show_zoom(candidates=candidates[:5])
+#wf.show_zoom(candidates=candidates[:5])
 
 # --- Demodulate each candidate ---
 print("Demodulating")
