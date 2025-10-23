@@ -21,28 +21,30 @@ def crc14(bits77_int: int) -> int:
             reg_int ^= poly
     return reg_int
 
-def BElst_to_int(bits_BElst):
-    """bits is LSB-first: sum(bits[i] << i)."""
-    n = 0
-    for i, b in enumerate(bits_BElst):
-        n |= (int(b) & 1) << i
-    return n
-
-def int_to_BElst(n, width):
-    """Return [b0, b1, ..., b(width-1)] where b0 is LSB of n."""
-    bits_BElst = [(n >> i) & 1 for i in range(width)]
-    return bits_BElst
-
-def check_crc(bits91_BElst):
-    """Return True if the 91-bit message (77 data + 14 CRC) passes WSJT-X CRC-14."""
-    msg_bits_LElst = bits91_BElst[0:77][::-1]
-    crc_bits_LElst = bits91_BElst[77:91][::-1]  
-    new_crc_LElst = int_to_BElst(crc14(BElst_to_int(msg_bits_LElst)),14)
-    return np.array_equal(new_crc_LElst, crc_bits_LElst)
 
 def append_crc(bits77_int):
     """Append 14-bit WSJT-X CRC to a 77-bit message, returning a 91-bit list."""
     bits14_int = crc14(bits77_int)
     bits91_int = (bits77_int << 14) | bits14_int
-    return bits91_int, bits14_int
+    return bits91_int
 
+def check_crc(bits91_int):
+    """Return True if the 91-bit message (77 data + 14 CRC) passes WSJT-X CRC-14."""
+    bits14_int = bits91_int & 0b11111111111111
+    bits77_int = bits91_int >> 14
+    return bits14_int == crc14(bits77_int)
+
+def int_to_bitsLE(n, width):
+    """Return [b(width-1), ..., b0], MSB-first."""
+    return [ (n >> (width - 1 - i)) & 1 for i in range(width) ]
+
+def bitsLE_to_int(bits):
+    """bits is MSB-first."""
+    n = 0
+    for b in bits:
+        n = (n << 1) | (b & 1)
+    return n
+
+def verify_crc_code():
+    bits77_int = 0b11100001111111000101001101010111000100000011110100001111000111001010001010001
+    print(f"CRC loop test: check_crc(append_crc(bits77_int)) = { check_crc(append_crc(bits77_int))}")

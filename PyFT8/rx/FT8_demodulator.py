@@ -89,7 +89,7 @@ class FT8Demodulator:
             pgrid = c.power_grid
             tone_numbs = [int(np.argmax(pgrid[symbol_idx, :])) for symbol_idx in payload_symb_idxs]
             bits = [b for tone_numb in tone_numbs for b in kGRAY_MAP_TUPLES[tone_numb]]
-            if crc.check_crc(bits):
+            if crc.check_crc(crc.bitsLE_to_int(bits[0:91])):
                 c.demodulated_by = 'Max power'
                 c.payload_bits = bits
                 out.append(FT8_decode(c, cyclestart_str))
@@ -108,10 +108,11 @@ class FT8Demodulator:
                     s0v = m0 + math.log(np.sum(np.exp(np.array(s0) - m0)))
                     LLR174s.append(s1v - s0v)
             bits, n_its = decode174_91(LLR174s)
-            if crc.check_crc(bits):
-                c.demodulated_by = f"LLR-LDPC ({n_its})"
-                c.payload_bits = bits
-                out.append(FT8_decode(c, cyclestart_str))
+            if(len(bits) >0):
+                if crc.check_crc(crc.bitsLE_to_int(bits[0:91])):
+                    c.demodulated_by = f"LLR-LDPC ({n_its})"
+                    c.payload_bits = bits
+                    out.append(FT8_decode(c, cyclestart_str))
         return out
 
 # ======================================================
