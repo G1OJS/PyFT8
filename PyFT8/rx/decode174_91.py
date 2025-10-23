@@ -7,7 +7,7 @@ def safe_atanh(x, eps=1e-12):
     return 0.5 * np.log((1 + x) / (1 - x))
   #  return np.arctanh(x)
 
-def decode174_91(llr, maxiterations = 50, alpha = 0.01, gamma = 0.03, nstall_max = 22, ncheck_max = 60):
+def decode174_91(llr, maxiterations = 50, alpha = 0.01, gamma = 0.03, nstall_max = 15, ncheck_max = 60):
     toc = np.zeros((7, kM), dtype=np.float32)       # message -> check messages
     tanhtoc = np.zeros((7, kM), dtype=np.float64)
     tov = np.zeros((kNCW, kN), dtype=np.float32)    # check -> message messages
@@ -46,7 +46,9 @@ def decode174_91(llr, maxiterations = 50, alpha = 0.01, gamma = 0.03, nstall_max
         # that correspond to other checks connected to variable ibj (connections specified by kMN[ibj, :])
         for j in range(kM):
             for i_local in range(kNRW[j]):    
-                ibj = int(kNM[j, i_local])   
+                ibj = int(kNM[j, i_local])
+                if(ibj <0):
+                    continue
                 toc[i_local, j] = zn[ibj]
                 for kk in range(kNCW):
                     chknum = kMN[ibj, kk]
@@ -68,8 +70,7 @@ def decode174_91(llr, maxiterations = 50, alpha = 0.01, gamma = 0.03, nstall_max
                     continue
                 ichk = int(chknum)
                 # build mask over the neighbours of check ichk excluding current variable 'var'
-                neigh_count = kNRW[ichk]
-                neigh_vars = kNM[ichk, :neigh_count]
+                neigh_vars = kNM[ichk, : kNRW[ichk]]
                 neigh_vars = neigh_vars[(neigh_vars >=0)]
                 neigh_count = len(neigh_vars)
                 mask = (neigh_vars != variable_node)
