@@ -1,13 +1,13 @@
 import numpy as np
 
-def bits_to_int(bits):
+def BElst_to_int(bits):
     """bits is LSB-first: sum(bits[i] << i)."""
     n = 0
     for i, b in enumerate(bits):
         n |= (int(b) & 1) << i
     return n
 
-def int_to_bits(n, width):
+def int_to_BElst(n, width):
     """Return [b0, b1, ..., b(width-1)] where b0 is LSB of n."""
     return [(n >> i) & 1 for i in range(width)]
 
@@ -198,40 +198,41 @@ def decode174_91(llr, maxiterations = 50, alpha = 0.05, gamma = 0.03, nstall_max
    # print(f"Failure: {info}")
     return [], it
 
-def crc14(bits77: int) -> int:
+def crc14(bits77_int: int) -> int:
     # Generator polynomial (0x2757), width 14, init=0, refin=false, refout=false
     poly = 0x2757
     width = 14
     mask = (1 << width) - 1
     # Pad to 96 bits (77 + 14 + 5)
     nbits = 96
-    reg = 0
+    reg_int = 0
     for i in range(nbits):
         # bits77 is expected MSB-first (bit 76 first)
-        inbit = ((bits77 >> (76 - i)) & 1) if i < 77 else 0
-        bit14 = (reg >> (width - 1)) & 1
-        reg = ((reg << 1) & mask) | inbit
+        inbit = ((bits77_int >> (76 - i)) & 1) if i < 77 else 0
+        bit14 = (reg_int >> (width - 1)) & 1
+        reg_int = ((reg_int << 1) & mask) | inbit
         if bit14:
-            reg ^= poly
-    return reg
+            reg_int ^= poly
+    return reg_int
 
-def bits_to_int(bits):
+def BElst_to_int(bits_BElst):
     """bits is LSB-first: sum(bits[i] << i)."""
     n = 0
-    for i, b in enumerate(bits):
+    for i, b in enumerate(bits_BElst):
         n |= (int(b) & 1) << i
     return n
 
-def int_to_bits(n, width):
+def int_to_BElst(n, width):
     """Return [b0, b1, ..., b(width-1)] where b0 is LSB of n."""
-    return [(n >> i) & 1 for i in range(width)]
+    bits_BElst = [(n >> i) & 1 for i in range(width)]
+    return bits_BElst
 
 def check_crc(bits91_BElst):
     """Return True if the 91-bit message (77 data + 14 CRC) passes WSJT-X CRC-14."""
-    msg_bits_BElst = bits91_BElst[0:77][::-1]
-    crc_bits_BElst = bits91_BElst[77:91][::-1]
-    new_crc_BElst = int_to_bits(crc14(bits_to_int(msg_bits_BElst)),14)
-    return np.array_equal(new_crc_BElst, crc_bits_BElst)
+    msg_bits_LElst = bits91_BElst[0:77][::-1]
+    crc_bits_LElst = bits91_BElst[77:91][::-1]  
+    new_crc_LElst = int_to_BElst(crc14(BElst_to_int(msg_bits_LElst)),14)
+    return np.array_equal(new_crc_LElst, crc_bits_LElst)
 
 import matplotlib.pyplot as plt
 global ax
@@ -254,7 +255,7 @@ bits174_int = ldpc_encode(bits91_int)
 print(f"With parity:\n{bits174_int:b}")
 
 #simulate LLRs
-bits174_BElst = int_to_bits(bits174_int,174) #lsb first
+bits174_BElst = int_to_BElst(bits174_int,174) #lsb first
 llr = 200000 * np.array(bits174_BElst) - 100000  # LLRs for each bit (encoded message)
 llr = llr[::-1]
 ax.plot(llr, color='black', linewidth = 2)
@@ -263,10 +264,10 @@ llr = add_noise_to_llr(llr)
 # Decode the message using LDPC
 bits174_dec_BElst, it = decode174_91(llr) #lsb first
 bits91_dec_BElst = bits174_dec_BElst[0:91] #lsb first
-print(f"bits for crc check:\n{(bits_to_int(bits91_dec_BElst[::-1])):b}")
+print(f"bits for crc check:\n{(BElst_to_int(bits91_dec_BElst[::-1])):b}")
 # check crc
 if check_crc(bits91_dec_BElst):
-    print(f"Decoded bits91:\n{(bits_to_int(bits91_dec_BElst[::-1])):b}")
+    print(f"Decoded bits91:\n{(BElst_to_int(bits91_dec_BElst[::-1])):b}")
 else:
     print("Failed to decode")
 
