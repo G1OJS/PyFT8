@@ -1,13 +1,19 @@
+# Takes an example 91 bits message ('VK1ABC VK3JPK QF22', including crc),
+# adds parity bits to make 174 bits, simulates 174 Log Likelyhood Ratios
+# with added noise, and runs an LDPC decode algorithm and crc check to recover
+# the original message. A graph shows how the LDPC decoder converges the LLRs
+# onto the original noise-free version.
+
 import numpy as np
 
-def BElst_to_int(bits):
+def BigEndian_list_to_int(bits):
     """bits is LSB-first: sum(bits[i] << i)."""
     n = 0
     for i, b in enumerate(bits):
         n |= (int(b) & 1) << i
     return n
 
-def int_to_BElst(n, width):
+def int_toBigEndian_list_(n, width):
     """Return [b0, b1, ..., b(width-1)] where b0 is LSB of n."""
     return [(n >> i) & 1 for i in range(width)]
 
@@ -215,33 +221,35 @@ def crc14(bits77_int: int) -> int:
             reg_int ^= poly
     return reg_int
 
-def BElst_to_int(bits_BElst):
+def BigEndian_list_to_int(bitsBigEndian_list_):
     """bits is LSB-first: sum(bits[i] << i)."""
     n = 0
-    for i, b in enumerate(bits_BElst):
+    for i, b in enumerate(bitsBigEndian_list_):
         n |= (int(b) & 1) << i
     return n
 
-def int_to_BElst(n, width):
+def int_toBigEndian_list_(n, width):
     """Return [b0, b1, ..., b(width-1)] where b0 is LSB of n."""
-    bits_BElst = [(n >> i) & 1 for i in range(width)]
-    return bits_BElst
+    bitsBigEndian_list_ = [(n >> i) & 1 for i in range(width)]
+    return bitsBigEndian_list_
 
-def check_crc(bits91_BElst):
+def check_crc(bits91BigEndian_list_):
     """Return True if the 91-bit message (77 data + 14 CRC) passes WSJT-X CRC-14."""
-    msg_bits_LElst = bits91_BElst[0:77][::-1]
-    crc_bits_LElst = bits91_BElst[77:91][::-1]  
-    new_crc_LElst = int_to_BElst(crc14(BElst_to_int(msg_bits_LElst)),14)
-    return np.array_equal(new_crc_LElst, crc_bits_LElst)
+    msg_bits_LittleEndian_list = bits91BigEndian_list_[0:77][::-1]
+    crc_bits_LittleEndian_list = bits91BigEndian_list_[77:91][::-1]  
+    new_crc_LittleEndian_list = int_toBigEndian_list_(crc14(BigEndian_list_to_int(msg_bits_LittleEndian_list)),14)
+    return np.array_equal(new_crc_LittleEndian_list, crc_bits_LittleEndian_list)
 
 import matplotlib.pyplot as plt
 global ax
 fig, ax = plt.subplots()
+ax.set_xlabel("Bit number")
+ax.set_ylabel("LLR value")
 
-snr_db = 9
+snr = 5
 
 def add_noise_to_llr(llr):
-    snr_linear = 10 ** (snr_db / 10)
+    snr_linear = 10 ** (snr / 10)
     noise_std = np.std(llr) / np.sqrt(snr_linear)
     noise = np.random.normal(0, noise_std, size=llr.shape)
     llr_noisy = llr + noise
@@ -255,20 +263,23 @@ bits174_int = ldpc_encode(bits91_int)
 print(f"With parity:\n{bits174_int:b}")
 
 #simulate LLRs
-bits174_BElst = int_to_BElst(bits174_int,174) #lsb first
-llr = 200000 * np.array(bits174_BElst) - 100000  # LLRs for each bit (encoded message)
+bits174BigEndian_list_ = int_toBigEndian_list_(bits174_int,174)
+llr = 20 * np.array(bits174BigEndian_list_) - 10  # LLRs for each bit (encoded message)
 llr = llr[::-1]
 ax.plot(llr, color='black', linewidth = 2)
 llr = add_noise_to_llr(llr)
+print(f"LLRs with noise (LSB first):\n"+','.join([f"{ll:.1f} " for ll in llr]))
 
 # Decode the message using LDPC
-bits174_dec_BElst, it = decode174_91(llr) #lsb first
-bits91_dec_BElst = bits174_dec_BElst[0:91] #lsb first
-print(f"bits for crc check:\n{(BElst_to_int(bits91_dec_BElst[::-1])):b}")
+bits174_decBigEndian_list_, it = decode174_91(llr)
+bits91_decBigEndian_list_ = bits174_decBigEndian_list_[0:91]
+print(f"Decoded bits for crc check:\n{(BigEndian_list_to_int(bits91_decBigEndian_list_[::-1])):b}")
 # check crc
-if check_crc(bits91_dec_BElst):
-    print(f"Decoded bits91:\n{(BElst_to_int(bits91_dec_BElst[::-1])):b}")
+if check_crc(bits91_decBigEndian_list_):
+    print(f"Decoded bits91:\n{(BigEndian_list_to_int(bits91_decBigEndian_list_[::-1])):b}")
+    ax.set_title(f"LDPC LLRs with {snr}dB snr recovered in {it} iterations")
 else:
     print("Failed to decode")
+    ax.set_title(f"LDPC LLRs with {snr}dB snr not recovered")
 
 plt.show()
