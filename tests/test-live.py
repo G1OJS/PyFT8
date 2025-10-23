@@ -116,8 +116,8 @@ def reset_compare():
     with open(PyFT8_file, 'w') as f:
         f.write("")
 
-demod = FT8Demodulator(sample_rate=12000, fbins_pertone=4, hops_persymb=3)
-wf = Waterfall(demod.spectrum, f1=4000)
+demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
+wf = Waterfall(demod.spectrum, f1=3500)
 
 no_decodes_before = True
 while True:
