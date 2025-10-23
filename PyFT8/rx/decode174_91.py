@@ -7,7 +7,7 @@ def safe_atanh(x, eps=1e-12):
     return 0.5 * np.log((1 + x) / (1 - x))
   #  return np.arctanh(x)
 
-def decode174_91(llr, maxiterations = 50, alpha = 0.05, gamma = 0.03, nstall_max = 12, ncheck_max = 30):
+def decode174_91(llr, maxiterations = 50, alpha = 0.01, gamma = 0.03, nstall_max = 22, ncheck_max = 60):
     toc = np.zeros((7, kM), dtype=np.float32)       # message -> check messages
     tanhtoc = np.zeros((7, kM), dtype=np.float64)
     tov = np.zeros((kNCW, kN), dtype=np.float32)    # check -> message messages
@@ -24,6 +24,7 @@ def decode174_91(llr, maxiterations = 50, alpha = 0.05, gamma = 0.03, nstall_max
         ncheck = 0                      # syndrome: sum variable nodes participating in this check.
         for chk in range(kM):
             vars_idx = kNM[chk, :kNRW[chk]]
+            vars_idx = vars_idx[(vars_idx >=0)]
             if( int(np.sum(cw[vars_idx]) % 2)):
                 ncheck += 1
 
@@ -49,7 +50,7 @@ def decode174_91(llr, maxiterations = 50, alpha = 0.05, gamma = 0.03, nstall_max
                 toc[i_local, j] = zn[ibj]
                 for kk in range(kNCW):
                     chknum = kMN[ibj, kk]
-                    if chknum == 0 or chknum == (j + 1): # kMN = 0 means "skip this check" (true?)
+                    if chknum == -1 or chknum == (j + 1): # kMN = -1 means "skip this check" 
                         continue
                     toc[i_local, j] -= tov[kk, ibj]
 
@@ -62,13 +63,15 @@ def decode174_91(llr, maxiterations = 50, alpha = 0.05, gamma = 0.03, nstall_max
         for variable_node in range(kN):
             for kk in range(kNCW):
                 chknum = kMN[variable_node, kk]
-                if chknum == 0:
+                if chknum == -1:                    # kMN = -1 means "skip this check"
                     tov[kk, variable_node] = 0.0
                     continue
                 ichk = int(chknum)
                 # build mask over the neighbours of check ichk excluding current variable 'var'
                 neigh_count = kNRW[ichk]
-                neigh_vars = kNM[ichk, :neigh_count]  
+                neigh_vars = kNM[ichk, :neigh_count]
+                neigh_vars = neigh_vars[(neigh_vars >=0)]
+                neigh_count = len(neigh_vars)
                 mask = (neigh_vars != variable_node)
                 if mask.sum() == 0:
                     Tmn = 0.0

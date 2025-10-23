@@ -72,7 +72,7 @@ def decode174_91(llr, maxiterations = 50, alpha = 0.05, gamma = 0.03, nstall_max
                 toc[i_local, j] = zn[ibj]
                 for kk in range(kNCW):
                     chknum = kMN[ibj, kk]
-                    if chknum == 0 or chknum == (j + 1): # kMN = 0 means "skip this check" (true?)
+                    if chknum == -1 or chknum == (j + 1): # kMN = 0 means "skip this check" (true?)
                         continue
                     toc[i_local, j] -= tov[kk, ibj]
 
