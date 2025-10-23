@@ -134,6 +134,7 @@ def decode174_91(llr, maxiterations = 50, alpha = 0.05, gamma = 0.03, nstall_max
         for i in range(kN):
             zn[i] += mult*sum(tov[:,i])
 
+        ax.plot(zn)
         cw = (zn > 0).astype(int)
         ncheck = 0                      # syndrome: sum variable nodes participating in this check.
         for chk in range(kM):
@@ -145,14 +146,14 @@ def decode174_91(llr, maxiterations = 50, alpha = 0.05, gamma = 0.03, nstall_max
         if ncheck == 0:
             message91 = cw.tolist()
             if(sum(message91)>0):
-               # print(f"Success: {info}")
+                print(f"Success: {info}")
                 return message91, it
 
         nstall = 0 if ncheck < nclast else nstall +1
         nclast = ncheck
         if(nstall > nstall_max or ncheck > ncheck_max):         # early exit condition
          #   print(f"Failure: {info}")
-            return [], -1
+            return [], it
         
         # compute toc = messages from variable node -> check node
         # For each check node j, for each connected variable i subtract messages from checks (tov)
@@ -195,49 +196,78 @@ def decode174_91(llr, maxiterations = 50, alpha = 0.05, gamma = 0.03, nstall_max
 
     # failed to decode
    # print(f"Failure: {info}")
-    return [], -1
+    return [], it
 
+def crc14(bits77: int) -> int:
+    # Generator polynomial (0x2757), width 14, init=0, refin=false, refout=false
+    poly = 0x2757
+    width = 14
+    mask = (1 << width) - 1
+    # Pad to 96 bits (77 + 14 + 5)
+    nbits = 96
+    reg = 0
+    for i in range(nbits):
+        # bits77 is expected MSB-first (bit 76 first)
+        inbit = ((bits77 >> (76 - i)) & 1) if i < 77 else 0
+        bit14 = (reg >> (width - 1)) & 1
+        reg = ((reg << 1) & mask) | inbit
+        if bit14:
+            reg ^= poly
+    return reg
 
-def simulate_llrs(bits174_lst, snr):
-    #llr = [168264.8125, 168263.609375, 168264.609375, -213171.40625, -213172.25, -213172.46875, -171861.40625, 171850.109375, 171850.109375, 247488.90625, 247488.875, 247489.234375, 178312.328125, 178310.859375, -178315.453125, -240442.484375, -240446.125, 240442.484375, -284924.09375, 284913.40625, -284892.21875, -231327.5625, 231327.625, 231329.484375, -284218.75, 284218.65625, -284219.875, 310894.5625, -310894.5625, 310897.53125, 293391.40625, 293391.375, -293394.375, -211995.3125, -211993.015625, 211993.015625, -346274.71875, -346274.6875, -346284.0, -284695.5625, -284695.5625, -284725.5625, 267244.53125, 267253.65625, 267244.78125, 213010.984375, -213019.46875, 213011.0, -208873.921875, -208873.953125, -208873.921875, -154840.578125, 154845.8125, 154846.28125, 145890.640625, 145898.734375, -145892.421875, -133038.546875, -133038.578125, 133044.546875, 184216.0, 184212.078125, -184216.25, -238033.09375, 238026.484375, -238026.546875, 135219.515625, -135218.203125, -135218.015625, -126881.1640625, 126881.1640625, -126881.4296875, 171710.640625, -171711.359375, -171710.375, -184266.5625, 184232.484375, -184232.484375, -132071.4375, 132063.0, 132063.0, 189981.1875, 189981.484375, -189981.171875, -120264.765625, 120261.5859375, 120265.7890625, -174743.078125, -174743.078125, 174753.890625, -204370.25, -204370.21875, 204371.5625, 280698.75, -280702.53125, 280698.71875, -292128.875, 292104.9375, -292104.9375, 234222.53125, 234222.53125, 234222.53125, 212478.203125, 212479.453125, -212480.09375, 112607.3828125, -112607.3984375, 112607.4296875, 131780.765625, 131780.53125, -131780.953125, -151043.3125, -151040.59375, -151041.671875, -190148.21875, 190148.21875, 190148.21875, 325452.65625, 325450.25, 325450.1875, 279530.8125, 279519.40625, 279519.40625, -160533.921875, 160528.828125, -160529.4375, 241812.828125, -241819.203125, -241818.3125, 118475.6484375, -118475.46875, 118477.171875, 172311.09375, 172311.09375, -172312.21875, -134389.96875, 134393.953125, 134389.953125, -101325.9765625, 101313.4375, 101320.4609375, 235440.734375, -235450.8125, -235450.796875, 113075.703125, 113074.3046875, -113074.59375, -191349.484375, 191349.515625, -191355.03125, -246841.234375, -246834.6875, -246841.859375, -227833.171875, -227829.5625, -227832.078125, -271556.0, -271554.6875, -271574.71875, -208866.421875, 208872.296875, 208873.859375, 277496.84375, -277492.03125, -277473.75, -241047.84375, 241049.578125, -241047.84375, -216455.3125, -216455.4375, -216455.3125, -119437.4921875, -119430.40625, 119432.3203125]
-    #simulate LLRs
-    snr = 3.5
-    llr = 200000 * np.array(bits174_lst) - 100000  # LLRs for each bit (encoded message)
-    llr = llr[::-1]
-    snr_linear = 10 ** (snr / 10)
+def bits_to_int(bits):
+    """bits is LSB-first: sum(bits[i] << i)."""
+    n = 0
+    for i, b in enumerate(bits):
+        n |= (int(b) & 1) << i
+    return n
+
+def int_to_bits(n, width):
+    """Return [b0, b1, ..., b(width-1)] where b0 is LSB of n."""
+    return [(n >> i) & 1 for i in range(width)]
+
+def check_crc(bits91_BElst):
+    """Return True if the 91-bit message (77 data + 14 CRC) passes WSJT-X CRC-14."""
+    msg_bits_BElst = bits91_BElst[0:77][::-1]
+    crc_bits_BElst = bits91_BElst[77:91][::-1]
+    new_crc_BElst = int_to_bits(crc14(bits_to_int(msg_bits_BElst)),14)
+    return np.array_equal(new_crc_BElst, crc_bits_BElst)
+
+import matplotlib.pyplot as plt
+global ax
+fig, ax = plt.subplots()
+
+snr_db = 9
+
+def add_noise_to_llr(llr):
+    snr_linear = 10 ** (snr_db / 10)
     noise_std = np.std(llr) / np.sqrt(snr_linear)
     noise = np.random.normal(0, noise_std, size=llr.shape)
     llr_noisy = llr + noise
-    return llr, llr_noisy
+    return llr_noisy
 
-def run_trial(bits, snr):
-    llr, llr_noisy = simulate_llrs(bits, snr)
-    dec, it = decode174_91(llr_noisy, maxiterations = 500, alpha = 0.05, gamma = 0.03, nstall_max = 22, ncheck_max = 60)
-    decoded_message = bits_to_int(dec[::-1])
- #   if(len(dec)> 1):
- #       print(f"Decoded in {it} iterations")
- #       print(f"Decoded bits174:\n{decoded_message:b}")
- #   else:
- #       print("Failed")
-    return it
+# 91 bits for message 'VK1ABC VK3JPK QF22' (including crc)
+bits91_int = 0b1110000111111100010100110101011100010000001111010000111100011100101000101000100111100110010
+print(f"Original message:\n{bits91_int:b}")
+# Encode the message (add parity)
+bits174_int = ldpc_encode(bits91_int)
+print(f"With parity:\n{bits174_int:b}")
 
-def generate_bits():
-    # 91 bits for message 'VK1ABC VK3JPK QF22' (including crc)
-    bits91_int = 0b1110000111111100010100110101011100010000001111010000111100011100101000101000100111100110010
-    print(f"Original message:\n{bits91_int:b}")
-    # Encode the message (add parity)
-    bits174_int = ldpc_encode(bits91_int)
-    print(f"With parity:\n{bits174_int:b}")
-    return int_to_bits(bits174_int,174)
+#simulate LLRs
+bits174_BElst = int_to_bits(bits174_int,174) #lsb first
+llr = 200000 * np.array(bits174_BElst) - 100000  # LLRs for each bit (encoded message)
+llr = llr[::-1]
+ax.plot(llr, color='black', linewidth = 2)
+llr = add_noise_to_llr(llr)
 
-bits = generate_bits()
-snrs = [1,2,3,4,5,6,7,8]
-ntrials = 10
-results = np.zeros((len(snrs),ntrials))
-for i, snr in enumerate(snrs):
-    for j in range(ntrials):
-        its = run_trial(bits, snr)
-        results[i,j] = its
-        print(snr, its)
+# Decode the message using LDPC
+bits174_dec_BElst, it = decode174_91(llr) #lsb first
+bits91_dec_BElst = bits174_dec_BElst[0:91] #lsb first
+print(f"bits for crc check:\n{(bits_to_int(bits91_dec_BElst[::-1])):b}")
+# check crc
+if check_crc(bits91_dec_BElst):
+    print(f"Decoded bits91:\n{(bits_to_int(bits91_dec_BElst[::-1])):b}")
+else:
+    print("Failed to decode")
 
-print(results)
+plt.show()
