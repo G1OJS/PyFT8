@@ -12,6 +12,7 @@ kNRW = np.array([7, 6, 6, 6, 7, 6, 7, 6, 6, 7, 6, 6, 7, 7, 6, 6, 6, 7, 6, 7, 6, 
 kN = 174
 kK = 91
 kM = kN - kK
+print(kNM.shape)
 
 from PyFT8.FT8_crc import check_crc
 
