@@ -1,7 +1,6 @@
-# uses zero-based kNM and kMN arrays but clipped to zero, so the zeros
-# interpreted as sentinels in the fortran code are here interpreted as
-# pointers to the first element of the arrays - which is wrong, but this
-# decodes more signals and faster ....
+# First working version of this code using faithfully reproduced and
+# interpreted arrays from the f90 code. The kMN and kNM are 1-based, as
+# per the f90 code, and the looked-up values are interpreted accordingly
 
 import numpy as np
 
