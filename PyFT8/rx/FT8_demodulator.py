@@ -13,7 +13,6 @@ import numpy as np
 from PyFT8.datagrids import Spectrum, Bounds, Candidate
 from PyFT8.signaldefs import FT8
 from PyFT8.rx.decode174_91 import decode174_91
-from PyFT8.FT8_constants import kGRAY_MAP_TUPLES
 import PyFT8.FT8_crc as crc
 
 class FT8Demodulator:
@@ -88,7 +87,7 @@ class FT8Demodulator:
             # try getting payload symbols' tones & bits from max of each symbol's tone powers
             pgrid = c.power_grid
             tone_numbs = [int(np.argmax(pgrid[symbol_idx, :])) for symbol_idx in payload_symb_idxs]
-            bits = [b for tone_numb in tone_numbs for b in kGRAY_MAP_TUPLES[tone_numb]]
+            bits = [b for tone_numb in tone_numbs for b in FT8.gray_map_tuples[tone_numb]]
             if crc.check_crc(crc.bitsLE_to_int(bits[0:91])):
                 c.demodulated_by = 'Max power'
                 c.payload_bits = bits
@@ -100,8 +99,8 @@ class FT8Demodulator:
                 sigma2 = np.median(self.spectrum.power[symb_idx*self.hops_persymb,:]) 
                 tone_powers_scaled = pgrid[symb_idx, :] / sigma2
                 for k in range(3):
-                    s1 = [v for i, v in enumerate(tone_powers_scaled) if kGRAY_MAP_TUPLES[i][k]]
-                    s0 = [v for i, v in enumerate(tone_powers_scaled) if not kGRAY_MAP_TUPLES[i][k]]
+                    s1 = [v for i, v in enumerate(tone_powers_scaled) if FT8.gray_map_tuples[i][k]]
+                    s0 = [v for i, v in enumerate(tone_powers_scaled) if not FT8.gray_map_tuples[i][k]]
                     m1 = max(s1)
                     m0 = max(s0)
                     s1v = m1 + math.log(np.sum(np.exp(np.array(s1) - m1)))

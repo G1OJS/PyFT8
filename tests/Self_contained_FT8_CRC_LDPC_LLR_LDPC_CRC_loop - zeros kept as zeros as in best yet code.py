@@ -5,6 +5,17 @@
 # onto the original noise-free version
 
 import numpy as np
+class FT8ref:
+    def __init__(self):
+        self.url = "https://pengowray.github.io/ft8play/"
+        self.msg = "VK1ABC VK3JPK QF22"
+        self.bits77 = 0b11100001111111000101001101010111000100000011110100001111000111001010001010001
+        self.bits14 = 0b00111100110010
+        self.bits83 = 0b01101010111110101110000011111111010100101110011011100110010000000000011100010000001
+        self.bits91 = self.bits77 <<14 | self.bits14
+        self.bits174 = self.bits91 <<83 | self.bits83
+
+FT8ref = FT8ref()
 
 def ldpc_encode(msg_crc: int) -> int:
     generator_matrix_rows = ["8329ce11bf31eaf509f27fc",  "761c264e25c259335493132",  "dc265902fb277c6410a1bdc",  "1b3f417858cd2dd33ec7f62",  "09fda4fee04195fd034783a",  "077cccc11b8873ed5c3d48a",  "29b62afe3ca036f4fe1a9da",  "6054faf5f35d96d3b0c8c3e",  "e20798e4310eed27884ae90",  "775c9c08e80e26ddae56318",  "b0b811028c2bf997213487c",  "18a0c9231fc60adf5c5ea32",  "76471e8302a0721e01b12b8",  "ffbccb80ca8341fafb47b2e",  "66a72a158f9325a2bf67170",  "c4243689fe85b1c51363a18",  "0dff739414d1a1b34b1c270",  "15b48830636c8b99894972e",  "29a89c0d3de81d665489b0e",  "4f126f37fa51cbe61bd6b94",  "99c47239d0d97d3c84e0940",  "1919b75119765621bb4f1e8",  "09db12d731faee0b86df6b8",  "488fc33df43fbdeea4eafb4",  "827423ee40b675f756eb5fe",  "abe197c484cb74757144a9a",  "2b500e4bc0ec5a6d2bdbdd0",  "c474aa53d70218761669360",  "8eba1a13db3390bd6718cec",  "753844673a27782cc42012e",  "06ff83a145c37035a5c1268",  "3b37417858cc2dd33ec3f62",  "9a4a5a28ee17ca9c324842c",  "bc29f465309c977e89610a4",  "2663ae6ddf8b5ce2bb29488",  "46f231efe457034c1814418",  "3fb2ce85abe9b0c72e06fbe",  "de87481f282c153971a0a2e",  "fcd7ccf23c69fa99bba1412",  "f0261447e9490ca8e474cec",  "4410115818196f95cdd7012",  "088fc31df4bfbde2a4eafb4",  "b8fef1b6307729fb0a078c0",  "5afea7acccb77bbc9d99a90",  "49a7016ac653f65ecdc9076",  "1944d085be4e7da8d6cc7d0",  "251f62adc4032f0ee714002",  "56471f8702a0721e00b12b8",  "2b8e4923f2dd51e2d537fa0",  "6b550a40a66f4755de95c26",  "a18ad28d4e27fe92a4f6c84",  "10c2e586388cb82a3d80758",  "ef34a41817ee02133db2eb0",  "7e9c0c54325a9c15836e000",  "3693e572d1fde4cdf079e86",  "bfb2cec5abe1b0c72e07fbe",  "7ee18230c583cccc57d4b08",  "a066cb2fedafc9f52664126",  "bb23725abc47cc5f4cc4cd2",  "ded9dba3bee40c59b5609b4",  "d9a7016ac653e6decdc9036",  "9ad46aed5f707f280ab5fc4",  "e5921c77822587316d7d3c2",  "4f14da8242a8b86dca73352",  "8b8b507ad467d4441df770e",  "22831c9cf1169467ad04b68",  "213b838fe2ae54c38ee7180",  "5d926b6dd71f085181a4e12",  "66ab79d4b29ee6e69509e56",  "958148682d748a38dd68baa",  "b8ce020cf069c32a723ab14",  "f4331d6d461607e95752746",  "6da23ba424b9596133cf9c8",  "a636bcbc7b30c5fbeae67fe",  "5cb0d86a07df654a9089a20",  "f11f106848780fc9ecdd80a",  "1fbb5364fb8d2c9d730d5ba",  "fcb86bc70a50c9d02a5d034",  "a534433029eac15f322e34c",  "c989d9c7c3d3b8c55d75130",  "7bb38b2f0186d46643ae962",  "2644ebadeb44b9467d1f42c",  "608cc857594bfbb55d69600"]
@@ -29,38 +40,49 @@ def safe_atanh(x, eps=1e-12):
     return 0.5 * np.log((1 + x) / (1 - x))
   #  return np.arctanh(x)
 
+def count_syndrome_checks(zn):
+    ncheck = 0
+    cw = (zn > 0).astype(int)
+    for i in range(kM):
+        synd = sum(cw[kNM[i, 0:kNRW[i]]])
+        if ((synd %2) != 0): ncheck += 1
+    if ncheck == 0:
+        decoded_bits174_LE_list = cw.tolist() 
+        decoded_bits91_int = bitsLE_to_int(decoded_bits174_LE_list[0:91])
+        if(not check_crc(decoded_bits91_int)):
+            return -1, cw, []
+        return 0, cw, decoded_bits174_LE_list
+    return ncheck, cw, []
+
 def decode174_91(llr, maxiterations = 50, alpha = 0.05, gamma = 0.03, nstall_max = 12, ncheck_max = 30):
+    import matplotlib.pyplot as plt
+    fig,ax = plt.subplots()
+
     toc = np.zeros((7, kM), dtype=np.float32)       # message -> check messages
     tanhtoc = np.zeros((7, kM), dtype=np.float64)
     tov = np.zeros((kNCW, kN), dtype=np.float32)    # check -> message messages
     nclast, nstall = 0, 0                           # stall condition variables
-    info = []                           # record the progression of ncheck
     zn = np.copy(llr)                   # working copy of llrs
     rng = np.max(llr) - np.min(llr)     # indication of scale of llrs
     mult = rng * gamma          # empricical multiplier for tov, proportional to llr scale
+
+    ncheck, cw, decoded_bits174_LE_list = count_syndrome_checks(zn)
+    if(ncheck ==0): return decoded_bits174_LE_list, it
+
     for it in range(maxiterations + 1):
         for i in range(kN):
             zn[i] += mult*sum(tov[:,i])
-
+            
+        ncheck, cw, decoded_bits174_LE_list = count_syndrome_checks(zn)
+        ax.cla()
         ax.plot(zn)
-        cw = (zn > 0).astype(int)
-        ncheck = 0                      # syndrome: sum variable nodes participating in this check.
-        for chk in range(kM):
-            vars_idx = kNM[chk, :kNRW[chk]]
-            if( int(np.sum(cw[vars_idx]) % 2)):
-                ncheck += 1
-
-        info.append(ncheck)
-        if ncheck == 0:
-            message91 = cw.tolist()
-            if(sum(message91)>0):
-                print(f"Success: {info}")
-                return message91, it
-
+        print(ncheck, bitsLE_to_int(cw.tolist()) ^ FT8ref.bits174)
+        plt.pause(0.5)
+        if(ncheck <=0): return decoded_bits174_LE_list, it
+        
         nstall = 0 if ncheck < nclast else nstall +1
         nclast = ncheck
         if(nstall > nstall_max or ncheck > ncheck_max):         # early exit condition
-         #   print(f"Failure: {info}")
             return [], it
         
         # compute toc = messages from variable node -> check node
@@ -72,11 +94,10 @@ def decode174_91(llr, maxiterations = 50, alpha = 0.05, gamma = 0.03, nstall_max
                 toc[i_local, j] = zn[ibj]
                 for kk in range(kNCW):
                     chknum = kMN[ibj, kk]
-                    if chknum == 0 or chknum == (j + 1): # kMN = 0 means "skip this check" (true?)
+                    if chknum == j:
                         continue
                     toc[i_local, j] -= tov[kk, ibj]
 
-        # tanh of half negative (what's this?)
         for j in range(kM):
             tanhtoc[:kNRW[j], j] = np.tanh(-toc[:kNRW[j], j] / 2.0)
 
@@ -101,15 +122,8 @@ def decode174_91(llr, maxiterations = 50, alpha = 0.05, gamma = 0.03, nstall_max
                 y = safe_atanh(-Tmn)
                 new_val = 2.0 * safe_atanh(-Tmn)
                 tov[kk, variable_node] = alpha * new_val + (1 - alpha) * tov[kk, variable_node]
-
-    # failed to decode
-   # print(f"Failure: {info}")
     return [], it
 
-
-import matplotlib.pyplot as plt
-global ax
-fig, ax = plt.subplots()
 
 def add_noise_to_llr(llr, snr_db):
     snr_linear = 10 ** (snr_db / 10)
@@ -158,38 +172,35 @@ def bitsLE_to_int(bits):
         n = (n << 1) | (b & 1)
     return n
 
-snr = 7
+snr = 4
 
-bits77_int = 0b11100001111111000101001101010111000100000011110100001111000111001010001010001
+bits77_int = FT8ref.bits77
 print(f"77 message bits for 'VK1ABC VK3JPK QF22':\n{bits77_int:b}")
 bits91_int = append_crc(bits77_int)
 print(f"Message plus crc (91 bits):\n{bits91_int:b}")
 print(f"CRC loop test: check_crc(append_crc(bits77_int)) = { check_crc(append_crc(bits77_int))}")
+print(f"Message plus crc reference from {FT8ref.url}\n{FT8ref.bits91:b}")
 bits174_int = ldpc_encode(bits91_int)
 print(f"With parity (174 bits):\n{bits174_int:b}")
+print(f"Message plus crc and parity reference from {FT8ref.url}\n{FT8ref.bits174:b}")
 
 
 #simulate LLRs
 bits174_LE_list = int_to_bitsLE(bits174_int,174)
 llr = 200000 * np.array(bits174_LE_list) - 100000  # LLRs for each bit (encoded message)
-ax.plot(llr, color='black', linewidth = 2)
 llr = add_noise_to_llr(llr, snr)
+# use previously simulated LLRs
+llr = [141976.7 ,99810.7 ,46130.2 ,-32773.0 ,-182578.0 ,-38903.1 ,-185318.1 ,102046.3 ,164321.4 ,79022.4 ,165541.2 ,71432.2 ,154712.0 ,226197.6 ,-90388.1 ,-167197.5 ,-163347.8 ,139632.0 ,-75639.7 ,188099.1 ,-169130.9 ,-54549.3 ,209751.3 ,-33450.8 ,-156923.1 ,68173.3 ,5055.5 ,103752.8 ,-149998.9 ,-15865.0 ,128111.0 ,83494.1 ,-158544.6 ,-165696.7 ,-92858.5 ,105922.2 ,-182352.6 ,-116112.7 ,-157327.8 ,-140389.8 ,-86814.3 ,-111650.0 ,66053.4 ,70492.5 ,93814.6 ,100755.2 ,-200206.3 ,-42840.7 ,-176575.4 ,-124039.3 ,-113832.9 ,-133771.0 ,29138.6 ,140545.2 ,71596.2 ,106426.6 ,-78241.7 ,-212689.4 ,-51502.5 ,159727.3 ,100858.6 ,191720.2 ,-184304.4 ,-253468.6 ,25457.0 ,-182373.0 ,92256.1 ,-184018.7 ,553.6 ,-34634.3 ,-6778.7 ,-146053.8 ,58642.6 ,-65822.6 ,-142835.2 ,-131131.4 ,138476.2 ,-62969.1 ,-71351.6 ,78123.5 ,-6955.2 ,118320.3 ,164493.9 ,-34249.4 ,-84165.1 ,112891.1 ,81640.6 ,-140672.4 ,2861.4 ,97824.0 ,-71994.8 ,-81978.3 ,103858.8 ,76631.6 ,-118140.3 ,58559.2 ,-121561.4 ,-3801.1 ,-140518.1 ,47009.1 ,-27047.5 ,127523.6 ,21395.8 ,112950.0 ,-147640.6 ,199710.6 ,-126112.9 ,65929.3 ,153657.4 ,52866.2 ,-13223.3 ,-107310.4 ,-233263.0 ,-183125.0 ,-30445.0 ,103095.2 ,64925.5 ,33344.3 ,166262.7 ,149886.0 ,225034.6 ,129772.7 ,88658.8 ,-119426.4 ,92968.1 ,-134749.9 ,127461.9 ,-145967.0 ,-47121.7 ,153197.8 ,-112978.0 ,76910.3 ,178922.2 ,73220.5 ,49810.2 ,-67119.4 ,47275.3 ,64471.7 ,-145152.6 ,198923.1 ,90308.4 ,19075.3 ,-79961.1 ,-58620.0 ,89845.0 ,65221.0 ,-163669.5 ,-138832.5 ,92203.9 ,-117974.3 ,-177335.2 ,-157065.0 ,-91328.2 ,-131490.9 ,-93551.1 ,-31726.7 ,-168738.9 ,-44757.9 ,-150817.9 ,-65517.4 ,128364.7 ,142862.7 ,138347.5 ,2876.3 ,-28032.6 ,-95690.2 ,64228.1 ,-131277.9 ,-13883.4 ,-89323.6 ,-60705.4 ,-60398.3 ,-174149.7 ,-51293.2 ]
+
 print(f"LLRs with noise:\n"+','.join([f"{ll:.1f} " for ll in llr]))
 
 # Decode the message using LDPC
 decoded_bits174_LE_list, it = decode174_91(llr)
-if(len(decoded_bits174_LE_list) > 0):
-    print(f"Decoded bits174:\n{bitsLE_to_int(decoded_bits174_LE_list):b}")
-    decoded_bits91_int = bitsLE_to_int(decoded_bits174_LE_list[0:91])
-    print(f"Decoded bits91:\n{decoded_bits91_int:b}")
-    if(check_crc(decoded_bits91_int)):
-        print("Decoded bits passed CRC")
-        ax.set_title(f"SNR = {snr}dB. Bits decoded after {it} iterations and CRC passed ")
-    else:
-        ax.set_title(f"SNR = {snr}dB. Bits decoded after {it} iterations but CRC failed")
-        print("Decoded bits failed CRC")
+bits174_int = bitsLE_to_int(decoded_bits174_LE_list)
+if(len(decoded_bits174_LE_list)>0):
+    print(f"SNR = {snr}dB. Bits decoded after {it} iterations and passed CRC\n{bits174_int:b}")
 else:
-    print("LDPC failed to recover transmitted bits")
-    ax.set_title(f"SNR = {snr}dB. LDPC failed to recover transmitted bits")
+    print(f"SNR = {snr}dB. Bits decoded after {it} iterations but failed CRC\n{bits174_int:b}")
 
-plt.show()
+
+
