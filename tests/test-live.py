@@ -12,7 +12,7 @@ from PyFT8.rx.waterfall import Waterfall
 
 SAMPLE_RATE = 12000
 CYCLE = 15.0
-SHORT_CYCLE = 14.5
+SHORT_CYCLE = 14.6
 FRAMES_PER_CYCLE = int(SAMPLE_RATE * SHORT_CYCLE)
 BRIDGE_FILE = 'audio.wav'
 FLAG_FILE = 'audio.txt'

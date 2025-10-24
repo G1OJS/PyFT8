@@ -44,7 +44,7 @@ class FT8Demodulator:
     # ======================================================
     # Candidate search
     # ======================================================
-    def find_candidates(self, t0=0.0, t1=1.5, f0=100.0, f1=3300.0, topN=50):
+    def find_candidates(self, t0=0.0, t1=2, f0=100.0, f1=3300.0, topN=50):
         """ Sweep a time/freq region for Costas sync patterns.
             Returns list of Candidate objects fully set.
         """
@@ -153,6 +153,6 @@ def FT8_decode(signal, cyclestart_str):
     g15  = int(''.join(str(b) for b in bits[58:74]), 2)
     msg = f"{unpack_ft8_c28(c28_a)} {unpack_ft8_c28(c28_b)} {unpack_ft8_g15(g15)}"
     freq, dt = signal.bounds.f0, signal.bounds.t0
-    info = f"{cyclestart_str} {signal.bounds.f0 :6.1f} {signal.bounds.t0 :6.2f} {i3} {signal.score :6.2f} {signal.demodulated_by}"
+    info = f"{cyclestart_str} {signal.bounds.f0 :6.1f} {signal.bounds.t0 - 0.5 :6.2f} {signal.demodulated_by}"
     return {'info':info, 'msg':msg}
 
