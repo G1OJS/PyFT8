@@ -55,8 +55,13 @@ def count_syndrome_checks(zn):
     for i in range(kM):
         synd = sum(cw[kNM[i, 0:kNRW[i]]])
         if ((synd %2) != 0): ncheck += 1
-    message91 = cw.tolist() if ncheck == 0 else []
-    return ncheck, cw, message91
+    if ncheck == 0:
+        decoded_bits174_LE_list = cw.tolist() 
+        decoded_bits91_int = bitsLE_to_int(decoded_bits174_LE_list[0:91])
+        if(not check_crc(decoded_bits91_int)):
+            return -1, cw, []
+        return 0, cw, decoded_bits174_LE_list
+    return ncheck, cw, []
 
 def decode174_91(llr, maxiterations = 50, alpha = 0.05, gamma = 0.03, nstall_max = 12, ncheck_max = 30):
     import matplotlib.pyplot as plt
@@ -70,18 +75,18 @@ def decode174_91(llr, maxiterations = 50, alpha = 0.05, gamma = 0.03, nstall_max
     rng = np.max(llr) - np.min(llr)     # indication of scale of llrs
     mult = rng * gamma          # empricical multiplier for tov, proportional to llr scale
 
-    ncheck, cw, message91 = count_syndrome_checks(zn)
-    if(ncheck ==0): return message91, it
+    ncheck, cw, decoded_bits174_LE_list = count_syndrome_checks(zn)
+    if(ncheck ==0): return decoded_bits174_LE_list, it
 
     for it in range(maxiterations + 1):
         for i in range(kN):
             zn[i] += mult*sum(tov[:,i])
-        ncheck, cw, message91 = count_syndrome_checks(zn)
+        ncheck, cw, decoded_bits174_LE_list = count_syndrome_checks(zn)
         ax.cla()
         ax.plot(zn)
         print(ncheck, bitsLE_to_int(cw.tolist()) ^ FT8ref.bits174)
         plt.pause(0.5)
-        if(ncheck ==0): return message91, it
+        if(ncheck <=0): return decoded_bits174_LE_list, it
 
         nstall = 0 if ncheck < nclast else nstall +1
         nclast = ncheck
@@ -202,12 +207,11 @@ print(f"LLRs with noise:\n"+','.join([f"{ll:.1f} " for ll in llr]))
 
 # Decode the message using LDPC
 decoded_bits174_LE_list, it = decode174_91(llr)
-if(len(decoded_bits174_LE_list) > 0):
-    print(f"Decoded bits174:\n{bitsLE_to_int(decoded_bits174_LE_list):b}")
-    decoded_bits91_int = bitsLE_to_int(decoded_bits174_LE_list[0:91])
-    print(f"Decoded bits91:\n{decoded_bits91_int:b}")
-    if(check_crc(decoded_bits91_int)):
-        print(f"SNR = {snr}dB. Bits decoded after {it} iterations and passed CRC")
+bits174_int = bitsLE_to_int(decoded_bits174_LE_list)
+if(len(decoded_bits174_LE_list)>0):
+    print(f"SNR = {snr}dB. Bits decoded after {it} iterations and passed CRC\n{bits174_int:b}")
+else:
+    print(f"SNR = {snr}dB. Bits decoded after {it} iterations but failed CRC\n{bits174_int:b}")
 
 
 
