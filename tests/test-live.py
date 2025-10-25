@@ -38,7 +38,7 @@ def wsjtx_tailer():
                 f.write(f"{line}\n")
            
 def wsjtx_compare(wsjtx_file, PyFT8_file):
-    PyFT8_patterns, wsj_patterns = set(), set()
+    PyFT8_patterns, wsj_patterns = [],[]
     matched_msgs, unmatched_msgs = [],[]
         
     with open(wsjtx_file, 'r') as f:
@@ -46,7 +46,7 @@ def wsjtx_compare(wsjtx_file, PyFT8_file):
     for wsjtline in wsjt:
         l = wsjtline[48:]
         wsj_pattern = l.replace(' ','').replace('\n','')
-        wsj_patterns.add(wsj_pattern)
+        wsj_patterns.append(wsj_pattern)
 
     with open(PyFT8_file, 'r') as f:
         PyFT8lines = f.readlines()
@@ -57,15 +57,20 @@ def wsjtx_compare(wsjtx_file, PyFT8_file):
             matched_msgs.append(l)
         else:
             unmatched_msgs.append(l)
-        PyFT8_patterns.add(PyFT8_pattern)
+        PyFT8_patterns.append(PyFT8_pattern)
 
-    matches = PyFT8_patterns.intersection(wsj_patterns)
-    PyFT8_only = PyFT8_patterns.difference(wsj_patterns)
+
     PyFT8 = len(PyFT8_patterns)
     wsj = len(wsj_patterns)
+    pc = PyFT8/wsj if wsj>0 else 0
+
+    PyFT8_set = set(PyFT8_patterns)
+    wsj_set = set(wsj_patterns)
+    matches = PyFT8_set.intersection(wsj_set)
+    PyFT8_only = PyFT8_set.difference(wsj_set)
     both = len(matches)
     PyFT8_only = len(PyFT8_only)
-    pc = PyFT8/wsj if wsj>0 else 0
+              
     print(f"wsjt: {wsj} PyFT8: {PyFT8} ({pc:.1%}) matched: {both} unmatched: {PyFT8_only}")
 
 def tstrcyclestart_str(cycle_offset):

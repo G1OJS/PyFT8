@@ -1,6 +1,7 @@
-# v2.0 = tidy up of v1.2
+# v2.1 = V2.0 with params changed to increase speed (V2.0 not fast enough for 15 second cycle)
 
 """
+V2.0 for reference
 maxiterations = 75, gamma = 0.0013, nstall_max = 8, ncheck_max = 60, log approx atan function
 snr_dB, success%
 5.0, 10%
@@ -21,6 +22,27 @@ TEST  587.5   0.09 LLR-LDPC (6) → K1JT  HA0DU  KN07
 TEST  637.5   0.04 LLR-LDPC (7) → N1JFU EA6EE  
 
 
+"""
+
+"""
+maxiterations = 30, gamma = 0.0013, nstall_max = 8, ncheck_max = 30
+snr_dB, success%
+5.0, 2%
+5.3, 8%
+5.7, 22%
+6.0, 42%
+6.3, 44%
+6.7, 68%
+7.0, 90%
+7.3, 94%
+7.7, 96%
+8.0, 98%
+
+TEST 2156.2  -0.29 Max power → WM3PEN EA6VQ  -09
+TEST 2568.8   0.04 Max power → W1FC  F5BZB -08
+TEST  720.8  -0.07 LLR-LDPC (1) → A92EE  F5PSR -14
+TEST  587.5   0.09 LLR-LDPC (6) → K1JT  HA0DU  KN07
+TEST  637.5   0.04 LLR-LDPC (7) → N1JFU EA6EE  
 """
 
 import numpy as np
@@ -75,7 +97,7 @@ def count_syndrome_checks(zn):
         return 0, cw, decoded_bits174_LE_list
     return ncheck, cw, []
 
-def decode174_91(llr, maxiterations = 75, gamma = 0.0013, nstall_max = 8, ncheck_max = 60):
+def decode174_91(llr, maxiterations = 30, gamma = 0.0013, nstall_max = 8, ncheck_max = 30):
     toc = np.zeros((7, kM), dtype=np.float32)       # message -> check messages
     tanhtoc = np.zeros((7, kM), dtype=np.float64)
     tov = np.zeros((kNCW, kN), dtype=np.float32)    # check -> message messages
