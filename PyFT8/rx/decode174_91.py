@@ -1,6 +1,27 @@
-# First working version of this code using faithfully reproduced and
-# interpreted arrays from the f90 code. The kMN and kNM are 1-based, as
-# per the f90 code, and the looked-up values are interpreted accordingly
+# v2.0 = tidy up of v1.2
+
+"""
+maxiterations = 75, gamma = 0.0013, nstall_max = 8, ncheck_max = 60, log approx atan function
+snr_dB, success%
+5.0, 10%
+5.3, 18%
+5.7, 24%
+6.0, 40%
+6.3, 70%
+6.7, 82%
+7.0, 88%
+7.3, 92%
+7.7, 98%
+8.0, 98%
+
+TEST 2156.2  -0.29 Max power → WM3PEN EA6VQ  -09
+TEST 2568.8   0.04 Max power → W1FC  F5BZB -08
+TEST  720.8  -0.07 LLR-LDPC (1) → A92EE  F5PSR -14
+TEST  587.5   0.09 LLR-LDPC (6) → K1JT  HA0DU  KN07
+TEST  637.5   0.04 LLR-LDPC (7) → N1JFU EA6EE  
+
+
+"""
 
 import numpy as np
 
@@ -25,7 +46,6 @@ kNM = np.array([
 kN = 174
 kK = 91
 kM = kN - kK
-
 from PyFT8.FT8_crc import check_crc
 
 def bitsLE_to_int(bits):
@@ -38,7 +58,6 @@ def bitsLE_to_int(bits):
 def safe_atanh(x, eps=1e-12):
     x = np.clip(x, -1 + eps, 1 - eps)
     return 0.5 * np.log((1 + x) / (1 - x))
-  #  return np.arctanh(x)
 
 def count_syndrome_checks(zn):
     ncheck = 0
@@ -56,7 +75,7 @@ def count_syndrome_checks(zn):
         return 0, cw, decoded_bits174_LE_list
     return ncheck, cw, []
 
-def decode174_91(llr, maxiterations = 50, alpha = 0.05, gamma = 0.03, nstall_max = 12, ncheck_max = 30):
+def decode174_91(llr, maxiterations = 75, gamma = 0.0013, nstall_max = 8, ncheck_max = 60):
     toc = np.zeros((7, kM), dtype=np.float32)       # message -> check messages
     tanhtoc = np.zeros((7, kM), dtype=np.float64)
     tov = np.zeros((kNCW, kN), dtype=np.float32)    # check -> message messages
@@ -66,7 +85,7 @@ def decode174_91(llr, maxiterations = 50, alpha = 0.05, gamma = 0.03, nstall_max
     mult = rng * gamma          # empricical multiplier for tov, proportional to llr scale
 
     ncheck, cw, decoded_bits174_LE_list = count_syndrome_checks(zn)
-    if(ncheck ==0): return decoded_bits174_LE_list, it
+    if(ncheck ==0): return decoded_bits174_LE_list, -1
 
     for it in range(maxiterations + 1):
         for i in range(kN):
@@ -114,7 +133,5 @@ def decode174_91(llr, maxiterations = 50, alpha = 0.05, gamma = 0.03, nstall_max
                 else:
                     tvals = tanhtoc[:neigh_count, ichk][mask]
                     Tmn = np.prod(tvals) if tvals.size > 0 else 0.0
-                y = safe_atanh(-Tmn)
-                new_val = 2.0 * safe_atanh(-Tmn)
-                tov[kk, variable_node] = alpha * new_val + (1 - alpha) * tov[kk, variable_node]
+                tov[kk, variable_node] = 2.0 * safe_atanh(-Tmn)
     return [], it
