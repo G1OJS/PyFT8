@@ -1,19 +1,18 @@
 # v2.2 = V2.1 tidied for compactness and speed
 
 """
-maxiterations = 30, gamma = 0.0013, nstall_max = 8, ncheck_max = 30
+maxiterations = 30, gamma = 0.0026, nstall_max = 8, ncheck_max = 30
 snr_dB, success%
-snr_dB, success%
-5.0, 2% time = 5.2
-5.3, 6% time = 13.7
-5.7, 34% time = 24.3
-6.0, 34% time = 33.7
-6.3, 58% time = 43.5
-6.7, 66% time = 51.3
-7.0, 88% time = 56.4
-7.3, 96% time = 61.1
-7.7, 98% time = 64.7
-8.0, 96% time = 67.8
+5.0, 12% time = 9.8
+5.3, 10% time = 17.8
+5.7, 22% time = 27.6
+6.0, 44% time = 36.7
+6.3, 44% time = 48.6
+6.7, 80% time = 57.8
+7.0, 86% time = 64.8
+7.3, 90% time = 69.2
+7.7, 98% time = 73.3
+8.0, 100% time = 76.5
 """
 
 import numpy as np
@@ -48,12 +47,6 @@ def bitsLE_to_int(bits):
         n = (n << 1) | (b & 1)
     return n
 
-def safe_atanh(x, eps=1e-12):
-    # note - not a huge difference in speed between the atanh and the log approx
-    x = np.clip(x, -1 + eps, 1 - eps)
-    return 0.5 * np.log((1 + x) / (1 - x))
-  #  return np.atanh(x)
-
 # precompute bits to check for syndrome
 synd_check_idxs=[]
 for i in range(kM):
@@ -62,7 +55,7 @@ for i in range(kM):
     synd_check_idxs.append(ichk)
 
 def count_syndrome_checks(zn):
-    synd_checks = [ np.sum(1 for llr in zn[synd_check_idxs[i]] if llr > 0) %2 for i in range(kM)]
+    synd_checks = [ sum(1 for llr in zn[synd_check_idxs[i]] if llr > 0) %2 for i in range(kM)]
     ncheck = np.sum(synd_checks)
     if ncheck > 0:
         return ncheck, []
@@ -72,7 +65,6 @@ def count_syndrome_checks(zn):
         return -1, []
     return ncheck, decoded_bits174_LE_list
     
-
 def decode174_91(llr, maxiterations = 30, gamma = 0.0026, nstall_max = 8, ncheck_max = 30):
     toc = np.zeros((7, kM), dtype=np.float32)       # message -> check messages
     tanhtoc = np.zeros((7, kM), dtype=np.float64)
@@ -113,5 +105,6 @@ def decode174_91(llr, maxiterations = 30, gamma = 0.0026, nstall_max = 8, ncheck
                     mask = (neigh_vars != variable_node)
                     tvals = tanhtoc[:neigh_count, ichk][mask]
                     Tmn = np.prod(tvals) if tvals.size > 0 else 0.0
-                    tov[kk, variable_node] = safe_atanh(-Tmn)
+                    Tmn = np.clip(Tmn, -1 + 1e-12, 1 - 1e-12)
+                    tov[kk, variable_node] = np.atanh(-Tmn)
     return [], it
