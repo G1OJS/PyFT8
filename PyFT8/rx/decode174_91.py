@@ -1,18 +1,18 @@
-# v2.2 = V2.1 tidied for compactness and speed
+# v2.3 - speed investigation
 
 """
 maxiterations = 30, gamma = 0.0026, nstall_max = 8, ncheck_max = 30
 snr_dB, success%
-5.0, 12% time = 9.8
-5.3, 10% time = 17.8
-5.7, 22% time = 27.6
-6.0, 44% time = 36.7
-6.3, 44% time = 48.6
-6.7, 80% time = 57.8
-7.0, 86% time = 64.8
-7.3, 90% time = 69.2
-7.7, 98% time = 73.3
-8.0, 100% time = 76.5
+5.0, 4% time = 4.4
+5.3, 6% time = 11.9
+5.7, 22% time = 21.1
+6.0, 36% time = 33.0
+6.3, 48% time = 41.9
+6.7, 70% time = 49.7
+7.0, 84% time = 55.7
+7.3, 100% time = 59.2
+7.7, 98% time = 62.4
+8.0, 100% time = 65.1
 """
 
 import numpy as np
@@ -96,15 +96,15 @@ def decode174_91(llr, maxiterations = 30, gamma = 0.0026, nstall_max = 8, ncheck
                         toc[i, j] -= tov[kk, ibj]
         for j in range(kM):
             tanhtoc[:kNRW[j], j] = np.tanh(-toc[:kNRW[j], j] / 2.0)
-        for variable_node in range(kN):
-            for kk in range(kNCW):
+        for kk in range(kNCW):
+            for variable_node in range(kN):
                 ichk = kMN[kk, variable_node] - 1
                 if ichk >= 0:
                     neigh_count = kNRW[ichk]
                     neigh_vars = kNM[:neigh_count, ichk]  - 1
                     mask = (neigh_vars != variable_node)
                     tvals = tanhtoc[:neigh_count, ichk][mask]
-                    Tmn = np.prod(tvals) if tvals.size > 0 else 0.0
+                    Tmn = np.prod(tvals) 
                     Tmn = np.clip(Tmn, -1 + 1e-12, 1 - 1e-12)
                     tov[kk, variable_node] = np.atanh(-Tmn)
     return [], it
