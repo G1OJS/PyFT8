@@ -1,48 +1,19 @@
-# v2.1 = V2.0 with params changed to increase speed (V2.0 not fast enough for 15 second cycle)
-
-"""
-V2.0 for reference
-maxiterations = 75, gamma = 0.0013, nstall_max = 8, ncheck_max = 60, log approx atan function
-snr_dB, success%
-5.0, 10%
-5.3, 18%
-5.7, 24%
-6.0, 40%
-6.3, 70%
-6.7, 82%
-7.0, 88%
-7.3, 92%
-7.7, 98%
-8.0, 98%
-
-TEST 2156.2  -0.29 Max power → WM3PEN EA6VQ  -09
-TEST 2568.8   0.04 Max power → W1FC  F5BZB -08
-TEST  720.8  -0.07 LLR-LDPC (1) → A92EE  F5PSR -14
-TEST  587.5   0.09 LLR-LDPC (6) → K1JT  HA0DU  KN07
-TEST  637.5   0.04 LLR-LDPC (7) → N1JFU EA6EE  
-
-
-"""
+# v2.2 = V2.1 tidied for compactness and speed
 
 """
 maxiterations = 30, gamma = 0.0013, nstall_max = 8, ncheck_max = 30
 snr_dB, success%
-5.0, 2%
-5.3, 8%
-5.7, 22%
-6.0, 42%
-6.3, 44%
-6.7, 68%
-7.0, 90%
-7.3, 94%
-7.7, 96%
-8.0, 98%
-
-TEST 2156.2  -0.29 Max power → WM3PEN EA6VQ  -09
-TEST 2568.8   0.04 Max power → W1FC  F5BZB -08
-TEST  720.8  -0.07 LLR-LDPC (1) → A92EE  F5PSR -14
-TEST  587.5   0.09 LLR-LDPC (6) → K1JT  HA0DU  KN07
-TEST  637.5   0.04 LLR-LDPC (7) → N1JFU EA6EE  
+snr_dB, success%
+5.0, 2% time = 5.2
+5.3, 6% time = 13.7
+5.7, 34% time = 24.3
+6.0, 34% time = 33.7
+6.3, 58% time = 43.5
+6.7, 66% time = 51.3
+7.0, 88% time = 56.4
+7.3, 96% time = 61.1
+7.7, 98% time = 64.7
+8.0, 96% time = 67.8
 """
 
 import numpy as np
@@ -78,82 +49,69 @@ def bitsLE_to_int(bits):
     return n
 
 def safe_atanh(x, eps=1e-12):
+    # note - not a huge difference in speed between the atanh and the log approx
     x = np.clip(x, -1 + eps, 1 - eps)
     return 0.5 * np.log((1 + x) / (1 - x))
+  #  return np.atanh(x)
+
+# precompute bits to check for syndrome
+synd_check_idxs=[]
+for i in range(kM):
+    ichk = kNM[0:kNRW[i],i] - 1
+    ichk = ichk[(ichk >=0)]
+    synd_check_idxs.append(ichk)
 
 def count_syndrome_checks(zn):
-    ncheck = 0
-    cw = (zn > 0).astype(int)
-    for i in range(kM):
-        ichk = kNM[0:kNRW[i],i] - 1
-        ichk = ichk[(ichk >=0)]
-        synd = sum(cw[ichk])
-        if ((synd %2) != 0): ncheck += 1
-    if ncheck == 0:
-        decoded_bits174_LE_list = cw.tolist() 
-        decoded_bits91_int = bitsLE_to_int(decoded_bits174_LE_list[0:91])
-        if(not check_crc(decoded_bits91_int)):
-            return -1, cw, []
-        return 0, cw, decoded_bits174_LE_list
-    return ncheck, cw, []
+    synd_checks = [ np.sum(1 for llr in zn[synd_check_idxs[i]] if llr > 0) %2 for i in range(kM)]
+    ncheck = np.sum(synd_checks)
+    if ncheck > 0:
+        return ncheck, []
+    decoded_bits174_LE_list = (zn > 0).astype(int).tolist() 
+    decoded_bits91_int = bitsLE_to_int(decoded_bits174_LE_list[0:91])
+    if(not check_crc(decoded_bits91_int)):
+        return -1, []
+    return ncheck, decoded_bits174_LE_list
+    
 
-def decode174_91(llr, maxiterations = 30, gamma = 0.0013, nstall_max = 8, ncheck_max = 30):
+def decode174_91(llr, maxiterations = 30, gamma = 0.0026, nstall_max = 8, ncheck_max = 30):
     toc = np.zeros((7, kM), dtype=np.float32)       # message -> check messages
     tanhtoc = np.zeros((7, kM), dtype=np.float64)
     tov = np.zeros((kNCW, kN), dtype=np.float32)    # check -> message messages
     nclast, nstall = 0, 0                           # stall condition variables
-    zn = np.copy(llr)                   # working copy of llrs
-    rng = np.max(llr) - np.min(llr)     # indication of scale of llrs
-    mult = rng * gamma          # empricical multiplier for tov, proportional to llr scale
+    zn = np.array(llr, dtype=np.float32)            # working copy of llrs 
+    mult = (np.max(zn) - np.min(zn)) * gamma        # empricical multiplier for tov, proportional to llr scale
 
-    ncheck, cw, decoded_bits174_LE_list = count_syndrome_checks(zn)
-    if(ncheck ==0): return decoded_bits174_LE_list, -1
-
+    ncheck, decoded_bits174_LE_list = count_syndrome_checks(zn)
+    if(ncheck ==0):
+        return decoded_bits174_LE_list, -1
+    
     for it in range(maxiterations + 1):
         for i in range(kN):
-            zn[i] += mult*sum(tov[:,i])
-            
-        ncheck, cw, decoded_bits174_LE_list = count_syndrome_checks(zn)
-        if(ncheck <=0): return decoded_bits174_LE_list, it
-        
+            zn[i] += mult * sum(tov[:,i])
+        ncheck, decoded_bits174_LE_list = count_syndrome_checks(zn)
+        if(ncheck <=0):
+            return decoded_bits174_LE_list, it
         nstall = 0 if ncheck < nclast else nstall +1
         nclast = ncheck
-        if(nstall > nstall_max or ncheck > ncheck_max):         # early exit condition
+        if(nstall > nstall_max or ncheck > ncheck_max): # early exit condition
             return [], it
-        
-        # compute toc = messages from variable node -> check node
-        # For each check node j, for each connected variable i subtract messages from checks (tov)
-        # that correspond to other checks connected to variable ibj (connections specified by kMN[ibj, :])
         for j in range(kM):
             for i in range(kNRW[j]):    
-                ibj = int(kNM[i, j] - 1)   
+                ibj = kNM[i, j] - 1   
                 toc[i, j] = zn[ibj]
                 for kk in range(kNCW):
-                    chknum = kMN[kk, ibj] - 1
-                    if chknum == j:
-                        continue
-                    toc[i, j] -= tov[kk, ibj]
-
+                    if kMN[kk, ibj] - 1 != j:
+                        toc[i, j] -= tov[kk, ibj]
         for j in range(kM):
             tanhtoc[:kNRW[j], j] = np.tanh(-toc[:kNRW[j], j] / 2.0)
-
-        # compute tov (check -> variable messages)
-        # for each variable node j, it connects to kNCW checks (kMN[j, :])
         for variable_node in range(kN):
             for kk in range(kNCW):
-                chknum = kMN[kk, variable_node] - 1
-                if chknum == -1:
-                    tov[kk, variable_node] = 0.0
-                    continue
-                ichk = int(chknum)
-                # build mask over the neighbours of check ichk excluding current variable 'var'
-                neigh_count = kNRW[ichk]
-                neigh_vars = kNM[:neigh_count, ichk]  - 1
-                mask = (neigh_vars != variable_node)
-                if mask.sum() == 0:
-                    Tmn = 0.0
-                else:
+                ichk = kMN[kk, variable_node] - 1
+                if ichk >= 0:
+                    neigh_count = kNRW[ichk]
+                    neigh_vars = kNM[:neigh_count, ichk]  - 1
+                    mask = (neigh_vars != variable_node)
                     tvals = tanhtoc[:neigh_count, ichk][mask]
                     Tmn = np.prod(tvals) if tvals.size > 0 else 0.0
-                tov[kk, variable_node] = 2.0 * safe_atanh(-Tmn)
+                    tov[kk, variable_node] = safe_atanh(-Tmn)
     return [], it
