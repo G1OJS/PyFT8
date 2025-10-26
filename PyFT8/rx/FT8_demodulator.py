@@ -106,12 +106,11 @@ class FT8Demodulator:
                     s1v = m1 + math.log(np.sum(np.exp(np.array(s1) - m1)))
                     s0v = m0 + math.log(np.sum(np.exp(np.array(s0) - m0)))
                     LLR174s.append(s1v - s0v)
-            bits, n_its = decode174_91(LLR174s)
-            if(len(bits) >0):
-                if crc.check_crc(crc.bitsLE_to_int(bits[0:91])):
-                    c.demodulated_by = f"LLR-LDPC ({n_its})"
-                    c.payload_bits = bits
-                    out.append(FT8_decode(c, cyclestart_str))
+            ncheck, bits, n_its = decode174_91(LLR174s)
+            if(ncheck == 0):
+                c.demodulated_by = f"LLR-LDPC ({n_its})"
+                c.payload_bits = bits
+                out.append(FT8_decode(c, cyclestart_str))
         return out
 
 # ======================================================

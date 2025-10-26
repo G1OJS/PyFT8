@@ -1,18 +1,20 @@
-# v2.3 - speed investigation
+# v3_0 - slightly faster than 2_3 and returns
+# ncheck as well as decoded_bits174_LE_list, it
+# as CRC is checked here, no need to check again (just check ncheck == 0)
 
 """
 maxiterations = 30, gamma = 0.0026, nstall_max = 8, ncheck_max = 30
 snr_dB, success%
-5.0, 4% time = 4.4
-5.3, 6% time = 11.9
-5.7, 22% time = 21.1
-6.0, 36% time = 33.0
-6.3, 48% time = 41.9
-6.7, 70% time = 49.7
-7.0, 84% time = 55.7
-7.3, 100% time = 59.2
-7.7, 98% time = 62.4
-8.0, 100% time = 65.1
+5.0, 2% time = 5.0
+5.3, 14% time = 13.2
+5.7, 14% time = 20.2
+6.0, 32% time = 30.1
+6.3, 54% time = 39.0
+6.7, 76% time = 46.4
+7.0, 84% time = 51.6
+7.3, 92% time = 56.2
+7.7, 96% time = 58.6
+8.0, 100% time = 60.7
 """
 
 import numpy as np
@@ -54,6 +56,13 @@ for i in range(kM):
     ichk = ichk[(ichk >=0)]
     synd_check_idxs.append(ichk)
 
+# precompute neigh_vars as a function of ichk
+neigh_vars_for_ichk, neigh_counts_for_ichk = [],[]
+for ichk in range(kM):
+    neigh_count = kNRW[ichk]
+    neigh_vars_for_ichk.append(kNM[:neigh_count, ichk]  - 1)
+    neigh_counts_for_ichk.append(neigh_count)
+
 def count_syndrome_checks(zn):
     synd_checks = [ sum(1 for llr in zn[synd_check_idxs[i]] if llr > 0) %2 for i in range(kM)]
     ncheck = np.sum(synd_checks)
@@ -74,7 +83,7 @@ def decode174_91(llr, maxiterations = 30, gamma = 0.0026, nstall_max = 8, ncheck
     mult = (np.max(zn) - np.min(zn)) * gamma        # empricical multiplier for tov, proportional to llr scale
 
     ncheck, decoded_bits174_LE_list = count_syndrome_checks(zn)
-    if(ncheck ==0):
+    if(ncheck == 0):
         return decoded_bits174_LE_list, -1
     
     for it in range(maxiterations + 1):
@@ -82,11 +91,11 @@ def decode174_91(llr, maxiterations = 30, gamma = 0.0026, nstall_max = 8, ncheck
             zn[i] += mult * sum(tov[:,i])
         ncheck, decoded_bits174_LE_list = count_syndrome_checks(zn)
         if(ncheck <=0):
-            return decoded_bits174_LE_list, it
+            return ncheck, decoded_bits174_LE_list, it
         nstall = 0 if ncheck < nclast else nstall +1
         nclast = ncheck
         if(nstall > nstall_max or ncheck > ncheck_max): # early exit condition
-            return [], it
+            return ncheck, [], it
         for j in range(kM):
             for i in range(kNRW[j]):    
                 ibj = kNM[i, j] - 1   
@@ -100,11 +109,9 @@ def decode174_91(llr, maxiterations = 30, gamma = 0.0026, nstall_max = 8, ncheck
             for variable_node in range(kN):
                 ichk = kMN[kk, variable_node] - 1
                 if ichk >= 0:
-                    neigh_count = kNRW[ichk]
-                    neigh_vars = kNM[:neigh_count, ichk]  - 1
+                    neigh_vars = neigh_vars_for_ichk[ichk]
                     mask = (neigh_vars != variable_node)
-                    tvals = tanhtoc[:neigh_count, ichk][mask]
-                    Tmn = np.prod(tvals) 
-                    Tmn = np.clip(Tmn, -1 + 1e-12, 1 - 1e-12)
+                    tvals = tanhtoc[:neigh_counts_for_ichk[ichk], ichk][mask]
+                    Tmn = np.clip(np.prod(tvals), -1 + 1e-12, 1 - 1e-12)
                     tov[kk, variable_node] = np.atanh(-Tmn)
-    return [], it
+    return ncheck, [], it

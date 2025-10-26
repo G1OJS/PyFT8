@@ -76,8 +76,8 @@ def wsjtx_compare(wsjtx_file, PyFT8_file):
     lw_tot += lw
     lp_tot += lp
     if(best_snr < best_snr_alltime): best_snr_alltime = best_snr    
-    print(f"This Cycle: WSJT-X:{lw} PyFT8:{lp} -> {lp/lw:.0%} best snr = {best_snr}")
-    print(f"All cycles: WSJT-X:{lw_tot} PyFT8:{lp_tot} -> {lp_tot/lw_tot:.0%} best snr = {best_snr_alltime}")
+    print(f"This Cycle: WSJT-X:{lw} PyFT8:{lp} -> {lp/(1e-12+lw):.0%} best snr = {best_snr}")
+    print(f"All cycles: WSJT-X:{lw_tot} PyFT8:{lp_tot} -> {lp_tot/(1e-12+lw_tot):.0%} best snr = {best_snr_alltime}")
     print()
 
 def tstrcyclestart_str(cycle_offset):
