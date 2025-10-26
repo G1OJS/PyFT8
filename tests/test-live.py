@@ -55,15 +55,19 @@ def wsjtx_compare(wsjtx_file, PyFT8_file):
     for l in PyFT8_lines:
         PyFT8_patterns.append(l[48:].replace(' ',''))
 
+    best_snr = 50
     for i, l in enumerate(wsjt_lines):
         color.write(f"{l}", "STRING" if(wsjt_patterns[i] in PyFT8_patterns) else "KEYWORD")
+        if(wsjt_patterns[i] in PyFT8_patterns):
+            snr = int(l[34:37])
+            if (snr<best_snr): best_snr = snr
 
     for i, l in enumerate(PyFT8_lines):
         if(PyFT8_patterns[i] not in wsjt_patterns): 
             color.write(f"{l}", "COMMENT")
 
     lw, lp = len(wsjt_lines), len(PyFT8_lines)
-    print(f"WSJT-X:{lw} PyFT8:{lp} -> {lp/lw:.0%}")
+    print(f"WSJT-X:{lw} PyFT8:{lp} -> {lp/lw:.0%} best snr = {best_snr}")
     print()
 
 def tstrcyclestart_str(cycle_offset):
