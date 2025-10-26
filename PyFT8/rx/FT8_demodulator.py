@@ -142,16 +142,18 @@ def unpack_ft8_g15(g15):
     r = g15 - 32400
     txt = ['','','RRR','RR73','73']
     if 0 <= r <= 4: return txt[r]
-    snr = r-35 if r<=85 else r-35-101
-    if(snr>50): return ''
+   # snr = r-35 if r<=85 else r-35-101
+   # if(snr>50): return ''
+    snr = r-35
     return str(snr).zfill(3)
 
 def FT8_decode(signal, cyclestart_str):
+    # need to add support for /P and R+report (R-05)
     bits = signal.payload_bits
     i3 = 4*bits[74]+2*bits[75]+bits[76]
     c28_a = int(''.join(str(b) for b in bits[0:28]), 2)
     c28_b = int(''.join(str(b) for b in bits[29:57]), 2)
-    g15  = int(''.join(str(b) for b in bits[58:74]), 2)
+    g15  = int(''.join(str(b) for b in bits[59:74]), 2)
     msg = f"{unpack_ft8_c28(c28_a)} {unpack_ft8_c28(c28_b)} {unpack_ft8_g15(g15)}"
     decode_line = f"{cyclestart_str}     0.000 Rx FT8    000 {signal.bounds.t0 - 0.5 :4.1f} {signal.bounds.f0 :4.0f} {msg}"
     return decode_line
