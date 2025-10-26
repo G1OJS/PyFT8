@@ -1,0 +1,20 @@
+20:57:12: Connecting to COM4
+20:58:13: Connecting to COM4
+20:58:24: Connecting to COM4
+20:58:24: Connected to COM4
+20:58:33: Connecting to COM4
+20:58:33: Connected to COM4
+20:58:47: Connecting to COM4
+20:58:47: Connected to COM4
+20:58:58: Connecting to COM4
+20:58:58: Connected to COM4
+20:59:14: Connecting to COM4
+20:59:14: Connected to COM4
+20:59:15: CAT command: PTT On
+20:59:15: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x01\xfd'
+21:00:14: Connecting to COM4
+21:00:15: Connected to COM4
+21:00:30: CAT command: PTT On
+21:00:30: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x01\xfd'
+21:00:42: CAT command: PTT Off
+21:00:42: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
