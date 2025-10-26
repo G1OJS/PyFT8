@@ -71,8 +71,7 @@ class Waterfall:
         """Update the text panel with latest decode messages."""
         self.textaxis.axis('off')
         self.textaxis.clear()
-        lines = [d['msg'] for d in decodes]
-        self.textaxis.text(0, 1, "\n".join(lines),
+        self.textaxis.text(0, 1, "\n".join(decodes),
                                va='top', family='monospace', fontsize=9)
         self.fig.canvas.draw()
         self.textaxis.axis('off')

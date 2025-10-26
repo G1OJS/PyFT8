@@ -130,7 +130,8 @@ def unpack_ft8_c28(c28):
             i, n = divmod(n, d)
             indices.append(i)
         callsign = ''.join(t[i] for t, i in zip(charmap, indices)).lstrip()
-        return callsign if ' ' not in callsign.strip() else False
+        return callsign.strip()
+    return '<...>'
 
 def unpack_ft8_g15(g15):
     if g15 < 32400:
@@ -152,7 +153,6 @@ def FT8_decode(signal, cyclestart_str):
     c28_b = int(''.join(str(b) for b in bits[29:57]), 2)
     g15  = int(''.join(str(b) for b in bits[58:74]), 2)
     msg = f"{unpack_ft8_c28(c28_a)} {unpack_ft8_c28(c28_b)} {unpack_ft8_g15(g15)}"
-    freq, dt = signal.bounds.f0, signal.bounds.t0
-    info = f"{cyclestart_str} {signal.bounds.f0 :6.1f} {signal.bounds.t0 - 0.5 :6.2f} {signal.demodulated_by}"
-    return {'info':info, 'msg':msg}
+    decode_line = f"{cyclestart_str}     0.000 Rx FT8    000 {signal.bounds.t0 - 0.5 :4.1f} {signal.bounds.f0 :4.0f} {msg}"
+    return decode_line
 

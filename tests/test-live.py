@@ -5,7 +5,6 @@ import pyaudio
 import wave
 import threading
 import sys
-import ast
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 from PyFT8.rx.FT8_demodulator import FT8Demodulator
 from PyFT8.rx.waterfall import Waterfall
@@ -31,50 +30,44 @@ def wsjtx_tailer():
                     time.sleep(0.2)
                     continue
                 yield line.strip()
-
+                
     for line in follow(r"C:\Users\drala\AppData\Local\WSJT-X\ALL.txt"):
-        wsjtx_file = f"wsjtx.txt"
         with open(wsjtx_file, 'a') as f:
-                f.write(f"{line}\n")
-           
+            f.write(f"{line}\n")
+
 def wsjtx_compare(wsjtx_file, PyFT8_file):
-    PyFT8_patterns, wsj_patterns = [],[]
-    matched_msgs, unmatched_msgs = [],[]
-        
+    import sys
+    try:
+        color = sys.stdout.shell
+    except AttributeError:
+        raise RuntimeError("Use IDLE")
+
     with open(wsjtx_file, 'r') as f:
-        wsjt = f.readlines()
-    for wsjtline in wsjt:
-        l = wsjtline[48:]
-        wsj_pattern = l.replace(' ','').replace('\n','')
-        wsj_patterns.append(wsj_pattern)
-
+        wsjt_lines = f.readlines()
     with open(PyFT8_file, 'r') as f:
-        PyFT8lines = f.readlines()
-    for PyFT8line in PyFT8lines:
-        l = d = ast.literal_eval(PyFT8line)['msg']
-        PyFT8_pattern = l.replace(' ','')
-        if(PyFT8_pattern in wsj_patterns):
-            matched_msgs.append(l)
-        else:
-            unmatched_msgs.append(l)
-        PyFT8_patterns.append(PyFT8_pattern)
+        PyFT8_lines = f.readlines()
 
+    wsjt_patterns =[]
+    for l in wsjt_lines:
+        wsjt_patterns.append(l[48:].replace(' ',''))
+        
+    PyFT8_patterns =[]
+    for l in PyFT8_lines:
+        PyFT8_patterns.append(l[48:].replace(' ',''))
 
-    PyFT8 = len(PyFT8_patterns)
-    wsj = len(wsj_patterns)
-    pc = PyFT8/wsj if wsj>0 else 0
+    for i, l in enumerate(wsjt_lines):
+        color.write(f"{l}", "STRING" if(wsjt_patterns[i] in PyFT8_patterns) else "KEYWORD")
 
-    PyFT8_set = set(PyFT8_patterns)
-    wsj_set = set(wsj_patterns)
-    matches = PyFT8_set.intersection(wsj_set)
-    PyFT8_only = PyFT8_set.difference(wsj_set)
-    both = len(matches)
-    PyFT8_only = len(PyFT8_only)
-              
-    print(f"wsjt: {wsj} PyFT8: {PyFT8} ({pc:.1%}) matched: {both} unmatched: {PyFT8_only}")
+    for i, l in enumerate(PyFT8_lines):
+        if(PyFT8_patterns[i] not in wsjt_patterns): 
+            color.write(f"{l}", "COMMENT")
+
+    lw, lp = len(wsjt_lines), len(PyFT8_lines)
+    print(f"WSJT-X:{lw} PyFT8:{lp} -> {lp/lw:.0%}")
+    print()
 
 def tstrcyclestart_str(cycle_offset):
-    return time.strftime("%Y%m%d_%H%M%S", time.gmtime(15*cycle_offset + 15*int(time.time() / 15)))
+    return time.strftime("%y%m%d_%H%M%S", time.gmtime(15*cycle_offset + 15*int(time.time() / 15)))
 
 def tstrNow():
     return time.strftime("%H:%M:%S", time.gmtime(time.time()))
@@ -111,21 +104,22 @@ def read_wav(filename, sample_rate = 12000):
           assert wav.getsampwidth() == 2
           audio = np.frombuffer(wav.readframes(wav.getnframes()), dtype=np.int16)
      return audio
-
-threading.Thread(target=audioloop).start()
-threading.Thread(target=wsjtx_tailer).start()
-
+    
 def reset_compare():
     with open(wsjtx_file, 'w') as f:
         f.write("")
     with open(PyFT8_file, 'w') as f:
         f.write("")
+        
+threading.Thread(target=audioloop).start()
+threading.Thread(target=wsjtx_tailer).start()
 
 demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
 wf = Waterfall(demod.spectrum, f1=3500)
 
-no_decodes_before = True
+reset_compare()
 while True:
+    reset_compare()
     print(f"{tstrNow()} Decoder waiting for audio file")
     while not os.path.exists(FLAG_FILE):
         time.sleep(0.1)
@@ -145,13 +139,8 @@ while True:
     print(f"Decoded {len(decodes)} signals\n")
     wf.show_decodes(decodes)
     
-    if(any(decodes) and no_decodes_before):
-        no_decodes_before = False
-        reset_compare()
-    print(f"{tstrNow()} Decoded results:")
-    for l in decodes:
-        print(f"{l}")
-        with open(PyFT8_file, 'a') as f:
+    with open(PyFT8_file, 'a') as f:
+        for l in decodes:
             f.write(f"{l}\n")
     wsjtx_compare(wsjtx_file,PyFT8_file)
 
