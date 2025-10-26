@@ -145,7 +145,7 @@ def unpack_ft8_g15(g15):
    # snr = r-35 if r<=85 else r-35-101
    # if(snr>50): return ''
     snr = r-35
-    return str(snr).zfill(3)
+    return f"{snr:+03d}"
 
 def FT8_decode(signal, cyclestart_str):
     # need to add support for /P and R+report (R-05)
