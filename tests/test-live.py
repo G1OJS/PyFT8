@@ -19,6 +19,10 @@ PyFT8_file = "pyft8.txt"
 wsjtx_file = "wsjtx.txt"
 pya = pyaudio.PyAudio()
 
+global lw_tot, lp_tot, best_snr_alltime
+lw_tot, lp_tot = 0, 0
+best_snr_alltime = 50
+
 def wsjtx_tailer():
     cycle = ''
     def follow(path):
@@ -36,6 +40,8 @@ def wsjtx_tailer():
             f.write(f"{line}\n")
 
 def wsjtx_compare(wsjtx_file, PyFT8_file):
+    global lw_tot, lp_tot, best_snr_alltime
+
     import sys
     try:
         color = sys.stdout.shell
@@ -67,7 +73,11 @@ def wsjtx_compare(wsjtx_file, PyFT8_file):
             color.write(f"{l}", "COMMENT")
 
     lw, lp = len(wsjt_lines), len(PyFT8_lines)
-    print(f"WSJT-X:{lw} PyFT8:{lp} -> {lp/lw:.0%} best snr = {best_snr}")
+    lw_tot += lw
+    lp_tot += lp
+    if(best_snr < best_snr_alltime): best_snr_alltime = best_snr    
+    print(f"This Cycle: WSJT-X:{lw} PyFT8:{lp} -> {lp/lw:.0%} best snr = {best_snr}")
+    print(f"All cycles: WSJT-X:{lw_tot} PyFT8:{lp_tot} -> {lp_tot/lw_tot:.0%} best snr = {best_snr_alltime}")
     print()
 
 def tstrcyclestart_str(cycle_offset):
@@ -121,7 +131,6 @@ threading.Thread(target=wsjtx_tailer).start()
 demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
 wf = Waterfall(demod.spectrum, f1=3500)
 
-reset_compare()
 while True:
     reset_compare()
     print(f"{tstrNow()} Decoder waiting for audio file")
