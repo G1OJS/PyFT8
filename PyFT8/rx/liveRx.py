@@ -11,7 +11,7 @@ from PyFT8.rx.waterfall import Waterfall
 
 SAMPLE_RATE = 12000
 CYCLE = 15.0
-SHORT_CYCLE = 14.6
+SHORT_CYCLE = 13.5
 FRAMES_PER_CYCLE = int(SAMPLE_RATE * SHORT_CYCLE)
 BRIDGE_FILE = 'audio.wav'
 FLAG_FILE = 'audio.txt'
@@ -58,21 +58,21 @@ def read_wav(filename, sample_rate = 12000):
 
 global demod
 threading.Thread(target=audioloop).start()
-demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
+demod = FT8Demodulator(sample_rate=12000, fbins_pertone=2, hops_persymb=3)
 
 def run():
     import json
     while True:
         while not os.path.exists(FLAG_FILE):   
             time.sleep(.1)
-        cyclestart_str = tstrcyclestart_str(0)
+        cycle_str = tstrcyclestart_str(1)
         audio = read_wav(BRIDGE_FILE)
         os.remove(FLAG_FILE)
         print("demod")
         demod.spectrum.feed_audio(audio)
         candidates = demod.find_candidates(topN=20)
         print(f"Candidates: {len(candidates)}")
-        decodes = demod.demodulate(candidates, cyclestart_str = cyclestart_str)
+        decodes = demod.demodulate(candidates, cyclestart_str = cycle_str)
         print(f"Decodes: {len(decodes)}")
         with open("data.json", "w") as f:
             json.dump(decodes, f)
