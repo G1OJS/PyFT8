@@ -17,16 +17,15 @@ def time_in_cycle():
     t_remaining = cycle_length - t_elapsed 
     return t_elapsed, t_remaining
 
-def initial_reply(callsign):
-    print(f"Initial reply to {callsign}")
-
 class ClickHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/select_"):
             callsign =  self.path.strip("/").replace("select_", "").replace(".txt", "")
-            print(callsign)
-            threading.Thread(target=initial_reply, args=(callsign,))
+            threading.Thread(target=initial_reply, args=(callsign,)).start()
         super().do_GET()
+
+def initial_reply(callsign):
+    print(f"Initial reply to {callsign}\n")
 
 def send_message(c1,c2,gr):
     symbols = FT8_encoder.pack_message(c1,c2,gr, 1000)
