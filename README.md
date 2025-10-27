@@ -1,4 +1,4 @@
-# Python FT8 demodulator and decoder 
+# Python FT8 demodulator, decoder, encoder, modulator (sequencer in progress)
 
 <img width="981" height="382" alt="Capture" src="https://github.com/user-attachments/assets/8eb7c645-ab75-4e4f-8ce9-1dae6045e6ba" />
 
