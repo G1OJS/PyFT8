@@ -9,7 +9,7 @@ Refactored to use new datagrids framework:
 
 import math
 import numpy as np
-from scipy.signal import correlate2d
+from scipy.signal import correlate2d, find_peaks
 
 from PyFT8.datagrids import Spectrum, Bounds, Candidate
 from PyFT8.signaldefs import FT8
@@ -24,6 +24,7 @@ class FT8Demodulator:
         self.fbins_pertone = fbins_pertone
         self.hops_persymb = hops_persymb
         self.sigspec = sigspec
+        self.max_t0_idx = int(self.hops_persymb * 2.0 *6.25)
         # ---- spectrum setup ----
         self.spectrum = Spectrum( fbins_pertone=self.fbins_pertone, hops_persymb=self.hops_persymb,
                                   sample_rate=self.sample_rate, sigspec=self.sigspec)
@@ -44,30 +45,28 @@ class FT8Demodulator:
     # ======================================================
     # Candidate search
     # ======================================================
+    
     def find_candidates(self, t0=0.0, t1=2, f0=100.0, f1=3300.0, topN=50):
         """ Sweep a time/freq region for Costas sync patterns.
             Returns list of Candidate objects fully set.
         """
-        region = Bounds.from_physical(self.spectrum, t0, t1, f0, f1)
-        csync_correlation = correlate2d(self.spectrum.power, self.csync, mode='valid').astype(np.float32)
         candidates = []
-        for f0_idx in region.f_idx_range:
-            max_score = -1e10
-            for t_idx in region.t_idx_range:
-              #  score = csync_correlation[t_idx, f0_idx]
-                score = np.maximum.reduce([
-                    csync_correlation[t_idx, f0_idx],
-                    csync_correlation[t_idx + 36*self.hops_persymb, f0_idx],
-                    csync_correlation[t_idx + 72*self.hops_persymb, f0_idx]
-                ])
-                if(score > max_score):
-                    max_score = score
-                    t0_idx = t_idx
-        #    if max_score > self._csync_threshold:
-            candidates.append(Candidate(self.sigspec, self.spectrum, t0_idx, f0_idx, max_score))
+        csync_correlation = correlate2d(self.spectrum.power, self.csync, mode='valid').astype(np.float32)
+        #freq_power = self.spectrum.power.mean(axis=0)
+        #maxima = np.argsort(freq_power)[-topN:]
+
+        m = np.max(csync_correlation)/3000
+        for ihop in range(25):
+            peaks = find_peaks(csync_correlation[ihop,:], height = m)
+            fpeaks = peaks[0]
+            vals = peaks[1]['peak_heights']
+            for i, jf in enumerate(fpeaks):
+                candidates.append(Candidate(self.sigspec, self.spectrum, ihop, jf, vals[i]))
+
+        #candidates.append(Candidate(self.sigspec, self.spectrum, t0_idx, f0_idx, max_score))
         # sort and de-duplicate
         candidates.sort(key=lambda c: -c.score)
-        min_sep_fbins = 0.5 * self.sigspec.tones_persymb * self.fbins_pertone
+        min_sep_fbins = 0.25 * self.sigspec.tones_persymb * self.fbins_pertone
         uniq = []
         for c in candidates:
             if not any(abs(c.bounds.f0_idx - u.bounds.f0_idx) < min_sep_fbins for u in uniq):
