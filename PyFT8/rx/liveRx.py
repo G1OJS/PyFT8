@@ -70,8 +70,10 @@ def run():
         os.remove(FLAG_FILE)
         print("demod")
         demod.spectrum.feed_audio(audio)
-        candidates = demod.find_candidates(topN=5)
+        candidates = demod.find_candidates(topN=20)
+        print(f"Candidates: {len(candidates)}")
         decodes = demod.demodulate(candidates, cyclestart_str = cyclestart_str)
+        print(f"Decodes: {len(decodes)}")
         with open("data.json", "w") as f:
             json.dump(decodes, f)
 
