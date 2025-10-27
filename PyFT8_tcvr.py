@@ -45,7 +45,6 @@ def start_UI_server():
     server = ThreadingHTTPServer(("localhost", 8080), ClickHandler)
     server.serve_forever()
 
-
 threading.Thread(target=start_UI_server, daemon=True).start()
 webbrowser.open("http://localhost:8080/UI.html")
 threading.Thread(target=liveRx.run).start()
