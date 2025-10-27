@@ -61,16 +61,16 @@ threading.Thread(target=audioloop).start()
 demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
 
 def run():
+    import json
     while True:
-        while not os.path.exists(FLAG_FILE):
-            time.sleep(0.1)
+        while not os.path.exists(FLAG_FILE):   
+            time.sleep(.1)
         cyclestart_str = tstrcyclestart_str(0)
         audio = read_wav(BRIDGE_FILE)
         os.remove(FLAG_FILE)
         demod.spectrum.feed_audio(audio)
         candidates = demod.find_candidates(topN=25)
-        print(f"{cyclestart_str} =================================")
         decodes = demod.demodulate(candidates, cyclestart_str = cyclestart_str)
-        for l in decodes:
-            print(f"{l}")
+        with open("data.json", "w") as f:
+            json.dump(decodes, f)
 

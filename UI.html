@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PyFT8 Live Decodes</title>
+<style>
+body { font-family: sans-serif; background:#111; color:#eee; margin:1em; }
+a { color:#8cf; text-decoration:none; }
+a:hover { text-decoration:underline; }
+</style>
+<script>
+async function refresh() {
+  try {
+    const res = await fetch("data.json?");   
+    const msgs = await res.json();
+    const list = document.getElementById("msgs");
+    list.innerHTML = "";
+    msgs.forEach((m) => {
+		const parts = [m.freq, m.call_a, m.call_b, m.grid_rpt];
+		const widths = ["80px", "100px", "100px", "60px"];
+
+		const div = document.createElement("div");
+		div.className = "message-line";
+
+		parts.forEach((part, idx) => {
+			const span = document.createElement("span");
+			span.textContent = part;
+			span.style.display = "inline-block";
+			span.style.width = widths[idx];
+			if (idx === 1 || idx === 2) {
+			  span.className = "callsign";
+			  span.onclick = () => {
+				fetch(`/select_${part}.txt`);
+				return false;
+			  };
+			  span.style.cursor = "pointer";
+			  span.title = `Click ${part}`;
+			}
+			div.appendChild(span);
+		});
+
+		list.appendChild(div);
+	});
+  } catch (e) {
+    console.error("Refresh failed:", e);
+  }
+}
+setInterval(refresh, 2000);  // refresh every 2 seconds
+</script>
+</head>
+<body onload="refresh()">
+<h3>Decodes</h3>
+<div id="msgs">Loading...</div>
+</body>
+</html>
