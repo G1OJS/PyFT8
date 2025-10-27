@@ -9,6 +9,7 @@ Refactored to use new datagrids framework:
 
 import math
 import numpy as np
+from scipy.signal import correlate2d
 
 from PyFT8.datagrids import Spectrum, Bounds, Candidate
 from PyFT8.signaldefs import FT8
@@ -33,14 +34,13 @@ class FT8Demodulator:
         costas = [3, 1, 4, 0, 6, 5, 2]
         n = len(costas)
         h, w = n * self.hops_persymb, n * self.fbins_pertone
-        csync = np.full((h, w), -1/(n - 1), np.float32)
+        self.csync = np.full((h, w), -1/(n - 1), np.float32)
         for sym_idx, tone in enumerate(costas):
             t0 = sym_idx * self.hops_persymb
             f0 = tone * self.fbins_pertone
-            csync[t0:t0+self.hops_persymb, f0:f0+self.fbins_pertone] = 1.0
-        self._csync = csync
-        self._csync_threshold = 1e9 * self.fbins_pertone * self.hops_persymb
-
+            self.csync[t0:t0+self.hops_persymb, f0:f0+self.fbins_pertone] = 1.0
+        self._csync_threshold = 1e5
+        
     # ======================================================
     # Candidate search
     # ======================================================
@@ -49,16 +49,17 @@ class FT8Demodulator:
             Returns list of Candidate objects fully set.
         """
         region = Bounds.from_physical(self.spectrum, t0, t1, f0, f1)
+        csync_correlation = correlate2d(self.spectrum.power, self.csync, mode='valid').astype(np.float32)
         candidates = []
         for f0_idx in region.f_idx_range:
             max_score = -1e10
             for t_idx in region.t_idx_range:
-                score = self._csync_score(t_idx, f0_idx)
+                score = csync_correlation[t_idx, f0_idx]
                 if(score > max_score):
                     max_score = score
                     t0_idx = t_idx
-            if max_score > self._csync_threshold:
-                candidates.append(Candidate(self.sigspec, self.spectrum, t0_idx, f0_idx, max_score))
+        #    if max_score > self._csync_threshold:
+            candidates.append(Candidate(self.sigspec, self.spectrum, t0_idx, f0_idx, max_score))
         # sort and de-duplicate
         candidates.sort(key=lambda c: -c.score)
         min_sep_fbins = 0.5 * self.sigspec.tones_persymb * self.fbins_pertone

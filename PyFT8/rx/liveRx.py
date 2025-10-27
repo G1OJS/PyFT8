@@ -58,7 +58,7 @@ def read_wav(filename, sample_rate = 12000):
 
 global demod
 threading.Thread(target=audioloop).start()
-demod = FT8Demodulator(sample_rate=12000, fbins_pertone=2, hops_persymb=3)
+demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
 
 def run():
     import json
@@ -70,7 +70,7 @@ def run():
         os.remove(FLAG_FILE)
         print("demod")
         demod.spectrum.feed_audio(audio)
-        candidates = demod.find_candidates(topN=20)
+        candidates = demod.find_candidates(topN=30)
         print(f"Candidates: {len(candidates)}")
         decodes = demod.demodulate(candidates, cyclestart_str = cycle_str)
         print(f"Decodes: {len(decodes)}")
