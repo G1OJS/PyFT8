@@ -54,7 +54,12 @@ class FT8Demodulator:
         for f0_idx in region.f_idx_range:
             max_score = -1e10
             for t_idx in region.t_idx_range:
-                score = csync_correlation[t_idx, f0_idx]
+              #  score = csync_correlation[t_idx, f0_idx]
+                score = np.maximum.reduce([
+                    csync_correlation[t_idx, f0_idx],
+                    csync_correlation[t_idx + 36*self.hops_persymb, f0_idx],
+                    csync_correlation[t_idx + 72*self.hops_persymb, f0_idx]
+                ])
                 if(score > max_score):
                     max_score = score
                     t0_idx = t_idx
