@@ -29,6 +29,7 @@
 			const list = document.getElementById("msgs");
 			list.innerHTML = "";
 			msgs.forEach((m) => {
+				m=m[0];
 				const parts = [m.cyclestart_str.split('_')[1], m.freq, m.call_a, m.call_b, m.grid_rpt];
 				const div = document.createElement("div");
 				div.className = "message-line";

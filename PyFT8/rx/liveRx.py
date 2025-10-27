@@ -68,8 +68,9 @@ def run():
         cyclestart_str = tstrcyclestart_str(0)
         audio = read_wav(BRIDGE_FILE)
         os.remove(FLAG_FILE)
+        print("demod")
         demod.spectrum.feed_audio(audio)
-        candidates = demod.find_candidates(topN=25)
+        candidates = demod.find_candidates(topN=5)
         decodes = demod.demodulate(candidates, cyclestart_str = cyclestart_str)
         with open("data.json", "w") as f:
             json.dump(decodes, f)
