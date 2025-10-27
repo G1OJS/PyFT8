@@ -11,7 +11,7 @@ from PyFT8.rx.waterfall import Waterfall
 
 SAMPLE_RATE = 12000
 CYCLE = 15.0
-SHORT_CYCLE = 13.5
+SHORT_CYCLE = 14
 FRAMES_PER_CYCLE = int(SAMPLE_RATE * SHORT_CYCLE)
 BRIDGE_FILE = 'audio.wav'
 FLAG_FILE = 'audio.txt'
@@ -68,12 +68,12 @@ def run():
         cycle_str = tstrcyclestart_str(1)
         audio = read_wav(BRIDGE_FILE)
         os.remove(FLAG_FILE)
-        print("demod")
+        print(f"{tstrNow()} start demod")
         demod.spectrum.feed_audio(audio)
-        candidates = demod.find_candidates(topN=30)
-        print(f"Candidates: {len(candidates)}")
+        candidates = demod.find_candidates(topN=10)
+        print(f"{tstrNow()} Candidates: {len(candidates)}")
         decodes = demod.demodulate(candidates, cyclestart_str = cycle_str)
-        print(f"Decodes: {len(decodes)}")
+        print(f"{tstrNow()} Decodes: {len(decodes)}")
         with open("data.json", "w") as f:
             json.dump(decodes, f)
 
