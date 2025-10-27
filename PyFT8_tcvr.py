@@ -11,6 +11,8 @@ import PyFT8.tx.audio_out as audio_out
 import json
 icom = IcomCIV()
 cycle_length = 15
+myCall = 'G1OJS'
+myGrid = 'IO90'
 
 def time_in_cycle():
     t_elapsed = (time.time() % cycle_length)
@@ -26,12 +28,14 @@ class ClickHandler(SimpleHTTPRequestHandler):
 
 def initial_reply(callsign):
     print(f"Initial reply to {callsign}\n")
+    send_message(callsign, myCall, myGrid, 1000)
 
-def send_message(c1,c2,gr):
-    symbols = FT8_encoder.pack_message(c1,c2,gr, 1000)
+def send_message(c1,c2,gr, freq):
+    symbols = FT8_encoder.pack_message(c1,c2,gr, freq)
     audio_out.create_ft8_wave(symbols)
     _ , t_remain = time_in_cycle()
-    time.sleep(t_to_next)
+    print(t_remain)
+    time.sleep(t_remain)
     icom.setPTTON()
     audio_out.play_ft8_wave()
     icom.setPTTOFF()

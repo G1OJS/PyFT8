@@ -89,3 +89,11 @@
 09:23:05: Connected to COM4
 09:23:35: Connecting to COM4
 09:23:35: Connected to COM4
+09:45:45: Connecting to COM4
+09:45:45: Connected to COM4
+09:47:17: Connecting to COM4
+09:47:17: Connected to COM4
+09:47:30: CAT command: PTT On
+09:47:30: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x01\xfd'
+09:47:42: CAT command: PTT Off
+09:47:43: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
