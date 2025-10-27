@@ -126,3 +126,4 @@
 10:13:15: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x01\xfd'
 10:13:27: CAT command: PTT Off
 10:13:27: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+10:16:18: Connected to COM4

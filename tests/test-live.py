@@ -150,10 +150,10 @@ while True:
     print("Demodulating")
     decodes = demod.demodulate(candidates, cyclestart_str = cyclestart_str)
     print(f"Decoded {len(decodes)} signals\n")
-    wf.show_decodes(decodes)
+  #  wf.show_decodes(decodes)
     
     with open(PyFT8_file, 'a') as f:
         for l in decodes:
-            f.write(f"{l}\n")
+            f.write(f"{l[1]}\n")
     wsjtx_compare(wsjtx_file,PyFT8_file)
 
