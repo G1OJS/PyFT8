@@ -27,6 +27,7 @@ class ClickHandler(SimpleHTTPRequestHandler):
         super().do_GET()
 
 def initial_reply(callsign):
+    print(callsign, type(callsign))
     print(f"Initial reply to {callsign}\n")
     send_message(callsign, myCall, myGrid, 1000)
 
@@ -34,7 +35,6 @@ def send_message(c1,c2,gr, freq):
     symbols = FT8_encoder.pack_message(c1,c2,gr, freq)
     audio_out.create_ft8_wave(symbols)
     _ , t_remain = time_in_cycle()
-    print(t_remain)
     time.sleep(t_remain)
     icom.setPTTON()
     audio_out.play_ft8_wave()

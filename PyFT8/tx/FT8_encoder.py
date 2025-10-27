@@ -23,7 +23,8 @@ def pack_ft8_c28(call):
     if (call == "CQ"): return 2
     from string import ascii_uppercase as ltrs, digits as digs
     m = int(re.search(r"\d", call).start())
-    call = np.array(['',' ','',''])[m] + call
+    if(m == 1): call = ' '+call
+    #call = np.array(['',' ','',''])[m] + call
     charmap = [' ' + digs + ltrs, digs + ltrs, digs + ' ' * 17] + [' ' + ltrs] * 3
     factors = np.array([36*10*27**3, 10*27**3, 27**3, 27**2, 27, 1])
     indices = np.array([cmap.index(call[i]) for i, cmap in enumerate(charmap)])

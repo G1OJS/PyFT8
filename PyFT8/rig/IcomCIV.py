@@ -3,11 +3,13 @@ import datetime
 class IcomCIV:
     import serial
 
-    def __init__(self):
-        self.debug("Connecting to COM4")
-        self.serial_port = self.serial.Serial('COM4', baudrate=9600, timeout=0.1)
-        if (self.serial_port):
-            self.debug("Connected to COM4")
+    def __init__(self, port='COM4', baudrate=9600, timeout=0.1):
+        try:
+            self.serial_port = self.serial.Serial(port=port, baudrate=baudrate, timeout=timeout)
+            if (self.serial_port):
+                self.debug(f"Connected to {port}")
+        except IOError:
+            print(f"Couldn't connect to {port} - running without CI-V")    
             
     def debug(self, txt):
         if("Received" in txt):
