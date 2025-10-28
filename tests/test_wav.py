@@ -34,4 +34,5 @@ decodes = demod.demodulate(candidates, cyclestart_str="TEST")
 timers.timedLog(f"Decoded {len(decodes)} signals")
 
 for d in decodes:
-    print(d[1])
+    bounds = d[0]['bounds']
+    print(d[1], bounds.t0_idx, bounds.f0_idx )

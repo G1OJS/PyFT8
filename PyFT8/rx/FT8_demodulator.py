@@ -46,8 +46,19 @@ class FT8Demodulator:
     # ======================================================
     
     def find_candidates(self, t0=0.0, t1=2, f0=100.0, f1=3300.0, topN=50):
-        """ Sweep a time/freq region for Costas sync patterns.
-            Returns list of Candidate objects fully set.
+        """ wave file test
+        14:27:21.25 (=0.00) Start to Load audio
+        14:27:22.95 (+1.70) Start to Show spectrum
+        14:27:23.31 (+0.36) Start to Find candidates
+        14:27:26.38 (+3.07) Found 25 candidates
+        14:27:26.40 (+0.01) Start to Show candidates
+        14:27:26.72 (+0.33) Start to Demodulate
+        14:27:27.28 (+0.55) Decoded 5 signals
+        TEST     0.000 Rx FT8    000 -0.3 2156 WM3PEN EA6VQ -09 4 1035
+        TEST     0.000 Rx FT8    000  0.0 2569 W1FC F5BZB -08 10 1233
+        TEST     0.000 Rx FT8    000 -0.1  721 A92EE F5PSR -14 8 346
+        TEST     0.000 Rx FT8    000  0.1  588 K1JT HA0DU KN07 11 282
+        TEST     0.000 Rx FT8    000  0.0  638 N1JFU EA6EE -07 10 306
         """
         region = Bounds.from_physical(self.spectrum, t0, t1, f0, f1)
         candidates = []
@@ -162,6 +173,6 @@ def FT8_decode(signal, cyclestart_str):
     grid_rpt = unpack_ft8_g15(g15)
     freq_str = f"{signal.bounds.f0:4.0f}"
     all_txt_line = f"{cyclestart_str}     0.000 Rx FT8    000 {signal.bounds.t0 - 0.5 :4.1f} {signal.bounds.f0 :4.0f} {call_a} {call_b} {grid_rpt}"
-    dict_line = {'cyclestart_str':cyclestart_str , 'freq':freq_str, 'call_a':call_a, 'call_b':call_b, 'grid_rpt':grid_rpt}
+    dict_line = {'cyclestart_str':cyclestart_str , 'freq':freq_str, 'call_a':call_a, 'call_b':call_b, 'grid_rpt':grid_rpt, 'bounds':signal.bounds}
     return dict_line, all_txt_line
 
