@@ -11,7 +11,7 @@ from PyFT8.rx.waterfall import Waterfall
 
 SAMPLE_RATE = 12000
 CYCLE = 15.0
-SHORT_CYCLE = 14.6
+SHORT_CYCLE = 14
 FRAMES_PER_CYCLE = int(SAMPLE_RATE * SHORT_CYCLE)
 BRIDGE_FILE = 'audio.wav'
 FLAG_FILE = 'audio.txt'
@@ -100,7 +100,7 @@ def audioloop():
         print(f"{tstrNow()} Audio capture waiting for cycle start\n")
         t = time.time()
         t_to_next = CYCLE - (t % CYCLE)
-        time.sleep(t_to_next)
+        time.sleep(t_to_next-0.25)
         stream = pya.open(format=pyaudio.paInt16, channels = 1, rate=SAMPLE_RATE,
                       input=True, input_device_index = 1,
                       frames_per_buffer=FRAMES_PER_CYCLE)

@@ -17,7 +17,7 @@ from PyFT8.rx.decode174_91 import decode174_91
 import PyFT8.FT8_crc as crc
 
 class FT8Demodulator:
-    def __init__(self, sample_rate=12000, fbins_pertone=4, hops_persymb=3, sigspec=FT8):
+    def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=3, sigspec=FT8):
         # ft8c.f90 uses 4 hops per symbol and 2.5Hz fbins (2.5 bins per tone)
         # ---- Configuration ----
         self.sample_rate = sample_rate
@@ -55,8 +55,8 @@ class FT8Demodulator:
         #freq_power = self.spectrum.power.mean(axis=0)
         #maxima = np.argsort(freq_power)[-topN:]
 
-        m = np.max(csync_correlation)/3000
-        for ihop in range(25):
+        m = np.max(csync_correlation)/50000
+        for ihop in range(40):
             peaks = find_peaks(csync_correlation[ihop,:], height = m)
             fpeaks = peaks[0]
             vals = peaks[1]['peak_heights']
@@ -66,12 +66,12 @@ class FT8Demodulator:
         #candidates.append(Candidate(self.sigspec, self.spectrum, t0_idx, f0_idx, max_score))
         # sort and de-duplicate
         candidates.sort(key=lambda c: -c.score)
-        min_sep_fbins = 0.5 * self.sigspec.tones_persymb * self.fbins_pertone
+        min_sep_fbins = 0.25 * self.sigspec.tones_persymb * self.fbins_pertone
         uniq = []
-        for c in candidates[:topN]:
+        for c in candidates:
             if not any(abs(c.bounds.f0_idx - u.bounds.f0_idx) < min_sep_fbins for u in uniq):
                 uniq.append(c)
-        return uniq
+        return uniq[:topN]
 
     def _csync_score(self, t0_idx, f0_idx):
         return np.sum(self._csync * self.spectrum.power[t0_idx:t0_idx + self._csync.shape[0], f0_idx:f0_idx + self._csync.shape[1]])
