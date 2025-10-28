@@ -63,6 +63,7 @@ class FT8Demodulator:
         region = Bounds.from_physical(self.spectrum, t0, t1, f0, f1)
         candidates = []
         for f0_idx in region.f_idx_range:
+           
             max_score = -1e10
             for t_idx in region.t_idx_range:
                 score = self._csync_score_3(t_idx, f0_idx)
@@ -85,10 +86,14 @@ class FT8Demodulator:
 
     def _csync_score_3(self, t0_idx, f0_idx):
         score = 0.0
-        for symb_idx in [0, 36, 72]: # magic numbers; move to a 'costas object' per mode
-            t_idx = t0_idx + symb_idx * self.hops_persymb
-            block_score = np.sum(self._csync * self.spectrum.power[t_idx:t_idx + self._csync.shape[0], f0_idx:f0_idx + self._csync.shape[1]])
-            score = block_score if block_score > score else score
+        fn_idx = f0_idx + self._csync.shape[1]
+        nt = self._csync.shape[0]
+        block_hopstarts = [0, 36 * self.hops_persymb, 72 * self.hops_persymb]
+        for block_idx in block_hopstarts: 
+            t_idx = t0_idx + block_idx
+            pgrid = self.spectrum.power[t_idx:t_idx + nt, f0_idx:fn_idx]
+            block_score = np.sum(pgrid * self._csync)
+            if block_score > score: score = block_score 
             #score += block_score
         return score 
 
