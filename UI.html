@@ -15,7 +15,7 @@
 	</style>
 	
 	<script>
-		async function updateClock() {
+		async function update_clock() {
 			const t = new Date;
 			const utc = ("0" + t.getUTCHours()).slice(-2) + ":" + ("0" + t.getUTCMinutes()).slice(-2) + ":" + ("0" + t.getUTCSeconds()).slice(-2);
 			document.getElementById("clock").innerHTML = utc + " UTC";
@@ -60,7 +60,7 @@
 		  }
 		}		
 			
-		//setInterval(update_clock, 1000);
+		setInterval(update_clock, 1000);
 		setInterval(refresh_config, 250);
 		setInterval(refresh_decodes, 250);
 	</script>

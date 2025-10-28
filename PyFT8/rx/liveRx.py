@@ -76,9 +76,11 @@ def run():
         global config
         get_config()
         print("Rx freq: ",config['rxFreq'])
-        rxFreq_decodes = demod.demod_rxFreq(config['rxFreq'], cycle_str)
-        with open("rxFreq_data.json", "w") as f:
-            json.dump([d[0] for d in rxFreq_decodes], f)
+        rxFreq_decode = demod.demod_rxFreq(config['rxFreq'], cycle_str)
+        print(rxFreq_decode)
+        if(len(rxFreq_decode)>0):
+            with open("rxFreq_data.json", "w") as f:
+                json.dump(rxFreq_decode[0], f)
             
         timers.timedLog("Start to Find candidates")
         candidates = demod.find_candidates(100,3300, topN=500)

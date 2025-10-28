@@ -45,10 +45,9 @@ class FT8Demodulator:
         candidates = []
         f0_idx = int(np.searchsorted(self.spectrum.freqs, rxFreq))
         candidates.append(Candidate(self.sigspec, self.spectrum, 0, f0_idx, -50))
-        self.sync_candidates(candidates, topN=1)
+        candidates = self.sync_candidates(candidates, topN=1)
         decode = self.demodulate(candidates, cyclestart_str = cycle_str)
-        print("RX DECODE: "+decode[1])
-        return decodes
+        return decode
                      
     # ======================================================
     # Candidate search
