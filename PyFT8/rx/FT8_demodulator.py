@@ -33,13 +33,12 @@ class FT8Demodulator:
         self._hop_size = int(self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb)) 
         # ---- Costas sync mask ----
         costas = [3, 1, 4, 0, 6, 5, 2]
-        n = len(costas)
-        h, w = n * self.hops_persymb, n * self.fbins_pertone
-        self.csync = np.full((h, w), -1/(n - 1), np.float32)
+        h, w = 7 * self.hops_persymb, 8 * self.fbins_pertone
+        self._csync = np.full((h, w), -1/7, np.float32)
         for sym_idx, tone in enumerate(costas):
             t0 = sym_idx * self.hops_persymb
             f0 = tone * self.fbins_pertone
-            self.csync[t0:t0+self.hops_persymb, f0:f0+self.fbins_pertone] = 1.0
+            self._csync[t0:t0+self.hops_persymb, f0:f0+self.fbins_pertone] = 1.0
         self._csync_threshold = 1e5
         
     # ======================================================
@@ -50,23 +49,20 @@ class FT8Demodulator:
         """ Sweep a time/freq region for Costas sync patterns.
             Returns list of Candidate objects fully set.
         """
+        region = Bounds.from_physical(self.spectrum, t0, t1, f0, f1)
         candidates = []
-        csync_correlation = correlate2d(self.spectrum.power[0:200,0:2881], self.csync, mode='valid').astype(np.float32)
-        #freq_power = self.spectrum.power.mean(axis=0)
-        #maxima = np.argsort(freq_power)[-topN:]
-
-        m = np.max(csync_correlation)/50000
-        for ihop in range(40):
-            peaks = find_peaks(csync_correlation[ihop,:], height = m)
-            fpeaks = peaks[0]
-            vals = peaks[1]['peak_heights']
-            for i, jf in enumerate(fpeaks):
-                candidates.append(Candidate(self.sigspec, self.spectrum, ihop, jf, vals[i]))
-
-        #candidates.append(Candidate(self.sigspec, self.spectrum, t0_idx, f0_idx, max_score))
+        for f0_idx in region.f_idx_range:
+            max_score = -1e10
+            for t_idx in region.t_idx_range:
+                score = self._csync_score_3(t_idx, f0_idx)
+                if(score > max_score):
+                    max_score = score
+                    t0_idx = t_idx
+            if max_score > self._csync_threshold:
+                candidates.append(Candidate(self.sigspec, self.spectrum, t0_idx, f0_idx, max_score))
         # sort and de-duplicate
         candidates.sort(key=lambda c: -c.score)
-        min_sep_fbins = 0.25 * self.sigspec.tones_persymb * self.fbins_pertone
+        min_sep_fbins = 0.5 * self.sigspec.tones_persymb * self.fbins_pertone
         uniq = []
         for c in candidates:
             if not any(abs(c.bounds.f0_idx - u.bounds.f0_idx) < min_sep_fbins for u in uniq):
