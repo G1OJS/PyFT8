@@ -80,7 +80,7 @@ def run():
         print(rxFreq_decode)
         if(len(rxFreq_decode)>0):
             with open("rxFreq_data.json", "w") as f:
-                json.dump(rxFreq_decode[0], f)
+                json.dump(rxFreq_decode[0][0], f)
             
         timers.timedLog("Start to Find candidates")
         candidates = demod.find_candidates(100,3300, topN=500)

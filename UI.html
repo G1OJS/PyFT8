@@ -25,8 +25,8 @@
 		  try {
 			const res = await fetch("data.json?");   
 			const msgs = await res.json();
-			const list = document.getElementById("msgs");
-			list.innerHTML = "";
+			const current_decodes_DOMel = document.getElementById("current_decodes");
+			current_decodes_DOMel.innerHTML = "";
 			msgs.forEach((m) => {
 				const fields = [m.cyclestart_str.split('_')[1], m.freq, m.call_a, m.call_b, m.grid_rpt];
 				const div = document.createElement("div");
@@ -42,10 +42,31 @@
 					}
 					div.appendChild(span);
 				});
-				list.appendChild(div);
+				current_decodes_DOMel.appendChild(div);
 			});
 		  } catch (e) {
 			console.error("Refresh decodes failed:", e);
+		  }
+		}
+		
+		async function refresh_rxDecodes() {
+		  try {
+			const res = await fetch("rxFreq_data.json?");   
+			const m = await res.json();
+			const rx_DOMel = document.getElementById("rxDecodes");
+			rx_DOMel.innerHTML = "";
+			cycle = m.cyclestart_str?.split("_")[1];
+			const fields = [cycle, m.freq, m.call_a, m.call_b, m.grid_rpt];
+			const div = document.createElement("div");
+			div.className = "message-line";
+			fields.forEach((field, idx) => {
+				const span = document.createElement("span");
+				span.textContent = field;
+				div.appendChild(span);
+			});
+			rx_DOMel.appendChild(div);
+		  } catch (e) {
+			console.error("Refresh rxDecodes failed:", e);
 		  }
 		}
 		
@@ -63,6 +84,7 @@
 		setInterval(update_clock, 1000);
 		setInterval(refresh_config, 250);
 		setInterval(refresh_decodes, 250);
+		setInterval(refresh_rxDecodes, 250);
 	</script>
 	
 </head>
@@ -72,7 +94,10 @@
 	<div id='txFreq'></div>
 	<div id='rxFreq'></div>
 	<h3>Decodes</h3>
-	<div id="msgs">Loading...</div>
+	<div id="current_decodes">Loading...</div>
+	<br><br>
+	<div id="rxDecodes">Loading...</div>
+	
 </body>
 
 
