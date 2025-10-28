@@ -56,30 +56,28 @@ class FT8Demodulator:
     
     def sync_candidates(self, candidates, topN=25):
         """ wave file test
-        14:27:21.25 (=0.00) Start to Load audio
-        14:27:22.95 (+1.70) Start to Show spectrum
-        14:27:23.31 (+0.36) Start to Find candidates
-        14:27:26.38 (+3.07) Found 25 candidates
-        14:27:26.40 (+0.01) Start to Show candidates
-        14:27:26.72 (+0.33) Start to Demodulate
-        14:27:27.28 (+0.55) Decoded 5 signals
+        19:21:06.02 (=0.00) Start to Load audio
+        19:21:06.38 (+0.36) Start to Show spectrum
+        19:21:06.71 (+0.33) Start to Find candidates
+        19:21:06.82 (+0.11) Found 500 candidates
+        19:21:06.89 (+0.07) Start to sync candidates
+        19:21:08.12 (+1.22) Synced 25 candidates
+        19:21:08.14 (+0.02) Start to Show candidates
+        19:21:08.46 (+0.32) Start to Demodulate
+        19:21:08.1.00 (+0.54) Decoded 5 signals
         TEST     0.000 Rx FT8    000 -0.3 2156 WM3PEN EA6VQ -09 4 1035
         TEST     0.000 Rx FT8    000  0.0 2569 W1FC F5BZB -08 10 1233
         TEST     0.000 Rx FT8    000 -0.1  721 A92EE F5PSR -14 8 346
         TEST     0.000 Rx FT8    000  0.1  588 K1JT HA0DU KN07 11 282
         TEST     0.000 Rx FT8    000  0.0  638 N1JFU EA6EE -07 10 306
         """
-        region = Bounds.from_physical(self.spectrum, 0, 1.2, 0, 0)
         for c in candidates:
-            max_score = -1e10
-            for t_idx in region.t_idx_range:
-                score = self._csync_score_3(t_idx, c.bounds.f0_idx)
-                if(score > max_score):
-                    max_score = score
-                    t0_idx = t_idx
-            if (t0_idx == 282): print("Here!")
-            c.bounds.t0_idx = t0_idx
-            c.score = max_score
+            c.score = -1e10
+            for t0_idx in range(self.spectrum.nHops - self.sigspec.num_symbols*self.hops_persymb-1):
+                score = self._csync_score_3(t0_idx, c.bounds.f0_idx)
+                if(score > c.score):
+                    c.score = score
+                    c.update_t0_idx(t0_idx)
         # sort and de-duplicate
         candidates.sort(key=lambda c: -c.score)
         min_sep_fbins = 0.5 * self.sigspec.tones_persymb * self.fbins_pertone

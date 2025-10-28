@@ -23,9 +23,10 @@ wf.update_main()
 
 timers.timedLog("Start to Find candidates")
 candidates = demod.find_candidates(100,3300,topN=500)
+timers.timedLog(f"Found {len(candidates)} candidates")
 timers.timedLog("Start to sync candidates")
 candidates = demod.sync_candidates(candidates)
-timers.timedLog(f"Found {len(candidates)} candidates")
+timers.timedLog(f"Synced {len(candidates)} candidates")
 
 timers.timedLog("Start to Show candidates")
 wf.update_main(candidates=candidates)

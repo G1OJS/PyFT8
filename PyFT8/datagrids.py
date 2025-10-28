@@ -131,6 +131,12 @@ class Candidate:
         self.cycle_start = cycle_start
         self.demodulated_by = demodulated_by
 
+    def update_t0_idx(self, t0_idx):
+        delta = t0_idx - self.bounds.t0_idx
+        self.bounds.t0_idx += delta
+        self.bounds.tn_idx += delta
+        self.bounds.t0, self.bounds.tn = self.spectrum.times[self.bounds.t0_idx], self.spectrum.times[self.bounds.tn_idx]
+ 
     @property
     def power_grid(self):
         norm = 1.0 / (self.spectrum.hops_persymb * self.spectrum.fbins_pertone)
