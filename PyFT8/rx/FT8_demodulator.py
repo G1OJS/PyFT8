@@ -51,7 +51,7 @@ class FT8Demodulator:
             Returns list of Candidate objects fully set.
         """
         candidates = []
-        csync_correlation = correlate2d(self.spectrum.power, self.csync, mode='valid').astype(np.float32)
+        csync_correlation = correlate2d(self.spectrum.power[0:200,0:2881], self.csync, mode='valid').astype(np.float32)
         #freq_power = self.spectrum.power.mean(axis=0)
         #maxima = np.argsort(freq_power)[-topN:]
 
@@ -66,12 +66,12 @@ class FT8Demodulator:
         #candidates.append(Candidate(self.sigspec, self.spectrum, t0_idx, f0_idx, max_score))
         # sort and de-duplicate
         candidates.sort(key=lambda c: -c.score)
-        min_sep_fbins = 0.25 * self.sigspec.tones_persymb * self.fbins_pertone
+        min_sep_fbins = 0.5 * self.sigspec.tones_persymb * self.fbins_pertone
         uniq = []
-        for c in candidates:
+        for c in candidates[:topN]:
             if not any(abs(c.bounds.f0_idx - u.bounds.f0_idx) < min_sep_fbins for u in uniq):
                 uniq.append(c)
-        return uniq[:topN]
+        return uniq
 
     def _csync_score(self, t0_idx, f0_idx):
         return np.sum(self._csync * self.spectrum.power[t0_idx:t0_idx + self._csync.shape[0], f0_idx:f0_idx + self._csync.shape[1]])
@@ -94,13 +94,13 @@ class FT8Demodulator:
         for c in candidates:
             # try getting payload symbols' tones & bits from max of each symbol's tone powers
             pgrid = c.power_grid
-            tone_numbs = [int(np.argmax(pgrid[symbol_idx, :])) for symbol_idx in payload_symb_idxs]
-            bits = [b for tone_numb in tone_numbs for b in FT8.gray_map_tuples[tone_numb]]
-            if crc.check_crc(crc.bitsLE_to_int(bits[0:91])):
-                c.demodulated_by = 'Max power'
-                c.payload_bits = bits
-                out.append(FT8_decode(c, cyclestart_str))
-                continue
+         #   tone_numbs = [int(np.argmax(pgrid[symbol_idx, :])) for symbol_idx in payload_symb_idxs]
+         #   bits = [b for tone_numb in tone_numbs for b in FT8.gray_map_tuples[tone_numb]]
+         #   if crc.check_crc(crc.bitsLE_to_int(bits[0:91])):
+         #       c.demodulated_by = 'Max power'
+         #       c.payload_bits = bits
+         #       out.append(FT8_decode(c, cyclestart_str))
+         #       continue
             # if that didn't pass crc, try getting llrs and feeding to ldpc
             LLR174s = []
             for symb_idx in payload_symb_idxs:

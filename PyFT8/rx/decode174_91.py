@@ -84,7 +84,7 @@ def decode174_91(llr, maxiterations = 30, gamma = 0.0026, nstall_max = 8, ncheck
 
     ncheck, decoded_bits174_LE_list = count_syndrome_checks(zn)
     if(ncheck == 0):
-        return decoded_bits174_LE_list, -1
+        return 0, decoded_bits174_LE_list, -1
     
     for it in range(maxiterations + 1):
         for i in range(kN):
