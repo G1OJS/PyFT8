@@ -9,54 +9,68 @@
 	<style>
 		body { font-family: sans-serif; background:#111; color:#eee; margin:1em; }
 		.message-line > span {display:inline-block; font-family: sans-serif; background:#111; color:#8cf; width:80px;}
-		.callsign {color: #4af;text-decoration: none; cursor: pointer;}
-		.callsign:hover {text-decoration: underline; color: #0cf;}
+		.msg_field {color: #4af;text-decoration: none; cursor: pointer;}
+		.msg_field:hover {text-decoration: underline; color: #0cf;}
 		.message-line > *:hover {background: #222;}
 	</style>
 	
 	<script>
-		function updateClock() {
+		async function updateClock() {
 			const t = new Date;
 			const utc = ("0" + t.getUTCHours()).slice(-2) + ":" + ("0" + t.getUTCMinutes()).slice(-2) + ":" + ("0" + t.getUTCSeconds()).slice(-2);
 			document.getElementById("clock").innerHTML = utc + " UTC";
 		}
 		
-		async function refresh() {
-		  updateClock();
+		async function refresh_decodes() {
 		  try {
 			const res = await fetch("data.json?");   
 			const msgs = await res.json();
 			const list = document.getElementById("msgs");
 			list.innerHTML = "";
 			msgs.forEach((m) => {
-				m=m[0];
-				const parts = [m.cyclestart_str.split('_')[1], m.freq, m.call_a, m.call_b, m.grid_rpt];
+				const fields = [m.cyclestart_str.split('_')[1], m.freq, m.call_a, m.call_b, m.grid_rpt];
 				const div = document.createElement("div");
 				div.className = "message-line";
-				parts.forEach((part, idx) => {
+				fields.forEach((field, idx) => {
 					const span = document.createElement("span");
-					span.textContent = part;
-					if (idx === 2 || idx === 3) {
-					  span.className = "callsign";
-					  span.onclick = () => {fetch(`/select_${part}.txt`); return false;};
+					span.textContent = field;
+					if (idx === 1 || idx === 2 || idx === 3) {
+					  span.className = "msg_field";
+					  span.onclick = () => {fetch(`/select_${idx}_${field}.txt`); return false;};
 					  span.style.cursor = "pointer";
-					  span.title = `Click ${part}`;
+					  span.title = `Click ${field}`;
 					}
 					div.appendChild(span);
 				});
 				list.appendChild(div);
 			});
 		  } catch (e) {
-			console.error("Refresh failed:", e);
+			console.error("Refresh decodes failed:", e);
 		  }
 		}
-		setInterval(refresh, 250);
+		
+		async function refresh_config() {
+		  try {
+			const res = await fetch("config.json?");   
+			const config = await res.json();
+			document.getElementById('txFreq').innerHTML = "Tx: "+ config.txFreq;
+			document.getElementById('rxFreq').innerHTML = "Rx: "+ config.rxFreq;
+		  } catch (e) {
+			console.error("Refresh config failed:", e);
+		  }
+		}		
+			
+		//setInterval(update_clock, 1000);
+		setInterval(refresh_config, 250);
+		setInterval(refresh_decodes, 250);
 	</script>
 	
 </head>
 
-<body onload="refresh()">
+<body>
 	<div id='clock'></div>
+	<div id='txFreq'></div>
+	<div id='rxFreq'></div>
 	<h3>Decodes</h3>
 	<div id="msgs">Loading...</div>
 </body>

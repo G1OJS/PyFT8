@@ -40,7 +40,16 @@ class FT8Demodulator:
             f0 = tone * self.fbins_pertone
             self._csync[t0:t0+self.hops_persymb, f0:f0+self.fbins_pertone] = 1.0
         self._csync_threshold = 1e5
-        
+
+    def demod_rxFreq(self, rxFreq, cycle_str):
+        candidates = []
+        f0_idx = int(np.searchsorted(self.spectrum.freqs, rxFreq))
+        candidates.append(Candidate(self.sigspec, self.spectrum, 0, f0_idx, -50))
+        self.sync_candidates(candidates, topN=1)
+        decode = self.demodulate(candidates, cyclestart_str = cycle_str)
+        print("RX DECODE: "+decode[1])
+        return decodes
+                     
     # ======================================================
     # Candidate search
     # ======================================================
@@ -176,6 +185,7 @@ def FT8_decode(signal, cyclestart_str):
     grid_rpt = unpack_ft8_g15(g15)
     freq_str = f"{signal.bounds.f0:4.0f}"
     all_txt_line = f"{cyclestart_str}     0.000 Rx FT8    000 {signal.bounds.t0 - 0.5 :4.1f} {signal.bounds.f0 :4.0f} {call_a} {call_b} {grid_rpt}"
-    dict_line = {'cyclestart_str':cyclestart_str , 'freq':freq_str, 'call_a':call_a, 'call_b':call_b, 'grid_rpt':grid_rpt, 'bounds':signal.bounds}
+    dict_line = {'cyclestart_str':cyclestart_str , 'freq':freq_str, 'call_a':call_a,
+                 'call_b':call_b, 'grid_rpt':grid_rpt, 't0_idx':signal.bounds.t0_idx}
     return dict_line, all_txt_line
 

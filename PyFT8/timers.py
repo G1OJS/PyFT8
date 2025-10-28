@@ -1,6 +1,14 @@
 import time
+
+CYCLE_LENGTH = 15
+
+def time_in_cycle():
+    t_elapsed = (time.time() % CYCLE_LENGTH)
+    t_remaining = CYCLE_LENGTH - t_elapsed 
+    return t_elapsed, t_remaining
+
 def tstrcyclestart_str(cycle_offset):
-    return time.strftime("%y%m%d_%H%M%S", time.gmtime(15*cycle_offset + 15*int(time.time() / 15)))
+    return time.strftime("%y%m%d_%H%M%S", time.gmtime(CYCLE_LENGTH * cycle_offset + CYCLE_LENGTH * int(time.time() / 15)))
 
 def tstrNow():
     return time.strftime("%H:%M:%S", time.gmtime(time.time()))
