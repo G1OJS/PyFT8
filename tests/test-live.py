@@ -1,13 +1,14 @@
 import os
-import time
 import numpy as np
 import pyaudio
+import time
 import wave
 import threading
 import sys
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 from PyFT8.rx.FT8_demodulator import FT8Demodulator
 from PyFT8.rx.waterfall import Waterfall
+import PyFT8.timers as timers
 
 SAMPLE_RATE = 12000
 CYCLE = 15.0
@@ -80,11 +81,6 @@ def wsjtx_compare(wsjtx_file, PyFT8_file):
     print(f"All cycles: WSJT-X:{lw_tot} PyFT8:{lp_tot} -> {lp_tot/(1e-12+lw_tot):.0%} best snr = {best_snr_alltime}")
     print()
 
-def tstrcyclestart_str(cycle_offset):
-    return time.strftime("%y%m%d_%H%M%S", time.gmtime(15*cycle_offset + 15*int(time.time() / 15)))
-
-def tstrNow():
-    return time.strftime("%H:%M:%S", time.gmtime(time.time()))
 
 def dumpwav(filename, data):
     wavefile = wave.open(filename, 'wb')
@@ -95,9 +91,9 @@ def dumpwav(filename, data):
     wavefile.close()
 
 def audioloop():
-    print(f"{tstrNow()} Audio capture thread running...")
+    timers.timedLog("Audio capture thread running...")
     while True:
-        print(f"{tstrNow()} Audio capture waiting for cycle start\n")
+        timers.timedLog("Audio capture waiting for cycle start")
         t = time.time()
         t_to_next = CYCLE - (t % CYCLE)
         time.sleep(t_to_next-0.25)
@@ -133,23 +129,23 @@ wf = Waterfall(demod.spectrum, f1=3500)
 
 while True:
     reset_compare()
-    print(f"{tstrNow()} Decoder waiting for audio file")
+    timers.timedLog("Decoder waiting for audio file")
     while not os.path.exists(FLAG_FILE):
         time.sleep(0.1)
-    cyclestart_str = tstrcyclestart_str(0)
+    cyclestart_str = timers.tstrcyclestart_str(0)
     audio = read_wav(BRIDGE_FILE)
     os.remove(FLAG_FILE)
-    print(f"{tstrNow()} Demodulator has read audio file")
+    timers.timedLog("Demodulator has read audio file")
     demod.spectrum.feed_audio(audio)
     
     candidates = demod.find_candidates(topN=40)
-    print(f"Found {len(candidates)} candidates")
+    timers.timedLog("Found {len(candidates)} candidates")
     wf.update_main(candidates=candidates, cyclestart_str = cyclestart_str)
 
     print(f"{cyclestart_str} =================================")
-    print("Demodulating")
+    timers.timedLog("Demodulating")
     decodes = demod.demodulate(candidates, cyclestart_str = cyclestart_str)
-    print(f"Decoded {len(decodes)} signals\n")
+    timers.timedLog("Decoded {len(decodes)} signals\n")
   #  wf.show_decodes(decodes)
     
     with open(PyFT8_file, 'a') as f:
