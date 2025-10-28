@@ -64,20 +64,17 @@ class FT8Demodulator:
     
     def sync_candidates(self, candidates, topN=25):
         """ wave file test
-        19:21:06.02 (=0.00) Start to Load audio
-        19:21:06.38 (+0.36) Start to Show spectrum
-        19:21:06.71 (+0.33) Start to Find candidates
-        19:21:06.82 (+0.11) Found 500 candidates
-        19:21:06.89 (+0.07) Start to sync candidates
-        19:21:08.12 (+1.22) Synced 25 candidates
-        19:21:08.14 (+0.02) Start to Show candidates
-        19:21:08.46 (+0.32) Start to Demodulate
-        19:21:08.1.00 (+0.54) Decoded 5 signals
-        TEST     0.000 Rx FT8    000 -0.3 2156 WM3PEN EA6VQ -09 4 1035
-        TEST     0.000 Rx FT8    000  0.0 2569 W1FC F5BZB -08 10 1233
-        TEST     0.000 Rx FT8    000 -0.1  721 A92EE F5PSR -14 8 346
-        TEST     0.000 Rx FT8    000  0.1  588 K1JT HA0DU KN07 11 282
-        TEST     0.000 Rx FT8    000  0.0  638 N1JFU EA6EE -07 10 306
+        19:38:23.13 (=0.00) Start to Load audio
+        19:38:23.50 (+0.37) Start to Show spectrum
+        19:38:23.82 (+0.33) Start to Find candidates
+        19:38:23.89 (+0.07) Found 500 candidates
+        19:38:23.90 (+0.01) Start to deduplicate candidate frequencies
+        19:38:23.92 (+0.02) Now have 40 candidates
+        19:38:23.93 (+0.01) Start to sync candidates
+        19:38:24.03 (+0.10) Synced 30 candidates
+        19:38:24.07 (+0.04) Start to Show candidates
+        19:38:24.41 (+0.34) Start to Demodulate
+        19:38:25.58 (+1.17) Decoded 5 signals
         """
         for c in candidates:
             c.score = -1e10
