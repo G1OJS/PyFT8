@@ -44,8 +44,17 @@ class FT8Demodulator:
     # ======================================================
     # Candidate search
     # ======================================================
+
+    def find_candidates(self, f0, f1, topN=25):
+        region = Bounds.from_physical(self.spectrum, 0, 15, f0, f1)
+        candidates = []
+        for f0_idx in region.f_idx_range:
+            score = np.sum(self.spectrum.power[: , f0_idx:f0_idx+self._csync.shape[1]])
+            candidates.append(Candidate(self.sigspec, self.spectrum, 0, f0_idx, score))
+        candidates.sort(key=lambda c: -c.score)
+        return candidates[:topN]
     
-    def find_candidates(self, t0=0.0, t1=2, f0=100.0, f1=3300.0, topN=50):
+    def sync_candidates(self, candidates, topN=25):
         """ wave file test
         14:27:21.25 (=0.00) Start to Load audio
         14:27:22.95 (+1.70) Start to Show spectrum
@@ -60,18 +69,17 @@ class FT8Demodulator:
         TEST     0.000 Rx FT8    000  0.1  588 K1JT HA0DU KN07 11 282
         TEST     0.000 Rx FT8    000  0.0  638 N1JFU EA6EE -07 10 306
         """
-        region = Bounds.from_physical(self.spectrum, t0, t1, f0, f1)
-        candidates = []
-        for f0_idx in region.f_idx_range:
-           
+        region = Bounds.from_physical(self.spectrum, 0, 1.2, 0, 0)
+        for c in candidates:
             max_score = -1e10
             for t_idx in region.t_idx_range:
-                score = self._csync_score_3(t_idx, f0_idx)
+                score = self._csync_score_3(t_idx, c.bounds.f0_idx)
                 if(score > max_score):
                     max_score = score
                     t0_idx = t_idx
-            if max_score > self._csync_threshold:
-                candidates.append(Candidate(self.sigspec, self.spectrum, t0_idx, f0_idx, max_score))
+            if (t0_idx == 282): print("Here!")
+            c.bounds.t0_idx = t0_idx
+            c.score = max_score
         # sort and de-duplicate
         candidates.sort(key=lambda c: -c.score)
         min_sep_fbins = 0.5 * self.sigspec.tones_persymb * self.fbins_pertone
@@ -94,7 +102,6 @@ class FT8Demodulator:
             pgrid = self.spectrum.power[t_idx:t_idx + nt, f0_idx:fn_idx]
             block_score = np.sum(pgrid * self._csync)
             if block_score > score: score = block_score 
-            #score += block_score
         return score 
 
     # ======================================================
