@@ -23,7 +23,7 @@ wf.update_main()
 
 timers.timedLog("Start to Find candidates")
 candidates = demod.find_candidates(topN=25)
-print(f"Found {len(candidates)} candidates")
+timers.timedLog(f"Found {len(candidates)} candidates")
 
 timers.timedLog("Start to Show candidates")
 wf.update_main(candidates=candidates)
