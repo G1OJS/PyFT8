@@ -61,10 +61,17 @@ def start_UI_server():
     server = ThreadingHTTPServer(("localhost", 8080), ClickHandler)
     server.serve_forever()
 
+def delete_file(file):
+    if os.path.exists(file):
+        os.remove(file)
+        
+delete_file("rxFreq_data.json")
+delete_file("data.json")
+delete_file("config.json")
 dump_config()
+threading.Thread(target=liveRx.run).start()
 threading.Thread(target=start_UI_server, daemon=True).start()
 webbrowser.open("http://localhost:8080/UI.html")
-threading.Thread(target=liveRx.run).start()
 
 
     
