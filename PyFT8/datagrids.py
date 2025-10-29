@@ -148,19 +148,13 @@ class Candidate:
  
     @property
     def power_grid(self):
-        norm = 1.0 / (self.spectrum.hops_persymb * self.spectrum.fbins_pertone)
-        t0_idx, tn_idx = self.bounds.t0_idx, self.bounds.tn_idx
-        f0_idx, fn_idx = self.bounds.f0_idx, self.bounds.fn_idx
-        
-        sub = self.spectrum.power[t0_idx:tn_idx, f0_idx:fn_idx]
-        ntFine, nfFine = sub.shape
-        ntTrim = ntFine - (ntFine % self.spectrum.hops_persymb)
-        nfTrim = nfFine - (nfFine % self.spectrum.fbins_pertone)
-        sub = sub[:ntTrim, :nfTrim]
-        nTimes = ntTrim // self.spectrum.hops_persymb
-        nFreqs = nfTrim // self.spectrum.fbins_pertone
-        sub = sub.reshape(nTimes, self.spectrum.hops_persymb, nFreqs, self.spectrum.fbins_pertone)
+        c = self
+        pgrid = self.spectrum.power[
+            c.bounds.t0_idx : c.bounds.t0_idx + c.sigspec.num_symbols * c.spectrum.hops_persymb,
+            c.bounds.f0_idx : c.bounds.f0_idx + c.sigspec.tones_persymb * c.spectrum.fbins_pertone
+        ]
+        pgrid = pgrid.reshape(c.sigspec.num_symbols, c.spectrum.hops_persymb,
+                              c.sigspec.tones_persymb, c.spectrum.fbins_pertone).mean(axis=(1,3))
 
-        pgrid = norm * sub.sum(axis=(1, 3))
         return pgrid.astype(np.float32)
         

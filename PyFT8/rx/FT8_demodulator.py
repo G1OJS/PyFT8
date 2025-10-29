@@ -1,16 +1,16 @@
 """
 wave file test
-10:32:11.62 (=0.00) Start to Load audio from 210703_133430.wav
-10:32:12.02 (+0.40) Start to Show spectrum
-10:32:12.34 (+0.31) Start to Find candidates
-10:32:12.45 (+0.11) Found 500 candidates
-10:32:12.50 (+0.06) Start to deduplicate candidate frequencies
-10:32:12.53 (+0.02) Now have 40 candidates
-10:32:12.54 (+0.01) Start to sync candidates
-10:32:12.64 (+0.10) Synced 30 candidates
-10:32:12.68 (+0.04) Start to Show candidates
-10:32:13.01 (+0.34) Start to demodulate candidates
-10:32:14.06 (+1.05) Decodes: 6
+10:48:04.61 (=0.00) Start to Load audio from 210703_133430.wav
+10:48:05.02 (+0.41) Start to Show spectrum
+10:48:05.33 (+0.31) Start to Find candidates
+10:48:05.42 (+0.09) Found 500 candidates
+10:48:05.49 (+0.08) Start to deduplicate candidate frequencies
+10:48:05.52 (+0.03) Now have 40 candidates
+10:48:05.53 (+0.01) Start to sync candidates
+10:48:05.63 (+0.10) Synced 30 candidates
+10:48:05.66 (+0.02) Start to Show candidates
+10:48:05.99 (+0.33) Start to demodulate candidates
+10:48:06.98 (+0.99) Decodes: 6
 Test     0.000 Rx FT8    000 -0.3 2154 WM3PEN EA6VQ -09 4
 Test     0.000 Rx FT8    000  0.0 2569 W1FC F5BZB -08 10
 Test     0.000 Rx FT8    000 -0.1  721 A92EE F5PSR -14 8
@@ -115,14 +115,11 @@ class FT8Demodulator:
     
     def demodulate(self, candidates, cyclestart_str):
         out = []
-        payload_symb_idxs = list(range(7, 36)) + list(range(43, 72)) # move this to sigspec
         for c in candidates:
             LLR174s=[]
-            pgrid = self.spectrum.power[c.bounds.t0_idx:  c.bounds.t0_idx + c.sigspec.num_symbols * self.hops_persymb,
-                                        c.bounds.f0_idx : c.bounds.f0_idx + 8*self.fbins_pertone]
-            pgrid = pgrid.reshape(c.sigspec.num_symbols, self.hops_persymb, 8, self.fbins_pertone).mean(axis=(1,3))
+            pgrid = c.power_grid
             gray_mask = self.sigspec.gray_mask
-            for symb_idx in payload_symb_idxs:
+            for symb_idx in c.sigspec.payload_symb_idxs:
                 sigma2 = self.spectrum.noise_per_symb[symb_idx]
                 tone_powers_scaled = pgrid[symb_idx, :] / sigma2
                 m1 = np.where(gray_mask, tone_powers_scaled[:, None], -np.inf)
