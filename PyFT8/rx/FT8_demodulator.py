@@ -131,6 +131,8 @@ class FT8Demodulator:
             if(ncheck == 0):
                 c.demodulated_by = f"LLR-LDPC ({n_its})"
                 c.payload_bits = bits
+                c.snr = int(12*np.log10(c.score/1e9) - 31)
+                c.snr = np.clip(c.snr, -24,24).item()
                 out.append(FT8_decode(c, cyclestart_str))
         return out
 
@@ -176,8 +178,8 @@ def FT8_decode(signal, cyclestart_str):
     call_b =  unpack_ft8_c28(c28_b)
     grid_rpt = unpack_ft8_g15(g15)
     freq_str = f"{signal.bounds.f0:4.0f}"
-    all_txt_line = f"{cyclestart_str}     0.000 Rx FT8    000 {signal.bounds.t0 - 0.5 :4.1f} {signal.bounds.f0 :4.0f} {call_a} {call_b} {grid_rpt}"
+    all_txt_line = f"{cyclestart_str}     0.000 Rx FT8    {signal.snr:+03d} {signal.bounds.t0 - 0.5 :4.1f} {signal.bounds.f0 :4.0f} {call_a} {call_b} {grid_rpt}"
     dict_line = {'cyclestart_str':cyclestart_str , 'freq':freq_str, 'call_a':call_a,
-                 'call_b':call_b, 'grid_rpt':grid_rpt, 't0_idx':signal.bounds.t0_idx}
+                 'call_b':call_b, 'grid_rpt':grid_rpt, 't0_idx':signal.bounds.t0_idx, 'snr':signal.snr}
     return dict_line, all_txt_line
 

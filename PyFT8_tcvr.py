@@ -68,17 +68,18 @@ def initiate_qso(callsign, wait_for_next = False):
     _ , t_remain = timers.time_in_cycle()
     if(t_remain < 13):
         timers.timedLog(f"Not enough time: t_remain = {t_remain} seconds")
-        return
+        time.sleep(t_remain+15)
+
     clear_rxWindow()
     timers.timedLog(f"Initiate QSO with {callsign}")
     while True:
         send_message(callsign, myCall, myGrid, int(config['txFreq']), wait_for_next = wait_for_next)
-        wait_for_next = False
+        wait_for_next = True
         if(get_rxFreqMessage()[-3:].isnumeric): break
     while True:
-        send_message(callsign, myCall, myGrid, int(config['txFreq']), wait_for_next = False)
+        send_message(callsign, myCall, myGrid, int(config['txFreq']), wait_for_next = True)
         if('73' in get_rxFreqMessage()): break
-    send_message(callsign, myCall, 'RR73', int(config['txFreq']), wait_for_next = False)
+    send_message(callsign, myCall, 'RR73', int(config['txFreq']), wait_for_next = True)
     
 def send_message(c1,c2,gr, freq, wait_for_next = True):
     timers.timedLog(f"Sending: {c1} {c2} {gr}")

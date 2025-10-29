@@ -45,3 +45,29 @@
 14:48:33: CAT command: PTT Off
 14:48:33: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
 14:51:18: Connected to COM4
+14:53:35: Connected to COM4
+14:53:47: Connected to COM4
+14:54:45: CAT command: PTT On
+14:54:45: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x01\xfd'
+14:54:58: Connected to COM4
+14:56:00: CAT command: PTT On
+14:56:00: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x01\xfd'
+14:56:13: CAT command: PTT Off
+14:56:13: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+14:56:13: CAT command: PTT On
+14:56:13: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x01\xfd'
+14:56:26: CAT command: PTT Off
+14:56:26: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+14:56:26: CAT command: PTT On
+14:56:26: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x01\xfd'
+14:56:39: CAT command: PTT Off
+14:56:39: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+14:56:39: CAT command: PTT On
+14:56:39: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x01\xfd'
+15:16:34: Connected to COM4
+15:18:50: Connected to COM4
+15:20:23: Connected to COM4
+15:21:58: Connected to COM4
+15:22:38: Connected to COM4
+15:25:00: Connected to COM4
+15:25:58: Connected to COM4

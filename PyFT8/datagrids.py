@@ -133,6 +133,7 @@ class Candidate:
         self.payload_bits = []
         self.payload_symbols = []
         self.score = score
+        self.snr = -24
         self.sigspec = sigspec
         self.spectrum = spectrum
         self.bounds = Bounds(spectrum, t0_idx, t0_idx + sigspec.num_symbols * spectrum.hops_persymb,
