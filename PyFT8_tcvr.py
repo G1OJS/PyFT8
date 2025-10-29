@@ -41,19 +41,16 @@ class ClickHandler_(SimpleHTTPRequestHandler):
             threading.Thread(target=process_click_content, args=(self.path,)).start()  
         super().do_GET()
 
-def process_click_content(clickedpath):
+def process_click_content(clickdata):
     global config
-    text = clickedpath.strip("/").replace("select_", "").replace(".txt", "").replace('%20',' ')
-    idx, data = text.split("_")
-    idx = int(idx)
-    if(idx == 2):
-        config['rxFreq'] = int(data)
-        print(f"Set Rx freq to {config['rxFreq']}")
-        dump_config()
-        clear_rxWindow()
-
-    if(idx == 3): call_next = str(data)
-    if(idx == 4): initiate_qso(str(data))
+    text = clickdata.strip("/").replace("select_", "").replace(".txt", "").replace('%20',' ')
+    rxFreq, callsign = text.split("_")
+    config['rxFreq'] = int(rxFreq);
+    print(f"Set Rx freq to {config['rxFreq']}")
+    dump_config()
+    clear_rxWindow()
+    if(callsign != 'None'):
+        initiate_qso(str(callsign))
 
 def clear_rxWindow():
     with open("rxFreq_data.json", "w") as f:

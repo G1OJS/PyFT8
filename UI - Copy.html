@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+<head>
+	<meta charset="utf-8">
+	<title>PyFT8 Live Decodes</title>
+	
+	<style>
+		body { font-family: sans-serif; background:#111; color:#eee; margin:1em; }
+		.message-line > span {display:inline-block; font-family: sans-serif; background:#111; color:#8cf; width:80px;}
+		.msg_field {color: #4af;text-decoration: none; cursor: pointer;}
+		.msg_field:hover {text-decoration: underline; color: #0cf;}
+		.message-line > *:hover {background: #222;}
+	</style>
+	
+	<script>
+		async function update_clock() {
+			const t = new Date;
+			const utc = ("0" + t.getUTCHours()).slice(-2) + ":" + ("0" + t.getUTCMinutes()).slice(-2) + ":" + ("0" + t.getUTCSeconds()).slice(-2);
+			document.getElementById("clock").innerHTML = utc + " UTC";
+		}
+		
+		async function refresh_decodes() {
+		  try {
+			const res = await fetch("data.json?");   
+			const msgs = await res.json();
+			const current_decodes_DOMel = document.getElementById("current_decodes");
+			current_decodes_DOMel.innerHTML = "";
+			msgs.forEach((m) => {
+				const fields = [m.cyclestart_str.split('_')[1], m.snr, m.freq, m.call_a, m.call_b, m.grid_rpt];
+				const div = document.createElement("div");
+				div.className = "message-line";
+				fields.forEach((field, idx) => {
+					const span = document.createElement("span");
+					span.textContent = field;
+					if (idx === 2 || idx === 3 || idx === 4) {
+					  span.className = "msg_field";
+					  span.onclick = () => {fetch(`/select_${idx}_${field}.txt`); return false;};
+					  span.style.cursor = "pointer";
+					  span.title = `Click ${field}`;
+					}
+					div.appendChild(span);
+				});
+				current_decodes_DOMel.appendChild(div);
+			});
+		  } catch (e) {
+			console.error("Refresh decodes failed:", e);
+		  }
+		}
+		
+		async function refresh_rxDecodes() {
+		  try {
+			const res = await fetch("rxFreq_data.json?");   
+			const m = await res.json();
+			const rx_DOMel = document.getElementById("rxDecodes");
+			rx_DOMel.innerHTML = "";
+			cycle = m.cyclestart_str?.split("_")[1];
+			const fields = [cycle, m.freq, m.call_a, m.call_b, m.grid_rpt];
+			const div = document.createElement("div");
+			div.className = "message-line";
+			fields.forEach((field, idx) => {
+				const span = document.createElement("span");
+				span.textContent = field;
+				div.appendChild(span);
+			});
+			rx_DOMel.appendChild(div);
+		  } catch (e) {
+			console.error("Refresh rxDecodes failed:", e);
+		  }
+		}
+		
+		async function refresh_config() {
+		  try {
+			const res = await fetch("config.json?");   
+			const config = await res.json();
+			document.getElementById('txFreq').innerHTML = "Tx: "+ config.txFreq;
+			document.getElementById('rxFreq').innerHTML = "Rx: "+ config.rxFreq;
+		  } catch (e) {
+			console.error("Refresh config failed:", e);
+		  }
+		}		
+			
+		setInterval(update_clock, 1000);
+		setInterval(refresh_config, 250);
+		setInterval(refresh_decodes, 250);
+		setInterval(refresh_rxDecodes, 250);
+	</script>
+	
+</head>
+
+<body>
+	<div id='clock'></div>
+	<div id='txFreq'></div>
+	<div id='rxFreq'></div>
+	<h3>Decodes</h3>
+	<div id="current_decodes">Loading...</div>
+	<br><br>
+	<h3>Rx Freq decodes:</h3>
+	<div id="rxDecodes">Loading...</div>
+	
+</body>
+
+
+</html>
