@@ -64,11 +64,18 @@ class FT8Demodulator:
 
     def deduplicate_candidate_freqs(self, candidates, topN=25 ):
         min_sep_fbins = 0.5 * self.sigspec.tones_persymb * self.fbins_pertone
-        uniq = []
+        deduplicated = []
         for c in candidates:
-            if not any(abs(c.bounds.f0_idx - u.bounds.f0_idx) < min_sep_fbins for u in uniq):
-                uniq.append(c)
-        return uniq[:topN]
+            keep_c = True
+            for i, existing in enumerate(deduplicated):
+                if abs(c.bounds.f0_idx - existing.bounds.f0_idx) < min_sep_fbins:
+                    if c.score > existing.score * 1.3:  # >~1.1–1.3× stronger
+                        deduplicated[i] = c
+                    keep_c = False
+                    break
+            if keep_c:
+                deduplicated.append(c)
+        return deduplicated[:topN]
     
     def sync_candidates(self, candidates, topN=25):
         for c in candidates:
@@ -112,7 +119,7 @@ class FT8Demodulator:
             pgrid = c.power_grid
             LLR174s = []
             for symb_idx in payload_symb_idxs:
-                sigma2 = np.median(self.spectrum.power[symb_idx*self.hops_persymb,:]) 
+                sigma2 = self.spectrum.noise_per_symb[symb_idx]
                 tone_powers_scaled = pgrid[symb_idx, :] / sigma2
                 for k in range(3):
                     s1 = [v for i, v in enumerate(tone_powers_scaled) if FT8.gray_map_tuples[i][k]]

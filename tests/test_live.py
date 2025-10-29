@@ -12,7 +12,7 @@ import PyFT8.timers as timers
 
 SAMPLE_RATE = 12000
 CYCLE = 15.0
-SHORT_CYCLE = 14.8      # allow time for file handover etc between cycles
+SHORT_CYCLE = 14.6      # allow time for file handover etc between cycles
 START_CAPTURE = -0.2    # offset start of audio capture from cycle start
 FRAMES_PER_CYCLE = int(SAMPLE_RATE * SHORT_CYCLE)
 BRIDGE_FILE = 'audio.wav'

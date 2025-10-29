@@ -57,6 +57,7 @@ class Spectrum:
 
         # ---- Time geometry ----
         self.nHops = int(self.hops_persymb * self.symbols_persec * self.frame_secs)
+        self.nSymbols = int(self.symbols_persec * self.frame_secs)
         self.dt = self.frame_secs / (self.nHops - 1)
 
         # ---- Coordinate arrays (bin centres) ----
@@ -73,15 +74,23 @@ class Spectrum:
         # ---- Data arrays ----
         self.complex = np.zeros((self.nHops, self.nFreqs), np.complex64)
         self.power = np.zeros((self.nHops, self.nFreqs), np.float32)
+        self.noise_per_hop = None
+        self.noise_per_symb = None
 
     def feed_audio(self, audio: np.ndarray):
-        """ Fill complex from a block of real audio samples. """
+        """ Fill self.complex and self.power from a block of real audio samples. """
         for hop_idx in range(self.nHops):
             sample_idx0 = int(hop_idx * self.sample_rate / (self.symbols_persec * self.hops_persymb))
             sample_idxn = sample_idx0 + self.FFT_size
             if(sample_idxn < len(audio)):
                 self.complex[hop_idx,:] = np.fft.rfft(audio[sample_idx0:sample_idxn] * np.kaiser(self.FFT_size,14))
         self.power = np.abs(self.complex) ** 2
+        """ Fill self.noise ... for llr extraction. """
+        self.noise_per_hop = np.median(self.power, axis=1)
+        n_full = (self.nHops // self.hops_persymb) * self.hops_persymb
+        self.noise_per_hop = self.noise_per_hop[:n_full]
+        self.noise_per_symb = self.noise_per_hop.reshape(-1, self.hops_persymb).mean(axis=1)
+
 
 
 # ============================================================
