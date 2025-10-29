@@ -4,6 +4,10 @@ V2.1.0:
 * Decodes finish about 1 second into the next frame
 * Click-settable Rx freq gets priority decode
 * Uses single time-frequency grid with 281 FFTs
+* Simple decode sequence
+    - scan spectrum for power, deduplicate frequencies, costas sync, LLR-LDPC-Unpack
+* Tightly coded LDPC
+* All in Python
 * Visualisation of individual signalse with costas overlays
 * Browser-based UI in progress to enable use as WSJT-x replacement
 * CAT control for PTT of IC-7100
