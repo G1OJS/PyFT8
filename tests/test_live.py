@@ -12,7 +12,7 @@ import PyFT8.timers as timers
 
 SAMPLE_RATE = 12000
 CYCLE = 15.0
-SHORT_CYCLE = 14
+SHORT_CYCLE = 14.5
 FRAMES_PER_CYCLE = int(SAMPLE_RATE * SHORT_CYCLE)
 BRIDGE_FILE = 'audio.wav'
 FLAG_FILE = 'audio.txt'
@@ -79,8 +79,6 @@ def wsjtx_compare(wsjtx_file, PyFT8_file):
     if(best_snr < best_snr_alltime): best_snr_alltime = best_snr    
     print(f"This Cycle: WSJT-X:{lw} PyFT8:{lp} -> {lp/(1e-12+lw):.0%} best snr = {best_snr}")
     print(f"All cycles: WSJT-X:{lw_tot} PyFT8:{lp_tot} -> {lp_tot/(1e-12+lw_tot):.0%} best snr = {best_snr_alltime}")
-    print()
-
 
 def dumpwav(filename, data):
     wavefile = wave.open(filename, 'wb')
@@ -94,9 +92,8 @@ def audioloop():
     timers.timedLog("Audio capture thread running...")
     while True:
         timers.timedLog("Audio capture waiting for cycle start")
-        t = time.time()
-        t_to_next = CYCLE - (t % CYCLE)
-        time.sleep(t_to_next-0.25)
+        t_elapsed, t_remaining = timers.time_in_cycle()
+        time.sleep(t_remaining-0.25)
         stream = pya.open(format=pyaudio.paInt16, channels = 1, rate=SAMPLE_RATE,
                       input=True, input_device_index = 1,
                       frames_per_buffer=FRAMES_PER_CYCLE)
@@ -124,11 +121,12 @@ def reset_compare():
 threading.Thread(target=audioloop).start()
 threading.Thread(target=wsjtx_tailer).start()
 
-demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
+demod = FT8Demodulator(sample_rate=12000, fbins_pertone= 3, hops_persymb=3)
 wf = Waterfall(demod.spectrum, f1=3500)
 
 while True:
     reset_compare()
+    timers.timedLog("")
     timers.timedLog("Decoder waiting for audio file")
     while not os.path.exists(FLAG_FILE):
         time.sleep(0.1)
@@ -159,4 +157,6 @@ while True:
         for l in decodes:
             f.write(f"{l[1]}\n")
     wsjtx_compare(wsjtx_file,PyFT8_file)
+    t_elapsed, t_remaining = timers.time_in_cycle()
+    timers.timedLog(f"Decodes finished {t_elapsed:4.1f} seconds into cycle")
 
