@@ -143,7 +143,7 @@ while True:
     candidates = demod.deduplicate_candidate_freqs(candidates, topN=100)
     timers.timedLog(f"Now have {len(candidates)} candidates")
     timers.timedLog("Start to sync candidates")
-    candidates = demod.sync_candidates(candidates, topN=30)
+    candidates = demod.sync_candidates(candidates, topN=100)
     timers.timedLog(f"Synced {len(candidates)} candidates")
     timers.timedLog("Start to demodulate candidates")
     decodes = demod.demodulate(candidates, cyclestart_str = cycle_str)
