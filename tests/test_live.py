@@ -132,22 +132,29 @@ while True:
     timers.timedLog("Decoder waiting for audio file")
     while not os.path.exists(FLAG_FILE):
         time.sleep(0.1)
-    cyclestart_str = timers.tstrcyclestart_str(0)
+    cycle_str = timers.tstrcyclestart_str(1)
     audio = read_wav(BRIDGE_FILE)
     os.remove(FLAG_FILE)
-    timers.timedLog("Demodulator has read audio file")
+    timers.timedLog(f"Start to Load audio from {BRIDGE_FILE}")
     demod.spectrum.feed_audio(audio)
-    
-    candidates = demod.find_candidates(topN=40)
-    timers.timedLog("Found {len(candidates)} candidates")
-    wf.update_main(candidates=candidates, cyclestart_str = cyclestart_str)
-
-    print(f"{cyclestart_str} =================================")
-    timers.timedLog("Demodulating")
-    decodes = demod.demodulate(candidates, cyclestart_str = cyclestart_str)
-    timers.timedLog("Decoded {len(decodes)} signals\n")
-  #  wf.show_decodes(decodes)
-    
+    timers.timedLog("Start to Show spectrum")
+    wf.update_main()
+    timers.timedLog("Start to Find candidates")
+    candidates = demod.find_candidates(100,3300, topN=500)
+    timers.timedLog(f"Found {len(candidates)} candidates")
+    timers.timedLog("Start to deduplicate candidate frequencies")
+    candidates = demod.deduplicate_candidate_freqs(candidates, topN=100)
+    timers.timedLog(f"Now have {len(candidates)} candidates")
+    timers.timedLog("Start to sync candidates")
+    candidates = demod.sync_candidates(candidates, topN=30)
+    timers.timedLog(f"Synced {len(candidates)} candidates")
+    timers.timedLog("Start to Show candidates")
+    wf.update_main(candidates=candidates)
+    #wf.show_zoom(candidates=candidates[:5])
+    timers.timedLog("Start to demodulate candidates")
+    decodes = demod.demodulate(candidates, cyclestart_str = cycle_str)
+    timers.timedLog(f"Decodes: {len(decodes)}")
+        
     with open(PyFT8_file, 'a') as f:
         for l in decodes:
             f.write(f"{l[1]}\n")

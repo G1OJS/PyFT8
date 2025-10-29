@@ -1,10 +1,21 @@
 """
-FT8_demodulator.py
-------------------
-Audio → spectrum → Candidates → Bits.
-
-Refactored to use new datagrids framework:
-    spectrum / Candidate / Bounds.with_from_physical()
+wave file test
+07:21:17.01 (=0.00) Start to Load audio from 210703_133430.wav
+07:21:17.38 (+0.37) Start to Show spectrum
+07:21:17.69 (+0.31) Start to Find candidates
+07:21:17.81 (+0.12) Found 500 candidates
+07:21:17.89 (+0.08) Start to deduplicate candidate frequencies
+07:21:17.91 (+0.02) Now have 40 candidates
+07:21:17.91 (+0.00) Start to sync candidates
+07:21:18.01 (+0.10) Synced 30 candidates
+07:21:18.04 (+0.03) Start to Show candidates
+07:21:18.36 (+0.32) Start to demodulate candidates
+07:21:19.52 (+1.16) Decodes: 5
+Test     0.000 Rx FT8    000 -0.3 2154 WM3PEN EA6VQ -09 4
+Test     0.000 Rx FT8    000  0.0 2569 W1FC F5BZB -08 10
+Test     0.000 Rx FT8    000 -0.1  721 A92EE F5PSR -14 8
+Test     0.000 Rx FT8    000  0.1  588 K1JT HA0DU KN07 11
+Test     0.000 Rx FT8    000  0.0  638 N1JFU EA6EE -07 10   
 """
 
 import math
@@ -19,7 +30,6 @@ import PyFT8.FT8_crc as crc
 class FT8Demodulator:
     def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=3, sigspec=FT8):
         # ft8c.f90 uses 4 hops per symbol and 2.5Hz fbins (2.5 bins per tone)
-        # ---- Configuration ----
         self.sample_rate = sample_rate
         self.fbins_pertone = fbins_pertone
         self.hops_persymb = hops_persymb
@@ -28,29 +38,19 @@ class FT8Demodulator:
         # ---- spectrum setup ----
         self.spectrum = Spectrum( fbins_pertone=self.fbins_pertone, hops_persymb=self.hops_persymb,
                                   sample_rate=self.sample_rate, sigspec=self.sigspec)
-        # ---- FFT precompute ----
+        # ---- FFT params ----
         self.FFT_size = self.spectrum.FFT_size
         self._hop_size = int(self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb)) 
         # ---- Costas sync mask ----
-        costas = [3, 1, 4, 0, 6, 5, 2]
-        h, w = 7 * self.hops_persymb, 8 * self.fbins_pertone
+        h, w = self.sigspec.costas_len * self.hops_persymb, self.sigspec.tones_persymb * self.fbins_pertone
         self._csync = np.full((h, w), -1/7, np.float32)
-        for sym_idx, tone in enumerate(costas):
+        for sym_idx, tone in enumerate(self.sigspec.costas):
             t0 = sym_idx * self.hops_persymb
             f0 = tone * self.fbins_pertone
             self._csync[t0:t0+self.hops_persymb, f0:f0+self.fbins_pertone] = 1.0
-        self._csync_threshold = 1e5
-
-    def demod_rxFreq(self, rxFreq, cycle_str):
-        candidates = []
-        f0_idx = int(np.searchsorted(self.spectrum.freqs, rxFreq))
-        candidates.append(Candidate(self.sigspec, self.spectrum, 0, f0_idx, -50))
-        candidates = self.sync_candidates(candidates, topN=1)
-        decode = self.demodulate(candidates, cyclestart_str = cycle_str)
-        return decode
-                     
+               
     # ======================================================
-    # Candidate search
+    # Candidate search and sync
     # ======================================================
 
     def find_candidates(self, f0, f1, topN=25):
@@ -71,19 +71,6 @@ class FT8Demodulator:
         return uniq[:topN]
     
     def sync_candidates(self, candidates, topN=25):
-        """ wave file test
-        19:38:23.13 (=0.00) Start to Load audio
-        19:38:23.50 (+0.37) Start to Show spectrum
-        19:38:23.82 (+0.33) Start to Find candidates
-        19:38:23.89 (+0.07) Found 500 candidates
-        19:38:23.90 (+0.01) Start to deduplicate candidate frequencies
-        19:38:23.92 (+0.02) Now have 40 candidates
-        19:38:23.93 (+0.01) Start to sync candidates
-        19:38:24.03 (+0.10) Synced 30 candidates
-        19:38:24.07 (+0.04) Start to Show candidates
-        19:38:24.41 (+0.34) Start to Demodulate
-        19:38:25.58 (+1.17) Decoded 5 signals
-        """
         for c in candidates:
             c.score = -1e10
             for t0_idx in range(self.spectrum.nHops - self.sigspec.num_symbols*self.hops_persymb-1):
@@ -91,14 +78,8 @@ class FT8Demodulator:
                 if(score > c.score):
                     c.score = score
                     c.update_t0_idx(t0_idx)
-        # sort and de-duplicate
         candidates.sort(key=lambda c: -c.score)
-        
         return candidates[:topN]
-
-
-    def _csync_score(self, t0_idx, f0_idx):
-        return np.sum(self._csync * self.spectrum.power[t0_idx:t0_idx + self._csync.shape[0], f0_idx:f0_idx + self._csync.shape[1]])
 
     def _csync_score_3(self, t0_idx, f0_idx):
         score = 0.0
@@ -115,6 +96,15 @@ class FT8Demodulator:
     # ======================================================
     # Demodulation
     # ======================================================
+
+    def demod_rxFreq(self, rxFreq, cycle_str):
+        candidates = []
+        f0_idx = int(np.searchsorted(self.spectrum.freqs, rxFreq))
+        candidates.append(Candidate(self.sigspec, self.spectrum, 0, f0_idx, -50))
+        candidates = self.sync_candidates(candidates, topN=1)
+        decode = self.demodulate(candidates, cyclestart_str = cycle_str)
+        return decode
+    
     def demodulate(self, candidates, cyclestart_str):
         out = []
         payload_symb_idxs = list(range(7, 36)) + list(range(43, 72)) # move this to sigspec
@@ -167,8 +157,6 @@ def unpack_ft8_g15(g15):
     r = g15 - 32400
     txt = ['','','RRR','RR73','73']
     if 0 <= r <= 4: return txt[r]
-   # snr = r-35 if r<=85 else r-35-101
-   # if(snr>50): return ''
     snr = r-35
     return f"{snr:+03d}"
 
