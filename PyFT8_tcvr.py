@@ -75,16 +75,17 @@ def initiate_qso(callsign, wait_for_next = False):
     while True:
         send_message(callsign, myCall, myGrid, int(config['txFreq']), wait_for_next = wait_for_next)
         wait_for_next = True
-        if(get_rxFreqMessage()[-3:].isnumeric): break
+        their_reply = get_rxFreqMessage()
+        if(their_reply['grid_rpt'][-3:].isnumeric): break
     while True:
-        # needs to be "R+09" format
-        send_message(callsign, myCall, snr, int(config['txFreq']), wait_for_next = True)
+        their_snr = their_reply['snr']
+        send_message(callsign, myCall, f"R{their_snr:+03d}", int(config['txFreq']), wait_for_next = True)
         if('73' in get_rxFreqMessage()): break
     send_message(callsign, myCall, 'RR73', int(config['txFreq']), wait_for_next = True)
     
-def send_message(c1,c2,gr, freq, include_r = False, wait_for_next = True):
+def send_message(c1,c2,gr, freq, wait_for_next = True):
     timers.timedLog(f"Sending: {c1} {c2} {gr}")
-    symbols = FT8_encoder.pack_message(c1,c2,gr,include_r)
+    symbols = FT8_encoder.pack_message(c1,c2,gr)
     audio_out.create_ft8_wave(symbols, f_base = freq)
     if(wait_for_next):
         _ , t_remain = timers.time_in_cycle()
@@ -110,7 +111,19 @@ threading.Thread(target=liveRx.run).start()
 threading.Thread(target=start_UI_server, daemon=True).start()
 webbrowser.open("http://localhost:8080/UI.html")
 
+#send_message("CQ","G1OJS","IO90", 1000)
 
+#send_message("X1XXX","G1OJS","+03", 1000)
+#send_message("X1XXX","G1OJS","-08", 1000)
+
+#send_message("X1XXX","G1OJS","R+08", 1000)
+#send_message("X1XXX","G1OJS","R-08", 1000)
+
+#send_message("X1XXX","G1OJS","RRR", 1000)
+
+#send_message("X1XXX","G1OJS","RR73", 1000)
+
+#send_message("X1XXX","G1OJS","73", 1000)
     
 
 
