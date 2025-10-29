@@ -1,21 +1,22 @@
 """
 wave file test
-07:21:17.01 (=0.00) Start to Load audio from 210703_133430.wav
-07:21:17.38 (+0.37) Start to Show spectrum
-07:21:17.69 (+0.31) Start to Find candidates
-07:21:17.81 (+0.12) Found 500 candidates
-07:21:17.89 (+0.08) Start to deduplicate candidate frequencies
-07:21:17.91 (+0.02) Now have 40 candidates
-07:21:17.91 (+0.00) Start to sync candidates
-07:21:18.01 (+0.10) Synced 30 candidates
-07:21:18.04 (+0.03) Start to Show candidates
-07:21:18.36 (+0.32) Start to demodulate candidates
-07:21:19.52 (+1.16) Decodes: 5
+09:36:32.31 (=0.00) Start to Load audio from 210703_133430.wav
+09:36:32.72 (+0.41) Start to Show spectrum
+09:36:33.03 (+0.30) Start to Find candidates
+09:36:33.12 (+0.09) Found 500 candidates
+09:36:33.13 (+0.01) Start to deduplicate candidate frequencies
+09:36:33.15 (+0.02) Now have 40 candidates
+09:36:33.16 (+0.01) Start to sync candidates
+09:36:33.26 (+0.10) Synced 30 candidates
+09:36:33.29 (+0.03) Start to Show candidates
+09:36:33.64 (+0.35) Start to demodulate candidates
+09:36:34.88 (+1.23) Decodes: 6
 Test     0.000 Rx FT8    000 -0.3 2154 WM3PEN EA6VQ -09 4
 Test     0.000 Rx FT8    000  0.0 2569 W1FC F5BZB -08 10
 Test     0.000 Rx FT8    000 -0.1  721 A92EE F5PSR -14 8
 Test     0.000 Rx FT8    000  0.1  588 K1JT HA0DU KN07 11
-Test     0.000 Rx FT8    000  0.0  638 N1JFU EA6EE -07 10   
+Test     0.000 Rx FT8    000  0.0  638 N1JFU EA6EE -07 10
+Test     0.000 Rx FT8    000 -0.1 1646 K1JT EA3AGB -15 7 
 """
 
 import math
