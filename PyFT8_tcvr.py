@@ -4,7 +4,7 @@ import os
 import time
 import webbrowser
 import subprocess
-from PyFT8.rx import liveRx
+
 from PyFT8.tx import FT8_encoder
 from PyFT8.rig.IcomCIV import IcomCIV
 import PyFT8.tx.audio_out as audio_out
@@ -19,7 +19,9 @@ global config
 config = {'txFreq':1500, 'rxFreq':1500 }
 def dump_config():
     with open("config.json", "w") as f:
-        json.dump(config, f)        
+        json.dump(config, f)
+dump_config()
+from PyFT8.rx import liveRx
 
 class ClickHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
