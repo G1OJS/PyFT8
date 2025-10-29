@@ -15,8 +15,11 @@ cycle_length = 15
 myCall = 'G1OJS'
 myGrid = 'IO90'
 
+global abort_qso
+abort_qso = False
+
 global config
-config = {'txFreq':1500, 'rxFreq':1500 }
+config = {'txFreq':2250, 'rxFreq':1500 }
 def dump_config():
     with open("config.json", "w") as f:
         json.dump(config, f)
@@ -24,6 +27,15 @@ dump_config()
 from PyFT8.rx import liveRx
 
 class ClickHandler(SimpleHTTPRequestHandler):
+    def do_GET(self):
+        if self.path.startswith("/select_"):
+            threading.Thread(target=process_click_content, args=(self.path,)).start()  
+        super().do_GET()
+    def log_message(self, format, *args):
+        return
+
+
+class ClickHandler_(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/select_"):
             threading.Thread(target=process_click_content, args=(self.path,)).start()  
@@ -38,20 +50,43 @@ def process_click_content(clickedpath):
         config['rxFreq'] = int(data)
         print(f"Set Rx freq to {config['rxFreq']}")
         dump_config()
+        clear_rxWindow()
 
     if(idx == 2): call_next = str(data)
-    if(idx == 3): call_now = str(data)
-     
-def initial_reply(callsign):
-    print(callsign, type(callsign))
-    print(f"Initial reply to {callsign}\n")
-    send_message(callsign, myCall, myGrid, 1000)
+    if(idx == 3): initiate_qso(str(data))
 
-def send_message(c1,c2,gr, freq):
+def clear_rxWindow():
+    with open("rxFreq_data.json", "w") as f:
+        f.write("")
+
+def get_rxFreqMessage():
+    with open("rxFreq_data.json", "r") as f:
+        return f.readline()
+
+
+def initiate_qso(callsign, wait_for_next = False):
+    _ , t_remain = timers.time_in_cycle()
+    if(t_remain < 13):
+        timers.timedLog(f"Not enough time: t_remain = {t_remain} seconds")
+        return
+    clear_rxWindow()
+    timers.timedLog(f"Initiate QSO with {callsign}")
+    while True:
+        send_message(callsign, myCall, myGrid, int(config['txFreq']), wait_for_next = wait_for_next)
+        wait_for_next = False
+        if(get_rxFreqMessage()[-3:].isnumeric): break
+    while True:
+        send_message(callsign, myCall, myGrid, int(config['txFreq']), wait_for_next = False)
+        if('73' in get_rxFreqMessage()): break
+    send_message(callsign, myCall, 'RR73', int(config['txFreq']), wait_for_next = False)
+    
+def send_message(c1,c2,gr, freq, wait_for_next = True):
+    timers.timedLog(f"Sending: {c1} {c2} {gr}")
     symbols = FT8_encoder.pack_message(c1,c2,gr, freq)
     audio_out.create_ft8_wave(symbols)
-    _ , t_remain = timers.time_in_cycle()
-    time.sleep(t_remain)
+    if(wait_for_next):
+        _ , t_remain = timers.time_in_cycle()
+        time.sleep(t_remain)
     icom.setPTTON()
     audio_out.play_ft8_wave()
     icom.setPTTOFF()

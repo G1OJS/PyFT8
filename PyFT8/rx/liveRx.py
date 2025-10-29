@@ -25,7 +25,7 @@ global config
 def get_config():
     global config
     with open("config.json", "r") as f:
-        config = json.load( f) 
+        config = json.load(f) 
 get_config()
 
 def dumpwav(filename, data):
@@ -79,7 +79,7 @@ def run():
         rxFreq_decode = demod.demod_rxFreq(config['rxFreq'], cycle_str)
         print(rxFreq_decode)
         if(len(rxFreq_decode)>0):
-            with open("rxFreq_data.json", "w") as f:
+            with open("rxFreq_data.json", "a") as f:
                 json.dump(rxFreq_decode[0][0], f)
             
         timers.timedLog("Start to Find candidates")
