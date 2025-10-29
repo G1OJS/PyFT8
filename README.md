@@ -11,6 +11,7 @@ V2.1.0:
 * Visualisation of individual signalse with costas overlays
 * Browser-based UI in progress to enable use as WSJT-x replacement
 * CAT control for PTT of IC-7100
+* End to end loop tests to illustrate protocol & steps
 
 <img width="981" height="382" alt="Capture" src="https://github.com/user-attachments/assets/8eb7c645-ab75-4e4f-8ce9-1dae6045e6ba" />
 <img width="466" height="351" alt="Capture" src="https://github.com/user-attachments/assets/257e5a86-420b-4b82-aee0-ff360b93e3d4" />
