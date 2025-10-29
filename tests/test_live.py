@@ -151,12 +151,13 @@ while True:
     #wf.show_zoom(candidates=candidates[:5])
     timers.timedLog("Start to demodulate candidates")
     decodes = demod.demodulate(candidates, cyclestart_str = cycle_str)
+    t_decodes_finished, _ = timers.time_in_cycle()
     timers.timedLog(f"Decodes: {len(decodes)}")
         
     with open(PyFT8_file, 'a') as f:
         for l in decodes:
             f.write(f"{l[1]}\n")
     wsjtx_compare(wsjtx_file,PyFT8_file)
-    t_elapsed, t_remaining = timers.time_in_cycle()
-    timers.timedLog(f"Decodes finished {t_elapsed:4.1f} seconds into cycle")
+    
+    timers.timedLog(f"Decodes finished {t_decodes_finished:4.1f} seconds into cycle")
 
