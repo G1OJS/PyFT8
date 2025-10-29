@@ -1,22 +1,22 @@
 """
 wave file test
-09:36:32.31 (=0.00) Start to Load audio from 210703_133430.wav
-09:36:32.72 (+0.41) Start to Show spectrum
-09:36:33.03 (+0.30) Start to Find candidates
-09:36:33.12 (+0.09) Found 500 candidates
-09:36:33.13 (+0.01) Start to deduplicate candidate frequencies
-09:36:33.15 (+0.02) Now have 40 candidates
-09:36:33.16 (+0.01) Start to sync candidates
-09:36:33.26 (+0.10) Synced 30 candidates
-09:36:33.29 (+0.03) Start to Show candidates
-09:36:33.64 (+0.35) Start to demodulate candidates
-09:36:34.88 (+1.23) Decodes: 6
+10:32:11.62 (=0.00) Start to Load audio from 210703_133430.wav
+10:32:12.02 (+0.40) Start to Show spectrum
+10:32:12.34 (+0.31) Start to Find candidates
+10:32:12.45 (+0.11) Found 500 candidates
+10:32:12.50 (+0.06) Start to deduplicate candidate frequencies
+10:32:12.53 (+0.02) Now have 40 candidates
+10:32:12.54 (+0.01) Start to sync candidates
+10:32:12.64 (+0.10) Synced 30 candidates
+10:32:12.68 (+0.04) Start to Show candidates
+10:32:13.01 (+0.34) Start to demodulate candidates
+10:32:14.06 (+1.05) Decodes: 6
 Test     0.000 Rx FT8    000 -0.3 2154 WM3PEN EA6VQ -09 4
 Test     0.000 Rx FT8    000  0.0 2569 W1FC F5BZB -08 10
 Test     0.000 Rx FT8    000 -0.1  721 A92EE F5PSR -14 8
 Test     0.000 Rx FT8    000  0.1  588 K1JT HA0DU KN07 11
 Test     0.000 Rx FT8    000  0.0  638 N1JFU EA6EE -07 10
-Test     0.000 Rx FT8    000 -0.1 1646 K1JT EA3AGB -15 7 
+Test     0.000 Rx FT8    000 -0.1 1646 K1JT EA3AGB -15 7
 """
 
 import math
@@ -117,19 +117,19 @@ class FT8Demodulator:
         out = []
         payload_symb_idxs = list(range(7, 36)) + list(range(43, 72)) # move this to sigspec
         for c in candidates:
-            pgrid = c.power_grid
-            LLR174s = []
+            LLR174s=[]
+            pgrid = self.spectrum.power[c.bounds.t0_idx:  c.bounds.t0_idx + c.sigspec.num_symbols * self.hops_persymb,
+                                        c.bounds.f0_idx : c.bounds.f0_idx + 8*self.fbins_pertone]
+            pgrid = pgrid.reshape(c.sigspec.num_symbols, self.hops_persymb, 8, self.fbins_pertone).mean(axis=(1,3))
+            gray_mask = self.sigspec.gray_mask
             for symb_idx in payload_symb_idxs:
                 sigma2 = self.spectrum.noise_per_symb[symb_idx]
                 tone_powers_scaled = pgrid[symb_idx, :] / sigma2
-                for k in range(3):
-                    s1 = [v for i, v in enumerate(tone_powers_scaled) if FT8.gray_map_tuples[i][k]]
-                    s0 = [v for i, v in enumerate(tone_powers_scaled) if not FT8.gray_map_tuples[i][k]]
-                    m1 = max(s1)
-                    m0 = max(s0)
-                    s1v = m1 + math.log(np.sum(np.exp(np.array(s1) - m1)))
-                    s0v = m0 + math.log(np.sum(np.exp(np.array(s0) - m0)))
-                    LLR174s.append(s1v - s0v)
+                m1 = np.where(gray_mask, tone_powers_scaled[:, None], -np.inf)
+                m0 = np.where(~gray_mask, tone_powers_scaled[:, None], -np.inf)
+                LLR_sym = np.logaddexp.reduce(m1, axis=0) - np.logaddexp.reduce(m0, axis=0)
+                LLR174s.extend(LLR_sym)
+                
             ncheck, bits, n_its = decode174_91(LLR174s)
             if(ncheck == 0):
                 c.demodulated_by = f"LLR-LDPC ({n_its})"
