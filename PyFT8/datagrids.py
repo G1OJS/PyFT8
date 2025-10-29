@@ -57,6 +57,7 @@ class Spectrum:
 
         # ---- Time geometry ----
         self.nHops = int(self.hops_persymb * self.symbols_persec * self.frame_secs)
+        self.nSymbols = int(self.symbols_persec * self.frame_secs)
         self.dt = self.frame_secs / (self.nHops - 1)
 
         # ---- Coordinate arrays (bin centres) ----
@@ -73,15 +74,23 @@ class Spectrum:
         # ---- Data arrays ----
         self.complex = np.zeros((self.nHops, self.nFreqs), np.complex64)
         self.power = np.zeros((self.nHops, self.nFreqs), np.float32)
+        self.noise_per_hop = None
+        self.noise_per_symb = None
 
     def feed_audio(self, audio: np.ndarray):
-        """ Fill complex from a block of real audio samples. """
+        """ Fill self.complex and self.power from a block of real audio samples. """
         for hop_idx in range(self.nHops):
             sample_idx0 = int(hop_idx * self.sample_rate / (self.symbols_persec * self.hops_persymb))
             sample_idxn = sample_idx0 + self.FFT_size
             if(sample_idxn < len(audio)):
                 self.complex[hop_idx,:] = np.fft.rfft(audio[sample_idx0:sample_idxn] * np.kaiser(self.FFT_size,14))
-                self.power = np.abs(self.complex) ** 2
+        self.power = np.abs(self.complex) ** 2
+        """ Fill self.noise ... for llr extraction. """
+        self.noise_per_hop = np.median(self.power, axis=1)
+        n_full = (self.nHops // self.hops_persymb) * self.hops_persymb
+        self.noise_per_hop = self.noise_per_hop[:n_full]
+        self.noise_per_symb = self.noise_per_hop.reshape(-1, self.hops_persymb).mean(axis=1)
+
 
 
 # ============================================================
@@ -131,21 +140,21 @@ class Candidate:
         self.cycle_start = cycle_start
         self.demodulated_by = demodulated_by
 
+    def update_t0_idx(self, t0_idx):
+        delta = t0_idx - self.bounds.t0_idx
+        self.bounds.t0_idx += delta
+        self.bounds.tn_idx += delta
+        self.bounds.t0, self.bounds.tn = self.spectrum.times[self.bounds.t0_idx], self.spectrum.times[self.bounds.tn_idx]
+ 
     @property
     def power_grid(self):
-        norm = 1.0 / (self.spectrum.hops_persymb * self.spectrum.fbins_pertone)
-        t0_idx, tn_idx = self.bounds.t0_idx, self.bounds.tn_idx
-        f0_idx, fn_idx = self.bounds.f0_idx, self.bounds.fn_idx
-        
-        sub = self.spectrum.power[t0_idx:tn_idx, f0_idx:fn_idx]
-        ntFine, nfFine = sub.shape
-        ntTrim = ntFine - (ntFine % self.spectrum.hops_persymb)
-        nfTrim = nfFine - (nfFine % self.spectrum.fbins_pertone)
-        sub = sub[:ntTrim, :nfTrim]
-        nTimes = ntTrim // self.spectrum.hops_persymb
-        nFreqs = nfTrim // self.spectrum.fbins_pertone
-        sub = sub.reshape(nTimes, self.spectrum.hops_persymb, nFreqs, self.spectrum.fbins_pertone)
+        c = self
+        pgrid = self.spectrum.power[
+            c.bounds.t0_idx : c.bounds.t0_idx + c.sigspec.num_symbols * c.spectrum.hops_persymb,
+            c.bounds.f0_idx : c.bounds.f0_idx + c.sigspec.tones_persymb * c.spectrum.fbins_pertone
+        ]
+        pgrid = pgrid.reshape(c.sigspec.num_symbols, c.spectrum.hops_persymb,
+                              c.sigspec.tones_persymb, c.spectrum.fbins_pertone).mean(axis=(1,3))
 
-        pgrid = norm * sub.sum(axis=(1, 3))
         return pgrid.astype(np.float32)
         

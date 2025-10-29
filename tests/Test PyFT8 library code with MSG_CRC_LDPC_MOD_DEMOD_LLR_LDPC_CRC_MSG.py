@@ -76,7 +76,9 @@ for t_idx, symbol in enumerate(symbols):
             demod.spectrum.power[t, f] = m**2
 
 # 'demodulate' as with any audio frame
-candidates = demod.find_candidates(topN=5)
+candidates = demod.find_candidates(100, 3300, topN=5)
+candidates = demod.deduplicate_candidate_freqs(candidates, topN=100)
+candidates = demod.sync_candidates(candidates, topN=30)
 wf.update_main(candidates=candidates)
 wf.show_zoom(candidates=candidates)
 print(f"Found {len(candidates)} candidates")

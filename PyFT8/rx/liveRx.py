@@ -5,13 +5,15 @@ import pyaudio
 import wave
 import threading
 import sys
+import json
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 from PyFT8.rx.FT8_demodulator import FT8Demodulator
 from PyFT8.rx.waterfall import Waterfall
+import PyFT8.timers as timers
 
 SAMPLE_RATE = 12000
 CYCLE = 15.0
-SHORT_CYCLE = 14.6
+SHORT_CYCLE = 14.5
 FRAMES_PER_CYCLE = int(SAMPLE_RATE * SHORT_CYCLE)
 BRIDGE_FILE = 'audio.wav'
 FLAG_FILE = 'audio.txt'
@@ -19,11 +21,12 @@ PyFT8_file = "pyft8.txt"
 wsjtx_file = "wsjtx.txt"
 pya = pyaudio.PyAudio()
 
-def tstrcyclestart_str(cycle_offset):
-    return time.strftime("%y%m%d_%H%M%S", time.gmtime(15*cycle_offset + 15*int(time.time() / 15)))
-
-def tstrNow():
-    return time.strftime("%H:%M:%S", time.gmtime(time.time()))
+global config
+def get_config():
+    global config
+    with open("config.json", "r") as f:
+        config = json.load( f) 
+get_config()
 
 def dumpwav(filename, data):
     wavefile = wave.open(filename, 'wb')
@@ -35,9 +38,8 @@ def dumpwav(filename, data):
 
 def audioloop():
     while True:
-        t = time.time()
-        t_to_next = CYCLE - (t % CYCLE)
-        time.sleep(t_to_next)
+        _, t_remain, = timers.time_in_cycle()
+        time.sleep(t_remain)
         stream = pya.open(format=pyaudio.paInt16, channels = 1, rate=SAMPLE_RATE,
                       input=True, input_device_index = 1,
                       frames_per_buffer=FRAMES_PER_CYCLE)
@@ -59,18 +61,38 @@ def read_wav(filename, sample_rate = 12000):
 global demod
 threading.Thread(target=audioloop).start()
 demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
-
 def run():
+    import json
     while True:
-        while not os.path.exists(FLAG_FILE):
-            time.sleep(0.1)
-        cyclestart_str = tstrcyclestart_str(0)
+        while not os.path.exists(FLAG_FILE):   
+            time.sleep(.1)
+        cycle_str = timers.tstrcyclestart_str(1)
         audio = read_wav(BRIDGE_FILE)
         os.remove(FLAG_FILE)
+        timers.timedLog("Start to load audio")
         demod.spectrum.feed_audio(audio)
-        candidates = demod.find_candidates(topN=25)
-        print(f"{cyclestart_str} =================================")
-        decodes = demod.demodulate(candidates, cyclestart_str = cyclestart_str)
-        for l in decodes:
-            print(f"{l}")
+        
+        timers.timedLog("Decode Rx frequency")
+        global config
+        get_config()
+        print("Rx freq: ",config['rxFreq'])
+        rxFreq_decode = demod.demod_rxFreq(config['rxFreq'], cycle_str)
+        print(rxFreq_decode)
+        if(len(rxFreq_decode)>0):
+            with open("rxFreq_data.json", "w") as f:
+                json.dump(rxFreq_decode[0][0], f)
+            
+        timers.timedLog("Start to Find candidates")
+        candidates = demod.find_candidates(100,3300, topN=500)
+        timers.timedLog(f"Found {len(candidates)} candidates")
+        timers.timedLog("Start to deduplicate candidate frequencies")
+        candidates = demod.deduplicate_candidate_freqs(candidates, topN=100)
+        timers.timedLog(f"Now have {len(candidates)} candidates")
+        timers.timedLog("Start to sync candidates")
+        candidates = demod.sync_candidates(candidates, topN=30)
+        timers.timedLog(f"Synced {len(candidates)} candidates")
+        decodes = demod.demodulate(candidates, cyclestart_str = cycle_str)
+        timers.timedLog(f"Decodes: {len(decodes)}")
+        with open("data.json", "w") as f:
+            json.dump([d[0] for d in decodes], f)
 

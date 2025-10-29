@@ -11,9 +11,8 @@ pyft8.txt
 *.wav
 *.txt
 *.npz
-dumps/
-
-
+*.json
+*.log
 
 # Distribution / packaging
 .Python
