@@ -250,3 +250,84 @@
 17:14:30: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x01\xfd'
 17:14:42: CAT command: PTT Off
 17:14:42: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+17:15:40: Connected to COM4
+17:16:30: CAT command: PTT On
+17:16:30: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x01\xfd'
+17:16:43: CAT command: PTT Off
+17:16:43: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+17:17:46: Connected to COM4
+17:18:00: Connected to COM4
+17:19:00: CAT command: PTT On
+17:19:00: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x01\xfd'
+17:19:13: CAT command: PTT Off
+17:19:13: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+17:21:58: Connected to COM4
+17:23:15: CAT command: PTT On
+17:23:15: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x01\xfd'
+17:23:28: CAT command: PTT Off
+17:23:28: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+17:27:37: Connected to COM4
+17:29:57: Connected to COM4
+17:32:37: Connected to COM4
+17:33:30: Connected to COM4
+17:34:43: Connected to COM4
+17:38:18: Connected to COM4
+17:40:48: Connected to COM4
+17:42:04: Connected to COM4
+17:43:45: Connected to COM4
+17:44:22: Connected to COM4
+17:48:51: Connected to COM4
+17:50:28: Connected to COM4
+17:50:57: Connected to COM4
+17:52:18: Connected to COM4
+18:09:55: Connected to COM4
+18:10:34: Connected to COM4
+18:12:24: Connected to COM4
+18:14:34: Connected to COM4
+18:14:50: CAT command: PTT Off
+18:14:50: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+18:15:12: CAT command: PTT Off
+18:15:12: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+18:15:27: CAT command: PTT Off
+18:15:27: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+18:15:42: CAT command: PTT Off
+18:15:42: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+18:15:57: CAT command: PTT Off
+18:15:57: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+18:16:12: CAT command: PTT Off
+18:16:13: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+18:16:27: CAT command: PTT Off
+18:16:27: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+18:16:42: CAT command: PTT Off
+18:16:42: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+18:16:57: CAT command: PTT Off
+18:16:58: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+18:17:09: CAT command: PTT Off
+18:17:09: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+18:17:12: CAT command: PTT Off
+18:17:12: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+18:17:27: CAT command: PTT Off
+18:17:27: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+18:17:27: CAT command: PTT Off
+18:17:27: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+18:17:42: CAT command: PTT Off
+18:17:42: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+18:17:57: CAT command: PTT Off
+18:17:57: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+18:18:12: Connected to COM4
+18:18:28: CAT command: PTT Off
+18:18:28: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+18:18:43: CAT command: PTT Off
+18:18:43: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+18:18:57: CAT command: PTT Off
+18:18:57: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+18:19:12: CAT command: PTT Off
+18:19:13: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+18:19:27: CAT command: PTT Off
+18:19:27: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+18:19:43: CAT command: PTT Off
+18:19:43: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+18:19:57: CAT command: PTT Off
+18:19:57: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'
+18:20:12: CAT command: PTT Off
+18:20:12: CAT: b'\xfe\xfe\x88\xe0\x1c\x00\x00\xfd'

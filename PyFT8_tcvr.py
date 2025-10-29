@@ -19,7 +19,7 @@ global abort_qso
 abort_qso = False
 
 global config
-config = {'txFreq':2250, 'rxFreq':1500 }
+config = {'txFreq':2250, 'rxFreq':1971 }
 def dump_config():
     with open("config.json", "w") as f:
         json.dump(config, f)
@@ -59,28 +59,31 @@ def clear_rxWindow():
     with open("rxFreq_data.json", "w") as f:
         f.write("")
 
-def get_rxFreqMessage():
+def get_rxFreqMessages(from_call = None):
     with open("rxFreq_data.json", "r") as f:
-        return f.readline()
-
+        s = f.readline()
+        if(s):
+            if(not from_call or len(eval(s)) == 1): return eval(s)[0]['grid_rpt']
+            decode = next((item for item in eval(s) if item["call_b"] == from_call), None)
+            if(decode): return decode['grid_rpt']  
 
 def initiate_qso(callsign, wait_for_next = False):
     _ , t_remain = timers.time_in_cycle()
+    clear_rxWindow()
     if(t_remain < 13):
         timers.timedLog(f"Not enough time: t_remain = {t_remain} seconds")
         time.sleep(t_remain+15)
-
-    clear_rxWindow()
     timers.timedLog(f"Initiate QSO with {callsign}")
     while True:
         send_message(callsign, myCall, myGrid, int(config['txFreq']), wait_for_next = wait_for_next)
         wait_for_next = True
-        their_reply = get_rxFreqMessage()
-        if(their_reply['grid_rpt'][-3:].isnumeric): break
+        their_reply = get_rxFreqMessages(callsign)
+        if(not their_reply): continue
+        if(their_reply[-3:].isnumeric): break
     while True:
         their_snr = their_reply['snr']
         send_message(callsign, myCall, f"R{their_snr:+03d}", int(config['txFreq']), wait_for_next = True)
-        if('73' in get_rxFreqMessage()): break
+        if('73' in get_rxFreqMessages(callsign)): break
     send_message(callsign, myCall, 'RR73', int(config['txFreq']), wait_for_next = True)
     
 def send_message(c1,c2,gr, freq, wait_for_next = True):
@@ -126,8 +129,3 @@ webbrowser.open("http://localhost:8080/UI.html")
 #send_message("X1XXX","G1OJS","73", 1000)
 #send_message("X1XXX","G1O","73", 1000)
     
-
-
-
-
-
