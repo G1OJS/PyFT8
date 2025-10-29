@@ -46,14 +46,14 @@ def process_click_content(clickedpath):
     text = clickedpath.strip("/").replace("select_", "").replace(".txt", "").replace('%20',' ')
     idx, data = text.split("_")
     idx = int(idx)
-    if(idx == 1):
+    if(idx == 2):
         config['rxFreq'] = int(data)
         print(f"Set Rx freq to {config['rxFreq']}")
         dump_config()
         clear_rxWindow()
 
-    if(idx == 2): call_next = str(data)
-    if(idx == 3): initiate_qso(str(data))
+    if(idx == 3): call_next = str(data)
+    if(idx == 4): initiate_qso(str(data))
 
 def clear_rxWindow():
     with open("rxFreq_data.json", "w") as f:
@@ -77,14 +77,15 @@ def initiate_qso(callsign, wait_for_next = False):
         wait_for_next = True
         if(get_rxFreqMessage()[-3:].isnumeric): break
     while True:
-        send_message(callsign, myCall, myGrid, int(config['txFreq']), wait_for_next = True)
+        # needs to be "R+09" format
+        send_message(callsign, myCall, snr, int(config['txFreq']), wait_for_next = True)
         if('73' in get_rxFreqMessage()): break
     send_message(callsign, myCall, 'RR73', int(config['txFreq']), wait_for_next = True)
     
-def send_message(c1,c2,gr, freq, wait_for_next = True):
+def send_message(c1,c2,gr, freq, include_r = False, wait_for_next = True):
     timers.timedLog(f"Sending: {c1} {c2} {gr}")
-    symbols = FT8_encoder.pack_message(c1,c2,gr, freq)
-    audio_out.create_ft8_wave(symbols)
+    symbols = FT8_encoder.pack_message(c1,c2,gr,include_r)
+    audio_out.create_ft8_wave(symbols, f_base = freq)
     if(wait_for_next):
         _ , t_remain = timers.time_in_cycle()
         time.sleep(t_remain)

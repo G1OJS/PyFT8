@@ -28,13 +28,13 @@
 			const current_decodes_DOMel = document.getElementById("current_decodes");
 			current_decodes_DOMel.innerHTML = "";
 			msgs.forEach((m) => {
-				const fields = [m.cyclestart_str.split('_')[1], m.freq, m.call_a, m.call_b, m.grid_rpt];
+				const fields = [m.cyclestart_str.split('_')[1], m.snr, m.freq, m.call_a, m.call_b, m.grid_rpt];
 				const div = document.createElement("div");
 				div.className = "message-line";
 				fields.forEach((field, idx) => {
 					const span = document.createElement("span");
 					span.textContent = field;
-					if (idx === 1 || idx === 2 || idx === 3) {
+					if (idx === 2 || idx === 3 || idx === 4) {
 					  span.className = "msg_field";
 					  span.onclick = () => {fetch(`/select_${idx}_${field}.txt`); return false;};
 					  span.style.cursor = "pointer";
