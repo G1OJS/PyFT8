@@ -124,6 +124,7 @@ webbrowser.open("http://localhost:8080/UI.html")
 #send_message("X1XXX","G1OJS","RR73", 1000)
 
 #send_message("X1XXX","G1OJS","73", 1000)
+#send_message("X1XXX","G1O","73", 1000)
     
 
 
