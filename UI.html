@@ -29,17 +29,21 @@
 			const m = JSON.parse(event.data)
 			if(m){
 				let grid_id = m.grid_id;
-				let row = document.getElementById(grid_id).appendChild(document.createElement("div"));
-				row.className='grid_row';
-				const fields = [m.cyclestart_str.split('_')[1], m.snr, m.freq, m.call_a, m.call_b, m.grid_rpt,''];
-				fields.forEach((field, idx) => {
-					const cell_div = document.createElement("div");
-					cell_div.textContent = field;
-					cell_div.className='grid_cell';
-					row.appendChild(cell_div);
-				});
-				row.addEventListener("click", e => {fetch(`/select_${m.freq}_None.txt`); document.getElementById('rxFreq').innerHTML = "Rx:";}); 
-				row.addEventListener("dblclick", e => {fetch(`/select_${m.freq}_${m.call_b}.txt`); document.getElementById('rxFreq').innerHTML =  "Rx:";}); 
+				if (m.type == 'clear_grid') {
+					document.getElementById(grid_id).innerHTML = "";
+				} else {
+					let row = document.getElementById(grid_id).appendChild(document.createElement("div"));
+					row.className='grid_row';
+					const fields = [m.cyclestart_str.split('_')[1], m.snr, m.freq, m.call_a, m.call_b, m.grid_rpt,''];
+					fields.forEach((field, idx) => {
+						const cell_div = document.createElement("div");
+						cell_div.textContent = field;
+						cell_div.className='grid_cell';
+						row.appendChild(cell_div);
+					});
+					row.addEventListener("click", e => {fetch(`/select_${m.freq}_None.txt`); document.getElementById('rxFreq').innerHTML = "Rx:";}); 
+					row.addEventListener("dblclick", e => {fetch(`/select_${m.freq}_${m.call_b}.txt`); document.getElementById('rxFreq').innerHTML =  "Rx:";}); 
+				}
 			}
 		};
 		

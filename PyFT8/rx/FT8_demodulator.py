@@ -58,17 +58,22 @@ def get_decodes():
     timers.timedLog("Decode Rx frequency")
     decode = demod.demod_rxFreq(config.load()['rxFreq'], cyclestart_str)
     if(decode):
-        decode['decode_dict']['grid_id'] = 'rx_decodes'
-        events.publish("NewDecode",decode['decode_dict'])
+        message = decode['decode_dict']
+        message['grid_id'] = 'rx_decodes'
+        message['type'] = 'decode'
+        events.publish("UI_message", message)
 
     candidates = demod.find_candidates(100,3300, topN=500)
     candidates = demod.deduplicate_candidate_freqs(candidates, topN=100)
+    events.publish("UI_message", {'grid_id':'all_decodes', 'type':'clear_grid'})
     for c in candidates:
         demod.sync_candidate(c)
         decode = demod.demodulate_candidate(c, cyclestart_str)
         if(decode):
-            decode['decode_dict']['grid_id'] = 'all_decodes'
-            events.publish("NewDecode",decode['decode_dict'])
+            message = decode['decode_dict']
+            message['grid_id'] = 'all_decodes'
+            message['type'] = 'decode'
+            events.publish("UI_message", message)
     timers.timedLog(f"Decoded all")
     
 class FT8Demodulator:
