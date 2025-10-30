@@ -54,7 +54,7 @@ async def start_websockets_server():
     global decode_queue, loop
     loop = asyncio.get_running_loop()
     decode_queue = asyncio.Queue()
-    events.subscribe("AllDecodes", update_decodes)
+    events.subscribe("NewDecode", update_decodes)
     async with serve(send_decodes, "localhost", 5678) as server:
         await server.serve_forever()
 

@@ -28,8 +28,7 @@
 		websocket.onmessage = (event) => {
 			const m = JSON.parse(event.data)
 			if(m){
-				console.log(m);
-				let grid_id = "current_decodes";
+				let grid_id = m.grid_id;
 				let row = document.getElementById(grid_id).appendChild(document.createElement("div"));
 				row.className='grid_row';
 				const fields = [m.cyclestart_str.split('_')[1], m.snr, m.freq, m.call_a, m.call_b, m.grid_rpt,''];
@@ -53,10 +52,10 @@
 	<div id='txFreq'></div>
 	<div id='rxFreq'></div>
 	<h3>Decodes</h3>
-	<div id="current_decodes" class = "decodes_grid"></div>
+	<div id="all_decodes" class = "decodes_grid"></div>
 	<br><br>
 	<h3>Rx Freq decodes:</h3>
-	<div id="rxDecodes"  class = "decodes_grid"></div>
+	<div id="rx_decodes"  class = "decodes_grid"></div>
 	
 </body>
 

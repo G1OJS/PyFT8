@@ -57,14 +57,18 @@ def get_decodes():
     demod.spectrum.get_audio(audio_file)
     timers.timedLog("Decode Rx frequency")
     decode = demod.demod_rxFreq(config.load()['rxFreq'], cyclestart_str)
-    if(decode): events.publish("RxFreqDecode",decode['decode_dict'])
+    if(decode):
+        decode['decode_dict']['grid_id'] = 'rx_decodes'
+        events.publish("NewDecode",decode['decode_dict'])
 
     candidates = demod.find_candidates(100,3300, topN=500)
     candidates = demod.deduplicate_candidate_freqs(candidates, topN=100)
     for c in candidates:
         demod.sync_candidate(c)
         decode = demod.demodulate_candidate(c, cyclestart_str)
-        if(decode): events.publish("AllDecodes",decode['decode_dict'])
+        if(decode):
+            decode['decode_dict']['grid_id'] = 'all_decodes'
+            events.publish("NewDecode",decode['decode_dict'])
     timers.timedLog(f"Decoded all")
     
 class FT8Demodulator:
