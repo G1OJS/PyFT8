@@ -9,12 +9,12 @@ sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 from PyFT8.rx.FT8_demodulator import FT8Demodulator
 from PyFT8.rx.waterfall import Waterfall
 import PyFT8.timers as timers
+import PyFT8.audio as audio
 
 SAMPLE_RATE = 12000
 CYCLE = 15.0
 SHORT_CYCLE = 14.6      # allow time for file handover etc between cycles
 START_CAPTURE = -0.2    # offset start of audio capture from cycle start
-FRAMES_PER_CYCLE = int(SAMPLE_RATE * SHORT_CYCLE)
 BRIDGE_FILE = 'audio.wav'
 FLAG_FILE = 'audio.txt'
 PyFT8_file = "pyft8.txt"
@@ -95,10 +95,8 @@ def audioloop():
         timers.timedLog("Audio capture waiting for cycle start")
         t_elapsed, t_remaining = timers.time_in_cycle()
         time.sleep(t_remaining + START_CAPTURE)
-        stream = pya.open(format=pyaudio.paInt16, channels = 1, rate=SAMPLE_RATE,
-                      input=True, input_device_index = 1,
-                      frames_per_buffer=FRAMES_PER_CYCLE)
-        data = np.frombuffer(stream.read(FRAMES_PER_CYCLE, exception_on_overflow=False), dtype=np.int16)
+        stream = audio.input_stream("CODEC", SAMPLE_RATE, SHORT_CYCLE)
+        data = np.frombuffer(stream.read(SAMPLE_RATE * SHORT_CYCLE, exception_on_overflow=False), dtype=np.int16)
         dumpwav(BRIDGE_FILE, data)
         stream.close()
         with open(FLAG_FILE, 'w') as f: f.write("x")

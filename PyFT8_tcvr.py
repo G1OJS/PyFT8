@@ -1,30 +1,21 @@
 import threading
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 import os
-import time
+import sys
 import webbrowser
-import subprocess
 
-from PyFT8.tx import FT8_encoder
+sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
+from PyFT8.rx.FT8_demodulator import cyclic_demodulator
+from PyFT8.comms_hub import config, events
 from PyFT8.rig.IcomCIV import IcomCIV
-import PyFT8.tx.audio_out as audio_out
 import PyFT8.timers as timers
 import json
 icom = IcomCIV()
-cycle_length = 15
 myCall = 'G1OJS'
 myGrid = 'IO90'
 
-global abort_qso
-abort_qso = False
-
-global config
-config = {'txFreq':2250, 'rxFreq':1971 }
-def dump_config():
-    with open("config.json", "w") as f:
-        json.dump(config, f)
-dump_config()
-from PyFT8.rx import liveRx
+PyFT8_logfile = "pyft8.txt"
+wsjtx_logfile = "wsjtx.txt"
 
 class ClickHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
@@ -33,7 +24,6 @@ class ClickHandler(SimpleHTTPRequestHandler):
         super().do_GET()
     def log_message(self, format, *args):
         return
-
 
 class ClickHandler_(SimpleHTTPRequestHandler):
     def do_GET(self):
@@ -76,7 +66,7 @@ def initiate_qso(callsign, wait_for_next = False):
     wait_cycles = -1
     while True:
         timers.timedLog(f"Send messasge: {callsign} {myCall} {myGrid}", logfile = "QSO.log")
-        send_message(callsign, myCall, myGrid, int(config['txFreq']), wait_cycles = wait_cycles)
+        send_message(icom,callsign, myCall, myGrid, int(config['txFreq']), wait_cycles = wait_cycles)
         wait_cycles = 1
         their_reply = get_reply(callsign, wait_cycles = wait_cycles)
         timers.timedLog(f"Received reply: {their_reply}", logfile = "QSO.log")
@@ -86,24 +76,13 @@ def initiate_qso(callsign, wait_for_next = False):
     while True:
         their_snr = int(their_reply[-3:])
         timers.timedLog(f"Send messasge: {callsign} {myCall} R{their_snr:+03d}", logfile = "QSO.log")
-        send_message(callsign, myCall, f"R{their_snr:+03d}", int(config['txFreq']), wait_cycles = wait_cycles)
+        send_message(icom,callsign, myCall, f"R{their_snr:+03d}", int(config['txFreq']), wait_cycles = wait_cycles)
         their_reply = get_reply(callsign, wait_cycles = wait_cycles)
         timers.timedLog(f"Received reply: {their_reply}", logfile = "QSO.log")
         if('73' in their_reply): break
     timers.timedLog(f"Send messasge reply: {callsign} {myCall} 73", logfile = "QSO.log")
-    send_message(callsign, myCall, '73', int(config['txFreq']), wait_cycles = wait_cycles)
+    send_message(icom,callsign, myCall, '73', int(config['txFreq']), wait_cycles = wait_cycles)
     
-def send_message(c1,c2,gr, freq, wait_cycles = 0):
-    symbols = FT8_encoder.pack_message(c1,c2,gr)
-    audio_out.create_ft8_wave(symbols, f_base = freq)
-    if(wait_cycles >= 0):
-        _ , t_remain = timers.time_in_cycle()
-        t_remain += wait_cycles*15
-        time.sleep(t_remain)
-    icom.setPTTON()
-    audio_out.play_ft8_wave()
-    icom.setPTTOFF()
-
 def start_UI_server():
     os.chdir(r"C:/Users/drala/Documents/Projects/GitHub/PyFT8/")
     server = ThreadingHTTPServer(("localhost", 8080), ClickHandler)
@@ -112,27 +91,25 @@ def start_UI_server():
 def delete_file(file):
     if os.path.exists(file):
         os.remove(file)
-        
-delete_file("rxFreq_data.json")
+
 delete_file("data.json")
-delete_file("config.json")
-dump_config()
-threading.Thread(target=liveRx.run).start()
+
+threading.Thread(target=cyclic_demodulator, args=(["CABLE","Output"],)).start()
 threading.Thread(target=start_UI_server, daemon=True).start()
 webbrowser.open("http://localhost:8080/UI.html")
 
-#send_message("CQ","G1OJS","IO90", 1000)
+#send_message(icom,"CQ","G1OJS","IO90", 1000)
 
-#send_message("X1XXX","G1OJS","+03", 1000)
-#send_message("X1XXX","G1OJS","-08", 1000)
+#send_message(icom,"X1XXX","G1OJS","+03", 1000)
+#send_message(icom,"X1XXX","G1OJS","-08", 1000)
 
-#send_message("X1XXX","G1OJS","R+08", 1000)
-#send_message("X1XXX","G1OJS","R-08", 1000)
+#send_message(icom,"X1XXX","G1OJS","R+08", 1000)
+#send_message(icom,"X1XXX","G1OJS","R-08", 1000)
 
-#send_message("X1XXX","G1OJS","RRR", 1000)
+#send_message(icom,"X1XXX","G1OJS","RRR", 1000)
 
-#send_message("X1XXX","G1OJS","RR73", 1000)
+#send_message(icom,"X1XXX","G1OJS","RR73", 1000)
 
-#send_message("X1XXX","G1OJS","73", 1000)
-#send_message("X1XXX","G1O","73", 1000)
+#send_message(icom,"X1XXX","G1OJS","73", 1000)
+#send_message(icom,"X1XXX","G1O","73", 1000)
     
