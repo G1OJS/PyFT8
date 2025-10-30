@@ -27,37 +27,51 @@ from PyFT8.datagrids import Spectrum, Bounds, Candidate
 from PyFT8.signaldefs import FT8
 from PyFT8.rx.decode174_91 import decode174_91
 import PyFT8.FT8_crc as crc
-import PyFT8.timers as timers
-import PyFT8.audio as audio
+
 
 def cyclic_demodulator(input_device_str_contains):
     from PyFT8.comms_hub import config, events
-    demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
+    import PyFT8.timers as timers
+    import PyFT8.audio as audio
+    events.subscribe("audio_ready", get_decodes)
+    AUDIO_FILE = "audio_in.wav"
     while True:
         _, t_remain, = timers.time_in_cycle()
-        timers.sleep(t_remain)
+        if(t_remain>0.5): timers.sleep(t_remain)
+        timers.timedLog("Audio loop starting audio record")
         audio_in = audio.read_from_soundcard(input_device_str_contains, timers.CYCLE_LENGTH-1)
-        timers.timedLog("Start to load audio")
-        demod.spectrum.feed_audio(audio_in)
-        timers.timedLog("Decode Rx frequency")
-        cycle_str = timers.cyclestart_str(1)
-        rxFreq_decodes = demod.demod_rxFreq(config.load()['rxFreq'], cycle_str)
-        rxFreq_decodes = [d[0] for d in rxFreq_decodes]
-        if(len(rxFreq_decodes)>0):
-            print(rxFreq_decodes)
-            
-        timers.timedLog("Start to Find candidates")
-        candidates = demod.find_candidates(100,3300, topN=500)
-        timers.timedLog(f"Found {len(candidates)} candidates")
-        timers.timedLog("Start to deduplicate candidate frequencies")
-        candidates = demod.deduplicate_candidate_freqs(candidates, topN=100)
-        timers.timedLog(f"Now have {len(candidates)} candidates")
-        timers.timedLog("Start to sync candidates")
-        candidates = demod.sync_candidates(candidates, topN=30)
-        timers.timedLog(f"Synced {len(candidates)} candidates")
-        decodes = demod.demodulate(candidates, cyclestart_str = cycle_str)
-        timers.timedLog(f"Decodes: {len(decodes)}")
-        print([d[0] for d in decodes])
+        audio.write_wav_file(AUDIO_FILE, audio_in)
+        events.publish("audio_ready", {"audio_file": AUDIO_FILE})
+        timers.timedLog("Audio loop saved audio")
+
+def get_decodes(args):
+    from PyFT8.comms_hub import config, events
+    import PyFT8.timers as timers
+    audio_file = args['audio_file']
+    timers.timedLog("Start to load audio")
+
+    demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
+    cycle_str = timers.cyclestart_str(1)
+
+    demod.spectrum.get_audio(audio_file)
+    timers.timedLog("Decode Rx frequency")
+    rxFreq_decodes = demod.demod_rxFreq(config.load()['rxFreq'], cycle_str)
+    rxFreq_decodes = [d[0] for d in rxFreq_decodes]
+    if(len(rxFreq_decodes)>0):
+        print(rxFreq_decodes)
+        
+    timers.timedLog("Start to Find candidates")
+    candidates = demod.find_candidates(100,3300, topN=500)
+    timers.timedLog(f"Found {len(candidates)} candidates")
+    timers.timedLog("Start to deduplicate candidate frequencies")
+    candidates = demod.deduplicate_candidate_freqs(candidates, topN=100)
+    timers.timedLog(f"Now have {len(candidates)} candidates")
+    timers.timedLog("Start to sync candidates")
+    candidates = demod.sync_candidates(candidates, topN=30)
+    timers.timedLog(f"Synced {len(candidates)} candidates")
+    decodes = demod.demodulate(candidates, cyclestart_str = cycle_str)
+    timers.timedLog(f"Decodes: {len(decodes)}")
+    print([d[0] for d in decodes])
 
 
 
