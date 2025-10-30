@@ -82,6 +82,7 @@ def initiate_qso(callsign, wait_for_next = False):
         timers.timedLog(f"Received reply: {their_reply}", logfile = "QSO.log")
         if(not their_reply): continue
         if(their_reply[-3] == "+" or their_reply[-3] == "-"): break        
+    wait_cycles = -1
     while True:
         their_snr = int(their_reply[-3:])
         timers.timedLog(f"Send messasge: {callsign} {myCall} R{their_snr:+03d}", logfile = "QSO.log")
