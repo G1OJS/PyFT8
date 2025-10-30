@@ -41,8 +41,14 @@
 						cell_div.className='grid_cell';
 						row.appendChild(cell_div);
 					});
-					row.addEventListener("click", e => {fetch(`/select_${m.freq}_None.txt`); document.getElementById('rxFreq').innerHTML = "Rx:";}); 
-					row.addEventListener("dblclick", e => {fetch(`/select_${m.freq}_${m.call_b}.txt`); document.getElementById('rxFreq').innerHTML =  "Rx:";}); 
+					row.addEventListener("click", e => {
+						websocket.send(JSON.stringify({type: "SetRxFreq", freq: m.freq}));
+						document.getElementById('rxFreq').innerHTML = `Rx:${m.freq}`;
+					}); 
+					row.addEventListener("dblclick", e => {
+						websocket.send(JSON.stringify({type: "Reply", freq: m.freq,call: m.call_b}));
+						document.getElementById('rxFreq').innerHTML = `Rx:${m.freq}`;
+					}); 
 				}
 			}
 		};

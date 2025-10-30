@@ -19,16 +19,6 @@ wsjtx_logfile = "wsjtx.txt"
 
 class ClickHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
-        if self.path.startswith("/select_"):
-            threading.Thread(target=process_click_content, args=(self.path,)).start()  
-        super().do_GET()
-    def log_message(self, format, *args):
-        return
-
-class ClickHandler_(SimpleHTTPRequestHandler):
-    def do_GET(self):
-        if self.path.startswith("/select_"):
-            threading.Thread(target=process_click_content, args=(self.path,)).start()  
         super().do_GET()
 
 def process_click_content(clickdata):
