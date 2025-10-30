@@ -34,7 +34,7 @@ def cyclic_demodulator(input_device_str_contains):
     import PyFT8.timers as timers
     import PyFT8.audio as audio
     AUDIO_FILE = "audio_in.wav"
-    MAX_START_OFFSET_SECONDS = 0.5
+    MAX_START_OFFSET_SECONDS = 1
     
     while True:
         t_elapsed, t_remain, = timers.time_in_cycle()
