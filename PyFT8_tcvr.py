@@ -56,7 +56,11 @@ def clear_rxWindow():
     with open("rxFreq_data.json", "w") as f:
         f.write("")
 
-def get_reply(from_call):
+def get_reply(from_call, wait_cycles = 0):
+    if(wait_cycles >= 0):
+        _ , t_remain = timers.time_in_cycle()
+        t_remain += wait_cycles*15
+        time.sleep(t_remain+1) # needs to wait for a message 'rx frequency decoded'
     with open("rxFreq_data.json", "r") as f:
         for s in reversed(f.readlines()):
             decode = next((item for item in reversed(eval(s)) if item["call_b"] == from_call), None)
@@ -71,21 +75,21 @@ def initiate_qso(callsign, wait_for_next = False):
         time.sleep(t_remain+15)
     wait_cycles = -1
     while True:
-        timers.timedLog(f"Send messasge: {callsign} {myCall} {myGrid}", logfile = "QSO")
+        timers.timedLog(f"Send messasge: {callsign} {myCall} {myGrid}", logfile = "QSO.log")
         send_message(callsign, myCall, myGrid, int(config['txFreq']), wait_cycles = wait_cycles)
         wait_cycles = 1
-        their_reply = get_reply(callsign)
-        timers.timedLog(f"Received reply: {their_reply}", logfile = "QSO")
+        their_reply = get_reply(callsign, wait_cycles = wait_cycles)
+        timers.timedLog(f"Received reply: {their_reply}", logfile = "QSO.log")
         if(not their_reply): continue
         if(their_reply[-3] == "+" or their_reply[-3] == "-"): break        
     while True:
         their_snr = int(their_reply[-3:])
-        timers.timedLog(f"Send messasge: {callsign} {myCall} R{their_snr:+03d}", logfile = "QSO")
+        timers.timedLog(f"Send messasge: {callsign} {myCall} R{their_snr:+03d}", logfile = "QSO.log")
         send_message(callsign, myCall, f"R{their_snr:+03d}", int(config['txFreq']), wait_cycles = wait_cycles)
-        their_reply = get_reply(callsign)
-        timers.timedLog(f"Received reply: {their_reply}", logfile = "QSO")
+        their_reply = get_reply(callsign, wait_cycles = wait_cycles)
+        timers.timedLog(f"Received reply: {their_reply}", logfile = "QSO.log")
         if('73' in their_reply): break
-    timers.timedLog(f"Send messasge reply: {callsign} {myCall} 73", logfile = "QSO")
+    timers.timedLog(f"Send messasge reply: {callsign} {myCall} 73", logfile = "QSO.log")
     send_message(callsign, myCall, '73', int(config['txFreq']), wait_cycles = wait_cycles)
     
 def send_message(c1,c2,gr, freq, wait_cycles = 0):
