@@ -131,7 +131,7 @@ class FT8Demodulator:
             if(ncheck == 0):
                 c.demodulated_by = f"LLR-LDPC ({n_its})"
                 c.payload_bits = bits
-                c.snr = int(12*np.log10(c.score/1e9) - 31)
+                c.snr = -24 if c.score==0 else int(12*np.log10(c.score/1e9) - 31)
                 c.snr = np.clip(c.snr, -24,24).item()
                 out.append(FT8_decode(c, cyclestart_str))
         return out

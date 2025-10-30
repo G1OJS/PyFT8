@@ -40,8 +40,14 @@ def audioloop():
     while True:
         _, t_remain, = timers.time_in_cycle()
         time.sleep(t_remain)
+        for i in range(pya.get_device_count()):
+            name = pya.get_device_info_by_index(i)['name']
+           # if('Speakers' in name and 'CODEC' in name):
+            if('CABLE Output' in name):
+                dev_idx = i
+                break
         stream = pya.open(format=pyaudio.paInt16, channels = 1, rate=SAMPLE_RATE,
-                      input=True, input_device_index = 1,
+                      input=True, input_device_index = dev_idx,
                       frames_per_buffer=FRAMES_PER_CYCLE)
         data = np.frombuffer(stream.read(FRAMES_PER_CYCLE, exception_on_overflow=False), dtype=np.int16)
         dumpwav(BRIDGE_FILE, data)
@@ -79,9 +85,10 @@ def run():
         rxFreq_decodes = demod.demod_rxFreq(config['rxFreq'], cycle_str)
         rxFreq_decodes = [d[0] for d in rxFreq_decodes]
         if(len(rxFreq_decodes)>0):
-            with open("rxFreq_data.json",'r') as f:
-                l = f.readline();
-                if(l): rxFreq_decodes = json.loads(l) + rxFreq_decodes
+            if(os.path.exists("rxFreq_data.json")):
+                with open("rxFreq_data.json",'r') as f:
+                    l = f.readline();
+                    if(l): rxFreq_decodes = json.loads(l) + rxFreq_decodes
             with open("rxFreq_data.json", "w") as f:
                 json.dump(rxFreq_decodes, f)
             

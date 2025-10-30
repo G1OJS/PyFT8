@@ -56,39 +56,44 @@ def clear_rxWindow():
     with open("rxFreq_data.json", "w") as f:
         f.write("")
 
-def get_rxFreqMessages(from_call = None):
+def get_reply(from_call):
     with open("rxFreq_data.json", "r") as f:
-        s = f.readline()
-        if(s):
-            if(not from_call or len(eval(s)) == 1): return eval(s)[0]['grid_rpt']
-            decode = next((item for item in eval(s) if item["call_b"] == from_call), None)
+        for s in reversed(f.readlines()):
+            decode = next((item for item in reversed(eval(s)) if item["call_b"] == from_call), None)
             if(decode): return decode['grid_rpt']  
 
 def initiate_qso(callsign, wait_for_next = False):
     _ , t_remain = timers.time_in_cycle()
     clear_rxWindow()
-    if(t_remain < 13):
-        timers.timedLog(f"Not enough time: t_remain = {t_remain} seconds")
-        time.sleep(t_remain+15)
     timers.timedLog(f"Initiate QSO with {callsign}")
+    if(t_remain < 12.8):
+        timers.timedLog(f"QSO: Not enough time: t_remain = {t_remain} seconds")
+        time.sleep(t_remain+15)
+    wait_cycles = -1
     while True:
-        send_message(callsign, myCall, myGrid, int(config['txFreq']), wait_for_next = wait_for_next)
-        wait_for_next = True
-        their_reply = get_rxFreqMessages(callsign)
+        timers.timedLog(f"Send messasge: {callsign} {myCall} {myGrid}", logfile = "QSO")
+        send_message(callsign, myCall, myGrid, int(config['txFreq']), wait_cycles = wait_cycles)
+        wait_cycles = 1
+        their_reply = get_reply(callsign)
+        timers.timedLog(f"Received reply: {their_reply}", logfile = "QSO")
         if(not their_reply): continue
-        if(their_reply[-3:].isnumeric): break
+        if(their_reply[-3] == "+" or their_reply[-3] == "-"): break        
     while True:
-        their_snr = their_reply['snr']
-        send_message(callsign, myCall, f"R{their_snr:+03d}", int(config['txFreq']), wait_for_next = True)
-        if('73' in get_rxFreqMessages(callsign)): break
-    send_message(callsign, myCall, 'RR73', int(config['txFreq']), wait_for_next = True)
+        their_snr = int(their_reply[-3:])
+        timers.timedLog(f"Send messasge: {callsign} {myCall} R{their_snr:+03d}", logfile = "QSO")
+        send_message(callsign, myCall, f"R{their_snr:+03d}", int(config['txFreq']), wait_cycles = wait_cycles)
+        their_reply = get_reply(callsign)
+        timers.timedLog(f"Received reply: {their_reply}", logfile = "QSO")
+        if('73' in their_reply): break
+    timers.timedLog(f"Send messasge reply: {callsign} {myCall} 73", logfile = "QSO")
+    send_message(callsign, myCall, '73', int(config['txFreq']), wait_cycles = wait_cycles)
     
-def send_message(c1,c2,gr, freq, wait_for_next = True):
-    timers.timedLog(f"Sending: {c1} {c2} {gr}")
+def send_message(c1,c2,gr, freq, wait_cycles = 0):
     symbols = FT8_encoder.pack_message(c1,c2,gr)
     audio_out.create_ft8_wave(symbols, f_base = freq)
-    if(wait_for_next):
+    if(wait_cycles >= 0):
         _ , t_remain = timers.time_in_cycle()
+        t_remain += wait_cycles*15
         time.sleep(t_remain)
     icom.setPTTON()
     audio_out.play_ft8_wave()

@@ -13,21 +13,14 @@ def tstrcyclestart_str(cycle_offset):
 def tstrNow():
     return time.strftime("%H:%M:%S", time.gmtime(time.time()))
 
-global last_timedLog
-last_timedLog = 0
-def timedLog(msg, silent = False):
+def timedLog(msg, silent = False, logfile = 'PyFT8.log'):
     global last_timedLog
-    with open ('PyFT8.log', 'w') as f:
+    with open (logfile, 'a') as f:
         t = time.time()
         decs = f"{t-int(t):.2f}"
         decs = decs.replace('0.','')
         ts = f"{time.strftime('%H:%M:%S', time.gmtime(t))}.{decs}"
-        if(last_timedLog):
-            delta = t - last_timedLog
-            ts += f" ({delta:+.2f})"
-        else:
-            ts += f" (=0.00)"
-        last_timedLog = t
         s = f"{ts} {msg}"
-        if (not silent): print(s)
+        if (not silent):
+            print(f"Log to {logfile}: {s}")
         f.write(f"{s}\n")

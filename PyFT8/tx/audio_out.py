@@ -25,8 +25,8 @@ def play_ft8_wave(filename = 'out.wav'):
     p = pyaudio.PyAudio()
     for i in range(p.get_device_count()):
         name = p.get_device_info_by_index(i)['name']
-        if('Speakers' in name and 'CODEC' in name):
-       # if('Speakers' in name and 'High' in name):
+       # if('Speakers' in name and 'CODEC' in name):
+        if('CABLE Input' in name):
             dev_idx = i
             break
     with wave.open(filename, 'rb') as wf:

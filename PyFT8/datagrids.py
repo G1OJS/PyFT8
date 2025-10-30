@@ -84,6 +84,7 @@ class Spectrum:
             sample_idxn = sample_idx0 + self.FFT_size
             if(sample_idxn < len(audio)):
                 self.complex[hop_idx,:] = np.fft.rfft(audio[sample_idx0:sample_idxn] * np.kaiser(self.FFT_size,14))
+        self.complex[0,0] = 1
         self.power = np.abs(self.complex) ** 2
         """ Fill self.noise ... for llr extraction. """
         self.noise_per_hop = np.median(self.power, axis=1)
