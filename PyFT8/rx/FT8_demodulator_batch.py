@@ -52,21 +52,27 @@ def get_decodes():
     timers.timedLog("Start to load audio")
 
     demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
-    cyclestart_str = timers.cyclestart_str(1)
+    cycle_str = timers.cyclestart_str(1)
 
     demod.spectrum.get_audio(audio_file)
     timers.timedLog("Decode Rx frequency")
-    decode = demod.demod_rxFreq(config.load()['rxFreq'], cyclestart_str)
-    if(decode): events.publish("RxFreqDecode",decode['decode_dict'])
-
+    decodes = demod.demod_rxFreq(config.load()['rxFreq'], cycle_str)
+    for d in decodes:
+        events.publish("RxFreqDecodes",d['all_txt'])
+        
+    timers.timedLog("Start to Find candidates")
     candidates = demod.find_candidates(100,3300, topN=500)
+    timers.timedLog(f"Found {len(candidates)} candidates")
+    timers.timedLog("Start to deduplicate candidate frequencies")
     candidates = demod.deduplicate_candidate_freqs(candidates, topN=100)
-    for c in candidates:
-        demod.sync_candidate(c)
-        decode = demod.demodulate_candidate(c, cyclestart_str)
-        if(decode): events.publish("AllDecodes",decode['decode_dict'])
-    timers.timedLog(f"Decoded all")
-    
+    timers.timedLog(f"Now have {len(candidates)} candidates")
+    timers.timedLog("Start to sync candidates")
+    candidates = demod.sync_candidates(candidates, topN=30)
+    timers.timedLog(f"Synced {len(candidates)} candidates")
+    decodes = demod.demodulate(candidates, cyclestart_str = cycle_str)
+    for d in decodes:
+        events.publish("AllDecodes",d['all_txt'])
+
 class FT8Demodulator:
     def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=3, sigspec=FT8):
         # ft8c.f90 uses 4 hops per symbol and 2.5Hz fbins (2.5 bins per tone)
@@ -117,13 +123,16 @@ class FT8Demodulator:
                 deduplicated.append(c)
         return deduplicated[:topN]
     
-    def sync_candidate(self, c):
-        c.score = -1e10
-        for t0_idx in range(self.spectrum.nHops - self.sigspec.num_symbols*self.hops_persymb-1):
-            score = self._csync_score_3(t0_idx, c.bounds.f0_idx)
-            if(score > c.score):
-                c.score = score
-                c.update_t0_idx(t0_idx)
+    def sync_candidates(self, candidates, topN=25):
+        for c in candidates:
+            c.score = -1e10
+            for t0_idx in range(self.spectrum.nHops - self.sigspec.num_symbols*self.hops_persymb-1):
+                score = self._csync_score_3(t0_idx, c.bounds.f0_idx)
+                if(score > c.score):
+                    c.score = score
+                    c.update_t0_idx(t0_idx)
+        candidates.sort(key=lambda c: -c.score)
+        return candidates[:topN]
 
     def _csync_score_3(self, t0_idx, f0_idx):
         score = 0.0
@@ -141,43 +150,37 @@ class FT8Demodulator:
     # Demodulation
     # ======================================================
 
-    def demod_rxFreq(self, rxFreq, cyclestart_str):
+    def demod_rxFreq(self, rxFreq, cycle_str):
+        candidates = []
         f0_idx = int(np.searchsorted(self.spectrum.freqs, rxFreq))
-        candidate = Candidate(self.sigspec, self.spectrum, 0, f0_idx, -50)
-        self.sync_candidate(candidate)
-        decode = self.demodulate_candidate(candidate, cyclestart_str = cyclestart_str)
+        candidates.append(Candidate(self.sigspec, self.spectrum, 0, f0_idx, -50))
+        candidates = self.sync_candidates(candidates, topN=1)
+        decode = self.demodulate(candidates, cyclestart_str = cycle_str)
         return decode
     
-    def demodulate_all(self, candidates, cyclestart_str):
-        decodes = []
-        candidates = self.find_candidates(100,3300, topN=500)
-        candidates = self.deduplicate_candidate_freqs(candidates, topN=100)
+    def demodulate(self, candidates, cyclestart_str):
+        out = []
         for c in candidates:
-            self.sync_candidate(candidate)
-            decodes.append(self.demodulate_candidate(c, cyclestart_str))
-        return decodes
+            LLR174s=[]
+            pgrid = c.power_grid
+            gray_mask = self.sigspec.gray_mask
+            for symb_idx in c.sigspec.payload_symb_idxs:
+                sigma2 = self.spectrum.noise_per_symb[symb_idx]
+                tone_powers_scaled = pgrid[symb_idx, :] / sigma2
+                m1 = np.where(gray_mask, tone_powers_scaled[:, None], -np.inf)
+                m0 = np.where(~gray_mask, tone_powers_scaled[:, None], -np.inf)
+                LLR_sym = np.logaddexp.reduce(m1, axis=0) - np.logaddexp.reduce(m0, axis=0)
+                LLR174s.extend(LLR_sym)
+                
+            ncheck, bits, n_its = decode174_91(LLR174s)
+            if(ncheck == 0):
+                c.demodulated_by = f"LLR-LDPC ({n_its})"
+                c.payload_bits = bits
+                c.snr = -24 if c.score==0 else int(12*np.log10(c.score/1e9) - 31)
+                c.snr = np.clip(c.snr, -24,24).item()
+                out.append(FT8_decode(c, cyclestart_str))
+        return out
 
-    def demodulate_candidate(self, candidate, cyclestart_str):
-        c = candidate
-        LLR174s=[]
-        pgrid = c.power_grid
-        gray_mask = self.sigspec.gray_mask
-        for symb_idx in c.sigspec.payload_symb_idxs:
-            sigma2 = self.spectrum.noise_per_symb[symb_idx]
-            tone_powers_scaled = pgrid[symb_idx, :] / sigma2
-            m1 = np.where(gray_mask, tone_powers_scaled[:, None], -np.inf)
-            m0 = np.where(~gray_mask, tone_powers_scaled[:, None], -np.inf)
-            LLR_sym = np.logaddexp.reduce(m1, axis=0) - np.logaddexp.reduce(m0, axis=0)
-            LLR174s.extend(LLR_sym)
-        ncheck, bits, n_its = decode174_91(LLR174s)
-        if(ncheck == 0):
-            c.demodulated_by = f"LLR-LDPC ({n_its})"
-            c.payload_bits = bits
-            c.snr = -24 if c.score==0 else int(12*np.log10(c.score/1e9) - 31)
-            c.snr = np.clip(c.snr, -24,24).item()
-            decode = FT8_decode(c, cyclestart_str)
-            return decode
-    
 # ======================================================
 # FT8 Unpacking functions
 # ======================================================

@@ -6,7 +6,7 @@ import webbrowser
 
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 from PyFT8.rx.FT8_demodulator import cyclic_demodulator
-from PyFT8.comms_hub import config, events
+from PyFT8.comms_hub import config, events, start_websockets_server
 from PyFT8.rig.IcomCIV import IcomCIV
 import PyFT8.timers as timers
 import json
@@ -41,10 +41,6 @@ def process_click_content(clickdata):
     clear_rxWindow()
     if(callsign != 'None'):
         initiate_qso(str(callsign))
-
-def clear_rxWindow():
-    with open("rxFreq_data.json", "w") as f:
-        f.write("")
 
 def get_reply(from_call, wait_cycles = 0):
     if(wait_cycles >= 0):
@@ -88,15 +84,14 @@ def start_UI_server():
     server = ThreadingHTTPServer(("localhost", 8080), ClickHandler)
     server.serve_forever()
 
-def delete_file(file):
-    if os.path.exists(file):
-        os.remove(file)
-
-delete_file("data.json")
-
-threading.Thread(target=cyclic_demodulator, args=(["CABLE","Output"],)).start()
+#threading.Thread(target=cyclic_demodulator, args=(["CABLE","Output"],)).start()
+threading.Thread(target=cyclic_demodulator, args=(["Mic","CODEC"],)).start()
 threading.Thread(target=start_UI_server, daemon=True).start()
 webbrowser.open("http://localhost:8080/UI.html")
+
+print("Start")
+import asyncio
+asyncio.run(start_websockets_server())
 
 #send_message(icom,"CQ","G1OJS","IO90", 1000)
 

@@ -16,20 +16,20 @@
 	
 	<script>
 	
-		function update_grid(filename, grid_id){
-			fetch(filename).catch(error=>{}).then(response => {if(!response.ok) {} else {return response.json()}}).catch(error => {})
-				.then(data => {if(data.length>0) {write_grid(grid_id, data)}}).catch(error => {})
-		}  
-		
 		function update_clock() {
 			const t = new Date;
 			const utc = ("0" + t.getUTCHours()).slice(-2) + ":" + ("0" + t.getUTCMinutes()).slice(-2) + ":" + ("0" + t.getUTCSeconds()).slice(-2);
 			document.getElementById("clock").innerHTML = utc + " UTC";
 		}
-		
-		function write_grid(grid_id, msgs) {
-			document.getElementById(grid_id).innerHTML="";
-			msgs.forEach((m) => {
+			
+		setInterval(update_clock, 1000);
+
+		const websocket = new WebSocket("ws://localhost:5678/");
+		websocket.onmessage = (event) => {
+			const m = JSON.parse(event.data)
+			if(m){
+				console.log(m);
+				let grid_id = "current_decodes";
 				let row = document.getElementById(grid_id).appendChild(document.createElement("div"));
 				row.className='grid_row';
 				const fields = [m.cyclestart_str.split('_')[1], m.snr, m.freq, m.call_a, m.call_b, m.grid_rpt,''];
@@ -41,22 +41,8 @@
 				});
 				row.addEventListener("click", e => {fetch(`/select_${m.freq}_None.txt`); document.getElementById('rxFreq').innerHTML = "Rx:";}); 
 				row.addEventListener("dblclick", e => {fetch(`/select_${m.freq}_${m.call_b}.txt`); document.getElementById('rxFreq').innerHTML =  "Rx:";}); 
-			});
-		}
-		
-		async function refresh_config() {
-			const res = await fetch("config.json?");   
-			const config = await res.json();
-			document.getElementById('txFreq').innerHTML = "Tx: "+ config.txFreq;
-			document.getElementById('rxFreq').innerHTML = "Rx: "+ config.rxFreq;
-		}		
-			
-		setInterval(update_clock, 1000);
-		setInterval( ()=>{
-			update_grid("data.json", "current_decodes");
-			update_grid("rxFreq_data.json", "rxDecodes");
-			refresh_config();
-		}, 250);
+			}
+		};
 		
 	</script>
 	

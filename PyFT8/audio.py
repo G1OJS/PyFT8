@@ -12,6 +12,7 @@ def find_device(device_str_contains):
         for pattern in device_str_contains:
             if (not pattern in name): match = False
         if(match):
+            print(f"Found device {name} index {dev_idx}")
             return dev_idx
     raise IOError(f"No audio device found matching {device_str_contains}")
 
