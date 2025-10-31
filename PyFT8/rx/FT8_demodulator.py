@@ -21,7 +21,6 @@ Test     0.000 Rx FT8    000 -0.1 1646 K1JT EA3AGB -15 7
 
 import math
 import numpy as np
-from scipy.signal import correlate2d, find_peaks
 
 from PyFT8.datagrids import Spectrum, Bounds, Candidate
 from PyFT8.signaldefs import FT8
@@ -39,11 +38,11 @@ def cyclic_demodulator(input_device_str_contains):
     while True:
         t_elapsed, t_remain, = timers.time_in_cycle()
         if(t_elapsed > MAX_START_OFFSET_SECONDS): timers.sleep(t_remain)
-        timers.timedLog("\nAudio loop starting audio record")
+        timers.timedLog("Audio loop starting audio record")
         audio_in = audio.read_from_soundcard(input_device_str_contains, timers.CYCLE_LENGTH)
         audio.write_wav_file(AUDIO_FILE, audio_in)
         threading.Thread(target=get_decodes).start()
-        timers.timedLog("Audio loop saved audio\n")
+        timers.timedLog("Audio loop saved audio")
 
 def get_decodes():
     from PyFT8.comms_hub import config, events
@@ -56,7 +55,7 @@ def get_decodes():
 
     demod.spectrum.get_audio(audio_file)
     timers.timedLog("Decode Rx frequency")
-    decode = demod.demod_rxFreq(config.load()['rxFreq'], cyclestart_str)
+    decode = demod.demod_rxFreq(config.data['rxFreq'], cyclestart_str)
     if(decode):
         message = decode['decode_dict']
         message['grid_id'] = 'rx_decodes'

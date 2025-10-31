@@ -21,17 +21,6 @@ class ClickHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         super().do_GET()
 
-def process_click_content(clickdata):
-    global config
-    text = clickdata.strip("/").replace("select_", "").replace(".txt", "").replace('%20',' ')
-    rxFreq, callsign = text.split("_")
-    config['rxFreq'] = int(rxFreq);
-    print(f"Set Rx freq to {config['rxFreq']}")
-    dump_config()
-    clear_rxWindow()
-    if(callsign != 'None'):
-        initiate_qso(str(callsign))
-
 def get_reply(from_call, wait_cycles = 0):
     if(wait_cycles >= 0):
         _ , t_remain = timers.time_in_cycle()
@@ -79,7 +68,7 @@ threading.Thread(target=cyclic_demodulator, args=(["Mic","CODEC"],)).start()
 threading.Thread(target=start_UI_server, daemon=True).start()
 webbrowser.open("http://localhost:8080/UI.html")
 
-print("Start")
+timers.timedLog(f"Starting websockets server")
 import asyncio
 asyncio.run(start_websockets_server())
 

@@ -1,17 +1,27 @@
 import os
 import json
+import PyFT8.timers as timers
 
 class Config:
     def __init__(self, filename="config.json"):
         self.filename = filename
-        self.data = self.load()
-
-    def load(self):
+        self.data = {"txFreq": 2000, "rxFreq": 2000}
         if os.path.exists(self.filename):
             with open(self.filename) as f:
-                return json.load(f)
-        return {"txFreq": 2000, "rxFreq": 2000}
-
+                self.data = json.load(f)
+        events.subscribe("SetRxFreq", self._set_rxFreq)
+        events.subscribe("SetTxFreq", self._set_txFreq)
+        
+    def _set_txFreq(self, cmd):
+        self.data['txFreq'] = int(cmd['freq'])
+        self.save()
+        timers.timedLog(f"Set tx freq to {self.data['txFreq']}")
+        
+    def _set_rxFreq(self, cmd):
+        self.data['rxFreq'] = int(cmd['freq'])
+        self.save()
+        timers.timedLog(f"Set rx freq to {self.data['rxFreq']}")
+        
     def save(self):
         with open(self.filename, "w") as f:
             json.dump(self.data, f, indent=2)
@@ -73,18 +83,7 @@ async def start_websockets_server():
 
 async def recv_commands(websocket):
     async for message in websocket:
-        try:
-            cmd = json.loads(message)
-            cmd_type = cmd.get("type")
-            print("Client command:", cmd)
-            if cmd_type == "SetRxFreq":
-                freq = cmd.get("freq")
-                print(f"Change RX freq to {freq}")
-              #  events.publish("SetRxFreq", freq)
-            elif cmd_type == "SelectDecode":
-                freq = cmd.get("freq")
-                call = cmd.get("call")
-             #   events.publish("SelectDecode", {"freq": freq, "call": call})
-        except Exception as e:
-            print("Bad command:", e, message)
+        cmd = json.loads(message)
+        cmd_type = cmd.get("type")
+        events.publish(cmd_type, cmd)
 

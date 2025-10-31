@@ -2,6 +2,7 @@ import numpy as np
 import wave
 import pyaudio
 from PyFT8.comms_hub import config, events
+import PyFT8.timers as timers
 
 pya = pyaudio.PyAudio()
 
@@ -12,9 +13,9 @@ def find_device(device_str_contains):
         for pattern in device_str_contains:
             if (not pattern in name): match = False
         if(match):
-            print(f"Found device {name} index {dev_idx}")
+            timers.timedLog(f"Found device {name} index {dev_idx}")
             return dev_idx
-    raise IOError(f"No audio device found matching {device_str_contains}")
+    timers.timedLog(f"No audio device found matching {device_str_contains}")
 
 def read_from_soundcard(device_str_contains, seconds, sample_rate = 12000):
     dev_idx = find_device(device_str_contains)

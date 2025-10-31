@@ -46,7 +46,8 @@
 						document.getElementById('rxFreq').innerHTML = `Rx:${m.freq}`;
 					}); 
 					row.addEventListener("dblclick", e => {
-						websocket.send(JSON.stringify({type: "Reply", freq: m.freq,call: m.call_b}));
+						websocket.send(JSON.stringify({type: "SetRxFreq", freq: m.freq}));
+						websocket.send(JSON.stringify({type: "Reply_to", call: m.call_b}));
 						document.getElementById('rxFreq').innerHTML = `Rx:${m.freq}`;
 					}); 
 				}
