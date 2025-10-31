@@ -17,7 +17,7 @@ wf.update_main()
 candidates, decodes = demod.demodulate_all(cyclestart_str = "Test")
 timers.timedLog("Start to Show candidates")
 wf.update_main(candidates=candidates)
-wf.show_zoom(candidates=candidates[:5])
+wf.show_zoom(candidates=candidates)
 timers.timedLog(f"Decodes: {len(decodes)}")
 
 for d in decodes:

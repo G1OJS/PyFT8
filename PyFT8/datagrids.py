@@ -143,6 +143,7 @@ class Candidate:
                                        f0_idx, f0_idx + sigspec.tones_persymb * spectrum.fbins_pertone)
         self.cycle_start = cycle_start
         self.demodulated_by = demodulated_by
+        self.message = None
 
     def update_t0_idx(self, t0_idx):
         delta = t0_idx - self.bounds.t0_idx

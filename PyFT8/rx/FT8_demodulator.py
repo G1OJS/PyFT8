@@ -45,7 +45,7 @@ def cyclic_demodulator(input_device_str_contains):
         threading.Thread(target=get_decodes).start()
         timers.timedLog("Audio loop saved audio")
 
-def get_decodes():
+def get_decodes(topN=30):
     from PyFT8.comms_hub import config, events
     import PyFT8.timers as timers
     audio_file = "audio_in.wav"
@@ -66,7 +66,7 @@ def get_decodes():
     candidates = demod.find_candidates(100,3300, topN=500)
     candidates = demod.deduplicate_candidate_freqs(candidates, topN=100)
     events.publish("UI_message", {'grid_id':'all_decodes', 'type':'clear_grid'})
-    for c in candidates:
+    for c in candidates[:topN]:
         demod.sync_candidate(c)
         decode = demod.demodulate_candidate(c, cyclestart_str)
         if(decode):
@@ -111,7 +111,7 @@ class FT8Demodulator:
         candidates.sort(key=lambda c: -c.score)
         return candidates[:topN]
 
-    def deduplicate_candidate_freqs(self, candidates, topN=25 ):
+    def deduplicate_candidate_freqs(self, candidates, topN=25):
         min_sep_fbins = 0.5 * self.sigspec.tones_persymb * self.fbins_pertone
         deduplicated = []
         for c in candidates:
@@ -157,7 +157,7 @@ class FT8Demodulator:
         decode = self.demodulate_candidate(candidate, cyclestart_str = cyclestart_str)
         return decode
     
-    def demodulate_all(self, cyclestart_str):
+    def demodulate_all(self, cyclestart_str, topN = 50):
         decodes = []
         timers.timedLog("Start to Find candidates")
         candidates = self.find_candidates(100,3300, topN=500)
@@ -166,10 +166,10 @@ class FT8Demodulator:
         candidates = self.deduplicate_candidate_freqs(candidates, topN=100)
         timers.timedLog(f"Now have {len(candidates)} candidates")
         timers.timedLog("Start to sync and demodulate candidates")
-        for c in candidates:
+        for c in candidates[:topN]:
             self.sync_candidate(c)
             decodes.append(self.demodulate_candidate(c, cyclestart_str))
-        return candidates, decodes
+        return candidates[:topN], decodes
 
     def demodulate_candidate(self, candidate, cyclestart_str):
         c = candidate
@@ -190,6 +190,7 @@ class FT8Demodulator:
             c.snr = -24 if c.score==0 else int(12*np.log10(c.score/1e9) - 31)
             c.snr = np.clip(c.snr, -24,24).item()
             decode = FT8_decode(c, cyclestart_str)
+            if(decode): c.message = decode['decode_dict']['message'] 
             return decode
     
 # ======================================================
@@ -234,8 +235,9 @@ def FT8_decode(signal, cyclestart_str):
     call_b =  unpack_ft8_c28(c28_b)
     grid_rpt = unpack_ft8_g15(g15)
     freq_str = f"{signal.bounds.f0:4.0f}"
-    all_txt = f"{cyclestart_str}     0.000 Rx FT8    {signal.snr:+03d} {signal.bounds.t0 :4.1f} {signal.bounds.f0 :4.0f} {call_a} {call_b} {grid_rpt}"
+    message = f"{call_a} {call_b} {grid_rpt}"
+    all_txt = f"{cyclestart_str}     0.000 Rx FT8    {signal.snr:+03d} {signal.bounds.t0 :4.1f} {signal.bounds.f0 :4.0f} {message}"
     decode_dict = {'cyclestart_str':cyclestart_str , 'freq':freq_str, 'call_a':call_a,
-                 'call_b':call_b, 'grid_rpt':grid_rpt, 't0_idx':signal.bounds.t0_idx, 'dt':f"{signal.bounds.t0 :4.1f}", 'snr':signal.snr}
+                 'call_b':call_b, 'grid_rpt':grid_rpt, 't0_idx':signal.bounds.t0_idx, 'dt':f"{signal.bounds.t0 :4.1f}", 'snr':signal.snr, 'message':message}
     return {'all_txt':all_txt, 'decode_dict':decode_dict}
 

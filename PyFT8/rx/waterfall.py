@@ -84,7 +84,12 @@ class Waterfall:
         Create per-candidate zoom boxes (gridded subplots).
         Optionally overlay LLRs if candidate.llr is present.
         """
-        n = len(candidates)
+        candidates_with_decodes = []
+        for i, c in enumerate(candidates):
+            if c.message:
+                candidates_with_decodes.append(c)
+        
+        n = len(candidates_with_decodes)
         rows = int(np.ceil(n / cols))
         zoom_fig, axes = plt.subplots(rows, cols, figsize=(3.5 * cols, 5 * rows))
         axes = np.atleast_1d(axes).flatten()
@@ -95,7 +100,7 @@ class Waterfall:
                         for offset in (0, 36, 72) # magic numbers; move to a 'costas object' per mode
                         for symb_idx, tone in enumerate(self.costas)]
 
-        for i, c in enumerate(candidates):
+        for i, c in enumerate(candidates_with_decodes):
             ax = axes[i]
             pwr = c.power_grid
             ax.imshow(
@@ -106,7 +111,7 @@ class Waterfall:
                 interpolation='none',
                 norm=LogNorm()
             )
-            ax.set_title(f"f={c.bounds.f0:.0f}Hz  t={c.bounds.t0:.2f}s")
+            ax.set_title(f"{c.bounds.f0:.0f}Hz {c.bounds.t0:.2f}s {c.message}")
             ax.set_xlabel("Tone index")
             ax.set_ylabel("Symbol")
 
@@ -132,7 +137,7 @@ class Waterfall:
         for ax in axes[n:]:
             ax.axis("off")
 
-        zoom_fig.tight_layout()
+        zoom_fig.tight_layout(h_pad=3)
         self.fig.canvas.draw_idle()
         self.fig.canvas.flush_events()  # <-- forces actual draw
         plt.pause(0.001)
