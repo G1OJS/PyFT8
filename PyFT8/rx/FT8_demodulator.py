@@ -77,7 +77,7 @@ def get_decodes():
             events.publish("All_txt_message", decode['all_txt'])
     timers.timedLog(f"Decoded all")
     events.publish("Decoded_all", "Decoded_all")
-    
+  
 class FT8Demodulator:
     def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=3, sigspec=FT8):
         # ft8c.f90 uses 4 hops per symbol and 2.5Hz fbins (2.5 bins per tone)
@@ -113,7 +113,7 @@ class FT8Demodulator:
         candidates.sort(key=lambda c: -c.score)
         return candidates[:topN]
 
-    def deduplicate_candidate_freqs(self, candidates, topN=300):
+    def deduplicate_candidate_freqs(self, candidates):
         min_sep_fbins = 0.5 * self.sigspec.tones_persymb * self.fbins_pertone
         deduplicated = []
         for c in candidates:
@@ -126,7 +126,7 @@ class FT8Demodulator:
                     break
             if keep_c:
                 deduplicated.append(c)
-        return deduplicated[:topN]
+        return deduplicated
     
     def sync_candidate(self, c):
         c.score = -1e10
@@ -158,24 +158,6 @@ class FT8Demodulator:
         self.sync_candidate(candidate)
         decode = self.demodulate_candidate(candidate, cyclestart_str = cyclestart_str)
         return decode
-    
-    def demodulate_all(self, cyclestart_str):
-        decodes = []
-        timers.timedLog("Start to Find candidates")
-        candidates = self.find_candidates(100,3400)
-        timers.timedLog(f"Found {len(candidates)} candidates")
-        timers.timedLog("Start to deduplicate candidate frequencies")
-        candidates = self.deduplicate_candidate_freqs(candidates)
-        timers.timedLog(f"Now have {len(candidates)} candidates")
-        timers.timedLog("Start to sync and demodulate candidates")
-        decoded_candidates = []
-        for c in candidates:
-            self.sync_candidate(c)
-            decode, cand = self.demodulate_candidate(c, cyclestart_str)
-            if(decode):
-                decodes.append(decode)
-                decoded_candidates.append(cand)
-        return decoded_candidates, decodes
 
     def demodulate_candidate(self, candidate, cyclestart_str):
         c = candidate

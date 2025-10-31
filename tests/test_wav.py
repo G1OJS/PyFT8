@@ -8,17 +8,30 @@ import PyFT8.timers as timers
 
 wav_file = "210703_133430.wav"
 
-demod = FT8Demodulator()
+demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
 wf = Waterfall(demod.spectrum, f1=3500)
+
 timers.timedLog(f"Start to Load audio from {wav_file}")
 demod.spectrum.get_audio(wav_file)
+timers.timedLog("Start to Find candidates")
+candidates = demod.find_candidates(100,3400)
+timers.timedLog(f"Found {len(candidates)} candidates")
+timers.timedLog("Start to deduplicate candidate frequencies")
+candidates = demod.deduplicate_candidate_freqs(candidates)
+timers.timedLog(f"Now have {len(candidates)} candidates")
+timers.timedLog("Start to sync and demodulate candidates")
+decoded_candidates = []
+for c in candidates:
+    demod.sync_candidate(c)
+    decode = demod.demodulate_candidate(c, cyclestart_str="test")
+    if(decode):
+        decoded_candidates.append(c)
+        print(decode['all_txt'], decode['decode_dict']['t0_idx'] )
+
 timers.timedLog("Start to Show spectrum")
 wf.update_main()
-candidates, decodes = demod.demodulate_all(cyclestart_str = "Test")
 timers.timedLog("Start to Show candidates")
-wf.update_main(candidates=candidates)
-wf.show_zoom(candidates=candidates)
-timers.timedLog(f"Decodes: {len(decodes)}")
+wf.update_main(candidates=decoded_candidates)
+wf.show_zoom(candidates=decoded_candidates)
 
-for d in decodes:
-    if(d): print(d['all_txt'], d['decode_dict']['t0_idx'] )
+
