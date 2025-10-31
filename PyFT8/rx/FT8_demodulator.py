@@ -45,7 +45,7 @@ def cyclic_demodulator(input_device_str_contains):
         threading.Thread(target=get_decodes).start()
         timers.timedLog("Audio loop saved audio")
 
-def get_decodes(topN=30):
+def get_decodes():
     from PyFT8.comms_hub import config, events
     import PyFT8.timers as timers
     audio_file = "audio_in.wav"
@@ -63,10 +63,10 @@ def get_decodes(topN=30):
         message['type'] = 'decode'
         events.publish("UI_message", message)
 
-    candidates = demod.find_candidates(100,3300, topN=500)
-    candidates = demod.deduplicate_candidate_freqs(candidates, topN=100)
+    candidates = demod.find_candidates(100,3400)
+    candidates = demod.deduplicate_candidate_freqs(candidates)
     events.publish("UI_message", {'grid_id':'all_decodes', 'type':'clear_grid'})
-    for c in candidates[:topN]:
+    for c in candidates:
         demod.sync_candidate(c)
         decode = demod.demodulate_candidate(c, cyclestart_str)
         if(decode):
@@ -104,7 +104,7 @@ class FT8Demodulator:
     # Candidate search and sync
     # ======================================================
 
-    def find_candidates(self, f0, f1, topN=25):
+    def find_candidates(self, f0, f1, topN=500):
         region = Bounds.from_physical(self.spectrum, 0, 15, f0, f1)
         candidates = []
         for f0_idx in region.f_idx_range:
@@ -113,7 +113,7 @@ class FT8Demodulator:
         candidates.sort(key=lambda c: -c.score)
         return candidates[:topN]
 
-    def deduplicate_candidate_freqs(self, candidates, topN=25):
+    def deduplicate_candidate_freqs(self, candidates, topN=300):
         min_sep_fbins = 0.5 * self.sigspec.tones_persymb * self.fbins_pertone
         deduplicated = []
         for c in candidates:
@@ -159,19 +159,23 @@ class FT8Demodulator:
         decode = self.demodulate_candidate(candidate, cyclestart_str = cyclestart_str)
         return decode
     
-    def demodulate_all(self, cyclestart_str, topN = 50):
+    def demodulate_all(self, cyclestart_str):
         decodes = []
         timers.timedLog("Start to Find candidates")
-        candidates = self.find_candidates(100,3300, topN=500)
+        candidates = self.find_candidates(100,3400)
         timers.timedLog(f"Found {len(candidates)} candidates")
         timers.timedLog("Start to deduplicate candidate frequencies")
-        candidates = self.deduplicate_candidate_freqs(candidates, topN=100)
+        candidates = self.deduplicate_candidate_freqs(candidates)
         timers.timedLog(f"Now have {len(candidates)} candidates")
         timers.timedLog("Start to sync and demodulate candidates")
-        for c in candidates[:topN]:
+        decoded_candidates = []
+        for c in candidates:
             self.sync_candidate(c)
-            decodes.append(self.demodulate_candidate(c, cyclestart_str))
-        return candidates[:topN], decodes
+            decode, cand = self.demodulate_candidate(c, cyclestart_str)
+            if(decode):
+                decodes.append(decode)
+                decoded_candidates.append(cand)
+        return decoded_candidates, decodes
 
     def demodulate_candidate(self, candidate, cyclestart_str):
         c = candidate
