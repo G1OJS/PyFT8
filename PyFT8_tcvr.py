@@ -16,11 +16,13 @@ from PyFT8.tx.transmitter import set_transmitter_state
 myCall = 'G1OJS'
 myGrid = 'IO90'
 
-#input_device = ["Mic","CODEC"]
-#output_device =["Speaker", "CODEC"]
+input_device = ["Microphone","CODEC"]
+output_device =["Speaker", "CODEC"]
 
-input_device = ["CABLE","Output"]
-output_device =["CABLE", "Input"]
+#input_device = ["CABLE","Output"]
+#output_device =["CABLE", "Input"]
+
+set_transmitter_state({'device_str_contains':output_device})
     
 def initiate_qso(ui_command):
    # clear_rxWindow()

@@ -4,12 +4,12 @@ import pyaudio
 from PyFT8.comms_hub import config, events
 import PyFT8.timers as timers
 
-
 global out_device_idx, in_device_idx
 out_device_idx, in_device_idx = None, None
 
 def find_device(device_str_contains):
     pya = pyaudio.PyAudio()
+    timers.timedLog(f"Looking for audio device matching {device_str_contains}")
     for dev_idx in range(pya.get_device_count()):
         name = pya.get_device_info_by_index(dev_idx)['name']
         match = True
