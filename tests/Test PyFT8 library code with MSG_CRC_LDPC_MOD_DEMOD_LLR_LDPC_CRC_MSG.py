@@ -4,13 +4,12 @@ sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 from PyFT8.rx.FT8_demodulator import FT8Demodulator, unpack_ft8_c28, unpack_ft8_g15
 from PyFT8.rx.waterfall import Waterfall
 from PyFT8.tx.FT8_encoder import pack_ft8_c28, pack_ft8_g15, encode_bits77
-        
+import PyFT8.timers as timers
+
 wav_file='210703_133430.wav'
 
 demod = FT8Demodulator()
 demod.spectrum.get_audio(wav_file)
-wf = Waterfall(demod.spectrum, f1=4000)
-wf.update_main()  # initial spectrum display
 
 tbin_idx = 4*demod.hops_persymb # 4 = random time offset
 fbin_idx = 440
@@ -67,10 +66,14 @@ for t_idx, symbol in enumerate(symbols):
             demod.spectrum.power[t, f] = m**2
 
 # 'demodulate' as with any audio frame
-candidates, decodes = demod.demodulate_all(cyclestart_str="TEST")
+timers.timedLog(f"Start to Load audio from {wav_file}")
+candidates, decodes = demod.demodulate_all(cyclestart_str = "test")
+wf = Waterfall(demod.spectrum, f1=3500)
 wf.update_main(candidates=candidates)
 wf.show_zoom(candidates=candidates)
-print(f"Found {len(candidates)} candidates")
+timers.timedLog(f"Decodes: {len(decodes)}")
+for d in decodes:
+    if(d): print(d['all_txt'], d['decode_dict']['t0_idx'] )
 
 print(f"Payload symbols demodulated: {''.join([str(int(s)) for s in candidates[0].payload_symbols])}")
 print("bits expected / bits decoded")
