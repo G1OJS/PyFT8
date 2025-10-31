@@ -26,6 +26,7 @@ from PyFT8.datagrids import Spectrum, Bounds, Candidate
 from PyFT8.signaldefs import FT8
 from PyFT8.rx.decode174_91 import decode174_91
 import PyFT8.FT8_crc as crc
+import PyFT8.timers as timers
 
 def cyclic_demodulator(input_device_str_contains):
     from PyFT8.comms_hub import config
@@ -156,14 +157,19 @@ class FT8Demodulator:
         decode = self.demodulate_candidate(candidate, cyclestart_str = cyclestart_str)
         return decode
     
-    def demodulate_all(self, candidates, cyclestart_str):
+    def demodulate_all(self, cyclestart_str):
         decodes = []
+        timers.timedLog("Start to Find candidates")
         candidates = self.find_candidates(100,3300, topN=500)
+        timers.timedLog(f"Found {len(candidates)} candidates")
+        timers.timedLog("Start to deduplicate candidate frequencies")
         candidates = self.deduplicate_candidate_freqs(candidates, topN=100)
+        timers.timedLog(f"Now have {len(candidates)} candidates")
+        timers.timedLog("Start to sync and demodulate candidates")
         for c in candidates:
-            self.sync_candidate(candidate)
+            self.sync_candidate(c)
             decodes.append(self.demodulate_candidate(c, cyclestart_str))
-        return decodes
+        return candidates, decodes
 
     def demodulate_candidate(self, candidate, cyclestart_str):
         c = candidate
@@ -228,8 +234,8 @@ def FT8_decode(signal, cyclestart_str):
     call_b =  unpack_ft8_c28(c28_b)
     grid_rpt = unpack_ft8_g15(g15)
     freq_str = f"{signal.bounds.f0:4.0f}"
-    all_txt = f"{cyclestart_str}     0.000 Rx FT8    {signal.snr:+03d} {signal.bounds.t0 - 0.5 :4.1f} {signal.bounds.f0 :4.0f} {call_a} {call_b} {grid_rpt}"
+    all_txt = f"{cyclestart_str}     0.000 Rx FT8    {signal.snr:+03d} {signal.bounds.t0 :4.1f} {signal.bounds.f0 :4.0f} {call_a} {call_b} {grid_rpt}"
     decode_dict = {'cyclestart_str':cyclestart_str , 'freq':freq_str, 'call_a':call_a,
-                 'call_b':call_b, 'grid_rpt':grid_rpt, 't0_idx':signal.bounds.t0_idx, 'snr':signal.snr}
+                 'call_b':call_b, 'grid_rpt':grid_rpt, 't0_idx':signal.bounds.t0_idx, 'dt':f"{signal.bounds.t0 :4.1f}", 'snr':signal.snr}
     return {'all_txt':all_txt, 'decode_dict':decode_dict}
 

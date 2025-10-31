@@ -8,7 +8,7 @@
 	
 	<style>
 		body { font-family: sans-serif; background:#111; color:#eee; margin:1em; }
-		.decodes_grid {display:grid; grid-template-columns: repeat( 6, max-content) auto; background:#222; color:#8cf; }	
+		.decodes_grid {display:grid; grid-template-columns: repeat( 7, max-content) auto; background:#222; color:#8cf; }	
 		.grid_row {display:contents;}
 		.grid_row:hover > div{background-color: #333;}
 		.grid_cell {padding:1px 5px 1px 5px}
@@ -34,7 +34,7 @@
 				} else {
 					let row = document.getElementById(grid_id).appendChild(document.createElement("div"));
 					row.className='grid_row';
-					const fields = [m.cyclestart_str.split('_')[1], m.snr, m.freq, m.call_a, m.call_b, m.grid_rpt,''];
+					const fields = [m.cyclestart_str.split('_')[1], m.snr, m.freq, m.dt, m.call_a, m.call_b, m.grid_rpt,''];
 					fields.forEach((field, idx) => {
 						const cell_div = document.createElement("div");
 						cell_div.textContent = field;
