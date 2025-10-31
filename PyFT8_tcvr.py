@@ -1,16 +1,16 @@
+# NOTE This code is under development. Rx works and UI is OK, but
+# QSO functions are under construction
+import sys
+sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
+
+
 import threading
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 import os
-import sys
 import webbrowser
-
-# NOTE This code is under development. Rx works and UI is OK, but
-# QSO functions are under construction
-
-sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
+import PyFT8.timers as timers
 from PyFT8.rx.FT8_demodulator import cyclic_demodulator
 from PyFT8.comms_hub import config, events, start_websockets_server
-import PyFT8.timers as timers
 from PyFT8.tx.transmitter import set_transmitter_state
 
 myCall = 'G1OJS'
@@ -22,10 +22,13 @@ myGrid = 'IO90'
 input_device = ["CABLE","Output"]
 output_device =["CABLE", "Input"]
     
-def initiate_qso(callsign):
+def initiate_qso(ui_command):
    # clear_rxWindow()
+    callsign = ui_command['call']
     timers.timedLog(f"Initiate QSO with {callsign}")
-    transmitter.set_transmitter_state({'active':True,'odd_even':odd_even,'message': f"{callsign} {myCall} {myGrid}"})
+    odd_even = timers.odd_even_now()
+    set_transmitter_state({'active':True,'odd_even':odd_even, 'message': f"{callsign} {myCall} {myGrid}"})
+    events.publish("cycle_start",odd_even)
 
 def process_rx_messages(rxMessage):
     timers.timedLog(f"Received reply from {rxMessage['call_b']}: {rxMessage['grid_rpt']}")

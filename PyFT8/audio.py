@@ -4,11 +4,12 @@ import pyaudio
 from PyFT8.comms_hub import config, events
 import PyFT8.timers as timers
 
-pya = pyaudio.PyAudio()
+
 global out_device_idx, in_device_idx
 out_device_idx, in_device_idx = None, None
 
 def find_device(device_str_contains):
+    pya = pyaudio.PyAudio()
     for dev_idx in range(pya.get_device_count()):
         name = pya.get_device_info_by_index(dev_idx)['name']
         match = True
@@ -20,6 +21,7 @@ def find_device(device_str_contains):
     timers.timedLog(f"No audio device found matching {device_str_contains}")
 
 def read_from_soundcard(device_str_contains, seconds, sample_rate = 12000):
+    pya = pyaudio.PyAudio()
     global in_device_idx
     if(not in_device_idx):
         in_device_idx = find_device(device_str_contains)
@@ -35,15 +37,16 @@ def play_wav_to_soundcard(device_str_contains, filename = 'out.wav'):
     global out_device_idx
     if(not out_device_idx):
         out_device_idx = find_device(device_str_contains)
-    with wave.open(filename, 'rb') as wav_file:
+    with wave.open(filename, 'rb') as wf:
         def callback(in_data, frame_count, time_info, status):
-            data = wav_file.readframes(frame_count)
-            return (data, pya.paContinue)
-        stream = pya.open(format=p.get_format_from_width(wf.getsampwidth()),
-                        channels = wf.getnchannels(),
-                        rate = wf.getframerate(),
-                        output = True,
-                        stream_callback = callback,
+            data = wf.readframes(frame_count)
+            return (data, pyaudio.paContinue)
+        p = pyaudio.PyAudio()
+        stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
+                        channels=wf.getnchannels(),
+                        rate=wf.getframerate(),
+                        output=True,
+                        stream_callback=callback,
                         output_device_index = out_device_idx)
         while stream.is_active():
             time.sleep(0.1)

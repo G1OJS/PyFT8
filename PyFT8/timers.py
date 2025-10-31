@@ -34,10 +34,13 @@ def timedLog(msg, silent = False, logfile = 'PyFT8.log'):
             print(f"Log to {logfile}: {s}")
         f.write(f"{s}\n")
 
-def cycle_tick():
+def odd_even_now():
     t = (time.time() / CYCLE_LENGTH) % 2
-    odd_even = ['even','odd'][int(t)]
-    events.publish("cycle_start", odd_even)
+    return['even','odd'][int(t)]  
+
+def cycle_tick():
+
+    events.publish("cycle_start", odd_even_now())
     threading.Timer(15, cycle_tick).start()
 
 sleep_until(0)
