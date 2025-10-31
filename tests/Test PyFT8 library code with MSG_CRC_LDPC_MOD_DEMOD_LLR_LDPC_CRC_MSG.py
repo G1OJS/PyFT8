@@ -13,7 +13,7 @@ demod.spectrum.get_audio(wav_file)
 
 tbin_idx = 4*demod.hops_persymb # 4 = random time offset
 fbin_idx = 420
-rel_strength = .5
+rel_strength = 1.2
 
 #VK1ABC 0b1110000111111100010100110101
 #VK3JPK 0b1110001000000111101000011110
