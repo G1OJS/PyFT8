@@ -12,8 +12,8 @@ demod = FT8Demodulator()
 demod.spectrum.get_audio(wav_file)
 
 tbin_idx = 4*demod.hops_persymb # 4 = random time offset
-fbin_idx = 440
-rel_strength = 0.1
+fbin_idx = 420
+rel_strength = .5
 
 #VK1ABC 0b1110000111111100010100110101
 #VK3JPK 0b1110001000000111101000011110
@@ -55,8 +55,11 @@ print(f"{bits174_int:0174b}")
 print(f"Payload symbols  expected:   {'7027413236410076024143535324211637464027735642254300025301'}")
 print(f"Channel symbols modulated:   {''.join([str(s) for s in symbols])}")
 
+# load audio early as we want to overwrite some of it
+demod.spectrum.get_audio(wav_file)
+
 # 'modulate' onto channel grid
-m = np.max(abs(demod.spectrum.complex)) * rel_strength
+m = np.max(abs(demod.spectrum.complex))  * rel_strength
 for t_idx, symbol in enumerate(symbols):
     for tbin in range(demod.hops_persymb):
         for fbin in range(demod.fbins_pertone):
@@ -67,18 +70,23 @@ for t_idx, symbol in enumerate(symbols):
 
 # 'demodulate' as with any audio frame
 timers.timedLog(f"Start to Load audio from {wav_file}")
-candidates, decodes = demod.demodulate_all(cyclestart_str = "test")
+
+candidates = demod.find_candidates(100,3400)
+candidates = demod.deduplicate_candidate_freqs(candidates)
+decoded_candidates = []
+for c in candidates:
+    demod.sync_candidate(c)
+    decode = demod.demodulate_candidate(c, cyclestart_str="test")
+    if(decode):
+        decoded_candidates.append(c)
+        print(decode['all_txt'], decode['decode_dict']['t0_idx'] )
 wf = Waterfall(demod.spectrum, f1=3500)
-wf.update_main(candidates=candidates)
-wf.show_zoom(candidates=candidates)
-timers.timedLog(f"Decodes: {len(decodes)}")
-for d in decodes:
-    if(d): print(d['all_txt'], d['decode_dict']['t0_idx'] )
+wf.update_main(candidates=decoded_candidates)
+wf.show_zoom(candidates=decoded_candidates)
 
 print(f"Payload symbols demodulated: {''.join([str(int(s)) for s in candidates[0].payload_symbols])}")
 print("bits expected / bits decoded")
 print("11100001111111000101001101010111000100000011110100001111000111001010001010001")
 print(''.join(str(int(b)) for b in candidates[0].payload_bits))
-for l in decodes:
-     if(l): print(l['all_txt'])
+
 
