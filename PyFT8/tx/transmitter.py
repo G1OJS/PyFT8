@@ -8,7 +8,7 @@ from PyFT8.comms_hub import config, events
 
 global transmitter_state, rig
 transmitter_state = {'active':False, 'odd_even':'odd', 'message':'', 'txFreq':1000,
-                     'device_str_contains':''}
+                     'their_call':'', 'device_str_contains':''}
 
 rig = IcomCIV()
 
@@ -31,5 +31,7 @@ def transmit_message(odd_even):
     rig.setPTTON()
     audio.play_wav_to_soundcard(transmitter_state['device_str_contains'])
     rig.setPTTOFF()
+    if('73' in msg):
+        set_transmitter_state({'active':False})
 
 events.subscribe("cycle_start", transmit_message)

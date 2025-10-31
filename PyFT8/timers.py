@@ -9,6 +9,8 @@ def sleep_until(cycle_seconds = 0):
     sleep_time = cycle_seconds - t_elapsed
     if(sleep_time)>0:
         time.sleep(sleep_time)
+    else:
+        time.sleep(sleep_time + CYCLE_LENGTH)
     
 def sleep(secs):
     if(secs>0):
@@ -39,10 +41,11 @@ def odd_even_now():
     return['even','odd'][int(t)]  
 
 def cycle_tick():
-
     events.publish("cycle_start", odd_even_now())
     threading.Timer(15, cycle_tick).start()
 
+
+timedLog("Waiting to initiate cycle ticker")
 sleep_until(0)
 cycle_tick()
-
+timedLog("Initiated cycle ticker")
