@@ -19,8 +19,9 @@ def find_device(device_str_contains):
 
 def read_from_soundcard(device_str_contains, seconds, sample_rate = 12000):
     dev_idx = find_device(device_str_contains)
+    timers.timedLog("Audio module opening stream")
     stream = pya.open(format=pyaudio.paInt16, channels = 1, rate = sample_rate,
-                      input=True, input_device_index = 1,
+                      input=True, input_device_index = dev_idx,
                       frames_per_buffer = seconds * sample_rate)
     data = np.frombuffer(stream.read(sample_rate * seconds, exception_on_overflow=False), dtype=np.int16)
     stream.close()

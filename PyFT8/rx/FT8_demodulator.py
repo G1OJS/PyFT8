@@ -27,6 +27,7 @@ from PyFT8.signaldefs import FT8
 from PyFT8.rx.decode174_91 import decode174_91
 import PyFT8.FT8_crc as crc
 import PyFT8.timers as timers
+import warnings
 
 def cyclic_demodulator(input_device_str_contains):
     from PyFT8.comms_hub import config
@@ -34,13 +35,16 @@ def cyclic_demodulator(input_device_str_contains):
     import PyFT8.timers as timers
     import PyFT8.audio as audio
     AUDIO_FILE = "audio_in.wav"
-    MAX_START_OFFSET_SECONDS = 1
+    MAX_START_OFFSET_SECONDS = 0.5
+    END_RECORD_GAP_SECONDS = 1
     
     while True:
         t_elapsed, t_remain, = timers.time_in_cycle()
-        if(t_elapsed > MAX_START_OFFSET_SECONDS): timers.sleep(t_remain)
-        timers.timedLog("Audio loop starting audio record")
-        audio_in = audio.read_from_soundcard(input_device_str_contains, timers.CYCLE_LENGTH)
+        timers.sleep(t_remain)
+        if(t_elapsed <5 and t_elapsed > MAX_START_OFFSET_SECONDS):
+            warnings.warn(f"Arrived to start recording at {t_elapsed} into cycle")
+        timers.timedLog("Audio loop requesting audio record")
+        audio_in = audio.read_from_soundcard(input_device_str_contains, timers.CYCLE_LENGTH - END_RECORD_GAP_SECONDS)
         audio.write_wav_file(AUDIO_FILE, audio_in)
         threading.Thread(target=get_decodes).start()
         timers.timedLog("Audio loop saved audio")

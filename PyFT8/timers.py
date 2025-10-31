@@ -9,7 +9,8 @@ def sleep_until(cycle_seconds = 0):
         time.sleep(sleep_time)
     
 def sleep(secs):
-    time.sleep(secs)
+    if(secs>0):
+        time.sleep(secs)
 
 def time_in_cycle():
     t_elapsed = (time.time() % CYCLE_LENGTH)
