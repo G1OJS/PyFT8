@@ -77,13 +77,16 @@ class Spectrum:
         self.noise_per_hop = None
         self.noise_per_symb = None
 
-    def feed_audio(self, audio: np.ndarray):
+    def get_audio(self, audio_file):
         """ Fill self.complex and self.power from a block of real audio samples. """
+        import PyFT8.audio as audio
+        audio_in = audio.read_wav_file(audio_file)
         for hop_idx in range(self.nHops):
             sample_idx0 = int(hop_idx * self.sample_rate / (self.symbols_persec * self.hops_persymb))
             sample_idxn = sample_idx0 + self.FFT_size
-            if(sample_idxn < len(audio)):
-                self.complex[hop_idx,:] = np.fft.rfft(audio[sample_idx0:sample_idxn] * np.kaiser(self.FFT_size,14))
+            if(sample_idxn < len(audio_in)):
+                self.complex[hop_idx,:] = np.fft.rfft(audio_in[sample_idx0:sample_idxn] * np.kaiser(self.FFT_size,14))
+        self.complex[0,0] = 1
         self.power = np.abs(self.complex) ** 2
         """ Fill self.noise ... for llr extraction. """
         self.noise_per_hop = np.median(self.power, axis=1)
@@ -140,6 +143,7 @@ class Candidate:
                                        f0_idx, f0_idx + sigspec.tones_persymb * spectrum.fbins_pertone)
         self.cycle_start = cycle_start
         self.demodulated_by = demodulated_by
+        self.message = None
 
     def update_t0_idx(self, t0_idx):
         delta = t0_idx - self.bounds.t0_idx

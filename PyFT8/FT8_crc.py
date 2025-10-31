@@ -2,6 +2,8 @@ import sys
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 import numpy as np
 
+# put this in signaldefs.py and include as part of the FTx spec
+
 def crc14(bits77_int: int) -> int:
     # Generator polynomial (0x2757), width 14, init=0, refin=false, refout=false
     poly = 0x2757

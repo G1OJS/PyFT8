@@ -4,26 +4,16 @@ sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 from PyFT8.rx.FT8_demodulator import FT8Demodulator, unpack_ft8_c28, unpack_ft8_g15
 from PyFT8.rx.waterfall import Waterfall
 from PyFT8.tx.FT8_encoder import pack_ft8_c28, pack_ft8_g15, encode_bits77
+import PyFT8.timers as timers
 
-def read_wav(filename, chunk_size=1024, sample_rate = 12000):
-     import wave
-     import numpy as np
-     with wave.open(filename, 'rb') as wav:
-          assert wav.getframerate() == sample_rate
-          assert wav.getnchannels() == 1
-          assert wav.getsampwidth() == 2
-          audio = np.frombuffer(wav.readframes(wav.getnframes()), dtype=np.int16)
-     return audio
-          
-audio = read_wav('210703_133430.wav')
+wav_file='210703_133430.wav'
 
-demod = FT8Demodulator(hops_persymb = 1, fbins_pertone = 1)
-demod.spectrum.feed_audio(audio)
-wf = Waterfall(demod.spectrum, f1=4000)
-wf.update_main()  # initial spectrum display
+demod = FT8Demodulator()
+demod.spectrum.get_audio(wav_file)
 
 tbin_idx = 4*demod.hops_persymb # 4 = random time offset
-fbin_idx = 480
+fbin_idx = 440
+rel_strength = 0.1
 
 #VK1ABC 0b1110000111111100010100110101
 #VK3JPK 0b1110001000000111101000011110
@@ -32,7 +22,7 @@ fbin_idx = 480
 
 c28a = pack_ft8_c28("VK1ABC")
 c28b = pack_ft8_c28("VK3JPK")
-g15 = pack_ft8_g15("QF22")
+g15, ir = pack_ft8_g15("QF22")
 i3 = 1
 n3 = 0
 
@@ -66,7 +56,7 @@ print(f"Payload symbols  expected:   {'70274132364100760241435353242116374640277
 print(f"Channel symbols modulated:   {''.join([str(s) for s in symbols])}")
 
 # 'modulate' onto channel grid
-m = np.max(abs(demod.spectrum.complex))
+m = np.max(abs(demod.spectrum.complex)) * rel_strength
 for t_idx, symbol in enumerate(symbols):
     for tbin in range(demod.hops_persymb):
         for fbin in range(demod.fbins_pertone):
@@ -76,18 +66,19 @@ for t_idx, symbol in enumerate(symbols):
             demod.spectrum.power[t, f] = m**2
 
 # 'demodulate' as with any audio frame
-candidates = demod.find_candidates(100, 3300, topN=5)
-candidates = demod.deduplicate_candidate_freqs(candidates, topN=100)
-candidates = demod.sync_candidates(candidates, topN=30)
+timers.timedLog(f"Start to Load audio from {wav_file}")
+candidates, decodes = demod.demodulate_all(cyclestart_str = "test")
+wf = Waterfall(demod.spectrum, f1=3500)
 wf.update_main(candidates=candidates)
 wf.show_zoom(candidates=candidates)
-print(f"Found {len(candidates)} candidates")
-decodes = demod.demodulate(candidates, cyclestart_str="TEST")
+timers.timedLog(f"Decodes: {len(decodes)}")
+for d in decodes:
+    if(d): print(d['all_txt'], d['decode_dict']['t0_idx'] )
 
 print(f"Payload symbols demodulated: {''.join([str(int(s)) for s in candidates[0].payload_symbols])}")
 print("bits expected / bits decoded")
 print("11100001111111000101001101010111000100000011110100001111000111001010001010001")
 print(''.join(str(int(b)) for b in candidates[0].payload_bits))
 for l in decodes:
-     print(l)
+     if(l): print(l['all_txt'])
 

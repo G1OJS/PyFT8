@@ -21,13 +21,67 @@ Test     0.000 Rx FT8    000 -0.1 1646 K1JT EA3AGB -15 7
 
 import math
 import numpy as np
-from scipy.signal import correlate2d, find_peaks
 
 from PyFT8.datagrids import Spectrum, Bounds, Candidate
 from PyFT8.signaldefs import FT8
 from PyFT8.rx.decode174_91 import decode174_91
 import PyFT8.FT8_crc as crc
+import PyFT8.timers as timers
+import warnings
 
+def cyclic_demodulator(input_device_str_contains):
+    from PyFT8.comms_hub import config
+    import threading
+    import PyFT8.timers as timers
+    import PyFT8.audio as audio
+    AUDIO_FILE = "audio_in.wav"
+    MAX_START_OFFSET_SECONDS = 0.5
+    END_RECORD_GAP_SECONDS = 1
+    
+    while True:
+        t_elapsed, t_remain, = timers.time_in_cycle()
+        timers.sleep(t_remain)
+        if(t_elapsed <5 and t_elapsed > MAX_START_OFFSET_SECONDS):
+            warnings.warn(f"Arrived to start recording at {t_elapsed} into cycle")
+        timers.timedLog("Audio loop requesting audio record")
+        audio_in = audio.read_from_soundcard(input_device_str_contains, timers.CYCLE_LENGTH - END_RECORD_GAP_SECONDS)
+        audio.write_wav_file(AUDIO_FILE, audio_in)
+        threading.Thread(target=get_decodes).start()
+        timers.timedLog("Audio loop saved audio")
+
+def get_decodes():
+    from PyFT8.comms_hub import config, events
+    import PyFT8.timers as timers
+    audio_file = "audio_in.wav"
+    timers.timedLog("Start to load audio")
+
+    demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
+    cyclestart_str = timers.cyclestart_str(1)
+
+    demod.spectrum.get_audio(audio_file)
+    timers.timedLog("Decode Rx frequency")
+    decode = demod.demod_rxFreq(config.data['rxFreq'], cyclestart_str)
+    if(decode):
+        message = decode['decode_dict']
+        message['grid_id'] = 'rx_decodes'
+        message['type'] = 'decode'
+        events.publish("UI_message", message)
+
+    candidates = demod.find_candidates(100,3400)
+    candidates = demod.deduplicate_candidate_freqs(candidates)
+    events.publish("UI_message", {'grid_id':'all_decodes', 'type':'clear_grid'})
+    for c in candidates:
+        demod.sync_candidate(c)
+        decode = demod.demodulate_candidate(c, cyclestart_str)
+        if(decode):
+            message = decode['decode_dict']
+            message['grid_id'] = 'all_decodes'
+            message['type'] = 'decode'
+            events.publish("UI_message", message)
+            events.publish("All_txt_message", decode['all_txt'])
+    timers.timedLog(f"Decoded all")
+    events.publish("Decoded_all", "Decoded_all")
+  
 class FT8Demodulator:
     def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=3, sigspec=FT8):
         # ft8c.f90 uses 4 hops per symbol and 2.5Hz fbins (2.5 bins per tone)
@@ -54,7 +108,7 @@ class FT8Demodulator:
     # Candidate search and sync
     # ======================================================
 
-    def find_candidates(self, f0, f1, topN=25):
+    def find_candidates(self, f0, f1, topN=500):
         region = Bounds.from_physical(self.spectrum, 0, 15, f0, f1)
         candidates = []
         for f0_idx in region.f_idx_range:
@@ -63,7 +117,7 @@ class FT8Demodulator:
         candidates.sort(key=lambda c: -c.score)
         return candidates[:topN]
 
-    def deduplicate_candidate_freqs(self, candidates, topN=25 ):
+    def deduplicate_candidate_freqs(self, candidates):
         min_sep_fbins = 0.5 * self.sigspec.tones_persymb * self.fbins_pertone
         deduplicated = []
         for c in candidates:
@@ -76,18 +130,15 @@ class FT8Demodulator:
                     break
             if keep_c:
                 deduplicated.append(c)
-        return deduplicated[:topN]
+        return deduplicated
     
-    def sync_candidates(self, candidates, topN=25):
-        for c in candidates:
-            c.score = -1e10
-            for t0_idx in range(self.spectrum.nHops - self.sigspec.num_symbols*self.hops_persymb-1):
-                score = self._csync_score_3(t0_idx, c.bounds.f0_idx)
-                if(score > c.score):
-                    c.score = score
-                    c.update_t0_idx(t0_idx)
-        candidates.sort(key=lambda c: -c.score)
-        return candidates[:topN]
+    def sync_candidate(self, c):
+        c.score = -1e10
+        for t0_idx in range(self.spectrum.nHops - self.sigspec.num_symbols*self.hops_persymb-1):
+            score = self._csync_score_3(t0_idx, c.bounds.f0_idx)
+            if(score > c.score):
+                c.score = score
+                c.update_t0_idx(t0_idx)
 
     def _csync_score_3(self, t0_idx, f0_idx):
         score = 0.0
@@ -105,37 +156,35 @@ class FT8Demodulator:
     # Demodulation
     # ======================================================
 
-    def demod_rxFreq(self, rxFreq, cycle_str):
-        candidates = []
+    def demod_rxFreq(self, rxFreq, cyclestart_str):
         f0_idx = int(np.searchsorted(self.spectrum.freqs, rxFreq))
-        candidates.append(Candidate(self.sigspec, self.spectrum, 0, f0_idx, -50))
-        candidates = self.sync_candidates(candidates, topN=1)
-        decode = self.demodulate(candidates, cyclestart_str = cycle_str)
+        candidate = Candidate(self.sigspec, self.spectrum, 0, f0_idx, -50)
+        self.sync_candidate(candidate)
+        decode = self.demodulate_candidate(candidate, cyclestart_str = cyclestart_str)
         return decode
-    
-    def demodulate(self, candidates, cyclestart_str):
-        out = []
-        for c in candidates:
-            LLR174s=[]
-            pgrid = c.power_grid
-            gray_mask = self.sigspec.gray_mask
-            for symb_idx in c.sigspec.payload_symb_idxs:
-                sigma2 = self.spectrum.noise_per_symb[symb_idx]
-                tone_powers_scaled = pgrid[symb_idx, :] / sigma2
-                m1 = np.where(gray_mask, tone_powers_scaled[:, None], -np.inf)
-                m0 = np.where(~gray_mask, tone_powers_scaled[:, None], -np.inf)
-                LLR_sym = np.logaddexp.reduce(m1, axis=0) - np.logaddexp.reduce(m0, axis=0)
-                LLR174s.extend(LLR_sym)
-                
-            ncheck, bits, n_its = decode174_91(LLR174s)
-            if(ncheck == 0):
-                c.demodulated_by = f"LLR-LDPC ({n_its})"
-                c.payload_bits = bits
-                c.snr = int(12*np.log10(c.score/1e9) - 31)
-                c.snr = np.clip(c.snr, -24,24).item()
-                out.append(FT8_decode(c, cyclestart_str))
-        return out
 
+    def demodulate_candidate(self, candidate, cyclestart_str):
+        c = candidate
+        LLR174s=[]
+        pgrid = c.power_grid
+        gray_mask = self.sigspec.gray_mask
+        for symb_idx in c.sigspec.payload_symb_idxs:
+            sigma2 = self.spectrum.noise_per_symb[symb_idx]
+            tone_powers_scaled = pgrid[symb_idx, :] / sigma2
+            m1 = np.where(gray_mask, tone_powers_scaled[:, None], -np.inf)
+            m0 = np.where(~gray_mask, tone_powers_scaled[:, None], -np.inf)
+            LLR_sym = np.logaddexp.reduce(m1, axis=0) - np.logaddexp.reduce(m0, axis=0)
+            LLR174s.extend(LLR_sym)
+        ncheck, bits, n_its = decode174_91(LLR174s)
+        if(ncheck == 0):
+            c.demodulated_by = f"LLR-LDPC ({n_its})"
+            c.payload_bits = bits
+            c.snr = -24 if c.score==0 else int(12*np.log10(c.score/1e9) - 31)
+            c.snr = np.clip(c.snr, -24,24).item()
+            decode = FT8_decode(c, cyclestart_str)
+            if(decode): c.message = decode['decode_dict']['message'] 
+            return decode
+    
 # ======================================================
 # FT8 Unpacking functions
 # ======================================================
@@ -178,8 +227,9 @@ def FT8_decode(signal, cyclestart_str):
     call_b =  unpack_ft8_c28(c28_b)
     grid_rpt = unpack_ft8_g15(g15)
     freq_str = f"{signal.bounds.f0:4.0f}"
-    all_txt_line = f"{cyclestart_str}     0.000 Rx FT8    {signal.snr:+03d} {signal.bounds.t0 - 0.5 :4.1f} {signal.bounds.f0 :4.0f} {call_a} {call_b} {grid_rpt}"
-    dict_line = {'cyclestart_str':cyclestart_str , 'freq':freq_str, 'call_a':call_a,
-                 'call_b':call_b, 'grid_rpt':grid_rpt, 't0_idx':signal.bounds.t0_idx, 'snr':signal.snr}
-    return dict_line, all_txt_line
+    message = f"{call_a} {call_b} {grid_rpt}"
+    all_txt = f"{cyclestart_str}     0.000 Rx FT8    {signal.snr:+03d} {signal.bounds.t0 :4.1f} {signal.bounds.f0 :4.0f} {message}"
+    decode_dict = {'cyclestart_str':cyclestart_str , 'freq':freq_str, 'call_a':call_a,
+                 'call_b':call_b, 'grid_rpt':grid_rpt, 't0_idx':signal.bounds.t0_idx, 'dt':f"{signal.bounds.t0 :4.1f}", 'snr':signal.snr, 'message':message}
+    return {'all_txt':all_txt, 'decode_dict':decode_dict}
 
