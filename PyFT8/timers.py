@@ -2,6 +2,12 @@ import time
 
 CYCLE_LENGTH = 15
 
+def sleep_until(cycle_seconds = 0):
+    t_elapsed, t_remain, = time_in_cycle()
+    sleep_time = cycle_seconds - t_elapsed
+    if(sleep_time)>0:
+        time.sleep(sleep_time)
+    
 def sleep(secs):
     time.sleep(secs)
 

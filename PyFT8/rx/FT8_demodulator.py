@@ -74,7 +74,9 @@ def get_decodes(topN=30):
             message['grid_id'] = 'all_decodes'
             message['type'] = 'decode'
             events.publish("UI_message", message)
+            events.publish("All_txt_message", decode['all_txt'])
     timers.timedLog(f"Decoded all")
+    events.publish("Decoded_all", "Decoded_all")
     
 class FT8Demodulator:
     def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=3, sigspec=FT8):
