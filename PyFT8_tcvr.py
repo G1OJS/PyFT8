@@ -4,6 +4,9 @@ import os
 import sys
 import webbrowser
 
+# NOTE This code is under development. Rx works and UI is OK, but
+# QSO functions are under construction
+
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 from PyFT8.rx.FT8_demodulator import cyclic_demodulator
 from PyFT8.comms_hub import config, events, start_websockets_server
