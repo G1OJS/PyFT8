@@ -19,7 +19,7 @@ myGrid = 'IO90'
 input_device = ["Microphone","CODEC"]
 output_device =["Speaker", "CODEC"]
 
-#input_device = ["CABLE","Output"]
+#input_device = ["CABLE", "Output"]
 #output_device =["CABLE", "Input"]
 
 set_transmitter_state({'device_str_contains':output_device})
@@ -49,6 +49,12 @@ events.subscribe("Reply_to", initiate_qso)
 threading.Thread(target=cyclic_demodulator, args=(input_device,)).start()
 threading.Thread(target=start_UI_server, daemon=True).start()
 webbrowser.open("http://localhost:8080/UI.html")
+
+#test
+odd_even = timers.odd_even_now()
+set_transmitter_state({'active':True,'odd_even':odd_even, 'message': f"G1OJS G1OJS IO90"})
+events.publish("cycle_start",odd_even)
+
 
 timers.timedLog(f"Starting websockets server")
 import asyncio
