@@ -5,17 +5,11 @@ import PyFT8.timers as timers
 class Config:
     def __init__(self, filename="config.json"):
         self.filename = filename
-        self.data = {"txFreq": 2000, "rxFreq": 2000}
+        self.data = {"rxFreq": 2000}
         if os.path.exists(self.filename):
             with open(self.filename) as f:
                 self.data = json.load(f)
         events.subscribe("SetRxFreq", self._set_rxFreq)
-        events.subscribe("SetTxFreq", self._set_txFreq)
-        
-    def _set_txFreq(self, cmd):
-        self.data['txFreq'] = int(cmd['freq'])
-        self.save()
-        timers.timedLog(f"Set tx freq to {self.data['txFreq']}")
         
     def _set_rxFreq(self, cmd):
         self.data['rxFreq'] = int(cmd['freq'])
@@ -85,5 +79,6 @@ async def recv_commands(websocket):
     async for message in websocket:
         cmd = json.loads(message)
         cmd_type = cmd.get("type")
+        timers.timedLog(f"Command from UI: {cmd_type} {cmd}")
         events.publish(cmd_type, cmd)
 

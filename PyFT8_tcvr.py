@@ -10,64 +10,38 @@ import webbrowser
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 from PyFT8.rx.FT8_demodulator import cyclic_demodulator
 from PyFT8.comms_hub import config, events, start_websockets_server
-from PyFT8.rig.IcomCIV import IcomCIV
 import PyFT8.timers as timers
-import json
-icom = IcomCIV()
+from PyFT8.tx.transmitter import set_transmitter_state
+
 myCall = 'G1OJS'
 myGrid = 'IO90'
 
-PyFT8_logfile = "pyft8.txt"
-wsjtx_logfile = "wsjtx.txt"
+#input_device = ["Mic","CODEC"]
+#output_device =["Speaker", "CODEC"]
 
-class ClickHandler(SimpleHTTPRequestHandler):
-    def do_GET(self):
-        super().do_GET()
-
-def get_reply(from_call, wait_cycles = 0):
-    if(wait_cycles >= 0):
-        _ , t_remain = timers.time_in_cycle()
-        t_remain += wait_cycles*15
-        time.sleep(t_remain+1) # needs to wait for a message 'rx frequency decoded'
-    with open("rxFreq_data.json", "r") as f:
-        for s in reversed(f.readlines()):
-            decode = next((item for item in reversed(eval(s)) if item["call_b"] == from_call), None)
-            if(decode): return decode['grid_rpt']  
-
-def initiate_qso(callsign, wait_for_next = False):
-    _ , t_remain = timers.time_in_cycle()
-    clear_rxWindow()
+input_device = ["CABLE","Output"]
+output_device =["CABLE", "Input"]
+    
+def initiate_qso(callsign):
+   # clear_rxWindow()
     timers.timedLog(f"Initiate QSO with {callsign}")
-    if(t_remain < 12.8):
-        timers.timedLog(f"QSO: Not enough time: t_remain = {t_remain} seconds")
-        time.sleep(t_remain+15)
-    wait_cycles = -1
-    while True:
-        timers.timedLog(f"Send messasge: {callsign} {myCall} {myGrid}", logfile = "QSO.log")
-        send_message(icom,callsign, myCall, myGrid, int(config['txFreq']), wait_cycles = wait_cycles)
-        wait_cycles = 1
-        their_reply = get_reply(callsign, wait_cycles = wait_cycles)
-        timers.timedLog(f"Received reply: {their_reply}", logfile = "QSO.log")
-        if(not their_reply): continue
-        if(their_reply[-3] == "+" or their_reply[-3] == "-"): break        
-    wait_cycles = -1
-    while True:
-        their_snr = int(their_reply[-3:])
-        timers.timedLog(f"Send messasge: {callsign} {myCall} R{their_snr:+03d}", logfile = "QSO.log")
-        send_message(icom,callsign, myCall, f"R{their_snr:+03d}", int(config['txFreq']), wait_cycles = wait_cycles)
-        their_reply = get_reply(callsign, wait_cycles = wait_cycles)
-        timers.timedLog(f"Received reply: {their_reply}", logfile = "QSO.log")
-        if('73' in their_reply): break
-    timers.timedLog(f"Send messasge reply: {callsign} {myCall} 73", logfile = "QSO.log")
-    send_message(icom,callsign, myCall, '73', int(config['txFreq']), wait_cycles = wait_cycles)
+    transmitter.set_transmitter_state({'active':True,'odd_even':odd_even,'message': f"{callsign} {myCall} {myGrid}"})
+
+def process_rx_messages(rxMessage):
+    timers.timedLog(f"Received reply from {rxMessage['call_b']}: {rxMessage['grid_rpt']}")
+    # if report, transmitter.set_transmitter_state({'message':f"{callsign} {myCall} R{their_snr:+03d}" })
+    # if 73, transmitter.set_transmitter_state({'message':f"73"})
+    pass
     
 def start_UI_server():
     os.chdir(r"C:/Users/drala/Documents/Projects/GitHub/PyFT8/")
-    server = ThreadingHTTPServer(("localhost", 8080), ClickHandler)
+    server = ThreadingHTTPServer(("localhost", 8080), SimpleHTTPRequestHandler)
     server.serve_forever()
 
-#threading.Thread(target=cyclic_demodulator, args=(["CABLE","Output"],)).start()
-threading.Thread(target=cyclic_demodulator, args=(["Mic","CODEC"],)).start()
+events.subscribe("rxFreqMessage", process_rx_messages)
+events.subscribe("Reply_to", initiate_qso)
+
+threading.Thread(target=cyclic_demodulator, args=(input_device,)).start()
 threading.Thread(target=start_UI_server, daemon=True).start()
 webbrowser.open("http://localhost:8080/UI.html")
 
@@ -75,18 +49,5 @@ timers.timedLog(f"Starting websockets server")
 import asyncio
 asyncio.run(start_websockets_server())
 
-#send_message(icom,"CQ","G1OJS","IO90", 1000)
 
-#send_message(icom,"X1XXX","G1OJS","+03", 1000)
-#send_message(icom,"X1XXX","G1OJS","-08", 1000)
-
-#send_message(icom,"X1XXX","G1OJS","R+08", 1000)
-#send_message(icom,"X1XXX","G1OJS","R-08", 1000)
-
-#send_message(icom,"X1XXX","G1OJS","RRR", 1000)
-
-#send_message(icom,"X1XXX","G1OJS","RR73", 1000)
-
-#send_message(icom,"X1XXX","G1OJS","73", 1000)
-#send_message(icom,"X1XXX","G1O","73", 1000)
     

@@ -62,10 +62,11 @@ def get_decodes():
     timers.timedLog("Decode Rx frequency")
     decode = demod.demod_rxFreq(config.data['rxFreq'], cyclestart_str)
     if(decode):
-        message = decode['decode_dict']
-        message['grid_id'] = 'rx_decodes'
-        message['type'] = 'decode'
-        events.publish("UI_message", message)
+        UI_message = decode['decode_dict']
+        UI_message['grid_id'] = 'rx_decodes'
+        UI_message['type'] = 'decode'
+        events.publish("UI_message", UI_message)
+        events.publish("rxFreqMessage", decode['decode_dict'])
 
     candidates = demod.find_candidates(100,3400)
     candidates = demod.deduplicate_candidate_freqs(candidates)
