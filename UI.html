@@ -26,12 +26,16 @@
 
 		const websocket = new WebSocket("ws://localhost:5678/");
 		websocket.onmessage = (event) => {
+		    console.log(event);
 			const m = JSON.parse(event.data)
 			if(m){
-				let grid_id = m.grid_id;
-				if (m.type == 'clear_grid') {
+				
+				if (m.topic == 'decoder.decoding_started') {
 					document.getElementById(grid_id).innerHTML = "";
 				} else {
+					let grid_id = ''
+					if(m.topic == 'decoder.decode_dict') grid_id = 'all_decodes';
+					if(m.topic == 'decoder.decode_dict_rxfreq') grid_id = 'rx_decodes';
 					let row = document.getElementById(grid_id).appendChild(document.createElement("div"));
 					row.className='grid_row';
 					const fields = [m.cyclestart_str.split('_')[1], m.snr, m.freq, m.dt, m.call_a, m.call_b, m.grid_rpt,''];

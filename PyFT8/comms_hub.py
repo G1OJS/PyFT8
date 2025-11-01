@@ -47,7 +47,7 @@ class Events:
         if not subs_cbs:
             timers.timedLog(f"[Events] {topic} published {data!r} — no subscribers", 'events.log')
         for subs_cb in subs_cbs:
-            timers.timedLog(f"[Events] {topic} → {subs_cb.__name__}({data!r})", 'events.log')
+            timers.timedLog(f"[Events] {topic} to {subs_cb.__name__}({data!r})", 'events.log')
             subs_cb(data)
             
 # modules needing this use 'from comms_hub import events' :

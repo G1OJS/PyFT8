@@ -64,7 +64,7 @@ def get_decodes():
     demod.spectrum.load_audio(audio_in)
     
     events.publish(TOPICS.decoder.decoding_started, '')    
-    decode = demod.demod_rxFreq(config.data['rxFreq'], cyclestart_str)
+    decode = demod.demod_rxFreq(config.data['rxfreq'], cyclestart_str)
     # send successful rx freq decodes to browser
     if(decode): events.publish(TOPICS.to_ui.decode_dict_rxfreq, decode['decode_dict'])
     # and to QSO sequencer, and also notify sequencer if rx freq decode didn't happen

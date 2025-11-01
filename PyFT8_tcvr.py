@@ -42,6 +42,8 @@ def initiate_qso(qso_params):
     their_tx_freq = qso_params['their_tx_freq']
 
 def process_rx_messages(rxMessage):
+    if(not rxMessage):
+        return
     their_call = rxMessage['call_b']
     if(not their_call == transmitter_state['their_call']):
         return 
