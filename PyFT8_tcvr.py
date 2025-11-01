@@ -54,24 +54,25 @@ def initiate_qso(qso_params):
     global QSO_their_call, current_tx_message, repeat_counter, odd_even
     odd_even = timers.odd_even_now()
     QSO_their_call = qso_params['their_call']
-    # no waiting here, just transmit now
-    odd_even = timers.odd_even_now()
+    t_elapsed, t_remaining = timers.time_in_cycle()
+    timers.sleep(t_remaining + 15)
+
     current_tx_message = f"{QSO_their_call} {myCall} {myGrid}"
     transmit_message(current_tx_message)
 
-def wait_for_Tx_cycle():
+def wait_for_cycle():
     # if machine transmit is ready before end of Rx cycle, wait for beginning of Tx cycle
     t_elapsed, t_remaining = timers.time_in_cycle()
-    if(odd_even == timers.odd_even_now()): t_remaining += 15
     if(t_elapsed > 2): timers.sleep(t_remaining) 
 
 def process_rx_messages(decode_dict):
     global QSO_their_call, current_tx_message, repeat_counter, odd_even
+    if(odd_even != timers.odd_even_now()): return
     their_call = None
     if(decode_dict):
         their_call = decode_dict['call_b']  
     if(not their_call == QSO_their_call):
-        wait_for_Tx_cycle()
+        wait_for_cycle()
         transmit_message(current_tx_message)
     if(not decode_dict):
         return
@@ -80,14 +81,12 @@ def process_rx_messages(decode_dict):
     if(grid_rpt[-3]=="+" or grid_rpt[-3]=="-"):
         their_snr = decode_dict['snr']
         current_tx_message = f"{QSO_their_call} {myCall} R{their_snr:+03d}"
-        wait_for_Tx_cycle()
+        wait_for_cycle()
         transmit_message(current_tx_message)
     if('73' in grid_rpt):
-        wait_for_Tx_cycle()
+        wait_for_cycle()
         transmit_message(f"{QSO_their_call} {myCall} 73")
         current_tx_message = None
-    
-
     
 def start_UI_server():
     os.chdir(r"C:/Users/drala/Documents/Projects/GitHub/PyFT8/")
