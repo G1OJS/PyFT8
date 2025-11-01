@@ -26,10 +26,8 @@
 
 		const websocket = new WebSocket("ws://localhost:5678/");
 		websocket.onmessage = (event) => {
-		    console.log(event);
 			const m = JSON.parse(event.data)
 			if(m){
-				
 				if (m.topic == 'decoder.decoding_started') {
 					document.getElementById(grid_id).innerHTML = "";
 				} else {
@@ -65,8 +63,8 @@
 
 <body>
 	<div id='clock'></div>
-	<div id='txFreq'></div>
-	<div id='rxFreq'></div>
+	<div >Tx freq: <span id='txFreq'></span></div>
+	<div >Rx freq: <span id='rxFreq'></span></div>
 	<h3>Decodes</h3>
 	<div id="all_decodes" class = "decodes_grid"></div>
 	<br><br>

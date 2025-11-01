@@ -87,7 +87,7 @@ def append_PyFT8_decode_to_file(All_txt_line):
 print("Running, waiting for messages")
 reset_compare()        
 threading.Thread(target=wsjtx_tailer).start()
-threading.Thread(target=cyclic_demodulator, args=(["Mic","CODEC"],)).start()
+threading.Thread(target=cyclic_demodulator).start()
 events.subscribe(TOPICS.decoder.decode_all_txt_line, append_PyFT8_decode_to_file)
 events.subscribe(TOPICS.decoder.decoding_completed, do_compare)
 

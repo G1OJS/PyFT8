@@ -17,8 +17,8 @@ from PyFT8.comms_hub import config, events, TOPICS, start_websockets_server
 myCall = 'G1OJS'
 myGrid = 'IO90'
 
-testing = True
-if testing:
+testing_from_wsjtx = False
+if testing_from_wsjtx:
     config.data.update({"input_device":["CABLE", "Output"]})
     audio.find_audio_devices()
 

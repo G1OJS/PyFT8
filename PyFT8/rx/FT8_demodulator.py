@@ -56,19 +56,20 @@ def cyclic_demodulator():
 def get_decodes():
     from PyFT8.comms_hub import config, events
     import PyFT8.timers as timers
+    from PyFT8.rx.waterfall import Waterfall
     #audio_file = "audio_in.wav"
     #timers.timedLog("Start to load audio")
 
     demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
     cyclestart_str = timers.cyclestart_str(1)
     demod.spectrum.load_audio(audio_in)
-    
-    events.publish(TOPICS.decoder.decoding_started, '')    
+
+    events.publish(TOPICS.decoder.decoding_started, {})    
     decode = demod.demod_rxFreq(config.data['rxfreq'], cyclestart_str)
     # send successful rx freq decodes to browser
     if(decode): events.publish(TOPICS.to_ui.decode_dict_rxfreq, decode['decode_dict'])
     # and to QSO sequencer, and also notify sequencer if rx freq decode didn't happen
-    events.publish(TOPICS.decoder.decode_dict_rxfreq, decode['decode_dict'] if decode else None)
+    events.publish(TOPICS.decoder.decode_dict_rxfreq, decode['decode_dict'] if decode else {})
 
     candidates = demod.find_candidates(100,3400)
     candidates = demod.deduplicate_candidate_freqs(candidates)
@@ -81,7 +82,7 @@ def get_decodes():
             events.publish(TOPICS.decoder.decode_dict, decode['decode_dict'])
             events.publish(TOPICS.decoder.decode_all_txt_line, decode['all_txt_line'])
 
-    events.publish(TOPICS.decoder.decoding_completed, '') 
+    events.publish(TOPICS.decoder.decoding_completed, {}) 
   
 class FT8Demodulator:
     def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=3, sigspec=FT8):

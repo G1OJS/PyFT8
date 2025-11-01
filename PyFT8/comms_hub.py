@@ -41,13 +41,13 @@ class Events:
 
     def publish(self, topic, data):
         if topic not in all_topics:
-            timers.timedLog(f"[Events] ⚠️ Unrecognised topic '{topic}' — ignored", "events.log")
+            timers.timedLog(f"[Events] Unrecognised topic '{topic}' — ignored", logfile = "events.log")
             return
         subs_cbs = self.subscriber_callbacks.get(topic, [])
         if not subs_cbs:
-            timers.timedLog(f"[Events] {topic} published {data!r} — no subscribers", 'events.log')
+            timers.timedLog(f"[Events] {topic} published {data!r} — no subscribers", logfile = 'events.log')
         for subs_cb in subs_cbs:
-            timers.timedLog(f"[Events] {topic} to {subs_cb.__name__}({data!r})", 'events.log')
+            timers.timedLog(f"[Events] {topic} to {subs_cb.__name__}({data!r})", logfile = 'events.log')
             subs_cb(data)
             
 # modules needing this use 'from comms_hub import events' :
@@ -67,18 +67,20 @@ async def start_websockets_server():
     global message_queue, loop
     loop = asyncio.get_running_loop()
     message_queue = asyncio.Queue()
-    events.subscribe(TOPICS.decoder.decoding_started, _queue_message)
-    events.subscribe(TOPICS.decoder.decode_dict, _queue_message)
-    events.subscribe(TOPICS.decoder.decode_dict_rxfreq, _queue_message)
+    events.subscribe(TOPICS.decoder.decoding_started, lambda msg: _queue_message(TOPICS.decoder.decoding_started, msg))
+    events.subscribe(TOPICS.decoder.decode_dict, lambda msg: _queue_message(TOPICS.decoder.decode_dict, msg))
+    events.subscribe(TOPICS.decoder.decode_dict_rxfreq, lambda msg: _queue_message(TOPICS.decoder.decode_dict_rxfreq, msg))
     async with serve(_handle_client, "localhost", 5678) as server:
         await server.serve_forever()
 
-def _queue_message(message):
-    # connection between here and the Python messaging system
+def _queue_message(topic, message):
+    if not isinstance(message, dict):
+        message = {}    # should really raise exception here 
     if loop and loop.is_running():
-        asyncio.run_coroutine_threadsafe(message_queue.put(message), loop)
+        full_message = {"topic": topic, **message}
+        asyncio.run_coroutine_threadsafe(message_queue.put(full_message), loop)
     else:
-        print("⚠️ No running asyncio loop yet; message dropped:", message)
+        print("No running asyncio loop yet; message dropped:", message)
 
 async def _handle_client(websocket):
     # connection between here and the browser JS
