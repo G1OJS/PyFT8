@@ -17,18 +17,23 @@ from PyFT8.comms_hub import config, events, TOPICS, start_websockets_server
 
 myCall = 'G1OJS'
 myGrid = 'IO90'
-global QSO_their_call, current_tx_message, repeat_counter
+global QSO_their_call, current_tx_message, repeat_counter, PTT, odd_even
 QSO_their_call = ''
 current_tx_message = None
 repeat_counter = 0
+PTT = 0
+odd_even = None
 
 rig = IcomCIV()
 
 testing_from_wsjtx = False
 
 def transmit_message(msg):
-    global QSO_their_call, current_tx_message, repeat_counter
+    global QSO_their_call, current_tx_message, repeat_counter, PTT, odd_even
     if(not msg): return
+    while PTT:
+        print("PTT is on")
+        timers.sleep(0.1)
     repeat_counter = repeat_counter + 1 if( msg == current_tx_message ) else 0
     if(repeat_counter >= 3):
         return
@@ -37,25 +42,31 @@ def transmit_message(msg):
     symbols = FT8_encoder.pack_message(c1, c2, grid_rpt)
     audio_data = audio.create_ft8_wave(symbols, f_base = config.data['txfreq'])
     audio.write_wav_file('out.wav', audio_data)
+    timers.timedLog(f"PTT ON", logfile = "QSO.log")
     rig.setPTTON()
+    PTT = 1
     audio.play_wav_to_soundcard()
     rig.setPTTOFF()
+    PTT = 0
+    timers.timedLog(f"PTT OFF", logfile = "QSO.log")
     
 def initiate_qso(qso_params):
-    global QSO_their_call, current_tx_message, repeat_counter
+    global QSO_their_call, current_tx_message, repeat_counter, odd_even
     odd_even = timers.odd_even_now()
     QSO_their_call = qso_params['their_call']
     # no waiting here, just transmit now
+    odd_even = timers.odd_even_now()
     current_tx_message = f"{QSO_their_call} {myCall} {myGrid}"
     transmit_message(current_tx_message)
 
 def wait_for_Tx_cycle():
     # if machine transmit is ready before end of Rx cycle, wait for beginning of Tx cycle
-    t_elapsed, t_remaining = timers.time_in_cycle() 
+    t_elapsed, t_remaining = timers.time_in_cycle()
+    if(odd_even == timers.odd_even_now()): t_remaining += 15
     if(t_elapsed > 2): timers.sleep(t_remaining) 
 
 def process_rx_messages(decode_dict):
-    global QSO_their_call, current_tx_message, repeat_counter
+    global QSO_their_call, current_tx_message, repeat_counter, odd_even
     their_call = None
     if(decode_dict):
         their_call = decode_dict['call_b']  
