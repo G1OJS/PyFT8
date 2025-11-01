@@ -17,11 +17,10 @@ from PyFT8.comms_hub import config, events, TOPICS, start_websockets_server
 
 myCall = 'G1OJS'
 myGrid = 'IO90'
-global QSO_their_call, current_tx_message, repeat_counter, odd_even, last_tx
+global QSO_their_call, current_tx_message, repeat_counter, last_tx
 QSO_their_call = ''
 current_tx_message = None
 repeat_counter = 0
-odd_even = None
 last_tx = 0
 
 rig = IcomCIV()
@@ -29,7 +28,7 @@ rig = IcomCIV()
 testing_from_wsjtx = False
 
 def transmit_message(msg):
-    global QSO_their_call, current_tx_message, repeat_counter, odd_even, last_tx
+    global QSO_their_call, current_tx_message, repeat_counter,  last_tx
     if(not msg): return
     repeat_counter = repeat_counter + 1 if( msg == current_tx_message ) else 0
     if(repeat_counter >= 3):
@@ -47,7 +46,7 @@ def transmit_message(msg):
     timers.timedLog(f"PTT OFF", logfile = "QSO.log")
     
 def initiate_qso(qso_params):
-    global QSO_their_call, current_tx_message, repeat_counter, odd_even, last_tx
+    global QSO_their_call, current_tx_message, repeat_counter, last_tx
     odd_even = timers.odd_even_now()
     QSO_their_call = qso_params['their_call']
     t_elapsed, t_remaining = timers.time_in_cycle()
@@ -56,18 +55,16 @@ def initiate_qso(qso_params):
     current_tx_message = f"{QSO_their_call} {myCall} {myGrid}"
     transmit_message(current_tx_message)
 
-def wait_for_cycle():
-    # if machine transmit is ready before end of Rx cycle, wait for beginning of Tx cycle
-    t_elapsed, t_remaining = timers.time_in_cycle()
-    if(t_elapsed > 2): timers.sleep(t_remaining) 
-
 def process_rx_messages(decode_dict):
-    global QSO_their_call, current_tx_message, repeat_counter, odd_even, last_tx
-    if(timers.tnow() - last_tx < 7): return
+    global QSO_their_call, current_tx_message, repeat_counter, last_tx
+    if(timers.tnow() - last_tx < 7):
+        print("Rx decode received but on wrong cycle")
+        return # wrong cycle
     their_call = None
     if(decode_dict): their_call = decode_dict['call_b']  
     if(not their_call == QSO_their_call):
-        wait_for_cycle()
+        t_elapsed, t_remaining = timers.time_in_cycle()
+        if(t_remaining < 3): timers.sleep(t_remaining)
         transmit_message(current_tx_message)
     if(not decode_dict):
         return
