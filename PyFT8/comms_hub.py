@@ -41,13 +41,13 @@ class Events:
 
     def publish(self, topic, data):
         if topic not in all_topics:
-            timers.timedLog(f"[Events] Unrecognised topic '{topic}' — ignored", logfile = "events.log")
+            timers.timedLog(f"[Events] Unrecognised topic '{topic}' — ignored", logfile = "events.log", silent = True)
             return
         subs_cbs = self.subscriber_callbacks.get(topic, [])
         if not subs_cbs:
-            timers.timedLog(f"[Events] {topic} published {data!r} — no subscribers", logfile = 'events.log')
+            timers.timedLog(f"[Events] {topic} published {data!r} — no subscribers", logfile = 'events.log', silent = True)
         for subs_cb in subs_cbs:
-            timers.timedLog(f"[Events] {topic} to {subs_cb.__name__}({data!r})", logfile = 'events.log')
+            timers.timedLog(f"[Events] {topic} to {subs_cb.__name__}({data!r})", logfile = 'events.log', silent = True)
             subs_cb(data)
             
 # modules needing this use 'from comms_hub import events' :

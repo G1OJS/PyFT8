@@ -47,18 +47,15 @@ def cyclic_demodulator():
         timers.sleep(t_remain)
         if(t_elapsed <5 and t_elapsed > MAX_START_OFFSET_SECONDS):
             warnings.warn(f"Arrived to start recording at {t_elapsed} into cycle")
-        timers.timedLog("Audio loop requesting audio record")
+        timers.timedLog("Cyclic demodulator requesting audio")
         audio_in = audio.read_from_soundcard(timers.CYCLE_LENGTH - END_RECORD_GAP_SECONDS)
-        #audio.write_wav_file(AUDIO_FILE, audio_in)
         threading.Thread(target=get_decodes).start()
-        timers.timedLog("Audio loop saved audio")
+        timers.timedLog("Cyclic demodulator passed audio for demodulating")
 
 def get_decodes():
     from PyFT8.comms_hub import config, events
     import PyFT8.timers as timers
     from PyFT8.rx.waterfall import Waterfall
-    #audio_file = "audio_in.wav"
-    #timers.timedLog("Start to load audio")
 
     demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
     cyclestart_str = timers.cyclestart_str(1)
