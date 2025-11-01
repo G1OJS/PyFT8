@@ -18,6 +18,7 @@ TOPICS = SimpleNamespace(
     ui = SimpleNamespace(
         send_cq         = "ui.send_cq",
         reply_to_cq     = "ui.reply_to_cq",
+        reply_to_message= "ui.reply_to_message",
         set_rxfreq      = "ui.set_rxfreq",
     ),
     config = SimpleNamespace(
@@ -70,6 +71,7 @@ async def start_websockets_server():
     events.subscribe(TOPICS.decoder.decoding_started, lambda msg: _queue_message(TOPICS.decoder.decoding_started, msg))
     events.subscribe(TOPICS.decoder.decode_dict, lambda msg: _queue_message(TOPICS.decoder.decode_dict, msg))
     events.subscribe(TOPICS.decoder.decode_dict_rxfreq, lambda msg: _queue_message(TOPICS.decoder.decode_dict_rxfreq, msg))
+    events.subscribe(TOPICS.config.rxfreq_changed, lambda msg: _queue_message(TOPICS.config.rxfreq_changed, msg))
     async with serve(_handle_client, "localhost", 5678) as server:
         await server.serve_forever()
 

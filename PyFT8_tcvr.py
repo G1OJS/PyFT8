@@ -45,37 +45,20 @@ def transmit_message(msg):
     last_tx = timers.tnow()
     timers.timedLog(f"PTT OFF", logfile = "QSO.log")
     
-def initiate_qso(qso_params):
-    global QSO_their_call, current_tx_message, repeat_counter, last_tx
-    QSO_their_call = qso_params['their_call']
-    timers.timedLog(f"Initiate QSO with {QSO_their_call}", logfile = "QSO.log")
-    t_elapsed, t_remaining = timers.time_in_cycle()
-    timers.sleep(t_remaining + 15)
+def reply_to_message(selected_message):
+    first_call, their_call, grid_rpt = selected_message['first_call'], selected_message['their_call'], selected_message['grid_rpt']
 
-    current_tx_message = f"{QSO_their_call} {myCall} {myGrid}"
-    transmit_message(current_tx_message)
-
-def process_rx_messages(decode_dict):
-    global QSO_their_call, current_tx_message, repeat_counter, last_tx
-    if(timers.tnow() - last_tx < 7):
-        print("Rx decode received but on wrong cycle")
-        return # wrong cycle
-    their_call = None
-    if(decode_dict): their_call = decode_dict['call_b']  
-    if(not their_call == QSO_their_call):
-        t_elapsed, t_remaining = timers.time_in_cycle()
-        if(t_remaining < 3): timers.sleep(t_remaining)
+    if(first_call == "CQ"):
+        current_tx_message = f"{their_call} {myCall} {myGrid}"
         transmit_message(current_tx_message)
-    if(not decode_dict):
-        return
-    grid_rpt = decode_dict['grid_rpt']
-    timers.timedLog(f"Received reply from {their_call}: {grid_rpt}", logfile = "QSO.log")
+
     if(grid_rpt[-3]=="+" or grid_rpt[-3]=="-"):
         their_snr = decode_dict['snr']
-        current_tx_message = f"{QSO_their_call} {myCall} R{their_snr:+03d}"
+        current_tx_message = f"{their_call} {myCall} R{their_snr:+03d}"
         transmit_message(current_tx_message)
+
     if('73' in grid_rpt or 'RRR' in grid_rpt):
-        transmit_message(f"{QSO_their_call} {myCall} 73")
+        transmit_message(f"{their_call} {myCall} 73")
         current_tx_message = None
     
 def start_UI_server():
@@ -83,8 +66,8 @@ def start_UI_server():
     server = ThreadingHTTPServer(("localhost", 8080), SimpleHTTPRequestHandler)
     server.serve_forever()
 
-events.subscribe(TOPICS.decoder.decode_dict_rxfreq, process_rx_messages)
-events.subscribe(TOPICS.ui.reply_to_cq, initiate_qso)
+#events.subscribe(TOPICS.decoder.decode_dict_rxfreq, process_rx_messages)
+events.subscribe(TOPICS.ui.reply_to_message, reply_to_message)
 #events.subscribe(TOPICS.ui.send_cq, )
 
 
