@@ -49,10 +49,14 @@ def transmit_message(msg):
     timers.timedLog(f"PTT OFF", logfile = "QSO.log")
     
 def reply_to_message(selected_message):
-    call_a, call_b, grid_rpt = selected_message['call_a'], selected_message['call_b'], selected_message['grid_rpt']
+    call_a, call_b, grid_rpt, their_snr  = selected_message['call_a'], selected_message['call_b'], selected_message['grid_rpt'], selected_message['snr']
     
     if(call_a == "CQ"):
         current_tx_message = f"{call_b} {myCall} {myGrid}"
+        transmit_message(current_tx_message)
+
+    if(call_a == myCall and (grid_rpt[-3]=="+" or grid_rpt[-3]=="-"))):
+        current_tx_message = f"{call_b} {myCall} R{their_snr:+03d}"
         transmit_message(current_tx_message)
 
 #decode_dict = {'cyclestart_str': '251101_232315', 'freq': '2000', 'call_a': 'G1OJS', 'call_b': 'W1JTX',
@@ -65,10 +69,9 @@ def process_rx_messages(decode_dict):
         timers.timedLog("QSO processing skip, no current Rx freq decode", logfile = "QSO.log")
         return # no decode
     timers.timedLog(f"QSO reply received: {decode_dict['message']}", logfile = "QSO.log")
-    call_a, call_b, grid_rpt = decode_dict['call_a'], decode_dict['call_b'], decode_dict['grid_rpt']
+    call_a, call_b, grid_rpt, their_snr = decode_dict['call_a'], decode_dict['call_b'], decode_dict['grid_rpt'], decode_dict['snr']
 
     if(grid_rpt[-3]=="+" or grid_rpt[-3]=="-"):
-        their_snr = decode_dict['snr']
         current_tx_message = f"{call_b} {myCall} R{their_snr:+03d}"
         transmit_message(current_tx_message)
 

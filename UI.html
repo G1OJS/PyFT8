@@ -50,7 +50,7 @@
 					});
 					row.addEventListener("click", e => {
 						websocket.send(JSON.stringify({topic: "ui.set_rxfreq", freq: m.freq}));
-						websocket.send(JSON.stringify({topic: "ui.reply_to_message", call_a:m.call_a, call_b: m.call_b, grid_rpt: m.grid_rpt}));
+						websocket.send(JSON.stringify({topic: "ui.reply_to_message", call_a:m.call_a, call_b: m.call_b, grid_rpt: m.grid_rpt, snr:m.snr}));
 					}); 
 				}
 			} 
