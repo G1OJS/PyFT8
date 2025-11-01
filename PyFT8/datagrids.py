@@ -77,10 +77,10 @@ class Spectrum:
         self.noise_per_hop = None
         self.noise_per_symb = None
 
-    def get_audio(self, audio_file):
+    def load_audio(self, audio_in):
         """ Fill self.complex and self.power from a block of real audio samples. """
-        import PyFT8.audio as audio
-        audio_in = audio.read_wav_file(audio_file)
+        #import PyFT8.audio as audio
+        #audio_in = audio.read_wav_file(audio_file)
         for hop_idx in range(self.nHops):
             sample_idx0 = int(hop_idx * self.sample_rate / (self.symbols_persec * self.hops_persymb))
             sample_idxn = sample_idx0 + self.FFT_size

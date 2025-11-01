@@ -3,11 +3,11 @@ import wave
 import pyaudio
 from PyFT8.comms_hub import config, events
 import PyFT8.timers as timers
-global out_device_idx, in_device_idx
-out_device_idx, in_device_idx = None, None
+global output_device_idx, input_device_idx
+output_device_idx, input_device_idx = None, None
 pya = pyaudio.PyAudio()
-
-def find_device(device_str_contains):
+    
+def _find_device(device_str_contains):
     timers.timedLog(f"Looking for audio device matching {device_str_contains}")
     for dev_idx in range(pya.get_device_count()):
         name = pya.get_device_info_by_index(dev_idx)['name']
@@ -19,29 +19,30 @@ def find_device(device_str_contains):
             return dev_idx
     timers.timedLog(f"No audio device found matching {device_str_contains}")
 
-def read_from_soundcard(device_str_contains, seconds, sample_rate = 12000):
-    global in_device_idx
-    if(not in_device_idx):
-        in_device_idx = find_device(device_str_contains)
+def find_audio_devices():
+    global output_device_idx, input_device_idx
+    print(config.data)
+    input_device_idx = _find_device(config.data['input_device'])
+    output_device_idx = _find_device(config.data['output_device'])
+find_audio_devices()
+
+def read_from_soundcard(seconds, sample_rate = 12000):
     timers.timedLog("Audio module opening stream")
     stream = pya.open(format = pyaudio.paInt16, channels = 1, rate = sample_rate,
-                      input=True, input_device_index = in_device_idx,
+                      input=True, input_device_index = input_device_idx,
                       frames_per_buffer = seconds * sample_rate)
     data = np.frombuffer(stream.read(sample_rate * seconds, exception_on_overflow=False), dtype=np.int16)
     stream.close()
     return data
 
-def play_wav_to_soundcard(device_str_contains, sample_rate = 12000, filename = 'out.wav'):
-    global out_device_idx
-    if(not out_device_idx):
-        out_device_idx = find_device(device_str_contains)
+def play_wav_to_soundcard(sample_rate = 12000, filename = 'out.wav'):
     with wave.open(filename, 'rb') as wf:
         def callback(in_data, frame_count, time_info, status):
             data = wf.readframes(frame_count)
             return (data, pyaudio.paContinue)
         stream = pya.open(format = pyaudio.paInt16, channels = 1, rate = sample_rate,
                         output=True, stream_callback = callback,
-                        output_device_index = out_device_idx)
+                        output_device_index = output_device_idx)
         while stream.is_active():
             timers.sleep(0.1)
         stream.close()
