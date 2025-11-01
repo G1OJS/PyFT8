@@ -28,12 +28,16 @@
 		websocket.onmessage = (event) => {
 			const m = JSON.parse(event.data)
 			if(m){
-				if (m.topic == 'decoder.decoding_started') {
-					document.getElementById(grid_id).innerHTML = "";
-				} else {
-					let grid_id = ''
-					if(m.topic == 'decoder.decode_dict') grid_id = 'all_decodes';
-					if(m.topic == 'decoder.decode_dict_rxfreq') grid_id = 'rx_decodes';
+				if(m.topic == 'decoder.decoding_started') {document.getElementById('all_decodes').innerHTML = "";}
+
+				let grid_id = ''
+				if(m.topic == 'decoder.decode_dict') grid_id = 'all_decodes';
+				if(m.topic == 'decoder.decode_dict_rxfreq') grid_id = 'rx_decodes';
+				if(m.topic == 'config.rxfreq_changed') {
+					document.getElementById('rxFreq').innerHTML = `Rx:${m.freq}`;
+				}
+				
+				if(grid_id){
 					let row = document.getElementById(grid_id).appendChild(document.createElement("div"));
 					row.className='grid_row';
 					const fields = [m.cyclestart_str.split('_')[1], m.snr, m.freq, m.dt, m.call_a, m.call_b, m.grid_rpt,''];
@@ -44,17 +48,15 @@
 						row.appendChild(cell_div);
 					});
 					row.addEventListener("click", e => {
-						websocket.send(JSON.stringify({type: "SetRxFreq", freq: m.freq}));
-						websocket.send(JSON.stringify({type: "Reply_to", call: m.call_b}));
-						document.getElementById('rxFreq').innerHTML = `Rx:${m.freq}`;
+						websocket.send(JSON.stringify({topic: "ui.set_rxfreq", freq: m.freq}));
+						websocket.send(JSON.stringify({topic: "ui.reply_to_cq", their_call: m.call_b}));
 					}); 
-					row.addEventListener("dblclick", e => {
-						websocket.send(JSON.stringify({type: "SetRxFreq", freq: m.freq}));
-						websocket.send(JSON.stringify({type: "Reply_to", call: m.call_b}));
-						document.getElementById('rxFreq').innerHTML = `Rx:${m.freq}`;
-					}); 
+	//				row.addEventListener("dblclick", e => {
+	//					websocket.send(JSON.stringify({topic: "ui.set_rxfreq", freq: m.freq}));
+	//					websocket.send(JSON.stringify({topic: "ui.reply_to_cq", their_call: m.call_b}));
 				}
-			}
+			} 
+				
 		};
 		
 	</script>

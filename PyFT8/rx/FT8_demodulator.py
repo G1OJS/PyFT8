@@ -63,9 +63,8 @@ def get_decodes():
 
     events.publish(TOPICS.decoder.decoding_started, {})    
     decode = demod.demod_rxFreq(config.data['rxfreq'], cyclestart_str)
-    # send successful rx freq decodes to browser
-    if(decode): events.publish(TOPICS.to_ui.decode_dict_rxfreq, decode['decode_dict'])
-    # and to QSO sequencer, and also notify sequencer if rx freq decode didn't happen
+    # Send rx freq decode, subscribed by browser and QSO sequencer.
+    # Include null decodes as these notify sequencer if rx freq decode didn't happen
     events.publish(TOPICS.decoder.decode_dict_rxfreq, decode['decode_dict'] if decode else {})
 
     candidates = demod.find_candidates(100,3400)
@@ -78,7 +77,6 @@ def get_decodes():
         if(decode):
             events.publish(TOPICS.decoder.decode_dict, decode['decode_dict'])
             events.publish(TOPICS.decoder.decode_all_txt_line, decode['all_txt_line'])
-
     events.publish(TOPICS.decoder.decoding_completed, {}) 
   
 class FT8Demodulator:
@@ -159,6 +157,7 @@ class FT8Demodulator:
         f0_idx = int(np.searchsorted(self.spectrum.freqs, rxFreq))
         candidate = Candidate(self.sigspec, self.spectrum, 0, f0_idx, -50)
         self.sync_candidate(candidate)
+        print("Synced rx candidate")
         decode = self.demodulate_candidate(candidate, cyclestart_str = cyclestart_str)
         return decode
 
@@ -222,6 +221,8 @@ def FT8_decode(signal, cyclestart_str):
     c28_a = int(''.join(str(b) for b in bits[0:28]), 2)
     c28_b = int(''.join(str(b) for b in bits[29:57]), 2)
     g15  = int(''.join(str(b) for b in bits[59:74]), 2)
+    if(c28_a + c28_b + g15 == 0):
+        return
     call_a = unpack_ft8_c28(c28_a)
     call_b =  unpack_ft8_c28(c28_b)
     grid_rpt = unpack_ft8_g15(g15)

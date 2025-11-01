@@ -18,7 +18,7 @@ TOPICS = SimpleNamespace(
     ui = SimpleNamespace(
         send_cq         = "ui.send_cq",
         reply_to_cq     = "ui.reply_to_cq",
-        change_rxfreq   = "ui.change_rxfreq",
+        set_rxfreq      = "ui.set_rxfreq",
     ),
     config = SimpleNamespace(
         rxfreq_changed  = "config.rxfreq_changed",
@@ -121,7 +121,7 @@ class Config:
       #  if os.path.exists(self.filename):
       #      with open(self.filename) as f:
       #          self.data = json.load(f)
-        events.subscribe(TOPICS.ui.change_rxfreq, self.set_rxFreq)
+        events.subscribe(TOPICS.ui.set_rxfreq, self.set_rxFreq)
         
     def set_rxFreq(self, cmd):
         self.data['rxFreq'] = int(cmd['freq'])
