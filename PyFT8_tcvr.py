@@ -17,23 +17,26 @@ from PyFT8.comms_hub import config, events, TOPICS, start_websockets_server
 
 myCall = 'G1OJS'
 myGrid = 'IO90'
-global QSO_their_call, current_tx_message, repeat_counter, last_tx
-QSO_their_call = ''
+global QSO_call_b, current_tx_message, repeat_counter, last_tx
+QSO_call_b = ''
 current_tx_message = None
 repeat_counter = 0
 last_tx = 0
 
 rig = IcomCIV()
 
-testing_from_wsjtx = False
+testing_from_wsjtx = True
 
 def transmit_message(msg):
-    global QSO_their_call, current_tx_message, repeat_counter,  last_tx
-    if(not msg): return
+    global QSO_call_b, current_tx_message, repeat_counter,  last_tx
+    if(not msg):
+        timers.timedLog("QSO transmit skip, no message to transmit", logfile = "QSO.log")
+        return
     repeat_counter = repeat_counter + 1 if( msg == current_tx_message ) else 0
     if(repeat_counter >= 3):
+        timers.timedLog("QSO transmit skip, repeat count too high", logfile = "QSO.log")
         return
-    timers.timedLog(f"Send messasge: ({repeat_counter}) {msg}", logfile = "QSO.log")
+    timers.timedLog(f"Send message: ({repeat_counter}) {msg}", logfile = "QSO.log")
     c1, c2, grid_rpt = msg.split()
     symbols = FT8_encoder.pack_message(c1, c2, grid_rpt)
     audio_data = audio.create_ft8_wave(symbols, f_base = config.data['txfreq'])
@@ -46,24 +49,31 @@ def transmit_message(msg):
     timers.timedLog(f"PTT OFF", logfile = "QSO.log")
     
 def reply_to_message(selected_message):
-    first_call, their_call, grid_rpt = selected_message['first_call'], selected_message['their_call'], selected_message['grid_rpt']
+    call_a, call_b, grid_rpt = selected_message['call_a'], selected_message['call_b'], selected_message['grid_rpt']
     
-    if(first_call == "CQ"):
-        current_tx_message = f"{their_call} {myCall} {myGrid}"
+    if(call_a == "CQ"):
+        current_tx_message = f"{call_b} {myCall} {myGrid}"
         transmit_message(current_tx_message)
 
+#decode_dict = {'cyclestart_str': '251101_232315', 'freq': '2000', 'call_a': 'G1OJS', 'call_b': 'W1JTX',
+#        'grid_rpt': '+36', 't0_idx': 4, 'dt': ' 0.2', 'snr': 24, 'message': 'G1OJS W1JTX +36'}
 def process_rx_messages(decode_dict):
-    if(timers.tnow() - last_tx < 7): return # wrong cycle
-    
-    first_call, their_call, grid_rpt = decode_dict['call_a'], decode_dict['call_b'], decode_dict['grid_rpt']
-    
+    if(timers.tnow() - last_tx < 7):
+        timers.timedLog("QSO processing skip, time to close to end of last tx", logfile = "QSO.log")
+        return # wrong cycle
+    if(not decode_dict):
+        timers.timedLog("QSO processing skip, no current Rx freq decode", logfile = "QSO.log")
+        return # no decode
+    timers.timedLog(f"QSO reply received: {decode_dict['message']}", logfile = "QSO.log")
+    call_a, call_b, grid_rpt = decode_dict['call_a'], decode_dict['call_b'], decode_dict['grid_rpt']
+
     if(grid_rpt[-3]=="+" or grid_rpt[-3]=="-"):
         their_snr = decode_dict['snr']
-        current_tx_message = f"{their_call} {myCall} R{their_snr:+03d}"
+        current_tx_message = f"{call_b} {myCall} R{their_snr:+03d}"
         transmit_message(current_tx_message)
 
     if('73' in grid_rpt or 'RRR' in grid_rpt):
-        transmit_message(f"{their_call} {myCall} 73")
+        transmit_message(f"{call_b} {myCall} 73")
         current_tx_message = None
     
 def start_UI_server():
@@ -78,6 +88,7 @@ events.subscribe(TOPICS.ui.reply_to_message, reply_to_message)
 
 if testing_from_wsjtx:
     config.data.update({"input_device":["CABLE", "Output"]})
+    config.data.update({"output_device":["CABLE", "Input"]})
     audio.find_audio_devices()
 
 threading.Thread(target=cyclic_demodulator).start()

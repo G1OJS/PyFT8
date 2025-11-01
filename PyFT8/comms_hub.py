@@ -137,3 +137,8 @@ class Config:
             
 # modules needing this use 'from comms_hub import config' :
 config = Config()
+
+logs = ['QSO.log', 'events.log', 'PyFT8.log']
+for l in logs:
+    with open(l, 'w') as f:
+        f.write('')
