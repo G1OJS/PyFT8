@@ -40,12 +40,3 @@ def odd_even_now():
     t = (time.time() / CYCLE_LENGTH) % 2
     return['even','odd'][int(t)]  
 
-def cycle_tick():
-    events.publish("cycle_start", odd_even_now())
-    threading.Timer(15, cycle_tick).start()
-
-
-timedLog("Waiting to initiate cycle ticker")
-sleep_until(0)
-cycle_tick()
-timedLog("Initiated cycle ticker")

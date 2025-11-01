@@ -28,60 +28,60 @@ from PyFT8.rx.decode174_91 import decode174_91
 import PyFT8.FT8_crc as crc
 import PyFT8.timers as timers
 import warnings
+from PyFT8.comms_hub import events, TOPICS
 
-def cyclic_demodulator(input_device_str_contains):
+global audio_in
+audio_in = None
+
+def cyclic_demodulator():
     from PyFT8.comms_hub import config
     import threading
     import PyFT8.timers as timers
     import PyFT8.audio as audio
-    AUDIO_FILE = "audio_in.wav"
     MAX_START_OFFSET_SECONDS = 0.5
     END_RECORD_GAP_SECONDS = 1
-    
+
+    global audio_in
     while True:
         t_elapsed, t_remain, = timers.time_in_cycle()
         timers.sleep(t_remain)
         if(t_elapsed <5 and t_elapsed > MAX_START_OFFSET_SECONDS):
             warnings.warn(f"Arrived to start recording at {t_elapsed} into cycle")
         timers.timedLog("Audio loop requesting audio record")
-        audio_in = audio.read_from_soundcard(input_device_str_contains, timers.CYCLE_LENGTH - END_RECORD_GAP_SECONDS)
-        audio.write_wav_file(AUDIO_FILE, audio_in)
+        audio_in = audio.read_from_soundcard(timers.CYCLE_LENGTH - END_RECORD_GAP_SECONDS)
+        #audio.write_wav_file(AUDIO_FILE, audio_in)
         threading.Thread(target=get_decodes).start()
         timers.timedLog("Audio loop saved audio")
 
 def get_decodes():
     from PyFT8.comms_hub import config, events
     import PyFT8.timers as timers
-    audio_file = "audio_in.wav"
-    timers.timedLog("Start to load audio")
+    #audio_file = "audio_in.wav"
+    #timers.timedLog("Start to load audio")
 
     demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
     cyclestart_str = timers.cyclestart_str(1)
-
-    demod.spectrum.get_audio(audio_file)
-    timers.timedLog("Decode Rx frequency")
+    demod.spectrum.load_audio(audio_in)
+    
+    events.publish(TOPICS.decoder.decoding_started, '')    
     decode = demod.demod_rxFreq(config.data['rxFreq'], cyclestart_str)
-    if(decode):
-        UI_message = decode['decode_dict']
-        UI_message['grid_id'] = 'rx_decodes'
-        UI_message['type'] = 'decode'
-        events.publish("UI_message", UI_message)
-        events.publish("rxFreqMessage", decode['decode_dict'])
+    # send successful rx freq decodes to browser
+    if(decode): events.publish(TOPICS.to_ui.decode_dict_rxfreq, decode['decode_dict'])
+    # and to QSO sequencer, and also notify sequencer if rx freq decode didn't happen
+    events.publish(TOPICS.decoder.decode_dict_rxfreq, decode['decode_dict'] if decode else None)
 
     candidates = demod.find_candidates(100,3400)
     candidates = demod.deduplicate_candidate_freqs(candidates)
-    events.publish("UI_message", {'grid_id':'all_decodes', 'type':'clear_grid'})
     for c in candidates:
+        msg_payload = None
         demod.sync_candidate(c)
         decode = demod.demodulate_candidate(c, cyclestart_str)
+        # successful decodes go to browser, test_live_vs_wsjtx, all_text file writer when written
         if(decode):
-            message = decode['decode_dict']
-            message['grid_id'] = 'all_decodes'
-            message['type'] = 'decode'
-            events.publish("UI_message", message)
-            events.publish("All_txt_message", decode['all_txt'])
-    timers.timedLog(f"Decoded all")
-    events.publish("Decoded_all", "Decoded_all")
+            events.publish(TOPICS.decoder.decode_dict, decode['decode_dict'])
+            events.publish(TOPICS.decoder.decode_all_txt_line, decode['all_txt_line'])
+
+    events.publish(TOPICS.decoder.decoding_completed, '') 
   
 class FT8Demodulator:
     def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=3, sigspec=FT8):
@@ -229,8 +229,8 @@ def FT8_decode(signal, cyclestart_str):
     grid_rpt = unpack_ft8_g15(g15)
     freq_str = f"{signal.bounds.f0:4.0f}"
     message = f"{call_a} {call_b} {grid_rpt}"
-    all_txt = f"{cyclestart_str}     0.000 Rx FT8    {signal.snr:+03d} {signal.bounds.t0 :4.1f} {signal.bounds.f0 :4.0f} {message}"
+    all_txt_line = f"{cyclestart_str}     0.000 Rx FT8    {signal.snr:+03d} {signal.bounds.t0 :4.1f} {signal.bounds.f0 :4.0f} {message}"
     decode_dict = {'cyclestart_str':cyclestart_str , 'freq':freq_str, 'call_a':call_a,
                  'call_b':call_b, 'grid_rpt':grid_rpt, 't0_idx':signal.bounds.t0_idx, 'dt':f"{signal.bounds.t0 :4.1f}", 'snr':signal.snr, 'message':message}
-    return {'all_txt':all_txt, 'decode_dict':decode_dict}
+    return {'all_txt_line':all_txt_line, 'decode_dict':decode_dict}
 

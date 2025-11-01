@@ -4,7 +4,7 @@ import sys
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 from PyFT8.rx.FT8_demodulator import cyclic_demodulator
 from PyFT8.rx.waterfall import Waterfall
-from PyFT8.comms_hub import config, events
+from PyFT8.comms_hub import config, events, TOPICS
 import PyFT8.timers as timers
 
 PyFT8_file = "pyft8.txt"
@@ -88,8 +88,8 @@ print("Running, waiting for messages")
 reset_compare()        
 threading.Thread(target=wsjtx_tailer).start()
 threading.Thread(target=cyclic_demodulator, args=(["Mic","CODEC"],)).start()
-events.subscribe("All_txt_message", append_PyFT8_decode_to_file)
-events.subscribe("Decoded_all", do_compare)
+events.subscribe(TOPICS.decoder.decode_all_txt_line, append_PyFT8_decode_to_file)
+events.subscribe(TOPICS.decoder.decoding_completed, do_compare)
 
 
     
