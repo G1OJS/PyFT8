@@ -25,7 +25,7 @@ last_tx = 0
 
 rig = IcomCIV()
 
-testing_from_wsjtx = True
+testing_from_wsjtx = False
 
 def transmit_message(msg):
     global QSO_call_b, current_tx_message, repeat_counter,  last_tx
