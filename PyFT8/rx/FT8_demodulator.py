@@ -157,7 +157,7 @@ class FT8Demodulator:
         f0_idx = int(np.searchsorted(self.spectrum.freqs, rxFreq))
         candidate = Candidate(self.sigspec, self.spectrum, 0, f0_idx, -50)
         self.sync_candidate(candidate)
-        print("Synced rx candidate")
+        timers.timedLog(f"Rx candidate synced {candidate.bounds.t0} {candidate.bounds.f0}")
         decode = self.demodulate_candidate(candidate, cyclestart_str = cyclestart_str)
         return decode
 

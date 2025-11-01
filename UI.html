@@ -34,7 +34,8 @@
 				if(m.topic == 'decoder.decode_dict') grid_id = 'all_decodes';
 				if(m.topic == 'decoder.decode_dict_rxfreq') grid_id = 'rx_decodes';
 				if(m.topic == 'config.rxfreq_changed') {
-					document.getElementById('rxFreq').innerHTML = `Rx:${m.freq}`;
+					console.log(m);
+					document.getElementById('rxFreq').innerHTML = m.freq;
 				}
 				
 				if(grid_id){

@@ -99,10 +99,11 @@ async def _handle_client(websocket):
 async def _send_to_browser(websocket):
     while True:
         message = await message_queue.get()
+        timers.timedLog(f"[WebsocketsServer] sending {message}", 'events.log')
         try:
             await websocket.send(json.dumps(message))
         except Exception as e:
-            timers.timedLog(f"[WebsocketsServer] couldn't send message {message}", 'events.log')
+            timers.timedLog(f"[WebsocketsServer] couldn't send message", 'events.log')
         message_queue.task_done()
 
 async def _receive_from_browser(websocket):
@@ -128,8 +129,7 @@ class Config:
     def set_rxFreq(self, cmd):
         self.data['rxFreq'] = int(cmd['freq'])
        # self.save()
-        events.publish(TOPICS.config.rxfreq_changed, self.data['rxFreq'])
-        timers.timedLog(f"Set rx freq to {self.data['rxFreq']}")
+        events.publish(TOPICS.config.rxfreq_changed, {'freq':int(self.data['rxFreq'])})
         
     def save(self):
         with open(self.filename, "w") as f:
