@@ -127,9 +127,9 @@ class Config:
         events.subscribe(TOPICS.ui.set_rxfreq, self.set_rxFreq)
         
     def set_rxFreq(self, cmd):
-        self.data['rxFreq'] = int(cmd['freq'])
+        self.data['rxfreq'] = int(cmd['freq'])
        # self.save()
-        events.publish(TOPICS.config.rxfreq_changed, {'freq':int(self.data['rxFreq'])})
+        events.publish(TOPICS.config.rxfreq_changed, {'freq':int(self.data['rxfreq'])})
         
     def save(self):
         with open(self.filename, "w") as f:
