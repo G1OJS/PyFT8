@@ -11,6 +11,9 @@ def sleep_until(cycle_seconds = 0):
         time.sleep(sleep_time)
     else:
         time.sleep(sleep_time + CYCLE_LENGTH)
+
+def tnow():
+    return time.time()
     
 def sleep(secs):
     if(secs>0):

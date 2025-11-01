@@ -17,23 +17,20 @@ from PyFT8.comms_hub import config, events, TOPICS, start_websockets_server
 
 myCall = 'G1OJS'
 myGrid = 'IO90'
-global QSO_their_call, current_tx_message, repeat_counter, PTT, odd_even
+global QSO_their_call, current_tx_message, repeat_counter, odd_even, last_tx
 QSO_their_call = ''
 current_tx_message = None
 repeat_counter = 0
-PTT = 0
 odd_even = None
+last_tx = 0
 
 rig = IcomCIV()
 
 testing_from_wsjtx = False
 
 def transmit_message(msg):
-    global QSO_their_call, current_tx_message, repeat_counter, PTT, odd_even
+    global QSO_their_call, current_tx_message, repeat_counter, odd_even, last_tx
     if(not msg): return
-    while PTT:
-        print("PTT is on")
-        timers.sleep(0.1)
     repeat_counter = repeat_counter + 1 if( msg == current_tx_message ) else 0
     if(repeat_counter >= 3):
         return
@@ -44,14 +41,13 @@ def transmit_message(msg):
     audio.write_wav_file('out.wav', audio_data)
     timers.timedLog(f"PTT ON", logfile = "QSO.log")
     rig.setPTTON()
-    PTT = 1
     audio.play_wav_to_soundcard()
     rig.setPTTOFF()
-    PTT = 0
+    last_tx = timers.tnow()
     timers.timedLog(f"PTT OFF", logfile = "QSO.log")
     
 def initiate_qso(qso_params):
-    global QSO_their_call, current_tx_message, repeat_counter, odd_even
+    global QSO_their_call, current_tx_message, repeat_counter, odd_even, last_tx
     odd_even = timers.odd_even_now()
     QSO_their_call = qso_params['their_call']
     t_elapsed, t_remaining = timers.time_in_cycle()
@@ -66,11 +62,10 @@ def wait_for_cycle():
     if(t_elapsed > 2): timers.sleep(t_remaining) 
 
 def process_rx_messages(decode_dict):
-    global QSO_their_call, current_tx_message, repeat_counter, odd_even
-    if(odd_even != timers.odd_even_now()): return
+    global QSO_their_call, current_tx_message, repeat_counter, odd_even, last_tx
+    if(timers.tnow() - last_tx < 7): return
     their_call = None
-    if(decode_dict):
-        their_call = decode_dict['call_b']  
+    if(decode_dict): their_call = decode_dict['call_b']  
     if(not their_call == QSO_their_call):
         wait_for_cycle()
         transmit_message(current_tx_message)
@@ -81,10 +76,8 @@ def process_rx_messages(decode_dict):
     if(grid_rpt[-3]=="+" or grid_rpt[-3]=="-"):
         their_snr = decode_dict['snr']
         current_tx_message = f"{QSO_their_call} {myCall} R{their_snr:+03d}"
-        wait_for_cycle()
         transmit_message(current_tx_message)
-    if('73' in grid_rpt):
-        wait_for_cycle()
+    if('73' in grid_rpt or 'RRR' in grid_rpt):
         transmit_message(f"{QSO_their_call} {myCall} 73")
         current_tx_message = None
     
