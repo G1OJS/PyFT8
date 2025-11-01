@@ -47,8 +47,8 @@ def transmit_message(msg):
     
 def initiate_qso(qso_params):
     global QSO_their_call, current_tx_message, repeat_counter, last_tx
-    odd_even = timers.odd_even_now()
     QSO_their_call = qso_params['their_call']
+    timers.timedLog(f"Initiate QSO with {QSO_their_call}", logfile = "QSO.log")
     t_elapsed, t_remaining = timers.time_in_cycle()
     timers.sleep(t_remaining + 15)
 
