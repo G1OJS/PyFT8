@@ -17,16 +17,19 @@ from PyFT8.comms_hub import config, events, TOPICS, start_websockets_server
 
 myCall = 'G1OJS'
 myGrid = 'IO90'
-global QSO_their_call
+global QSO_their_call, current_tx_message, repeat_counter
 QSO_their_call = ''
-
-
-
+current_tx_message = ''
+repeat_counter = 0
 
 rig = IcomCIV()
 
 def transmit_message(msg):
-    timers.timedLog(f"Send messasge: {msg}", logfile = "QSO.log")
+    global QSO_their_call, current_tx_message, repeat_counter
+    repeat_counter = repeat_counter + 1 if( msg == current_tx_message ) else 0
+    if(repeat_counter >= 3):
+        return
+    timers.timedLog(f"Send messasge: ({repeat_counter}) {msg}", logfile = "QSO.log")
     c1, c2, grid_rpt = msg.split()
     symbols = FT8_encoder.pack_message(c1, c2, grid_rpt)
     audio_data = audio.create_ft8_wave(symbols, f_base = config.data['txfreq'])
@@ -36,22 +39,25 @@ def transmit_message(msg):
     rig.setPTTOFF()
     
 def initiate_qso(qso_params):
+    global QSO_their_call, current_tx_message, repeat_counter
     odd_even = timers.odd_even_now()
     QSO_their_call = qso_params['their_call']
-    transmit_message(f"{QSO_their_call} {myCall} {myGrid}")
+    current_tx_message = f"{QSO_their_call} {myCall} {myGrid}"
+    transmit_message(current_tx_message)
 
 def process_rx_messages(decode_dict):
+    global QSO_their_call, current_tx_message, repeat_counter
+    their_call = decode_dict['call_b'] if decode_dict else None
+    if(not their_call == QSO_their_call):
+        transmit_message(current_tx_message)
     if(not decode_dict):
         return
-    their_call = decode_dict['call_b']
-    print(their_call, QSO_their_call)
-    if(not their_call == QSO_their_call):
-        return 
     grid_rpt = decode_dict['grid_rpt']
     timers.timedLog(f"Received reply from {their_call}: {grid_rpt}", logfile = "QSO.log")
-    if(grid_rpt[-2]=="+" or grid_rpt[-2]=="-"):
+    if(grid_rpt[-3]=="+" or grid_rpt[-3]=="-"):
         their_snr = decode_dict['snr']
-        transmit_message(f"{QSO_their_call} {myCall} R{their_snr:+03d}")
+        current_tx_message = f"{QSO_their_call} {myCall} R{their_snr:+03d}"
+        transmit_message(current_tx_message)
     if('73' in grid_rpt):
         transmit_message(f"{QSO_their_call} {myCall} 73")
     
