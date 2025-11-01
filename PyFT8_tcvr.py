@@ -47,11 +47,16 @@ def transmit_message(msg):
     
 def reply_to_message(selected_message):
     first_call, their_call, grid_rpt = selected_message['first_call'], selected_message['their_call'], selected_message['grid_rpt']
-
+    
     if(first_call == "CQ"):
         current_tx_message = f"{their_call} {myCall} {myGrid}"
         transmit_message(current_tx_message)
 
+def process_rx_messages(decode_dict):
+    if(timers.tnow() - last_tx < 7): return # wrong cycle
+    
+    first_call, their_call, grid_rpt = decode_dict['call_a'], decode_dict['call_b'], decode_dict['grid_rpt']
+    
     if(grid_rpt[-3]=="+" or grid_rpt[-3]=="-"):
         their_snr = decode_dict['snr']
         current_tx_message = f"{their_call} {myCall} R{their_snr:+03d}"
@@ -66,7 +71,7 @@ def start_UI_server():
     server = ThreadingHTTPServer(("localhost", 8080), SimpleHTTPRequestHandler)
     server.serve_forever()
 
-#events.subscribe(TOPICS.decoder.decode_dict_rxfreq, process_rx_messages)
+events.subscribe(TOPICS.decoder.decode_dict_rxfreq, process_rx_messages)
 events.subscribe(TOPICS.ui.reply_to_message, reply_to_message)
 #events.subscribe(TOPICS.ui.send_cq, )
 
