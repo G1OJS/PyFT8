@@ -55,7 +55,7 @@ def reply_to_message(selected_message):
         current_tx_message = f"{call_b} {myCall} {myGrid}"
         transmit_message(current_tx_message)
 
-    if(call_a == myCall and (grid_rpt[-3]=="+" or grid_rpt[-3]=="-"))):
+    if(call_a == myCall and (grid_rpt[-3]=="+" or grid_rpt[-3]=="-")):
         current_tx_message = f"{call_b} {myCall} R{their_snr:+03d}"
         transmit_message(current_tx_message)
 
