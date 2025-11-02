@@ -1,4 +1,4 @@
-# Python FT8 Rx and Tx with Browser-based UI in progress
+# Python FT8 Rx and Tx with Browser-based UI
 V2.1.0:
 * Getting ~50% of WSJT-x decodes
 * Decodes finish about 1 second into the next frame
