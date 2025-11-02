@@ -9,20 +9,12 @@ from types import SimpleNamespace
 
 TOPICS = SimpleNamespace(
     decoder = SimpleNamespace(
-        decoding_started    = "decoder.decoding_started",       # used by UI to clear windows etc      
-        decode_dict         = "decoder.decode_dict",            # used by UI
-        decode_all_txt_line = "decoder.decode_all_txt_line",    # used by tests
-        decode_dict_rxfreq  = "decoder.decode_dict_rxfreq",     # used by UI and QSO sequencer
+        decode_all_txt_line = "decoder.decode_all_txt_line",    # used by all_txt writer
         decoding_completed  = "decoder.decoding_completed",     # used by tests to count matches
     ),
     ui = SimpleNamespace(
-        send_cq         = "ui.send_cq",
-        reply_to_cq     = "ui.reply_to_cq",
-        reply_to_message= "ui.reply_to_message",
-        set_rxfreq      = "ui.set_rxfreq",
-    ),
-    config = SimpleNamespace(
-        rxfreq_changed  = "config.rxfreq_changed",
+        send_cq                     = "ui.send_cq",
+        process_clicked_message     = "ui.process_clicked_message",
     )
 )
 
@@ -68,14 +60,10 @@ async def start_websockets_server():
     global message_queue, loop
     loop = asyncio.get_running_loop()
     message_queue = asyncio.Queue()
-    events.subscribe(TOPICS.decoder.decoding_started, lambda msg: _queue_message(TOPICS.decoder.decoding_started, msg))
-    events.subscribe(TOPICS.decoder.decode_dict, lambda msg: _queue_message(TOPICS.decoder.decode_dict, msg))
-    events.subscribe(TOPICS.decoder.decode_dict_rxfreq, lambda msg: _queue_message(TOPICS.decoder.decode_dict_rxfreq, msg))
-    events.subscribe(TOPICS.config.rxfreq_changed, lambda msg: _queue_message(TOPICS.config.rxfreq_changed, msg))
     async with serve(_handle_client, "localhost", 5678) as server:
         await server.serve_forever()
 
-def _queue_message(topic, message):
+def send_to_ui_ws(topic, message):
     if not isinstance(message, dict):
         message = {}    # should really raise exception here 
     if loop and loop.is_running():
@@ -124,12 +112,10 @@ class Config:
       #  if os.path.exists(self.filename):
       #      with open(self.filename) as f:
       #          self.data = json.load(f)
-        events.subscribe(TOPICS.ui.set_rxfreq, self.set_rxFreq)
         
-    def set_rxFreq(self, cmd):
-        self.data['rxfreq'] = int(cmd['freq'])
+    def set_rxFreq(self, rxfreq):
+        self.data['rxfreq'] = rxfreq
        # self.save()
-        events.publish(TOPICS.config.rxfreq_changed, {'freq':int(self.data['rxfreq'])})
         
     def save(self):
         with open(self.filename, "w") as f:

@@ -13,29 +13,35 @@ import PyFT8.audio as audio
 from PyFT8.rig.IcomCIV import IcomCIV
 from PyFT8.rx.FT8_demodulator import cyclic_demodulator
 import PyFT8.tx.FT8_encoder as FT8_encoder
-from PyFT8.comms_hub import config, events, TOPICS, start_websockets_server
+from PyFT8.comms_hub import config, events, TOPICS, start_websockets_server, send_to_ui_ws
 
 myCall = 'G1OJS'
 myGrid = 'IO90'
-global QSO_call_b, current_tx_message, repeat_counter, last_tx
-QSO_call_b = ''
-current_tx_message = None
+global QSO_call, last_tx_messsage, repeat_counter, last_tx_complete_time
+
+#transmit message s
+QSO_call = False
 repeat_counter = 0
-last_tx = 0
+last_tx_messsage =''
+last_tx_complete_time = 0
 
 rig = IcomCIV()
 
 testing_from_wsjtx = False
 
 def transmit_message(msg):
-    global QSO_call_b, current_tx_message, repeat_counter,  last_tx
+    global QSO_call, repeat_counter, last_tx_complete_time, last_tx_messsage
     if(not msg):
         timers.timedLog("QSO transmit skip, no message to transmit", logfile = "QSO.log")
         return
-    repeat_counter = repeat_counter + 1 if( msg == current_tx_message ) else 0
+    if(last_tx_complete_time > timers.tnow() -7):
+        timers.timedLog("QSO transmit skip, too close to last transmit", logfile = "QSO.log")
+        return        
+    repeat_counter = repeat_counter + 1 if( msg == last_tx_messsage ) else 0
     if(repeat_counter >= 3):
         timers.timedLog("QSO transmit skip, repeat count too high", logfile = "QSO.log")
         return
+    last_tx_messsage = msg
     timers.timedLog(f"Send message: ({repeat_counter}) {msg}", logfile = "QSO.log")
     c1, c2, grid_rpt = msg.split()
     symbols = FT8_encoder.pack_message(c1, c2, grid_rpt)
@@ -51,58 +57,65 @@ def transmit_message(msg):
     rig.setPTTON()
     audio.play_wav_to_soundcard()
     rig.setPTTOFF()
-    last_tx = timers.tnow()
+    last_tx_complete_time = timers.tnow()
     timers.timedLog(f"PTT OFF", logfile = "QSO.log")
-    
-def reply_to_message(selected_message):
-    call_a, call_b, grid_rpt, their_snr  = selected_message['call_a'], selected_message['call_b'], selected_message['grid_rpt'], selected_message['snr']
-    
-    if(call_a == "CQ"):
-        current_tx_message = f"{call_b} {myCall} {myGrid}"
-        transmit_message(current_tx_message)
 
-    if(call_a == myCall and (grid_rpt[-3]=="+" or grid_rpt[-3]=="-")):
-        current_tx_message = f"{call_b} {myCall} R{their_snr:+03d}"
-        transmit_message(current_tx_message)
-
-#decode_dict = {'cyclestart_str': '251101_232315', 'freq': '2000', 'call_a': 'G1OJS', 'call_b': 'W1JTX',
-#        'grid_rpt': '+36', 't0_idx': 4, 'dt': ' 0.2', 'snr': 24, 'message': 'G1OJS W1JTX +36'}
-def process_rx_messages(decode_dict):
-    if(timers.tnow() - last_tx < 7):
-        timers.timedLog("QSO processing skip, time to close to end of last tx", logfile = "QSO.log")
-        return # wrong cycle
-   # if(not decode_dict):
-   #     timers.timedLog("QSO processing skip, no current Rx freq decode", logfile = "QSO.log")
-   #     return # no decode
+def set_rxFreq(rxfreq):
+    rxfreq = int(rxfreq)
+    timers.timedLog(f"Set rxfreq to {rxfreq}", logfile = "QSO.log")
+    send_to_ui_ws("transceiver.set_rxfreq", {'freq':rxfreq})
+    config.set_rxFreq(rxfreq)
     
+def process_clicked_message(selected_message):
+    global QSO_call, last_tx_complete_time
+    set_rxFreq(selected_message['freq'])
+    last_tx_complete_time=0
+    reply_to_message(selected_message)
+
+def process_rxfreq_decode(decode):
+    # should arrive here earlier than in process_decode
+    decode['decode_dict'].update({'priority':True})
+    process_decode(decode)
+
+def process_decode(decode):
+    decode_dict = decode['decode_dict']
+    if(decode_dict['call_b'] == myCall):
+        decode_dict.update({'priority':True})        
+    send_to_ui_ws("transceiver.decode_dict", decode_dict)
+    if (decode_dict['call_a'] == myCall and decode_dict['call_b'] == QSO_call):
+        reply_to_message(decode_dict)
+        
+def reply_to_message(decode_dict):
+    global QSO_call, tx_message
     call_a, call_b, grid_rpt, their_snr = decode_dict['call_a'], decode_dict['call_b'], decode_dict['grid_rpt'], decode_dict['snr']
-
-    if(call_a == myCall and (grid_rpt[-3]=="+" or grid_rpt[-3]=="-")):
-        timers.timedLog(f"QSO reply received: {decode_dict['message']}", logfile = "QSO.log")
-        current_tx_message = f"{call_b} {myCall} R{their_snr:+03d}"
-        transmit_message(current_tx_message)
-
-    if(call_a == myCall and ('73' in grid_rpt or 'RRR' in grid_rpt)):
-        timers.timedLog(f"QSO reply received: {decode_dict['message']}", logfile = "QSO.log")
-        transmit_message(f"{call_b} {myCall} 73")
-        current_tx_message = None
+    rx_message = f"{call_a} {call_b} {grid_rpt}"
+    if(call_a == "CQ"):
+        QSO_call = call_b
+        transmit_message(f"{call_b} {myCall} {myGrid}")
+    if(call_a == myCall):
+        QSO_call = call_b
+        if(len(grid_rpt)>2):    
+            if(grid_rpt[-3]=="+" or grid_rpt[-3]=="-"):
+                timers.timedLog(f"QSO reply received: {rx_message}", logfile = "QSO.log")
+                transmit_message(f"{call_b} {myCall} R{their_snr:+03d}")
+        if('73' in grid_rpt or 'RRR' in grid_rpt):
+            timers.timedLog(f"QSO reply received: {rx_message}", logfile = "QSO.log")
+            transmit_message(f"{call_b} {myCall} 73")
+            QSO_call = ''
     
 def start_UI_server():
     os.chdir(r"C:/Users/drala/Documents/Projects/GitHub/PyFT8/")
     server = ThreadingHTTPServer(("localhost", 8080), SimpleHTTPRequestHandler)
     server.serve_forever()
 
-events.subscribe(TOPICS.decoder.decode_dict_rxfreq, process_rx_messages)
-events.subscribe(TOPICS.ui.reply_to_message, reply_to_message)
-#events.subscribe(TOPICS.ui.send_cq, )
-
+events.subscribe(TOPICS.ui.process_clicked_message, process_clicked_message)
 
 if testing_from_wsjtx:
     config.data.update({"input_device":["CABLE", "Output"]})
     config.data.update({"output_device":["CABLE", "Input"]})
     audio.find_audio_devices()
 
-threading.Thread(target=cyclic_demodulator).start()
+threading.Thread(target=cyclic_demodulator, kwargs=({'onDecode':process_decode, 'onRxFreqDecode':process_rxfreq_decode})).start()
 threading.Thread(target=start_UI_server, daemon=True).start()
 webbrowser.open("http://localhost:8080/UI.html")
 

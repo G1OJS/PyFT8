@@ -10,7 +10,7 @@
 		body { font-family: sans-serif; background:#111; color:#eee; margin:1em; }
 		#DecodePanelsContainer {display:grid; grid-template-columns: repeat(2, max-content); background:#555; width:max-content;}	
 		.decodes_grid {display:grid; grid-template-columns: repeat( 7, max-content) auto; 
-					   background:#222; color:#8cf; margin:0.5em; min-height:10em; min-width:25em;}	
+					   background:#222; color:#8cf; margin:0.5em; height:15em; min-width:25em; overflow-y:scroll;}	
 		.grid_row {display:contents;}
 		.grid_row:hover > div{background-color: #333;}
 		.grid_row.sentTomyCall > div{background-color: #ff4d4d;}
@@ -32,22 +32,20 @@
 		websocket.onmessage = (event) => {
 			const m = JSON.parse(event.data)
 			if(m){
-				if(m.topic == 'decoder.decoding_started') {document.getElementById('all_decodes').innerHTML = "";}
 
-				let grid_id = ''
-				if(m.topic == 'decoder.decode_dict') grid_id = 'all_decodes';
-				if(m.topic == 'decoder.decode_dict_rxfreq') grid_id = 'rx_decodes';
-				if(m.topic == 'config.rxfreq_changed') {
-					console.log(m);
+				if(m.topic == 'transceiver.set_rxfreq') {
+					console.log(m.topic, m.freq);
 					document.getElementById('rxFreq').innerHTML = m.freq;
 				}
 				
-				if(grid_id){
+				if(m.topic == 'transceiver.decode_dict'){
 					let myCall = "G1OJS";
+					let grid_id = 'all_decodes'
+					if(m.priority) grid_id = 'priority_decodes';
 					let row = document.getElementById(grid_id).appendChild(document.createElement("div"));
 					row.className='grid_row';
-					if(m.call_b == myCall) row.classList.add('sentTomyCall')
-					if(m.call_a == myCall) row.classList.add('sentBymyCall')
+					if(m.call_a == myCall) row.classList.add('sentTomyCall')
+					if(m.call_b == myCall) row.classList.add('sentBymyCall')
 					const fields = [m.cyclestart_str.split('_')[1], m.snr, m.freq, m.dt, m.call_a, m.call_b, m.grid_rpt,''];
 					fields.forEach((field, idx) => {
 						const cell_div = document.createElement("div");
@@ -56,9 +54,11 @@
 						row.appendChild(cell_div);
 					});
 					row.addEventListener("click", e => {
-						websocket.send(JSON.stringify({topic: "ui.set_rxfreq", freq: m.freq}));
-						websocket.send(JSON.stringify({topic: "ui.reply_to_message", call_a:m.call_a, call_b: m.call_b, grid_rpt: m.grid_rpt, snr:m.snr}));
+						document.getElementById('rxFreq').innerHTML = m.freq;
+						websocket.send(JSON.stringify({topic: "ui.process_clicked_message", call_a:m.call_a, call_b: m.call_b, 
+																							grid_rpt: m.grid_rpt, snr:m.snr, freq: m.freq}));
 					}); 
+					document.getElementById(grid_id).scrollTop = document.getElementById(grid_id).scrollHeight;
 				}
 			} 
 				
@@ -79,7 +79,7 @@
 		</div>
 		<div class = 'DecodePanel'>
 			<h3>Priority decodes:</h3>
-			<div id="rx_decodes"  class = "decodes_grid"></div>
+			<div id="priority_decodes"  class = "decodes_grid"></div>
 		</div>
 	</div>
 	
