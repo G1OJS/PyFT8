@@ -5,12 +5,9 @@ from PyFT8.rx.FT8_demodulator import FT8Demodulator, unpack_ft8_c28, unpack_ft8_
 from PyFT8.rx.waterfall import Waterfall
 from PyFT8.tx.FT8_encoder import pack_ft8_c28, pack_ft8_g15, encode_bits77
 import PyFT8.timers as timers
-
-wav_file='210703_133430.wav'
+import PyFT8.audio as audio
 
 demod = FT8Demodulator()
-demod.spectrum.get_audio(wav_file)
-
 tbin_idx = 4*demod.hops_persymb # 4 = random time offset
 fbin_idx = 420
 rel_strength = 1.2
@@ -55,8 +52,11 @@ print(f"{bits174_int:0174b}")
 print(f"Payload symbols  expected:   {'7027413236410076024143535324211637464027735642254300025301'}")
 print(f"Channel symbols modulated:   {''.join([str(s) for s in symbols])}")
 
+
 # load audio early as we want to overwrite some of it
-demod.spectrum.get_audio(wav_file)
+wav_file='210703_133430.wav'
+audio_in = audio.read_wav_file(wav_file)
+demod.spectrum.load_audio(audio_in)
 
 # 'modulate' onto channel grid
 m = np.max(abs(demod.spectrum.complex))  * rel_strength
@@ -79,7 +79,7 @@ for c in candidates:
     decode = demod.demodulate_candidate(c, cyclestart_str="test")
     if(decode):
         decoded_candidates.append(c)
-        print(decode['all_txt'], decode['decode_dict']['t0_idx'] )
+        print(decode['all_txt_line'], decode['decode_dict']['t0_idx'] )
 wf = Waterfall(demod.spectrum, f1=3500)
 wf.update_main(candidates=decoded_candidates)
 wf.show_zoom(candidates=decoded_candidates)

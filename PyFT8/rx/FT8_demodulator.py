@@ -34,7 +34,7 @@ global audio_in
 audio_in = None
 
 def log_decode(decode):
-    timers.timedLog("No callback specified, logging: {decode}", logfile = "default_decodes.log")
+    timers.timedLog("No callback specified, logging: {decode}", logfile = "default_decodes.log", silent = True)
 
 def cyclic_demodulator(onDecode = log_decode, onRxFreqDecode = log_decode):
     from PyFT8.comms_hub import config
