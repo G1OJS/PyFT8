@@ -27,7 +27,7 @@ def find_audio_devices():
 find_audio_devices()
 
 def read_from_soundcard(seconds, sample_rate = 12000):
-    timers.timedLog("Audio module opening stream")
+    timers.timedLog("Audio module opening stream", silent = True)
     stream = pya.open(format = pyaudio.paInt16, channels = 1, rate = sample_rate,
                       input=True, input_device_index = input_device_idx,
                       frames_per_buffer = seconds * sample_rate)

@@ -47,10 +47,10 @@ def cyclic_demodulator():
         timers.sleep(t_remain)
         if(t_elapsed <5 and t_elapsed > MAX_START_OFFSET_SECONDS):
             warnings.warn(f"Arrived to start recording at {t_elapsed} into cycle")
-        timers.timedLog("Cyclic demodulator requesting audio")
+        timers.timedLog("Cyclic demodulator requesting audio", silent = True)
         audio_in = audio.read_from_soundcard(timers.CYCLE_LENGTH - END_RECORD_GAP_SECONDS)
         threading.Thread(target=get_decodes).start()
-        timers.timedLog("Cyclic demodulator passed audio for demodulating")
+        timers.timedLog("Cyclic demodulator passed audio for demodulating", silent = True)
 
 def get_decodes():
     from PyFT8.comms_hub import config, events
@@ -159,7 +159,7 @@ class FT8Demodulator:
         f0_idx = int(np.searchsorted(self.spectrum.freqs, rxFreq))
         candidate = Candidate(self.sigspec, self.spectrum, 0, f0_idx, -50)
         self.sync_candidate(candidate)
-        timers.timedLog(f"Rx candidate synced {candidate.bounds.t0} {candidate.bounds.f0}")
+        timers.timedLog(f"Rx candidate synced {candidate.bounds.t0} {candidate.bounds.f0}", silent = True)
         decode = self.demodulate_candidate(candidate, cyclestart_str = cyclestart_str)
         return decode
 
