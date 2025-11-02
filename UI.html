@@ -32,12 +32,10 @@
 		websocket.onmessage = (event) => {
 			const m = JSON.parse(event.data)
 			if(m){
-				if(m.topic == 'decoder.decoding_started') {document.getElementById('all_decodes').innerHTML = "";}
-
-				let grid_id = ''
-				if(m.topic == 'decoder.decode_dict') grid_id = 'all_decodes';
-				if(m.topic == 'decoder.decode_dict_rxfreq') grid_id = 'rx_decodes';
-				if(m.topic == 'config.rxfreq_changed') {
+				if(m.topic == 'transceiver.clear_left') {document.getElementById('all_decodes').innerHTML = "";}
+				let grid_id = 'all_decodes'
+				if(m.priority) grid_id = 'priority_decodes';
+				if(m.topic == 'transceiver.set_rxfreq') {
 					console.log(m);
 					document.getElementById('rxFreq').innerHTML = m.freq;
 				}
@@ -46,8 +44,8 @@
 					let myCall = "G1OJS";
 					let row = document.getElementById(grid_id).appendChild(document.createElement("div"));
 					row.className='grid_row';
-					if(m.call_b == myCall) row.classList.add('sentTomyCall')
-					if(m.call_a == myCall) row.classList.add('sentBymyCall')
+					if(m.call_a == myCall) row.classList.add('sentTomyCall')
+					if(m.call_b == myCall) row.classList.add('sentBymyCall')
 					const fields = [m.cyclestart_str.split('_')[1], m.snr, m.freq, m.dt, m.call_a, m.call_b, m.grid_rpt,''];
 					fields.forEach((field, idx) => {
 						const cell_div = document.createElement("div");
@@ -57,7 +55,8 @@
 					});
 					row.addEventListener("click", e => {
 						websocket.send(JSON.stringify({topic: "ui.set_rxfreq", freq: m.freq}));
-						websocket.send(JSON.stringify({topic: "ui.reply_to_message", call_a:m.call_a, call_b: m.call_b, grid_rpt: m.grid_rpt, snr:m.snr}));
+						websocket.send(JSON.stringify({topic: "ui.process_clicked_message", call_a:m.call_a, call_b: m.call_b, 
+																							grid_rpt: m.grid_rpt, snr:m.snr, freq: m.freq}));
 					}); 
 				}
 			} 
@@ -79,7 +78,7 @@
 		</div>
 		<div class = 'DecodePanel'>
 			<h3>Priority decodes:</h3>
-			<div id="rx_decodes"  class = "decodes_grid"></div>
+			<div id="priority_decodes"  class = "decodes_grid"></div>
 		</div>
 	</div>
 	

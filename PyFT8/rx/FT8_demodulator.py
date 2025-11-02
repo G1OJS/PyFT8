@@ -33,7 +33,10 @@ from PyFT8.comms_hub import events, TOPICS
 global audio_in
 audio_in = None
 
-def cyclic_demodulator():
+def log_decode(decode):
+    timers.timedLog("No callback specified, logging: {decode}", logfile = "default_decodes.log")
+
+def cyclic_demodulator(onDecode = log_decode, onRxFreqDecode = log_decode):
     from PyFT8.comms_hub import config
     import threading
     import PyFT8.timers as timers
@@ -49,10 +52,10 @@ def cyclic_demodulator():
             warnings.warn(f"Arrived to start recording at {t_elapsed} into cycle")
         timers.timedLog("Cyclic demodulator requesting audio", silent = True)
         audio_in = audio.read_from_soundcard(timers.CYCLE_LENGTH - END_RECORD_GAP_SECONDS)
-        threading.Thread(target=get_decodes).start()
+        threading.Thread(target=get_decodes, kwargs=({'onDecode':onDecode, 'onRxFreqDecode':onRxFreqDecode})).start()
         timers.timedLog("Cyclic demodulator passed audio for demodulating", silent = True)
 
-def get_decodes():
+def get_decodes(onDecode, onRxFreqDecode):
     from PyFT8.comms_hub import config, events
     import PyFT8.timers as timers
     from PyFT8.rx.waterfall import Waterfall
@@ -61,24 +64,23 @@ def get_decodes():
     cyclestart_str = timers.cyclestart_str(1)
     demod.spectrum.load_audio(audio_in)
 
-    events.publish(TOPICS.decoder.decoding_started, {})    
+    events.publish(TOPICS.decoder.decoding_started, {}) 
     rx_freq_decode = demod.demod_rxFreq(config.data['rxfreq'], cyclestart_str)
     if(rx_freq_decode):
-        events.publish(TOPICS.decoder.decode_dict_rxfreq, rx_freq_decode['decode_dict'])
+        onRxFreqDecode(rx_freq_decode)
 
     candidates = demod.find_candidates(100,3400)
     candidates = demod.deduplicate_candidate_freqs(candidates)
     for c in candidates:
+        if(c.bounds.f0 == config.data['rxfreq']): # don't repeat decode the Rx freq
+            continue
         msg_payload = None
         demod.sync_candidate(c)
         decode = demod.demodulate_candidate(c, cyclestart_str)
-        # successful decodes go to browser, test_live_vs_wsjtx, all_text file writer when written
         if(decode):
-            events.publish(TOPICS.decoder.decode_dict, decode['decode_dict'])
+            onDecode(decode)
             events.publish(TOPICS.decoder.decode_all_txt_line, decode['all_txt_line'])
-            # second go at decoding rxFreq if failed above
-            if(c.bounds.f0 == config.data['rxfreq'] and not rx_freq_decode):
-                events.publish(TOPICS.decoder.decode_dict_rxfreq, decode['decode_dict'])
+
     events.publish(TOPICS.decoder.decoding_completed, {}) 
   
 class FT8Demodulator:
@@ -232,6 +234,7 @@ def FT8_decode(signal, cyclestart_str):
     message = f"{call_a} {call_b} {grid_rpt}"
     all_txt_line = f"{cyclestart_str}     0.000 Rx FT8    {signal.snr:+03d} {signal.bounds.t0 :4.1f} {signal.bounds.f0 :4.0f} {message}"
     decode_dict = {'cyclestart_str':cyclestart_str , 'freq':freq_str, 'call_a':call_a,
-                 'call_b':call_b, 'grid_rpt':grid_rpt, 't0_idx':signal.bounds.t0_idx, 'dt':f"{signal.bounds.t0 :4.1f}", 'snr':signal.snr, 'message':message}
+                 'call_b':call_b, 'grid_rpt':grid_rpt, 't0_idx':signal.bounds.t0_idx,
+                   'dt':f"{signal.bounds.t0 :4.1f}", 'snr':signal.snr, 'priority':False, 'message':message}
     return {'all_txt_line':all_txt_line, 'decode_dict':decode_dict}
 
