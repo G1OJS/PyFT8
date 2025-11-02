@@ -58,6 +58,7 @@
 						websocket.send(JSON.stringify({topic: "ui.process_clicked_message", call_a:m.call_a, call_b: m.call_b, 
 																							grid_rpt: m.grid_rpt, snr:m.snr, freq: m.freq}));
 					}); 
+					document.getElementById(grid_id).scrollTop = document.getElementById(grid_id).scrollHeight;
 				}
 			} 
 				
