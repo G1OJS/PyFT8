@@ -65,7 +65,9 @@ def get_decodes():
     decode = demod.demod_rxFreq(config.data['rxfreq'], cyclestart_str)
     # Send rx freq decode, subscribed by browser and QSO sequencer.
     # Include null decodes as these notify sequencer if rx freq decode didn't happen
-    events.publish(TOPICS.decoder.decode_dict_rxfreq, decode['decode_dict'] if decode else {})
+    #events.publish(TOPICS.decoder.decode_dict_rxfreq, decode['decode_dict'] if decode else {})
+    if(decode):
+        events.publish(TOPICS.decoder.decode_dict_rxfreq, decode['decode_dict'])
 
     candidates = demod.find_candidates(100,3400)
     candidates = demod.deduplicate_candidate_freqs(candidates)
