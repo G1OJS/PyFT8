@@ -77,7 +77,7 @@ def get_decodes():
             events.publish(TOPICS.decoder.decode_dict, decode['decode_dict'])
             events.publish(TOPICS.decoder.decode_all_txt_line, decode['all_txt_line'])
             # second go at decoding rxFreq if failed above
-            if(candidate.bounds.f0 == config.data['rxfreq'] and not rx_freq_decode):
+            if(c.bounds.f0 == config.data['rxfreq'] and not rx_freq_decode):
                 events.publish(TOPICS.decoder.decode_dict_rxfreq, decode['decode_dict'])
     events.publish(TOPICS.decoder.decoding_completed, {}) 
   
