@@ -56,8 +56,10 @@ def transmit_message(msg):
     timers.timedLog(f"PTT OFF", logfile = "QSO.log")
 
 def set_rxFreq(rxfreq):
-    send_to_ui_ws("transceiver.set_rxfreq", decode_dict['freq'])
-    config.set_rxFreq(decode_dict['freq'])
+    rxfreq = int(rxfreq)
+    timers.timedLog(f"Set rxfreq to {rxfreq}", logfile = "QSO.log")
+    send_to_ui_ws("transceiver.set_rxfreq", {'freq':rxfreq})
+    config.set_rxFreq(rxfreq)
     
 def process_clicked_message(selected_message):
     set_rxFreq(selected_message['freq'])
@@ -78,19 +80,20 @@ def process_decode(decode):
         
 def reply_to_message(decode_dict):
     call_a, call_b, grid_rpt, their_snr = decode_dict['call_a'], decode_dict['call_b'], decode_dict['grid_rpt'], decode_dict['snr']
+    message = f"{call_a} {call_b} {grid_rpt}"
     if(call_a == "CQ"):
         QSO_call = call_b
         set_rxFreq(decode_dict['freq'])
         current_tx_message = f"{call_b} {myCall} {myGrid}"
         transmit_message(current_tx_message)
     if(grid_rpt[-3]=="+" or grid_rpt[-3]=="-"):
-        timers.timedLog(f"QSO reply received: {decode_dict['message']}", logfile = "QSO.log")
+        timers.timedLog(f"QSO reply received: {message}", logfile = "QSO.log")
         QSO_call = call_b
         set_rxFreq(decode_dict['freq'])
         current_tx_message = f"{call_b} {myCall} R{their_snr:+03d}"
         transmit_message(current_tx_message)
     if('73' in grid_rpt or 'RRR' in grid_rpt):
-        timers.timedLog(f"QSO reply received: {decode_dict['message']}", logfile = "QSO.log")
+        timers.timedLog(f"QSO reply received: {message}", logfile = "QSO.log")
         transmit_message(f"{call_b} {myCall} 73")
         current_tx_message = None
         QSO_call = ''

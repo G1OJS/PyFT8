@@ -118,8 +118,8 @@ class Config:
       #      with open(self.filename) as f:
       #          self.data = json.load(f)
         
-    def set_rxFreq(self, cmd):
-        self.data['rxfreq'] = int(cmd['freq'])
+    def set_rxFreq(self, rxfreq):
+        self.data['rxfreq'] = rxfreq
        # self.save()
         
     def save(self):

@@ -33,15 +33,16 @@
 			const m = JSON.parse(event.data)
 			if(m){
 				if(m.topic == 'transceiver.clear_left') {document.getElementById('all_decodes').innerHTML = "";}
-				let grid_id = 'all_decodes'
-				if(m.priority) grid_id = 'priority_decodes';
+
 				if(m.topic == 'transceiver.set_rxfreq') {
-					console.log(m);
+					console.log(m.topic, m.freq);
 					document.getElementById('rxFreq').innerHTML = m.freq;
 				}
 				
-				if(grid_id){
+				if(m.topic == 'transceiver.decode_dict'){
 					let myCall = "G1OJS";
+					let grid_id = 'all_decodes'
+					if(m.priority) grid_id = 'priority_decodes';
 					let row = document.getElementById(grid_id).appendChild(document.createElement("div"));
 					row.className='grid_row';
 					if(m.call_a == myCall) row.classList.add('sentTomyCall')
