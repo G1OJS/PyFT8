@@ -8,11 +8,13 @@
 	
 	<style>
 		body { font-family: sans-serif; background:#111; color:#eee; margin:1em; }
-		.decodes_grid {display:grid; grid-template-columns: repeat( 7, max-content) auto; background:#222; color:#8cf; }	
+		#DecodePanelsContainer {display:grid; grid-template-columns: repeat(2, max-content); background:#555; width:max-content;}	
+		.decodes_grid {display:grid; grid-template-columns: repeat( 7, max-content) auto; 
+					   background:#222; color:#8cf; margin:0.5em; min-height:10em; min-width:25em;}	
 		.grid_row {display:contents;}
 		.grid_row:hover > div{background-color: #333;}
-		.grid_row.sentTomyCall > div{background-color: #633;}
-		.grid_row.sentBymyCall > div{background-color: #033;}
+		.grid_row.sentTomyCall > div{background-color: #ff4d4d;}
+		.grid_row.sentBymyCall > div{background-color: #e6e600;}
 		.grid_cell {padding:1px 5px 1px 5px}
 	</style>
 	
@@ -70,11 +72,16 @@
 	<div id='clock'></div>
 	<div >Tx freq: <span id='txFreq'></span></div>
 	<div >Rx freq: <span id='rxFreq'></span></div>
-	<h3>Decodes</h3>
-	<div id="all_decodes" class = "decodes_grid"></div>
-	<br><br>
-	<h3>Rx Freq decodes:</h3>
-	<div id="rx_decodes"  class = "decodes_grid"></div>
+	<div id = 'DecodePanelsContainer'>
+		<div class = 'DecodePanel'>
+			<h3>All Decodes</h3>
+			<div id="all_decodes" class = "decodes_grid"></div>
+		</div>
+		<div class = 'DecodePanel'>
+			<h3>Priority decodes:</h3>
+			<div id="rx_decodes"  class = "decodes_grid"></div>
+		</div>
+	</div>
 	
 </body>
 
