@@ -1,5 +1,5 @@
-# Python FT8 Rx and Tx with Browser-based UI in progress
-V2.1.0:
+# Python FT8 Rx and Tx with Browser-based UI
+V3.0.0:
 * Getting ~50% of WSJT-x decodes
 * Decodes finish about 1 second into the next frame
 * Click-settable Rx freq gets priority decode
@@ -8,10 +8,11 @@ V2.1.0:
     - scan spectrum for power, deduplicate frequencies, costas sync, LLR-LDPC-Unpack
 * Tightly coded LDPC
 * All in Python
-* Visualisation of individual signals with costas overlays
-* Browser-based UI in progress to enable use as WSJT-x replacement
+* Visualisation of individual signals with costas overlays (when using the test-harness code)
+* Browser-based UI for on-air QSOs
 * CAT control for PTT of IC-7100
 * End to end loop tests to illustrate protocol & steps
+<img width="860" height="379" alt="Capture" src="https://github.com/user-attachments/assets/630c4e57-30d3-4044-88bd-e7733c2d69c0" />
 
 <img width="981" height="382" alt="Capture" src="https://github.com/user-attachments/assets/8eb7c645-ab75-4e4f-8ce9-1dae6045e6ba" />
 <img width="466" height="351" alt="Capture" src="https://github.com/user-attachments/assets/257e5a86-420b-4b82-aee0-ff360b93e3d4" />
