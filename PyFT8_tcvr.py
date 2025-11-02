@@ -119,7 +119,6 @@ threading.Thread(target=cyclic_demodulator, kwargs=({'onDecode':process_decode, 
 threading.Thread(target=start_UI_server, daemon=True).start()
 webbrowser.open("http://localhost:8080/UI.html")
 
-
 timers.timedLog(f"Starting websockets server")
 import asyncio
 asyncio.run(start_websockets_server())

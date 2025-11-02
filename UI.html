@@ -7,15 +7,38 @@
 	<title>PyFT8 Live Decodes</title>
 	
 	<style>
-		body { font-family: sans-serif; background:#111; color:#eee; margin:1em; }
-		#DecodePanelsContainer {display:grid; grid-template-columns: repeat(2, max-content); background:#555; width:max-content;}	
-		.decodes_grid {display:grid; grid-template-columns: repeat( 7, max-content) auto; 
-					   background:#222; color:#8cf; margin:0.5em; height:15em; min-width:25em; overflow-y:scroll;}	
-		.grid_row {display:contents;}
-		.grid_row:hover > div{background-color: #333;}
-		.grid_row.sentTomyCall > div{background-color: #ff4d4d;}
-		.grid_row.sentBymyCall > div{background-color: #e6e600;}
-		.grid_cell {padding:1px 5px 1px 5px}
+		:root {
+			--page-bg:#111;
+			--panel-bg:#555;
+			--table-color:black;
+			--table-bg:#666;
+			--table-hover-bg:#333;
+			--even-bg: #8b91ad;
+			--odd-bg: #ad8b8b;
+			--cq-bg-hl:#93bf95;
+			--cq-bg:#405441;
+			--to-me-bg:#ff4d4d;
+			--by-me-bg:#e6e600;
+		}
+
+		body { font-family: sans-serif; background:var(--page-bg); color:#eee; margin:1em; }
+
+		#DecodePanelsContainer {display:grid; grid-template-columns: repeat(2, max-content); background:var(--panel-bg); width:max-content;}	
+
+		.decodes_grid {display:grid; grid-template-columns: repeat( 7, max-content) auto; grid-auto-rows: min-content; align-content: start; 
+					   background:var(--table-bg); color:#8cf; margin:0.5em; height:15em; min-width:25em; overflow-y:scroll;}	
+
+		.grid_row {display:contents; }
+		.grid_row.odd > div {background-color: var(--odd-bg);}
+		.grid_row.even > div{ background-color: var(--even-bg);}	
+		.grid_row:hover > div {background-color: var(--table-hover-bg);}
+		.grid_row.cq-highlight > div {background-color: var(--cq-bg-hl);}
+		.grid_row.cq-highlight_faded > div {background-color: var(--cq-bg); transition: 1s linear all;}
+		.grid_row.sentTomyCall > div {background-color: var(--to-me-bg);}
+		.grid_row.sentBymyCall > div {background-color: var(--by-me-bg);}	
+
+		.grid_cell {padding:1px 5px 1px 5px; font-weight:600; color:var(--table-color);}
+
 	</style>
 	
 	<script>
@@ -24,28 +47,37 @@
 			const t = new Date;
 			const utc = ("0" + t.getUTCHours()).slice(-2) + ":" + ("0" + t.getUTCMinutes()).slice(-2) + ":" + ("0" + t.getUTCSeconds()).slice(-2);
 			document.getElementById("clock").innerHTML = utc + " UTC";
+			if(t.getUTCSeconds() %15 > 1) {
+				for (const el of document.querySelectorAll(".cq-highlight")) {el.classList.remove("cq-highlight"); el.classList.add("cq-highlight_faded")}
+			}
 		}
 			
 		setInterval(update_clock, 1000);
-
+		
 		const websocket = new WebSocket("ws://localhost:5678/");
 		websocket.onmessage = (event) => {
 			const m = JSON.parse(event.data)
 			if(m){
-
 				if(m.topic == 'transceiver.set_rxfreq') {
 					console.log(m.topic, m.freq);
 					document.getElementById('rxFreq').innerHTML = m.freq;
 				}
-				
 				if(m.topic == 'transceiver.decode_dict'){
+					console.log(m);
 					let myCall = "G1OJS";
 					let grid_id = 'all_decodes'
 					if(m.priority) grid_id = 'priority_decodes';
-					let row = document.getElementById(grid_id).appendChild(document.createElement("div"));
+					let grid = document.getElementById(grid_id)
+					let row = grid.appendChild(document.createElement("div"));
 					row.className='grid_row';
-					if(m.call_a == myCall) row.classList.add('sentTomyCall')
-					if(m.call_b == myCall) row.classList.add('sentBymyCall')
+					
+					let cs = m.cyclestart_str
+					if (cs.charAt(cs.length-1) == '5'){row.classList.add('odd')} else {row.classList.add('even')}
+					if(m.call_a == myCall) {row.classList.add('sentTomyCall')}
+					if(m.call_b == myCall) {row.classList.add('sentBymyCall')}
+					if(m.call_a == "CQ") {row.classList.add("cq-highlight")}
+					grid.insertBefore(row, grid.childNodes[0]);
+
 					const fields = [m.cyclestart_str.split('_')[1], m.snr, m.freq, m.dt, m.call_a, m.call_b, m.grid_rpt,''];
 					fields.forEach((field, idx) => {
 						const cell_div = document.createElement("div");
@@ -58,7 +90,7 @@
 						websocket.send(JSON.stringify({topic: "ui.process_clicked_message", call_a:m.call_a, call_b: m.call_b, 
 																							grid_rpt: m.grid_rpt, snr:m.snr, freq: m.freq}));
 					}); 
-					document.getElementById(grid_id).scrollTop = document.getElementById(grid_id).scrollHeight;
+					//document.getElementById(grid_id).scrollTop = document.getElementById(grid_id).scrollHeight;
 				}
 			} 
 				
