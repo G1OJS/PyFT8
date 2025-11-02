@@ -25,9 +25,15 @@ solutions keeping code as tight and minimal as possible, whilst experimenting wi
 and decoding approaches.
 
 ## Approach
-You won't find many comments in the code; I try to make things as obvious as possible via variable names and logical structure.
-Also - this is mainly my plaything. Do feel free however to get in touch and ask how anything works. I might add some diagrams
-etc at some point too - especially if I find an approach that seems to offer something improved and/or very compact.
+You won't find many comments in the code; I try to make things as obvious as possible via variable names and logical structure, to 
+minimise the *need for* comments. Also - this is mainly my plaything, and I find bloated, sprawling code incredibly difficult to 
+read, so I like to keep things very compact so that I can see the bigger picture. If you find an if-then-else spanning several
+paragraphs, it's probably a mistake.
+
+Do feel free to get in touch and ask how anything works. I might add some diagrams etc at some point too - especially
+if I find an approach that seems to offer something improved and/or very compact (I'm very pleased for e.g. that the entire candidate
+search, synch, and demodulate process all works by refering to a single time-frequency grid; read the audio, FFT 3 times for each 
+symbol duration, store it, and that's used for everything that follows.)
 
 ## Limitations
 In pursuit of tight code, I've concentrated on core standard messages, leaving out some of the less-used features.
@@ -42,8 +48,10 @@ the publicly available WSJT-X source code and FT8 protocol descriptions. Origina
 and distributed under the GNU General Public License v3 (GPL-3.0), hence the use of GPL-3.0 in this repository.
 
 Also thanks to [Robert Morris](https://github.com/rtmrtmrtmrtm) for: 
- - [basicft8](https://github.com/rtmrtmrtmrtm/basicft8) - the first code I properly read (note: applies to FT8 pre V2)
+ - [basicft8(*1)](https://github.com/rtmrtmrtmrtm/basicft8) - the first code I properly read when I was wondering whether to start this journey 
  - [weakmon](https://github.com/rtmrtmrtmrtm/weakmon/) - much good information
+
+(*1 note: applies to FT8 pre V2)
 
 Other useful resources:
  - [W4KEK WSJT-x git mirror](https://www.repo.radio/w4kek/WSJT-X)
