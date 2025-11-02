@@ -68,14 +68,16 @@ def process_rx_messages(decode_dict):
     if(not decode_dict):
         timers.timedLog("QSO processing skip, no current Rx freq decode", logfile = "QSO.log")
         return # no decode
-    timers.timedLog(f"QSO reply received: {decode_dict['message']}", logfile = "QSO.log")
+    
     call_a, call_b, grid_rpt, their_snr = decode_dict['call_a'], decode_dict['call_b'], decode_dict['grid_rpt'], decode_dict['snr']
 
-    if(grid_rpt[-3]=="+" or grid_rpt[-3]=="-"):
+    if(call_a == myCall and grid_rpt[-3]=="+" or grid_rpt[-3]=="-"):
+        timers.timedLog(f"QSO reply received: {decode_dict['message']}", logfile = "QSO.log")
         current_tx_message = f"{call_b} {myCall} R{their_snr:+03d}"
         transmit_message(current_tx_message)
 
-    if('73' in grid_rpt or 'RRR' in grid_rpt):
+    if(call_a == myCall and '73' in grid_rpt or 'RRR' in grid_rpt):
+        timers.timedLog(f"QSO reply received: {decode_dict['message']}", logfile = "QSO.log")
         transmit_message(f"{call_b} {myCall} 73")
         current_tx_message = None
     
