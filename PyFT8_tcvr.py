@@ -13,7 +13,8 @@ import PyFT8.audio as audio
 from PyFT8.rig.IcomCIV import IcomCIV
 from PyFT8.rx.FT8_demodulator import cyclic_demodulator
 import PyFT8.tx.FT8_encoder as FT8_encoder
-from PyFT8.comms_hub import config, events, TOPICS, start_websockets_server, send_to_ui_ws
+from PyFT8.comms_hub import config, start_websockets_server, send_to_ui_ws, register_browser_callback
+
 
 myCall = 'G1OJS'
 myGrid = 'IO90'
@@ -65,12 +66,6 @@ def set_rxFreq(rxfreq):
     timers.timedLog(f"Set rxfreq to {rxfreq}", logfile = "QSO.log")
     send_to_ui_ws("transceiver.set_rxfreq", {'freq':rxfreq})
     config.set_rxFreq(rxfreq)
-    
-def process_clicked_message(selected_message):
-    global QSO_call, last_tx_complete_time
-    set_rxFreq(selected_message['freq'])
-    last_tx_complete_time=0
-    reply_to_message(selected_message)
 
 def process_rxfreq_decode(decode):
     # should arrive here earlier than in process_decode
@@ -79,6 +74,7 @@ def process_rxfreq_decode(decode):
 
 def process_decode(decode):
     decode_dict = decode['decode_dict']
+    if(not decode_dict): return
     if(decode_dict['call_b'] == myCall):
         decode_dict.update({'priority':True})        
     send_to_ui_ws("transceiver.decode_dict", decode_dict)
@@ -108,7 +104,13 @@ def start_UI_server():
     server = ThreadingHTTPServer(("localhost", 8080), SimpleHTTPRequestHandler)
     server.serve_forever()
 
-events.subscribe(TOPICS.ui.process_clicked_message, process_clicked_message)
+def process_clicked_message(selected_message):
+    global QSO_call, last_tx_complete_time
+    set_rxFreq(selected_message['freq'])
+    last_tx_complete_time=0
+    reply_to_message(selected_message)
+
+register_browser_callback(process_clicked_message)
 
 if testing_from_wsjtx:
     config.data.update({"input_device":["CABLE", "Output"]})

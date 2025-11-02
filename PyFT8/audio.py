@@ -1,7 +1,7 @@
 import numpy as np
 import wave
 import pyaudio
-from PyFT8.comms_hub import config, events
+from PyFT8.comms_hub import config
 import PyFT8.timers as timers
 global output_device_idx, input_device_idx
 output_device_idx, input_device_idx = None, None

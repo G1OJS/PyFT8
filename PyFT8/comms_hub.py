@@ -3,51 +3,6 @@ import json
 import PyFT8.timers as timers
 
 #===================================================================================
-# Messaging system for messeges between functions Python <-> JS (via websockets)
-#===================================================================================
-from types import SimpleNamespace
-
-TOPICS = SimpleNamespace(
-    decoder = SimpleNamespace(
-        decode_all_txt_line = "decoder.decode_all_txt_line",    # used by all_txt writer
-        decoding_completed  = "decoder.decoding_completed",     # used by tests to count matches
-    ),
-    ui = SimpleNamespace(
-        send_cq                     = "ui.send_cq",
-        process_clicked_message     = "ui.process_clicked_message",
-    )
-)
-
-all_topics = {
-    value
-    for ns in vars(TOPICS).values()
-    if isinstance(ns, SimpleNamespace)
-    for value in vars(ns).values()
-}
-
-class Events:
-    def __init__(self):
-        self.subscriber_callbacks = {} 
-
-    def subscribe(self, topic, subs_cb):
-        self.subscriber_callbacks.setdefault(topic, []).append(subs_cb)
-
-    def publish(self, topic, data):
-        if topic not in all_topics:
-            timers.timedLog(f"[Events] Unrecognised topic '{topic}' — ignored", logfile = "events.log", silent = True)
-            return
-        subs_cbs = self.subscriber_callbacks.get(topic, [])
-        if not subs_cbs:
-            timers.timedLog(f"[Events] {topic} published {data!r} — no subscribers", logfile = 'events.log', silent = True)
-        for subs_cb in subs_cbs:
-            timers.timedLog(f"[Events] {topic} to {subs_cb.__name__}({data!r})", logfile = 'events.log', silent = True)
-            subs_cb(data)
-            
-# modules needing this use 'from comms_hub import events' :
-events = Events()
-
-
-#===================================================================================
 # Python <-> JS communication via websockets
 #===================================================================================
 import asyncio
@@ -55,7 +10,11 @@ import datetime
 import threading
 from websockets.asyncio.server import serve
 global message_queue, loop
+_browser_callbacks = []
 
+def register_browser_callback(callback):
+    _browser_callbacks.append(callback)
+    
 async def start_websockets_server():
     global message_queue, loop
     loop = asyncio.get_running_loop()
@@ -87,17 +46,21 @@ async def _handle_client(websocket):
 async def _send_to_browser(websocket):
     while True:
         message = await message_queue.get()
-        timers.timedLog(f"[WebsocketsServer] sending {message}", 'events.log')
+        timers.timedLog(f"[WebsocketsServer] sending {message}", 'websockets.log')
         try:
             await websocket.send(json.dumps(message))
         except Exception as e:
-            timers.timedLog(f"[WebsocketsServer] couldn't send message", 'events.log')
+            timers.timedLog(f"[WebsocketsServer] couldn't send message", 'websockets.log')
         message_queue.task_done()
 
 async def _receive_from_browser(websocket):
     async for message in websocket:
         cmd = json.loads(message)
-        events.publish(cmd["topic"], cmd)
+        for cb in _browser_callbacks:
+            try:
+                cb(cmd)
+            except Exception as e:
+                timers.timedLog(f"[WebSockets] callback {cb.__name__} failed: {e}", 'websockets.log')
 
 
 #===================================================================================

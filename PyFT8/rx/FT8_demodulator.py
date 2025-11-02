@@ -27,8 +27,6 @@ from PyFT8.signaldefs import FT8
 from PyFT8.rx.decode174_91 import decode174_91
 import PyFT8.FT8_crc as crc
 import PyFT8.timers as timers
-import warnings
-from PyFT8.comms_hub import events, TOPICS
 
 global audio_in
 audio_in = None
@@ -49,14 +47,14 @@ def cyclic_demodulator(onDecode = log_decode, onRxFreqDecode = log_decode):
         t_elapsed, t_remain, = timers.time_in_cycle()
         timers.sleep(t_remain)
         if(t_elapsed <5 and t_elapsed > MAX_START_OFFSET_SECONDS):
-            warnings.warn(f"Arrived to start recording at {t_elapsed} into cycle")
+            timers.timedLog(f"Arrived to start recording at {t_elapsed} into cycle, waiting for next", silent = True)
         timers.timedLog("Cyclic demodulator requesting audio", silent = True)
         audio_in = audio.read_from_soundcard(timers.CYCLE_LENGTH - END_RECORD_GAP_SECONDS)
         threading.Thread(target=get_decodes, kwargs=({'onDecode':onDecode, 'onRxFreqDecode':onRxFreqDecode})).start()
         timers.timedLog("Cyclic demodulator passed audio for demodulating", silent = True)
 
 def get_decodes(onDecode, onRxFreqDecode):
-    from PyFT8.comms_hub import config, events
+    from PyFT8.comms_hub import config
     import PyFT8.timers as timers
     from PyFT8.rx.waterfall import Waterfall
 
@@ -78,9 +76,8 @@ def get_decodes(onDecode, onRxFreqDecode):
         decode = demod.demodulate_candidate(c, cyclestart_str)
         if(decode):
             onDecode(decode)
-            events.publish(TOPICS.decoder.decode_all_txt_line, decode['all_txt_line'])
-
-    events.publish(TOPICS.decoder.decoding_completed, {}) 
+    # signal last decode has happened
+    onDecode({'decode_dict':{}, 'all_txt_line':'', 'finished_decoding':True})
   
 class FT8Demodulator:
     def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=3, sigspec=FT8):

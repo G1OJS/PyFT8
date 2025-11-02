@@ -4,7 +4,6 @@ import sys
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 from PyFT8.rx.FT8_demodulator import cyclic_demodulator
 from PyFT8.rx.waterfall import Waterfall
-from PyFT8.comms_hub import config, events, TOPICS
 import PyFT8.timers as timers
 
 PyFT8_file = "pyft8.txt"
@@ -76,20 +75,20 @@ def reset_compare():
     with open(PyFT8_file, 'w') as f:
         f.write("")
 
-def do_compare(args):
-    wsjtx_compare(wsjtx_file,PyFT8_file)
-    reset_compare()
-
-def append_PyFT8_decode_to_file(All_txt_line):
-    with open(PyFT8_file, "a") as f:
-        f.write(All_txt_line + "\n")
+def process_decode(decode):
+    if("finished_decoding" in decode.keys()):
+        wsjtx_compare(wsjtx_file,PyFT8_file)
+        reset_compare()
+    else:
+        all_txt_line = decode['all_txt_line']
+        with open(PyFT8_file, "a") as f:
+            f.write(all_txt_line + "\n")
 
 print("Running, waiting for messages")
 reset_compare()        
 threading.Thread(target=wsjtx_tailer).start()
-threading.Thread(target=cyclic_demodulator).start()
-events.subscribe(TOPICS.decoder.decode_all_txt_line, append_PyFT8_decode_to_file)
-events.subscribe(TOPICS.decoder.decoding_completed, do_compare)
+threading.Thread(target=cyclic_demodulator, kwargs={"onDecode": process_decode}).start()
+
 
 
     

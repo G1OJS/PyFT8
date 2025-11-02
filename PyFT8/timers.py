@@ -1,6 +1,5 @@
 import time
 import threading
-from PyFT8.comms_hub import config, events
 
 CYCLE_LENGTH = 15
 
