@@ -15,7 +15,6 @@ V3.0.0:
 <img width="860" height="379" alt="Capture" src="https://github.com/user-attachments/assets/630c4e57-30d3-4044-88bd-e7733c2d69c0" />
 
 <img width="981" height="382" alt="Capture" src="https://github.com/user-attachments/assets/8eb7c645-ab75-4e4f-8ce9-1dae6045e6ba" />
-<img width="466" height="351" alt="Capture" src="https://github.com/user-attachments/assets/257e5a86-420b-4b82-aee0-ff360b93e3d4" />
 <img width="1050" height="1000" alt="Figure_2" src="https://github.com/user-attachments/assets/087289d9-ec48-419e-875e-89012a3441f5" />
 
 ## Purpose
