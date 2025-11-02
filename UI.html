@@ -58,6 +58,8 @@
 		websocket.onmessage = (event) => {
 			const m = JSON.parse(event.data)
 			if(m){
+				console.log(m.topic);
+				
 				if(m.topic == 'transceiver.set_rxfreq') {
 					console.log(m.topic, m.freq);
 					document.getElementById('rxFreq').innerHTML = m.freq;
@@ -92,9 +94,23 @@
 					}); 
 					//document.getElementById(grid_id).scrollTop = document.getElementById(grid_id).scrollHeight;
 				}
-			} 
 				
-		};
+				if (m.topic == "freq_occ_array") {
+					const data = m.histogram;
+					const container = document.getElementById("occupancy");
+					container.innerHTML = ""; // clear
+					data.forEach(v => {
+						const cell = document.createElement("div");
+						const brightness = Math.round(v * 255);
+						cell.style.background = `rgb(${brightness},${brightness/2},0)`;
+						cell.style.width = "3px";
+						cell.style.height = "10px";
+						cell.style.display = "inline-block";
+						container.appendChild(cell);
+					});
+				}
+			};	
+		} 
 		
 	</script>
 	
@@ -102,8 +118,9 @@
 
 <body>
 	<div id='clock'></div>
-	<div >Tx freq: <span id='txFreq'></span></div>
-	<div >Rx freq: <span id='rxFreq'></span></div>
+	<div id = 'occupancy'></div>
+	<div>Tx freq: <span id='txFreq'></span></div>
+	<div>Rx freq: <span id='rxFreq'></span></div>
 	<div id = 'DecodePanelsContainer'>
 		<div class = 'DecodePanel'>
 			<h3>All Decodes</h3>

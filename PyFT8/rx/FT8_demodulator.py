@@ -112,6 +112,7 @@ class FT8Demodulator:
             score = np.sum(self.spectrum.power[: , f0_idx:f0_idx+self._csync.shape[1]])
             candidates.append(Candidate(self.sigspec, self.spectrum, 0, f0_idx, score))
         candidates.sort(key=lambda c: -c.score)
+        self.make_occupancy_array(candidates)
         return candidates[:topN]
 
     def deduplicate_candidate_freqs(self, candidates):
@@ -148,6 +149,22 @@ class FT8Demodulator:
             block_score = np.sum(pgrid * self._csync)
             if block_score > score: score = block_score 
         return score 
+
+    # ======================================================
+    # Low resource spectrum usage visualisation
+    # ======================================================
+    
+    def make_occupancy_array(self, candidates, f0=0, f1=3500, bin_hz=10):
+        from PyFT8.comms_hub import send_to_ui_ws
+        bins = np.arange(f0, f1 + bin_hz, bin_hz)
+        freqs = [c.bounds.f0 for c in candidates]
+        scores = [c.score for c in candidates]
+        hist, _ = np.histogram(freqs, bins=bins, weights=scores)
+        hist = 10*np.log10(hist + 1e-12)
+        hist = hist - np.max(hist)
+        hist = 1 + np.clip(hist, -30, 0) / 30
+        timers.timedLog("Sent occupancy data to ui")
+        send_to_ui_ws("freq_occ_array", {'histogram':hist.tolist()})
 
     # ======================================================
     # Demodulation
