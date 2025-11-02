@@ -10,7 +10,7 @@
 		body { font-family: sans-serif; background:#111; color:#eee; margin:1em; }
 		#DecodePanelsContainer {display:grid; grid-template-columns: repeat(2, max-content); background:#555; width:max-content;}	
 		.decodes_grid {display:grid; grid-template-columns: repeat( 7, max-content) auto; 
-					   background:#222; color:#8cf; margin:0.5em; min-height:10em; min-width:25em;}	
+					   background:#222; color:#8cf; margin:0.5em; height:15em; min-width:25em; overflow-y:scroll;}	
 		.grid_row {display:contents;}
 		.grid_row:hover > div{background-color: #333;}
 		.grid_row.sentTomyCall > div{background-color: #ff4d4d;}
@@ -32,7 +32,6 @@
 		websocket.onmessage = (event) => {
 			const m = JSON.parse(event.data)
 			if(m){
-				if(m.topic == 'transceiver.clear_left') {document.getElementById('all_decodes').innerHTML = "";}
 
 				if(m.topic == 'transceiver.set_rxfreq') {
 					console.log(m.topic, m.freq);
@@ -55,7 +54,7 @@
 						row.appendChild(cell_div);
 					});
 					row.addEventListener("click", e => {
-						websocket.send(JSON.stringify({topic: "ui.set_rxfreq", freq: m.freq}));
+						document.getElementById('rxFreq').innerHTML = m.freq;
 						websocket.send(JSON.stringify({topic: "ui.process_clicked_message", call_a:m.call_a, call_b: m.call_b, 
 																							grid_rpt: m.grid_rpt, snr:m.snr, freq: m.freq}));
 					}); 

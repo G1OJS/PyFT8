@@ -17,26 +17,31 @@ from PyFT8.comms_hub import config, events, TOPICS, start_websockets_server, sen
 
 myCall = 'G1OJS'
 myGrid = 'IO90'
-global QSO_call, current_tx_message, repeat_counter, last_tx
+global QSO_call, last_tx_messsage, repeat_counter, last_tx_complete_time
 
-QSO_call = ''
-current_tx_message = None
+#transmit message s
+QSO_call = False
 repeat_counter = 0
-last_tx = 0
+last_tx_messsage =''
+last_tx_complete_time = 0
 
 rig = IcomCIV()
 
 testing_from_wsjtx = False
 
 def transmit_message(msg):
-    global QSO_call, current_tx_message, repeat_counter,  last_tx
+    global QSO_call, repeat_counter, last_tx_complete_time, last_tx_messsage
     if(not msg):
         timers.timedLog("QSO transmit skip, no message to transmit", logfile = "QSO.log")
         return
-    repeat_counter = repeat_counter + 1 if( msg == current_tx_message ) else 0
+    if(last_tx_complete_time > timers.tnow() -7):
+        timers.timedLog("QSO transmit skip, too close to last transmit", logfile = "QSO.log")
+        return        
+    repeat_counter = repeat_counter + 1 if( msg == last_tx_messsage ) else 0
     if(repeat_counter >= 3):
         timers.timedLog("QSO transmit skip, repeat count too high", logfile = "QSO.log")
         return
+    last_tx_messsage = msg
     timers.timedLog(f"Send message: ({repeat_counter}) {msg}", logfile = "QSO.log")
     c1, c2, grid_rpt = msg.split()
     symbols = FT8_encoder.pack_message(c1, c2, grid_rpt)
@@ -52,7 +57,7 @@ def transmit_message(msg):
     rig.setPTTON()
     audio.play_wav_to_soundcard()
     rig.setPTTOFF()
-    last_tx = timers.tnow()
+    last_tx_complete_time = timers.tnow()
     timers.timedLog(f"PTT OFF", logfile = "QSO.log")
 
 def set_rxFreq(rxfreq):
@@ -62,7 +67,9 @@ def set_rxFreq(rxfreq):
     config.set_rxFreq(rxfreq)
     
 def process_clicked_message(selected_message):
+    global QSO_call, last_tx_complete_time
     set_rxFreq(selected_message['freq'])
+    last_tx_complete_time=0
     reply_to_message(selected_message)
 
 def process_rxfreq_decode(decode):
@@ -75,38 +82,32 @@ def process_decode(decode):
     if(decode_dict['call_b'] == myCall):
         decode_dict.update({'priority':True})        
     send_to_ui_ws("transceiver.decode_dict", decode_dict)
-    if (decode_dict['call_b'] == myCall and decode_dict['call_b'] == QSO_call):
-        reply_to_messasge(decode_dict)
+    if (decode_dict['call_a'] == myCall and decode_dict['call_b'] == QSO_call):
+        reply_to_message(decode_dict)
         
 def reply_to_message(decode_dict):
+    global QSO_call, tx_message
     call_a, call_b, grid_rpt, their_snr = decode_dict['call_a'], decode_dict['call_b'], decode_dict['grid_rpt'], decode_dict['snr']
-    message = f"{call_a} {call_b} {grid_rpt}"
+    rx_message = f"{call_a} {call_b} {grid_rpt}"
     if(call_a == "CQ"):
         QSO_call = call_b
-        set_rxFreq(decode_dict['freq'])
-        current_tx_message = f"{call_b} {myCall} {myGrid}"
-        transmit_message(current_tx_message)
-    if(grid_rpt[-3]=="+" or grid_rpt[-3]=="-"):
-        timers.timedLog(f"QSO reply received: {message}", logfile = "QSO.log")
+        transmit_message(f"{call_b} {myCall} {myGrid}")
+    if(call_a == myCall):
         QSO_call = call_b
-        set_rxFreq(decode_dict['freq'])
-        current_tx_message = f"{call_b} {myCall} R{their_snr:+03d}"
-        transmit_message(current_tx_message)
-    if('73' in grid_rpt or 'RRR' in grid_rpt):
-        timers.timedLog(f"QSO reply received: {message}", logfile = "QSO.log")
-        transmit_message(f"{call_b} {myCall} 73")
-        current_tx_message = None
-        QSO_call = ''
+        if(len(grid_rpt)>2):    
+            if(grid_rpt[-3]=="+" or grid_rpt[-3]=="-"):
+                timers.timedLog(f"QSO reply received: {rx_message}", logfile = "QSO.log")
+                transmit_message(f"{call_b} {myCall} R{their_snr:+03d}")
+        if('73' in grid_rpt or 'RRR' in grid_rpt):
+            timers.timedLog(f"QSO reply received: {rx_message}", logfile = "QSO.log")
+            transmit_message(f"{call_b} {myCall} 73")
+            QSO_call = ''
     
 def start_UI_server():
     os.chdir(r"C:/Users/drala/Documents/Projects/GitHub/PyFT8/")
     server = ThreadingHTTPServer(("localhost", 8080), SimpleHTTPRequestHandler)
     server.serve_forever()
 
-def clear_left_pane(params):
-    send_to_ui_ws("transceiver.clear_left", {})
-
-events.subscribe(TOPICS.decoder.decoding_started, clear_left_pane)
 events.subscribe(TOPICS.ui.process_clicked_message, process_clicked_message)
 
 if testing_from_wsjtx:

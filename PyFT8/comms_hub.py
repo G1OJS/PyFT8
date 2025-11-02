@@ -9,17 +9,12 @@ from types import SimpleNamespace
 
 TOPICS = SimpleNamespace(
     decoder = SimpleNamespace(
-        decoding_started    = "decoder.decoding_started",
         decode_all_txt_line = "decoder.decode_all_txt_line",    # used by all_txt writer
         decoding_completed  = "decoder.decoding_completed",     # used by tests to count matches
     ),
     ui = SimpleNamespace(
         send_cq                     = "ui.send_cq",
         process_clicked_message     = "ui.process_clicked_message",
-        set_rxfreq                  = "ui.set_rxfreq",
-    ),
-    config = SimpleNamespace(
-        rxfreq_changed  = "config.rxfreq_changed",
     )
 )
 

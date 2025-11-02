@@ -64,7 +64,6 @@ def get_decodes(onDecode, onRxFreqDecode):
     cyclestart_str = timers.cyclestart_str(1)
     demod.spectrum.load_audio(audio_in)
 
-    events.publish(TOPICS.decoder.decoding_started, {}) 
     rx_freq_decode = demod.demod_rxFreq(config.data['rxfreq'], cyclestart_str)
     if(rx_freq_decode):
         onRxFreqDecode(rx_freq_decode)
