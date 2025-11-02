@@ -62,12 +62,9 @@ def get_decodes():
     demod.spectrum.load_audio(audio_in)
 
     events.publish(TOPICS.decoder.decoding_started, {})    
-    decode = demod.demod_rxFreq(config.data['rxfreq'], cyclestart_str)
-    # Send rx freq decode, subscribed by browser and QSO sequencer.
-    # Include null decodes as these notify sequencer if rx freq decode didn't happen
-    #events.publish(TOPICS.decoder.decode_dict_rxfreq, decode['decode_dict'] if decode else {})
-    if(decode):
-        events.publish(TOPICS.decoder.decode_dict_rxfreq, decode['decode_dict'])
+    rx_freq_decode = demod.demod_rxFreq(config.data['rxfreq'], cyclestart_str)
+    if(rx_freq_decode):
+        events.publish(TOPICS.decoder.decode_dict_rxfreq, rx_freq_decode['decode_dict'])
 
     candidates = demod.find_candidates(100,3400)
     candidates = demod.deduplicate_candidate_freqs(candidates)
@@ -79,6 +76,9 @@ def get_decodes():
         if(decode):
             events.publish(TOPICS.decoder.decode_dict, decode['decode_dict'])
             events.publish(TOPICS.decoder.decode_all_txt_line, decode['all_txt_line'])
+            # second go at decoding rxFreq if failed above
+            if(candidate.bounds.f0 == config.data['rxfreq'] and not rx_freq_decode):
+                events.publish(TOPICS.decoder.decode_dict_rxfreq, decode['decode_dict'])
     events.publish(TOPICS.decoder.decoding_completed, {}) 
   
 class FT8Demodulator:

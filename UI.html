@@ -11,6 +11,8 @@
 		.decodes_grid {display:grid; grid-template-columns: repeat( 7, max-content) auto; background:#222; color:#8cf; }	
 		.grid_row {display:contents;}
 		.grid_row:hover > div{background-color: #333;}
+		.grid_row.sentTomyCall > div{background-color: #633;}
+		.grid_row.sentBymyCall > div{background-color: #033;}
 		.grid_cell {padding:1px 5px 1px 5px}
 	</style>
 	
@@ -39,8 +41,11 @@
 				}
 				
 				if(grid_id){
+					let myCall = "G1OJS";
 					let row = document.getElementById(grid_id).appendChild(document.createElement("div"));
 					row.className='grid_row';
+					if(m.call_b == myCall) row.classList.add('sentTomyCall')
+					if(m.call_a == myCall) row.classList.add('sentBymyCall')
 					const fields = [m.cyclestart_str.split('_')[1], m.snr, m.freq, m.dt, m.call_a, m.call_b, m.grid_rpt,''];
 					fields.forEach((field, idx) => {
 						const cell_div = document.createElement("div");

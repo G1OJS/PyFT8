@@ -41,6 +41,12 @@ def transmit_message(msg):
     symbols = FT8_encoder.pack_message(c1, c2, grid_rpt)
     audio_data = audio.create_ft8_wave(symbols, f_base = config.data['txfreq'])
     audio.write_wav_file('out.wav', audio_data)
+
+    t_elapsed, t_remaining = timers.time_in_cycle()
+    if(t_remaining < 3):
+        timers.timedLog("QSO transmit waiting for cycle start", logfile = "QSO.log")
+        timers.sleep(t_remaining)
+
     timers.timedLog(f"PTT ON", logfile = "QSO.log")
     rig.setPTTON()
     audio.play_wav_to_soundcard()
