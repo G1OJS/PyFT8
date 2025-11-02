@@ -28,7 +28,7 @@
 		websocket.onmessage = (event) => {
 			const m = JSON.parse(event.data)
 			if(m){
-			//	if(m.topic == 'decoder.decoding_started') {document.getElementById('all_decodes').innerHTML = "";}
+				if(m.topic == 'decoder.decoding_started') {document.getElementById('all_decodes').innerHTML = "";}
 
 				let grid_id = ''
 				if(m.topic == 'decoder.decode_dict') grid_id = 'all_decodes';
