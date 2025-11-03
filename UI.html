@@ -118,8 +118,8 @@
 		websocket.onmessage = (event) => {
 			const dd = JSON.parse(event.data)
 			if(!dd) return;
-		//	if(dd.topic == 'set_rxfreq') 				{rxFreq = dd.freq; update_freq_markers();}
-		//	if(dd.topic == 'set_txfreq') 				{txFreq = dd.freq; update_freq_markers();}
+			if(dd.topic == 'set_rxfreq') 				{rxFreq = dd.freq; update_freq_markers();}
+			if(dd.topic == 'set_txfreq') 				{txFreq = dd.freq; update_freq_markers();}
 			if(dd.topic == "freq_occ_array") 			{update_spectrum(dd.histogram)}
 			if(dd.topic == 'transceiver.decode_dict')	{add_decode_row(dd, (dd.priority)? 'priority_decodes':'all_decodes')}
 		}
