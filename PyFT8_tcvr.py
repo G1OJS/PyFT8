@@ -1,5 +1,4 @@
-# NOTE This code is under development. Rx works and UI is OK, but
-# QSO functions are under construction
+
 import sys
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 
@@ -103,7 +102,6 @@ def transmit_message(msg):
     timers.timedLog(f"PTT OFF", logfile = "QSO.log")
 
 threading.Thread(target=cyclic_demodulator, kwargs=({'onDecode':process_decode, 'onRxFreqDecode':process_rxfreq_decode})).start()
-
 start_UI(process_clicked_message)
 
     

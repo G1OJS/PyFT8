@@ -19,16 +19,18 @@
 		#clock {display: block; font-size: 1.17em; font-weight: bold;}
 		.grid_title {display: block; font-size: 1.17em; font-weight: bold; margin-left:0.5em}
 		
-		#SpectrumContainer {position: relative; width: calc(2 * 25em + 2 * 1em); height: 40px;margin: 1em 0em 1em 0em; }
-		#Spectrum {display: flex; justify-content: center; height: 10px; width: fit-content; background: #222;
-					border: 1px solid #444; position: absolute;top: 50%;transform: translateY(-50%);}
+		#SpectrumContainer {display: flex; position: relative; justify-content: center;  width: calc(2 * 25em + 2 * 1em); 
+							height: 40px; margin: 1em 0em 1em 0em; border: 1px solid white }
+		#Spectrum {display: flex; position: absolute; margin-top:15px; height: 10px; width: fit-content; border: 1px solid white;  background: #222;}
 		#Spectrum > div {display:inline-block; width:2px; height:10px;}
-		.marker {position: absolute;bottom: 0; width: 1px; height: 20px;background: red;
-				 color: white;font-size: 0.7em;text-align: center; transform: translateX(-50%);}
-		#txMarker { background: red; bottom:20px;}
-		#rxMarker { background: lime; }
+		.marker {position: absolute; width: 1px; height: 0.7em; padding-left:3px; color: white; font-size: 0.7em; }
+		.txMarker { border-left: 2px solid red; bottom:30px;}
+		.rxMarker { border-left: 2px solid lime; bottom:3px;}
+		.tickMarker { border-left: 1px solid white; bottom:17px; }
 								
-		#DecodePanelsContainer {display:grid; grid-template-columns: repeat(2, max-content); background:var(--panel-bg); width:max-content;}	
+		#DecodePanelsContainer 
+				{display:grid; grid-template-columns: repeat(2, max-content); 
+				background:var(--panel-bg); width:max-content;}	
 
 		.decodes_grid {display:grid; grid-template-columns: repeat( 7, max-content) auto; grid-auto-rows: min-content; align-content: start; 
 					   background:var(--table-bg); color:#8cf; margin:0.5em; min-height:20em; max-height:80vh; min-width:25em; overflow-y:scroll;}	
@@ -41,30 +43,39 @@
 		.grid_row.cq-highlight_faded > div {background-color: var(--cq-bg); transition: 1s linear all;}
 		.grid_row.sentTomyCall > div {background-color: var(--to-me-bg);}
 		.grid_row.sentBymyCall > div {background-color: var(--by-me-bg);}	
-
 		.grid_cell {padding:1px 5px 1px 5px; font-weight:600; color:var(--table-color);}
 
 	</style>
 	
 	<script>
 		let myCall = "G1OJS";
+		let spectrum_width = 0;
+		let txFreq = 3000;
+		let rxFreq = 1000;
 		function update_spectrum(spectrum_power) {
-			const container = document.getElementById("Spectrum");
-			container.innerHTML = "";
+			const spectrum = document.getElementById("Spectrum");
+			spectrum.innerHTML = "";
 			spectrum_power.forEach(v => {
 				const cell = document.createElement("div");
 				const brightness = Math.round(v * 255);
 				cell.style.background = `rgb(${brightness},${brightness/2},0)`;
-				container.appendChild(cell);
+				spectrum.appendChild(cell);
 			});
+			spectrum_width = spectrum.offsetWidth;
+			update_freq_markers();
 		}
-		function update_freq_markers(txFreq=0, rxFreq=0, fmin=0, fmax=3500) {
-			const container = document.getElementById("Spectrum");
-			const txMarker = document.getElementById("txMarker");
-			const rxMarker = document.getElementById("rxMarker");
-			const toPx = f => ((f - fmin) / (fmax - fmin)) * container.offsetWidth;
-			if (txFreq !== undefined) txMarker.style.left = `${toPx(txFreq)}px`;
-			if (rxFreq !== undefined) rxMarker.style.left = `${toPx(rxFreq)}px`;
+		function update_freq_markers() {
+			const spectrum = document.getElementById("Spectrum");
+			const txMarker = document.querySelector(".txMarker");
+			const rxMarker = document.querySelector(".rxMarker");
+			const left = (document.getElementById("SpectrumContainer").clientWidth-spectrum_width)/2;
+			const toPx = f => left + ((f - 0) / (3500 - 0)) * spectrum_width;
+			txMarker.style.left = `${toPx(txFreq)}px`;
+			rxMarker.style.left = `${toPx(rxFreq)}px`;
+			for (const tick of document.querySelectorAll('.tickMarker')){
+				let f = parseInt(tick.dataset.freq);
+				tick.style.left = `${toPx(f)}px`;
+			}
 		}
 		function update_clock() {
 			const t = new Date;
@@ -107,10 +118,14 @@
 		websocket.onmessage = (event) => {
 			const dd = JSON.parse(event.data)
 			if(!dd) return;
-			if(dd.topic == 'transceiver.set_rxfreq') 	{update_freq_markers(rxFreq = dd.freq)}
+		//	if(dd.topic == 'transceiver.set_rxfreq') 	{rxFreq = dd.freq; update_freq_markers();}
 			if(dd.topic == "freq_occ_array") 			{update_spectrum(dd.histogram)}
 			if(dd.topic == 'transceiver.decode_dict')	{add_decode_row(dd, (dd.priority)? 'priority_decodes':'all_decodes')}
 		}
+		document.addEventListener("DOMContentLoaded", (event) => { 
+			update_spectrum();
+			update_freq_markers();
+		});
 	</script>
 	
 </head>
@@ -121,8 +136,12 @@
 		<div id="SpectrumContainer">
 			<div id="Spectrum"></div>
 			<div id="freqMarkers">
-				<div id="txMarker" class="marker">Tx</div>
-				<div id="rxMarker" class="marker">Rx</div>
+				<div class="marker tickMarker" data-freq = '0'>0</div>
+				<div class="marker tickMarker" data-freq = '1000'>1000</div>
+				<div class="marker tickMarker" data-freq = '2000'>2000</div>
+				<div class="marker tickMarker" data-freq = '3000'>3000</div>
+				<div class="marker txMarker">Tx</div>
+				<div class="marker rxMarker">Rx</div>
 			</div>
 		</div>
 		<div id = 'DecodePanelsContainer'>
