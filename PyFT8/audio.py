@@ -35,17 +35,17 @@ def read_from_soundcard(seconds, sample_rate = 12000):
     stream.close()
     return data
 
-def play_wav_to_soundcard(sample_rate = 12000, filename = 'out.wav'):
-    with wave.open(filename, 'rb') as wf:
-        def callback(in_data, frame_count, time_info, status):
-            data = wf.readframes(frame_count)
-            return (data, pyaudio.paContinue)
-        stream = pya.open(format = pyaudio.paInt16, channels = 1, rate = sample_rate,
-                        output=True, stream_callback = callback,
-                        output_device_index = output_device_idx)
-        while stream.is_active():
-            timers.sleep(1)
-        stream.close()
+def read_wav_file(filename = 'audio_in.wav', sample_rate = 12000):
+     import wave
+     import numpy as np
+     with wave.open(filename, 'rb') as wav:
+          assert wav.getframerate() == sample_rate
+          assert wav.getnchannels() == 1
+          assert wav.getsampwidth() == 2
+          audio = np.frombuffer(wav.readframes(wav.getnframes()), dtype=np.int16)
+     return audio
+
+
 
 def create_ft8_wave(symbols, fs=12000, f_base=1500.0, f_step=6.25):
     symbol_len = int(fs * 0.160)
@@ -65,14 +65,18 @@ def write_wav_file(filename, data, sample_rate = 12000):
     wavefile.setsampwidth(2)
     wavefile.writeframes(data.tobytes())
     wavefile.close()
-    
-def read_wav_file(filename = 'audio_in.wav', sample_rate = 12000):
-     import wave
-     import numpy as np
-     with wave.open(filename, 'rb') as wav:
-          assert wav.getframerate() == sample_rate
-          assert wav.getnchannels() == 1
-          assert wav.getsampwidth() == 2
-          audio = np.frombuffer(wav.readframes(wav.getnframes()), dtype=np.int16)
-     return audio
+
+def play_wav_to_soundcard(sample_rate = 12000, filename = 'out.wav'):
+    with wave.open(filename, 'rb') as wf:
+        def callback(in_data, frame_count, time_info, status):
+            data = wf.readframes(frame_count)
+            return (data, pyaudio.paContinue)
+        stream = pya.open(format = pyaudio.paInt16, channels = 1, rate = sample_rate,
+                        output=True, stream_callback = callback,
+                        output_device_index = output_device_idx)
+        while stream.is_active():
+            timers.sleep(1)
+        stream.close()
+
+
 
