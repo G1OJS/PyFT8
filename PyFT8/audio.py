@@ -44,7 +44,7 @@ def play_wav_to_soundcard(sample_rate = 12000, filename = 'out.wav'):
                         output=True, stream_callback = callback,
                         output_device_index = output_device_idx)
         while stream.is_active():
-            timers.sleep(0.1)
+            timers.sleep(1)
         stream.close()
 
 def create_ft8_wave(symbols, fs=12000, f_base=1500.0, f_step=6.25):

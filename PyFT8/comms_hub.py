@@ -93,7 +93,7 @@ class Config:
         modules needing data from here use 'from comms_hub import config'
     """
     def __init__(self):
-        self.clearest_txfreq = [0,0]
+        self.clearest_txfreq = [1000,1000]
         self.txfreq = 0;
         self.rxfreq = 0;
         self.data = {"input_device":["Microphone","CODEC"], "output_device":["Speaker", "CODEC"]}
