@@ -1,16 +1,31 @@
 import os
 import json
+from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+import webbrowser
 import PyFT8.timers as timers
+
+#===================================================================================
+# HTTP server for UI page
+#===================================================================================
+def start_UI_server():
+    os.chdir(r"C:/Users/drala/Documents/Projects/GitHub/PyFT8/")
+    server = ThreadingHTTPServer(("localhost", 8080), SimpleHTTPRequestHandler)
+    webbrowser.open("http://localhost:8080/UI.html")
+    server.serve_forever()
+    
 
 #===================================================================================
 # Python <-> JS communication via websockets
 #===================================================================================
 import asyncio
-import datetime
-import threading
 from websockets.asyncio.server import serve
 global message_queue, loop
 _browser_callbacks = []
+
+def start_ws_server():
+    timers.timedLog(f"Starting websockets server")
+    import asyncio
+    asyncio.run(start_websockets_server())
 
 def register_browser_callback(callback):
     _browser_callbacks.append(callback)
@@ -70,7 +85,7 @@ class Config:
     def __init__(self, filename="config.json"):
         # needs writing so that config.json takes precedence over constants
         self.filename = filename
-        self.data = {"rxfreq": 2000, "txfreq":2000,
+        self.data = {"rxfreq": 1000, "txfreq":2000,
                      "input_device":["Microphone","CODEC"], "output_device":["Speaker", "CODEC"]}
       #  if os.path.exists(self.filename):
       #      with open(self.filename) as f:

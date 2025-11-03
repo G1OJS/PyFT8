@@ -7,25 +7,31 @@
 	
 	<style>
 		:root {
-			--page-bg:#111;
-			--panel-bg:#555;
-			--table-color:black;
-			--table-bg:#666;
-			--table-hover-bg:#333;
-			--even-bg: #8b91ad;
-			--odd-bg: #ad8b8b;
-			--cq-bg-hl:#93bf95;
-			--cq-bg:#405441;
-			--to-me-bg:#ff4d4d;
-			--by-me-bg:#e6e600;
+			--page-bg:#111; 	 --panel-bg:#555;
+			--table-color:black; --table-bg:#666;    --table-hover-bg:#333;
+			--even-bg: #8b91ad;  --odd-bg: #ad8b8b;
+			--cq-bg-hl:#93bf95;  --cq-bg:#405441;
+			--to-me-bg:#ff4d4d;  --by-me-bg:#e6e600;
 		}
 
 		body { font-family: sans-serif; background:var(--page-bg); color:#eee; margin:1em; }
-
+		#App {display:inline-block;  align-content: start; width:fit-content; background:var(--panel-bg); padding:1em; height:90vh;}
+		#clock {display: block; font-size: 1.17em; font-weight: bold;}
+		.grid_title {display: block; font-size: 1.17em; font-weight: bold; margin-left:0.5em}
+		
+		#SpectrumContainer {position: relative; width: calc(2 * 25em + 2 * 1em); height: 40px;margin: 1em 0em 1em 0em; }
+		#Spectrum {display: flex; justify-content: center; height: 10px; width: fit-content; background: #222;
+					border: 1px solid #444; position: absolute;top: 50%;transform: translateY(-50%);}
+		#Spectrum > div {display:inline-block; width:2px; height:10px;}
+		.marker {position: absolute;bottom: 0; width: 1px; height: 20px;background: red;
+				 color: white;font-size: 0.7em;text-align: center; transform: translateX(-50%);}
+		#txMarker { background: red; bottom:20px;}
+		#rxMarker { background: lime; }
+								
 		#DecodePanelsContainer {display:grid; grid-template-columns: repeat(2, max-content); background:var(--panel-bg); width:max-content;}	
 
 		.decodes_grid {display:grid; grid-template-columns: repeat( 7, max-content) auto; grid-auto-rows: min-content; align-content: start; 
-					   background:var(--table-bg); color:#8cf; margin:0.5em; height:15em; min-width:25em; overflow-y:scroll;}	
+					   background:var(--table-bg); color:#8cf; margin:0.5em; min-height:20em; max-height:80vh; min-width:25em; overflow-y:scroll;}	
 
 		.grid_row {display:contents; }
 		.grid_row.odd > div {background-color: var(--odd-bg);}
@@ -42,6 +48,24 @@
 	
 	<script>
 		let myCall = "G1OJS";
+		function update_spectrum(spectrum_power) {
+			const container = document.getElementById("Spectrum");
+			container.innerHTML = "";
+			spectrum_power.forEach(v => {
+				const cell = document.createElement("div");
+				const brightness = Math.round(v * 255);
+				cell.style.background = `rgb(${brightness},${brightness/2},0)`;
+				container.appendChild(cell);
+			});
+		}
+		function update_freq_markers(txFreq=0, rxFreq=0, fmin=0, fmax=3500) {
+			const container = document.getElementById("Spectrum");
+			const txMarker = document.getElementById("txMarker");
+			const rxMarker = document.getElementById("rxMarker");
+			const toPx = f => ((f - fmin) / (fmax - fmin)) * container.offsetWidth;
+			if (txFreq !== undefined) txMarker.style.left = `${toPx(txFreq)}px`;
+			if (rxFreq !== undefined) rxMarker.style.left = `${toPx(rxFreq)}px`;
+		}
 		function update_clock() {
 			const t = new Date;
 			const utc = ("0" + t.getUTCHours()).slice(-2) + ":" + ("0" + t.getUTCMinutes()).slice(-2) + ":" + ("0" + t.getUTCSeconds()).slice(-2);
@@ -69,7 +93,7 @@
 				row.appendChild(cell_div);
 			});
 			row.addEventListener("click", e => {
-				document.getElementById('rxFreq').innerHTML = dd.freq;
+				update_freq_markers(rxFreq = dd.freq, txFreq=3000);
 				websocket.send(JSON.stringify({	
 					topic: "ui.process_clicked_message", 
 					call_a:dd.call_a, call_b: dd.call_b, 
@@ -77,25 +101,13 @@
 				}));
 			}); 
 		}
-		function update_spectrum(spectrum_power) {
-			const container = document.getElementById("occupancy");
-			container.innerHTML = ""; // clear
-			spectrum_power.forEach(v => {
-				const cell = document.createElement("div");
-				const brightness = Math.round(v * 255);
-				cell.style.background = `rgb(${brightness},${brightness/2},0)`;
-				cell.style.width = "2px";
-				cell.style.height = "10px";
-				cell.style.display = "inline-block";
-				container.appendChild(cell);
-			});
-		}
+
 		setInterval(update_clock, 1000);
 		const websocket = new WebSocket("ws://localhost:5678/");
 		websocket.onmessage = (event) => {
 			const dd = JSON.parse(event.data)
 			if(!dd) return;
-			if(dd.topic == 'transceiver.set_rxfreq') 	{document.getElementById('rxFreq').innerHTML = dd.freq;}
+			if(dd.topic == 'transceiver.set_rxfreq') 	{update_freq_markers(rxFreq = dd.freq)}
 			if(dd.topic == "freq_occ_array") 			{update_spectrum(dd.histogram)}
 			if(dd.topic == 'transceiver.decode_dict')	{add_decode_row(dd, (dd.priority)? 'priority_decodes':'all_decodes')}
 		}
@@ -104,18 +116,24 @@
 </head>
 
 <body>
-	<div id='clock'></div>
-	<div id = 'occupancy'></div>
-	<div>Tx freq: <span id='txFreq'></span></div>
-	<div>Rx freq: <span id='rxFreq'></span></div>
-	<div id = 'DecodePanelsContainer'>
-		<div class = 'DecodePanel'>
-			<h3>All Decodes</h3>
-			<div id="all_decodes" class = "decodes_grid"></div>
+	<div id = 'App'>
+		<div id='clock'></div>
+		<div id="SpectrumContainer">
+			<div id="Spectrum"></div>
+			<div id="freqMarkers">
+				<div id="txMarker" class="marker">Tx</div>
+				<div id="rxMarker" class="marker">Rx</div>
+			</div>
 		</div>
-		<div class = 'DecodePanel'>
-			<h3>Priority decodes:</h3>
-			<div id="priority_decodes"  class = "decodes_grid"></div>
+		<div id = 'DecodePanelsContainer'>
+			<div class = 'DecodePanel'>
+				<div class='grid_title'>All Decodes</div>
+				<div id="all_decodes" class = "decodes_grid"></div>
+			</div>
+			<div class = 'DecodePanel'>
+				<div class='grid_title'>Priority Decodes</div>
+				<div id="priority_decodes"  class = "decodes_grid"></div>
+			</div>
 		</div>
 	</div>
 	
