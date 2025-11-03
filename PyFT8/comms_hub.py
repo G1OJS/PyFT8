@@ -24,7 +24,7 @@ def start_UI_page_server():
 import asyncio
 from websockets.asyncio.server import serve
 global message_queue, loop, UI_callback
-
+loop = None
 
 def start_UI_ws_server(callback):
     global UI_callback
@@ -53,8 +53,6 @@ def send_to_ui_ws(topic, message):
     if loop and loop.is_running():
         full_message = {"topic": topic, **message}
         asyncio.run_coroutine_threadsafe(message_queue.put(full_message), loop)
-    else:
-        print("No running asyncio loop yet; message dropped:", message)
 
 async def _handle_client(websocket):
     # connection between here and the browser JS
