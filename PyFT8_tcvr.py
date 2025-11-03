@@ -97,6 +97,7 @@ def transmit_message(msg):
 
     timers.timedLog(f"PTT ON", logfile = "QSO.log")
     rig.setPTTON()
+#    audio.play_data_to_soundcard(audio_data)
     audio.play_wav_to_soundcard()
     rig.setPTTOFF()
     last_tx_complete_time = timers.tnow()

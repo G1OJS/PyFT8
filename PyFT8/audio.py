@@ -79,4 +79,10 @@ def play_wav_to_soundcard(sample_rate = 12000, filename = 'out.wav'):
         stream.close()
 
 
-
+def play_data_to_soundcard(audio_data_int16, fs=12000):
+    stream = pya.open(format=pyaudio.paInt16, channels=1, rate=fs,
+                      output=True,
+                      output_device_index = output_device_idx)
+    stream.write(audio_data.tobytes())
+    stream.stop_stream()
+    stream.close()
