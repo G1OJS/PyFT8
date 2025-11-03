@@ -86,29 +86,29 @@ async def _receive_from_browser(websocket):
 
 
 #===================================================================================
-# Store / read persistent app config to/from a config file
+# Holds app config (globals)
 #===================================================================================
 class Config:
-    def __init__(self, filename="config.json"):
-        # needs writing so that config.json takes precedence over constants
-        self.filename = filename
-        self.data = {"rxfreq": 1000, "txfreq":2000,
-                     "input_device":["Microphone","CODEC"], "output_device":["Speaker", "CODEC"]}
-      #  if os.path.exists(self.filename):
-      #      with open(self.filename) as f:
-      #          self.data = json.load(f)
+    """
+        modules needing data from here use 'from comms_hub import config'
+    """
+    def __init__(self):
+        self.clearest_txfreq = [0,0]
+        self.txfreq = 0;
+        self.rxfreq = 0;
+        self.data = {"input_device":["Microphone","CODEC"], "output_device":["Speaker", "CODEC"]}
         
-    def set_rxFreq(self, rxfreq):
-        self.data['rxfreq'] = rxfreq
-       # self.save()
-        
-    def save(self):
-        with open(self.filename, "w") as f:
-            json.dump(self.data, f, indent=2)
-            
-# modules needing this use 'from comms_hub import config' :
+    def update_clearest_txfreq(self, clear_freq):
+        self.clearest_txfreq[0] = self.clearest_txfreq[-1]
+        self.clearest_txfreq[-1] = clear_freq
+        send_to_ui_ws("set_txfreq", {'freq':self.clearest_txfreq[-1]})
+    
 config = Config()
 
+
+#===================================================================================
+# Clear log files
+#===================================================================================
 #logs = ['QSO.log', 'events.log', 'PyFT8.log']
 logs_to_clear = ['events.log', 'PyFT8.log']
 for l in logs_to_clear:

@@ -28,15 +28,16 @@ if testing_from_wsjtx:
 def process_clicked_message(selected_message):
     global QSO_call, last_tx_complete_time
     print("click")
-    set_rxFreq(selected_message['freq'])
+    set_QSOfreqs(selected_message['freq'], config.clearest_txfreq[0])
     last_tx_complete_time=0
     reply_to_message(selected_message)
 
-def set_rxFreq(rxfreq = 2000):
-    rxfreq = int(rxfreq)
-    timers.timedLog(f"Set rxfreq to {rxfreq}", logfile = "QSO.log")
-    send_to_ui_ws("transceiver.set_rxfreq", {'freq':rxfreq})
-    config.set_rxFreq(rxfreq)
+def set_QSOfreqs(rxfreq, txfreq):
+    config.rxfreq = int(rxfreq)
+    config.txfreq = int(txfreq)
+    timers.timedLog(f"Set rx, tx freq to {rxfreq}, {txfreq}", logfile = "QSO.log")
+    send_to_ui_ws("set_rxfreq", {'freq':rxfreq})
+    send_to_ui_ws("set_txfreq", {'freq':txfreq})
 
 def process_rxfreq_decode(decode):
     # should arrive here earlier than in process_decode
@@ -86,7 +87,7 @@ def transmit_message(msg):
     timers.timedLog(f"Send message: ({repeat_counter}) {msg}", logfile = "QSO.log")
     c1, c2, grid_rpt = msg.split()
     symbols = FT8_encoder.pack_message(c1, c2, grid_rpt)
-    audio_data = audio.create_ft8_wave(symbols, f_base = config.data['txfreq'])
+    audio_data = audio.create_ft8_wave(symbols, f_base = config.txfreq)
     audio.write_wav_file('out.wav', audio_data)
 
     t_elapsed, t_remaining = timers.time_in_cycle()

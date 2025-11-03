@@ -27,6 +27,7 @@ from PyFT8.signaldefs import FT8
 from PyFT8.rx.decode174_91 import decode174_91
 import PyFT8.FT8_crc as crc
 import PyFT8.timers as timers
+from PyFT8.comms_hub import config
 
 global audio_in
 audio_in = None
@@ -62,14 +63,14 @@ def get_decodes(onDecode, onRxFreqDecode):
     cyclestart_str = timers.cyclestart_str(1)
     demod.spectrum.load_audio(audio_in)
 
-    rx_freq_decode = demod.demod_rxFreq(config.data['rxfreq'], cyclestart_str)
+    rx_freq_decode = demod.demod_rxFreq(cyclestart_str)
     if(rx_freq_decode):
         onRxFreqDecode(rx_freq_decode)
 
     candidates = demod.find_candidates(100,3400)
     candidates = demod.deduplicate_candidate_freqs(candidates)
     for c in candidates:
-        if(c.bounds.f0 == config.data['rxfreq']): # don't repeat decode the Rx freq
+        if(c.bounds.f0 == config.rxfreq): # don't repeat decode the Rx freq
             continue
         msg_payload = None
         demod.sync_candidate(c)
@@ -165,13 +166,15 @@ class FT8Demodulator:
         hist = 1 + np.clip(hist, -30, 0) / 30
         timers.timedLog("Sent occupancy data to ui")
         send_to_ui_ws("freq_occ_array", {'histogram':hist.tolist()})
-
+        clear_freq = freqs[np.argmin(hist)]
+        config.update_clearest_txfreq(np.clip(clear_freq,1000,3000))
+        
     # ======================================================
     # Demodulation
     # ======================================================
 
-    def demod_rxFreq(self, rxFreq, cyclestart_str):
-        f0_idx = int(np.searchsorted(self.spectrum.freqs, rxFreq))
+    def demod_rxFreq(self, cyclestart_str):
+        f0_idx = int(np.searchsorted(self.spectrum.freqs, config.rxfreq))
         candidate = Candidate(self.sigspec, self.spectrum, 0, f0_idx, -50)
         self.sync_candidate(candidate)
         timers.timedLog(f"Rx candidate synced {candidate.bounds.t0} {candidate.bounds.f0}", silent = True)
