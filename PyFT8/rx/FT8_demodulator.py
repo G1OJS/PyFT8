@@ -158,16 +158,20 @@ class FT8Demodulator:
     def make_occupancy_array(self, candidates, f0=0, f1=3500, bin_hz=10):
         from PyFT8.comms_hub import send_to_ui_ws
         bins = np.arange(f0, f1 + bin_hz, bin_hz)
-        freqs = [c.bounds.f0 for c in candidates]
-        scores = [c.score for c in candidates]
-        hist, _ = np.histogram(freqs, bins=bins, weights=scores)
-        hist = 10*np.log10(hist + 1e-12)
-        hist = hist - np.max(hist)
-        hist = 1 + np.clip(hist, -30, 0) / 30
+        for c in candidates:
+            bins[int((c.bounds.f0-f0)/bin_hz)] += c.score
+        bins = bins/np.max(bins)
+        bins = 10*np.log10(bins + 1e-12)
+        bins = 1 + np.clip(bins, -40, 0) / 40
         timers.timedLog("Sent occupancy data to ui")
-        send_to_ui_ws("freq_occ_array", {'histogram':hist.tolist()})
-        clear_freq = freqs[np.argmin(hist)]
-        config.update_clearest_txfreq(np.clip(clear_freq,1000,3000))
+        # find good clear frequency
+        fs0, fs1 = 1000,3000
+        bin0 = int((fs0-f0)/bin_hz)
+        bin1 = int((fs1-f0)/bin_hz)
+        clear_freq = fs0 + bin_hz*np.argmin(bins[bin0:bin1])
+        timers.timedLog(f"Best tx freq is {clear_freq}")
+        send_to_ui_ws("freq_occ_array", {'histogram':bins.tolist()})
+        config.update_clearest_txfreq(clear_freq)
         
     # ======================================================
     # Demodulation

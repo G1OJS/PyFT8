@@ -36,8 +36,8 @@ def set_QSOfreqs(rxfreq, txfreq):
     config.rxfreq = int(rxfreq)
     config.txfreq = int(txfreq)
     timers.timedLog(f"Set rx, tx freq to {rxfreq}, {txfreq}", logfile = "QSO.log")
-    send_to_ui_ws("set_rxfreq", {'freq':rxfreq})
-    send_to_ui_ws("set_txfreq", {'freq':txfreq})
+    send_to_ui_ws("set_rxfreq", {'freq':str(config.rxfreq)})
+    send_to_ui_ws("set_txfreq", {'freq':str(config.txfreq)})
 
 def process_rxfreq_decode(decode):
     # should arrive here earlier than in process_decode

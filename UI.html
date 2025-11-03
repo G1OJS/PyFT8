@@ -50,8 +50,8 @@
 	<script>
 		let myCall = "G1OJS";
 		let spectrum_width = 0;
-		let txFreq = 3000;
-		let rxFreq = 1000;
+		let txFreq = null;
+		let rxFreq = null;
 		function update_spectrum(spectrum_power) {
 			const spectrum = document.getElementById("Spectrum");
 			spectrum.innerHTML = "";
@@ -70,8 +70,8 @@
 			const rxMarker = document.querySelector(".rxMarker");
 			const left = (document.getElementById("SpectrumContainer").clientWidth-spectrum_width)/2;
 			const toPx = f => left + ((f - 0) / (3500 - 0)) * spectrum_width;
-			txMarker.style.left = `${toPx(txFreq)}px`;
-			rxMarker.style.left = `${toPx(rxFreq)}px`;
+			if(txFreq) txMarker.style.left = `${toPx(txFreq)}px`;
+			if(rxFreq) rxMarker.style.left = `${toPx(rxFreq)}px`;
 			for (const tick of document.querySelectorAll('.tickMarker')){
 				let f = parseInt(tick.dataset.freq);
 				tick.style.left = `${toPx(f)}px`;
@@ -118,8 +118,9 @@
 		websocket.onmessage = (event) => {
 			const dd = JSON.parse(event.data)
 			if(!dd) return;
-			if(dd.topic == 'set_rxfreq') 				{rxFreq = dd.freq; update_freq_markers();}
-			if(dd.topic == 'set_txfreq') 				{txFreq = dd.freq; update_freq_markers();}
+			console.log(dd);
+			if(dd.topic == 'set_rxfreq') 				{rxFreq = parseInt(dd.freq); update_freq_markers();}
+			if(dd.topic == 'set_txfreq') 				{txFreq = parseInt(dd.freq); update_freq_markers();}
 			if(dd.topic == "freq_occ_array") 			{update_spectrum(dd.histogram)}
 			if(dd.topic == 'transceiver.decode_dict')	{add_decode_row(dd, (dd.priority)? 'priority_decodes':'all_decodes')}
 		}

@@ -101,7 +101,7 @@ class Config:
     def update_clearest_txfreq(self, clear_freq):
         self.clearest_txfreq[0] = self.clearest_txfreq[-1]
         self.clearest_txfreq[-1] = clear_freq
-        send_to_ui_ws("set_txfreq", {'freq':self.clearest_txfreq[-1]})
+        send_to_ui_ws("set_txfreq", {'freq':str(self.clearest_txfreq[-1])})
     
 config = Config()
 
@@ -109,8 +109,8 @@ config = Config()
 #===================================================================================
 # Clear log files
 #===================================================================================
-#logs = ['QSO.log', 'events.log', 'PyFT8.log']
-logs_to_clear = ['events.log', 'PyFT8.log']
+#logs = ['QSO.log', 'PyFT8.log']
+logs_to_clear = ['PyFT8.log']
 for l in logs_to_clear:
     with open(l, 'w') as f:
         f.write('')
