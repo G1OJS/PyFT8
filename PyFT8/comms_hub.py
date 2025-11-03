@@ -2,6 +2,7 @@ import os
 import json
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 import webbrowser
+import threading
 import PyFT8.timers as timers
 
 #===================================================================================
@@ -12,6 +13,8 @@ def start_UI_page_server():
     server = ThreadingHTTPServer(("localhost", 8080), SimpleHTTPRequestHandler)
     webbrowser.open("http://localhost:8080/UI.html")
     server.serve_forever()
+
+threading.Thread(target=start_UI_page_server, daemon=True).start()
     
 #===================================================================================
 # Python <-> JS communication via websockets
@@ -19,6 +22,7 @@ def start_UI_page_server():
 import asyncio
 from websockets.asyncio.server import serve
 global message_queue, loop, UI_callback
+
 
 def start_UI_ws_server(callback):
     global UI_callback
