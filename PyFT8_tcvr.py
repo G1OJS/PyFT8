@@ -9,22 +9,17 @@ import PyFT8.audio as audio
 from PyFT8.rig.IcomCIV import IcomCIV
 from PyFT8.rx.FT8_demodulator import cyclic_demodulator
 import PyFT8.tx.FT8_encoder as FT8_encoder
-from PyFT8.comms_hub import config, start_websockets_server, send_to_ui_ws, start_ws_server, start_UI_server, register_browser_callback
-
+from PyFT8.comms_hub import config, start_websockets_server, send_to_ui_ws, start_UI_ws_server, start_UI_page_server
 
 myCall = 'G1OJS'
 myGrid = 'IO90'
 global QSO_call, last_tx_messsage, repeat_counter, last_tx_complete_time
-
 QSO_call = False
 repeat_counter = 0
 last_tx_messsage =''
 last_tx_complete_time = 0
-
 rig = IcomCIV()
-
 testing_from_wsjtx = False
-
 
 if testing_from_wsjtx:
     config.data.update({"input_device":["CABLE", "Output"]})
@@ -108,10 +103,8 @@ def transmit_message(msg):
     timers.timedLog(f"PTT OFF", logfile = "QSO.log")
 
 threading.Thread(target=cyclic_demodulator, kwargs=({'onDecode':process_decode, 'onRxFreqDecode':process_rxfreq_decode})).start()
-threading.Thread(target=start_UI_server, daemon=True).start()
-
-register_browser_callback(process_clicked_message)
-start_ws_server()
+threading.Thread(target=start_UI_page_server, daemon=True).start()
+start_UI_ws_server(process_clicked_message)
 
 
 

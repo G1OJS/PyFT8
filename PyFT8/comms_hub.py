@@ -7,29 +7,33 @@ import PyFT8.timers as timers
 #===================================================================================
 # HTTP server for UI page
 #===================================================================================
-def start_UI_server():
+def start_UI_page_server():
     os.chdir(r"C:/Users/drala/Documents/Projects/GitHub/PyFT8/")
     server = ThreadingHTTPServer(("localhost", 8080), SimpleHTTPRequestHandler)
     webbrowser.open("http://localhost:8080/UI.html")
     server.serve_forever()
     
-
 #===================================================================================
 # Python <-> JS communication via websockets
 #===================================================================================
 import asyncio
 from websockets.asyncio.server import serve
-global message_queue, loop
-_browser_callbacks = []
+global message_queue, loop, UI_callback
 
-def start_ws_server():
-    timers.timedLog(f"Starting websockets server")
+def start_UI_ws_server(callback):
+    global UI_callback
     import asyncio
-    asyncio.run(start_websockets_server())
+    from websockets import serve
+    timers.timedLog("Starting websockets server")
+    UI_callback = callback
+    async def ws_server():
+        global message_queue, loop
+        loop = asyncio.get_running_loop()
+        message_queue = asyncio.Queue()
+        async with serve(_handle_client, "localhost", 5678):
+            await asyncio.Future()  # run forever
+    asyncio.run(ws_server())
 
-def register_browser_callback(callback):
-    _browser_callbacks.append(callback)
-    
 async def start_websockets_server():
     global message_queue, loop
     loop = asyncio.get_running_loop()
@@ -71,11 +75,10 @@ async def _send_to_browser(websocket):
 async def _receive_from_browser(websocket):
     async for message in websocket:
         cmd = json.loads(message)
-        for cb in _browser_callbacks:
-            try:
-                cb(cmd)
-            except Exception as e:
-                timers.timedLog(f"[WebSockets] callback {cb.__name__} failed: {e}", 'websockets.log')
+        try:
+            UI_callback(cmd)
+        except Exception as e:
+            timers.timedLog(f"[WebSockets] callback {UI_callback.__name__} failed: {e}", 'websockets.log')
 
 
 #===================================================================================
