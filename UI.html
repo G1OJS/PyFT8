@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 
-
 <head>
 	<meta charset="utf-8">
 	<title>PyFT8 Live Decodes</title>
@@ -42,7 +41,7 @@
 	</style>
 	
 	<script>
-	
+		let myCall = "G1OJS";
 		function update_clock() {
 			const t = new Date;
 			const utc = ("0" + t.getUTCHours()).slice(-2) + ":" + ("0" + t.getUTCMinutes()).slice(-2) + ":" + ("0" + t.getUTCSeconds()).slice(-2);
@@ -51,67 +50,55 @@
 				for (const el of document.querySelectorAll(".cq-highlight")) {el.classList.remove("cq-highlight"); el.classList.add("cq-highlight_faded")}
 			}
 		}
-			
+		function add_decode_row(decode_dict, grid_id) {
+			let dd = decode_dict;
+			let grid = document.getElementById(grid_id)
+			let row = grid.appendChild(document.createElement("div"));
+			row.className='grid_row';
+			let cs = dd.cyclestart_str;
+			if (cs.charAt(cs.length-1) == '5'){row.classList.add('odd')} else {row.classList.add('even')}
+			if(dd.call_a == myCall) {row.classList.add('sentTomyCall')}
+			if(dd.call_b == myCall) {row.classList.add('sentBymyCall')}
+			if(dd.call_a == "CQ") {row.classList.add("cq-highlight")}
+			grid.insertBefore(row, grid.childNodes[0]);
+			const fields = [dd.cyclestart_str.split('_')[1], dd.snr, dd.freq, dd.dt, dd.call_a, dd.call_b, dd.grid_rpt,''];
+			fields.forEach((field, idx) => {
+				const cell_div = document.createElement("div");
+				cell_div.textContent = field;
+				cell_div.className='grid_cell';
+				row.appendChild(cell_div);
+			});
+			row.addEventListener("click", e => {
+				document.getElementById('rxFreq').innerHTML = dd.freq;
+				websocket.send(JSON.stringify({	
+					topic: "ui.process_clicked_message", 
+					call_a:dd.call_a, call_b: dd.call_b, 
+					grid_rpt: dd.grid_rpt, snr:dd.snr, freq: dd.freq
+				}));
+			}); 
+		}
+		function update_spectrum(spectrum_power) {
+			const container = document.getElementById("occupancy");
+			container.innerHTML = ""; // clear
+			spectrum_power.forEach(v => {
+				const cell = document.createElement("div");
+				const brightness = Math.round(v * 255);
+				cell.style.background = `rgb(${brightness},${brightness/2},0)`;
+				cell.style.width = "2px";
+				cell.style.height = "10px";
+				cell.style.display = "inline-block";
+				container.appendChild(cell);
+			});
+		}
 		setInterval(update_clock, 1000);
-		
 		const websocket = new WebSocket("ws://localhost:5678/");
 		websocket.onmessage = (event) => {
-			const m = JSON.parse(event.data)
-			if(m){
-				console.log(m.topic);
-				
-				if(m.topic == 'transceiver.set_rxfreq') {
-					console.log(m.topic, m.freq);
-					document.getElementById('rxFreq').innerHTML = m.freq;
-				}
-				if(m.topic == 'transceiver.decode_dict'){
-					console.log(m);
-					let myCall = "G1OJS";
-					let grid_id = 'all_decodes'
-					if(m.priority) grid_id = 'priority_decodes';
-					let grid = document.getElementById(grid_id)
-					let row = grid.appendChild(document.createElement("div"));
-					row.className='grid_row';
-					
-					let cs = m.cyclestart_str
-					if (cs.charAt(cs.length-1) == '5'){row.classList.add('odd')} else {row.classList.add('even')}
-					if(m.call_a == myCall) {row.classList.add('sentTomyCall')}
-					if(m.call_b == myCall) {row.classList.add('sentBymyCall')}
-					if(m.call_a == "CQ") {row.classList.add("cq-highlight")}
-					grid.insertBefore(row, grid.childNodes[0]);
-
-					const fields = [m.cyclestart_str.split('_')[1], m.snr, m.freq, m.dt, m.call_a, m.call_b, m.grid_rpt,''];
-					fields.forEach((field, idx) => {
-						const cell_div = document.createElement("div");
-						cell_div.textContent = field;
-						cell_div.className='grid_cell';
-						row.appendChild(cell_div);
-					});
-					row.addEventListener("click", e => {
-						document.getElementById('rxFreq').innerHTML = m.freq;
-						websocket.send(JSON.stringify({topic: "ui.process_clicked_message", call_a:m.call_a, call_b: m.call_b, 
-																							grid_rpt: m.grid_rpt, snr:m.snr, freq: m.freq}));
-					}); 
-					//document.getElementById(grid_id).scrollTop = document.getElementById(grid_id).scrollHeight;
-				}
-				
-				if (m.topic == "freq_occ_array") {
-					const data = m.histogram;
-					const container = document.getElementById("occupancy");
-					container.innerHTML = ""; // clear
-					data.forEach(v => {
-						const cell = document.createElement("div");
-						const brightness = Math.round(v * 255);
-						cell.style.background = `rgb(${brightness},${brightness/2},0)`;
-						cell.style.width = "3px";
-						cell.style.height = "10px";
-						cell.style.display = "inline-block";
-						container.appendChild(cell);
-					});
-				}
-			};	
-		} 
-		
+			const dd = JSON.parse(event.data)
+			if(!dd) return;
+			if(dd.topic == 'transceiver.set_rxfreq') 	{document.getElementById('rxFreq').innerHTML = dd.freq;}
+			if(dd.topic == "freq_occ_array") 			{update_spectrum(dd.histogram)}
+			if(dd.topic == 'transceiver.decode_dict')	{add_decode_row(dd, (dd.priority)? 'priority_decodes':'all_decodes')}
+		}
 	</script>
 	
 </head>
