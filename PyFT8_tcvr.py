@@ -9,7 +9,7 @@ import PyFT8.audio as audio
 from PyFT8.rig.IcomCIV import IcomCIV
 from PyFT8.rx.FT8_demodulator import cyclic_demodulator
 import PyFT8.tx.FT8_encoder as FT8_encoder
-from PyFT8.comms_hub import config, send_to_ui_ws, start_UI_ws_server
+from PyFT8.comms_hub import config, send_to_ui_ws, start_UI
 
 myCall = 'G1OJS'
 myGrid = 'IO90'
@@ -103,8 +103,7 @@ def transmit_message(msg):
     timers.timedLog(f"PTT OFF", logfile = "QSO.log")
 
 threading.Thread(target=cyclic_demodulator, kwargs=({'onDecode':process_decode, 'onRxFreqDecode':process_rxfreq_decode})).start()
-threading.Thread(target=start_UI_ws_server, args=(process_clicked_message,)).start()
 
-
+start_UI(process_clicked_message)
 
     

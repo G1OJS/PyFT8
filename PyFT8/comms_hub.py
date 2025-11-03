@@ -5,16 +5,18 @@ import webbrowser
 import threading
 import PyFT8.timers as timers
 
+def start_UI(UI_callback):
+    threading.Thread(target=start_UI_page_server, daemon=True).start()
+    threading.Thread(target=start_UI_ws_server, args=(UI_callback,)).start()
+    webbrowser.open("http://localhost:8080/UI.html")
+
 #===================================================================================
 # HTTP server for UI page
 #===================================================================================
 def start_UI_page_server():
     os.chdir(r"C:/Users/drala/Documents/Projects/GitHub/PyFT8/")
     server = ThreadingHTTPServer(("localhost", 8080), SimpleHTTPRequestHandler)
-    webbrowser.open("http://localhost:8080/UI.html")
     server.serve_forever()
-
-threading.Thread(target=start_UI_page_server, daemon=True).start()
     
 #===================================================================================
 # Python <-> JS communication via websockets
