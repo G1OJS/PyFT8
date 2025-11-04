@@ -135,9 +135,9 @@ def log_QSO():
     import PyFT8.logging as logging
     logging.append_qso("test.adi",{
     'gridsquare':their_grid, 'mode':'FT8','operator':myCall,
-    'rst_sent':their_snr, 'rst_rcvd':my_snr,
-    'qso_date':QSO_date_on, 'time_on':QSO_time_on,
-    'qso_date_off':QSO_date_off, 'time_off':QSO_time_off,
+    'rst_sent':their_snr, 'rst_rcvd':my_snr, # need to print these in 3 char format
+    'date_on':QSO_date_on, 'time_on':QSO_time_on,
+    'date_off':QSO_date_off, 'time_off':QSO_time_off,
     'band':myBand, 'freq':myFreq,
     'station_callsign':myCall, 'my_gridsquare':myGrid})
 
