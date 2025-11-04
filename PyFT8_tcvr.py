@@ -10,9 +10,14 @@ from PyFT8.rx.cycle_decoder import cycle_decoder
 import PyFT8.tx.FT8_encoder as FT8_encoder
 from PyFT8.comms_hub import config, send_to_ui_ws, start_UI
 
+global QSO_date_on, QSO_time_on, QSO_date_off, QSO_time_off, QSO_call, their_grid, their_snr, my_snr, tx_message
+global last_tx_messsage, repeat_counter, last_tx_complete_time
 myCall = 'G1OJS'
 myGrid = 'IO90'
-global QSO_call, last_tx_messsage, repeat_counter, last_tx_complete_time
+myBand = '20m'
+myFreq = '14.074'
+my_snr = "+??"
+their_grid = "????"
 QSO_call = False
 QSO_call_decoded = False # just for filtering duplicate decodes of QSO call
 repeat_counter = 0
@@ -72,24 +77,32 @@ def process_clicked_message(selected_message):
     reply_to_message(selected_message)
     
 def reply_to_message(decode_dict):
-    global QSO_call, tx_message
+    global QSO_date_on, QSO_time_on,QSO_date_off, QSO_time_off, QSO_call, their_grid, their_snr, my_snr, tx_message
     call_a, call_b, grid_rpt, their_snr = decode_dict['call_a'], decode_dict['call_b'], decode_dict['grid_rpt'], decode_dict['snr']
     rx_message = f"{call_a} {call_b} {grid_rpt}"
+    print(rx_message)
     if(call_a == "CQ"):
+        print("CQ detected")
         QSO_call = call_b
+        their_grid = grid_rpt
+        QSO_date_on, QSO_time_on = timers.QSO_dnow_tnow()
         transmit_message(f"{call_b} {myCall} {myGrid}")
     if(call_a == myCall):
         QSO_call = call_b
         if(len(grid_rpt)>2):    
             if(grid_rpt[-3]=="+" or grid_rpt[-3]=="-"):
+                my_snr = grid_rpt
                 timers.timedLog(f"QSO reply received: {rx_message}", logfile = "QSO.log")
                 transmit_message(f"{call_b} {myCall} R{their_snr:+03d}")
         if('73' in grid_rpt or 'RRR' in grid_rpt):
             timers.timedLog(f"QSO reply received: {rx_message}", logfile = "QSO.log")
             transmit_message(f"{call_b} {myCall} 73")
+            QSO_date_off, QSO_time_off = timers.QSO_dnow_tnow()
+            log_QSO()
             QSO_call = False
 
 def transmit_message(msg):
+    print(f"In transmit msg {msg}")
     global QSO_call, repeat_counter, last_tx_complete_time, last_tx_messsage
     if(not msg):
         timers.timedLog("QSO transmit skip, no message to transmit", logfile = "QSO.log")
@@ -116,6 +129,17 @@ def transmit_message(msg):
     rig.setPTTOFF()
     last_tx_complete_time = timers.tnow()
     timers.timedLog(f"PTT OFF", logfile = "QSO.log")
+
+def log_QSO():
+    import PyFT8.logging as logging
+    logging.append_qso("test.adi",{
+    'gridsquare':their_grid, 'mode':'FT8','operator':myCall,
+    'rst_sent':their_snr, 'rst_rcvd':my_snr,
+    'qso_date':QSO_date_on, 'time_on':QSO_time_on,
+    'qso_date_off':QSO_date_off, 'time_off':QSO_time_off,
+    'band':my_band, 'freq':my_freq,
+    'station_callsign':myCall, 'my_gridsquare':myGrid})
+
 
 threading.Thread(target=cycle_decoder, kwargs=({'onStart':onStart, 'onDecode':onDecode, 'onOccupancy':onOccupancy})).start()
 start_UI(process_UI_event)

@@ -13,6 +13,10 @@ def sleep_until(cycle_seconds = 0):
 
 def tnow():
     return time.time()
+
+def QSO_dnow_tnow():
+    t = time.gmtime(tnow())
+    return time.strftime("%H%M%S", t), time.strftime("%Y%m%d",t)
     
 def sleep(secs):
     if(secs>0):

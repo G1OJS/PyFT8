@@ -13,6 +13,8 @@ def append_qso(logfile, qso_dict):
             f.write(f"<{k}:{len(v)}>{v} ")
         f.write(f"<eor>\n")
 
+"""
+test
 append_qso("test.adi",{
     'gridsquare':'KN34', 'mode':'FT8','operator':'G1OJS',
     'rst_sent':'-03', 'rst_rcvd':'-03',
@@ -20,3 +22,4 @@ append_qso("test.adi",{
     'qso_date_off':'20210408', 'time_off':'195515',
     'band':'30m', 'freq':'10.137167',
     'station_callsign':'G1OJS', 'my_gridsquare':'IO90JU'})
+"""

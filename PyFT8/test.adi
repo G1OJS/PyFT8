@@ -1,6 +1,0 @@
-<ADIF_VER:5>3.0.8
-<PROGRAMID:5>PyFT8
-<EOH>
-<gridsquare:4>KN34 <mode:3>FT8 <operator:5>G1OJS <eor>
-
-<gridsquare:4>KN34 <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>-03 <rst_rcvd:3>-03 <qso_date:8>20210408 <time_on:6>195415 <qso_date_off:8>20210408 <time_off:6>195515 <band:3>30m <freq:9>10.137167 <station_callsign:5>G1OJS <my_gridsquare:6>IO90JU <eor>
