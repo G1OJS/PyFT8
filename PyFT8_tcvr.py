@@ -6,7 +6,7 @@ import threading
 import PyFT8.timers as timers
 import PyFT8.audio as audio
 from PyFT8.rig.IcomCIV import IcomCIV
-from PyFT8.rx.FT8_demodulator import cyclic_demodulator
+from PyFT8.rx.cycle_decoder import cycle_decoder
 import PyFT8.tx.FT8_encoder as FT8_encoder
 from PyFT8.comms_hub import config, send_to_ui_ws, start_UI
 
@@ -14,6 +14,7 @@ myCall = 'G1OJS'
 myGrid = 'IO90'
 global QSO_call, last_tx_messsage, repeat_counter, last_tx_complete_time
 QSO_call = False
+QSO_call_decoded = False # just for filtering duplicate decodes of QSO call
 repeat_counter = 0
 last_tx_messsage =''
 last_tx_complete_time = 0
@@ -25,23 +26,39 @@ if testing_from_wsjtx:
     config.data.update({"output_device":["CABLE", "Input"]})
     audio.find_audio_devices()
 
+def onStart():
+    global QSO_call_decoded
+    QSO_call_decoded = False
+    if(not QSO_call): # don't clear decodes during QSO
+        send_to_ui_ws("clear_decodes", {})
+
+def onDecode(decode):
+    global QSO_call_decoded
+    if(not decode): return
+    decode_dict = decode['decode_dict']
+
+    if(decode_dict['call_b'] == myCall or decode_dict['call_a'] == myCall or 'rxfreq' in decode_dict):
+        decode_dict.update({'priority':True})
+        
+    if(not (decode_dict['call_b'] == QSO_call and QSO_call_decoded)):
+        send_to_ui_ws("decode_dict", decode_dict)
+    
+    if (decode_dict['call_a'] == myCall and decode_dict['call_b'] == QSO_call):
+        QSO_call_decoded = True
+        reply_to_message(decode_dict)
+
+def onOccupancy(occupancy, clear_freq):
+    config.update_clearest_txfreq(clear_freq)
+    send_to_ui_ws("freq_occ_array", {'histogram':occupancy.tolist()})
+
 def process_clicked_message(selected_message):
+    global QSO_call, last_tx_complete_time
     timers.timedLog(f"Clicked on message {selected_message}")
     config.txfreq = config.clearest_txfreq
-    global QSO_call, last_tx_complete_time
     config.rxfreq = int(selected_message['freq'])
     last_tx_complete_time=0
     reply_to_message(selected_message)
-
-def process_decode(decode):
-    if(not decode): return
-    decode_dict = decode['decode_dict']
-    if(decode_dict['call_b'] == myCall or decode_dict['call_a'] == myCall or 'rxfreq' in decode_dict):
-        decode_dict.update({'priority':True})        
-    send_to_ui_ws("decode_dict", decode_dict)
-    if (decode_dict['call_a'] == myCall and decode_dict['call_b'] == QSO_call):
-        reply_to_message(decode_dict)
-        
+    
 def reply_to_message(decode_dict):
     global QSO_call, tx_message
     call_a, call_b, grid_rpt, their_snr = decode_dict['call_a'], decode_dict['call_b'], decode_dict['grid_rpt'], decode_dict['snr']
@@ -58,7 +75,7 @@ def reply_to_message(decode_dict):
         if('73' in grid_rpt or 'RRR' in grid_rpt):
             timers.timedLog(f"QSO reply received: {rx_message}", logfile = "QSO.log")
             transmit_message(f"{call_b} {myCall} 73")
-            QSO_call = ''
+            QSO_call = False
 
 def transmit_message(msg):
     global QSO_call, repeat_counter, last_tx_complete_time, last_tx_messsage
@@ -88,10 +105,7 @@ def transmit_message(msg):
     last_tx_complete_time = timers.tnow()
     timers.timedLog(f"PTT OFF", logfile = "QSO.log")
 
-def clear_decodes():
-    send_to_ui_ws("clear_decodes", {})
-    
-threading.Thread(target=cyclic_demodulator, kwargs=({'onStart':clear_decodes, 'onDecode':process_decode})).start()
+threading.Thread(target=cycle_decoder, kwargs=({'onStart':onStart, 'onDecode':onDecode, 'onOccupancy':onOccupancy})).start()
 start_UI(process_clicked_message)
 
     

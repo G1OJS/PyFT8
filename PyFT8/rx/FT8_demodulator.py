@@ -29,61 +29,6 @@ import PyFT8.FT8_crc as crc
 import PyFT8.timers as timers
 from PyFT8.comms_hub import config, send_to_ui_ws
 
-global audio_in
-audio_in = None
-
-def log_decode(decode):
-    timers.timedLog("No callback specified, logging: {decode}", logfile = "default_decodes.log", silent = True)
-
-def cyclic_demodulator(onStart = None, onDecode = log_decode):
-    from PyFT8.comms_hub import config
-    import threading
-    import PyFT8.timers as timers
-    import PyFT8.audio as audio
-    MAX_START_OFFSET_SECONDS = 0.5
-    END_RECORD_GAP_SECONDS = 1
-
-    global audio_in
-    while True:
-        t_elapsed, t_remain, = timers.time_in_cycle()
-        timers.sleep(t_remain)
-        if(t_elapsed <5 and t_elapsed > MAX_START_OFFSET_SECONDS):
-            timers.timedLog(f"Arrived to start recording at {t_elapsed} into cycle, waiting for next", silent = True)
-        timers.timedLog("Cyclic demodulator requesting audio", silent = True)
-        audio_in = audio.read_from_soundcard(timers.CYCLE_LENGTH - END_RECORD_GAP_SECONDS)
-        threading.Thread(target=get_decodes, kwargs=({'onStart':onStart, 'onDecode':onDecode})).start()
-        timers.timedLog("Cyclic demodulator passed audio for demodulating", silent = True)
-
-def get_decodes(onStart, onDecode):
-    from PyFT8.comms_hub import config
-    import PyFT8.timers as timers
-    from PyFT8.rx.waterfall import Waterfall
-
-    demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
-    cyclestart_str = timers.cyclestart_str(1)
-    demod.spectrum.load_audio(audio_in)
-    if(onStart):
-        onStart()
-
-    # decode the Rx freq first
-    f0_idx = int(np.searchsorted(demod.spectrum.freqs, config.rxfreq))
-    candidate = Candidate(demod.sigspec, demod.spectrum, 0, f0_idx, -50)
-    demod.sync_candidate(candidate)
-    decode = demod.demodulate_candidate(candidate, cyclestart_str = cyclestart_str)
-    if(decode):
-        decode['decode_dict'].update({'rxfreq': True})
-    onDecode(decode)
-    
-    candidates = demod.find_candidates(0,3500)
-    candidates = demod.deduplicate_candidate_freqs(candidates)
-    for c in candidates:
-        if(c.bounds.f0 == config.rxfreq): # don't repeat decode the Rx freq (needs a better filter)
-            continue
-        msg_payload = None
-        demod.sync_candidate(c)
-        decode = demod.demodulate_candidate(c, cyclestart_str)
-        onDecode(decode)
-  
 class FT8Demodulator:
     def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=3, sigspec=FT8):
         # ft8c.f90 uses 4 hops per symbol and 2.5Hz fbins (2.5 bins per tone)
@@ -117,7 +62,6 @@ class FT8Demodulator:
             score = np.sum(self.spectrum.power[: , f0_idx:f0_idx+self._csync.shape[1]])
             candidates.append(Candidate(self.sigspec, self.spectrum, 0, f0_idx, score))
         candidates.sort(key=lambda c: -c.score)
-        self.make_occupancy_array(candidates)
         return candidates[:topN]
 
     def deduplicate_candidate_freqs(self, candidates):
@@ -154,32 +98,10 @@ class FT8Demodulator:
             block_score = np.sum(pgrid * self._csync)
             if block_score > score: score = block_score 
         return score 
-
-    # ======================================================
-    # Low resource spectrum usage visualisation
-    # ======================================================
-    
-    def make_occupancy_array(self, candidates, f0=0, f1=3500, bin_hz=10):
-        from PyFT8.comms_hub import send_to_ui_ws
-        bins = np.arange(f0, f1 + bin_hz, bin_hz)
-        for c in candidates:
-            bins[int((c.bounds.f0-f0)/bin_hz)] += c.score
-        bins = bins/np.max(bins)
-        bins = 10*np.log10(bins + 1e-12)
-        bins = 1 + np.clip(bins, -40, 0) / 40
-        # find good clear frequency
-        fs0, fs1 = 1000,1500
-        bin0 = int((fs0-f0)/bin_hz)
-        bin1 = int((fs1-f0)/bin_hz)
-        clear_freq = fs0 + bin_hz*np.argmin(bins[bin0:bin1])
-        # send occupancy and clear freq to UI
-        config.update_clearest_txfreq(clear_freq)
-        send_to_ui_ws("freq_occ_array", {'histogram':bins.tolist()})
         
     # ======================================================
     # Demodulation
     # ======================================================
-
     def demodulate_candidate(self, candidate, cyclestart_str):
         c = candidate
         LLR174s=[]
