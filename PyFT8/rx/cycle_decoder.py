@@ -9,13 +9,13 @@ from PyFT8.rx.waterfall import Waterfall
 global audio_in
 audio_in = None
 
-def start_cycle_decoder(onStart, onDecode, onOccupancy):
-    threading.Thread(target=cycle_decoder, kwargs=({'onStart':onStart, 'onDecode':onDecode, 'onOccupancy':onOccupancy})).start()
+def start_cycle_decoder(onStart = None, onDecode = None, onOccupancy = None, onFinished = None):
+    threading.Thread(target=cycle_decoder, kwargs=({'onStart':onStart, 'onDecode':onDecode, 'onOccupancy':onOccupancy, 'onFinished':onFinished})).start()
 
 def log_decode(decode):
     timers.timedLog("No callback specified, logging: {decode}", logfile = "default_decodes.log", silent = True)
 
-def cycle_decoder(onStart = None, onOccupancy = None, onDecode = log_decode, cycle_len = 15):
+def cycle_decoder(onStart = None, onOccupancy = None, onDecode = log_decode, onFinished = None, cycle_len = 15):
     global audio_in
     MAX_START_OFFSET_SECONDS = 0.5
     END_RECORD_GAP_SECONDS = 1
@@ -28,10 +28,10 @@ def cycle_decoder(onStart = None, onOccupancy = None, onDecode = log_decode, cyc
             timers.timedLog(f"Arrived to start recording at {t_elapsed} into cycle, waiting for next", silent = True)
         timers.timedLog("Cyclic demodulator requesting audio", silent = True)
         audio_in = audio.read_from_soundcard(timers.CYCLE_LENGTH - END_RECORD_GAP_SECONDS)
-        threading.Thread(target=get_decodes, kwargs=({'onStart':onStart, 'onDecode':onDecode, 'onOccupancy':onOccupancy})).start()
+        threading.Thread(target=get_decodes, kwargs=({'onStart':onStart, 'onDecode':onDecode, 'onOccupancy':onOccupancy, 'onFinished':onFinished})).start()
         timers.timedLog("Cyclic demodulator passed audio for demodulating", silent = True)
 
-def get_decodes(onStart, onDecode, onOccupancy):
+def get_decodes(onStart=None, onDecode=None, onOccupancy=None, onFinished=None):
     demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
     cyclestart_str = timers.cyclestart_str(1)
     demod.spectrum.load_audio(audio_in)
@@ -45,7 +45,8 @@ def get_decodes(onStart, onDecode, onOccupancy):
     decode = demod.demodulate_candidate(rx_freq_candidate, cyclestart_str = cyclestart_str)
     if(decode):
         decode['decode_dict'].update({'rxfreq': True})
-    onDecode(decode)
+    if(onDecode):
+        onDecode(decode)
     
     candidates = demod.find_candidates(0,3500)
     if(onOccupancy):
@@ -56,7 +57,10 @@ def get_decodes(onStart, onDecode, onOccupancy):
         msg_payload = None
         demod.sync_candidate(c)
         decode = demod.demodulate_candidate(c, cyclestart_str)
-        onDecode(decode)
+        if(onDecode):
+            onDecode(decode)
+    if(onFinished):
+        onFinished()
 
 def make_occupancy_array(candidates, f0=0, f1=3500, bin_hz=10):
     occupancy = np.arange(f0, f1 + bin_hz, bin_hz)
