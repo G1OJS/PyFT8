@@ -26,24 +26,17 @@ if testing_from_wsjtx:
     audio.find_audio_devices()
 
 def process_clicked_message(selected_message):
-    timers.timedLog(f"Clicked on message")
+    timers.timedLog(f"Clicked on message {selected_message}")
     config.txfreq = config.clearest_txfreq
     global QSO_call, last_tx_complete_time
     config.rxfreq = int(selected_message['freq'])
     last_tx_complete_time=0
     reply_to_message(selected_message)
 
-def process_rxfreq_decode(decode):
-    # should arrive here earlier than in process_decode
-    send_to_ui_ws("clear_decodes", {})
-    if(not decode): return
-    decode['decode_dict'].update({'priority':True})
-    process_decode(decode)
-
 def process_decode(decode):
     if(not decode): return
     decode_dict = decode['decode_dict']
-    if(decode_dict['call_b'] == myCall or decode_dict['call_a'] == myCall):
+    if(decode_dict['call_b'] == myCall or decode_dict['call_a'] == myCall or 'rxfreq' in decode_dict):
         decode_dict.update({'priority':True})        
     send_to_ui_ws("decode_dict", decode_dict)
     if (decode_dict['call_a'] == myCall and decode_dict['call_b'] == QSO_call):
@@ -95,7 +88,10 @@ def transmit_message(msg):
     last_tx_complete_time = timers.tnow()
     timers.timedLog(f"PTT OFF", logfile = "QSO.log")
 
-threading.Thread(target=cyclic_demodulator, kwargs=({'onDecode':process_decode, 'onRxFreqDecode':process_rxfreq_decode})).start()
+def clear_decodes():
+    send_to_ui_ws("clear_decodes", {})
+    
+threading.Thread(target=cyclic_demodulator, kwargs=({'onStart':clear_decodes, 'onDecode':process_decode})).start()
 start_UI(process_clicked_message)
 
     

@@ -27,7 +27,7 @@ from PyFT8.signaldefs import FT8
 from PyFT8.rx.decode174_91 import decode174_91
 import PyFT8.FT8_crc as crc
 import PyFT8.timers as timers
-from PyFT8.comms_hub import config
+from PyFT8.comms_hub import config, send_to_ui_ws
 
 global audio_in
 audio_in = None
@@ -35,7 +35,7 @@ audio_in = None
 def log_decode(decode):
     timers.timedLog("No callback specified, logging: {decode}", logfile = "default_decodes.log", silent = True)
 
-def cyclic_demodulator(onDecode = log_decode, onRxFreqDecode = log_decode):
+def cyclic_demodulator(onStart = None, onDecode = log_decode):
     from PyFT8.comms_hub import config
     import threading
     import PyFT8.timers as timers
@@ -51,10 +51,10 @@ def cyclic_demodulator(onDecode = log_decode, onRxFreqDecode = log_decode):
             timers.timedLog(f"Arrived to start recording at {t_elapsed} into cycle, waiting for next", silent = True)
         timers.timedLog("Cyclic demodulator requesting audio", silent = True)
         audio_in = audio.read_from_soundcard(timers.CYCLE_LENGTH - END_RECORD_GAP_SECONDS)
-        threading.Thread(target=get_decodes, kwargs=({'onDecode':onDecode, 'onRxFreqDecode':onRxFreqDecode})).start()
+        threading.Thread(target=get_decodes, kwargs=({'onStart':onStart, 'onDecode':onDecode})).start()
         timers.timedLog("Cyclic demodulator passed audio for demodulating", silent = True)
 
-def get_decodes(onDecode, onRxFreqDecode):
+def get_decodes(onStart, onDecode):
     from PyFT8.comms_hub import config
     import PyFT8.timers as timers
     from PyFT8.rx.waterfall import Waterfall
@@ -62,9 +62,17 @@ def get_decodes(onDecode, onRxFreqDecode):
     demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
     cyclestart_str = timers.cyclestart_str(1)
     demod.spectrum.load_audio(audio_in)
+    if(onStart):
+        onStart()
 
-    rx_freq_decode = demod.demod_rxFreq(cyclestart_str)
-    onRxFreqDecode(rx_freq_decode)
+    # decode the Rx freq first
+    f0_idx = int(np.searchsorted(demod.spectrum.freqs, config.rxfreq))
+    candidate = Candidate(demod.sigspec, demod.spectrum, 0, f0_idx, -50)
+    demod.sync_candidate(candidate)
+    decode = demod.demodulate_candidate(candidate, cyclestart_str = cyclestart_str)
+    if(decode):
+        decode['decode_dict'].update({'rxfreq': True})
+    onDecode(decode)
     
     candidates = demod.find_candidates(0,3500)
     candidates = demod.deduplicate_candidate_freqs(candidates)
@@ -171,14 +179,6 @@ class FT8Demodulator:
     # ======================================================
     # Demodulation
     # ======================================================
-
-    def demod_rxFreq(self, cyclestart_str):
-        f0_idx = int(np.searchsorted(self.spectrum.freqs, config.rxfreq))
-        candidate = Candidate(self.sigspec, self.spectrum, 0, f0_idx, -50)
-        self.sync_candidate(candidate)
-        timers.timedLog(f"Rx candidate synced {candidate.bounds.t0} {candidate.bounds.f0}", silent = True)
-        decode = self.demodulate_candidate(candidate, cyclestart_str = cyclestart_str)
-        return decode
 
     def demodulate_candidate(self, candidate, cyclestart_str):
         c = candidate

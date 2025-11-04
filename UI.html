@@ -123,7 +123,10 @@
 			if(dd.topic == 'set_txfreq') 		{txFreq = parseInt(dd.freq); update_freq_markers();}
 			if(dd.topic == 'clear_decodes')		{document.getElementById('all_decodes').innerHTML=""}
 			if(dd.topic == "freq_occ_array") 	{update_spectrum(dd.histogram)}
-			if(dd.topic == 'decode_dict')		{add_decode_row(dd, (dd.priority)? 'priority_decodes':'all_decodes')}
+			if(dd.topic == 'decode_dict')		{
+				if (dd.priority) {add_decode_row(dd, 'priority_decodes')}
+				add_decode_row(dd, 'all_decodes')
+			}
 		}
 		document.addEventListener("DOMContentLoaded", (event) => { 
 			update_spectrum();
