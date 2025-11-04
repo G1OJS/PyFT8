@@ -40,7 +40,7 @@ def process_rxfreq_decode(decode):
 def process_decode(decode):
     decode_dict = decode['decode_dict']
     if(not decode_dict): return
-    if(decode_dict['call_b'] == myCall):
+    if(decode_dict['call_b'] == myCall or decode_dict['call_a'] == myCall):
         decode_dict.update({'priority':True})        
     send_to_ui_ws("transceiver.decode_dict", decode_dict)
     if (decode_dict['call_a'] == myCall and decode_dict['call_b'] == QSO_call):
