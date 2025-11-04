@@ -52,13 +52,15 @@ def onOccupancy(occupancy, clear_freq):
     send_to_ui_ws("freq_occ_array", {'histogram':occupancy.tolist()})
 
 def process_UI_event(event):
-    if(event['topic'] == "ui.clicked-message"):
+    global QSO_call, last_tx_messsage
+    topic = event['topic']
+    if(topic == "ui.clicked-message"):
         process_clicked_message(event)
-    if(event['topic'] == "ui.repeat-last"):
+    if(topic == "ui.repeat-last"):
         transmit_message(last_tx_message)
-    if(event['topic'] == "ui.abort-qso"):
+    if(topic == "ui.abort-qso"):
         QSO_call = False
-    if(event['topic'] == "ui.call-cq"):
+    if(topic == "ui.call-cq"):
         transmit_message(f"CQ {myCall} {myGrid}")
 
 def process_clicked_message(selected_message):
@@ -105,7 +107,7 @@ def transmit_message(msg):
     symbols = FT8_encoder.pack_message(c1, c2, grid_rpt)
     audio_data = audio.create_ft8_wave(symbols, f_base = config.txfreq)
     t_elapsed, t_remaining = timers.time_in_cycle()
-    if(t_elapsed > 1.5):
+    if(t_remaining < 3):
         timers.timedLog("QSO transmit waiting for cycle start", logfile = "QSO.log")
         timers.sleep(t_remaining)
     timers.timedLog(f"PTT ON", logfile = "QSO.log")
