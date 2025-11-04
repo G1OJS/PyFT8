@@ -77,7 +77,7 @@ def get_decodes(onStart, onDecode):
     candidates = demod.find_candidates(0,3500)
     candidates = demod.deduplicate_candidate_freqs(candidates)
     for c in candidates:
-        if(c.bounds.f0 == config.rxfreq): # don't repeat decode the Rx freq
+        if(c.bounds.f0 == config.rxfreq): # don't repeat decode the Rx freq (needs a better filter)
             continue
         msg_payload = None
         demod.sync_candidate(c)
