@@ -11,7 +11,7 @@ import PyFT8.tx.FT8_encoder as FT8_encoder
 from PyFT8.comms_hub import config, send_to_ui_ws, start_UI
 
 global QSO_date_on, QSO_time_on, QSO_date_off, QSO_time_off, QSO_call, their_grid, their_snr, my_snr, tx_message
-global last_tx_messsage, repeat_counter, last_tx_complete_time
+global last_tx_message, repeat_counter, last_tx_complete_time
 myCall = 'G1OJS'
 myGrid = 'IO90'
 myBand = '20m'
@@ -21,7 +21,7 @@ their_grid = "????"
 QSO_call = False
 QSO_call_decoded = False # just for filtering duplicate decodes of QSO call
 repeat_counter = 0
-last_tx_messsage =''
+last_tx_message =''
 last_tx_complete_time = 0
 rig = IcomCIV()
 testing_from_wsjtx = False
@@ -57,11 +57,12 @@ def onOccupancy(occupancy, clear_freq):
     send_to_ui_ws("freq_occ_array", {'histogram':occupancy.tolist()})
 
 def process_UI_event(event):
-    global QSO_call, last_tx_messsage, repeat_counter
+    global QSO_call, last_tx_message, repeat_counter
     topic = event['topic']
     if(topic == "ui.clicked-message"):
         process_clicked_message(event)
     if(topic == "ui.repeat-last"):
+        repeat_counter = 0
         transmit_message(last_tx_message)
     if(topic == "ui.abort-qso"):
         QSO_call = False
@@ -104,18 +105,18 @@ def reply_to_message(decode_dict):
 
 def transmit_message(msg):
     print(f"In transmit msg {msg}")
-    global QSO_call, repeat_counter, last_tx_complete_time, last_tx_messsage
+    global QSO_call, repeat_counter, last_tx_complete_time, last_tx_message
     if(not msg):
         timers.timedLog("QSO transmit skip, no message to transmit", logfile = "QSO.log")
         return
     if(last_tx_complete_time > timers.tnow() -7):
         timers.timedLog("QSO transmit skip, too close to last transmit", logfile = "QSO.log")
         return        
-    repeat_counter = repeat_counter + 1 if( msg == last_tx_messsage ) else 0
+    repeat_counter = repeat_counter + 1 if( msg == last_tx_message ) else 0
     if(repeat_counter >= 3):
         timers.timedLog("QSO transmit skip, repeat count too high", logfile = "QSO.log")
         return
-    last_tx_messsage = msg
+    last_tx_message = msg
     timers.timedLog(f"Send message: ({repeat_counter}) {msg}", logfile = "QSO.log")
     c1, c2, grid_rpt = msg.split()
     symbols = FT8_encoder.pack_message(c1, c2, grid_rpt)

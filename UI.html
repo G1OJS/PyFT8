@@ -40,12 +40,13 @@
 		.grid_row.odd > div {background-color: var(--odd-bg);}
 		.grid_row.even > div{ background-color: var(--even-bg);}	
 		.grid_row:hover > div {background-color: var(--table-hover-bg);}
-		.grid_row.cq-highlight > div {background-color: var(--cq-bg-hl);}
-		.grid_row.cq-highlight_faded > div {background-color: var(--cq-bg); transition: 1s linear all;}
+		.grid_row.cq-highlight  > div {background-color: var(--cq-bg-hl);}
+		.grid_row.cq-highlight_faded  > div{background-color: var(--cq-bg); transition: 1s linear all;}
 		.grid_row.sentTomyCall > div {background-color: var(--to-me-bg);}
 		.grid_row.sentBymyCall > div {background-color: var(--by-me-bg);}	
 		.grid_cell {padding:1px 5px 1px 5px; font-weight:600; color:var(--table-color);}
-
+		.green-highlight {background-color: var(--cq-bg-hl);}
+		.green-highlight_faded {background-color: var(--cq-bg); transition: 1s linear all;}
 	</style>
 	
 	<script>
@@ -82,9 +83,15 @@
 			const t = new Date;
 			const utc = ("0" + t.getUTCHours()).slice(-2) + ":" + ("0" + t.getUTCMinutes()).slice(-2) + ":" + ("0" + t.getUTCSeconds()).slice(-2);
 			document.getElementById("clock").innerHTML = utc + " UTC";
-			if(t.getUTCSeconds() %15 > 1) {
-				for (const el of document.querySelectorAll(".cq-highlight")) {el.classList.remove("cq-highlight"); el.classList.add("cq-highlight_faded")}
+			t_cyc = t.getUTCSeconds() %15;
+			if(t_cyc > 1 && t_cyc <12.6) {
+				for (const el of document.querySelectorAll(".transmitting_item")) {el.classList.remove("green-highlight"); el.classList.add("green-highlight_faded"); }
+			} else {
+				for (const el of document.querySelectorAll(".transmitting_item")) {el.classList.remove("green-highlight_faded"); el.classList.add("green-highlight"); }
 			}
+			if(t_cyc > 1) {
+				for (const el of document.querySelectorAll(".cq-highlight")) {el.classList.remove("cq-highlight"); el.classList.add("cq-highlight_faded"); }
+			} 
 		}
 		function add_decode_row(decode_dict, grid_id) {
 			let dd = decode_dict;
@@ -169,8 +176,8 @@
 			</div>
 		</div>
 		<div id = 'buttons'>
-			<button class = 'button' data-action = 'call-cq'>Call CQ</button>
-			<button class = 'button' data-action = 'repeat-last'>Repeat last</button>
+			<button class = 'button transmitting_item' data-action = 'call-cq'>Call CQ</button>
+			<button class = 'button transmitting_item' data-action = 'repeat-last'>Repeat last</button>
 			<button class = 'button' data-action = 'abort-qso'>Abort QSO</button>
 		</div>
 	</div>
