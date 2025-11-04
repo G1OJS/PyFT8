@@ -95,7 +95,7 @@
 			if(dd.call_a == myCall) {row.classList.add('sentTomyCall')}
 			if(dd.call_b == myCall) {row.classList.add('sentBymyCall')}
 			if(dd.call_a == "CQ") {row.classList.add("cq-highlight")}
-			grid.insertBefore(row, grid.childNodes[0]);
+			//grid.insertBefore(row, grid.childNodes[0]);
 			const fields = [dd.cyclestart_str.split('_')[1], dd.snr, dd.freq, dd.dt, dd.call_a, dd.call_b, dd.grid_rpt,''];
 			fields.forEach((field, idx) => {
 				const cell_div = document.createElement("div");
@@ -119,10 +119,11 @@
 			const dd = JSON.parse(event.data)
 			if(!dd) return;
 			console.log(dd);
-			if(dd.topic == 'set_rxfreq') 				{rxFreq = parseInt(dd.freq); update_freq_markers();}
-			if(dd.topic == 'set_txfreq') 				{txFreq = parseInt(dd.freq); update_freq_markers();}
-			if(dd.topic == "freq_occ_array") 			{update_spectrum(dd.histogram)}
-			if(dd.topic == 'transceiver.decode_dict')	{add_decode_row(dd, (dd.priority)? 'priority_decodes':'all_decodes')}
+			if(dd.topic == 'set_rxfreq') 		{rxFreq = parseInt(dd.freq); update_freq_markers();}
+			if(dd.topic == 'set_txfreq') 		{txFreq = parseInt(dd.freq); update_freq_markers();}
+			if(dd.topic == 'clear_decodes')		{document.getElementById('all_decodes').innerHTML=""}
+			if(dd.topic == "freq_occ_array") 	{update_spectrum(dd.histogram)}
+			if(dd.topic == 'decode_dict')		{add_decode_row(dd, (dd.priority)? 'priority_decodes':'all_decodes')}
 		}
 		document.addEventListener("DOMContentLoaded", (event) => { 
 			update_spectrum();

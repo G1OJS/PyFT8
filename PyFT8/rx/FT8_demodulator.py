@@ -64,9 +64,8 @@ def get_decodes(onDecode, onRxFreqDecode):
     demod.spectrum.load_audio(audio_in)
 
     rx_freq_decode = demod.demod_rxFreq(cyclestart_str)
-    if(rx_freq_decode):
-        onRxFreqDecode(rx_freq_decode)
-
+    onRxFreqDecode(rx_freq_decode)
+    
     candidates = demod.find_candidates(0,3500)
     candidates = demod.deduplicate_candidate_freqs(candidates)
     for c in candidates:
@@ -75,10 +74,7 @@ def get_decodes(onDecode, onRxFreqDecode):
         msg_payload = None
         demod.sync_candidate(c)
         decode = demod.demodulate_candidate(c, cyclestart_str)
-        if(decode):
-            onDecode(decode)
-    # signal last decode has happened
-    onDecode({'decode_dict':{}, 'all_txt_line':'', 'finished_decoding':True})
+        onDecode(decode)
   
 class FT8Demodulator:
     def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=3, sigspec=FT8):

@@ -26,23 +26,26 @@ if testing_from_wsjtx:
     audio.find_audio_devices()
 
 def process_clicked_message(selected_message):
+    timers.timedLog(f"Clicked on message")
+    config.txfreq = config.clearest_txfreq
     global QSO_call, last_tx_complete_time
     config.rxfreq = int(selected_message['freq'])
-    config.txfreq = int(config.clearest_txfreq[0])
     last_tx_complete_time=0
     reply_to_message(selected_message)
 
 def process_rxfreq_decode(decode):
     # should arrive here earlier than in process_decode
+    send_to_ui_ws("clear_decodes", {})
+    if(not decode): return
     decode['decode_dict'].update({'priority':True})
     process_decode(decode)
 
 def process_decode(decode):
+    if(not decode): return
     decode_dict = decode['decode_dict']
-    if(not decode_dict): return
     if(decode_dict['call_b'] == myCall or decode_dict['call_a'] == myCall):
         decode_dict.update({'priority':True})        
-    send_to_ui_ws("transceiver.decode_dict", decode_dict)
+    send_to_ui_ws("decode_dict", decode_dict)
     if (decode_dict['call_a'] == myCall and decode_dict['call_b'] == QSO_call):
         reply_to_message(decode_dict)
         
