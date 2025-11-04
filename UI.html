@@ -32,8 +32,9 @@
 				{display:grid; grid-template-columns: repeat(2, max-content); 
 				background:var(--panel-bg); width:max-content;}	
 
-		.decodes_grid {display:grid; grid-template-columns: repeat( 7, max-content) auto; grid-auto-rows: min-content; align-content: start; 
-					   background:var(--table-bg); color:#8cf; margin:0.5em; min-height:20em; max-height:70vh; min-width:25em; overflow-y:scroll;}	
+		.decodes_grid {display:grid; grid-template-columns: repeat( 7, max-content) auto; grid-auto-rows: min-content; 
+					   background:var(--table-bg); color:#8cf; margin:0.5em; height:25em; min-width:25em; 
+					   align-content: start; overflow-y:scroll;}	
 
 		.grid_row {display:contents; }
 		.grid_row.odd > div {background-color: var(--odd-bg);}
@@ -95,7 +96,6 @@
 			if(dd.call_a == myCall) {row.classList.add('sentTomyCall')}
 			if(dd.call_b == myCall) {row.classList.add('sentBymyCall')}
 			if(dd.call_a == "CQ") {row.classList.add("cq-highlight")}
-			//grid.insertBefore(row, grid.childNodes[0]);
 			const fields = [dd.cyclestart_str.split('_')[1], dd.snr, dd.freq, dd.dt, dd.call_a, dd.call_b, dd.grid_rpt,''];
 			fields.forEach((field, idx) => {
 				const cell_div = document.createElement("div");
@@ -106,14 +106,18 @@
 			row.addEventListener("click", e => {
 				update_freq_markers(rxFreq = dd.freq);
 				websocket.send(JSON.stringify({	
-					topic: "ui.process_clicked_message", 
+					topic: "ui.clicked-message", 
 					call_a:dd.call_a, call_b: dd.call_b, 
 					grid_rpt: dd.grid_rpt, snr:dd.snr, freq: dd.freq
 				}));
 			}); 
 		}
+		
+		function handle_button_click(action){
+			console.log(action);
+			websocket.send(JSON.stringify({topic: "ui." + action}));
+		}
 
-		setInterval(update_clock, 1000);
 		const websocket = new WebSocket("ws://localhost:5678/");
 		websocket.onmessage = (event) => {
 			const dd = JSON.parse(event.data)
@@ -129,9 +133,13 @@
 			}
 		}
 		document.addEventListener("DOMContentLoaded", (event) => { 
-			update_spectrum();
-			update_freq_markers();
+			document.getElementById('buttons').addEventListener("click", (event) => { 
+				handle_button_click(event.target.dataset.action)
+			});
 		});
+		
+		
+		setInterval(update_clock, 1000);
 	</script>
 	
 </head>
@@ -159,6 +167,11 @@
 				<div class='grid_title'>Priority Decodes</div>
 				<div id="priority_decodes"  class = "decodes_grid"></div>
 			</div>
+		</div>
+		<div id = 'buttons'>
+			<button class = 'button' data-action = 'call-cq'>Call CQ</button>
+			<button class = 'button' data-action = 'repeat-last'>Repeat last</button>
+			<button class = 'button' data-action = 'abort-qso'>Abort QSO</button>
 		</div>
 	</div>
 	
