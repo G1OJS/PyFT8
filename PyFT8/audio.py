@@ -45,15 +45,19 @@ def read_wav_file(filename = 'audio_in.wav', sample_rate = 12000):
           audio = np.frombuffer(wav.readframes(wav.getnframes()), dtype=np.int16)
      return audio
 
-
-
-def create_ft8_wave(symbols, fs=12000, f_base=1500.0, f_step=6.25):
+def create_ft8_wave(symbols, fs=12000, f_base=873.0, f_step=6.25):
     symbol_len = int(fs * 0.160)
     t = np.arange(symbol_len) / fs
-    waveform = np.concatenate([
-        np.sin(2 * np.pi * (f_base + s * f_step) * t)
-        for s in symbols
-    ])
+    phase = 0
+    waveform = []
+    for s in symbols:
+        f = f_base + s * f_step
+        phase_inc = 2 * np.pi * f / fs
+        w = np.sin(phase + phase_inc * np.arange(symbol_len))
+        waveform.append(w)
+        phase = (phase + phase_inc * symbol_len) % (2 * np.pi)
+
+    waveform = np.concatenate(waveform).astype(np.float32)
     waveform = waveform.astype(np.float32)
     waveform_int16 = np.int16( 0.5 * waveform / np.max(np.abs(waveform)) * 32767)
     return waveform_int16
@@ -77,7 +81,6 @@ def play_wav_to_soundcard(sample_rate = 12000, filename = 'out.wav'):
         while stream.is_active():
             timers.sleep(1)
         stream.close()
-
 
 def play_data_to_soundcard(audio_data_int16, fs=12000):
     stream = pya.open(format=pyaudio.paInt16, channels=1, rate=fs,

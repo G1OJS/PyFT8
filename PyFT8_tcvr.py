@@ -87,9 +87,8 @@ def transmit_message(msg):
     timers.timedLog(f"Send message: ({repeat_counter}) {msg}", logfile = "QSO.log")
     c1, c2, grid_rpt = msg.split()
     symbols = FT8_encoder.pack_message(c1, c2, grid_rpt)
-    audio_data = audio.create_ft8_wave(symbols, f_base = 1000)
+    audio_data = audio.create_ft8_wave(symbols, f_base = config.txfreq)
     audio.write_wav_file('out.wav', audio_data)
-
     t_elapsed, t_remaining = timers.time_in_cycle()
     if(t_remaining < 3):
         timers.timedLog("QSO transmit waiting for cycle start", logfile = "QSO.log")
