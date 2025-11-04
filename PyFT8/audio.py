@@ -62,30 +62,10 @@ def create_ft8_wave(symbols, fs=12000, f_base=873.0, f_step=6.25):
     waveform_int16 = np.int16( 0.5 * waveform / np.max(np.abs(waveform)) * 32767)
     return waveform_int16
 
-def write_wav_file(filename, data, sample_rate = 12000):
-    wavefile = wave.open(filename, 'wb')
-    wavefile.setframerate(sample_rate)
-    wavefile.setnchannels(1)
-    wavefile.setsampwidth(2)
-    wavefile.writeframes(data.tobytes())
-    wavefile.close()
-
-def play_wav_to_soundcard(sample_rate = 12000, filename = 'out.wav'):
-    with wave.open(filename, 'rb') as wf:
-        def callback(in_data, frame_count, time_info, status):
-            data = wf.readframes(frame_count)
-            return (data, pyaudio.paContinue)
-        stream = pya.open(format = pyaudio.paInt16, channels = 1, rate = sample_rate,
-                        output=True, stream_callback = callback,
-                        output_device_index = output_device_idx)
-        while stream.is_active():
-            timers.sleep(1)
-        stream.close()
-
 def play_data_to_soundcard(audio_data_int16, fs=12000):
     stream = pya.open(format=pyaudio.paInt16, channels=1, rate=fs,
                       output=True,
                       output_device_index = output_device_idx)
-    stream.write(audio_data.tobytes())
+    stream.write(audio_data_int16.tobytes())
     stream.stop_stream()
     stream.close()

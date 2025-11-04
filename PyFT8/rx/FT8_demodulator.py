@@ -67,7 +67,7 @@ def get_decodes(onDecode, onRxFreqDecode):
     if(rx_freq_decode):
         onRxFreqDecode(rx_freq_decode)
 
-    candidates = demod.find_candidates(100,3400)
+    candidates = demod.find_candidates(0,3500)
     candidates = demod.deduplicate_candidate_freqs(candidates)
     for c in candidates:
         if(c.bounds.f0 == config.rxfreq): # don't repeat decode the Rx freq
@@ -164,7 +164,7 @@ class FT8Demodulator:
         bins = 10*np.log10(bins + 1e-12)
         bins = 1 + np.clip(bins, -40, 0) / 40
         # find good clear frequency
-        fs0, fs1 = 1000,3000
+        fs0, fs1 = 1000,1500
         bin0 = int((fs0-f0)/bin_hz)
         bin1 = int((fs1-f0)/bin_hz)
         clear_freq = fs0 + bin_hz*np.argmin(bins[bin0:bin1])

@@ -95,7 +95,7 @@ class Config:
     def update_clearest_txfreq(self, clear_freq):
         self.clearest_txfreq[0] = self.clearest_txfreq[-1]
         self.clearest_txfreq[-1] = clear_freq
-        send_to_ui_ws("set_txfreq", {'freq':str(self.clearest_txfreq[-1])})
+        send_to_ui_ws("set_txfreq", {'freq':str(self.clearest_txfreq[0])})
     
 config = Config()
 

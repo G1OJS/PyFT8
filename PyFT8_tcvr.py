@@ -27,17 +27,10 @@ if testing_from_wsjtx:
 
 def process_clicked_message(selected_message):
     global QSO_call, last_tx_complete_time
-    print("click")
-    set_QSOfreqs(selected_message['freq'], config.clearest_txfreq[0])
+    config.rxfreq = int(selected_message['freq'])
+    config.txfreq = int(config.clearest_txfreq[0])
     last_tx_complete_time=0
     reply_to_message(selected_message)
-
-def set_QSOfreqs(rxfreq, txfreq):
-    config.rxfreq = int(rxfreq)
-    config.txfreq = int(txfreq)
-    timers.timedLog(f"Set rx, tx freq to {rxfreq}, {txfreq}", logfile = "QSO.log")
-    send_to_ui_ws("set_rxfreq", {'freq':str(config.rxfreq)})
-    send_to_ui_ws("set_txfreq", {'freq':str(config.txfreq)})
 
 def process_rxfreq_decode(decode):
     # should arrive here earlier than in process_decode
@@ -88,16 +81,13 @@ def transmit_message(msg):
     c1, c2, grid_rpt = msg.split()
     symbols = FT8_encoder.pack_message(c1, c2, grid_rpt)
     audio_data = audio.create_ft8_wave(symbols, f_base = config.txfreq)
-    audio.write_wav_file('out.wav', audio_data)
     t_elapsed, t_remaining = timers.time_in_cycle()
     if(t_remaining < 3):
         timers.timedLog("QSO transmit waiting for cycle start", logfile = "QSO.log")
         timers.sleep(t_remaining)
-
     timers.timedLog(f"PTT ON", logfile = "QSO.log")
     rig.setPTTON()
-#    audio.play_data_to_soundcard(audio_data)
-    audio.play_wav_to_soundcard()
+    audio.play_data_to_soundcard(audio_data)
     rig.setPTTOFF()
     last_tx_complete_time = timers.tnow()
     timers.timedLog(f"PTT OFF", logfile = "QSO.log")
