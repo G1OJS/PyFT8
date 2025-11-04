@@ -163,15 +163,14 @@ class FT8Demodulator:
         bins = bins/np.max(bins)
         bins = 10*np.log10(bins + 1e-12)
         bins = 1 + np.clip(bins, -40, 0) / 40
-        timers.timedLog("Sent occupancy data to ui")
         # find good clear frequency
         fs0, fs1 = 1000,3000
         bin0 = int((fs0-f0)/bin_hz)
         bin1 = int((fs1-f0)/bin_hz)
         clear_freq = fs0 + bin_hz*np.argmin(bins[bin0:bin1])
-        timers.timedLog(f"Best tx freq is {clear_freq}")
-        send_to_ui_ws("freq_occ_array", {'histogram':bins.tolist()})
+        # send occupancy and clear freq to UI
         config.update_clearest_txfreq(clear_freq)
+        send_to_ui_ws("freq_occ_array", {'histogram':bins.tolist()})
         
     # ======================================================
     # Demodulation

@@ -40,25 +40,20 @@ def start_UI_ws_server(callback):
             await asyncio.Future()  # run forever
     asyncio.run(ws_server())
 
-async def start_websockets_server():
-    global message_queue, loop
-    loop = asyncio.get_running_loop()
-    message_queue = asyncio.Queue()
-    async with serve(_handle_client, "localhost", 5678) as server:
-        await server.serve_forever()
-
 def send_to_ui_ws(topic, message):
     if not isinstance(message, dict):
         message = {}    # should really raise exception here 
     if loop and loop.is_running():
+        timers.timedLog(f"[WebsocketsServer] sending message with topic {topic}")
+        timers.timedLog(f"[WebsocketsServer] sending {topic} {message}", logfile = "ws.log", silent = True)
         full_message = {"topic": topic, **message}
         asyncio.run_coroutine_threadsafe(message_queue.put(full_message), loop)
 
 async def _handle_client(websocket):
     # connection between here and the browser JS
     # launch two coroutines: one for sending, one for receiving
-    send_task = asyncio.create_task(_send_to_browser(websocket))
-    recv_task = asyncio.create_task(_receive_from_browser(websocket))
+    send_task = asyncio.create_task(_send_queue_to_browser(websocket))
+    recv_task = asyncio.create_task(_call_callback_on_rx_from_browser(websocket))
     done, pending = await asyncio.wait(
         [send_task, recv_task],
         return_when=asyncio.FIRST_COMPLETED
@@ -66,17 +61,16 @@ async def _handle_client(websocket):
     for task in pending:
         task.cancel()
 
-async def _send_to_browser(websocket):
+async def _send_queue_to_browser(websocket):
     while True:
         message = await message_queue.get()
-        timers.timedLog(f"[WebsocketsServer] sending {message}", 'websockets.log')
         try:
             await websocket.send(json.dumps(message))
         except Exception as e:
             timers.timedLog(f"[WebsocketsServer] couldn't send message", 'websockets.log')
         message_queue.task_done()
 
-async def _receive_from_browser(websocket):
+async def _call_callback_on_rx_from_browser(websocket):
     async for message in websocket:
         cmd = json.loads(message)
         try:
