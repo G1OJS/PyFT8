@@ -57,7 +57,7 @@ def onOccupancy(occupancy, clear_freq):
     send_to_ui_ws("freq_occ_array", {'histogram':occupancy.tolist()})
 
 def process_UI_event(event):
-    global QSO_call, last_tx_messsage
+    global QSO_call, last_tx_messsage, repeat_counter
     topic = event['topic']
     if(topic == "ui.clicked-message"):
         process_clicked_message(event)
@@ -66,6 +66,7 @@ def process_UI_event(event):
     if(topic == "ui.abort-qso"):
         QSO_call = False
     if(topic == "ui.call-cq"):
+        repeat_counter = 0
         transmit_message(f"CQ {myCall} {myGrid}")
 
 def process_clicked_message(selected_message):
@@ -137,7 +138,7 @@ def log_QSO():
     'rst_sent':their_snr, 'rst_rcvd':my_snr,
     'qso_date':QSO_date_on, 'time_on':QSO_time_on,
     'qso_date_off':QSO_date_off, 'time_off':QSO_time_off,
-    'band':my_band, 'freq':my_freq,
+    'band':myBand, 'freq':myFreq,
     'station_callsign':myCall, 'my_gridsquare':myGrid})
 
 

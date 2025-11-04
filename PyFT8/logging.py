@@ -10,6 +10,7 @@ def append_qso(logfile, qso_dict):
     with open(logfile,'a') as f:
         f.write(f"\n")
         for k,v in qso_dict.items():
+            v = str(v)
             f.write(f"<{k}:{len(v)}>{v} ")
         f.write(f"<eor>\n")
 

@@ -1,0 +1,669 @@
+08:56:02.40 Send message: (0) LZ1ZF G1OJS IO90
+08:56:02.42 PTT ON
+08:56:16.19 PTT OFF
+08:57:46.52 Send message: (0) SM6SUB G1OJS IO90
+08:57:46.53 PTT ON
+08:57:59.51 PTT OFF
+08:58:46.85 Send message: (0) TF5B G1OJS IO90
+08:58:46.87 PTT ON
+08:59:00.26 PTT OFF
+08:59:14.46 QSO reply received: G1OJS TF5B -19
+08:59:14.47 Send message: (0) TF5B G1OJS R-03
+08:59:14.49 QSO transmit waiting for cycle start
+08:59:15.01 PTT ON
+08:59:28.02 PTT OFF
+08:59:48.73 Send message: (0) TF5B G1OJS R-03
+08:59:48.74 PTT ON
+09:00:01.76 PTT OFF
+09:00:16.01 Send message: (0) TF5B G1OJS R-03
+09:00:16.03 PTT ON
+09:00:29.03 PTT OFF
+09:07:32.85 Send message: (0) SP5EXA G1OJS IO90
+09:07:32.87 PTT ON
+09:07:46.13 PTT OFF
+09:11:46.46 Send message: (0) EB1FE G1OJS IO90
+09:11:46.49 PTT ON
+09:11:59.50 PTT OFF
+09:12:31.42 Send message: (0) EB1FE G1OJS IO90
+09:12:31.45 PTT ON
+09:12:44.43 PTT OFF
+09:13:32.42 Send message: (0) DM3XD G1OJS IO90
+09:13:32.50 PTT ON
+09:13:45.91 PTT OFF
+09:33:31.51 Send message: (0) IU1TRT G1OJS IO90
+09:33:31.53 PTT ON
+09:33:44.57 PTT OFF
+09:35:31.95 Send message: (0) IZ3EAW G1OJS IO90
+09:35:31.96 PTT ON
+09:35:45.40 PTT OFF
+09:35:59.85 QSO reply received: G1OJS IZ3EAW +01
+09:35:59.93 Send message: (0) IZ3EAW G1OJS R+17
+09:35:59.95 QSO transmit waiting for cycle start
+09:36:00.02 PTT ON
+09:36:13.06 PTT OFF
+09:36:29.68 QSO reply received: G1OJS IZ3EAW RRR
+09:36:29.71 Send message: (0) IZ3EAW G1OJS 73
+09:36:29.74 QSO transmit waiting for cycle start
+09:36:30.02 PTT ON
+09:36:42.98 PTT OFF
+10:57:17.38 Send message: (0) DD0AM G1OJS IO90
+10:57:17.40 PTT ON
+10:57:30.97 PTT OFF
+11:32:09.58 Send message: (0) LZ1ZF G1OJS IO90
+11:32:09.60 PTT ON
+11:32:22.73 PTT OFF
+11:53:17.48 Send message: (0) LA6RJA G1OJS IO90
+11:53:17.55 PTT ON
+11:53:30.63 PTT OFF
+11:54:47.44 Set rxfreq to 1252
+11:54:47.47 Set rxfreq to 1252
+11:54:47.48 Send message: (0) OZ9FF G1OJS IO90
+11:54:47.50 PTT ON
+11:55:00.97 PTT OFF
+11:57:38.90 Set rxfreq to 2310
+11:59:17.38 Set rxfreq to 790
+12:00:47.54 Set rxfreq to 340
+12:00:47.55 Set rxfreq to 340
+12:00:47.56 Send message: (0) DD0AM G1OJS IO90
+12:00:47.58 PTT ON
+12:01:01.04 PTT OFF
+12:03:04.22 Set rxfreq to 2912
+12:04:18.08 Set rxfreq to 1900
+12:04:43.19 Set rxfreq to 1300
+12:04:43.19 Set rxfreq to 1300
+12:04:43.19 Send message: (0) DL1HDL G1OJS IO90
+12:04:43.21 QSO transmit waiting for cycle start
+12:04:45.00 PTT ON
+12:04:58.14 PTT OFF
+12:04:58.15 Set rxfreq to 1300
+12:04:58.15 Set rxfreq to 1300
+12:04:58.16 Send message: (0) DL1HDL G1OJS IO90
+12:04:58.17 QSO transmit waiting for cycle start
+12:05:00.11 PTT ON
+12:05:13.28 PTT OFF
+12:05:13.29 Set rxfreq to 1300
+12:05:13.29 Set rxfreq to 1300
+12:05:13.30 Send message: (0) DL1HDL G1OJS IO90
+12:05:13.31 QSO transmit waiting for cycle start
+12:05:15.07 PTT ON
+12:05:28.26 PTT OFF
+12:06:13.97 Set rxfreq to 1450
+12:06:13.98 QSO reply received: M6JIC LA6RJA -16
+12:06:13.99 Set rxfreq to 1450
+12:06:14.01 Send message: (0) LA6RJA G1OJS R+19
+12:06:14.02 QSO transmit waiting for cycle start
+12:06:15.01 PTT ON
+12:06:28.09 PTT OFF
+12:11:47.87 Set rxfreq to 1025
+12:11:47.88 Set rxfreq to 1025
+12:11:47.89 Send message: (0) DJ2MS G1OJS IO90
+12:11:47.91 PTT ON
+12:12:00.85 PTT OFF
+12:12:16.80 Set rxfreq to 2002
+12:12:16.82 QSO reply received: GM3RTG DG5YHX -10
+12:12:16.83 Set rxfreq to 2002
+12:19:44.11 Set rxfreq to 1056
+12:23:48.03 Set rxfreq to 1027
+12:23:48.07 Set rxfreq to 1027
+12:23:48.08 Send message: (0) DJ2MS G1OJS IO90
+12:23:48.09 PTT ON
+12:24:00.99 PTT OFF
+12:24:00.1.00 Send message: (0) DJ2MS G1OJS IO90
+12:24:01.01 PTT ON
+12:24:13.97 PTT OFF
+12:33:17.52 Set rxfreq to 1002
+12:33:17.53 Set rxfreq to 1002
+12:33:17.53 Send message: (0) PA5COR G1OJS IO90
+12:33:17.55 PTT ON
+12:33:30.59 PTT OFF
+12:34:20.39 Set rxfreq to 1448
+12:34:20.39 QSO reply received: SM6TIJ LA6RJA -18
+12:34:20.40 Set rxfreq to 1448
+12:34:20.41 Send message: (0) LA6RJA G1OJS R+24
+12:34:20.42 PTT ON
+12:34:33.37 PTT OFF
+12:43:47.22 Set rxfreq to 1254
+12:43:47.23 Set rxfreq to 1254
+12:43:47.24 Send message: (0) OZ9FF G1OJS IO90
+12:43:47.26 PTT ON
+12:44:00.35 PTT OFF
+12:44:02.46 Set rxfreq to 1450
+12:44:05.65 Set rxfreq to 1731
+12:44:05.66 QSO reply received: G4ZEO DL2GAK RR73
+12:44:05.68 Send message: (0) DL2GAK G1OJS 73
+12:44:05.69 PTT ON
+12:53:03.03 Set rxfreq to 2310
+12:53:03.06 Send message: (0) IZ0JNU G1OJS IO90
+12:53:03.08 PTT ON
+12:53:16.19 PTT OFF
+12:54:31.00 Set rxfreq to 1173
+12:54:31.01 Send message: (0) DL1HDL G1OJS IO90
+12:54:31.02 PTT ON
+12:54:44.04 PTT OFF
+12:56:02.26 Set rxfreq to 1171
+12:56:02.28 QSO reply received: G1OJS DL1HDL +06
+12:56:02.29 Send message: (0) DL1HDL G1OJS R+24
+12:56:02.31 PTT ON
+12:56:15.97 PTT OFF
+12:56:29.59 QSO reply received: G1OJS DL1HDL RR73
+12:56:29.60 Send message: (0) DL1HDL G1OJS 73
+12:56:29.62 QSO transmit waiting for cycle start
+12:56:30.01 PTT ON
+12:56:43.03 PTT OFF
+12:57:16.73 Set rxfreq to 1054
+12:57:16.73 Send message: (0) SV1EAG G1OJS IO90
+12:57:16.75 PTT ON
+12:57:30.10 PTT OFF
+12:58:17.40 Set rxfreq to 1054
+12:58:17.41 Send message: (1) SV1EAG G1OJS IO90
+12:58:17.42 PTT ON
+12:58:30.91 PTT OFF
+13:05:13.57 Set rxfreq to 1054
+13:07:01.82 Set rxfreq to 1000
+13:07:01.82 Send message: (0) SA3SHN G1OJS IO90
+13:07:01.84 PTT ON
+13:07:15.30 PTT OFF
+13:18:16.55 Set rxfreq to 2290
+13:18:16.56 Send message: (0) DL6SDZ G1OJS IO90
+13:18:16.58 PTT ON
+13:18:29.56 PTT OFF
+13:18:44.79 QSO reply received: G1OJS DL6SDZ +02
+13:18:44.81 Send message: (0) DL6SDZ G1OJS R+16
+13:18:44.83 QSO transmit waiting for cycle start
+13:18:45.01 PTT ON
+13:18:57.98 PTT OFF
+13:18:58.38 QSO reply received: G1OJS DL6SDZ +02
+13:18:58.39 QSO transmit skip, too close to last transmit
+13:19:31.20 Set rxfreq to 2292
+13:19:31.21 QSO reply received: G1OJS DL6SDZ +02
+13:19:31.23 Send message: (1) DL6SDZ G1OJS R+16
+13:19:31.25 PTT ON
+13:19:44.23 PTT OFF
+13:21:31.63 Set rxfreq to 2292
+13:21:31.64 QSO reply received: G1OJS DL6SDZ +02
+13:21:31.65 Send message: (2) DL6SDZ G1OJS R+16
+13:21:31.67 PTT ON
+13:21:44.64 PTT OFF
+13:23:02.71 Set rxfreq to 1448
+13:28:02.42 Set rxfreq to 1365
+13:28:02.43 Send message: (0) RX3ASQ G1OJS IO90
+13:28:02.44 PTT ON
+13:28:16.44 PTT OFF
+13:28:47.02 Set rxfreq to 1502
+13:28:47.05 Send message: (0) EA4ZI G1OJS IO90
+13:28:47.07 PTT ON
+13:29:00.52 PTT OFF
+13:29:31.48 Set rxfreq to 2629
+13:29:31.55 Send message: (0) IW3BYL G1OJS IO90
+13:29:31.56 PTT ON
+13:29:44.62 PTT OFF
+13:29:59.70 QSO reply received: G1OJS IW3BYL +01
+13:29:59.75 Send message: (0) IW3BYL G1OJS R+01
+13:29:59.77 QSO transmit waiting for cycle start
+13:30:00.01 PTT ON
+13:30:12.99 PTT OFF
+13:30:13.24 QSO reply received: G1OJS IW3BYL +01
+13:30:13.26 QSO transmit skip, too close to last transmit
+13:30:45.39 Set rxfreq to 2629
+13:30:45.40 QSO reply received: G1OJS IW3BYL +01
+13:30:45.42 Send message: (1) IW3BYL G1OJS R+01
+13:30:45.43 PTT ON
+13:30:58.41 PTT OFF
+13:31:20.88 Set rxfreq to 1502
+13:31:20.89 QSO reply received: G1OJS EA4ZI -09
+13:31:20.91 Send message: (0) EA4ZI G1OJS R+06
+13:31:20.94 PTT ON
+13:31:34.02 PTT OFF
+13:32:14.60 QSO reply received: G1OJS EA4ZI -09
+13:32:14.64 Send message: (0) EA4ZI G1OJS R+20
+13:32:14.66 QSO transmit waiting for cycle start
+13:32:15.02 PTT ON
+13:32:28.12 PTT OFF
+13:32:28.23 QSO reply received: G1OJS EA4ZI -09
+13:32:28.41 QSO transmit skip, too close to last transmit
+13:32:44.59 QSO reply received: G1OJS EA4ZI RR73
+13:32:44.65 Send message: (0) EA4ZI G1OJS 73
+13:32:44.67 QSO transmit waiting for cycle start
+13:32:45.01 PTT ON
+13:32:58.06 PTT OFF
+15:38:26.47 Set rxfreq to 1652
+15:38:26.48 Send message: (0) OZ7DR G1OJS IO90
+15:38:26.50 PTT ON
+15:38:39.47 PTT OFF
+15:39:17.68 Set rxfreq to 1652
+15:39:17.71 Send message: (0) LA8OOA G1OJS IO90
+15:39:17.73 PTT ON
+15:39:30.76 PTT OFF
+16:36:17.08 Set rxfreq to 2867
+16:36:17.10 Send message: (0) OK1UOZ G1OJS IO90
+16:36:17.12 PTT ON
+16:36:30.40 PTT OFF
+16:37:44.56 QSO reply received: G1OJS OK1UOZ -01
+16:37:44.59 Send message: (0) OK1UOZ G1OJS R+24
+16:37:44.61 QSO transmit waiting for cycle start
+16:37:45.01 PTT ON
+16:37:57.98 PTT OFF
+16:37:58.06 QSO reply received: G1OJS OK1UOZ -01
+16:37:58.13 QSO transmit skip, too close to last transmit
+16:38:14.62 QSO reply received: G1OJS OK1UOZ RR73
+16:38:14.63 Send message: (0) OK1UOZ G1OJS 73
+16:38:14.65 QSO transmit waiting for cycle start
+16:38:15.01 PTT ON
+16:38:28.01 PTT OFF
+16:39:06.60 Set rxfreq to 2869
+16:39:06.61 QSO reply received: G1OJS OK1UOZ -01
+16:39:06.62 Send message: (0) OK1UOZ G1OJS R+24
+16:39:06.64 PTT ON
+16:39:19.61 PTT OFF
+16:41:31.88 Set rxfreq to 535
+16:41:31.91 Send message: (0) IK4LZH G1OJS IO90
+16:41:31.92 PTT ON
+16:41:45.25 PTT OFF
+16:41:59.81 QSO reply received: G1OJS IK4LZH +01
+16:41:59.86 Send message: (0) IK4LZH G1OJS R+24
+16:41:59.88 QSO transmit waiting for cycle start
+16:42:00.01 PTT ON
+16:42:12.99 PTT OFF
+16:42:13.07 QSO reply received: G1OJS IK4LZH +01
+16:42:13.13 QSO transmit skip, too close to last transmit
+16:42:29.78 QSO reply received: G1OJS IK4LZH RR73
+16:42:29.83 Send message: (0) IK4LZH G1OJS 73
+16:42:29.85 QSO transmit waiting for cycle start
+16:42:30.01 PTT ON
+16:42:43.00 PTT OFF
+19:27:50.74 Set rxfreq to 1975
+19:27:50.75 Send message: (0) PP6EOJ G1OJS IO90
+19:27:50.77 PTT ON
+19:38:02.58 Set rxfreq to 1750
+19:38:02.59 Send message: (0) G7LMY G1OJS IO90
+19:38:02.60 PTT ON
+19:38:16.72 PTT OFF
+19:38:29.64 QSO reply received: G1OJS G7LMY -19
+19:38:29.68 Send message: (0) G7LMY G1OJS R+12
+19:38:29.70 QSO transmit waiting for cycle start
+19:38:30.01 PTT ON
+19:38:43.01 PTT OFF
+19:38:59.67 QSO reply received: G1OJS G7LMY RR73
+19:38:59.72 Send message: (0) G7LMY G1OJS 73
+19:38:59.73 QSO transmit waiting for cycle start
+19:39:00.01 PTT ON
+19:39:13.03 PTT OFF
+23:54:47.48 Set rxfreq to 852
+23:54:47.53 Send message: (0) SV2FNT G1OJS IO90
+23:54:47.55 PTT ON
+23:55:00.52 PTT OFF
+09:40:53.62 Set rxfreq to 2000
+10:01:01.81 Set rxfreq to 1500
+10:01:01.82 Send message: (0) F5PIO G1OJS IO90
+10:01:01.84 PTT ON
+10:01:14.97 PTT OFF
+10:11:33.73 Set rxfreq to 1190
+10:11:33.73 Send message: (0) PA3DXL G1OJS IO90
+10:11:33.75 PTT ON
+10:11:46.75 PTT OFF
+10:38:13.40 Set rxfreq to 1067
+10:38:13.41 Send message: (0) G8PY G1OJS IO90
+10:38:13.43 QSO transmit waiting for cycle start
+10:38:15.01 PTT ON
+10:38:28.03 PTT OFF
+10:39:46.51 Set rxfreq to 2198
+10:39:46.52 Send message: (0) F5MYK G1OJS IO90
+10:39:46.53 PTT ON
+10:39:59.59 PTT OFF
+10:42:17.13 Set rxfreq to 2198
+10:42:17.14 Send message: (1) F5MYK G1OJS IO90
+10:42:17.15 PTT ON
+10:42:30.16 PTT OFF
+11:13:20.33 Set rxfreq to 1379
+11:13:20.34 Send message: (0) F4LNC G1OJS IO90
+11:13:20.36 PTT ON
+11:13:33.1.00 PTT OFF
+14:51:06.47 Set rxfreq to 2217
+14:51:06.48 Send message: (0) G4DFU G1OJS IO90
+14:51:06.50 PTT ON
+14:51:19.66 PTT OFF
+16:02:28.11 Set rxfreq to 504
+16:02:28.12 Send message: (0) DD0AM G1OJS IO90
+16:02:28.14 QSO transmit waiting for cycle start
+16:02:30.01 PTT ON
+16:02:42.99 PTT OFF
+16:03:31.87 Set rxfreq to 2154
+16:03:31.88 Send message: (0) DL1LKG G1OJS IO90
+16:03:31.90 PTT ON
+16:03:45.08 PTT OFF
+16:07:28.52 Set rxfreq to 2535
+16:07:28.52 Send message: (0) DL6CVJ G1OJS IO90
+16:07:28.54 QSO transmit waiting for cycle start
+16:07:30.01 PTT ON
+16:07:43.06 PTT OFF
+16:46:33.12 Set rx, tx freq to 1500, 347.9166666666667
+16:46:33.13 Send message: (0) F5PIO G1OJS IO90
+16:46:33.14 PTT ON
+16:46:46.16 PTT OFF
+16:49:00.99 Set rx, tx freq to 1031, 2014.5833333333335
+16:49:01.01 Send message: (0) IW3BYL G1OJS IO90
+16:49:01.07 PTT ON
+16:49:14.12 PTT OFF
+16:49:29.71 QSO reply received: G1OJS IW3BYL +06
+16:49:29.77 Send message: (0) IW3BYL G1OJS R+11
+16:49:29.78 QSO transmit waiting for cycle start
+16:49:30.01 PTT ON
+16:49:42.97 PTT OFF
+16:49:43.68 QSO reply received: G1OJS IW3BYL +06
+16:49:43.69 QSO transmit skip, too close to last transmit
+16:49:59.56 QSO reply received: G1OJS IW3BYL RRR
+16:49:59.57 Send message: (0) IW3BYL G1OJS 73
+16:49:59.59 QSO transmit waiting for cycle start
+16:50:00.01 PTT ON
+16:50:12.99 PTT OFF
+16:57:35.66 Set rx, tx freq to 1971, 0
+16:57:35.66 Send message: (0) RL2F G1OJS IO90
+16:57:35.67 PTT ON
+16:57:48.89 PTT OFF
+16:59:20.47 Set rx, tx freq to 2154, 1729.1666666666667
+16:59:20.48 Send message: (0) RN6MA G1OJS IO90
+16:59:20.49 PTT ON
+16:59:33.59 PTT OFF
+17:15:59.61 Set rx, tx freq to  865, 1000
+17:15:59.63 Send message: (0) DD0AM G1OJS IO90
+17:15:59.66 QSO transmit waiting for cycle start
+17:16:00.02 PTT ON
+17:16:13.36 PTT OFF
+17:19:55.91 Set rx, tx freq to 2731, 1000
+17:19:55.93 Send message: (0) MM0DHQ G1OJS IO90
+17:19:55.94 PTT ON
+17:20:08.86 PTT OFF
+17:46:02.11 Set rx, tx freq to 1535, 1590
+17:46:02.12 Send message: (0) IS0SNE G1OJS IO90
+17:46:02.13 PTT ON
+17:46:15.16 PTT OFF
+17:47:45.84 Set rx, tx freq to 1935, 1490
+17:47:46.93 Set rx, tx freq to 1106, 1490
+17:47:46.94 Send message: (0) DD0AM G1OJS IO90
+17:47:46.95 PTT ON
+17:47:59.97 PTT OFF
+17:49:45.78 Set rx, tx freq to 1340, 2740
+17:49:45.79 Send message: (0) IT9KHP G1OJS IO90
+17:49:45.81 PTT ON
+17:49:58.83 PTT OFF
+17:50:32.55 Set rx, tx freq to 1465, 0
+17:50:32.56 Send message: (0) R3KGN G1OJS IO90
+17:50:32.58 PTT ON
+17:50:45.58 PTT OFF
+17:51:18.62 Set rx, tx freq to 1125, 2590
+17:51:18.63 Send message: (0) UY0HY G1OJS IO90
+17:51:18.64 PTT ON
+17:51:31.63 PTT OFF
+17:53:32.1.00 Set rx, tx freq to 1465, 0
+17:53:33.00 Send message: (0) R3KGN G1OJS IO90
+17:53:33.01 PTT ON
+17:55:31.61 Set rx, tx freq to 1050, 0
+17:55:31.62 Send message: (0) LZ1ZF G1OJS IO90
+17:55:31.63 PTT ON
+17:55:31.70 PTT OFF
+17:58:01.51 Set rx, tx freq to 1050, 0
+17:58:01.53 Send message: (0) LZ1ZF G1OJS IO90
+17:58:01.68 PTT ON
+17:58:14.99 PTT OFF
+17:58:31.21 Set rx, tx freq to 1048, 2390
+17:58:31.21 Send message: (1) LZ1ZF G1OJS IO90
+17:58:31.23 PTT ON
+17:58:44.34 PTT OFF
+18:08:46.80 Set rx, tx freq to 1340, 1000
+18:08:46.80 Send message: (0) IT9KHP G1OJS IO90
+18:08:46.81 PTT ON
+18:10:16.46 Set rx, tx freq to 1167, 1000
+18:10:16.47 Send message: (0) VO1IV G1OJS IO90
+18:10:16.49 PTT ON
+18:32:47.25 Set rx, tx freq to 1223, 1000
+18:32:47.25 Send message: (0) SV1EAG G1OJS IO90
+18:32:47.27 PTT ON
+18:33:00.38 PTT OFF
+09:40:41.04 Set rx, tx freq to  223, 1000
+09:40:41.05 Send message: (0) HB9EKJ G1OJS IO90
+09:40:41.06 PTT ON
+09:41:10.03 Set rx, tx freq to  440, 1940
+09:41:10.04 Send message: (0) IK4LZH G1OJS IO90
+09:41:10.07 PTT ON
+09:41:47.55 Set rx, tx freq to 1635, 1000
+09:41:47.56 Send message: (0) IU8CEU G1OJS IO90
+09:41:47.58 PTT ON
+09:43:33.22 Set rx, tx freq to  604, 1000
+09:43:33.22 Send message: (0) F4BND G1OJS IO90
+09:43:33.24 PTT ON
+09:45:16.27 Set rx, tx freq to 1292, 1000
+09:45:17.29 Set rx, tx freq to 2185, 1000
+09:45:17.30 Send message: (0) YL3FW G1OJS IO90
+09:45:17.31 PTT ON
+09:45:30.44 PTT OFF
+09:47:03.15 Set rx, tx freq to 1981, 1990
+09:47:03.15 Send message: (0) E75FM G1OJS IO90
+09:47:16.07 Set rx, tx freq to  679, 2140
+09:47:16.08 Send message: (0) IU3NPO G1OJS IO90
+09:47:16.09 PTT ON
+09:47:29.31 PTT OFF
+09:47:44.52 QSO reply received: G1OJS IU3NPO -02
+09:47:44.57 Send message: (0) IU3NPO G1OJS R+23
+09:47:44.59 QSO transmit waiting for cycle start
+09:47:45.01 PTT ON
+09:47:58.23 PTT OFF
+09:47:58.37 QSO reply received: G1OJS IU3NPO -02
+09:47:58.38 QSO transmit skip, too close to last transmit
+09:48:14.62 QSO reply received: G1OJS IU3NPO RR73
+09:48:14.63 Send message: (0) IU3NPO G1OJS 73
+09:48:14.66 QSO transmit waiting for cycle start
+09:48:15.01 PTT ON
+09:48:28.23 PTT OFF
+10:14:46.34 Set rx, tx freq to 1215, 1300
+10:14:46.36 Send message: (0) YO6OGW G1OJS IO90
+10:14:46.38 PTT ON
+10:14:59.51 PTT OFF
+10:15:14.80 QSO reply received: G1OJS YO6OGW -10
+10:15:14.83 Send message: (0) YO6OGW G1OJS R-04
+10:15:14.85 QSO transmit waiting for cycle start
+10:15:15.02 PTT ON
+10:15:28.17 PTT OFF
+10:15:28.72 QSO reply received: G1OJS YO6OGW -10
+10:15:28.74 QSO transmit skip, too close to last transmit
+10:15:44.59 QSO reply received: G1OJS YO6OGW RR73
+10:15:44.60 Send message: (0) YO6OGW G1OJS 73
+10:15:44.62 QSO transmit waiting for cycle start
+10:15:45.01 PTT ON
+10:15:58.13 PTT OFF
+10:22:01.90 Set rx, tx freq to 1119, 1000
+10:22:02.02 Send message: (0) E71ETF G1OJS IO90
+10:28:46.99 Set rx, tx freq to 2152, 1000
+10:28:47.02 Send message: (0) YO6OGW G1OJS IO90
+10:28:47.05 PTT ON
+10:30:31.31 Set rx, tx freq to 1592, 1000
+10:30:31.36 Send message: (0) OZ7DR G1OJS IO90
+10:30:31.39 PTT ON
+10:30:44.35 PTT OFF
+10:30:59.68 QSO reply received: G1OJS OZ7DR -01
+10:30:59.69 Send message: (0) OZ7DR G1OJS R+14
+10:30:59.71 QSO transmit waiting for cycle start
+10:31:00.02 PTT ON
+10:31:00.04 QSO reply received: G1OJS OZ7DR -01
+10:31:00.08 Send message: (1) OZ7DR G1OJS R+14
+10:31:00.12 PTT ON
+10:31:13.01 PTT OFF
+10:31:13.05 PTT OFF
+10:31:29.73 QSO reply received: G1OJS OZ7DR RR73
+10:31:29.75 Send message: (0) OZ7DR G1OJS 73
+10:31:29.77 QSO transmit waiting for cycle start
+10:31:30.02 PTT ON
+10:31:42.98 PTT OFF
+10:34:01.67 Set rx, tx freq to 1681, 2890
+10:34:01.70 Send message: (0) SQ9ZAY G1OJS IO90
+10:34:01.73 PTT ON
+10:34:14.77 PTT OFF
+10:42:01.82 Send message: (0) S57ACD G1OJS IO90
+10:42:16.37 Send message: (0) RZ2H G1OJS IO90
+10:42:16.39 PTT ON
+10:42:29.34 PTT OFF
+10:43:00.67 Send message: (0) SQ9ZAY G1OJS IO90
+10:43:00.71 PTT ON
+10:43:13.67 PTT OFF
+10:43:31.18 Send message: (0) OZ7DR G1OJS IO90
+10:43:31.21 PTT ON
+10:43:44.14 PTT OFF
+10:46:16.95 Send message: (0) SP5SMY G1OJS IO90
+10:46:17.02 PTT ON
+10:46:30.03 PTT OFF
+10:46:46.17 Send message: (0) IU8CEU G1OJS IO90
+10:46:46.20 PTT ON
+10:46:59.08 PTT OFF
+10:47:44.67 QSO reply received: G1OJS IU8CEU -13
+10:47:44.69 Send message: (0) IU8CEU G1OJS R-02
+10:47:44.70 QSO transmit waiting for cycle start
+10:47:45.01 PTT ON
+10:47:57.90 PTT OFF
+10:47:58.53 QSO reply received: G1OJS IU8CEU -13
+10:47:58.54 QSO transmit skip, too close to last transmit
+10:48:32.36 QSO reply received: G1OJS IU8CEU -13
+10:48:32.37 Send message: (1) IU8CEU G1OJS R-02
+10:48:32.39 PTT ON
+10:48:45.38 PTT OFF
+10:48:58.93 QSO reply received: G1OJS IU8CEU -13
+10:48:58.94 Send message: (2) IU8CEU G1OJS R-02
+10:48:58.95 QSO transmit waiting for cycle start
+10:49:00.01 PTT ON
+10:49:12.93 PTT OFF
+10:49:12.94 QSO reply received: G1OJS IU8CEU -13
+10:49:12.95 QSO transmit skip, repeat count too high
+10:50:31.47 Send message: (0) EA7LIC G1OJS IO90
+10:50:31.48 PTT ON
+10:50:44.45 PTT OFF
+10:51:00.41 QSO reply received: G1OJS EA7LIC -03
+10:51:00.43 Send message: (0) EA7LIC G1OJS R+14
+10:51:00.45 PTT ON
+10:51:13.33 PTT OFF
+10:53:32.09 Send message: (0) OZ7DR G1OJS IO90
+10:53:32.11 PTT ON
+10:53:45.50 PTT OFF
+10:53:59.69 QSO reply received: G1OJS OZ7DR -02
+10:53:59.71 Send message: (0) OZ7DR G1OJS R+22
+10:53:59.73 QSO transmit waiting for cycle start
+10:54:00.01 PTT ON
+10:54:12.96 PTT OFF
+10:54:13.10 QSO reply received: G1OJS OZ7DR -02
+10:54:13.12 QSO transmit skip, too close to last transmit
+10:54:30.46 QSO reply received: G1OJS OZ7DR RR73
+10:54:30.47 Send message: (0) OZ7DR G1OJS 73
+10:54:30.49 PTT ON
+10:54:43.42 PTT OFF
+11:33:17.55 Send message: (0) PV2RB G1OJS IO90
+11:33:17.57 PTT ON
+11:33:30.78 PTT OFF
+11:37:16.73 Send message: (0) G4PMZ G1OJS IO90
+11:37:16.76 PTT ON
+11:37:29.85 PTT OFF
+11:38:16.48 Send message: (0) SV1EAG G1OJS IO90
+11:38:16.50 PTT ON
+11:38:29.50 PTT OFF
+11:39:15.60 Send message: (1) SV1EAG G1OJS IO90
+11:39:15.62 PTT ON
+11:39:28.52 PTT OFF
+12:07:14.60 Send message: (0) SV3FUB G1OJS IO90
+12:07:14.63 QSO transmit waiting for cycle start
+12:07:15.04 PTT ON
+12:07:28.08 PTT OFF
+12:13:30.67 Send message: (0) SV3FUB G1OJS IO90
+12:13:30.75 PTT ON
+12:13:43.76 PTT OFF
+12:14:46.59 Send message: (0) KB1FX G1OJS IO90
+12:14:46.61 PTT ON
+12:14:59.63 PTT OFF
+12:16:15.80 Send message: (0) SV7CFP G1OJS IO90
+12:16:15.82 PTT ON
+12:16:28.71 PTT OFF
+12:17:02.55 QSO reply received: G1OJS SV3FUB -06
+12:17:02.56 Send message: (0) SV3FUB G1OJS R+08
+12:17:02.58 PTT ON
+12:17:15.63 PTT OFF
+12:17:29.69 QSO reply received: G1OJS SV3FUB RR73
+12:17:29.70 Send message: (0) SV3FUB G1OJS 73
+12:17:29.72 QSO transmit waiting for cycle start
+12:17:30.01 PTT ON
+12:17:42.95 PTT OFF
+12:34:02.67 Send message: (0) HB9EKJ G1OJS IO90
+12:34:02.69 PTT ON
+12:34:15.72 PTT OFF
+12:34:31.02 Send message: (1) HB9EKJ G1OJS IO90
+12:34:31.04 PTT ON
+12:34:43.98 PTT OFF
+12:34:59.62 QSO reply received: G1OJS HB9EKJ -03
+12:34:59.63 Send message: (0) HB9EKJ G1OJS R+20
+12:34:59.65 QSO transmit waiting for cycle start
+12:35:00.01 PTT ON
+12:35:12.92 PTT OFF
+12:35:13.21 QSO reply received: G1OJS HB9EKJ -03
+12:35:13.23 QSO transmit skip, too close to last transmit
+12:35:29.62 QSO reply received: G1OJS HB9EKJ RR73
+12:35:29.64 Send message: (0) HB9EKJ G1OJS 73
+12:35:29.66 QSO transmit waiting for cycle start
+12:35:30.01 PTT ON
+12:35:42.93 PTT OFF
+12:39:48.70 Send message: (0) HA1ZW G1OJS IO90
+12:39:48.72 PTT ON
+12:40:01.79 PTT OFF
+12:40:31.88 Send message: (0) LZ1ZF G1OJS IO90
+12:40:31.90 PTT ON
+12:40:45.07 PTT OFF
+12:46:15.76 Send message: (0) HB9EKJ G1OJS IO90
+12:46:15.78 PTT ON
+12:46:28.67 PTT OFF
+13:01:16.01 Send message: (0) HA1BF G1OJS IO90
+13:01:16.03 PTT ON
+13:01:28.92 PTT OFF
+13:01:44.71 QSO reply received: G1OJS HA1BF -10
+13:01:44.72 Send message: (0) HA1BF G1OJS R+20
+13:01:44.74 QSO transmit waiting for cycle start
+
+13:01:58.18 QSO reply received: G1OJS HA1BF -10
+13:02:14.77 QSO reply received: G1OJS HA1BF RR73
+13:02:14.78 Send message: (0) HA1BF G1OJS 73
+
+13:07:45.58 Send message: (0) HB9EKJ G1OJS IO90
+13:08:14.80 QSO reply received: G1OJS HB9EKJ -04
+13:08:14.82 Send message: (0) HB9EKJ G1OJS R+24
+13:08:28.17 QSO reply received: G1OJS HB9EKJ -04
+13:08:44.60 QSO reply received: G1OJS HB9EKJ RR73
+13:08:44.62 Send message: (0) HB9EKJ G1OJS 73
+
+14:54:01.20 Send message: (0) IU4COO G1OJS IO90
+14:54:29.74 QSO reply received: G1OJS IU4COO -11
+14:54:29.75 Send message: (0) IU4COO G1OJS R-01
+14:54:43.70 QSO reply received: G1OJS IU4COO -11
+14:54:59.73 QSO reply received: G1OJS IU4COO RR73
+14:54:59.74 Send message: (0) IU4COO G1OJS 73
+
+
+16:01:46.19 Send message: (0) HG0NPJ G1OJS IO90
+16:02:14.76 QSO reply received: G1OJS HG0NPJ +01
+16:02:14.77 Send message: (0) HG0NPJ G1OJS R+02
+16:02:44.72 QSO reply received: G1OJS HG0NPJ RR73
+16:02:44.73 Send message: (0) HG0NPJ G1OJS 73
+
+
+16:14:16.91 Send message: (0) SP9JBT G1OJS IO90
+16:14:44.65 QSO reply received: G1OJS SP9JBT -05
+16:14:44.66 Send message: (0) SP9JBT G1OJS R+16
+16:15:14.72 QSO reply received: G1OJS SP9JBT RR73
+16:15:14.73 Send message: (0) SP9JBT G1OJS 73
+
+
+17:15:01.22 Send message: (0) LA1PHA G1OJS IO90
+17:15:29.81 QSO reply received: G1OJS LA1PHA -01
+17:15:29.83 Send message: (0) LA1PHA G1OJS R+04
+17:15:43.36 QSO reply received: G1OJS LA1PHA -01
+17:15:59.77 QSO reply received: G1OJS LA1PHA RR73
+17:15:59.80 Send message: (0) LA1PHA G1OJS 73
+
+
+17:19:46.30 Send message: (0) M0VOX G1OJS IO90
+17:20:14.76 QSO reply received: G1OJS M0VOX -06
+17:20:14.78 Send message: (0) M0VOX G1OJS R+0
+17:20:44.78 QSO reply received: G1OJS M0VOX RR73
+17:20:44.80 Send message: (0) M0VOX G1OJS 73
+
