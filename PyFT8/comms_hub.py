@@ -73,25 +73,45 @@ async def _send_queue_to_browser(websocket):
 async def _call_callback_on_rx_from_browser(websocket):
     async for message in websocket:
         cmd = json.loads(message)
-        try:
-            UI_callback(cmd)
-        except Exception as e:
-            timers.timedLog(f"[WebSockets] callback {UI_callback.__name__} failed: {e}", 'websockets.log')
-
+        UI_callback(cmd)
 
 #===================================================================================
 # Holds app config (globals)
 #===================================================================================
+import configparser
 class Config:
     """
         modules needing data from here use 'from comms_hub import config'
     """
     def __init__(self):
         self.clearest_txfreq = 1000
-        self.txfreq = 1000;
-        self.rxfreq = 1000;
+        self.txfreq = 1000
+        self.rxfreq = 1000
+        self.bands = []
+        self.myBand = False
+        self.myFreq = False
         self.data = {"input_device":["Microphone","CODEC"], "output_device":["Speaker", "CODEC"]}
-        
+        if(not self.check_config()):
+            return
+        parser = configparser.ConfigParser()
+        parser.read("PyFT8.ini")
+        self.myCall = parser.get("myStation","myCall")
+        self.myGrid = parser.get("myStation","myGrid")
+        for band_name, band_freq in parser.items("bands"):
+            self.bands.append({"band_name":band_name, "band_freq":band_freq})
+
+    def check_config(self):
+        if(os.path.exists("PyFT8.ini")):
+            return True
+        else:
+            print("No PyFT8.ini in current directory.")
+            txt = "[myStation]\nmyCall = please edit this e.g. myCall = G1OJS "
+            txt += "\nmyGrid = please edit this e.g. myGrid = IO90"
+            txt += "\n"
+            with open("PyFT8.ini","w") as f:
+                f.write(txt)
+            print("A blank PyFT8.ini file has been created - please edit it and re=run")
+
     def update_clearest_txfreq(self, clear_freq):
         self.clearest_txfreq = clear_freq
         send_to_ui_ws("set_txfreq", {'freq':str(self.clearest_txfreq)})
@@ -99,11 +119,3 @@ class Config:
 config = Config()
 
 
-#===================================================================================
-# Clear log files
-#===================================================================================
-#logs = ['QSO.log', 'PyFT8.log']
-logs_to_clear = ['PyFT8.log']
-for l in logs_to_clear:
-    with open(l, 'w') as f:
-        f.write('')

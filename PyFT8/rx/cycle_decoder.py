@@ -35,14 +35,15 @@ def get_decodes(onStart=None, onDecode=None, onOccupancy=None, onFinished=None):
     demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
     cyclestart_str = timers.cyclestart_str(1)
     demod.spectrum.load_audio(audio_in)
-    if(onStart):
-        onStart()
+
 
     # decode the Rx freq first
     f0_idx = int(np.searchsorted(demod.spectrum.freqs, config.rxfreq))
     rx_freq_candidate = Candidate(demod.sigspec, demod.spectrum, 0, f0_idx, -50)
     demod.sync_candidate(rx_freq_candidate)
     decode = demod.demodulate_candidate(rx_freq_candidate, cyclestart_str = cyclestart_str)
+    if(onStart):
+        onStart()
     if(decode):
         decode['decode_dict'].update({'rxfreq': True})
     if(onDecode):

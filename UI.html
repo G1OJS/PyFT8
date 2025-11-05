@@ -130,6 +130,7 @@
 			const dd = JSON.parse(event.data)
 			if(!dd) return;
 			console.log(dd);
+			if(dd.topic == 'add_band_button')   {add_band_button(dd.band_name, dd.band_freq)}
 			if(dd.topic == 'set_rxfreq') 		{rxFreq = parseInt(dd.freq); update_freq_markers();}
 			if(dd.topic == 'set_txfreq') 		{txFreq = parseInt(dd.freq); update_freq_markers();}
 			if(dd.topic == 'clear_decodes')		{document.getElementById('all_decodes').innerHTML=""}
@@ -139,6 +140,16 @@
 				add_decode_row(dd, 'all_decodes')
 			}
 		}
+		
+		function add_band_button(band_name, band_freq){
+			let parentEl = document.getElementById('buttons');
+			let btn = parentEl.appendChild(document.createElement("button"));
+			btn.className = 'button';
+			btn.innerText = band_name;
+			btn.dataset.action = `set-band-${band_name}-${band_freq}`;
+			btn.addEventListener("click", (event) => { handle_button_click(event.target.dataset.action)});
+		}
+		
 		document.addEventListener("DOMContentLoaded", (event) => { 
 			document.getElementById('buttons').addEventListener("click", (event) => { 
 				handle_button_click(event.target.dataset.action)
@@ -178,7 +189,6 @@
 		<div id = 'buttons'>
 			<button class = 'button transmitting_item' data-action = 'call-cq'>Call CQ</button>
 			<button class = 'button transmitting_item' data-action = 'repeat-last'>Repeat last</button>
-			<button class = 'button' data-action = 'abort-qso'>Abort QSO</button>
 		</div>
 	</div>
 	

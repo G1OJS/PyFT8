@@ -1,0 +1,50 @@
+header
+<eoh>
+
+<call:6>IZ3EAW <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+07 <rst_rcvd:3>+01 <qso_date:8>20251102 <time_on:6>093531 <qso_date_off:8>20251102 <time_off:6>093559 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:6>IO90JU <comment:5>PyFT8 <eor>
+
+<call:6>DL1HDL <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+04 <rst_rcvd:3>+06 <qso_date:8>20251102 <time_on:6>125431 <qso_date_off:8>20251102 <time_off:6>125602 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:6>IO90JU <comment:5>PyFT8 <eor>
+
+<call:6>OK1UOZ <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+04 <rst_rcvd:3>+01 <qso_date:8>20251102 <time_on:6>163617 <qso_date_off:8>20251102 <time_off:6>163744 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:6>IO90JU <comment:5>PyFT8 <eor>
+
+<call:5>G7LMY <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+02 <rst_rcvd:3>+09 <qso_date:8>20251102 <time_on:6>193802 <qso_date_off:8>20251102 <time_off:6>193829 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:6>IO90JU <comment:5>PyFT8 <eor>
+
+<call:6>IW3BYL <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+01 <rst_rcvd:3>+06 <qso_date:8>20251103 <time_on:6>164901 <qso_date_off:8>20251103 <time_off:6>164929 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:6>IO90JU <comment:5>PyFT8 <eor>
+
+<call:6>IU3NPO <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+03 <rst_rcvd:3>+02 <qso_date:8>20251104 <time_on:6>094716 <qso_date_off:8>20251104 <time_off:6>094744 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:6>IO90JU <comment:5>PyFT8 <eor>
+
+<call:6>YO6OGW <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+04 <rst_rcvd:3>+00 <qso_date:8>20251104 <time_on:6>101446 <qso_date_off:8>20251104 <time_off:6>101514 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:6>IO90JU <comment:5>PyFT8 <eor>
+
+<call:5>OZ7DR <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+04 <rst_rcvd:3>+01 <qso_date:8>20251104 <time_on:6>103031 <qso_date_off:8>20251104 <time_off:6>103059 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:6>IO90JU <comment:5>PyFT8 <eor>
+
+<call:6>EA7LIC <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+04 <rst_rcvd:3>+03 <qso_date:8>20251104 <time_on:6>105031 <qso_date_off:8>20251104 <time_off:6>105100 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:6>IO90JU <comment:5>PyFT8 <eor>
+
+<call:5>OZ7DR <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+02 <rst_rcvd:3>+02 <qso_date:8>20251104 <time_on:6>105332 <qso_date_off:8>20251104 <time_off:6>105359 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:6>IO90JU <comment:5>PyFT8 <eor>
+
+<call:6>SV3FUB <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+08 <rst_rcvd:3>+06 <qso_date:8>20251104 <time_on:6>120714 <qso_date_off:8>20251104 <time_off:6>121702 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:6>IO90JU <comment:5>PyFT8 <eor>
+
+<call:6>HB9EKJ <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+00 <rst_rcvd:3>+03 <qso_date:8>20251104 <time_on:6>123431 <qso_date_off:8>20251104 <time_off:6>123459 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:6>IO90JU <comment:5>PyFT8 <eor>
+
+<call:5>HA1BF <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+00 <rst_rcvd:3>+00 <qso_date:8>20251104 <time_on:6>130116 <qso_date_off:8>20251104 <time_off:6>130144 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:6>IO90JU <comment:5>PyFT8 <eor>
+
+<call:6>HB9EKJ <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+04 <rst_rcvd:3>+04 <qso_date:8>20251104 <time_on:6>130745 <qso_date_off:8>20251104 <time_off:6>130814 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:6>IO90JU <comment:5>PyFT8 <eor>
+
+<call:6>IU4COO <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+01 <rst_rcvd:3>+01 <qso_date:8>20251104 <time_on:6>145401 <qso_date_off:8>20251104 <time_off:6>145429 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:6>IO90JU <comment:5>PyFT8 <eor>
+
+<call:6>HG0NPJ <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+02 <rst_rcvd:3>+01 <qso_date:8>20251104 <time_on:6>160146 <qso_date_off:8>20251104 <time_off:6>160214 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:6>IO90JU <comment:5>PyFT8 <eor>
+
+<call:6>SP9JBT <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+06 <rst_rcvd:3>+05 <qso_date:8>20251104 <time_on:6>161416 <qso_date_off:8>20251104 <time_off:6>161444 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:6>IO90JU <comment:5>PyFT8 <eor>
+
+<call:6>LA1PHA <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+04 <rst_rcvd:3>+01 <qso_date:8>20251104 <time_on:6>171501 <qso_date_off:8>20251104 <time_off:6>171529 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:6>IO90JU <comment:5>PyFT8 <eor>
+
+<call:5>M0VOX <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+00 <rst_rcvd:3>+06 <qso_date:8>20251104 <time_on:6>171946 <qso_date_off:8>20251104 <time_off:6>172014 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:6>IO90JU <comment:5>PyFT8 <eor>
+
+<call:5>RW3QW <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+03 <rst_rcvd:3>+06 <qso_date:8>20251104 <time_on:6>173931 <qso_date_off:8>20251104 <time_off:6>174029 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:6>IO90JU <comment:5>PyFT8 <eor>
+
+<call:6>OH8JEP <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+05 <rst_rcvd:3>+00 <qso_date:8>20251104 <time_on:6>174246 <qso_date_off:8>20251104 <time_off:6>174314 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:6>IO90JU <comment:5>PyFT8 <eor>
+
+<call:6>DG0OFT <gridsquare:4>JO50 <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+12 <rst_rcvd:3>-07 <time_on:6>182931 <qso_date:8>20251104 <time_off:6>183112 <qso_date_off:8>20251104 <band:3>40m <freq:6>7.074 <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <comment:5>PyFT8 <eor>
+
+<call:5>E75AA <gridsquare:4>JN94 <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>-02 <rst_rcvd:3>-03 <qso_date:8>20251104 <time_on:6>230501 <qso_date_off:8>20251104 <time_off:6>230642 <band:3>40m <freq:6>7.074 <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <comment:5>PyFT8 <eor>
+
+<call:6>IK4LZH <gridsquare:4>JN54 <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+08 <rst_rcvd:3>-07 <qso_date:8>20251105 <time_on:6>132015 <qso_date_off:8>20251105 <time_off:6>132200 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <comment:5>PyFT8 <eor>
