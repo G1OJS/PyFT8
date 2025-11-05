@@ -178,9 +178,8 @@ def run():
     # if testing_from_wsjtx:
     #config.data.update({"input_device":["CABLE", "Output"]})
     #config.data.update({"output_device":["CABLE", "Input"]})
-
+    #audio.find_audio_devices()
     
-    audio.find_audio_devices()
     threading.Thread(target=cycle_decoder, kwargs=({'onStart':onStart, 'onDecode':onDecode, 'onOccupancy':onOccupancy})).start()
     start_UI(process_UI_event)
     add_band_buttons()
