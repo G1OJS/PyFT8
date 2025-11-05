@@ -67,8 +67,12 @@ class QSO:
             self.my_snr = grid_rpt[-3:]
             return
 
-        if(call_a == "CQ" or call_a == self.myCall):
+        if(call_a == "CQ"):
             self.transmit(f"{self.their_call} {config.myCall} {config.myGrid}")
+            return
+
+        if(call_a == self.myCall):
+            self.transmit(f"{self.their_call} {config.myCall} {QSO.their_snr:+03d}")
             return
         
     def transmit(self, tx_msg):
