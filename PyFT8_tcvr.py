@@ -11,10 +11,6 @@ class QSO:
         self.cycle = False
         self.tx_msg = False
         self.rpt_cnt = 0
-        self.myCall = config.myCall
-        self.myGrid = config.myGrid
-        self.myBand = config.myBand
-        self.myFreq = config.myFreq
         self.my_snr = False
         self.their_grid = False
         self.their_call = False
@@ -71,7 +67,7 @@ class QSO:
             self.transmit(f"{self.their_call} {config.myCall} {config.myGrid}")
             return
 
-        if(call_a == self.myCall):
+        if(call_a == config.myCall):
             self.transmit(f"{self.their_call} {config.myCall} {QSO.their_snr:+03d}")
             return
         
@@ -106,11 +102,11 @@ class QSO:
     def log(self):
         import PyFT8.logging as logging
         log_dict = {'call':self.their_call, 'gridsquare':self.their_grid, 'mode':'FT8',
-        'operator':self.myCall, 'station_callsign':self.myCall, 'my_gridsquare':self.myGrid, 
-        'rst_sent':f"{int(QSO.their_snr):+03d}", 'rst_rcvd':f"{int(QSO.my_snr):+03d}", 
+        'operator':config.myCall, 'station_callsign':config.myCall, 'my_gridsquare':config.myGrid, 
+        'rst_sent':f"{int(self.their_snr):+03d}", 'rst_rcvd':f"{int(self.my_snr):+03d}", 
         'qso_date':self.date, 'time_on':self.time_on,
         'qso_date_off':self.date_off, 'time_off':self.time_off,
-        'band':self.myBand, 'freq':self.myFreq, '<comment':'PyFT8' }
+        'band':config.myBand, 'freq':config.myFreq, 'comment':'PyFT8' }
         import PyFT8.timers as timers
         timers.timedLog("[QSO] send to ADIF {log_dict}")
         logging.append_qso("PyFT8.adi", log_dict)
