@@ -51,7 +51,7 @@ header
 
 <call:5>OZ7DR <gridsquare:4>JO65 <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+19 <rst_rcvd:3>+03 <qso_date:8>20251105 <time_on:6>132730 <qso_date_off:8>20251105 <time_off:6>132815 <band:3>20m <freq:6>14.074 <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <comment:5>PyFT8 <eor>
 
-<call:5>G0VXM <gridsquare:4>JO65 <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+19 <rst_rcvd:3>+03 <qso_date:8>20251105 <time_on:6>162645 <qso_date_off:8>20251105 <time_off:6>162830 <band:3>80m <freq:5>3.573 <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <comment:5>PyFT8 <eor>
+<call:5>G0VXM <gridsquare:4>IO93 <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>+19 <rst_rcvd:3>+03 <qso_date:8>20251105 <time_on:6>162645 <qso_date_off:8>20251105 <time_off:6>162830 <band:3>80m <freq:5>3.573 <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <comment:5>PyFT8 <eor>
 
 <call:5>F1LYV <gridsquare:4>JN18 <mode:3>FT8 <operator:5>G1OJS <rst_sent:3>-05 <rst_rcvd:3>-04 <qso_date:8>20251105 <time_on:6>163331 <qso_date_off:8>20251105 <time_off:6>163442 <band:5>80m <freq:5>False <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <freq:5>3.573 <comment:5>PyFT8 <eor>
 
