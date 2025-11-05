@@ -85,14 +85,20 @@ class Config:
     """
     def __init__(self):
         self.clearest_txfreq = 1000
-        self.txfreq = 1000;
-        self.rxfreq = 1000;
+        self.txfreq = 1000
+        self.rxfreq = 1000
+        self.bands = []
+        self.myBand = False
+        self.myFreq = False
         self.data = {"input_device":["Microphone","CODEC"], "output_device":["Speaker", "CODEC"]}
-        if(self.check_config()):
-            config = configparser.ConfigParser()
-            config.read("PyFT8.ini")
-            self.myCall = config.get("myStation","myCall")
-            self.myGrid = config.get("myStation","myGrid")
+        if(not self.check_config()):
+            return
+        parser = configparser.ConfigParser()
+        parser.read("PyFT8.ini")
+        self.myCall = parser.get("myStation","myCall")
+        self.myGrid = parser.get("myStation","myGrid")
+        for band_name, band_freq in parser.items("bands"):
+            self.bands.append({"band_name":band_name, "band_freq":band_freq})
 
     def check_config(self):
         if(os.path.exists("PyFT8.ini")):
