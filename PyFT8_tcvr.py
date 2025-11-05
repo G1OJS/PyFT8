@@ -128,7 +128,7 @@ class QSO:
         logging.append_qso("PyFT8.adi", log_dict)
 
 QSO = QSO()
-decode_filter = []
+decode_filter = False
 
 def onStart():
     from PyFT8.comms_hub import send_to_ui_ws
@@ -144,6 +144,7 @@ def onDecode(decode):
     decode_dict = decode['decode_dict']
     key = f"{decode_dict['call_a']}{decode_dict['call_b']}"
     if(key in decode_filter):
+        timedLog(f"[QSO] Reject duplicate decode {decode_dict}")
         return
     decode_filter.append(key)
     if(decode_dict['call_a'] == config.myCall or decode_dict['call_b'] == config.myCall or 'rxfreq' in decode_dict):
