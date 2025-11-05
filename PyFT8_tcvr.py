@@ -111,7 +111,7 @@ class QSO:
         t_elapsed, t_remaining = timers.time_in_cycle()
         msg_parts = ogm.split()
         ogm_dict = {'cyclestart_str':f"X_{timers.tnow_str()}", 'priority':True,
-                    'snr':'+00', 'freq':config.txfreq, 'dt':f"{t_elapsed:3.1f}",
+                    'snr':'+00', 'freq':str(int(config.txfreq)), 'dt':f"{t_elapsed:3.1f}",
                     'call_a':msg_parts[0], 'call_b':msg_parts[1], 'grid_rpt':msg_parts[2]}
         send_to_ui_ws("ogm", ogm_dict)
 
