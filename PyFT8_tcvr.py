@@ -5,6 +5,8 @@ from PyFT8.rx.cycle_decoder import cycle_decoder
 from PyFT8.comms_hub import config, start_UI
 import PyFT8.audio as audio
 import threading
+from PyFT8.rig.IcomCIV import IcomCIV
+rig = IcomCIV()
 
 class QSO:
     def __init__(self):
@@ -73,9 +75,7 @@ class QSO:
         
     def transmit(self, tx_msg):
         import PyFT8.tx.FT8_encoder as FT8_encoder
-        from PyFT8.rig.IcomCIV import IcomCIV
         import PyFT8.timers as timers
-        rig = IcomCIV()
         self.rpt_cnt = self.rpt_cnt + 1 if(tx_msg == self.tx_msg ) else 0
         if(self.rpt_cnt >= 5):
             timers.timedLog("[QSO.transmit] Skip, repeat count too high")
@@ -92,12 +92,28 @@ class QSO:
             
         t_elapsed, t_remaining = timers.time_in_cycle(self.cycle)
         if(t_elapsed <2):
-            timers.timedLog(f"[QSO.transmit] PTT ON")
-            rig.setPTTON()
-            audio.play_data_to_soundcard(audio_data)
-            rig.setPTTOFF()
-            last_tx_complete_time = timers.tnow()
-            timers.timedLog(f"[QSO.transmit] PTT OFF")
+            self.ogm_to_ui(self.tx_msg)
+            timers.sleep(0.1)
+          #  self.do_tx(audio_data)
+            threading.Thread(target = self.do_tx, args=(audio_data,)).start()
+
+    def do_tx(self, audio_data):
+        import PyFT8.timers as timers
+        timers.timedLog(f"[QSO.transmit] PTT ON")
+        rig.setPTTON()
+        audio.play_data_to_soundcard(audio_data)
+        rig.setPTTOFF()
+        timers.timedLog(f"[QSO.transmit] PTT OFF")
+
+    def ogm_to_ui(self, ogm):
+        from PyFT8.comms_hub import config, send_to_ui_ws
+        import PyFT8.timers as timers
+        t_elapsed, t_remaining = timers.time_in_cycle()
+        msg_parts = ogm.split()
+        ogm_dict = {'cyclestart_str':f"X_{timers.tnow_str()}", 'priority':True,
+                    'snr':'+00', 'freq':config.txfreq, 'dt':f"{t_elapsed:3.1f}",
+                    'call_a':msg_parts[0], 'call_b':msg_parts[1], 'grid_rpt':msg_parts[2]}
+        send_to_ui_ws("ogm", ogm_dict)
 
     def log(self):
         import PyFT8.logging as logging
@@ -126,7 +142,7 @@ def onDecode(decode):
     if(not decode):
         return
     decode_dict = decode['decode_dict']
-    key = f"{decode_dict['call_a']}{decode_dict['call_a']}"
+    key = f"{decode_dict['call_a']}{decode_dict['call_b']}"
     if(key in decode_filter):
         return
     decode_filter.append(key)
@@ -159,11 +175,9 @@ def process_UI_event(event):
         QSO.cycle = timers.odd_even_now()
         QSO.transmit(f"CQ {config.myCall} {config.myGrid}")
     if("set-band" in topic):
-        from PyFT8.rig.IcomCIV import IcomCIV
         fields = topic.split("-")
         config.myFreq = float(fields[3])
         config.myBand = fields[2]
-        rig = IcomCIV()
         rig.setFreqHz(int(config.myFreq * 1000000))
         rig.setMode(md="USB", dat = True, filIdx = 1)
         
