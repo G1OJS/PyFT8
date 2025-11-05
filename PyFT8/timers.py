@@ -14,8 +14,8 @@ def sleep_until(cycle_seconds = 0):
 def tnow():
     return time.time()
 
-def tnow_str():
-    return time.strftime("%H%M%S", time.gmtime(tnow()))
+def tnow_str(offset_secs = 0):
+    return time.strftime("%H%M%S", time.gmtime(tnow()+offset_secs))
 
 def QSO_dnow_tnow():
     t = time.gmtime(tnow())
