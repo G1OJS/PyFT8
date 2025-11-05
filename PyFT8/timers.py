@@ -14,6 +14,9 @@ def sleep_until(cycle_seconds = 0):
 def tnow():
     return time.time()
 
+def tnow_str():
+    return time.strftime("%H%M%S", time.gmtime(tnow()))
+
 def QSO_dnow_tnow():
     t = time.gmtime(tnow())
     return time.strftime("%Y%m%d",t), time.strftime("%H%M%S", t)
@@ -22,9 +25,10 @@ def sleep(secs):
     if(secs>0):
         time.sleep(secs)
 
-def time_in_cycle():
-    t_elapsed = (time.time() % CYCLE_LENGTH)
-    t_remaining = CYCLE_LENGTH - t_elapsed 
+def time_in_cycle(odd_even = False):
+    cycle_offset = CYCLE_LENGTH if(odd_even and odd_even != odd_even_now()) else 0
+    t_elapsed = (time.time() % CYCLE_LENGTH) - cycle_offset
+    t_remaining = CYCLE_LENGTH - t_elapsed
     return t_elapsed, t_remaining
 
 def cyclestart_str(cycle_offset):
@@ -44,5 +48,12 @@ def timedLog(msg, silent = False, logfile = 'PyFT8.log'):
 
 def odd_even_now():
     t = (time.time() / CYCLE_LENGTH) % 2
-    return['even','odd'][int(t)]  
+    return['even','odd'][int(t)]
 
+
+def test():
+    while True:
+        sleep(0.5)
+        print(tnow_str(), time_in_cycle('odd'))
+
+#test()

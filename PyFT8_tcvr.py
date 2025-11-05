@@ -1,149 +1,161 @@
-
 import sys
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 
-import threading
-import PyFT8.timers as timers
-import PyFT8.audio as audio
-from PyFT8.rig.IcomCIV import IcomCIV
 from PyFT8.rx.cycle_decoder import cycle_decoder
-import PyFT8.tx.FT8_encoder as FT8_encoder
-from PyFT8.comms_hub import config, send_to_ui_ws, start_UI
+from PyFT8.comms_hub import config, start_UI
+import PyFT8.audio as audio
+import threading
 
-global QSO_date_on, QSO_time_on, QSO_date_off, QSO_time_off, QSO_call, their_grid, their_snr, my_snr, tx_message
-global last_tx_message, repeat_counter, last_tx_complete_time
-myCall = 'G1OJS'
-myGrid = 'IO90'
-myBand = '20m'
-myFreq = '14.074'
-my_snr = "+??"
-their_grid = "????"
-QSO_call = False
-QSO_call_decoded = False # just for filtering duplicate decodes of QSO call
-repeat_counter = 0
-last_tx_message =''
-last_tx_complete_time = 0
-rig = IcomCIV()
-testing_from_wsjtx = False
+class QSO:
+    def __init__(self):
+        self.cycle = False
+        self.tx_msg = False
+        self.rpt_cnt = 0
+        self.myCall = config.myCall
+        self.myGrid = config.myGrid
+        self.myBand = False
+        self.myFreq = False
+        self.my_snr = False
+        self.their_grid = False
+        self.their_call = False
+        self.their_snr = False
+        self.time_on = False
+        self.time_off = False
+        self.date = False
+        self.date_off = False
 
-if testing_from_wsjtx:
-    config.data.update({"input_device":["CABLE", "Output"]})
-    config.data.update({"output_device":["CABLE", "Input"]})
-    audio.find_audio_devices()
+    def clear(self):
+        self.cycle = False
+        self.tx_msg = False
+        self.my_snr = False
+        self.their_grid = False
+        self.their_call = False
+        self.time_on = False
+        self.time_off = False
+        self.date = False
+        self.date_off = False
+
+    def progress(self, msg_dict):
+        import PyFT8.timers as timers
+        call_a, their_call, grid_rpt = msg_dict['call_a'], msg_dict['call_b'], msg_dict['grid_rpt']
+        if(not self.their_call):
+            self.clear()
+            self.their_call = their_call
+            self.their_snr = msg_dict['snr']
+            self.date, self.time_on = timers.QSO_dnow_tnow()
+            self.cycle = timers.odd_even_now()
+            
+        timers.timedLog(f"[QSO] Progress QSO with {self.their_call}")
+        timers.timedLog(f"[QSO] msg_dict = {msg_dict}")
+        if('73' in grid_rpt or 'R' in grid_rpt):
+            reply = 'RR73' if 'R' in grid_rpt else '73'
+            self.transmit(f"{self.their_call} {config.myCall} {reply}")
+            self.date_off, self.time_off = timers.QSO_dnow_tnow()
+            self.log
+            self.clear()
+            return
+
+        if(grid_rpt[-3]=="+" or grid_rpt[-3]=="-"):
+            self.transmit(f"{self.their_call} {config.myCall} R{QSO.their_snr:+03d}")
+            self.my_snr = grid_rpt[-3:]
+            return
+
+        if(call_a == "CQ" or call_a == self.myCall):
+            self.transmit(f"{self.their_call} {config.myCall} {config.myGrid}")
+        
+    def transmit(self, tx_msg):
+        import PyFT8.tx.FT8_encoder as FT8_encoder
+        from PyFT8.rig.IcomCIV import IcomCIV
+        import PyFT8.timers as timers
+        rig = IcomCIV()
+        self.rpt_cnt = self.rpt_cnt + 1 if(tx_msg == self.tx_msg ) else 0
+        if(self.rpt_cnt >= 3):
+            timers.timedLog("[QSO.transmit] Skip, repeat count too high")
+            return
+        self.tx_msg = tx_msg
+        timers.timedLog(f"[QSO.transmit] Send message: ({self.rpt_cnt}) {tx_msg}")
+        c1, c2, grid_rpt = tx_msg.split()
+        symbols = FT8_encoder.pack_message(c1, c2, grid_rpt)
+        audio_data = audio.create_ft8_wave(symbols, f_base = config.txfreq)
+        t_elapsed, t_remaining = timers.time_in_cycle(self.cycle)
+        if(t_remaining < 3):
+            timers.timedLog(f"[QSO.transmit] Waiting for {self.cycle} cycle start")
+            timers.sleep(t_remaining)
+        #else:
+        #    timers.timedLog(f"[QSO.transmit] Called too early for {self.cycle} cycle")
+        #    return
+        timers.timedLog(f"[QSO.transmit] PTT ON")
+        rig.setPTTON()
+        audio.play_data_to_soundcard(audio_data)
+        rig.setPTTOFF()
+        last_tx_complete_time = timers.tnow()
+        timers.timedLog(f"[QSO.transmit] PTT OFF")
+
+    def log(self):
+        import PyFT8.logging as logging
+        logging.append_qso("PyFT8.adi",{
+        'gridsquare':self.their_grid, 'mode':'FT8','operator':self.myCall,
+        'rst_sent':f"{int(QSO.their_snr):+03d}", 'rst_rcvd':f"{int(QSO.my_snr):+03d}", 
+        'qso_date':self.date, 'time_on':self.time_on,
+        'qso_date_off':self.date_off, 'time_off':self.time_off,
+        'band':self.myBand, 'freq':self.myFreq,
+        'station_callsign':self.myCall, 'my_gridsquare':self.myGrid, '<comment':'PyFT8' })
+
+QSO = QSO()
+decode_filter = []
 
 def onStart():
-    global QSO_call_decoded
-    QSO_call_decoded = False
-    if(not QSO_call): # don't clear decodes during QSO
-        send_to_ui_ws("clear_decodes", {})
+    from PyFT8.comms_hub import send_to_ui_ws
+    global decode_filter
+    send_to_ui_ws("clear_decodes", {})
+    decode_filter = []
 
 def onDecode(decode):
-    global QSO_call_decoded
-    if(not decode): return
+    import PyFT8.timers as timers
+    from PyFT8.comms_hub import config, send_to_ui_ws
+    if(not decode):
+        return
     decode_dict = decode['decode_dict']
-
-    if(decode_dict['call_b'] == myCall or decode_dict['call_a'] == myCall or 'rxfreq' in decode_dict):
+    key = f"{decode_dict['call_a']}{decode_dict['call_a']}"
+    if(key in decode_filter):
+        return
+    decode_filter.append(key)
+    if(decode_dict['call_a'] == config.myCall or decode_dict['call_b'] == config.myCall or 'rxfreq' in decode_dict):
         decode_dict.update({'priority':True})
-        
-    if(not (decode_dict['call_b'] == QSO_call and QSO_call_decoded)):
-        send_to_ui_ws("decode_dict", decode_dict)
-    
-    if (decode_dict['call_a'] == myCall and decode_dict['call_b'] == QSO_call):
-        QSO_call_decoded = True
-        reply_to_message(decode_dict)
+    send_to_ui_ws("decode_dict", decode_dict)
+    if (decode_dict['call_a'] == config.myCall and decode_dict['call_b'] == QSO.their_call):
+        QSO.progress(decode_dict)
 
 def onOccupancy(occupancy, clear_freq):
+    from PyFT8.comms_hub import config, send_to_ui_ws
     config.update_clearest_txfreq(clear_freq)
     send_to_ui_ws("freq_occ_array", {'histogram':occupancy.tolist()})
 
 def process_UI_event(event):
-    global QSO_call, last_tx_message, repeat_counter
+    import PyFT8.timers as timers
+    global QSO
     topic = event['topic']
     if(topic == "ui.clicked-message"):
-        process_clicked_message(event)
+        selected_message = event
+        timers.timedLog(f"Clicked on message {selected_message}")
+        config.txfreq = config.clearest_txfreq
+        config.rxfreq = int(selected_message['freq'])
+        if(selected_message['call_a'] == "CQ" or selected_message['call_a'] == config.myCall):
+            QSO.progress(selected_message)
     if(topic == "ui.repeat-last"):
-        repeat_counter = 0
-        transmit_message(last_tx_message)
-    if(topic == "ui.abort-qso"):
-        QSO_call = False
+        pass
     if(topic == "ui.call-cq"):
-        repeat_counter = 0
-        transmit_message(f"CQ {myCall} {myGrid}")
+        QSO.clear()
+        QSO.cycle = timers.odd_even_now()
+        QSO.transmit(f"CQ {config.myCall} {config.myGrid}")
 
-def process_clicked_message(selected_message):
-    global QSO_call, last_tx_complete_time
-    timers.timedLog(f"Clicked on message {selected_message}")
-    config.txfreq = config.clearest_txfreq
-    config.rxfreq = int(selected_message['freq'])
-    last_tx_complete_time=0
-    reply_to_message(selected_message)
+def run():        
+    # if testing_from_wsjtx:
+    config.data.update({"input_device":["CABLE", "Output"]})
+    config.data.update({"output_device":["CABLE", "Input"]})
     
-def reply_to_message(decode_dict):
-    global QSO_date_on, QSO_time_on,QSO_date_off, QSO_time_off, QSO_call, their_grid, their_snr, my_snr, tx_message
-    call_a, call_b, grid_rpt, their_snr = decode_dict['call_a'], decode_dict['call_b'], decode_dict['grid_rpt'], decode_dict['snr']
-    rx_message = f"{call_a} {call_b} {grid_rpt}"
-    print(rx_message)
-    if(call_a == "CQ"):
-        print("CQ detected")
-        QSO_call = call_b
-        their_grid = grid_rpt
-        QSO_date_on, QSO_time_on = timers.QSO_dnow_tnow()
-        transmit_message(f"{call_b} {myCall} {myGrid}")
-    if(call_a == myCall):
-        QSO_call = call_b
-        if(len(grid_rpt)>2):    
-            if(grid_rpt[-3]=="+" or grid_rpt[-3]=="-"):
-                my_snr = grid_rpt
-                timers.timedLog(f"QSO reply received: {rx_message}", logfile = "QSO.log")
-                transmit_message(f"{call_b} {myCall} R{their_snr:+03d}")
-        if('73' in grid_rpt or 'RRR' in grid_rpt):
-            timers.timedLog(f"QSO reply received: {rx_message}", logfile = "QSO.log")
-            transmit_message(f"{call_b} {myCall} 73")
-            QSO_date_off, QSO_time_off = timers.QSO_dnow_tnow()
-            log_QSO()
-            QSO_call = False
+    audio.find_audio_devices()
+    threading.Thread(target=cycle_decoder, kwargs=({'onStart':onStart, 'onDecode':onDecode, 'onOccupancy':onOccupancy})).start()
+    start_UI(process_UI_event)
 
-def transmit_message(msg):
-    print(f"In transmit msg {msg}")
-    global QSO_call, repeat_counter, last_tx_complete_time, last_tx_message
-    if(not msg):
-        timers.timedLog("QSO transmit skip, no message to transmit", logfile = "QSO.log")
-        return
-    if(last_tx_complete_time > timers.tnow() -7):
-        timers.timedLog("QSO transmit skip, too close to last transmit", logfile = "QSO.log")
-        return        
-    repeat_counter = repeat_counter + 1 if( msg == last_tx_message ) else 0
-    if(repeat_counter >= 3):
-        timers.timedLog("QSO transmit skip, repeat count too high", logfile = "QSO.log")
-        return
-    last_tx_message = msg
-    timers.timedLog(f"Send message: ({repeat_counter}) {msg}", logfile = "QSO.log")
-    c1, c2, grid_rpt = msg.split()
-    symbols = FT8_encoder.pack_message(c1, c2, grid_rpt)
-    audio_data = audio.create_ft8_wave(symbols, f_base = config.txfreq)
-    t_elapsed, t_remaining = timers.time_in_cycle()
-    if(t_remaining < 3):
-        timers.timedLog("QSO transmit waiting for cycle start", logfile = "QSO.log")
-        timers.sleep(t_remaining)
-    timers.timedLog(f"PTT ON", logfile = "QSO.log")
-    rig.setPTTON()
-    audio.play_data_to_soundcard(audio_data)
-    rig.setPTTOFF()
-    last_tx_complete_time = timers.tnow()
-    timers.timedLog(f"PTT OFF", logfile = "QSO.log")
-
-def log_QSO():
-    import PyFT8.logging as logging
-    logging.append_qso("test.adi",{
-    'gridsquare':their_grid, 'mode':'FT8','operator':myCall,
-    'rst_sent':their_snr, 'rst_rcvd':my_snr, # need to print these in 3 char format
-    'date_on':QSO_date_on, 'time_on':QSO_time_on,
-    'date_off':QSO_date_off, 'time_off':QSO_time_off,
-    'band':myBand, 'freq':myFreq,
-    'station_callsign':myCall, 'my_gridsquare':myGrid})
-
-
-threading.Thread(target=cycle_decoder, kwargs=({'onStart':onStart, 'onDecode':onDecode, 'onOccupancy':onOccupancy})).start()
-start_UI(process_UI_event)
-
-    
+run()

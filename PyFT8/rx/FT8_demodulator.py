@@ -143,7 +143,7 @@ def unpack_ft8_c28(c28):
         return callsign.strip()
     return '<...>'
 
-def unpack_ft8_g15(g15):
+def unpack_ft8_g15(g15, ir):
     if g15 < 32400:
         a, nn = divmod(g15,1800)
         b, nn = divmod(nn,100)
@@ -153,7 +153,9 @@ def unpack_ft8_g15(g15):
     txt = ['','','RRR','RR73','73']
     if 0 <= r <= 4: return txt[r]
     snr = r-35
-    return f"{snr:+03d}"
+    R = '' if (ir == 0) else 'R'
+    return f"{R}{snr:+03d}"
+
 
 def FT8_decode(signal, cyclestart_str):
     # need to add support for /P and R+report (R-05)
@@ -161,12 +163,13 @@ def FT8_decode(signal, cyclestart_str):
     i3 = 4*bits[74]+2*bits[75]+bits[76]
     c28_a = int(''.join(str(b) for b in bits[0:28]), 2)
     c28_b = int(''.join(str(b) for b in bits[29:57]), 2)
+    ir = int(bits[58])
     g15  = int(''.join(str(b) for b in bits[59:74]), 2)
     if(c28_a + c28_b + g15 == 0):
         return
     call_a = unpack_ft8_c28(c28_a)
     call_b =  unpack_ft8_c28(c28_b)
-    grid_rpt = unpack_ft8_g15(g15)
+    grid_rpt = unpack_ft8_g15(g15, ir)
     freq_str = f"{signal.bounds.f0:4.0f}"
     message = f"{call_a} {call_b} {grid_rpt}"
     all_txt_line = f"{cyclestart_str}     0.000 Rx FT8    {signal.snr:+03d} {signal.bounds.t0 :4.1f} {signal.bounds.f0 :4.0f} {message}"
