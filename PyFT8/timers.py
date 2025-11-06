@@ -25,8 +25,8 @@ def sleep(secs):
     if(secs>0):
         time.sleep(secs)
 
-def time_in_cycle(odd_even = False):
-    cycle_offset = CYCLE_LENGTH if(odd_even and odd_even == odd_even_now()) else 0
+def time_in_cycle(odd_even = 'next'):
+    cycle_offset = CYCLE_LENGTH if(odd_even == odd_even_now()) else 0
     t_elapsed = (time.time() % CYCLE_LENGTH) - cycle_offset
     t_remaining = CYCLE_LENGTH - t_elapsed
     return t_elapsed, t_remaining

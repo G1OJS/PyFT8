@@ -10,7 +10,7 @@ rig = IcomCIV()
 
 class QSO:
     def __init__(self):
-        self.cycle = False
+        self.cycle = 'next'
         self.tx_msg = False
         self.rpt_cnt = 0
         self.my_snr = False
@@ -23,7 +23,7 @@ class QSO:
         self.date_off = False
 
     def clear(self):
-        self.cycle = False
+        self.cycle = 'next'
         self.tx_msg = False
         self.my_snr = False
         self.their_grid = False
@@ -186,9 +186,9 @@ def process_UI_event(event):
         config.myBand = fields[2]
         rig.setFreqHz(int(config.myFreq * 1000000))
         rig.setMode(md="USB", dat = True, filIdx = 1)
+        with open("PyFT8_MHz.txt","w") as f:
+            f.write(str(config.myFreq))
         
-
-
 def add_band_buttons():
     from PyFT8.comms_hub import config, send_to_ui_ws
     for band in config.bands:
