@@ -1,16 +1,16 @@
 Document in progress to show details of creating an FT8 signal, adding it to an existing spectrum with other FT8 signals, and decoding the resulting merged spectrum to recover the original signal. 
 
-The background spectrum is from '210703_133430.wav' which contains the following signals as decoded by WSJT-x:
+The background spectrum is from '210703_133430.wav' which contains the following signals as decoded by WSJT-x (bold entries are also decoded by PyFT8 in this test):
 
-```
-133430  17  0.3 2571 ~  W1FC F5BZB -08
-133430  15 -0.1 2157 ~  WM3PEN EA6VQ -09
+<pre>
+<strong>133430  17  0.3 2571 ~  W1FC F5BZB -08</strong>
+<strong>133430  15 -0.1 2157 ~  WM3PEN EA6VQ -09</strong>
 133430  -3 -0.8 1197 ~  CQ F5RXL IN94  
-133430 -13  0.3  641 ~  N1JFU EA6EE R-07
-133430  -9  0.1  723 ~  A92EE F5PSR -14
+<strong>133430 -13  0.3  641 ~  N1JFU EA6EE R-07</strong>
+<strong>133430  -9  0.1  723 ~  A92EE F5PSR -14</strong>
 133430  -3 -0.1 2695 ~  K1BZM EA3GP -09
 133430 -15  0.3  400 ~  W0RSJ EA3BMU RR73
-133430 -15  0.3  590 ~  K1JT HA0DU KN07
+<strong>133430 -15  0.3  590 ~  K1JT HA0DU KN07</strong>
 133430  -7  0.4 2733 ~  W1DIG SV9CVY -14
 133430 -15  0.1 1648 ~  K1JT EA3AGB -15
 133430 -13  0.2 2852 ~  XE2X HA2NP RR73
@@ -24,7 +24,7 @@ The background spectrum is from '210703_133430.wav' which contains the following
 133430  -6  0.4  472 ~  KD2UGC F6GCP R-23
 133430 -15  0.1 2280 ~  CQ EA2BFM IN83  
 133430 -17  0.5  244 ~  K1BZM DK8NE -10
-```
+</pre>
 
 The added signal is 'VK1ABC VK3JPK QF22' and can be seen in the outlined pattern at about 870 Hz.
 
