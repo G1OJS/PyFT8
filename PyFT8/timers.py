@@ -26,7 +26,7 @@ def sleep(secs):
         time.sleep(secs)
 
 def time_in_cycle(odd_even = False):
-    cycle_offset = CYCLE_LENGTH if(odd_even and odd_even != odd_even_now()) else 0
+    cycle_offset = CYCLE_LENGTH if(odd_even and odd_even == odd_even_now()) else 0
     t_elapsed = (time.time() % CYCLE_LENGTH) - cycle_offset
     t_remaining = CYCLE_LENGTH - t_elapsed
     return t_elapsed, t_remaining
@@ -46,14 +46,21 @@ def timedLog(msg, silent = False, logfile = 'PyFT8.log'):
             print(f"Log to {logfile}: {s}")
         f.write(f"{s}\n")
 
-def odd_even_now():
-    t = (time.time() / CYCLE_LENGTH) % 2
-    return['even','odd'][int(t)]
+def odd_even_now(from_click = False, swap = False):
+    t_grace = 0 if(not from_click) else CYCLE_LENGTH/2
+    t = ((time.time() + t_grace) / CYCLE_LENGTH) % 2
+    if(swap): t = 1-t
+    cycle = ['even','odd'][int(t)]
+    timedLog(f"[odd_even_now] cycle is {cycle}")
+    return cycle
 
 
 def test():
     while True:
-        sleep(0.5)
+        sleep(1)
         print(tnow_str(), time_in_cycle('odd'))
+       # cycle = odd_even_now(from_click = True)
+       # _, t_remain = time_in_cycle(cycle)
+       # print(tnow_str(), cycle, t_remain )
 
 #test()

@@ -35,17 +35,19 @@ class QSO:
 
     def progress(self, msg_dict):
         import PyFT8.timers as timers
-        if("repeat_tx" in msg_dict and self.cycle and self.tx_msg):
-            self.transmit(self.tx_msg)
+        if("repeat_tx" in msg_dict):
+            if(self.tx_msg):
+                self.transmit(self.tx_msg)
+            else:
+                timers.timedLog(f"[QSO.progress] No message")
             return
 
         call_a, their_call, grid_rpt = msg_dict['call_a'], msg_dict['call_b'], msg_dict['grid_rpt']
-        if(not self.their_call or call_a == "CQ"):
+        if(call_a == "CQ" or call_a == config.myCall):
             self.clear()
             self.their_call = their_call
             self.their_snr = msg_dict['snr']
             self.date, self.time_on = timers.QSO_dnow_tnow()
-            self.cycle = timers.odd_even_now()
 
         if("+" not in grid_rpt and "-" not in grid_rpt and "73" not in grid_rpt):
             self.their_grid = grid_rpt
@@ -53,7 +55,9 @@ class QSO:
         timers.timedLog(f"[QSO] Progress QSO with {self.their_call}")
         timers.timedLog(f"[QSO] msg_dict = {msg_dict}")
         if('73' in grid_rpt or 'R' in grid_rpt):
-            reply = 'RR73' if 'R' in grid_rpt else '73'
+            reply = '73'
+            if (grid_rpt[-4]=='R' and grid_rpt[-3] !='R'):
+                reply = 'RR73'
             self.transmit(f"{self.their_call} {config.myCall} {reply}")
             self.date_off, self.time_off = timers.QSO_dnow_tnow()
             self.log()
@@ -86,17 +90,13 @@ class QSO:
         symbols = FT8_encoder.pack_message(c1, c2, grid_rpt)
         audio_data = audio.create_ft8_wave(symbols, f_base = config.txfreq)
         t_elapsed, t_remaining = timers.time_in_cycle(self.cycle)
-        if(t_remaining < 3):
-            timers.timedLog(f"[QSO.transmit] Waiting for {self.cycle} cycle start")
+        if(t_elapsed > 2 or t_elapsed <0):
+            timers.timedLog(f"[QSO.transmit] Waiting for {self.cycle} cycle start ({t_remaining:4.1f}s)")
             timers.sleep(t_remaining)
+        self.decode_to_priority_ui(self.tx_msg)
+        timers.sleep(0.1)
+        threading.Thread(target = self.do_tx, args=(audio_data,)).start()
             
-        t_elapsed, t_remaining = timers.time_in_cycle(self.cycle)
-        if(t_elapsed <2):
-            self.ogm_to_ui(self.tx_msg)
-            timers.sleep(0.1)
-          #  self.do_tx(audio_data)
-            threading.Thread(target = self.do_tx, args=(audio_data,)).start()
-
     def do_tx(self, audio_data):
         import PyFT8.timers as timers
         timers.timedLog(f"[QSO.transmit] PTT ON")
@@ -105,15 +105,15 @@ class QSO:
         rig.setPTTOFF()
         timers.timedLog(f"[QSO.transmit] PTT OFF")
 
-    def ogm_to_ui(self, ogm):
+    def decode_to_priority_ui(self, msg):
         from PyFT8.comms_hub import config, send_to_ui_ws
         import PyFT8.timers as timers
         t_elapsed, t_remaining = timers.time_in_cycle()
-        msg_parts = ogm.split()
-        ogm_dict = {'cyclestart_str':f"X_{timers.tnow_str()}", 'priority':True,
+        msg_parts = msg.split()
+        decode_to_priority_ui_dict = {'cyclestart_str':f"X_{timers.tnow_str()}", 'priority':True,
                     'snr':'+00', 'freq':str(int(config.txfreq)), 'dt':f"{t_elapsed:3.1f}",
                     'call_a':msg_parts[0], 'call_b':msg_parts[1], 'grid_rpt':msg_parts[2]}
-        send_to_ui_ws("ogm", ogm_dict)
+        send_to_ui_ws("msg", decode_to_priority_ui_dict)
 
     def log(self):
         import PyFT8.logging as logging
@@ -163,17 +163,22 @@ def process_UI_event(event):
     global QSO
     topic = event['topic']
     if(topic == "ui.clicked-message"):
+        from PyFT8.comms_hub import send_to_ui_ws
         selected_message = event
         timers.timedLog(f"Clicked on message {selected_message}")
         config.txfreq = config.clearest_txfreq
         config.rxfreq = int(selected_message['freq'])
+        QSO.cycle = 'even' if (selected_message['cyclestart_str'][-2:] in ['00','30']) else 'odd'
+        selected_message.update({'priority':True})
+        send_to_ui_ws("msg", selected_message)
         if(selected_message['call_a'] == "CQ" or selected_message['call_a'] == config.myCall):
             QSO.progress(selected_message)
     if(topic == "ui.repeat-last"):
+        QSO.rpt_cnt = 0
         QSO.progress({"repeat_tx":True})
     if(topic == "ui.call-cq"):
         QSO.clear()
-        QSO.cycle = timers.odd_even_now()
+        QSO.cycle = timers.odd_even_now(from_click = True)
         QSO.transmit(f"CQ {config.myCall} {config.myGrid}")
     if("set-band" in topic):
         fields = topic.split("-")

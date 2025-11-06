@@ -114,6 +114,7 @@
 				update_freq_markers(rxFreq = dd.freq);
 				websocket.send(JSON.stringify({	
 					topic: "ui.clicked-message", 
+					cyclestart_str: dd.cyclestart_str,
 					call_a:dd.call_a, call_b: dd.call_b, 
 					grid_rpt: dd.grid_rpt, snr:dd.snr, freq: dd.freq
 				}));
@@ -135,7 +136,7 @@
 			if(dd.topic == 'set_txfreq') 		{txFreq = parseInt(dd.freq); update_freq_markers();}
 			if(dd.topic == 'clear_decodes')		{document.getElementById('all_decodes').innerHTML=""}
 			if(dd.topic == "freq_occ_array") 	{update_spectrum(dd.histogram)}
-			if(dd.topic == 'decode_dict' || dd.topic == 'ogm')		{
+			if(dd.topic == 'decode_dict' || dd.topic == 'msg')		{
 				if (dd.priority) {add_decode_row(dd, 'priority_decodes')}
 				add_decode_row(dd, 'all_decodes')
 			}
