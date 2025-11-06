@@ -1,5 +1,5 @@
 # Python FT8 Rx and Tx with Browser-based UI
-V3.0.0:
+V3.2.0:
 * Getting ~50% of WSJT-x decodes
 * Decodes finish about 1 second into the next frame
 * Click-settable Rx freq gets priority decode
@@ -12,7 +12,8 @@ V3.0.0:
 * Browser-based UI for on-air QSOs
 * CAT control for PTT of IC-7100
 * End to end loop tests to illustrate protocol & steps
-<img width="860" height="379" alt="Capture" src="https://github.com/user-attachments/assets/630c4e57-30d3-4044-88bd-e7733c2d69c0" />
+<img width="891" height="788" alt="Capture" src="https://github.com/user-attachments/assets/23351f0f-5d04-476a-87c3-26c3913a76b4" />
+
 
 <img width="981" height="382" alt="Capture" src="https://github.com/user-attachments/assets/8eb7c645-ab75-4e4f-8ce9-1dae6045e6ba" />
 <img width="1050" height="1000" alt="Figure_2" src="https://github.com/user-attachments/assets/087289d9-ec48-419e-875e-89012a3441f5" />
