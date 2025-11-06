@@ -15,8 +15,10 @@ Below are some screenshots from test programs that can be used to look at how th
 ordinary waterfall and some zoomed-in depictions of captured signals with an overlay of the syncrhonisation tones that are used
 to search for the signals (Costas patterns).
 
-<img width="981" height="382" alt="Capture" src="https://github.com/user-attachments/assets/8eb7c645-ab75-4e4f-8ce9-1dae6045e6ba" />
-<img width="1050" height="1000" alt="Figure_2" src="https://github.com/user-attachments/assets/087289d9-ec48-419e-875e-89012a3441f5" />
+<img width="987" height="262" alt="waterfall" src="https://github.com/user-attachments/assets/bb97c336-3150-466d-b102-1885fff971b4" />
+
+<img width="1039" height="986" alt="candidate detail" src="https://github.com/user-attachments/assets/cc9ad981-77b1-4997-a1c5-688589342ae9" />
+
 
 ## Approach
 You won't find many comments in the code; I try to make things as obvious as possible via variable names and logical structure, to 
@@ -32,7 +34,7 @@ symbol duration, store it, and that's used for everything that follows.)
 ## Limitations
 In pursuit of tight code, I've concentrated on core standard messages, leaving out some of the less-used features. The receive part of the
 code doesn't (yet) have the full capability of the advanced decoders used in WSJT-x, and so gets only about 50% of the decodes that WSJT-x gets.
-Here's my current understanding of the differences:
+### Here's my current understanding of the differences:
 
 |Step|PyFT8|WSJT-X|
 |-----|------|-------|
