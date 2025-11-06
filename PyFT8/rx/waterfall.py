@@ -90,6 +90,7 @@ class Waterfall:
                 candidates_with_decodes.append(c)
         
         n = len(candidates_with_decodes)
+        if (n==0): return
         rows = int(np.ceil(n / cols))
         zoom_fig, axes = plt.subplots(rows, cols, figsize=(3.5 * cols, 5 * rows))
         axes = np.atleast_1d(axes).flatten()
