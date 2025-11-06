@@ -1,9 +1,13 @@
 # Python FT8 Rx and Tx with Browser-based UI
 This project provides a working demo of the entire FT8 coding and decoding chain, with a working browser-based GUI.
+
 Although the code is light on comments, I've tried to use clear variable names and structure to make the need for comments minimal. 
 I've also tried to keep the code free from 'dead code' that isn't used, and generate my own 'Pythonic' solutions keeping code as 
-tight and minimal as possible rather than copy from other online sources or AI (!). I chose to put the GUI in a browser because
-this allows customisation with css etc, and provides some separation between the tranmit/receive code and the GUI code.
+tight and minimal as possible rather than copy from other online sources or AI (!). 
+
+I chose to put the GUI in a browser because this allows customisation with css etc, and provides some separation between the tranmit/receive code and the GUI code.
+
+I'm starting a document here to show the results of the end-to-end loop test: [link](https://github.com/G1OJS/PyFT8/blob/main/docs/End-to-end-loop-test.md)
 
 <img width="891" height="788" alt="Capture" src="https://github.com/user-attachments/assets/23351f0f-5d04-476a-87c3-26c3913a76b4" />
 
