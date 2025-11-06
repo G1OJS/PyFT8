@@ -26,7 +26,19 @@ search, synch, and demodulate process all works by refering to a single time-fre
 symbol duration, store it, and that's used for everything that follows.)
 
 ## Limitations
-In pursuit of tight code, I've concentrated on core standard messages, leaving out some of the less-used features.
+In pursuit of tight code, I've concentrated on core standard messages, leaving out some of the less-used features. The receive part of the
+code doesn't (yet) have the full capability of the advanced decoders used in WSJT-x, and so gets only about 50% of the decodes that WSJT-x gets.
+Here's my current understanding of the differences:
+
+|Step|PyFT8|WSJT-X|
+|-----|------|-------|
+|Find candidate signals|Search the frequency spectrum for regions with the bandwidth of an FT8 signal that have the greatest power| TBD |
+|Syncronise signals in time | Search each candidate in the time axis using the Costas synchronisation template, taking the maximum (or sum) over the three synch blocks | TBD|
+|Use of FFTs for the above | A single time-frequency grid with 3 time samples per symbol and 3 frequency samples per tone| Several FFTs per operation, details TBC|
+|Demodulation|Sum powers to create a 1 sample per symbol, 1 sample per tone grid. Use Gray code to create Log Likelyhood Ratios for each bit. | Similar, details TBC|
+|Decoding the FEC code | Belief Propagation LDPC decoder | Belief Propagation LDPC decoder |
+|Further decoding if LDPC fails| None | Ordered Statistics Decoding |
+|Further signal extraction | None | Subtraction of the idealised power of the decoded signals, then rescanning the residual spectrum. Further synchronisation adjustments TBC|
 
 ## Acknowledgements
 This project implements a decoder for the FT8 digital mode.
