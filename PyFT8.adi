@@ -68,3 +68,5 @@ header
 <call:5>UX0KR <gridsquare:5>False <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:3>+13 <rst_rcvd:3>+00 <qso_date:8>20251106 <time_on:6>153159 <qso_date_off:8>20251106 <time_off:6>153200 <band:5>False <freq:5>False <comment:5>PyFT8 <eor>
 
 <call:4>R2EA <gridsquare:5>False <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:3>+03 <rst_rcvd:3>+00 <qso_date:8>20251106 <time_on:6>160214 <qso_date_off:8>20251106 <time_off:6>160215 <band:3>20m <freq:6>14.074 <comment:5>PyFT8 <eor>
+
+<call:5>RN3PD <gridsquare:5>False <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:3>+09 <rst_rcvd:3>+00 <qso_date:8>20251106 <time_on:6>161929 <qso_date_off:8>20251106 <time_off:6>161930 <band:3>20m <freq:6>14.074 <comment:5>PyFT8 <eor>
