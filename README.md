@@ -1,28 +1,18 @@
 # Python FT8 Rx and Tx with Browser-based UI
-V3.2.0:
-* Getting ~50% of WSJT-x decodes
-* Decodes finish about 1 second into the next frame
-* Click-settable Rx freq gets priority decode
-* Uses single time-frequency grid with 281 FFTs
-* Simple decode sequence
-    - scan spectrum for power, deduplicate frequencies, costas sync, LLR-LDPC-Unpack
-* Tightly coded LDPC
-* All in Python
-* Visualisation of individual signals with costas overlays (when using the test-harness code)
-* Browser-based UI for on-air QSOs
-* CAT control for PTT of IC-7100
-* End to end loop tests to illustrate protocol & steps
+This project provides a working demo of the entire FT8 coding and decoding chain, with a working browser-based GUI.
+Although the code is light on comments, I've tried to use clear variable names and structure to make the need for comments minimal. 
+I've also tried to keep the code free from 'dead code' that isn't used, and generate my own 'Pythonic' solutions keeping code as 
+tight and minimal as possible rather than copy from other online sources or AI (!). I chose to put the GUI in a browser because
+this allows customisation with css etc, and provides some separation between the tranmit/receive code and the GUI code.
+
 <img width="891" height="788" alt="Capture" src="https://github.com/user-attachments/assets/23351f0f-5d04-476a-87c3-26c3913a76b4" />
 
+Below are some screenshots from test programs that can be used to look at how the protocols actually work, illustrated with a fairly
+ordinary waterfall and some zoomed-in depictions of captured signals with an overlay of the syncrhonisation tones that are used
+to search for the signals (Costas patterns).
 
 <img width="981" height="382" alt="Capture" src="https://github.com/user-attachments/assets/8eb7c645-ab75-4e4f-8ce9-1dae6045e6ba" />
 <img width="1050" height="1000" alt="Figure_2" src="https://github.com/user-attachments/assets/087289d9-ec48-419e-875e-89012a3441f5" />
-
-## Purpose
-This is code that I'm playing with mainly for my own understanding, but I really hope it's helpful to anyone who wants to 
-understand how FT8 works. I'm keen to avoid simply copying code from other people (or AI!), and generate my own Pythonic
-solutions keeping code as tight and minimal as possible, whilst experimenting with different candidate selection algorithms
-and decoding approaches.
 
 ## Approach
 You won't find many comments in the code; I try to make things as obvious as possible via variable names and logical structure, to 
