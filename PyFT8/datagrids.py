@@ -87,7 +87,7 @@ class Spectrum:
         self.complex[0,0] = 1
         self.power = np.abs(self.complex) ** 2
         """ Fill self.noise ... for llr extraction. """
-        self.noise_per_hop = np.median(self.power, axis=1)
+        self.noise_per_hop = np.min(self.power, axis=1)
         n_full = (self.nHops // self.hops_persymb) * self.hops_persymb
         self.noise_per_hop = self.noise_per_hop[:n_full]
         self.noise_per_symb = self.noise_per_hop.reshape(-1, self.hops_persymb).mean(axis=1)

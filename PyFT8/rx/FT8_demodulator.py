@@ -52,7 +52,7 @@ class FT8Demodulator:
     # Candidate search and sync
     # ======================================================
 
-    def find_candidates(self, f0, f1, topN=500):
+    def find_candidates(self, f0, f1, topN=1500):
         region = Bounds.from_physical(self.spectrum, 0, 15, f0, f1)
         candidates = []
         for f0_idx in region.f_idx_range:
@@ -62,7 +62,7 @@ class FT8Demodulator:
         return candidates[:topN]
 
     def deduplicate_candidate_freqs(self, candidates):
-        min_sep_fbins = 0.5 * self.sigspec.tones_persymb * self.fbins_pertone
+        min_sep_fbins = 0.25 * self.sigspec.tones_persymb * self.fbins_pertone
         deduplicated = []
         for c in candidates:
             keep_c = True
@@ -125,45 +125,6 @@ class FT8Demodulator:
             c.snr = -24 if c.score==0 else int(12*np.log10(c.score/1e9) - 31)
             c.snr = np.clip(c.snr, -24,24).item()
             c.llr = LLR174s
-            decode = FT8_decode(c, cyclestart_str)
-            if(decode): c.message = decode['decode_dict']['message'] 
-            return decode
-
-    def demodulate_candidate_(self, candidate, cyclestart_str):
-        """ Experimental - calculate LLRs direct from self.spectrum.power (fine grid) """
-        c = candidate
-        LLR174s=[]
-        gray_mask = self.sigspec.gray_mask
-        eps = 1e-12
-        tau = 0.62
-        # sd = 6.0, t=0.58 to 0.6
-        # sd = 7.0, t=0.58 to 0.65
-        # sd = 8.0, t = 0.63 to 0.65
-        llr_sd = 7.0
-        for symb_idx in c.sigspec.payload_symb_idxs:
-            H = list(c.hop_idxs_by_symbol[symb_idx])
-            mlog = np.empty(c.sigspec.tones_persymb, np.float64)
-            for tone_idx in range(c.sigspec.tones_persymb):
-                K = list(c.bin_idxs_by_tone[tone_idx])
-                patch = self.spectrum.power[np.ix_(H, K)]
-                s2 = self.spectrum.noise_per_hop[H][:,None] + eps
-                snr_hk = np.maximum(patch - s2, 0.0) / (s2 + eps)
-                W = len(H) * len(K)                 # window size (9)
-                mlog[tone_idx] = np.log(np.sum(snr_hk) / (W + eps) + eps)
-            mlog -= np.mean(mlog)
-            m1 = np.where(gray_mask,  (mlog[:, None] / tau), -np.inf)
-            m0 = np.where(~gray_mask, (mlog[:, None] / tau), -np.inf)
-            LLR_sym = tau * (np.logaddexp.reduce(m1, axis=0) - np.logaddexp.reduce(m0, axis=0))
-            LLR174s.extend(LLR_sym)
-        LLR174s -= np.mean(LLR174s)
-        LLR174s *= (llr_sd / np.std(LLR174s))
-        ncheck, bits, n_its = decode174_91(LLR174s)
-        c.llr = LLR174s
-        if(ncheck == 0):
-            c.demodulated_by = f"LLR-LDPC ({n_its})"
-            c.payload_bits = bits
-            c.snr = -24 if c.score==0 else int(12*np.log10(c.score/1e9) - 31)
-            c.snr = np.clip(c.snr, -24,24).item()
             decode = FT8_decode(c, cyclestart_str)
             if(decode): c.message = decode['decode_dict']['message'] 
             return decode
