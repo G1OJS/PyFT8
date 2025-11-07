@@ -45,6 +45,12 @@ All cycles: WSJTX:96 PyFT8:66 -> 69% best snr = -12
 20m:
 All cycles: WSJTX:418 PyFT8:129 -> 31% best snr = -11
 
+compare to V4.0.0 original 
+40m
+All cycles: WSJTX:100 PyFT8:61 -> 61% best snr = -11
+20m for 5 mins
+All cycles: WSJTX:459 PyFT8:154 -> 34% best snr = -11
+
 
 Python 3.12.2 (tags/v3.12.2:6abddd9, Feb  6 2024, 21:26:36) [MSC v.1937 64 bit (AMD64)] on win32
 Type "help", "copyright", "credits" or "license()" for more information.
