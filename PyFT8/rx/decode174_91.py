@@ -79,15 +79,7 @@ def decode174_91(llr, maxiterations = 30, gamma = 0.0026, nstall_max = 8, ncheck
     tanhtoc = np.zeros((7, kM), dtype=np.float64)
     tov = np.zeros((kNCW, kN), dtype=np.float32)    # check -> message messages
     nclast, nstall = 0, 0                           # stall condition variables
-    zn = np.array(llr, dtype=np.float32)            # working copy of llrs 
-    zn -= np.mean(zn)
-    std = np.std(zn) + 1e-9
-    target_std = 3.0          # 2.5–4.0 is a good ballpark
-    zn *= (target_std / std)
-    
-    # clip to avoid tanh saturation:
-    zn = np.clip(zn, -10.0, 10.0)
-
+    zn = np.array(llr, dtype=np.float32)            # working copy of llrs
     ncheck, decoded_bits174_LE_list = count_syndrome_checks(zn)
     if(ncheck == 0):
         return 0, decoded_bits174_LE_list, -1

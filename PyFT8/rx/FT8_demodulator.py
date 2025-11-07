@@ -106,7 +106,8 @@ class FT8Demodulator:
         pgrid = c.power_grid
         gray_mask = self.sigspec.gray_mask
         eps = 1e-12
-        tau = 0.5  # try 0.5 … 0.8; smaller => sharper => larger |LLR|
+        tau = 0.5
+        llr_sd = 3.0
         for symb_idx in c.sigspec.payload_symb_idxs:            
             sigma2_sym = self.spectrum.noise_per_symb[symb_idx]              
             tp = pgrid[symb_idx, :] / (sigma2_sym + eps)       
@@ -115,6 +116,9 @@ class FT8Demodulator:
             m0 = np.where(~gray_mask, (mlog[:, None] / tau), -np.inf)
             LLR_sym = tau * (np.logaddexp.reduce(m1, axis=0) - np.logaddexp.reduce(m0, axis=0))
             LLR174s.extend(LLR_sym)
+        LLR174s -= np.mean(LLR174s)
+        LLR174s *= (llr_sd / np.std(LLR174s))
+        LLR174s = np.clip(LLR174s, -10.0, 10.0)
         ncheck, bits, n_its = decode174_91(LLR174s)
         if(ncheck == 0):
             c.demodulated_by = f"LLR-LDPC ({n_its})"
@@ -126,6 +130,7 @@ class FT8Demodulator:
             if(decode): c.message = decode['decode_dict']['message'] 
             return decode
 
+
     def demodulate_candidate_(self, candidate, cyclestart_str):
         """ calculate LLRs direct from self.spectrum.power (fine grid) """
         c = candidate
@@ -133,6 +138,7 @@ class FT8Demodulator:
         gray_mask = self.sigspec.gray_mask
         eps = 1e-12
         tau = 0.5
+        llr_sd = 3.0
         for symb_idx in c.sigspec.payload_symb_idxs:
             H = list(c.hop_idxs_by_symbol[symb_idx])
             mlog = np.empty(c.sigspec.tones_persymb, np.float64)
@@ -148,6 +154,9 @@ class FT8Demodulator:
             m0 = np.where(~gray_mask, (mlog[:, None] / tau), -np.inf)
             LLR_sym = tau * (np.logaddexp.reduce(m1, axis=0) - np.logaddexp.reduce(m0, axis=0))
             LLR174s.extend(LLR_sym)
+        LLR174s -= np.mean(LLR174s)
+        LLR174s *= (llr_sd / np.std(LLR174s))
+        LLR174s = np.clip(LLR174s, -10.0, 10.0)
         ncheck, bits, n_its = decode174_91(LLR174s)
         c.llr = LLR174s
         if(ncheck == 0):
