@@ -9,7 +9,6 @@ wsjtx.txt
 pyft8.txt
 
 *.wav
-*.txt
 *.npz
 *.json
 *.log
