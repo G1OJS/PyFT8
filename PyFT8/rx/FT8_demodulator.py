@@ -104,12 +104,15 @@ class FT8Demodulator:
         LLR174s=[]
         pgrid = c.power_grid
         gray_mask = self.sigspec.gray_mask
-        for symb_idx in c.sigspec.payload_symb_idxs:
-            sigma2 = self.spectrum.noise_per_symb[symb_idx]
-            tone_powers_scaled = pgrid[symb_idx, :] / sigma2
-            m1 = np.where(gray_mask, tone_powers_scaled[:, None], -np.inf)
-            m0 = np.where(~gray_mask, tone_powers_scaled[:, None], -np.inf)
-            LLR_sym = np.logaddexp.reduce(m1, axis=0) - np.logaddexp.reduce(m0, axis=0)
+        eps = 1e-12
+        tau = 0.5  # try 0.5 … 0.8; smaller => sharper => larger |LLR|
+        for symb_idx in c.sigspec.payload_symb_idxs:            
+            sigma2_sym = self.spectrum.noise_per_symb[symb_idx]              
+            tp = pgrid[symb_idx, :] / (sigma2_sym + eps)       
+            mlog = np.log(tp + eps)                          
+            m1 = np.where(gray_mask,  (mlog[:, None] / tau), -np.inf)
+            m0 = np.where(~gray_mask, (mlog[:, None] / tau), -np.inf)
+            LLR_sym = tau * (np.logaddexp.reduce(m1, axis=0) - np.logaddexp.reduce(m0, axis=0))
             LLR174s.extend(LLR_sym)
         ncheck, bits, n_its = decode174_91(LLR174s)
         if(ncheck == 0):
