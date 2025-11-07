@@ -41,7 +41,7 @@ code doesn't (yet) have the full capability of the advanced decoders used in WSJ
 |Find candidate signals|Search the frequency spectrum for regions with the bandwidth of an FT8 signal that have the greatest power| TBD |
 |Syncronise signals in time | Search each candidate in the time axis using the Costas synchronisation template, taking the maximum (or sum) over the three synch blocks | TBD|
 |Use of FFTs for the above | A single time-frequency grid with 3 time samples per symbol and 3 frequency samples per tone| Several FFTs per operation, details TBC|
-|Demodulation|Sum powers to create a 1 sample per symbol, 1 sample per tone grid. Use Gray code to create Log Likelyhood Ratios for each bit. | Similar, details TBC|
+|Demodulation|Sum powers to create a 1 sample per symbol, 1 sample per tone grid. Use Gray code to create Log Likelyhood Ratios for each bit. | Noncoherent block detection over 3 symbols - creates LLRs by correlating the 512 possible tone sequences (3 symbols with 8 possible tones each) with the actual received symbols. This is done in the frequency domain by combining the whole-symbol correlations already calculated.  |
 |Decoding the FEC code | Belief Propagation LDPC decoder | Belief Propagation LDPC decoder |
 |Further decoding if LDPC fails| None | Ordered Statistics Decoding |
 |Further signal extraction | None | Subtraction of the idealised power of the decoded signals, then rescanning the residual spectrum. Further synchronisation adjustments TBC|
@@ -63,7 +63,7 @@ Also thanks to [Robert Morris](https://github.com/rtmrtmrtmrtm) for:
 
 Other useful resources:
  - [W4KEK WSJT-x git mirror](https://www.repo.radio/w4kek/WSJT-X)
- - [VK3JPK's FT8 notes](https://github.com/vk3jpk/ft8-notes)
+ - [VK3JPK's FT8 notes](https://github.com/vk3jpk/ft8-notes) including comprehensive [Python source code](https://github.com/vk3jpk/ft8-notes/blob/master/ft8.py)
  - [Web-888 FT8 skimmer](https://www.rx-888.com/web/design/digi.html)
  - [WSJT-X on Sourceforge](https://sourceforge.net/p/wsjt/wsjtx/ci/master/tree/")
  - [Declercq_2003_TurboCodes.pdf](https://perso.etis-lab.fr/declercq/PDF/ConferencePapers/Declercq_2003_TurboCodes.pdf)
@@ -74,5 +74,6 @@ Other useful resources:
  - [FT8_lib](https://github.com/kgoba/ft8_lib)
  - [Decoding LDPC Codes with Belief Propagation | by Yair Mazal](https://yair-mz.medium.com/decoding-ldpc-codes-with-belief-propagation-43c859f4276d)
  - ['DX-FT8-Transceiver' source code](https://github.com/chillmf/DX-FT8-Transceiver-Source-Code_V2)
+ - ['ft8modem - a command-line software modem for FT8'](https://www.kk5jy.net/ft8modem/) Matt Roberts' implementation as an FT8 modem with a CLI interface, including source code (C++ and Python) at the bottom of [this page](https://www.kk5jy.net/ft8modem/Software/)
 
 <script data-goatcounter="https://g1ojs-github.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
