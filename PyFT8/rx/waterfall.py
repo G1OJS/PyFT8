@@ -79,7 +79,7 @@ class Waterfall:
         self.textaxis.axis('off')
         
     # ----------------------------------------------------------
-    def show_zoom(self, candidates, llr_overlay=False, cols=3):
+    def show_zoom(self, candidates, llr_overlay=True, cols=3):
         """
         Create per-candidate zoom boxes (gridded subplots).
         Optionally overlay LLRs if candidate.llr is present.
@@ -124,16 +124,16 @@ class Waterfall:
                 )
                 ax.add_patch(rect)
 
+            from mpl_toolkits.axes_grid1.inset_locator import inset_axes
             if llr_overlay and c.llr is not None:
-                # Normalise and reshape LLRs (174 → 58×3 pattern if needed)
                 llr = np.array(c.llr, dtype=np.float32)
-                llr_img = llr.reshape(-1, 3) if llr.size % 3 == 0 else llr[:, None]
-                ax.imshow(
-                    llr_img.T,
-                    alpha=0.4,
-                    cmap="bwr",
-                    aspect="auto"
-                )
+                llr_img = llr.reshape(-1, 1)
+                llr_ax = inset_axes(parent_axes=ax, width="5%", height="100%", borderpad=0)
+                llr_ax.imshow(llr_img, origin="lower", aspect="auto", cmap="bwr")
+                llr_ax.set_xticks([])
+                llr_ax.set_yticks([])
+                llr_ax.set_title("LLR", fontsize=8)
+
 
         for ax in axes[n:]:
             ax.axis("off")
