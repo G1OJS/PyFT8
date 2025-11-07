@@ -32,7 +32,7 @@ def cycle_decoder(onStart = None, onOccupancy = None, onDecode = log_decode, onF
         timers.timedLog("Cyclic demodulator passed audio for demodulating", silent = True)
 
 def get_decodes(onStart=None, onDecode=None, onOccupancy=None, onFinished=None):
-    demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
+    demod = FT8Demodulator()
     cyclestart_str = timers.cyclestart_str(0)
     demod.spectrum.load_audio(audio_in)
 

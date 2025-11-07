@@ -9,7 +9,7 @@ import PyFT8.audio as audio
 
 wav_file = "210703_133430.wav"
 
-demod = FT8Demodulator(sample_rate=12000, fbins_pertone=3, hops_persymb=3)
+demod = FT8Demodulator()
 wf = Waterfall(demod.spectrum, f1=3500)
 
 timers.timedLog(f"Start to Load audio from {wav_file}")
