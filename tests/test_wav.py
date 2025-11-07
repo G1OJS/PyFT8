@@ -29,6 +29,7 @@ for c in candidates:
     if(decode):
         decoded_candidates.append(c)
         print(decode['all_txt_line'], decode['decode_dict']['t0_idx'] )
+        print([f"{float(v):.3f}" for v in c.llr])
 
 timers.timedLog("Start to Show spectrum")
 wf.update_main()
