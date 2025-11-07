@@ -139,6 +139,14 @@ class Candidate:
         self.spectrum = spectrum
         self.bounds = Bounds(spectrum, t0_idx, t0_idx + sigspec.num_symbols * spectrum.hops_persymb,
                                        f0_idx, f0_idx + sigspec.tones_persymb * spectrum.fbins_pertone)
+        self.hop_idxs_by_symbol = [
+            range(t0_idx + i*spectrum.hops_persymb, t0_idx + (i+1)*spectrum.hops_persymb)
+            for i in range(sigspec.num_symbols)
+        ]
+        self.bin_idxs_by_tone = [
+            range(f0_idx + j*spectrum.fbins_pertone, f0_idx + (j+1)*spectrum.fbins_pertone)
+            for j in range(sigspec.tones_persymb)
+        ]
         self.cycle_start = cycle_start
         self.demodulated_by = demodulated_by
         self.message = None
@@ -148,7 +156,8 @@ class Candidate:
         self.bounds.t0_idx += delta
         self.bounds.tn_idx += delta
         self.bounds.t0, self.bounds.tn = self.spectrum.times[self.bounds.t0_idx], self.spectrum.times[self.bounds.tn_idx]
- 
+        self.hop_idxs_by_symbol = np.array(self.hop_idxs_by_symbol) + delta
+
     @property
     def power_grid(self):
         c = self

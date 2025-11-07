@@ -1,20 +1,12 @@
-# v3_0 - slightly faster than 2_3 and returns
-# ncheck as well as decoded_bits174_LE_list, it
+# v4_0 - LLR calculation in calling code updated,
+# and the empirical multiplier 'mult' is no longer needed
+# ncheck as well as decoded_bits174_LE_list
 # as CRC is checked here, no need to check again (just check ncheck == 0)
 
 """
-maxiterations = 30, gamma = 0.0026, nstall_max = 8, ncheck_max = 30
+maxiterations = 30, nstall_max = 8, ncheck_max = 30
 snr_dB, success%
-5.0, 2% time = 5.0
-5.3, 14% time = 13.2
-5.7, 14% time = 20.2
-6.0, 32% time = 30.1
-6.3, 54% time = 39.0
-6.7, 76% time = 46.4
-7.0, 84% time = 51.6
-7.3, 92% time = 56.2
-7.7, 96% time = 58.6
-8.0, 100% time = 60.7
+
 """
 
 import numpy as np
@@ -74,21 +66,19 @@ def count_syndrome_checks(zn):
         return -1, []
     return ncheck, decoded_bits174_LE_list
     
-def decode174_91(llr, maxiterations = 30, gamma = 0.0026, nstall_max = 8, ncheck_max = 30):
+def decode174_91(llr, maxiterations = 30, nstall_max = 8, ncheck_max = 30):
     toc = np.zeros((7, kM), dtype=np.float32)       # message -> check messages
     tanhtoc = np.zeros((7, kM), dtype=np.float64)
     tov = np.zeros((kNCW, kN), dtype=np.float32)    # check -> message messages
     nclast, nstall = 0, 0                           # stall condition variables
-    zn = np.array(llr, dtype=np.float32)            # working copy of llrs 
-    mult = (np.max(zn) - np.min(zn)) * gamma        # empricical multiplier for tov, proportional to llr scale
-
+    zn = np.array(llr, dtype=np.float32)            # working copy of llrs
     ncheck, decoded_bits174_LE_list = count_syndrome_checks(zn)
     if(ncheck == 0):
         return 0, decoded_bits174_LE_list, -1
     
     for it in range(maxiterations + 1):
         for i in range(kN):
-            zn[i] += mult * sum(tov[:,i])
+            zn[i] += sum(tov[:,i])
         ncheck, decoded_bits174_LE_list = count_syndrome_checks(zn)
         if(ncheck <=0):
             return ncheck, decoded_bits174_LE_list, it
