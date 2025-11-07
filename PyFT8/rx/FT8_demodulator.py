@@ -118,7 +118,6 @@ class FT8Demodulator:
             LLR174s.extend(LLR_sym)
         LLR174s -= np.mean(LLR174s)
         LLR174s *= (llr_sd / np.std(LLR174s))
-        LLR174s = np.clip(LLR174s, -10.0, 10.0)
         ncheck, bits, n_its = decode174_91(LLR174s)
         if(ncheck == 0):
             c.demodulated_by = f"LLR-LDPC ({n_its})"
@@ -130,15 +129,17 @@ class FT8Demodulator:
             if(decode): c.message = decode['decode_dict']['message'] 
             return decode
 
-
     def demodulate_candidate_(self, candidate, cyclestart_str):
-        """ calculate LLRs direct from self.spectrum.power (fine grid) """
+        """ Experimental - calculate LLRs direct from self.spectrum.power (fine grid) """
         c = candidate
         LLR174s=[]
         gray_mask = self.sigspec.gray_mask
         eps = 1e-12
-        tau = 0.5
-        llr_sd = 3.0
+        tau = 0.62
+        # sd = 6.0, t=0.58 to 0.6
+        # sd = 7.0, t=0.58 to 0.65
+        # sd = 8.0, t = 0.63 to 0.65
+        llr_sd = 7.0
         for symb_idx in c.sigspec.payload_symb_idxs:
             H = list(c.hop_idxs_by_symbol[symb_idx])
             mlog = np.empty(c.sigspec.tones_persymb, np.float64)
@@ -156,7 +157,6 @@ class FT8Demodulator:
             LLR174s.extend(LLR_sym)
         LLR174s -= np.mean(LLR174s)
         LLR174s *= (llr_sd / np.std(LLR174s))
-        LLR174s = np.clip(LLR174s, -10.0, 10.0)
         ncheck, bits, n_its = decode174_91(LLR174s)
         c.llr = LLR174s
         if(ncheck == 0):
