@@ -97,7 +97,7 @@ class Waterfall:
         self.zoom_axes = axes
 
         # Precompute Costas skeleton (symbol, tone index pairs)
-        costas_pairs = [(symb_idx + offset, tone)
+        costas_pairs = [((symb_idx  + offset) * self.hops_persymb, tone * self.fbins_pertone)
                         for offset in (0, 36, 72) # magic numbers; move to a 'costas object' per mode
                         for symb_idx, tone in enumerate(self.costas)]
 
@@ -113,13 +113,13 @@ class Waterfall:
                 norm=LogNorm()
             )
             ax.set_title(f"{c.bounds.f0:.0f}Hz {c.bounds.t0:.2f}s {c.message}")
-            ax.set_xlabel("Tone index")
-            ax.set_ylabel("Symbol")
+            ax.set_xlabel("freq bin index")
+            ax.set_ylabel("hop index")
 
             # --- Costas rectangles ---
             for symb_idx, tone_idx in costas_pairs:
                 rect = patches.Rectangle(
-                    (tone_idx - 0.5, symb_idx - 0.5), 1, 1,
+                    (tone_idx - 0.5, symb_idx - 0.5), self.fbins_pertone, self.hops_persymb,
                     edgecolor='lime', facecolor='none', linewidth=1.2
                 )
                 ax.add_patch(rect)

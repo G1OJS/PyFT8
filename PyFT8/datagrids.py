@@ -159,14 +159,57 @@ class Candidate:
         self.hop_idxs_by_symbol = np.array(self.hop_idxs_by_symbol) + delta
 
     @property
-    def power_grid(self):
+    def complex_grid(self):
         c = self
-        pgrid = self.spectrum.power[
+        cgrid = self.spectrum.complex[
             c.bounds.t0_idx : c.bounds.t0_idx + c.sigspec.num_symbols * c.spectrum.hops_persymb,
             c.bounds.f0_idx : c.bounds.f0_idx + c.sigspec.tones_persymb * c.spectrum.fbins_pertone
         ]
-        pgrid = pgrid.reshape(c.sigspec.num_symbols, c.spectrum.hops_persymb,
-                              c.sigspec.tones_persymb, c.spectrum.fbins_pertone).mean(axis=(1,3))
+        return cgrid.astype(np.complex64)
 
+    @property
+    def complex_grid_4d(self):
+        c = self
+        return self.complex_grid.reshape(
+            c.sigspec.num_symbols, c.spectrum.hops_persymb, c.sigspec.tones_persymb, c.spectrum.fbins_pertone
+        )
+
+    @property
+    def power_grid(self):
+        cgrid = self.complex_grid
+        pgrid = np.abs(cgrid)**2
         return pgrid.astype(np.float32)
         
+    @property
+    def phase_grid(self):  
+        phase = np.angle(self.complex_grid)
+        return phase.astype(np.float32)
+
+    @property
+    def power_grid_downsampled(self):
+        cgrid = self.complex_grid_4d
+        pgrid = (np.abs(cgrid)**2).mean(axis=(1,3))
+        return pgrid.astype(np.float32)
+
+    @property
+    def power_grid_coherent_over_hops_downsampled(self):
+        cgrid = self.complex_grid_4d
+        phi_max, phi_steps = 0.3, 5
+        hops = np.arange(cgrid.shape[1])
+        best_pgrid = None
+        best_metric = -np.inf
+        for phi in np.linspace(-phi_max, phi_max, phi_steps):
+            rot = np.exp(-1j * hops * phi)[:, None, None]  # shape (hops,1,1)
+            csum = np.sum(cgrid * rot, axis=1)             # coherent sum over hops
+            pgrid = np.abs(csum.mean(axis=2))**2           # collapse sub-bins, power
+            metric = pgrid.sum()
+            if metric > best_metric:
+                best_metric = metric
+                best_pgrid = pgrid
+        return best_pgrid.astype(np.float32)
+
+ 
+
+
+
+

@@ -103,7 +103,7 @@ class FT8Demodulator:
         """ calculate LLRs from c.pgrid (1:1 grid) """
         c = candidate
         LLR174s=[]
-        pgrid = c.power_grid
+        pgrid = c.power_grid_downsampled
         gray_mask = self.sigspec.gray_mask
         eps = 1e-12
         tau = 0.5
