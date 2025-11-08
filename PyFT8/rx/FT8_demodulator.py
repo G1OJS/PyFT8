@@ -92,7 +92,7 @@ class FT8Demodulator:
         for block_idx in block_hopstarts: 
             t_idx = t0_idx + block_idx
             cgrid = self.spectrum.complex[t_idx:t_idx + nt, f0_idx:fn_idx]
-            block_score = np.sum(np.abs(cgrid * self._csync))
+            block_score = np.sum(np.abs(cgrid) * self._csync)
             if block_score > score: score = block_score 
         return score 
         
