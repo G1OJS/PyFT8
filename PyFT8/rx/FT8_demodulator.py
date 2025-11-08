@@ -110,7 +110,7 @@ class FT8Demodulator:
         llr_sd = 3.0
         for symb_idx in c.sigspec.payload_symb_idxs:            
             sigma2_sym = self.spectrum.noise_per_symb[symb_idx]              
-            tp = pgrid[symb_idx, :] / (sigma2_sym + eps)       
+            tp = pgrid[symb_idx, :] / (sigma2_sym + eps)
             mlog = np.log(tp + eps)                          
             m1 = np.where(gray_mask,  (mlog[:, None] / tau), -np.inf)
             m0 = np.where(~gray_mask, (mlog[:, None] / tau), -np.inf)
