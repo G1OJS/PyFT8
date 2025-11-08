@@ -45,6 +45,9 @@
 		.grid_cell {padding:1px 5px 1px 5px; font-weight:600; color:var(--table-color);}
 		.reply-highlight {background-color: var(--cq-bg-hl);}
 		.reply-highlight_faded {background-color: var(--cq-bg); transition: 1s linear all;}
+		.grid_row.reply-highlight > div {background-color: var(--cq-bg-hl);}
+		.grid_row.reply-highlight_faded > div {background-color: var(--cq-bg); transition: 1s linear all;}
+
 	</style>
 	
 	<script>
@@ -97,7 +100,7 @@
 			if (cs.charAt(cs.length-1) == '5'){row.classList.add('odd')} else {row.classList.add('even')}
 			if(dd.call_a == myCall) {row.classList.add('sentTomyCall')}
 			if(dd.call_b == myCall) {row.classList.add('sentBymyCall')}
-			if(dd.call_a == "CQ") {row.classList.add("transmitting_item")}
+			if(dd.call_a == "CQ") {row.classList.add("reply-highlight"); row.classList.add("transmitting_item");}
 			const fields = [dd.cyclestart_str.split('_')[1], dd.snr, dd.freq, dd.dt, dd.call_a, dd.call_b, dd.grid_rpt,''];
 			fields.forEach((field, idx) => {
 				const cell_div = document.createElement("div");
