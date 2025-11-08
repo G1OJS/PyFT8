@@ -22,7 +22,7 @@ class Waterfall:
         self.fig, (self.ax_main, self.textaxis) = plt.subplots(2,1,figsize=(10, 4))
         self.textaxis.axis('off')
         self.im = self.ax_main.imshow(
-            spectrum.power,
+            np.abs(spectrum.complex),
             origin="lower",
             aspect="auto",
             extent=self.extent,
@@ -45,7 +45,7 @@ class Waterfall:
     # ----------------------------------------------------------
     def update_main(self, candidates=None, cyclestart_str=None):
         """Refresh main waterfall and draw candidate rectangles."""
-        self.im.set_data(self.spectrum.power)
+        self.im.set_data(np.abs(self.spectrum.complex))
         self.im.autoscale()
         self.im.norm.vmin = self.im.norm.vmax/1000000
         if(cyclestart_str):
@@ -79,7 +79,7 @@ class Waterfall:
         self.textaxis.axis('off')
         
     # ----------------------------------------------------------
-    def show_zoom(self, candidates, llr_overlay=True, cols=3):
+    def show_zoom(self, candidates, llr_overlay=True, cols=3, phase = False):
         """
         Create per-candidate zoom boxes (gridded subplots).
         Optionally overlay LLRs if candidate.llr is present.
@@ -101,17 +101,18 @@ class Waterfall:
                         for offset in (0, 36, 72) # magic numbers; move to a 'costas object' per mode
                         for symb_idx, tone in enumerate(self.costas)]
 
+        
         for i, c in enumerate(candidates_with_decodes):
             ax = axes[i]
-            pwr = c.power_grid
-            ax.imshow(
+            pwr = c.phase_grid if phase else c.power_grid
+            im = ax.imshow(
                 pwr,
                 origin="lower",
                 aspect="auto",
-                cmap="inferno",
-                interpolation='none',
-                norm=LogNorm()
+                cmap="twilight",
+                interpolation='none'
             )
+            if(not phase): im.norm = LogNorm()
             ax.set_title(f"{c.bounds.f0:.0f}Hz {c.bounds.t0:.2f}s {c.message}")
             ax.set_xlabel("freq bin index")
             ax.set_ylabel("hop index")

@@ -56,7 +56,7 @@ class FT8Demodulator:
         region = Bounds.from_physical(self.spectrum, 0, 15, f0, f1)
         candidates = []
         for f0_idx in region.f_idx_range:
-            score = np.sum(self.spectrum.power[: , f0_idx:f0_idx+self._csync.shape[1]])
+            score = np.sum(np.abs(self.spectrum.complex[: , f0_idx:f0_idx+self._csync.shape[1]]))
             candidates.append(Candidate(self.sigspec, self.spectrum, 0, f0_idx, score))
         candidates.sort(key=lambda c: -c.score)
         return candidates[:topN]
@@ -91,8 +91,8 @@ class FT8Demodulator:
         block_hopstarts = [0, 36 * self.hops_persymb, 72 * self.hops_persymb]
         for block_idx in block_hopstarts: 
             t_idx = t0_idx + block_idx
-            pgrid = self.spectrum.power[t_idx:t_idx + nt, f0_idx:fn_idx]
-            block_score = np.sum(pgrid * self._csync)
+            cgrid = self.spectrum.complex[t_idx:t_idx + nt, f0_idx:fn_idx]
+            block_score = np.sum(np.abs(cgrid * self._csync))
             if block_score > score: score = block_score 
         return score 
         

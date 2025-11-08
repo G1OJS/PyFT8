@@ -7,9 +7,9 @@ from PyFT8.tx.FT8_encoder import pack_ft8_c28, pack_ft8_g15, encode_bits77
 import PyFT8.timers as timers
 import PyFT8.audio as audio
 
-demod = FT8Demodulator()
-tbin_idx = 4*demod.hops_persymb # 4 = random time offset
-fbin_idx = 420
+demod = FT8Demodulator(hops_persymb=8, fbins_pertone =3)
+t0_idx = 4*demod.hops_persymb # 4 = random time offset
+f0_idx = 420
 rel_strength = 1.2
 
 #VK1ABC 0b1110000111111100010100110101
@@ -60,29 +60,31 @@ demod.spectrum.load_audio(audio_in)
 
 # 'modulate' onto channel grid
 m = np.max(abs(demod.spectrum.complex))  * rel_strength
-for t_idx, symbol in enumerate(symbols):
-    for tbin in range(demod.hops_persymb):
-        for fbin in range(demod.fbins_pertone):
-            t = tbin_idx + t_idx * demod.hops_persymb + tbin
-            f = fbin_idx + symbol * demod.fbins_pertone + (fbin - demod.fbins_pertone//2)
-            demod.spectrum.complex[t, f] = m
-            demod.spectrum.power[t, f] = m**2
+for symb_idx, tone_idx in enumerate(symbols):
+    f_idxs = range(f0_idx + tone_idx * demod.fbins_pertone, f0_idx + (tone_idx+1) * demod.fbins_pertone)
+    t_idxs = range(t0_idx + symb_idx * demod.hops_persymb, t0_idx + (symb_idx+1) * demod.hops_persymb)
+    for tbin_idx in t_idxs:
+       # demod.spectrum.complex[tbin_idx, fbin_idx : fbin_idx+demod.fbins_pertone*demod.sigspec.tones_persymb] = m/10
+        for fbin_idx in f_idxs:
+            demod.spectrum.complex[tbin_idx, fbin_idx] = m
+
 
 # 'demodulate' as with any audio frame
 timers.timedLog(f"Start to Load audio from {wav_file}")
 
-candidates = demod.find_candidates(100,3400)
+candidates = demod.find_candidates(0,3400)
 candidates = demod.deduplicate_candidate_freqs(candidates)
 decoded_candidates = []
-for c in candidates:
+for c in candidates[:3]:
     demod.sync_candidate(c)
     decode = demod.demodulate_candidate(c, cyclestart_str="test")
     if(decode):
         decoded_candidates.append(c)
         print(decode['all_txt_line'], decode['decode_dict']['t0_idx'] )
-wf = Waterfall(demod.spectrum, f1=3500)
+wf = Waterfall(demod.spectrum, f0=0, f1=3500)
 wf.update_main(candidates=decoded_candidates)
-wf.show_zoom(candidates=decoded_candidates)
+wf.show_zoom(candidates=decoded_candidates, phase = False, llr_overlay=False)
+wf.show_zoom(candidates=decoded_candidates, phase = True, llr_overlay=False)
 
 print(f"Payload symbols demodulated: {''.join([str(int(s)) for s in candidates[0].payload_symbols])}")
 print("bits expected / bits decoded")

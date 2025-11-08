@@ -73,7 +73,6 @@ class Spectrum:
 
         # ---- Data arrays ----
         self.complex = np.zeros((self.nHops, self.nFreqs), np.complex64)
-        self.power = np.zeros((self.nHops, self.nFreqs), np.float32)
         self.noise_per_hop = None
         self.noise_per_symb = None
 
@@ -85,9 +84,9 @@ class Spectrum:
             if(sample_idxn < len(audio_in)):
                 self.complex[hop_idx,:] = np.fft.rfft(audio_in[sample_idx0:sample_idxn] * np.kaiser(self.FFT_size,14))
         self.complex[0,0] = 1
-        self.power = np.abs(self.complex) ** 2
+        power = np.abs(self.complex) ** 2
         """ Fill self.noise ... for llr extraction. """
-        self.noise_per_hop = np.min(self.power, axis=1)
+        self.noise_per_hop = np.min(power, axis=1)
         n_full = (self.nHops // self.hops_persymb) * self.hops_persymb
         self.noise_per_hop = self.noise_per_hop[:n_full]
         self.noise_per_symb = self.noise_per_hop.reshape(-1, self.hops_persymb).mean(axis=1)
