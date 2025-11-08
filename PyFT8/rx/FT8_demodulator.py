@@ -61,8 +61,8 @@ class FT8Demodulator:
         candidates.sort(key=lambda c: -c.score)
         return candidates[:topN]
 
-    def deduplicate_candidate_freqs(self, candidates, topN=40):
-        min_sep_fbins = 0.5 * self.sigspec.tones_persymb * self.fbins_pertone
+    def deduplicate_candidate_freqs(self, candidates, topN=100):
+        min_sep_fbins = 4*self.fbins_pertone
         deduplicated = []
         for c in candidates:
             keep_c = True
