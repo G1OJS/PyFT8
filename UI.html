@@ -40,13 +40,11 @@
 		.grid_row.odd > div {background-color: var(--odd-bg);}
 		.grid_row.even > div{ background-color: var(--even-bg);}	
 		.grid_row:hover > div {background-color: var(--table-hover-bg);}
-		.grid_row.cq-highlight  > div {background-color: var(--cq-bg-hl);}
-		.grid_row.cq-highlight_faded  > div{background-color: var(--cq-bg); transition: 1s linear all;}
 		.grid_row.sentTomyCall > div {background-color: var(--to-me-bg);}
 		.grid_row.sentBymyCall > div {background-color: var(--by-me-bg);}	
 		.grid_cell {padding:1px 5px 1px 5px; font-weight:600; color:var(--table-color);}
-		.green-highlight {background-color: var(--cq-bg-hl);}
-		.green-highlight_faded {background-color: var(--cq-bg); transition: 1s linear all;}
+		.reply-highlight {background-color: var(--cq-bg-hl);}
+		.reply-highlight_faded {background-color: var(--cq-bg); transition: 1s linear all;}
 	</style>
 	
 	<script>
@@ -85,13 +83,10 @@
 			document.getElementById("clock").innerHTML = utc + " UTC";
 			t_cyc = t.getUTCSeconds() %15;
 			if(t_cyc > 1 && t_cyc <12.6) {
-				for (const el of document.querySelectorAll(".transmitting_item")) {el.classList.remove("green-highlight"); el.classList.add("green-highlight_faded"); }
+				for (const el of document.querySelectorAll(".transmitting_item")) {el.classList.remove("reply-highlight"); el.classList.add("reply-highlight_faded"); }
 			} else {
-				for (const el of document.querySelectorAll(".transmitting_item")) {el.classList.remove("green-highlight_faded"); el.classList.add("green-highlight"); }
+				for (const el of document.querySelectorAll(".transmitting_item")) {el.classList.remove("reply-highlight_faded"); el.classList.add("reply-highlight"); }
 			}
-			if(t_cyc > 1) {
-				for (const el of document.querySelectorAll(".cq-highlight")) {el.classList.remove("cq-highlight"); el.classList.add("cq-highlight_faded"); }
-			} 
 		}
 		function add_decode_row(decode_dict, grid_id) {
 			let dd = decode_dict;
@@ -102,7 +97,7 @@
 			if (cs.charAt(cs.length-1) == '5'){row.classList.add('odd')} else {row.classList.add('even')}
 			if(dd.call_a == myCall) {row.classList.add('sentTomyCall')}
 			if(dd.call_b == myCall) {row.classList.add('sentBymyCall')}
-			if(dd.call_a == "CQ") {row.classList.add("cq-highlight")}
+			if(dd.call_a == "CQ") {row.classList.add("transmitting_item")}
 			const fields = [dd.cyclestart_str.split('_')[1], dd.snr, dd.freq, dd.dt, dd.call_a, dd.call_b, dd.grid_rpt,''];
 			fields.forEach((field, idx) => {
 				const cell_div = document.createElement("div");

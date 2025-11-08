@@ -122,7 +122,8 @@ class FT8Demodulator:
         if(ncheck == 0):
             c.demodulated_by = f"LLR-LDPC ({n_its})"
             c.payload_bits = bits
-            c.snr = -24 if c.score==0 else int(12*np.log10(c.score/1e9) - 31)
+            print(c.score)
+            c.snr = -24 if c.score==0 else int(25*np.log10(c.score/47524936) +18 )
             c.snr = np.clip(c.snr, -24,24).item()
             c.llr = LLR174s
             decode = FT8_decode(c, cyclestart_str)

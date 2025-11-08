@@ -7,7 +7,7 @@ from PyFT8.tx.FT8_encoder import pack_ft8_c28, pack_ft8_g15, encode_bits77
 import PyFT8.timers as timers
 import PyFT8.audio as audio
 
-demod = FT8Demodulator(hops_persymb=8, fbins_pertone =3)
+demod = FT8Demodulator()
 t0_idx = 4*demod.hops_persymb # 4 = random time offset
 f0_idx = 420
 rel_strength = 1.2
@@ -75,13 +75,14 @@ timers.timedLog(f"Start to Load audio from {wav_file}")
 candidates = demod.find_candidates(0,3400)
 candidates = demod.deduplicate_candidate_freqs(candidates)
 decoded_candidates = []
-for c in candidates[:3]:
+for c in candidates:
     demod.sync_candidate(c)
     decode = demod.demodulate_candidate(c, cyclestart_str="test")
     if(decode):
         decoded_candidates.append(c)
         print(decode['all_txt_line'], decode['decode_dict']['t0_idx'] )
 wf = Waterfall(demod.spectrum, f0=0, f1=3500)
+#decoded_candidates = decoded_candidates[4:5]
 wf.update_main(candidates=decoded_candidates)
 wf.show_zoom(candidates=decoded_candidates, phase = False, llr_overlay=False)
 wf.show_zoom(candidates=decoded_candidates, phase = True, llr_overlay=False)

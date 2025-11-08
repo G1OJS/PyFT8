@@ -66,8 +66,8 @@ def wsjtx_compare(wsjtx_file, PyFT8_file):
     lw_tot += lw
     lp_tot += lp
     if(best_snr < best_snr_alltime): best_snr_alltime = best_snr    
-    print(f"This Cycle: WSJTX:{lw} PyFT8:{lp} -> {lp/(1e-12+lw):.0%} best snr = {best_snr}")
-    print(f"All cycles: WSJTX:{lw_tot} PyFT8:{lp_tot} -> {lp_tot/(1e-12+lw_tot):.0%} best snr = {best_snr_alltime}")
+    timers.timedLog(f"This Cycle: WSJTX:{lw} PyFT8:{lp} -> {lp/(1e-12+lw):.0%} best snr = {best_snr}")
+    timers.timedLog(f"All cycles: WSJTX:{lw_tot} PyFT8:{lp_tot} -> {lp_tot/(1e-12+lw_tot):.0%} best snr = {best_snr_alltime}")
     
 def reset_compare():
     with open(wsjtx_file, 'w') as f:

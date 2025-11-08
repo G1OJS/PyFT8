@@ -160,7 +160,8 @@ class Candidate:
     @property
     def complex_grid(self):
         c = self
-        cgrid = self.spectrum.complex[
+        scale = 1/np.sqrt(c.spectrum.hops_persymb)
+        cgrid = scale * self.spectrum.complex[
             c.bounds.t0_idx : c.bounds.t0_idx + c.sigspec.num_symbols * c.spectrum.hops_persymb,
             c.bounds.f0_idx : c.bounds.f0_idx + c.sigspec.tones_persymb * c.spectrum.fbins_pertone
         ]
@@ -190,24 +191,8 @@ class Candidate:
         pgrid = (np.abs(cgrid)**2).mean(axis=(1,3))
         return pgrid.astype(np.float32)
 
-    @property
-    def power_grid_coherent_over_hops_downsampled(self):
-        cgrid = self.complex_grid_4d
-        phi_max, phi_steps = 0.3, 5
-        hops = np.arange(cgrid.shape[1])
-        best_pgrid = None
-        best_metric = -np.inf
-        for phi in np.linspace(-phi_max, phi_max, phi_steps):
-            rot = np.exp(-1j * hops * phi)[:, None, None]  # shape (hops,1,1)
-            csum = np.sum(cgrid * rot, axis=1)             # coherent sum over hops
-            pgrid = np.abs(csum.mean(axis=2))**2           # collapse sub-bins, power
-            metric = pgrid.sum()
-            if metric > best_metric:
-                best_metric = metric
-                best_pgrid = pgrid
-        return best_pgrid.astype(np.float32)
 
- 
+
 
 
 
