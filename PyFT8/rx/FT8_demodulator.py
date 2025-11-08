@@ -116,8 +116,9 @@ class FT8Demodulator:
             m0 = np.where(~gray_mask, (mlog[:, None] / tau), -np.inf)
             LLR_sym = tau * (np.logaddexp.reduce(m1, axis=0) - np.logaddexp.reduce(m0, axis=0))
             LLR174s.extend(LLR_sym)
+        c.llr_std = np.std(LLR174s)
         LLR174s -= np.mean(LLR174s)
-        LLR174s *= (llr_sd / np.std(LLR174s))
+        LLR174s *= (llr_sd / c.llr_std )
         ncheck, bits, n_its = decode174_91(LLR174s)
         if(ncheck == 0):
             c.demodulated_by = f"LLR-LDPC ({n_its})"

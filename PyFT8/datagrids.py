@@ -130,6 +130,7 @@ class Bounds:
 class Candidate:
     def __init__(self, sigspec, spectrum, t0_idx, f0_idx, score=None, cycle_start=None, demodulated_by=None):
         self.llr = None
+        self.llr_std = None
         self.payload_bits = []
         self.payload_symbols = []
         self.score = score

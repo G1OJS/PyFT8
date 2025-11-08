@@ -34,7 +34,7 @@ for i, c in enumerate(candidates):
   #      print(f"Candidate {i} LLRs: \n {[f'{float(v):.3f}' for v in c.llr]}")
     if(decode):
         decoded_candidates.append(c)
-        print(decode['all_txt_line'], decode['decode_dict']['t0_idx'] , np.std(c.llr))
+        print(decode['all_txt_line'], decode['decode_dict']['t0_idx'] , c.llr_std)
 
 timers.timedLog("Start to Show spectrum")
 wf.update_main()
