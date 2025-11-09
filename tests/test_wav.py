@@ -27,7 +27,10 @@ decoded_candidates = []
 for i, c in enumerate(candidates):
     demod.sync_candidate(c)
     decode = demod.demodulate_candidate(c, cyclestart_str="test")
+    import pickle as pkl
     if(decode):
+        with open(f"cand_{int(c.bounds.f0)}.pkl","wb") as f:
+            pkl.dump(c.complex_grid,f)
         decoded_candidates.append(c)
         print(decode['all_txt_line'], decode['decode_dict']['t0_idx'] , c.llr_std)
 
