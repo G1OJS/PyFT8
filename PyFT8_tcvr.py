@@ -33,8 +33,9 @@ class QSO:
         self.date = False
         self.date_off = False
 
-    def progress(self, msg_dict):
+    def progress(self, msg_dict, immediate = False):
         import PyFT8.timers as timers
+        timers.timedLog(f"[QSO.progress] QSO.cycle is {QSO.cycle}")
         if("repeat_tx" in msg_dict):
             if(self.tx_msg):
                 self.transmit(self.tx_msg)
@@ -44,7 +45,6 @@ class QSO:
 
         call_a, their_call, grid_rpt = msg_dict['call_a'], msg_dict['call_b'], msg_dict['grid_rpt']
         if(call_a == "CQ" or call_a == config.myCall):
-            self.clear()
             self.their_call = their_call
             self.their_snr = msg_dict['snr']
             self.date, self.time_on = timers.QSO_dnow_tnow()
@@ -64,20 +64,21 @@ class QSO:
             self.clear()
             return
 
-        if(grid_rpt[-3]=="+" or grid_rpt[-3]=="-"):
-            self.transmit(f"{self.their_call} {config.myCall} R{QSO.their_snr:+03d}")
-            self.my_snr = grid_rpt[-3:]
-            return
+        if(len(grid_rpt)>=3):
+            if(grid_rpt[-3]=="+" or grid_rpt[-3]=="-"):
+                self.transmit(f"{self.their_call} {config.myCall} R{QSO.their_snr:+03d}")
+                self.my_snr = grid_rpt[-3:]
+                return
 
         if(call_a == "CQ"):
-            self.transmit(f"{self.their_call} {config.myCall} {config.myGrid}")
+            self.transmit(f"{self.their_call} {config.myCall} {config.myGrid}", immediate = immediate)
             return
 
         if(call_a == config.myCall):
-            self.transmit(f"{self.their_call} {config.myCall} {QSO.their_snr:+03d}")
+            self.transmit(f"{self.their_call} {config.myCall} {QSO.their_snr:+03d}", immediate = immediate)
             return
         
-    def transmit(self, tx_msg):
+    def transmit(self, tx_msg, immediate = False):
         import PyFT8.tx.FT8_encoder as FT8_encoder
         import PyFT8.timers as timers
         self.rpt_cnt = self.rpt_cnt + 1 if(tx_msg == self.tx_msg ) else 0
@@ -89,10 +90,11 @@ class QSO:
         c1, c2, grid_rpt = tx_msg.split()
         symbols = FT8_encoder.pack_message(c1, c2, grid_rpt)
         audio_data = audio.create_ft8_wave(symbols, f_base = config.txfreq)
-        t_elapsed, t_remaining = timers.time_in_cycle(self.cycle)
-        if(t_elapsed > 2 or t_elapsed <0):
-            timers.timedLog(f"[QSO.transmit] Waiting for {self.cycle} cycle start ({t_remaining:4.1f}s)")
-            timers.sleep(t_remaining)
+        if(not (immediate and self.cycle == timers.odd_even_now(from_click = True) ) ):
+            t_elapsed, t_remaining = timers.time_in_cycle(self.cycle)
+            if(t_elapsed > 2 or t_elapsed <0):
+                timers.timedLog(f"[QSO.transmit] Waiting for {self.cycle} cycle start ({t_remaining:4.1f}s)")
+                timers.sleep(t_remaining)
         self.decode_to_priority_ui(self.tx_msg)
         timers.sleep(0.1)
         threading.Thread(target = self.do_tx, args=(audio_data,)).start()
@@ -168,11 +170,11 @@ def process_UI_event(event):
         timers.timedLog(f"Clicked on message {selected_message}")
         config.txfreq = config.clearest_txfreq
         config.rxfreq = int(selected_message['freq'])
-        QSO.cycle = 'even' if (selected_message['cyclestart_str'][-2:] in ['00','30']) else 'odd'
+        QSO.cycle = 'odd' if (selected_message['cyclestart_str'][-2:] in ['00','30']) else 'even'
         selected_message.update({'priority':True})
         send_to_ui_ws("msg", selected_message)
         if(selected_message['call_a'] == "CQ" or selected_message['call_a'] == config.myCall):
-            QSO.progress(selected_message)
+            QSO.progress(selected_message, immediate = True)
     if(topic == "ui.repeat-last"):
         QSO.rpt_cnt = 0
         QSO.progress({"repeat_tx":True})

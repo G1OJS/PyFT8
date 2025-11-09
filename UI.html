@@ -85,11 +85,15 @@
 			const utc = ("0" + t.getUTCHours()).slice(-2) + ":" + ("0" + t.getUTCMinutes()).slice(-2) + ":" + ("0" + t.getUTCSeconds()).slice(-2);
 			document.getElementById("clock").innerHTML = utc + " UTC";
 			t_cyc = t.getUTCSeconds() %15;
-			if(t_cyc > 1 && t_cyc <12.6) {
-				for (const el of document.querySelectorAll(".transmitting_item")) {el.classList.remove("reply-highlight"); el.classList.add("reply-highlight_faded"); }
-			} else {
-				for (const el of document.querySelectorAll(".transmitting_item")) {el.classList.remove("reply-highlight_faded"); el.classList.add("reply-highlight"); }
+			if(t_cyc > 12.6) {
+				for (const el of document.querySelectorAll(".transmitting_item.button")) {el.classList.add("reply-highlight"); el.classList.remove("reply-highlight_faded"); }
 			}
+			if(t_cyc < 1.5) {
+				for (const el of document.querySelectorAll(".transmitting_item")) {el.classList.add("reply-highlight"); el.classList.remove("reply-highlight_faded"); }
+			}
+			if(t_cyc > 1.5 && t_cyc <12.6) {
+				for (const el of document.querySelectorAll(".transmitting_item")) {el.classList.remove("reply-highlight"); el.classList.add("reply-highlight_faded"); }
+			} 
 		}
 		function add_decode_row(decode_dict, grid_id) {
 			let dd = decode_dict;
@@ -100,7 +104,12 @@
 			if (cs.charAt(cs.length-1) == '5'){row.classList.add('odd')} else {row.classList.add('even')}
 			if(dd.call_a == myCall) {row.classList.add('sentTomyCall')}
 			if(dd.call_b == myCall) {row.classList.add('sentBymyCall')}
-			if(dd.call_a == "CQ") {row.classList.add("reply-highlight"); row.classList.add("transmitting_item");}
+			if(dd.call_a == "CQ" || dd.call_a == myCall) {
+				const t = new Date;
+				t_cyc = t.getUTCSeconds() %15;
+				if(t_cyc < 1.5) {row.classList.add("reply-highlight"); }
+				row.classList.add("transmitting_item");
+			}
 			const fields = [dd.cyclestart_str.split('_')[1], dd.snr, dd.freq, dd.dt, dd.call_a, dd.call_b, dd.grid_rpt,''];
 			fields.forEach((field, idx) => {
 				const cell_div = document.createElement("div");
