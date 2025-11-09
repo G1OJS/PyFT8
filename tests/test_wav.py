@@ -41,6 +41,5 @@ timers.timedLog("Start to Show candidates")
 wf.update_main(candidates=decoded_candidates)
 wf.show_zoom(candidates=decoded_candidates)
 
-timers.timedLog("[test_wav] subtract decoded candidates")
-demod.pass2(decoded_candidates)
+
 
