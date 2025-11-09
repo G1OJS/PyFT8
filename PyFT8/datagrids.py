@@ -116,14 +116,10 @@ class Bounds:
         return [self.f0, self.fn, self.t0, self.tn]
 
     @property
-    def t_idx_range(self): return range(self.t0_idx, self.tn_idx)
+    def t_idxs(self): return range(self.t0_idx, self.tn_idx)
     @property
-    def f_idx_range(self): return range(self.f0_idx, self.fn_idx)
+    def f_idxs(self): return range(self.f0_idx, self.fn_idx)
 
-#    @property
-#    def nTimes(self): return len(self.t_idx_range)
-#    @property
-#    def nFreqs(self): return len(self.f_idx_range)
      
 # ============================================================
 # Candidate
