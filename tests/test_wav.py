@@ -32,7 +32,7 @@ for i, c in enumerate(candidates):
         with open(f"cand_{int(c.bounds.f0)}.pkl","wb") as f:
             pkl.dump(c.complex_grid,f)
         decoded_candidates.append(c)
-        print(decode['all_txt_line'], decode['decode_dict']['t0_idx'] , c.llr_std)
+        print(decode['all_txt_line'], decode['decode_dict']['t0_idx'] , c.llr_std, c.bounds.t0_idx, c.bounds.f0_idx)
 
 timers.timedLog("Start to Show spectrum")
 wf.update_main()

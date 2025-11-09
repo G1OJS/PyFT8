@@ -1,0 +1,230 @@
+
+
+import wave
+import pickle as pkl
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+# ======================================================
+# FT8 Unpacking functions
+# ======================================================
+
+def unpack_ft8_c28(c28):
+    from string import ascii_uppercase as ltrs, digits as digs
+    if c28<3: return ["DE", 'QRZ','CQ'][c28]
+    n = c28 - 2_063_592 - 4_194_304 # NTOKENS, MAX22
+    if n >= 0:
+        charmap = [' ' + digs + ltrs, digs + ltrs, digs + ' ' * 17] + [' ' + ltrs] * 3
+        divisors = [36*10*27**3, 10*27**3, 27**3, 27**2, 27, 1]
+        indices = []
+        for d in divisors:
+            i, n = divmod(n, d)
+            indices.append(i)
+        callsign = ''.join(t[i] for t, i in zip(charmap, indices)).lstrip()
+        return callsign.strip()
+    return '<...>'
+
+def unpack_ft8_g15(g15, ir):
+    if g15 < 32400:
+        a, nn = divmod(g15,1800)
+        b, nn = divmod(nn,100)
+        c, d = divmod(nn,10)
+        return f"{chr(65+a)}{chr(65+b)}{c}{d}"
+    r = g15 - 32400
+    txt = ['','','RRR','RR73','73']
+    if 0 <= r <= 4: return txt[r]
+    snr = r-35
+    R = '' if (ir == 0) else 'R'
+    return f"{R}{snr:+03d}"
+
+def FT8_decode(bits):
+    i3 = 4*bits[74]+2*bits[75]+bits[76]
+    c28_a = int(''.join(str(b) for b in bits[0:28]), 2)
+    c28_b = int(''.join(str(b) for b in bits[29:57]), 2)
+    ir = int(bits[58])
+    g15  = int(''.join(str(b) for b in bits[59:74]), 2)
+    if(c28_a + c28_b + g15 == 0):
+        return
+    call_a = unpack_ft8_c28(c28_a)
+    call_b =  unpack_ft8_c28(c28_b)
+    grid_rpt = unpack_ft8_g15(g15, ir)
+    message = f"{call_a} {call_b} {grid_rpt}"
+    return message
+
+# ======================================================
+# CRC Check
+# ======================================================
+
+def crc14(bits77_int: int) -> int:
+    # Generator polynomial (0x2757), width 14, init=0, refin=false, refout=false
+    poly = 0x2757
+    width = 14
+    mask = (1 << width) - 1
+    # Pad to 96 bits (77 + 14 + 5)
+    nbits = 96
+    reg_int = 0
+    for i in range(nbits):
+        # bits77 is expected MSB-first (bit 76 first)
+        inbit = ((bits77_int >> (76 - i)) & 1) if i < 77 else 0
+        bit14 = (reg_int >> (width - 1)) & 1
+        reg_int = ((reg_int << 1) & mask) | inbit
+        if bit14:
+            reg_int ^= poly
+    return reg_int
+
+def check_crc(bits91_int):
+    """Return True if the 91-bit message (77 data + 14 CRC) passes WSJT-X CRC-14."""
+    bits14_int = bits91_int & 0b11111111111111
+    bits77_int = bits91_int >> 14
+    return bits14_int == crc14(bits77_int)
+
+# ======================================================
+# LDPC Decoder
+# ======================================================
+
+kNCW = 3
+kNRW = [7,6,6,6,7,6,7,6,6,7,6,6,7,7,6,6,6,7,6,7,6,7,6,6,6,7,6,6,6,7,6,6,6,6,7,6,6,6,7,7,6,6,6,6,7,7,6,6,6,6,7,6,6,6,7,6,6,6,6,7,6,6,6,7,6,6,6,7,7,6,6,7,6,6,6,6,6,6,6,7,6,6,6]
+colorder = [0,1,2,3,28,4,5,6,7,8,9, 10, 11, 34, 12, 32, 13, 14, 15, 16, 17, 18, 36, 29, 43, 19, 20, 42, 21, 40, 30, 37, 22, 47, 61, 45, 44, 23, 41, 39, 49, 24, 46, 50, 48, 26, 31, 33, 51, 38, 52, 59, 55, 66, 57, 27, 60, 35, 54, 58, 25, 56, 62, 64, 67, 69, 63, 68, 70, 72, 65, 73, 75, 74, 71, 77, 78, 76, 79, 80,  53, 81, 83, 82, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173]
+kMN = np.array([
+[16,25,33,1,2,3,4,5,8,9,10,11,12,14,15,17,18,22,23,24,26,27,29,3,5,46,51,55,44,43,1,2,4,7,8,9,10,11,12,13,14,15,17,19,20,21,24,25,35,36,37,38,39,41,20,46,45,27,1,2,3,4,5,6,7,8,9,11,12,13,14,16,17,18,19,22,23,7,29,33,18,13,5,47,54,45,10,14,22,35,1,1,2,3,4,1,6,7,8,9,10,11,12,13,11,15,7,17,18,19,20,21,22,13,2,23,26,27,21,29,19,3,14,33,30,6,27,25,38,20,18,32,42,28,34,31,46,6,8,40,17,42,4,36,13,2,56,5,12,59,3,45,1,7,11,14,16,10,15,17,20,12,23,27,24,19,34,35,33,40,41,49,20,42],
+[45,51,58,44,7,6,35,13,56,64,19,36,37,32,63,28,74,53,30,31,41,57,49,38,39,50,52,71,67,68,32,6,16,65,30,22,18,23,28,52,50,81,29,33,26,34,27,55,53,48,46,45,57,56,49,52,70,35,15,68,36,28,31,20,40,60,10,44,39,24,21,71,30,25,61,38,41,26,32,40,34,42,26,69,55,62,63,66,60,39,46,24,5,31,49,4,60,32,48,35,39,14,71,23,35,16,9,54,50,30,64,28,25,22,47,54,34,36,36,40,26,46,15,52,43,9,33,69,55,39,29,48,51,44,60,45,68,24,10,41,50,66,22,64,29,8,67,38,38,72,26,76,65,18,56,39,37,28,60,25,30,67,75,32,69,21,53,46,59,43,42,75,44,49],
+[73,62,78,45,61,54,48,21,79,69,66,60,58,43,80,77,83,81,34,40,76,70,65,78,82,73,74,72,72,78,59,71,54,67,42,31,76,82,61,79,51,83,60,64,73,40,77,58,66,68,75,47,69,62,53,63,75,80,30,80,51,51,56,37,82,69,49,57,59,55,65,78,76,80,83,77,50,58,81,73,48,64,43,72,70,68,67,72,74,79,64,66,70,65,58,5,67,75,82,41,62,61,74,78,55,79,16,63,57,47,80,69,43,37,51,74,72,37,63,44,57,82,58,53,52,52,65,73,83,77,56,71,59,79,62,61,77,76,78,70,53,68,72,81,47,81,73,50,64,80,79,81,74,77,59,54,66,55,70,82,31,68,80,62,75,71,61,47,76,83,63,83,48,57],
+])
+kNM = np.array([
+[4,5,6,7,8,6,5,9,10,11,12,13,8,14,15,1,16,17,11,45,8,18,19,20,2,21,22,16,23,19,20,14,3,19,7,12,13,24,25,20,21,35,14,4,1,26,52,7,23,26,2,27,18,6,28,9,22,3,31,12,5,2,15,10,23,11,29,30,10,22,28,28,1,17,51,21,16,3,9,15,18,25,17],
+[31,32,24,33,25,32,34,35,36,37,38,39,40,41,42,33,43,37,44,55,46,36,38,47,48,45,47,39,43,35,36,31,44,46,49,50,51,52,53,46,54,82,30,29,4,51,84,50,55,41,27,40,49,33,48,54,53,13,69,43,39,54,56,44,34,49,34,50,53,57,32,29,26,27,57,37,47,24,40,58,42,38,42],
+[59,60,61,62,63,64,65,66,67,67,68,69,70,71,59,72,73,74,75,64,71,76,77,70,74,78,58,62,79,59,63,79,80,81,58,61,64,76,69,65,77,133,83,68,52,56,110,81,67,77,41,56,55,85,70,63,68,48,133,66,75,86,87,82,71,88,87,60,66,85,72,84,45,89,98,73,76,30,90,60,79,65,75],
+[91,93,94,95,83,97,78,99,100,87,102,103,82,88,106,106,108,81,110,111,112,89,104,92,113,83,118,112,120,73,94,98,124,117,90,118,114,129,90,80,100,142,113,120,57,91,115,99,95,109,61,124,124,108,85,131,109,78,150,89,102,101,108,91,94,92,97,86,84,93,103,88,80,103,163,138,130,72,106,74,144,99,129],
+[92,115,122,96,93,126,98,139,107,101,105,149,104,102,123,107,141,109,121,130,119,113,116,138,128,117,127,134,131,110,136,132,127,135,100,119,118,148,101,120,140,171,125,134,86,122,145,132,172,141,62,125,141,116,105,147,121,95,155,97,136,135,119,111,127,142,147,137,112,140,132,117,128,116,165,152,137,104,134,111,146,122,170],
+[96,146,151,143,96,138,107,146,126,139,155,162,114,123,159,157,160,131,166,161,166,114,163,165,160,121,164,158,145,125,161,164,169,167,105,144,157,149,130,140,171,174,170,173,136,137,168,173,174,148,115,126,167,156,129,155,174,123,169,135,167,164,171,144,153,157,162,142,128,159,166,143,147,153,172,169,154,139,151,150,152,160,172],
+[153,0,0,0,148,0,154,0,0,158,0,0,145,156,0,0,0,154,0,173,0,143,0,0,0,151,0,0,0,161,0,0,0,0,168,0,0,0,156,170,0,0,0,0,152,168,0,0,0,0,133,0,0,0,158,0,0,0,0,159,0,0,0,149,0,0,0,162,165,0,0,150,0,0,0,0,0,0,0,163,0,0,0],
+])
+
+kN = 174
+kK = 91
+kM = kN - kK
+
+def bitsLE_to_int(bits):
+    """bits is MSB-first."""
+    n = 0
+    for b in bits:
+        n = (n << 1) | (b & 1)
+    return n
+
+# precompute bits to check for syndrome
+synd_check_idxs=[]
+for i in range(kM):
+    ichk = kNM[0:kNRW[i],i] - 1
+    ichk = ichk[(ichk >=0)]
+    synd_check_idxs.append(ichk)
+
+# precompute neigh_vars as a function of ichk
+neigh_vars_for_ichk, neigh_counts_for_ichk = [],[]
+for ichk in range(kM):
+    neigh_count = kNRW[ichk]
+    neigh_vars_for_ichk.append(kNM[:neigh_count, ichk]  - 1)
+    neigh_counts_for_ichk.append(neigh_count)
+
+def count_syndrome_checks(zn):
+    synd_checks = [ sum(1 for llr in zn[synd_check_idxs[i]] if llr > 0) %2 for i in range(kM)]
+    ncheck = np.sum(synd_checks)
+    if ncheck > 0:
+        return ncheck, []
+    decoded_bits174_LE_list = (zn > 0).astype(int).tolist() 
+    decoded_bits91_int = bitsLE_to_int(decoded_bits174_LE_list[0:91])
+    if(not check_crc(decoded_bits91_int)):
+        return -1, []
+    return ncheck, decoded_bits174_LE_list
+
+def decode174_91(llr, maxiterations = 30, nstall_max = 8, ncheck_max = 30):
+    toc = np.zeros((7, kM), dtype=np.float32)       # message -> check messages
+    tanhtoc = np.zeros((7, kM), dtype=np.float64)
+    tov = np.zeros((kNCW, kN), dtype=np.float32)    # check -> message messages
+    nclast, nstall = 0, 0                           # stall condition variables
+    zn = np.array(llr, dtype=np.float32)            # working copy of llrs
+    ncheck, decoded_bits174_LE_list = count_syndrome_checks(zn)
+    if(ncheck == 0):
+        return 0, decoded_bits174_LE_list, -1
+    
+    for it in range(maxiterations + 1):
+        for i in range(kN):
+            zn[i] += sum(tov[:,i])
+        ncheck, decoded_bits174_LE_list = count_syndrome_checks(zn)
+        if(ncheck <=0):
+            return ncheck, decoded_bits174_LE_list, it
+        nstall = 0 if ncheck < nclast else nstall +1
+        nclast = ncheck
+        if(nstall > nstall_max or ncheck > ncheck_max): # early exit condition
+            return ncheck, [], it
+        for j in range(kM):
+            for i in range(kNRW[j]):    
+                ibj = kNM[i, j] - 1   
+                toc[i, j] = zn[ibj]
+                for kk in range(kNCW):
+                    if kMN[kk, ibj] - 1 != j:
+                        toc[i, j] -= tov[kk, ibj]
+        for j in range(kM):
+            tanhtoc[:kNRW[j], j] = np.tanh(-toc[:kNRW[j], j] / 2.0)
+        for kk in range(kNCW):
+            for variable_node in range(kN):
+                ichk = kMN[kk, variable_node] - 1
+                if ichk >= 0:
+                    neigh_vars = neigh_vars_for_ichk[ichk]
+                    mask = (neigh_vars != variable_node)
+                    tvals = tanhtoc[:neigh_counts_for_ichk[ichk], ichk][mask]
+                    Tmn = np.clip(np.prod(tvals), -1 + 1e-12, 1 - 1e-12)
+                    alpha = 0.5
+                    tov[kk, variable_node] = np.atanh(-Tmn)
+    return ncheck, [], it
+
+# ======================================================
+# Main
+# ======================================================
+
+fig, ax = plt.subplots()
+
+filename = '210703_133430.wav'
+with wave.open(filename, 'rb') as wav:
+    audio = np.frombuffer(wav.readframes(wav.getnframes()), dtype=np.int16)
+
+nFFT = 1920
+spec = np.zeros((int(nFFT/2)+1))
+samp_idx = 0
+while True:
+    if(samp_idx +nFFT > len(audio)): break
+    specslice = np.fft.rfft(audio[samp_idx :samp_idx  + nFFT] * np.kaiser(nFFT,14))
+    spec = np.vstack([spec, specslice])
+    samp_idx  += nFFT
+
+f0_idx = 345
+t0_idx = 4
+cspec = spec[t0_idx:t0_idx+79, f0_idx:f0_idx+8]
+ax.imshow(np.abs(cspec))
+
+llr=[]
+gray_map_tuples = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
+gray_mask = np.array(gray_map_tuples, dtype=bool)
+eps = 1e-12
+tau = .5
+llr_sd = 3
+payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
+for symb_idx in payload_symb_idxs:                         
+    tp = np.abs(cspec[symb_idx, :])**2
+    mlog = np.log(tp + eps)                          
+    m1 = np.where(gray_mask,  (mlog[:, None] / tau), -np.inf)
+    m0 = np.where(~gray_mask, (mlog[:, None] / tau), -np.inf)
+    llr_sym = tau * (np.logaddexp.reduce(m1, axis=0) - np.logaddexp.reduce(m0, axis=0))
+    llr.extend(llr_sym)
+llr = llr_sd * (llr - np.mean(llr)) / (np.std(llr)+eps)
+ncheck, bits, n_its = decode174_91(llr)
+if(ncheck == 0):
+    decode = FT8_decode(bits)
+    print(decode)
+
+#ax.plot(llr)
+
+plt.show()
+
+
+
