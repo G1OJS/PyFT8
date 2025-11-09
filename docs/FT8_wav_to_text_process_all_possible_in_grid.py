@@ -43,7 +43,7 @@ def FT8_decode(bits):
     call_a = unpack_ft8_c28(c28_a)
     call_b =  unpack_ft8_c28(c28_b)
     grid_rpt = unpack_ft8_g15(g15, ir)
-    return call_a, call_b, grid_rpt
+    return f"{call_a} {call_b} {grid_rpt}"
 
 # ======================================================
 # Main
@@ -53,44 +53,61 @@ filename = '210703_133430.wav'
 with wave.open(filename, 'rb') as wav:
     audio = np.frombuffer(wav.readframes(wav.getnframes()), dtype=np.int16)
 
-legit_calls = ['A92EE','DK8NE','DL5AXX','EA2BFM','EA3AGB','EA3BMU','EA3CJ','EA3GP','EA6EE','EA6VQ','F2VX','F5BZB','F5PSR','F5RXL','F6GCP','HA0DU','HA2NP','HA5WA','HA6FQ','HB9CQK','K1BZM','K1JT','KD2UGC','N1API','N1JFU','N1PJT','SV9CVY','W0RSJ','W1DIG','W1FC','WA2FZW','WM3PEN','XE2X']
+legit_msgs = ['KD2UGC F6GCP R-23',  'WA2FZW DL5AXX RR73',  'W1FC F5BZB -08',
+              'CQ DL8YHR JO41',  'W1DIG SV9CVY -14',  'CQ EA2BFM IN83',
+              'N1JFU EA6EE R-07',  'N1PJT HB9CQK -10',  'N1API HA6FQ -23',
+              'A92EE F5PSR -14',  'K1BZM EA3GP -09',  'K1JT HA0DU KN07',
+              'WM3PEN EA6VQ -09',  'XE2X HA2NP RR73',  'K1JT EA3AGB -15',
+              'K1BZM DK8NE -10',  'W0RSJ EA3BMU RR73',  'K1BZM EA3CJ JN01',
+              'N1API F2VX 73',  'K1JT HA5WA 73',  'CQ F5RXL IN94']
 
 t_oversamp = 3
+f_oversamp = 5
+FFT_len = 1920 * f_oversamp
+nFreqs = int(FFT_len/2) +1
+hop_len = int(FFT_len / (t_oversamp*f_oversamp))
 
-FFT_len = 1920
-nFreqs = int(1920/2) +1
-hop_len = int(FFT_len / t_oversamp)
+max_freq_idx = int(nFreqs/2)
+
+
 spec = np.zeros((nFreqs))
 samp_idx = 0
-
 while True:
     if(samp_idx + FFT_len > len(audio)): break
     specslice = np.fft.rfft(audio[samp_idx :samp_idx  + FFT_len] * np.kaiser(FFT_len,14))
     spec = np.vstack([spec, specslice])
     samp_idx  += hop_len
-    
+
+import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
+fig, ax = plt.subplots()
+ax.imshow(np.abs(spec[:,:max_freq_idx]), norm=LogNorm())
+plt.show()
+
+
 def decode(f0_idx = 345, t0_idx = 4):
-    cspec = spec[t0_idx:t0_idx+79*t_oversamp, f0_idx:f0_idx+8]
+    cspec = spec[t0_idx:t0_idx+79*t_oversamp, f0_idx:f0_idx + 8*f_oversamp]
     bits=[]
     gray_map_tuples = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
     gray_mask = np.array(gray_map_tuples, dtype=bool)
     payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
     for symb_idx in payload_symb_idxs:                         
         tp = np.abs(cspec[symb_idx*t_oversamp, :])**2
-        tone = np.argmax(tp)
+        tone = int(np.argmax(tp) / f_oversamp)
         bits.extend(gray_map_tuples[tone])
-    call_a, call_b, grid_rpt = FT8_decode(bits)
-    if (call_a in legit_calls or call_b in legit_calls): 
-        print(f"{f0_idx} {t0_idx} {call_a} {call_b} {grid_rpt}")
+    msg = FT8_decode(bits)
+    if (msg in legit_msgs):
+        return(msg)
 
-for f_idx in range(nFreqs-8):
+decodes = set()
+for f_idx in range(max_freq_idx):
     for t_idx in range(44):
-        decode(f0_idx = f_idx, t0_idx = t_idx)
+        msg = decode(f0_idx = f_idx, t0_idx = t_idx)
+        if(msg):
+            print(f"{f_idx} {t_idx} {msg}")
+            decodes.add(msg)
+print(f"{len(decodes)} messages of {len(legit_msgs)}")
 
-#import matplotlib.pyplot as plt
-#fig, ax = plt.subplots()
-#ax.imshow(np.abs(cspec))
-#plt.show()
 
 
 
