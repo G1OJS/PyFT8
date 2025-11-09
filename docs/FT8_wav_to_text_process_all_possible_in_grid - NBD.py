@@ -96,7 +96,7 @@ fig, ax = plt.subplots()
 def decode(f0_idx = 345, t0_idx = 4):
     cspec = spec[t0_idx:t0_idx+79*t_oversamp, f0_idx:f0_idx + 8*f_oversamp]
     bits=[]
-    gray = [0, 1, 3, 2, 5, 6, 4, 7]
+    gray = [0, 1, 3, 2, 6, 4, 5, 7]
     ngrp = 1
     n_tns = 8
     nseqs = n_tns**ngrp
@@ -114,6 +114,7 @@ def decode(f0_idx = 345, t0_idx = 4):
             corrmax_idx = np.argmax(np.abs(corr))
             seqbits = int_to_bitsLE(corrmax_idx, 3*ngrp)
             bits.extend(seqbits)
+    print("111100111111001100100111100111111100100100101111111111111111111101001001111000101111111111111111111100100111101111100111000101101111110001111100101111111100100100111010111101")
     print(''.join([str(b) for b in bits]))
     msg = FT8_decode(bits)
     if (msg in legit_msgs):

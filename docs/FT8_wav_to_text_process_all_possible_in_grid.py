@@ -95,10 +95,14 @@ def decode(f0_idx = 345, t0_idx = 4):
         tp = np.abs(cspec[symb_idx*t_oversamp, :])**2
         tone = int(np.argmax(tp) / f_oversamp)
         bits.extend(gray_map_tuples[tone])
+    print(''.join([str(b) for b in bits]))
     msg = FT8_decode(bits)
     if (msg in legit_msgs):
         return(msg)
 
+msg = decode()
+
+"""
 decodes = set()
 for f_idx in range(max_freq_idx):
     for t_idx in range(44):
@@ -107,6 +111,7 @@ for f_idx in range(max_freq_idx):
             print(f"{f_idx} {t_idx} {msg}")
             decodes.add(msg)
 print(f"{len(decodes)} messages of {len(legit_msgs)}")
+"""
 
 
 
