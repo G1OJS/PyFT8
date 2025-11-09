@@ -45,7 +45,6 @@ def send_to_ui_ws(topic, message):
         message = {}    # should really raise exception here 
     if loop and loop.is_running():
         timers.timedLog(f"[WebsocketsServer] sending message with topic {topic}")
-        timers.timedLog(f"[WebsocketsServer] sending {topic} {message}", logfile = "ws.log", silent = True)
         full_message = {"topic": topic, **message}
         asyncio.run_coroutine_threadsafe(message_queue.put(full_message), loop)
 
