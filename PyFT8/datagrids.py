@@ -104,22 +104,10 @@ class Bounds:
         self.t0, self.tn = spectrum.times[t0_idx] if t0 is None else float(t0), spectrum.times[tn_idx] if tn is None else float(tn) 
         self.f0, self.fn = spectrum.freqs[f0_idx] if f0 is None else float(f0), spectrum.freqs[fn_idx] if fn is None else float(fn)
 
-    @classmethod
-    def from_physical(cls, spectrum, t0=None, t1=None, f0=None, f1=None):
-        t0_idx, t1_idx = int(np.searchsorted(spectrum.times, t0)), int(np.searchsorted(spectrum.times, t1))
-        f0_idx, f1_idx = int(np.searchsorted(spectrum.freqs, f0)), int(np.searchsorted(spectrum.freqs, f1))
-        return cls(spectrum, t0_idx, t1_idx, f0_idx, f1_idx, t0, t1, f0, f1)
-
     @property
     def extent(self):
         """Matplotlib extent = [xleft, xright, ybottom, ytop]."""
         return [self.f0, self.fn, self.t0, self.tn]
-
-    @property
-    def t_idxs(self): return range(self.t0_idx, self.tn_idx)
-    @property
-    def f_idxs(self): return range(self.f0_idx, self.fn_idx)
-
      
 # ============================================================
 # Candidate

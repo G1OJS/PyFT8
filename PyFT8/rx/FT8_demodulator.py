@@ -107,7 +107,7 @@ class FT8Demodulator:
         gray_mask = self.sigspec.gray_mask
         eps = 1e-12
         tau = .5
-        llr_sd = 2.83
+        llr_sd = 3
         for symb_idx in c.sigspec.payload_symb_idxs:            
             sigma2_sym = self.spectrum.noise_per_symb[symb_idx]              
             tp = pgrid[symb_idx, :] / (sigma2_sym + eps)

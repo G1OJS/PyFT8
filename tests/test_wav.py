@@ -27,10 +27,6 @@ decoded_candidates = []
 for i, c in enumerate(candidates):
     demod.sync_candidate(c)
     decode = demod.demodulate_candidate(c, cyclestart_str="test")
-  #  if (i==0):
-  #      print(c.bounds.t0_idx)
-  #      print(c.hop_idxs_by_symbol)
-  #      print(f"Candidate {i} LLRs: \n {[f'{float(v):.3f}' for v in c.llr]}")
     if(decode):
         decoded_candidates.append(c)
         print(decode['all_txt_line'], decode['decode_dict']['t0_idx'] , c.llr_std)
