@@ -16,15 +16,14 @@ timers.timedLog(f"Start to Load audio from {wav_file}")
 audio_in = audio.read_wav_file(wav_file)
 demod.spectrum.load_audio(audio_in)
 timers.timedLog("Start to Find candidates")
-candidates = demod.find_candidates(100,3400)
+candidates = demod.find_candidates()
 timers.timedLog(f"Found {len(candidates)} candidates")
 timers.timedLog("Start to deduplicate candidate frequencies")
 candidates = demod.deduplicate_candidate_freqs(candidates)
 timers.timedLog(f"Now have {len(candidates)} candidates")
 timers.timedLog("Start to sync and demodulate candidates")
+
 decoded_candidates = []
-
-
 for i, c in enumerate(candidates):
     demod.sync_candidate(c)
     decode = demod.demodulate_candidate(c, cyclestart_str="test")
@@ -42,4 +41,6 @@ timers.timedLog("Start to Show candidates")
 wf.update_main(candidates=decoded_candidates)
 wf.show_zoom(candidates=decoded_candidates)
 
+timers.timedLog("[test_wav] subtract decoded candidates")
+demod.pass2(decoded_candidates)
 

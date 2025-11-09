@@ -54,7 +54,7 @@ class Spectrum:
         self.nFreqs   = self.FFT_size // 2 + 1
         self.width_Hz = self.sample_rate / 2
         self.df       = self.width_Hz / (self.nFreqs - 1)
-
+        
         # ---- Time geometry ----
         self.nHops = int(self.hops_persymb * self.symbols_persec * self.frame_secs)
         self.nSymbols = int(self.symbols_persec * self.frame_secs)
@@ -87,10 +87,9 @@ class Spectrum:
         power = np.abs(self.complex) ** 2
         """ Fill self.noise ... for llr extraction. """
         self.noise_per_hop = np.median(power, axis=1)
-        n_full = (self.nHops // self.hops_persymb) * self.hops_persymb
-        self.noise_per_hop = self.noise_per_hop[:n_full]
+        nHops_all_symbols = (self.nHops // self.hops_persymb) * self.hops_persymb
+        self.noise_per_hop = self.noise_per_hop[:nHops_all_symbols]
         self.noise_per_symb = self.noise_per_hop.reshape(-1, self.hops_persymb).mean(axis=1)
-
 
 
 # ============================================================
@@ -110,18 +109,21 @@ class Bounds:
         t0_idx, t1_idx = int(np.searchsorted(spectrum.times, t0)), int(np.searchsorted(spectrum.times, t1))
         f0_idx, f1_idx = int(np.searchsorted(spectrum.freqs, f0)), int(np.searchsorted(spectrum.freqs, f1))
         return cls(spectrum, t0_idx, t1_idx, f0_idx, f1_idx, t0, t1, f0, f1)
-    @property
-    def t_idx_range(self): return range(self.t0_idx, self.tn_idx)
-    @property
-    def f_idx_range(self): return range(self.f0_idx, self.fn_idx)
-    @property
-    def nTimes(self): return len(self.t_idx_range)
-    @property
-    def nFreqs(self): return len(self.f_idx_range)
+
     @property
     def extent(self):
         """Matplotlib extent = [xleft, xright, ybottom, ytop]."""
         return [self.f0, self.fn, self.t0, self.tn]
+
+    @property
+    def t_idx_range(self): return range(self.t0_idx, self.tn_idx)
+    @property
+    def f_idx_range(self): return range(self.f0_idx, self.fn_idx)
+
+#    @property
+#    def nTimes(self): return len(self.t_idx_range)
+#    @property
+#    def nFreqs(self): return len(self.f_idx_range)
      
 # ============================================================
 # Candidate

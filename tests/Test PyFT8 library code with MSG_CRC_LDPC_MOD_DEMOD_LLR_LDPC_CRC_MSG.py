@@ -72,7 +72,7 @@ for symb_idx, tone_idx in enumerate(symbols):
 # 'demodulate' as with any audio frame
 timers.timedLog(f"Start to Load audio from {wav_file}")
 
-candidates = demod.find_candidates(0,3400)
+candidates = demod.find_candidates()
 candidates = demod.deduplicate_candidate_freqs(candidates)
 decoded_candidates = []
 for c in candidates:

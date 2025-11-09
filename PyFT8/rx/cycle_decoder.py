@@ -50,7 +50,7 @@ def get_decodes(onStart=None, onDecode=None, onOccupancy=None, onFinished=None):
     if(onDecode):
         onDecode(decode)
     
-    candidates = demod.find_candidates(0,3500)
+    candidates = demod.find_candidates()
     if(onOccupancy):
         occupancy, clear_freq = make_occupancy_array(candidates)
         onOccupancy(occupancy, clear_freq)

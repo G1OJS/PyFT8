@@ -19,10 +19,9 @@ class Waterfall:
         self.extent = spectrum.bounds.extent
 
         # Main figure
-        self.fig, (self.ax_main, self.textaxis) = plt.subplots(2,1,figsize=(10, 4))
-        self.textaxis.axis('off')
+        self.fig, (self.ax_main) = plt.subplots(1,1,figsize=(10, 4))
         self.im = self.ax_main.imshow(
-            np.abs(spectrum.complex),
+            np.abs(spectrum.complex)+0.1,
             origin="lower",
             aspect="auto",
             extent=self.extent,
@@ -45,7 +44,7 @@ class Waterfall:
     # ----------------------------------------------------------
     def update_main(self, candidates=None, cyclestart_str=None):
         """Refresh main waterfall and draw candidate rectangles."""
-        self.im.set_data(np.abs(self.spectrum.complex))
+        self.im.set_data(np.abs(self.spectrum.complex)+0.1)
         self.im.autoscale()
         self.im.norm.vmin = self.im.norm.vmax/1000000
         if(cyclestart_str):
@@ -104,12 +103,12 @@ class Waterfall:
         
         for i, c in enumerate(candidates_with_decodes):
             ax = axes[i]
-            pwr = c.phase_grid if phase else c.power_grid
+            pwr = c.phase_grid if phase else (c.power_grid +0.1)
             im = ax.imshow(
                 pwr,
                 origin="lower",
                 aspect="auto",
-                cmap="twilight",
+                cmap="twilight" if phase else "inferno",
                 interpolation='none'
             )
             if(not phase): im.norm = LogNorm()

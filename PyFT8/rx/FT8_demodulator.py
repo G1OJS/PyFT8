@@ -26,6 +26,7 @@ import PyFT8.FT8_crc as crc
 import PyFT8.timers as timers
 from PyFT8.comms_hub import config, send_to_ui_ws
 
+
 class FT8Demodulator:
     def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=5, sigspec=FT8):
         # ft8c.f90 uses 4 hops per symbol and 2.5Hz fbins (2.5 bins per tone)
@@ -52,17 +53,16 @@ class FT8Demodulator:
     # Candidate search and sync
     # ======================================================
 
-    def find_candidates(self, f0, f1, topN=1500):
-        region = Bounds.from_physical(self.spectrum, 0, 15, f0, f1)
+    def find_candidates(self, topN=1500):
         candidates = []
-        for f0_idx in region.f_idx_range:
+        for f0_idx in range(self.spectrum.nFreqs - self._csync.shape[1]):
             score = np.sum(np.abs(self.spectrum.complex[: , f0_idx:f0_idx+self._csync.shape[1]]))
             candidates.append(Candidate(self.sigspec, self.spectrum, 0, f0_idx, score))
         candidates.sort(key=lambda c: -c.score)
         return candidates[:topN]
 
     def deduplicate_candidate_freqs(self, candidates, topN=100):
-        min_sep_fbins = 4*self.fbins_pertone
+        min_sep_fbins = 2*self.fbins_pertone
         deduplicated = []
         for c in candidates:
             keep_c = True
@@ -106,8 +106,8 @@ class FT8Demodulator:
         pgrid = c.power_grid_downsampled
         gray_mask = self.sigspec.gray_mask
         eps = 1e-12
-        tau = 0.5
-        llr_sd = 3.0
+        tau = .5
+        llr_sd = 2.83
         for symb_idx in c.sigspec.payload_symb_idxs:            
             sigma2_sym = self.spectrum.noise_per_symb[symb_idx]              
             tp = pgrid[symb_idx, :] / (sigma2_sym + eps)
@@ -116,7 +116,7 @@ class FT8Demodulator:
             m0 = np.where(~gray_mask, (mlog[:, None] / tau), -np.inf)
             LLR_sym = tau * (np.logaddexp.reduce(m1, axis=0) - np.logaddexp.reduce(m0, axis=0))
             LLR174s.extend(LLR_sym)
-        c.llr_std = np.std(LLR174s)
+        c.llr_std = np.std(LLR174s)+eps
         LLR174s -= np.mean(LLR174s)
         LLR174s *= (llr_sd / c.llr_std )
         ncheck, bits, n_its = decode174_91(LLR174s)

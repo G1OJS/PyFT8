@@ -14,7 +14,6 @@ lw_tot, lp_tot = 0, 0
 best_snr_alltime = 50
 
 def wsjtx_tailer():
-    cycle = ''
     def follow(path):
         with open(path, "r") as f:
             f.seek(0, 2)
@@ -36,7 +35,10 @@ def wsjtx_compare(wsjtx_file, PyFT8_file):
     color = sys.stdout.shell
 
     with open(wsjtx_file, 'r') as f:
-        wsjt_lines = f.readlines()
+        lines = f.readlines()
+    cyclestamp = lines[-1][:14]
+    wsjt_lines = [line for line in lines if line.startswith(cyclestamp)]
+
     with open(PyFT8_file, 'r') as f:
         PyFT8_lines = f.readlines()
 

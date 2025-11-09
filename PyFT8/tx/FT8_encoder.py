@@ -2,7 +2,6 @@ import re
 import sys
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 import numpy as np
-from itertools import islice
 import PyFT8.FT8_crc as crc
 from PyFT8.signaldefs import FT8
 
