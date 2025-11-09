@@ -51,6 +51,8 @@ def wsjtx_compare(wsjtx_file, PyFT8_file):
         PyFT8_patterns.append(l[48:].replace(' ',''))
 
     best_snr = 50
+    def linefreq(line): return int(line[43:48])
+    wsjt_lines.sort(key = linefreq)
     for i, l in enumerate(wsjt_lines):
         if(wsjt_patterns[i] in PyFT8_patterns):
             color.write(f" BOTH: {l}", "STRING")
