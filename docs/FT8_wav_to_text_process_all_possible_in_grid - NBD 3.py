@@ -77,7 +77,6 @@ hop_len = int(FFT_len / (t_oversamp*f_oversamp))
 
 max_freq_idx = int(nFreqs/2)
 
-
 spec = np.zeros((nFreqs))
 samp_idx = 0
 while True:
@@ -86,54 +85,54 @@ while True:
     spec = np.vstack([spec, specslice])
     samp_idx  += hop_len
 
-import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
-fig, ax = plt.subplots()
-#ax.imshow(np.abs(spec[:,:max_freq_idx]), norm=LogNorm())
-#plt.show()
-
-
-def decode(f0_idx = 345, t0_idx = 4):
-    cspec = spec[t0_idx:t0_idx+79*t_oversamp, f0_idx:f0_idx + 8*f_oversamp]
-    bits=[]
-    gray = [0, 1, 3, 2, 6, 4, 5, 7]
-    ngrp = 1
+def decode(f0_idx=345, t0_idx=4):
     n_tns = 8
-    nseqs = n_tns**ngrp
-    payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
-    for k, symb_idx in enumerate(payload_symb_idxs):
-        if(k % ngrp ==0):
-            corr = np.zeros((nseqs), dtype=complex)
-            for s in range(ngrp):
-                z_tonebins = cspec[(symb_idx+s)*t_oversamp, :]
-                for i in range(nseqs):
-                    f_idx = gray[i>>s & 7]
-                    corr[i] += z_tonebins[f_idx]
-                    if(f_idx>0): corr[i] -= np.sum(z_tonebins[0:f_idx-1]) / (n_tns -1)
-                    if(f_idx<n_tns-1): corr[i] -= np.sum(z_tonebins[f_idx+1:]) / (n_tns -1)
-            corrmax_idx = np.argmax(np.abs(corr))
-            seqbits = int_to_bitsLE(corrmax_idx, 3*ngrp)
-            bits.extend(seqbits)
-    print("111010010010101010110000001000110110101010110011110011111001111110101010100011100100010000111001011010101111101111110010000110011110001000101001110010110010110001111000100000")
-    print(''.join([str(b) for b in bits]))
+    n_blocks = 38
+
+    gray_map_tuples = np.array([(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)])
+
+    # Reshape to [79, t_oversamp, 8, f_oversamp]
+    cspec = spec[t0_idx:t0_idx+n_blocks*t_oversamp, f0_idx:f0_idx + n_tns*f_oversamp]
+    cspec4 = cspec.reshape(n_blocks, t_oversamp, n_tns, f_oversamp)
+
+    # Compute correlations between consecutive symbols
+    # shape: [78, 8, 8]
+    corrs = np.abs(
+        np.einsum('stif, stjf -> sij', cspec4[:-1], cspec4[1:])
+    )
+
+    # Take only even-indexed symbol pairs
+    corrs = corrs[::2]  # shape [~39, 8, 8]
+
+    # Get max correlation indices along flattened [8×8]
+    flat_max = np.argmax(corrs.reshape(len(corrs), -1), axis=1)
+    tone1 = flat_max // n_tns
+    tone2 = flat_max % n_tns
+
+    # Flatten symbol list
+    symbols = np.column_stack((tone1, tone2)).ravel().tolist()
+
+    # Map to bits
+    bits = gray_map_tuples[symbols].reshape(-1).tolist()
+
+    # FT8 sub-selection logic (as in your code)
+    bits = bits[21:108] + bits[129:216]
+    symbols = symbols[7:36] + symbols[43:72]
+
     msg = FT8_decode(bits)
-    if (msg in legit_msgs):
-        print(msg)
-        return(msg)
+    if msg in legit_msgs:
+        return msg
 
 
-msg = decode()
-
-"""
 decodes = set()
-for f_idx in range(max_freq_idx):
-    for t_idx in range(44):
+for f_idx in range(f_oversamp,max_freq_idx):
+    for t_idx in range(22):
         msg = decode(f0_idx = f_idx, t0_idx = t_idx)
         if(msg):
             print(f"{f_idx} {t_idx} {msg}")
             decodes.add(msg)
 print(f"{len(decodes)} messages of {len(legit_msgs)}")
-"""
+
 
 
 

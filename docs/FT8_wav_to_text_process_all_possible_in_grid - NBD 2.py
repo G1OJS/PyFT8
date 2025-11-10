@@ -121,6 +121,7 @@ def decode(f0_idx = 345, t0_idx = 4):
 
 decodes = set()
 for f_idx in range(max_freq_idx):
+    print(f_idx/f_oversamp)
     for t_idx in range(17):
         msg = decode(f0_idx = f_idx, t0_idx = t_idx)
         if(msg):
