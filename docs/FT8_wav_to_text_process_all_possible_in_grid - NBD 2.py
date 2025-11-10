@@ -77,7 +77,6 @@ hop_len = int(FFT_len / (t_oversamp*f_oversamp))
 
 max_freq_idx = int(nFreqs/2)
 
-
 spec = np.zeros((nFreqs))
 samp_idx = 0
 while True:
@@ -86,62 +85,49 @@ while True:
     spec = np.vstack([spec, specslice])
     samp_idx  += hop_len
 
-import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
-fig, ax = plt.subplots()
-#ax.imshow(np.abs(spec[:,:max_freq_idx]), norm=LogNorm())
-#plt.show()
-
-
 def decode(f0_idx = 345, t0_idx = 4):
     cspec = spec[t0_idx:t0_idx+79*t_oversamp, f0_idx:f0_idx + 8*f_oversamp]
     bits=[]
     symbols = []
     gray_map_tuples = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
-    ngrp = 1
+    ngrp = 2
     n_tns = 8
-    nseqs = n_tns**ngrp
-    for symb_idx in range(0,79, ngrp):
-        n_corrs = n_tns**ngrp
-        corrs = np.array([0]*n_corrs)
-        for i in range(n_corrs):
-            i_symb1 = symb_idx + int(i/n_tns)
-            i_tone1 = i % n_tns
-            for j in range(n_corrs):
-                i_symb2 = symb_idx + int(j/n_tns)
-                i_tone2 = j % n_tns
-                corrs[i]+=np.abs(cspec[i_symb1, i_tone1]*spec[i_symb2, i_tone2])
+    n_corrs = n_tns**ngrp
+    n_blocks = int(79/ngrp)
+    for symb_idx in range(0,ngrp*n_blocks, ngrp):
+        corrs = []
+        for i in range(n_tns):
+            for j in range(n_tns):
+                cor = np.abs(cspec[symb_idx, i]*cspec[symb_idx+1, j])
+                corrs.extend([cor])
         m = np.argmax(corrs)
-        for g_idx in range(ngrp):
-            i_tone = m % n_tns
-            symbols.extend([i_tone])
-            bits.extend(gray_map_tuples[i_tone])
-            m = int(m/n_tns)
+        i_tone1=int(m/n_tns)
+        i_tone2 = m % n_tns
+        symbols.extend([i_tone1])
+        symbols.extend([i_tone2])
+        bits.extend(gray_map_tuples[i_tone1])
+        bits.extend(gray_map_tuples[i_tone2])
     bits = bits[21:108]+bits[129:216]
     symbols = symbols[7:36] + symbols[43: 72]
-    print("7333634010446342427174635255307123676743042410614343417050")
-    print(''.join([str(s) for s in symbols]))
-    print()
-    print("111010010010101010110000001000110110101010110011110011111001111110101010100011100100010000111001011010101111101111110010000110011110001000101001110010110010110001111000100000")
-    print(''.join([str(b) for b in bits]))
+ #   print("7333634010446342427174635255307123676743042410614343417050")
+ #   print(''.join([str(s) for s in symbols]))
+ #   print()
+ #   print("111010010010101010110000001000110110101010110011110011111001111110101010100011100100010000111001011010101111101111110010000110011110001000101001110010110010110001111000100000")
+ #   print(''.join([str(b) for b in bits]))
     msg = FT8_decode(bits)
     if (msg in legit_msgs):
-        print(msg)
         return(msg)
 
 
-msg = decode()
-
-"""
 decodes = set()
 for f_idx in range(max_freq_idx):
-    for t_idx in range(44):
+    for t_idx in range(17):
         msg = decode(f0_idx = f_idx, t0_idx = t_idx)
         if(msg):
             print(f"{f_idx} {t_idx} {msg}")
             decodes.add(msg)
 print(f"{len(decodes)} messages of {len(legit_msgs)}")
-"""
+
 
 
 
