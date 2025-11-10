@@ -96,24 +96,27 @@ fig, ax = plt.subplots()
 def decode(f0_idx = 345, t0_idx = 4):
     cspec = spec[t0_idx:t0_idx+79*t_oversamp, f0_idx:f0_idx + 8*f_oversamp]
     bits=[]
-    gray = [0, 1, 3, 2, 6, 4, 5, 7]
+    gray_map_tuples = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
     ngrp = 1
     n_tns = 8
     nseqs = n_tns**ngrp
     payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
-    for k, symb_idx in enumerate(payload_symb_idxs):
-        if(k % ngrp ==0):
-            corr = np.zeros((nseqs), dtype=complex)
-            for s in range(ngrp):
-                z_tonebins = cspec[(symb_idx+s)*t_oversamp, :]
-                for i in range(nseqs):
-                    f_idx = gray[i>>s & 7]
-                    corr[i] += z_tonebins[f_idx]
-                    if(f_idx>0): corr[i] -= np.sum(z_tonebins[0:f_idx-1]) / (n_tns -1)
-                    if(f_idx<n_tns-1): corr[i] -= np.sum(z_tonebins[f_idx+1:]) / (n_tns -1)
-            corrmax_idx = np.argmax(np.abs(corr))
-            seqbits = int_to_bitsLE(corrmax_idx, 3*ngrp)
-            bits.extend(seqbits)
+    for idx in range(0, len(payload_symb_idxs), ngrp):
+        symb_idx = payload_symb_idxs[idx]
+        n_corrs = n_tns**ngrp
+        corrs = np.array([0]*n_corrs)
+        for i in range(n_corrs):
+            i_symb1 = symb_idx + int(i/n_tns)
+            i_tone1 = i % n_tns
+            for j in range(n_corrs):
+                i_symb2 = symb_idx + int(j/n_tns)
+                i_tone2 = j % n_tns
+                corrs[i]+=np.abs(cspec[i_symb1, i_tone1]*spec[i_symb2, i_tone2])
+        m = np.argmax(corrs)
+        for g_idx in range(ngrp):
+            i_tone = m % n_tns
+            bits.extend(gray_map_tuples[i_tone])
+            m = int(m/n_tns)
     print("111010010010101010110000001000110110101010110011110011111001111110101010100011100100010000111001011010101111101111110010000110011110001000101001110010110010110001111000100000")
     print(''.join([str(b) for b in bits]))
     msg = FT8_decode(bits)
