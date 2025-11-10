@@ -96,8 +96,9 @@ fig, ax = plt.subplots()
 def decode(f0_idx = 345, t0_idx = 4):
     cspec = spec[t0_idx:t0_idx+79*t_oversamp, f0_idx:f0_idx + 8*f_oversamp]
     bits=[]
+    symbols = []
     gray_map_tuples = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
-    ngrp = 1
+    ngrp = 2
     n_tns = 8
     nseqs = n_tns**ngrp
     payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
@@ -115,8 +116,12 @@ def decode(f0_idx = 345, t0_idx = 4):
         m = np.argmax(corrs)
         for g_idx in range(ngrp):
             i_tone = m % n_tns
+            symbols.extend([i_tone])
             bits.extend(gray_map_tuples[i_tone])
             m = int(m/n_tns)
+    print("7333634010446342427174635255307123676743042410614343417050")
+    print(''.join([str(s) for s in symbols]))
+    print()
     print("111010010010101010110000001000110110101010110011110011111001111110101010100011100100010000111001011010101111101111110010000110011110001000101001110010110010110001111000100000")
     print(''.join([str(b) for b in bits]))
     msg = FT8_decode(bits)
