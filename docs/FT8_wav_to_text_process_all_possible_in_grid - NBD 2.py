@@ -98,12 +98,10 @@ def decode(f0_idx = 345, t0_idx = 4):
     bits=[]
     symbols = []
     gray_map_tuples = [(0,0,0),(0,0,1),(0,1,1),(0,1,0),(1,1,0),(1,0,0),(1,0,1),(1,1,1)]
-    ngrp = 2
+    ngrp = 1
     n_tns = 8
     nseqs = n_tns**ngrp
-    payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
-    for idx in range(0, len(payload_symb_idxs), ngrp):
-        symb_idx = payload_symb_idxs[idx]
+    for symb_idx in range(0,79, ngrp):
         n_corrs = n_tns**ngrp
         corrs = np.array([0]*n_corrs)
         for i in range(n_corrs):
@@ -119,6 +117,8 @@ def decode(f0_idx = 345, t0_idx = 4):
             symbols.extend([i_tone])
             bits.extend(gray_map_tuples[i_tone])
             m = int(m/n_tns)
+    bits = bits[21:108]+bits[129:216]
+    symbols = symbols[7:36] + symbols[43: 72]
     print("7333634010446342427174635255307123676743042410614343417050")
     print(''.join([str(s) for s in symbols]))
     print()
