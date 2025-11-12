@@ -27,16 +27,19 @@ decoded_candidates = []
 for i, c in enumerate(candidates):
     demod.sync_candidate(c)
     decode = demod.demodulate_candidate(c, cyclestart_str="test")
-    import pickle as pkl
     if(decode):
-        with open(f"cand_{int(c.bounds.f0)}.pkl","wb") as f:
-            pkl.dump(c.complex_grid,f)
         decoded_candidates.append(c)
         print(decode['all_txt_line'], decode['decode_dict']['t0_idx'] , c.llr_std, c.bounds.t0_idx, c.bounds.f0_idx)
 
 timers.timedLog("Start to Show spectrum")
 wf.update_main()
 timers.timedLog("Start to Show candidates")
+from PyFT8.datagrids import Spectrum, Bounds, Candidate
+from PyFT8.signaldefs import FT8
+
+#cands = [(18,282),(17,306),(13,346),(12,790),(7,1034),(17,1233)]
+decoded_candidates.append(Candidate(FT8, demod.spectrum, 17, 1233, 1000))
+decoded_candidates[0].message = "hi"
 wf.update_main(candidates=decoded_candidates)
 wf.show_zoom(candidates=decoded_candidates)
 

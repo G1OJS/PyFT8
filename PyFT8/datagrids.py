@@ -50,8 +50,8 @@ class Spectrum:
         self.costas         = sigspec.costas
 
         # ---- FFT geometry ----
-        self.FFT_size = int(self.fbins_pertone * self.sample_rate // self.symbols_persec)
-        self.nFreqs   = self.FFT_size // 2 + 1
+        self.FFT_len = int(self.fbins_pertone * self.sample_rate // self.symbols_persec)
+        self.nFreqs   = self.FFT_len // 2 + 1
         self.width_Hz = self.sample_rate / 2
         self.df       = self.width_Hz / (self.nFreqs - 1)
         
@@ -65,31 +65,22 @@ class Spectrum:
         self.freqs = np.arange(self.nFreqs) * self.df
 
         # ---- Physical bounds (edges) ----
-        self.bounds = Bounds(self,
+        self.bounds = Bounds(
             0, self.nHops, 0, self.nFreqs,
             self.times[0], self.times[-1] + self.dt,
             self.freqs[0], self.freqs[-1] + self.df
         )
 
-        # ---- Data arrays ----
-        self.complex = np.zeros((self.nHops, self.nFreqs), np.complex64)
-        self.noise_per_hop = None
-        self.noise_per_symb = None
+        # ---- Spectrum ----
+        self.fine_grid_complex = None
 
     def load_audio(self, audio_in):
-        """ Fill self.complex and self.power from a block of real audio samples. """
+        self.nHops = int(self.hops_persymb * self.symbols_persec * (len(audio_in) - self.FFT_len)/self.sample_rate)
+        self.fine_grid_complex = np.zeros((self.nHops, self.nFreqs), dtype = np.complex64)
         for hop_idx in range(self.nHops):
-            sample_idx0 = int(hop_idx * self.sample_rate / (self.symbols_persec * self.hops_persymb))
-            sample_idxn = sample_idx0 + self.FFT_size
-            if(sample_idxn < len(audio_in)):
-                self.complex[hop_idx,:] = np.fft.rfft(audio_in[sample_idx0:sample_idxn] * np.kaiser(self.FFT_size,14))
-        self.complex[0,0] = 1
-        power = np.abs(self.complex) ** 2
-        """ Fill self.noise ... for llr extraction. """
-        self.noise_per_hop = np.median(power, axis=1)
-        nHops_all_symbols = (self.nHops // self.hops_persymb) * self.hops_persymb
-        self.noise_per_hop = self.noise_per_hop[:nHops_all_symbols]
-        self.noise_per_symb = self.noise_per_hop.reshape(-1, self.hops_persymb).mean(axis=1)
+            sample_idx = int(hop_idx * self.sample_rate / (self.symbols_persec * self.hops_persymb))
+            aud = audio_in[sample_idx:sample_idx + self.FFT_len] * np.kaiser(self.FFT_len,14)
+            self.fine_grid_complex[hop_idx,:] = np.fft.rfft(aud)[:self.nFreqs]
 
 
 # ============================================================
@@ -98,11 +89,11 @@ class Spectrum:
 
 @dataclass
 class Bounds:
-    def __init__(self, spectrum, t0_idx, tn_idx, f0_idx, fn_idx, t0=None, tn=None, f0=None, fn=None):
+    def __init__(self,  t0_idx, tn_idx, f0_idx, fn_idx, t0, tn, f0, fn):
         self.t0_idx, self.tn_idx = int(t0_idx), int(tn_idx)
         self.f0_idx, self.fn_idx = int(f0_idx), int(fn_idx)
-        self.t0, self.tn = spectrum.times[t0_idx] if t0 is None else float(t0), spectrum.times[tn_idx] if tn is None else float(tn) 
-        self.f0, self.fn = spectrum.freqs[f0_idx] if f0 is None else float(f0), spectrum.freqs[fn_idx] if fn is None else float(fn)
+        self.t0, self.tn = t0, tn
+        self.f0, self.fn = f0, fn
 
     @property
     def extent(self):
@@ -117,70 +108,24 @@ class Candidate:
     def __init__(self, sigspec, spectrum, t0_idx, f0_idx, score=None, cycle_start=None, demodulated_by=None):
         self.llr = None
         self.llr_std = None
-        self.payload_bits = []
-        self.payload_symbols = []
+        self.payload_symb_idxs = sigspec.payload_symb_idxs
         self.score = score
         self.snr = -24
-        self.sigspec = sigspec
-        self.spectrum = spectrum
-        self.bounds = Bounds(spectrum, t0_idx, t0_idx + sigspec.num_symbols * spectrum.hops_persymb,
-                                       f0_idx, f0_idx + sigspec.tones_persymb * spectrum.fbins_pertone)
-        self.hop_idxs_by_symbol = [
-            range(t0_idx + i*spectrum.hops_persymb, t0_idx + (i+1)*spectrum.hops_persymb)
-            for i in range(sigspec.num_symbols)
-        ]
-        self.bin_idxs_by_tone = [
-            range(f0_idx + j*spectrum.fbins_pertone, f0_idx + (j+1)*spectrum.fbins_pertone)
-            for j in range(sigspec.tones_persymb)
-        ]
+        tn_idx = t0_idx + sigspec.num_symbols * spectrum.hops_persymb
+        fn_idx = f0_idx + sigspec.tones_persymb * spectrum.fbins_pertone
+        self.bounds = Bounds(t0_idx, tn_idx, f0_idx, fn_idx,
+                             t0_idx * spectrum.dt, tn_idx * spectrum.dt,
+                             f0_idx * spectrum.df, fn_idx * spectrum.df)
         self.cycle_start = cycle_start
-        self.demodulated_by = demodulated_by
+        self.payload_bits = []
         self.message = None
+        self.fine_grid_complex = spectrum.fine_grid_complex [ t0_idx : tn_idx, f0_idx : fn_idx]
+
 
     def update_t0_idx(self, t0_idx):
         delta = t0_idx - self.bounds.t0_idx
         self.bounds.t0_idx += delta
         self.bounds.tn_idx += delta
-        self.bounds.t0, self.bounds.tn = self.spectrum.times[self.bounds.t0_idx], self.spectrum.times[self.bounds.tn_idx]
-        self.hop_idxs_by_symbol = np.array(self.hop_idxs_by_symbol) + delta
-
-    @property
-    def complex_grid(self):
-        c = self
-        scale = 1/np.sqrt(c.spectrum.hops_persymb)
-        cgrid = scale * self.spectrum.complex[
-            c.bounds.t0_idx : c.bounds.t0_idx + c.sigspec.num_symbols * c.spectrum.hops_persymb,
-            c.bounds.f0_idx : c.bounds.f0_idx + c.sigspec.tones_persymb * c.spectrum.fbins_pertone
-        ]
-        return cgrid.astype(np.complex64)
-
-    @property
-    def complex_grid_4d(self):
-        c = self
-        return self.complex_grid.reshape(
-            c.sigspec.num_symbols, c.spectrum.hops_persymb, c.sigspec.tones_persymb, c.spectrum.fbins_pertone
-        )
-
-    @property
-    def power_grid(self):
-        cgrid = self.complex_grid
-        pgrid = np.abs(cgrid)**2
-        return pgrid.astype(np.float32)
-        
-    @property
-    def phase_grid(self):  
-        phase = np.angle(self.complex_grid)
-        return phase.astype(np.float32)
-
-    @property
-    def power_grid_downsampled(self):
-        cgrid = self.complex_grid_4d
-        pgrid = (np.abs(cgrid)**2).mean(axis=(1,3))
-        return pgrid.astype(np.float32)
-
-
-
-
-
+    
 
 
