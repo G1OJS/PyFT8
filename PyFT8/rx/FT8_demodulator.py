@@ -112,6 +112,9 @@ class FT8Demodulator:
             llr_sym = tau * (np.logaddexp.reduce(m1, axis=0) - np.logaddexp.reduce(m0, axis=0))
             c.llr.extend(llr_sym)
         c.llr = 3 * (c.llr - np.mean(c.llr)) / np.std(c.llr)
+        if(c.bounds.f0_idx == 1233):
+            print(power_per_tone_per_symbol)
+            print([f"{v:.2f}" for v in c.llr])
         ncheck, c.payload_bits, n_its = decode174_91(c.llr)
         if(ncheck == 0):
             c.demodulated_by = f"LLR-LDPC ({n_its})"
