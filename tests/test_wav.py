@@ -34,7 +34,7 @@ timers.timedLog("Start to Show spectrum")
 wf = Waterfall(demod.spectrum, f1=3500)
 wf.update_main()
 timers.timedLog("Start to Show candidates")
-from PyFT8.datagrids import Spectrum, Bounds, Candidate
+from PyFT8.datagrids import Spectrum, Candidate
 from PyFT8.signaldefs import FT8
 
 #cands = [(18,282),(17,306),(13,346),(12,790),(7,1034),(17,1233)]

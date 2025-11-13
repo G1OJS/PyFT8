@@ -1,17 +1,22 @@
-"""
-datagrids.py
--------------
-Core data structures for representing 2-D spectral data
-(time–frequency grids) used by FT8, FT4, WSPR, etc.
-
-Classes:
-    Bounds     – defines index/physical coordinate limits for 2D data
-    Spectrum   – owns the complex FFT grid and derived quantities
-    Candidate  – represents a rectangular region of interest
-"""
-
 from dataclasses import dataclass
 import numpy as np
+
+# ============================================================
+# Bounds
+# ============================================================
+
+@dataclass
+class Bounds:
+    def __init__(self,  t0_idx, tn_idx, f0_idx, fn_idx, t0, tn, f0, fn):
+        self.t0_idx, self.tn_idx = int(t0_idx), int(tn_idx)
+        self.f0_idx, self.fn_idx = int(f0_idx), int(fn_idx)
+        self.t0, self.tn = t0, tn
+        self.f0, self.fn = f0, fn
+
+    @property
+    def extent(self):
+        """Matplotlib extent = [xleft, xright, ybottom, ytop]."""
+        return [self.f0, self.fn, self.t0, self.tn]
 
 # ============================================================
 # Spectrum
@@ -47,23 +52,6 @@ class Spectrum:
         )
 
 # ============================================================
-# Bounds
-# ============================================================
-
-@dataclass
-class Bounds:
-    def __init__(self,  t0_idx, tn_idx, f0_idx, fn_idx, t0, tn, f0, fn):
-        self.t0_idx, self.tn_idx = int(t0_idx), int(tn_idx)
-        self.f0_idx, self.fn_idx = int(f0_idx), int(fn_idx)
-        self.t0, self.tn = t0, tn
-        self.f0, self.fn = f0, fn
-
-    @property
-    def extent(self):
-        """Matplotlib extent = [xleft, xright, ybottom, ytop]."""
-        return [self.f0, self.fn, self.t0, self.tn]
-     
-# ============================================================
 # Candidate
 # ============================================================
 
@@ -74,16 +62,11 @@ class Candidate:
         self.payload_symb_idxs = sigspec.payload_symb_idxs
         self.score = score
         self.snr = -24
-        tn_idx = t0_idx + sigspec.num_symbols * spectrum.hops_persymb
-        fn_idx = f0_idx + sigspec.tones_persymb * spectrum.fbins_pertone
-        self.bounds = Bounds(t0_idx, tn_idx, f0_idx, fn_idx,
-                             t0_idx * spectrum.dt, tn_idx * spectrum.dt,
-                             f0_idx * spectrum.df, fn_idx * spectrum.df)
         self.cycle_start = cycle_start
         self.payload_bits = []
         self.message = None
-       # self.fine_grid_complex = spectrum.fine_grid_complex [ t0_idx : tn_idx, f0_idx : fn_idx]
-
+        self.update_bounds(spectrum, sigspec, t0_idx, f0_idx)
+   
     def update_bounds(self, spectrum, sigspec, t0_idx, f0_idx):
         tn_idx = t0_idx + sigspec.num_symbols * spectrum.hops_persymb
         fn_idx = f0_idx + sigspec.tones_persymb * spectrum.fbins_pertone

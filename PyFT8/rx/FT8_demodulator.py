@@ -19,7 +19,7 @@ Log to PyFT8.log: 09:47:17.41 (+0.31) Start to Show candidates
 import math
 import numpy as np
 
-from PyFT8.datagrids import Spectrum, Bounds, Candidate
+from PyFT8.datagrids import Spectrum, Candidate
 from PyFT8.signaldefs import FT8
 from PyFT8.rx.decode174_91 import decode174_91
 import PyFT8.FT8_crc as crc
