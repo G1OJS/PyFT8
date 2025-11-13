@@ -29,26 +29,25 @@ class Spectrum:
         self.sigspec = sigspec
         self.fbins_pertone = int(fbins_pertone)
         self.hops_persymb = int(hops_persymb)
-        
-    def load_audio(self, audio_in):
         self.FFT_len = int(self.fbins_pertone * self.sample_rate // self.sigspec.symbols_persec)
         self.nFreqs   = self.FFT_len // 2 + 1
-        self.nHops = int(self.hops_persymb * self.sigspec.symbols_persec * (len(audio_in)-self.FFT_len)/self.sample_rate)
+        self.dt = 1 / (self.sigspec.symbols_persec * self.hops_persymb)
+        self.df = self.sample_rate / self.FFT_len
+        
+    def load_audio(self, audio_in):
+        nSamps = len(audio_in)
+        self.nHops = int(self.hops_persymb * self.sigspec.symbols_persec * (nSamps-self.FFT_len)/self.sample_rate)
         self.fine_grid_complex = np.zeros((self.nHops, self.nFreqs), dtype = np.complex64)
         for hop_idx in range(self.nHops):
             sample_idx = int(hop_idx * self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb))
             aud = audio_in[sample_idx:sample_idx + self.FFT_len] * np.kaiser(self.FFT_len,14)
             self.fine_grid_complex[hop_idx,:] = np.fft.rfft(aud)[:self.nFreqs]
 
-        # for info (plotting etc)
-        self.dt = 1 / (self.sigspec.symbols_persec * self.hops_persymb)
-        self.df = self.sample_rate / self.FFT_len
-        self.times = np.arange(self.nHops) * self.dt
-        self.freqs = np.arange(self.nFreqs) * self.df
         self.bounds = Bounds(
-            0, self.nHops, 0, self.nFreqs,
-            self.times[0], self.times[-1] + self.dt,
-            self.freqs[0], self.freqs[-1] + self.df
+            0, self.nHops,
+            0, self.nFreqs,
+            0, (self.nHops+1)*self.dt,
+            0, (self.nFreqs+1)*self.df
         )
 
 # ============================================================

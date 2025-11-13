@@ -38,7 +38,7 @@ def get_decodes(onStart=None, onDecode=None, onOccupancy=None, onFinished=None):
 
     # decode the Rx freq first
     timers.timedLog("[Cycle decoder] Get Rx freq decode")
-    f0_idx = int(np.searchsorted(demod.spectrum.freqs, config.rxfreq))
+    f0_idx = int(config.rxfreq / demod.spectrum.df)
     rx_freq_candidate = Candidate(demod.sigspec, demod.spectrum, 0, f0_idx, -50)
     demod.sync_candidate(rx_freq_candidate)
     decode = demod.demodulate_candidate(rx_freq_candidate, cyclestart_str = cyclestart_str)

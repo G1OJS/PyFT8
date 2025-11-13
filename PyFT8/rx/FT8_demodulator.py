@@ -1,19 +1,19 @@
 """
-wave file test
-Log to PyFT8.log: 09:47:15.27 (+0.66) Start to Load audio from 210703_133430.wav
-Log to PyFT8.log: 09:47:15.65 (+0.38) Start to Find candidates
-Log to PyFT8.log: 09:47:15.71 (+0.05) Found 500 candidates
-Log to PyFT8.log: 09:47:15.71 (+0.00) Start to deduplicate candidate frequencies
-Log to PyFT8.log: 09:47:15.72 (+0.01) Now have 40 candidates
-Log to PyFT8.log: 09:47:15.72 (+0.00) Start to sync and demodulate candidates
-test     0.000 Rx FT8    +15  0.5 2569 W1FC F5BZB -08 10
-test     0.000 Rx FT8    +18  0.2 2154 WM3PEN EA6VQ -09 4
-test     0.000 Rx FT8    -07  0.4  721 A92EE F5PSR -14 8
-test     0.000 Rx FT8    -12  0.6  588 K1JT HA0DU KN07 11
-test     0.000 Rx FT8    -16  0.5  638 N1JFU EA6EE R-07 10
-test     0.000 Rx FT8    -17  0.4 1646 K1JT EA3AGB -15 7
-Log to PyFT8.log: 09:47:17.09 (+1.37) Start to Show spectrum
-Log to PyFT8.log: 09:47:17.41 (+0.31) Start to Show candidates
+wave file test 13-11-2025 12:20
+Log to PyFT8.log: 12:19:26.70 (+0.02) Start to Load audio from 210703_133430.wav
+Log to PyFT8.log: 12:19:27.26 (+0.57) Start to Find candidates
+Log to PyFT8.log: 12:19:27.52 (+0.26) Found 1500 candidates
+Log to PyFT8.log: 12:19:27.55 (+0.03) Start to deduplicate candidate frequencies
+Log to PyFT8.log: 12:19:27.59 (+0.03) Now have 40 candidates
+Log to PyFT8.log: 12:19:27.60 (+0.01) Start to sync and demodulate candidates
+test     0.000 Rx FT8    +12  0.5 2569 W1FC F5BZB -08 17 None 17 1233
+test     0.000 Rx FT8    +15  0.2 2154 WM3PEN EA6VQ -09 7 None 7 1034
+test     0.000 Rx FT8    -12  0.4  721 A92EE F5PSR -14 13 None 13 346
+test     0.000 Rx FT8    -16  0.6  588 K1JT HA0DU KN07 18 None 18 282
+test     0.000 Rx FT8    -22  0.5  640 N1JFU EA6EE R-07 17 None 17 307
+test     0.000 Rx FT8    -22  0.4 1646 K1JT EA3AGB -15 12 None 12 790
+Log to PyFT8.log: 12:19:28.80 (+1.21) Start to Show spectrum
+Log to PyFT8.log: 12:19:29.74 (+0.94) Start to Show candidates
 """
 
 import math
@@ -59,8 +59,8 @@ class FT8Demodulator:
         candidates.sort(key=lambda c: -c.score)
         return candidates[:topN]
 
-    def deduplicate_candidate_freqs(self, candidates, topN=100):
-        min_sep_fbins = 2*self.fbins_pertone
+    def deduplicate_candidate_freqs(self, candidates, topN=40):
+        min_sep_fbins = 4*self.fbins_pertone
         deduplicated = []
         for c in candidates:
             keep_c = True
