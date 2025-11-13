@@ -10,7 +10,6 @@ import PyFT8.audio as audio
 wav_file = "210703_133430.wav"
 
 demod = FT8Demodulator()
-wf = Waterfall(demod.spectrum, f1=3500)
 
 timers.timedLog(f"Start to Load audio from {wav_file}")
 audio_in = audio.read_wav_file(wav_file)
@@ -32,6 +31,7 @@ for i, c in enumerate(candidates):
         print(decode['all_txt_line'], decode['decode_dict']['t0_idx'] , c.llr_std, c.bounds.t0_idx, c.bounds.f0_idx)
 
 timers.timedLog("Start to Show spectrum")
+wf = Waterfall(demod.spectrum, f1=3500)
 wf.update_main()
 timers.timedLog("Start to Show candidates")
 from PyFT8.datagrids import Spectrum, Bounds, Candidate

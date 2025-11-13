@@ -38,9 +38,7 @@ class FT8Demodulator:
         # ---- spectrum setup ----
         self.spectrum = Spectrum( fbins_pertone=self.fbins_pertone, hops_persymb=self.hops_persymb,
                                   sample_rate=self.sample_rate, sigspec=self.sigspec)
-        # ---- FFT params ----
-        #self.FFT_len = self.spectrum.FFT_len
-        #self._hop_size = int(self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb)) 
+        
         # ---- Costas sync mask ----
         h, w = self.sigspec.costas_len * self.hops_persymb, self.sigspec.tones_persymb * self.fbins_pertone
         self._csync = np.full((h, w), -1/7, np.float32)
@@ -82,16 +80,16 @@ class FT8Demodulator:
             score = self._csync_score_3(t0_idx, c.bounds.f0_idx)
             if(score > c.score):
                 c.score = score
-                c.update_t0_idx(t0_idx)
+                c.update_bounds(self.spectrum, FT8, t0_idx, c.bounds.f0_idx)
 
     def _csync_score_3(self, t0_idx, f0_idx):
         score = 0.0
-        fn_idx = f0_idx + self._csync.shape[1]
+        nf = self._csync.shape[1]
         nt = self._csync.shape[0]
         block_hopstarts = [0, 36 * self.hops_persymb, 72 * self.hops_persymb]
         for block_idx in block_hopstarts: 
             t_idx = t0_idx + block_idx
-            cgrid = self.spectrum.fine_grid_complex[t_idx:t_idx + nt, f0_idx:fn_idx]
+            cgrid = self.spectrum.fine_grid_complex[t_idx:t_idx + nt, f0_idx:f0_idx +nf]
             block_score = np.sum(np.abs(cgrid) * self._csync)
             if block_score > score: score = block_score 
         return score 
@@ -106,8 +104,6 @@ class FT8Demodulator:
         cspec = c.fine_grid_complex.reshape(FT8.num_symbols, self.hops_persymb, FT8.tones_persymb, self.fbins_pertone)
         power_per_tone_per_symbol = (np.abs(cspec)**2).mean(axis=(1,3)) 
         for symb_idx in c.payload_symb_idxs:
-            if(c.bounds.f0_idx == 1233):
-                print(symb_idx, [f"{v:.2e}" for v in power_per_tone_per_symbol[symb_idx]])
             mlog = np.log(power_per_tone_per_symbol[symb_idx])
             m1 = np.where(FT8.gray_mask,  (mlog[:, None] / tau), -np.inf)
             m0 = np.where(~FT8.gray_mask, (mlog[:, None] / tau), -np.inf)
@@ -119,7 +115,6 @@ class FT8Demodulator:
             c.demodulated_by = f"LLR-LDPC ({n_its})"
             c.snr = -24 if c.score==0 else int(25*np.log10(c.score/47524936) +18 )
             c.snr = np.clip(c.snr, -24,24).item()
-            c.llr = LLR174s
             decode = FT8_decode(c, cyclestart_str)
             if(decode):
                 c.message = decode['decode_dict']['message'] 
