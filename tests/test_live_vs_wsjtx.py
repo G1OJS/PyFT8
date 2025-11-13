@@ -36,8 +36,11 @@ def wsjtx_compare(wsjtx_file, PyFT8_file):
 
     with open(wsjtx_file, 'r') as f:
         lines = f.readlines()
-    cyclestamp = lines[-1][:14]
-    wsjt_lines = [line for line in lines if line.startswith(cyclestamp)]
+    if(lines):
+        cyclestamp = lines[-1][:14]
+        wsjt_lines = [line for line in lines if line.startswith(cyclestamp)]
+    else:
+        lines=''
 
     with open(PyFT8_file, 'r') as f:
         PyFT8_lines = f.readlines()

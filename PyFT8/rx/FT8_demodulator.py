@@ -1,25 +1,25 @@
 """
-wave file test
-Log to PyFT8.log: 09:47:15.27 (+0.66) Start to Load audio from 210703_133430.wav
-Log to PyFT8.log: 09:47:15.65 (+0.38) Start to Find candidates
-Log to PyFT8.log: 09:47:15.71 (+0.05) Found 500 candidates
-Log to PyFT8.log: 09:47:15.71 (+0.00) Start to deduplicate candidate frequencies
-Log to PyFT8.log: 09:47:15.72 (+0.01) Now have 40 candidates
-Log to PyFT8.log: 09:47:15.72 (+0.00) Start to sync and demodulate candidates
-test     0.000 Rx FT8    +15  0.5 2569 W1FC F5BZB -08 10
-test     0.000 Rx FT8    +18  0.2 2154 WM3PEN EA6VQ -09 4
-test     0.000 Rx FT8    -07  0.4  721 A92EE F5PSR -14 8
-test     0.000 Rx FT8    -12  0.6  588 K1JT HA0DU KN07 11
-test     0.000 Rx FT8    -16  0.5  638 N1JFU EA6EE R-07 10
-test     0.000 Rx FT8    -17  0.4 1646 K1JT EA3AGB -15 7
-Log to PyFT8.log: 09:47:17.09 (+1.37) Start to Show spectrum
-Log to PyFT8.log: 09:47:17.41 (+0.31) Start to Show candidates
+wave file test 13-11-2025 12:20
+Log to PyFT8.log: 12:19:26.70 (+0.02) Start to Load audio from 210703_133430.wav
+Log to PyFT8.log: 12:19:27.26 (+0.57) Start to Find candidates
+Log to PyFT8.log: 12:19:27.52 (+0.26) Found 1500 candidates
+Log to PyFT8.log: 12:19:27.55 (+0.03) Start to deduplicate candidate frequencies
+Log to PyFT8.log: 12:19:27.59 (+0.03) Now have 40 candidates
+Log to PyFT8.log: 12:19:27.60 (+0.01) Start to sync and demodulate candidates
+test     0.000 Rx FT8    +12  0.5 2569 W1FC F5BZB -08 17 None 17 1233
+test     0.000 Rx FT8    +15  0.2 2154 WM3PEN EA6VQ -09 7 None 7 1034
+test     0.000 Rx FT8    -12  0.4  721 A92EE F5PSR -14 13 None 13 346
+test     0.000 Rx FT8    -16  0.6  588 K1JT HA0DU KN07 18 None 18 282
+test     0.000 Rx FT8    -22  0.5  640 N1JFU EA6EE R-07 17 None 17 307
+test     0.000 Rx FT8    -22  0.4 1646 K1JT EA3AGB -15 12 None 12 790
+Log to PyFT8.log: 12:19:28.80 (+1.21) Start to Show spectrum
+Log to PyFT8.log: 12:19:29.74 (+0.94) Start to Show candidates
 """
 
 import math
 import numpy as np
 
-from PyFT8.datagrids import Spectrum, Bounds, Candidate
+from PyFT8.datagrids import Spectrum, Candidate
 from PyFT8.signaldefs import FT8
 from PyFT8.rx.decode174_91 import decode174_91
 import PyFT8.FT8_crc as crc
@@ -38,9 +38,7 @@ class FT8Demodulator:
         # ---- spectrum setup ----
         self.spectrum = Spectrum( fbins_pertone=self.fbins_pertone, hops_persymb=self.hops_persymb,
                                   sample_rate=self.sample_rate, sigspec=self.sigspec)
-        # ---- FFT params ----
-        self.FFT_size = self.spectrum.FFT_size
-        self._hop_size = int(self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb)) 
+        
         # ---- Costas sync mask ----
         h, w = self.sigspec.costas_len * self.hops_persymb, self.sigspec.tones_persymb * self.fbins_pertone
         self._csync = np.full((h, w), -1/7, np.float32)
@@ -56,13 +54,13 @@ class FT8Demodulator:
     def find_candidates(self, topN=1500):
         candidates = []
         for f0_idx in range(self.spectrum.nFreqs - self._csync.shape[1]):
-            score = np.sum(np.abs(self.spectrum.complex[: , f0_idx:f0_idx+self._csync.shape[1]]))
-            candidates.append(Candidate(self.sigspec, self.spectrum, 0, f0_idx, score))
+            score = np.sum(np.abs(self.spectrum.fine_grid_complex[: , f0_idx:f0_idx+self._csync.shape[1]]))
+            candidates.append(Candidate(FT8, self.spectrum, 0, f0_idx, score))
         candidates.sort(key=lambda c: -c.score)
         return candidates[:topN]
 
-    def deduplicate_candidate_freqs(self, candidates, topN=100):
-        min_sep_fbins = 2*self.fbins_pertone
+    def deduplicate_candidate_freqs(self, candidates, topN=40):
+        min_sep_fbins = 4*self.fbins_pertone
         deduplicated = []
         for c in candidates:
             keep_c = True
@@ -82,16 +80,16 @@ class FT8Demodulator:
             score = self._csync_score_3(t0_idx, c.bounds.f0_idx)
             if(score > c.score):
                 c.score = score
-                c.update_t0_idx(t0_idx)
+                c.update_bounds(self.spectrum, FT8, t0_idx, c.bounds.f0_idx)
 
     def _csync_score_3(self, t0_idx, f0_idx):
         score = 0.0
-        fn_idx = f0_idx + self._csync.shape[1]
+        nf = self._csync.shape[1]
         nt = self._csync.shape[0]
         block_hopstarts = [0, 36 * self.hops_persymb, 72 * self.hops_persymb]
         for block_idx in block_hopstarts: 
             t_idx = t0_idx + block_idx
-            cgrid = self.spectrum.complex[t_idx:t_idx + nt, f0_idx:fn_idx]
+            cgrid = self.spectrum.fine_grid_complex[t_idx:t_idx + nt, f0_idx:f0_idx +nf]
             block_score = np.sum(np.abs(cgrid) * self._csync)
             if block_score > score: score = block_score 
         return score 
@@ -100,34 +98,26 @@ class FT8Demodulator:
     # Demodulation
     # ======================================================
     def demodulate_candidate(self, candidate, cyclestart_str):
-        """ calculate LLRs from c.pgrid (1:1 grid) """
         c = candidate
-        LLR174s=[]
-        pgrid = c.power_grid_downsampled
-        gray_mask = self.sigspec.gray_mask
-        eps = 1e-12
-        tau = .5
-        llr_sd = 3
-        for symb_idx in c.sigspec.payload_symb_idxs:            
-            sigma2_sym = self.spectrum.noise_per_symb[symb_idx]              
-            tp = pgrid[symb_idx, :] / (sigma2_sym + eps)
-            mlog = np.log(tp + eps)                          
-            m1 = np.where(gray_mask,  (mlog[:, None] / tau), -np.inf)
-            m0 = np.where(~gray_mask, (mlog[:, None] / tau), -np.inf)
-            LLR_sym = tau * (np.logaddexp.reduce(m1, axis=0) - np.logaddexp.reduce(m0, axis=0))
-            LLR174s.extend(LLR_sym)
-        c.llr_std = np.std(LLR174s)+eps
-        LLR174s -= np.mean(LLR174s)
-        LLR174s *= (llr_sd / c.llr_std )
-        ncheck, bits, n_its = decode174_91(LLR174s)
+        c.llr = []
+        tau = 0.5
+        cspec = c.fine_grid_complex.reshape(FT8.num_symbols, self.hops_persymb, FT8.tones_persymb, self.fbins_pertone)
+        power_per_tone_per_symbol = (np.abs(cspec)**2).mean(axis=(1,3)) 
+        for symb_idx in c.payload_symb_idxs:
+            mlog = np.log(power_per_tone_per_symbol[symb_idx])
+            m1 = np.where(FT8.gray_mask,  (mlog[:, None] / tau), -np.inf)
+            m0 = np.where(~FT8.gray_mask, (mlog[:, None] / tau), -np.inf)
+            llr_sym = tau * (np.logaddexp.reduce(m1, axis=0) - np.logaddexp.reduce(m0, axis=0))
+            c.llr.extend(llr_sym)
+        c.llr = 3 * (c.llr - np.mean(c.llr)) / np.std(c.llr)
+        ncheck, c.payload_bits, n_its = decode174_91(c.llr)
         if(ncheck == 0):
             c.demodulated_by = f"LLR-LDPC ({n_its})"
-            c.payload_bits = bits
             c.snr = -24 if c.score==0 else int(25*np.log10(c.score/47524936) +18 )
             c.snr = np.clip(c.snr, -24,24).item()
-            c.llr = LLR174s
             decode = FT8_decode(c, cyclestart_str)
-            if(decode): c.message = decode['decode_dict']['message'] 
+            if(decode):
+                c.message = decode['decode_dict']['message'] 
             return decode
     
 # ======================================================

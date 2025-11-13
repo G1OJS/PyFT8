@@ -59,14 +59,14 @@ audio_in = audio.read_wav_file(wav_file)
 demod.spectrum.load_audio(audio_in)
 
 # 'modulate' onto channel grid
-m = np.max(abs(demod.spectrum.complex))  * rel_strength
+m = np.max(abs(demod.spectrum.fine_grid_complex))  * rel_strength
 for symb_idx, tone_idx in enumerate(symbols):
     f_idxs = range(f0_idx + tone_idx * demod.fbins_pertone, f0_idx + (tone_idx+1) * demod.fbins_pertone)
     t_idxs = range(t0_idx + symb_idx * demod.hops_persymb, t0_idx + (symb_idx+1) * demod.hops_persymb)
     for tbin_idx in t_idxs:
        # demod.spectrum.complex[tbin_idx, fbin_idx : fbin_idx+demod.fbins_pertone*demod.sigspec.tones_persymb] = m/10
         for fbin_idx in f_idxs:
-            demod.spectrum.complex[tbin_idx, fbin_idx] = m
+            demod.spectrum.fine_grid_complex[tbin_idx, fbin_idx] = m
 
 
 # 'demodulate' as with any audio frame

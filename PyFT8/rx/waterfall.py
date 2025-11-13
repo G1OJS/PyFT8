@@ -20,15 +20,6 @@ class Waterfall:
 
         # Main figure
         self.fig, (self.ax_main) = plt.subplots(1,1,figsize=(10, 4))
-        self.im = self.ax_main.imshow(
-            np.abs(spectrum.complex)+0.1,
-            origin="lower",
-            aspect="auto",
-            extent=self.extent,
-            cmap="inferno",
-            interpolation="none",
-            norm=LogNorm()
-        )
         self.ax_main.set_title("FT8 Waterfall")
         self.ax_main.set_xlabel("Frequency (Hz)")
         self.ax_main.set_ylabel("Time (s)")
@@ -44,8 +35,10 @@ class Waterfall:
     # ----------------------------------------------------------
     def update_main(self, candidates=None, cyclestart_str=None):
         """Refresh main waterfall and draw candidate rectangles."""
-        self.im.set_data(np.abs(self.spectrum.complex)+0.1)
-        self.im.autoscale()
+        vals = np.abs(self.spectrum.fine_grid_complex)**2
+        self.im = self.ax_main.imshow(  vals, origin="lower", aspect="auto", extent=self.extent,
+                                        cmap="inferno", interpolation="none", norm=LogNorm() )
+        #self.im.autoscale()
         self.im.norm.vmin = self.im.norm.vmax/1000000
         if(cyclestart_str):
             self.ax_main.set_title(f"FT8 Waterfall for {cyclestart_str}")
@@ -103,14 +96,11 @@ class Waterfall:
         
         for i, c in enumerate(candidates_with_decodes):
             ax = axes[i]
-            pwr = c.phase_grid if phase else (c.power_grid +0.1)
-            im = ax.imshow(
-                pwr,
-                origin="lower",
-                aspect="auto",
-                cmap="twilight" if phase else "inferno",
-                interpolation='none'
-            )
+            cspec = c.fine_grid_complex
+            vals = np.angle(cspec) if phase else np.abs(cspec)**2
+            im = ax.imshow( vals, origin="lower", aspect="auto",
+                            cmap="twilight" if phase else "inferno",
+                            interpolation='none' )
             if(not phase): im.norm = LogNorm()
             ax.set_title(f"{c.bounds.f0:.0f}Hz {c.bounds.t0:.2f}s {c.message}")
             ax.set_xlabel("freq bin index")
