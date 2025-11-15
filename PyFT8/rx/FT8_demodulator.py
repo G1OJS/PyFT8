@@ -45,7 +45,8 @@ class FT8Demodulator:
         for sym_idx, tone in enumerate(self.sigspec.costas):
             t0 = sym_idx * self.hops_persymb
             f0 = tone * self.fbins_pertone
-            self._csync[t0:t0+self.hops_persymb, f0:f0+self.fbins_pertone] = 1.0
+            self._csync[t0:t0+self.hops_persymb, f0:f0+self.fbins_pertone] = 0.1
+            self._csync[t0:t0+self.hops_persymb, f0+1] += 1.0
                
     # ======================================================
     # Candidate search and sync
@@ -59,8 +60,8 @@ class FT8Demodulator:
         candidates.sort(key=lambda c: -c.score)
         return candidates[:topN]
 
-    def deduplicate_candidate_freqs(self, candidates, topN=70):
-        min_sep_fbins = 4*self.fbins_pertone
+    def deduplicate_candidate_freqs(self, candidates, topN=300):
+        min_sep_fbins = 2*self.fbins_pertone
         deduplicated = []
         for c in candidates:
             keep_c = True
@@ -86,7 +87,8 @@ class FT8Demodulator:
         score = 0.0
         nf = self._csync.shape[1]
         nt = self._csync.shape[0]
-        block_hopstarts = [0, 36 * self.hops_persymb, 72 * self.hops_persymb]
+#        block_hopstarts = [0, 36 * self.hops_persymb, 72 * self.hops_persymb]
+        block_hopstarts = [0]
         for block_idx in block_hopstarts: 
             t_idx = t0_idx + block_idx
             cgrid = self.spectrum.fine_grid_complex[t_idx:t_idx + nt, f0_idx:f0_idx +nf]
@@ -97,57 +99,40 @@ class FT8Demodulator:
     # ======================================================
     # Demodulation
     # ======================================================
-    def demodulate_candidate(self, candidate, cyclestart_str):
-        c = candidate
-        c.llr = []
-        tau = 0.5
-        cspec = c.fine_grid_complex.reshape(FT8.num_symbols, self.hops_persymb, FT8.tones_persymb, self.fbins_pertone)
-        power_per_tone_per_symbol = (np.abs(cspec)**2).mean(axis=(1,3)) 
-        for symb_idx in c.payload_symb_idxs:
-            mlog = np.log(power_per_tone_per_symbol[symb_idx])
-            m1 = np.where(FT8.gray_mask,  (mlog[:, None] / tau), -np.inf)
-            m0 = np.where(~FT8.gray_mask, (mlog[:, None] / tau), -np.inf)
-            llr_sym = tau * (np.logaddexp.reduce(m1, axis=0) - np.logaddexp.reduce(m0, axis=0))
-            c.llr.extend(llr_sym)
-        c.llr = 3 * (c.llr - np.mean(c.llr)) / np.std(c.llr)
-        ncheck, c.payload_bits, n_its = decode174_91(c.llr)
-        if(ncheck == 0):
-            c.demodulated_by = f"LLR-LDPC ({n_its})"
-            c.snr = -24 if c.score==0 else int(25*np.log10(c.score/47524936) +18 )
-            c.snr = np.clip(c.snr, -24,24).item()
-            decode = FT8_decode(c, cyclestart_str)
-            if(decode):
-                c.message = decode['decode_dict']['message'] 
-            return decode
 
-    def demodulate_candidate_(self, candidate, cyclestart_str):
+    def demodulate_candidate(self, candidate, cyclestart_str):
         # 2-symbol block decoder
         c = candidate
-        c.llr = []
-        cspec = c.fine_grid_complex.reshape(FT8.num_symbols, self.hops_persymb, FT8.tones_persymb, self.fbins_pertone)
-        power_per_tone_per_symbol = (np.abs(cspec)**2).mean(axis=(1,3))
-        E0 = power_per_tone_per_symbol[0:78:2]                        
-        E1 = power_per_tone_per_symbol[1:79:2]
-        pair_score = E0[:, :, None] * E1[:, None, :]
-        ps = pair_score[:, None, :, :]
-        V = ps * FT8.block_decode_wt2
-        ones  = np.max(V,     where=(FT8.block_decode_wt2 > 0), initial=-np.inf, axis=(2, 3))
-        zeros = np.max(-V,    where=(FT8.block_decode_wt2 < 0), initial=-np.inf, axis=(2, 3))
-        llr_block = np.log(ones ) - np.log(zeros )  
-        llr_all = llr_block.reshape(-1)
-        for i in range(len(llr_all)):
-            if(int(i/3) in FT8.payload_symb_idxs):
-                c.llr.extend([llr_all[i]])
-        c.llr = 3 * (c.llr - np.mean(c.llr)) / np.std(c.llr)
-        ncheck, c.payload_bits, n_its = decode174_91(c.llr)
-        if(ncheck == 0):
-            c.demodulated_by = f"LLR-LDPC ({n_its})"
-            c.snr = -24 if c.score==0 else int(25*np.log10(c.score/47524936) +18 )
-            c.snr = np.clip(c.snr, -24,24).item()
-            decode = FT8_decode(c, cyclestart_str)
-            if(decode):
-                c.message = decode['decode_dict']['message'] 
-            return decode
+        decode = False
+        iHop = 0
+        while not decode and iHop < self.hops_persymb:
+            c.llr = []
+            cspec = c.fine_grid_complex.reshape(FT8.num_symbols, self.hops_persymb, FT8.tones_persymb, self.fbins_pertone)
+            cspec = 0.2*cspec[:,iHop,:,0]+ cspec[:,iHop,:,1] + 0.2*cspec[:,iHop,:,2]
+            power_per_tone_per_symbol = (np.abs(cspec)**2)
+            E0 = power_per_tone_per_symbol[0:78:2]                        
+            E1 = power_per_tone_per_symbol[1:79:2]
+            pair_score = E0[:, :, None] * E1[:, None, :]
+            ps = pair_score[:, None, :, :]
+            V = ps * FT8.block_decode_wt2
+            ones  = np.max(V,     where=(FT8.block_decode_wt2 > 0), initial=-np.inf, axis=(2, 3))
+            zeros = np.max(-V,    where=(FT8.block_decode_wt2 < 0), initial=-np.inf, axis=(2, 3))
+            llr_block = np.log(ones ) - np.log(zeros )  
+            llr_all = llr_block.reshape(-1)
+            for i in range(len(llr_all)):
+                if(int(i/3) in FT8.payload_symb_idxs):
+                    c.llr.extend([llr_all[i]])
+            c.llr = 3 * (c.llr - np.mean(c.llr)) / np.std(c.llr)
+            ncheck, c.payload_bits, n_its = decode174_91(c.llr)
+            if(ncheck == 0):
+                c.demodulated_by = f"LLR-LDPC ({n_its})"
+                c.snr = -24 if c.score==0 else int(25*np.log10(c.score/47524936) +18 )
+                c.snr = np.clip(c.snr, -24,24).item()
+                decode = FT8_decode(c, cyclestart_str)
+                if(decode):
+                    c.message = decode['decode_dict']['message'] 
+                return decode
+            iHop +=1
     
 # ======================================================
 # FT8 Unpacking functions
