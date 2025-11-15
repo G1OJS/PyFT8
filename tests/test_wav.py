@@ -18,9 +18,7 @@ audio_in = audio.read_wav_file(wav_file)
 demod.spectrum.load_audio(audio_in)
 timers.timedLog("Start to Find candidates")
 candidates = demod.find_candidates()
-timers.timedLog(f"Found {len(candidates)} candidates. Starting Costas Sync.")
-for i, c in enumerate(candidates):
-    demod.sync_candidate(c)
+timers.timedLog(f"Found {len(candidates)} candidates")
 timers.timedLog("Start to deduplicate candidate frequencies")
 candidates = demod.deduplicate_candidate_freqs(candidates)
 timers.timedLog(f"Now have {len(candidates)} candidates")
@@ -28,6 +26,7 @@ timers.timedLog("Start to sync and demodulate candidates")
 
 decoded_candidates = []
 for i, c in enumerate(candidates):
+    demod.sync_candidate(c)
     decode = demod.demodulate_candidate(c, cyclestart_str="test")
     if(decode):
         decoded_candidates.append(c)

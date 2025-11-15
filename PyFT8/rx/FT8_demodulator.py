@@ -60,14 +60,15 @@ class FT8Demodulator:
         candidates.sort(key=lambda c: -c.score)
         return candidates[:topN]
 
-    def deduplicate_candidate_freqs(self, candidates, topN=300):
-        min_sep_fbins = 2*self.fbins_pertone
+    def deduplicate_candidate_freqs(self, candidates, topN=1500):
+        min_sep_fbins = 2
         deduplicated = []
         for c in candidates:
+            c.score = self._csync_score_3(c.bounds.t0_idx, c.bounds.f0_idx)
             keep_c = True
             for i, existing in enumerate(deduplicated):
                 if abs(c.bounds.f0_idx - existing.bounds.f0_idx) < min_sep_fbins:
-                    if c.score > existing.score * 1.3:  # >~1.1–1.3× stronger
+                    if c.score > existing.score:  # swap
                         deduplicated[i] = c
                     keep_c = False
                     break
@@ -87,8 +88,7 @@ class FT8Demodulator:
         score = 0.0
         nf = self._csync.shape[1]
         nt = self._csync.shape[0]
-#        block_hopstarts = [0, 36 * self.hops_persymb, 72 * self.hops_persymb]
-        block_hopstarts = [0]
+        block_hopstarts = [0, 36 * self.hops_persymb, 72 * self.hops_persymb]
         for block_idx in block_hopstarts: 
             t_idx = t0_idx + block_idx
             cgrid = self.spectrum.fine_grid_complex[t_idx:t_idx + nt, f0_idx:f0_idx +nf]
