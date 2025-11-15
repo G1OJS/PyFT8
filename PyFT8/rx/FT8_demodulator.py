@@ -28,7 +28,7 @@ from PyFT8.comms_hub import config, send_to_ui_ws
 
 
 class FT8Demodulator:
-    def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=2, sigspec=FT8):
+    def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=11, sigspec=FT8):
         # ft8c.f90 uses 4 hops per symbol and 2.5Hz fbins (2.5 bins per tone)
         self.sample_rate = sample_rate
         self.fbins_pertone = fbins_pertone
@@ -43,59 +43,57 @@ class FT8Demodulator:
         h, w = self.sigspec.costas_len * self.hops_persymb, self.sigspec.tones_persymb * self.fbins_pertone
         self._csync = np.full((h, w), -1/7, np.float32)
         for sym_idx, tone in enumerate(self.sigspec.costas):
-            t0 = sym_idx * self.hops_persymb
-            f0 = tone * self.fbins_pertone
-            self._csync[t0:t0+self.hops_persymb, f0:f0+self.fbins_pertone] = 0.1
-            self._csync[t0:t0+self.hops_persymb, f0+1] += 1.0
+            t0 = sym_idx * self.hops_persymb + int(self.hops_persymb/2)
+            f0 = tone * self.fbins_pertone + int(self.fbins_pertone/2)
+            self._csync[t0, f0] = self.hops_persymb * self.fbins_pertone
                
     # ======================================================
     # Candidate search and sync
     # ======================================================
 
-    def find_candidates(self, topN=1500):
+
+    def find_candidates(self, topN=500):
+        nf = self._csync.shape[1]   # number of fine bins covering the 8 tones
+        eps = 1e-12
+        noise_ratio = 1.0 / nf
+        fg = np.abs(self.spectrum.fine_grid_complex)  # [nHops, nFreqs]
         candidates = []
-        for f0_idx in range(self.spectrum.nFreqs - self._csync.shape[1]):
-            score = np.sum(np.abs(self.spectrum.fine_grid_complex[: , f0_idx:f0_idx+self._csync.shape[1]]))
+        for f0_idx in range(self.spectrum.nFreqs - nf):
+            strip = fg[:, f0_idx:f0_idx + nf]  
+            row_sum = strip.sum(axis=1)   
+            row_max = strip.max(axis=1) 
+            ratio = row_max / (row_sum + eps)
+            contrib = row_sum * np.maximum(ratio - noise_ratio, 0.0)
+            score = contrib.sum()
             candidates.append(Candidate(FT8, self.spectrum, 0, f0_idx, score))
         candidates.sort(key=lambda c: -c.score)
-        return candidates[:topN]
+        candidates = candidates
+        for i, c in enumerate(candidates):
+            c.sort_idx_finder=i
 
-    def deduplicate_candidate_freqs(self, candidates, topN=1500):
         min_sep_fbins = 2
-        deduplicated = []
+        filtered_cands = []
         for c in candidates:
-            c.score = self._csync_score_3(c.bounds.t0_idx, c.bounds.f0_idx)
-            keep_c = True
-            for i, existing in enumerate(deduplicated):
-                if abs(c.bounds.f0_idx - existing.bounds.f0_idx) < min_sep_fbins:
-                    if c.score > existing.score:  # swap
-                        deduplicated[i] = c
-                    keep_c = False
-                    break
-            if keep_c:
-                deduplicated.append(c)
-        return deduplicated[:topN]
-    
-    def sync_candidate(self, c):
-        c.score = -1e10
-        for t0_idx in range(self.spectrum.nHops - self.sigspec.num_symbols*self.hops_persymb-1):
-            score = self._csync_score_3(t0_idx, c.bounds.f0_idx)
-            if(score > c.score):
-                c.score = score
-                c.update_bounds(self.spectrum, FT8, t0_idx, c.bounds.f0_idx)
+            self.sync_candidate(c)
+            if(c.score >982202):
+                filtered_cands.append(c)
+        filtered_cands.sort(key=lambda c: -c.score)
+        candidates = filtered_cands[:topN]
+        for i, c in enumerate(candidates):
+            c.sort_idx_dedup_sync=i
+        return candidates
 
-    def _csync_score_3(self, t0_idx, f0_idx):
-        score = 0.0
-        nf = self._csync.shape[1]
-        nt = self._csync.shape[0]
-        block_hopstarts = [0, 36 * self.hops_persymb, 72 * self.hops_persymb]
-        for block_idx in block_hopstarts: 
-            t_idx = t0_idx + block_idx
-            cgrid = self.spectrum.fine_grid_complex[t_idx:t_idx + nt, f0_idx:f0_idx +nf]
-            block_score = np.sum(np.abs(cgrid) * self._csync)
-            if block_score > score: score = block_score 
-        return score 
-        
+    def sync_candidate(self, c):
+        nf, nt = self._csync.shape[1], self._csync.shape[0]
+        f0 = c.bounds.f0_idx
+        grid_strip = np.abs(self.spectrum.fine_grid_complex[:, f0:f0+nf])
+        windows = np.stack([grid_strip[h:h+nt] for h in self.spectrum.sync_hops], axis=0)
+        scores = np.tensordot(windows, self._csync, axes=([1,2],[0,1]))
+        best_idx = np.argmax(scores)
+        c.score = scores[best_idx]
+        c.update_bounds(self.spectrum, FT8, self.spectrum.sync_hops[best_idx], f0)
+
+
     # ======================================================
     # Demodulation
     # ======================================================
@@ -105,10 +103,10 @@ class FT8Demodulator:
         c = candidate
         decode = False
         iHop = 0
+        cspec_4d = c.fine_grid_complex.reshape(FT8.num_symbols, self.hops_persymb, FT8.tones_persymb, self.fbins_pertone)
         while not decode and iHop < self.hops_persymb:
             c.llr = []
-            cspec = c.fine_grid_complex.reshape(FT8.num_symbols, self.hops_persymb, FT8.tones_persymb, self.fbins_pertone)
-            cspec = 0.2*cspec[:,iHop,:,0]+ cspec[:,iHop,:,1] + 0.2*cspec[:,iHop,:,2]
+            cspec = 0.2*cspec_4d[:,iHop,:,0]+ cspec_4d[:,iHop,:,1] + 0.2*cspec_4d[:,iHop,:,2]
             power_per_tone_per_symbol = (np.abs(cspec)**2)
             E0 = power_per_tone_per_symbol[0:78:2]                        
             E1 = power_per_tone_per_symbol[1:79:2]
@@ -125,7 +123,7 @@ class FT8Demodulator:
             c.llr = 3 * (c.llr - np.mean(c.llr)) / np.std(c.llr)
             ncheck, c.payload_bits, n_its = decode174_91(c.llr)
             if(ncheck == 0):
-                c.demodulated_by = f"LLR-LDPC ({n_its})"
+                c.iHop = iHop
                 c.snr = -24 if c.score==0 else int(25*np.log10(c.score/47524936) +18 )
                 c.snr = np.clip(c.snr, -24,24).item()
                 decode = FT8_decode(c, cyclestart_str)

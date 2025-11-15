@@ -9,7 +9,7 @@ import PyFT8.audio as audio
 
 wav_file = "210703_133430.wav"
 #wav_file = '251114_135115.wav'
-wav_file = "251115_135700.wav"
+#wav_file = "251115_135700.wav"
 
 demod = FT8Demodulator()
 
@@ -19,18 +19,14 @@ demod.spectrum.load_audio(audio_in)
 timers.timedLog("Start to Find candidates")
 candidates = demod.find_candidates()
 timers.timedLog(f"Found {len(candidates)} candidates")
-timers.timedLog("Start to deduplicate candidate frequencies")
-candidates = demod.deduplicate_candidate_freqs(candidates)
-timers.timedLog(f"Now have {len(candidates)} candidates")
-timers.timedLog("Start to sync and demodulate candidates")
+timers.timedLog("Start to demodulate candidates")
 
 decoded_candidates = []
 for i, c in enumerate(candidates):
-    demod.sync_candidate(c)
     decode = demod.demodulate_candidate(c, cyclestart_str="test")
     if(decode):
         decoded_candidates.append(c)
-        print(decode['all_txt_line'], decode['decode_dict']['t0_idx'] , c.llr_std, c.bounds.t0_idx, c.bounds.f0_idx)
+        print(decode['all_txt_line'], f"Sync score: {c.score} t0:{c.bounds.t0_idx} iHop:{c.iHop} f0:{c.bounds.f0_idx}, search_pos:{c.sort_idx_finder} dedupsync_pos:{c.sort_idx_dedup_sync}")
 
 timers.timedLog("Start to Show spectrum")
 wf = Waterfall(demod.spectrum, f1=3500)

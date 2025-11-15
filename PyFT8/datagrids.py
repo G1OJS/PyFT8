@@ -49,6 +49,9 @@ class Spectrum:
             0, (self.nHops+1)*self.dt,
             0, (self.nFreqs+1)*self.df
         )
+        sync_headroom = self.nHops - self.sigspec.num_symbols*self.hops_persymb
+        needed_headroom = int((self.hops_persymb * 1.5) / 0.16)
+        self.sync_hops = range( min(sync_headroom, needed_headroom ))
 
 # ============================================================
 # Candidate

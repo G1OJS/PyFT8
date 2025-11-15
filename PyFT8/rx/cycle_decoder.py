@@ -40,7 +40,6 @@ def get_decodes(onStart=None, onDecode=None, onOccupancy=None, onFinished=None):
     timers.timedLog("[Cycle decoder] Get Rx freq decode")
     f0_idx = int(config.rxfreq / demod.spectrum.df)
     rx_freq_candidate = Candidate(demod.sigspec, demod.spectrum, 0, f0_idx, -50)
-    demod.sync_candidate(rx_freq_candidate)
     decode = demod.demodulate_candidate(rx_freq_candidate, cyclestart_str = cyclestart_str)
     timers.timedLog("[Cycle decoder] Rx freq decoding done")
     if(onStart):
@@ -54,9 +53,7 @@ def get_decodes(onStart=None, onDecode=None, onOccupancy=None, onFinished=None):
     if(onOccupancy):
         occupancy, clear_freq = make_occupancy_array(candidates)
         onOccupancy(occupancy, clear_freq)
-    candidates = demod.deduplicate_candidate_freqs(candidates)
     for c in candidates:
-        demod.sync_candidate(c)
         decode = demod.demodulate_candidate(c, cyclestart_str)
         if(onDecode):
             onDecode(decode)
