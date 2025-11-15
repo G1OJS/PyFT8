@@ -97,7 +97,7 @@ class FT8Demodulator:
     # ======================================================
     # Demodulation
     # ======================================================
-    def demodulate_candidate_(self, candidate, cyclestart_str):
+    def demodulate_candidate(self, candidate, cyclestart_str):
         c = candidate
         c.llr = []
         tau = 0.5
@@ -120,11 +120,10 @@ class FT8Demodulator:
                 c.message = decode['decode_dict']['message'] 
             return decode
 
-    def demodulate_candidate(self, candidate, cyclestart_str):
+    def demodulate_candidate_(self, candidate, cyclestart_str):
         # 2-symbol block decoder
         c = candidate
         c.llr = []
-        tau = 0.5
         cspec = c.fine_grid_complex.reshape(FT8.num_symbols, self.hops_persymb, FT8.tones_persymb, self.fbins_pertone)
         power_per_tone_per_symbol = (np.abs(cspec)**2).mean(axis=(1,3))
         E0 = power_per_tone_per_symbol[0:78:2]                        
