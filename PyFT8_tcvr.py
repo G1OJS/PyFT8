@@ -207,3 +207,9 @@ def run():
     add_band_buttons()
 
 run()
+    
+#import PyFT8.timers as timers
+#config.data.update({"output_device":["CABLE", "Input"]})
+#audio.find_audio_devices()
+#QSO.cycle = timers.odd_even_now(from_click = True)
+#QSO.transmit("N1JFU EA6EE R-07")

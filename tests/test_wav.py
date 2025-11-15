@@ -8,6 +8,7 @@ import PyFT8.timers as timers
 import PyFT8.audio as audio
 
 wav_file = "210703_133430.wav"
+#wav_file = '251114_135115.wav'
 
 demod = FT8Demodulator()
 
@@ -38,8 +39,7 @@ from PyFT8.datagrids import Spectrum, Candidate
 from PyFT8.signaldefs import FT8
 
 #cands = [(18,282),(17,306),(13,346),(12,790),(7,1034),(17,1233)]
-decoded_candidates.append(Candidate(FT8, demod.spectrum, 17, 1233, 1000))
-decoded_candidates[0].message = "hi"
+#decoded_candidates.append(Candidate(FT8, demod.spectrum, 17, 1233, 1000))
 wf.update_main(candidates=decoded_candidates)
 wf.show_zoom(candidates=decoded_candidates)
 
