@@ -28,7 +28,7 @@ from PyFT8.comms_hub import config, send_to_ui_ws
 
 
 class FT8Demodulator:
-    def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=11, sigspec=FT8):
+    def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=5, sigspec=FT8):
         # ft8c.f90 uses 4 hops per symbol and 2.5Hz fbins (2.5 bins per tone)
         self.sample_rate = sample_rate
         self.fbins_pertone = fbins_pertone
@@ -41,18 +41,18 @@ class FT8Demodulator:
         
         # ---- Costas sync mask ----
         h, w = self.sigspec.costas_len * self.hops_persymb, self.sigspec.tones_persymb * self.fbins_pertone
-        self._csync = np.full((h, w), -1/7, np.float32)
+        self._csync = np.full((h, w), -1/(7*self.fbins_pertone), np.float32)
         for sym_idx, tone in enumerate(self.sigspec.costas):
             t0 = sym_idx * self.hops_persymb + int(self.hops_persymb/2)
             f0 = tone * self.fbins_pertone + int(self.fbins_pertone/2)
-            self._csync[t0, f0] = self.hops_persymb * self.fbins_pertone
+            self._csync[t0:t0+self.hops_persymb, f0] = self.fbins_pertone
                
     # ======================================================
     # Candidate search and sync
     # ======================================================
 
 
-    def find_candidates(self, topN=500):
+    def find_candidates(self, topN=500, score_thresh = 100000):
         nf = self._csync.shape[1]   # number of fine bins covering the 8 tones
         eps = 1e-12
         noise_ratio = 1.0 / nf
@@ -75,7 +75,7 @@ class FT8Demodulator:
         filtered_cands = []
         for c in candidates:
             self.sync_candidate(c)
-            if(c.score >982202):
+            if(c.score > score_thresh):
                 filtered_cands.append(c)
         filtered_cands.sort(key=lambda c: -c.score)
         candidates = filtered_cands[:topN]
@@ -88,9 +88,9 @@ class FT8Demodulator:
         f0 = c.bounds.f0_idx
         grid_strip = np.abs(self.spectrum.fine_grid_complex[:, f0:f0+nf])
         windows = np.stack([grid_strip[h:h+nt] for h in self.spectrum.sync_hops], axis=0)
-        scores = np.tensordot(windows, self._csync, axes=([1,2],[0,1]))
+        scores = np.tensordot(windows, self._csync, axes=([1,2],[0,1])) / self.hops_persymb
         best_idx = np.argmax(scores)
-        c.score = scores[best_idx]
+        c.score = scores[best_idx] 
         c.update_bounds(self.spectrum, FT8, self.spectrum.sync_hops[best_idx], f0)
 
 

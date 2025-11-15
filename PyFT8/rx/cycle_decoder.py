@@ -32,9 +32,10 @@ def cycle_decoder(onStart = None, onOccupancy = None, onDecode = log_decode, onF
         timers.timedLog("Cyclic demodulator passed audio for demodulating", silent = True)
 
 def get_decodes(onStart=None, onDecode=None, onOccupancy=None, onFinished=None):
-    demod = FT8Demodulator()
+    demod = FT8Demodulator(hops_persymb = 5)
     cyclestart_str = timers.cyclestart_str(0)
     demod.spectrum.load_audio(audio_in)
+    all_messages = set()
 
     # decode the Rx freq first
     timers.timedLog("[Cycle decoder] Get Rx freq decode")
@@ -45,18 +46,23 @@ def get_decodes(onStart=None, onDecode=None, onOccupancy=None, onFinished=None):
     if(onStart):
         onStart()
     if(decode):
+        all_messages.add(decode['decode_dict']['message'] )
         decode['decode_dict'].update({'rxfreq': True})
     if(onDecode):
         onDecode(decode)
+        
     
-    candidates = demod.find_candidates()
+    all_messages.add(decode)
+    candidates = demod.find_candidates(score_thresh = 600000)
     if(onOccupancy):
         occupancy, clear_freq = make_occupancy_array(candidates)
         onOccupancy(occupancy, clear_freq)
     for c in candidates:
         decode = demod.demodulate_candidate(c, cyclestart_str)
-        if(onDecode):
-            onDecode(decode)
+        if(decode):
+            if(onDecode and decode['decode_dict']['message'] not in all_messages):
+                all_messages.add(decode['decode_dict']['message'] )
+                onDecode(decode)
     timers.timedLog("[Cycle decoder] all decoding done")
     if(onFinished):
         onFinished()
