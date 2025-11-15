@@ -54,9 +54,10 @@ def get_decodes(onStart=None, onDecode=None, onOccupancy=None, onFinished=None):
     if(onOccupancy):
         occupancy, clear_freq = make_occupancy_array(candidates)
         onOccupancy(occupancy, clear_freq)
-    candidates = demod.deduplicate_candidate_freqs(candidates)
     for c in candidates:
         demod.sync_candidate(c)
+    candidates = demod.deduplicate_candidate_freqs(candidates)
+    for c in candidates:
         decode = demod.demodulate_candidate(c, cyclestart_str)
         if(onDecode):
             onDecode(decode)

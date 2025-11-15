@@ -40,7 +40,7 @@ class Spectrum:
         self.fine_grid_complex = np.zeros((self.nHops, self.nFreqs), dtype = np.complex64)
         for hop_idx in range(self.nHops):
             sample_idx = int(hop_idx * self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb))
-            aud = audio_in[sample_idx:sample_idx + self.FFT_len] * np.kaiser(self.FFT_len,14)
+            aud = audio_in[sample_idx:sample_idx + self.FFT_len] * np.kaiser(self.FFT_len, 14)
             self.fine_grid_complex[hop_idx,:] = np.fft.rfft(aud)[:self.nFreqs]
 
         self.bounds = Bounds(

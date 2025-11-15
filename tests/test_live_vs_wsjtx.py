@@ -56,7 +56,12 @@ def wsjtx_compare(wsjtx_file, PyFT8_file):
     best_snr = 50
     def linefreq(line): return int(line[43:48])
     wsjt_lines.sort(key = linefreq)
+    lastfreq = 0
     for i, l in enumerate(wsjt_lines):
+        freq = int(l[43:47])
+        if(freq - lastfreq < 50):
+            l = l[:43]+"!"+l[44:]
+        lastfreq = freq
         if(wsjt_patterns[i] in PyFT8_patterns):
             color.write(f" BOTH: {l}", "STRING")
         else:
