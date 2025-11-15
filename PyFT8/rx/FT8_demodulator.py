@@ -28,7 +28,7 @@ from PyFT8.comms_hub import config, send_to_ui_ws
 
 
 class FT8Demodulator:
-    def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=5, sigspec=FT8):
+    def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=2, sigspec=FT8):
         # ft8c.f90 uses 4 hops per symbol and 2.5Hz fbins (2.5 bins per tone)
         self.sample_rate = sample_rate
         self.fbins_pertone = fbins_pertone
