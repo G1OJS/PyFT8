@@ -202,7 +202,7 @@ def run():
     #config.data.update({"output_device":["CABLE", "Input"]})
     #audio.find_audio_devices()
     
-    threading.Thread(target=cycle_decoder, kwargs=({'onStart':onStart, 'onDecode':onDecode, 'onOccupancy':onOccupancy})).start()
+    threading.Thread(target=cycle_decoder, kwargs=({'onStart':onStart, 'onDecode':onDecode, 'onOccupancy':onOccupancy, 'score_thresh':1000000})).start()
     start_UI(process_UI_event)
     add_band_buttons()
 

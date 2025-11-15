@@ -15,7 +15,7 @@ def start_cycle_decoder(onStart = None, onDecode = None, onOccupancy = None, onF
 def log_decode(decode):
     timers.timedLog("No callback specified, logging: {decode}", logfile = "default_decodes.log", silent = True)
 
-def cycle_decoder(onStart = None, onOccupancy = None, onDecode = log_decode, onFinished = None, cycle_len = 15):
+def cycle_decoder(onStart = None, onOccupancy = None, onDecode = log_decode, onFinished = None, topN = 500, score_thresh = 500000, cycle_len = 15):
     global audio_in
     MAX_START_OFFSET_SECONDS = 0.5
     END_RECORD_GAP_SECONDS = 1
@@ -28,10 +28,10 @@ def cycle_decoder(onStart = None, onOccupancy = None, onDecode = log_decode, onF
             timers.timedLog(f"Arrived to start recording at {t_elapsed} into cycle, waiting for next", silent = True)
         timers.timedLog("Cyclic demodulator requesting audio", silent = True)
         audio_in = audio.read_from_soundcard(timers.CYCLE_LENGTH - END_RECORD_GAP_SECONDS)
-        threading.Thread(target=get_decodes, kwargs=({'onStart':onStart, 'onDecode':onDecode, 'onOccupancy':onOccupancy, 'onFinished':onFinished})).start()
+        threading.Thread(target=get_decodes, kwargs=({'onStart':onStart, 'onDecode':onDecode, 'onOccupancy':onOccupancy, 'onFinished':onFinished, 'topN':topN, 'score_thresh':score_thresh})).start()
         timers.timedLog("Cyclic demodulator passed audio for demodulating", silent = True)
 
-def get_decodes(onStart=None, onDecode=None, onOccupancy=None, onFinished=None):
+def get_decodes(onStart=None, onDecode=None, onOccupancy=None, onFinished=None, topN = 500, score_thresh = 500000):
     demod = FT8Demodulator(hops_persymb = 5)
     cyclestart_str = timers.cyclestart_str(0)
     demod.spectrum.load_audio(audio_in)
@@ -53,7 +53,7 @@ def get_decodes(onStart=None, onDecode=None, onOccupancy=None, onFinished=None):
         
     
     all_messages.add(decode)
-    candidates = demod.find_candidates(score_thresh = 600000)
+    candidates = demod.find_candidates(score_thresh = 600000, topN = topN)
     if(onOccupancy):
         occupancy, clear_freq = make_occupancy_array(candidates)
         onOccupancy(occupancy, clear_freq)
