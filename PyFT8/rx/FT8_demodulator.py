@@ -49,6 +49,10 @@ class FT8Demodulator:
             f0 = tone * self.fbins_pertone + self.fbins_pertone//2
             # positive region = all fine bins in symbol-backbone
             self._csync[sym_idx, f0 - self.fbins_pertone//2 : f0 + (self.fbins_pertone+1)//2] = 1.0
+
+        self._csync_lastsymb = np.full((w), -1/(7*w), np.float32)
+        f0 = self.sigspec.costas[-1]
+        self._csync_lastsymb[f0 - self.fbins_pertone//2 : f0 + (self.fbins_pertone+1)//2] = 1.0
      
     # ======================================================
     # Load audio
@@ -57,36 +61,37 @@ class FT8Demodulator:
         nSamps = len(audio_in)
         nHops_loaded = int(self.hops_persymb * self.sigspec.symbols_persec * (nSamps-self.spectrum.FFT_len)/self.sample_rate)
         self.spectrum.fine_grid_complex = np.zeros((nHops_loaded, self.spectrum.nFreqs), dtype = np.complex64)
+        self.samples_perhop = int(self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb) )                                   
         for hop_idx in range(nHops_loaded):
-            sample_idx = int(hop_idx * self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb))
+            sample_idx = int(hop_idx * self.samples_perhop)
             aud = audio_in[sample_idx:sample_idx + self.spectrum.FFT_len] * np.kaiser(self.spectrum.FFT_len, 14)
             self.spectrum.fine_grid_complex[hop_idx,:] = np.fft.rfft(aud)[:self.spectrum.nFreqs]
         self.spectrum.set_bounds(nHops_loaded)
-        self.abs_search1 = np.abs(self.spectrum.fine_grid_complex[self.spectrum.sync_hops,:])
+        self.fine_abs_search1 = np.abs(self.spectrum.fine_grid_complex[self.spectrum.sync_hops,:])
         
     # ======================================================
     # Candidate search and sync
     # ======================================================
     
+    # sliding window = convolution - do in other domain?
+
     def find_candidates(self, topN=750, score_thresh = 500000):
-        n = self.spectrum.nHops
-        test_hops = np.array([int(n*.25), int(n*.5), int(n*.75)])
-        fg = np.abs(self.spectrum.fine_grid_complex[test_hops,:])
         candidates = []
-        for f0_idx in range(self.spectrum.nFreqs - self.fbins_pertone):
-            strip = fg[:, f0_idx:f0_idx + self.fbins_pertone]  
-            row_sum = strip.sum(axis=1)   
-            row_max = strip.max(axis=1) 
-            ratio = row_max / (row_sum + eps)
-            contrib = row_sum * np.maximum(ratio - 1/self.fbins_pertone, 0.0)
-            score = contrib.sum()
-            candidates.append(Candidate(FT8, self.spectrum, 0, f0_idx, score))
+        #1 - search using last timewise element of Costas template
+        #    along last possible timewise row of grid for maximally-delayed candidate
+        # sort in order of score
+        nfBins_cand = self.sigspec.tones_persymb * self.fbins_pertone
+        row = self.fine_abs_search1[-1,:] 
+        for f0_idx in range(self.spectrum.nFreqs - nfBins_cand -10):
+            score = np.sum(row[f0_idx:f0_idx+ nfBins_cand] * self._csync_lastsymb)
+            if(score > score_thresh/(self.hops_persymb *7)):
+                candidates.append(Candidate(FT8, self.spectrum, 0, f0_idx, score))
         candidates.sort(key=lambda c: -c.score)
-        candidates = candidates[:topN]
         for i, c in enumerate(candidates):
             c.sort_idx_finder=i
-        timers.timedLog(f"Initial search completed")
+        timers.timedLog(f"Initial search completed with {len(candidates)} candidates")
 
+        #2 - sync first Costas block to Costas template and discard low scores
         filtered_cands = []
         for c in candidates:
             self.sync_candidate(c)
@@ -96,20 +101,19 @@ class FT8Demodulator:
         candidates = filtered_cands
         for i, c in enumerate(candidates):
             c.sort_idx_sync=i
-        return candidates
-
+        return candidates[:topN]
 
     def sync_candidate(self, c):
         hps = self.spectrum.hops_persymb
         nsym, nfbins = self._csync.shape
         hop_idxs =  np.arange(nsym) * hps + hps//2
         f0 = c.bounds.f0_idx
-        strip = np.abs(self.abs_search1[:, f0:f0 + nfbins])
+        strip = np.abs(self.fine_abs_search1[:, f0:f0 + nfbins])
         best_score = -1e30
         best_h0 = 0
         for h0 in self.spectrum.sync_hop0s:
             window = strip[h0 + hop_idxs]
-            score = np.tensordot(window, self._csync)
+            score = np.sum(window * self._csync) 
             if score > best_score:
                 best_score = score
                 best_h0 = h0
@@ -127,7 +131,8 @@ class FT8Demodulator:
         iHop = 0
         cand_fine_grid_complex = self.spectrum.fine_grid_complex [ c.bounds.t0_idx : c.bounds.tn_idx, c.bounds.f0_idx : c.bounds.fn_idx]
         cspec_4d = cand_fine_grid_complex.reshape(FT8.num_symbols, self.hops_persymb, FT8.tones_persymb, self.fbins_pertone)
-        while not decode and iHop < self.hops_persymb:
+        max_hop = np.min([3,self.hops_persymb])
+        while not decode and iHop < max_hop:
             c.llr = []
             cspec = 0.2*cspec_4d[:,iHop,:,0]+ cspec_4d[:,iHop,:,1] + 0.2*cspec_4d[:,iHop,:,2]
             power_per_tone_per_symbol = (np.abs(cspec)**2)
