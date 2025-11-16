@@ -47,7 +47,7 @@ def timedLog(msg, silent = False, logfile = 'PyFT8.log'):
         if (not silent):
             print(f"Log to {logfile}: {output_str}")
         f.write(f"{output_str}\n")
-        last_timedLog = t
+        if(not silent): last_timedLog = t
 
 def odd_even_now(from_click = False, swap = False):
     t_grace = 0 if(not from_click) else CYCLE_LENGTH/2
