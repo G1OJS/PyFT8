@@ -96,6 +96,8 @@ class Config:
         parser.read("PyFT8.ini")
         self.myCall = parser.get("myStation","myCall")
         self.myGrid = parser.get("myStation","myGrid")
+        self.wsjtx_all_file = parser.get("paths","wsjtx_all_file")
+        self.decoder = parser.get("options","decoder")
         for band_name, band_freq in parser.items("bands"):
             self.bands.append({"band_name":band_name, "band_freq":band_freq})
 

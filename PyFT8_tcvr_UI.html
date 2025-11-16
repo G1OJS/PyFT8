@@ -94,7 +94,7 @@
 			if(t_cyc > 1.5 && t_cyc <12.6) {
 				for (const el of document.querySelectorAll(".transmitting_item")) {el.classList.remove("reply-highlight"); el.classList.add("reply-highlight_faded"); }
 			} 
-			if(t_cyc >=14) {document.getElementById('all_decodes').innerHTML=""}
+			//if(t_cyc >=14) {document.getElementById('all_decodes').innerHTML=""}
 		}
 		function add_decode_row(decode_dict, grid_id) {
 			let dd = decode_dict;
@@ -111,13 +111,16 @@
 				if(t_cyc < 1.5) {row.classList.add("reply-highlight"); }
 				row.classList.add("transmitting_item");
 			}
-			const fields = [dd.cyclestart_str.split('_')[1], dd.snr, dd.freq, dd.dt, dd.call_a, dd.call_b, dd.grid_rpt,''];
+			const fields = [dd.cyclestart_str.split('_')[1], dd.snr, dd.freq, '', dd.call_a, dd.call_b, dd.grid_rpt,''];
 			fields.forEach((field, idx) => {
 				const cell_div = document.createElement("div");
 				cell_div.textContent = field;
 				cell_div.className='grid_cell';
 				row.appendChild(cell_div);
-			});
+			}); dd.dt,
+
+			grid.scrollTop = grid.scrollHeight;
+
 			row.addEventListener("click", e => {
 				update_freq_markers(rxFreq = dd.freq);
 				websocket.send(JSON.stringify({	
@@ -144,10 +147,11 @@
 			if(dd.topic == 'set_txfreq') 		{txFreq = parseInt(dd.freq); update_freq_markers();}
 			//if(dd.topic == 'clear_decodes')		{document.getElementById('all_decodes').innerHTML=""}
 			if(dd.topic == "freq_occ_array") 	{update_spectrum(dd.histogram)}
-			if(dd.topic == 'decode_dict' || dd.topic == 'msg')		{
+			if(dd.topic == 'decode_dict')		{
 				if (dd.priority) {add_decode_row(dd, 'priority_decodes')}
 				add_decode_row(dd, 'all_decodes')
 			}
+			if(dd.topic == 'msg') {add_decode_row(dd, 'priority_decodes')}
 		}
 		
 		function add_band_button(band_name, band_freq){

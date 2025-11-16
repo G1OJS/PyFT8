@@ -2,6 +2,8 @@ import sys
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 
 from PyFT8.rx.cycle_decoder import start_cycle_decoder
+from PyFT8.rx.wsjtx_all_tailer import start_wsjtx_tailer
+
 from PyFT8.comms_hub import config, start_UI
 import PyFT8.audio as audio
 import threading
@@ -137,7 +139,7 @@ def onDecode(decode):
     if(not decode):
         return
     decode_dict = decode['decode_dict']
-    if(decode_dict['call_a'] == config.myCall or decode_dict['call_b'] == config.myCall or 'rxfreq' in decode_dict):
+    if(decode_dict['call_a'] == config.myCall or decode_dict['call_b'] == config.myCall or 'rxfreq' in decode_dict or decode_dict['freq']==config.rxfreq or decode_dict['call_b']==QSO.their_call):
         decode_dict.update({'priority':True})
     send_to_ui_ws("decode_dict", decode_dict)
     if (decode_dict['call_a'] == config.myCall and decode_dict['call_b'] == QSO.their_call):
@@ -185,7 +187,8 @@ def add_band_buttons():
         send_to_ui_ws("add_band_button", {'band_name':band['band_name'], 'band_freq':band['band_freq']})
 
 def run():        
-    start_cycle_decoder(onDecode, onOccupancy, 1000000)
+    start_cycle_decoder(None if config.decoder == 'wsjtx' else onDecode, onOccupancy, 500000)
+    if(config.decoder == 'wsjtx') : start_wsjtx_tailer(onDecode)
     start_UI("PyFT8_tcvr_UI.html", process_UI_event)
     add_band_buttons()
 

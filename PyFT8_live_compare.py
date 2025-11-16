@@ -2,34 +2,18 @@ import sys
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 
 from PyFT8.rx.cycle_decoder import start_cycle_decoder
+from PyFT8.rx.wsjtx_all_tailer import start_wsjtx_tailer
 from PyFT8.comms_hub import config, start_UI, send_to_ui_ws
 import PyFT8.audio as audio
 import PyFT8.timers as timers
 import threading
 from PyFT8.rig.IcomCIV import IcomCIV
+
 rig = IcomCIV()
 
 global PyFT8_has_decodes, wsjtx_has_decodes
 PyFT8_has_decodes = False
 wsjtx_has_decodes = False
-
-def wsjtx_tailer():
-    def follow(path):
-        with open(path, "r") as f:
-            f.seek(0, 2)
-            while True:
-                line = f.readline()
-                if not line:
-                    timers.sleep(0.2)
-                    continue
-                yield line.strip()
-    for line in follow(r"C:\Users\drala\AppData\Local\WSJT-X\ALL.txt"):
-        ls = line.split()
-       # decode_dict = {'cyclestart_str':ls[0].split("_")[1],'call_a':ls[7], 'call_b':ls[8]}
-        decode_dict = {'cyclestart_str':ls[0],'call_a':ls[7], 'call_b':ls[8]}
-        if(len(ls)>9): decode_dict.update({'grid_rpt':ls[9]})
-        decode = {'decode_dict':decode_dict,'all_txt_line':line}
-        on_wsjtx_decode(decode)
 
 def on_wsjtx_decode(decode):
     global wsjtx_has_decodes
@@ -65,7 +49,7 @@ def add_band_buttons():
         send_to_ui_ws("add_band_button", {'band_name':band['band_name'], 'band_freq':band['band_freq']})
 
 def run():
-    threading.Thread(target=wsjtx_tailer).start()
+    start_wsjtx_tailer(on_wsjtx_decode)
     start_cycle_decoder(onDecode, None, 800000)
     start_UI("PyFT8_live_compare.html", process_UI_event)
     add_band_buttons()

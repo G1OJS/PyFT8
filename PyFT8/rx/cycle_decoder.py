@@ -41,22 +41,26 @@ def _get_decodes(audio_in):
     duplicate_filter = set()
 
     # decode the Rx freq first
-    timers.timedLog("[Cycle decoder] Get Rx freq decode")
-    f0_idx = int(config.rxfreq / demod.spectrum.df)
-    rx_freq_candidate = Candidate(demod.sigspec, demod.spectrum, 0, f0_idx, -50)
-    decode = demod.demodulate_candidate(rx_freq_candidate, cyclestart_str)
-    timers.timedLog("[Cycle decoder] Rx freq decoding done")
-    if(decode):
-        duplicate_filter.add(decode['decode_dict']['message'] )
-        decode['decode_dict'].update({'rxfreq': True})
-        if(onDecode):
-            onDecode(decode)
+    if(onDecode):
+        timers.timedLog("[Cycle decoder] Get Rx freq decode")
+        f0_idx = int(config.rxfreq / demod.spectrum.df)
+        rx_freq_candidate = Candidate(demod.sigspec, demod.spectrum, 0, f0_idx, -50)
+        decode = demod.demodulate_candidate(rx_freq_candidate, cyclestart_str)
+        timers.timedLog("[Cycle decoder] Rx freq decoding done")
+        if(decode):
+            duplicate_filter.add(decode['decode_dict']['message'] )
+            decode['decode_dict'].update({'rxfreq': True})
+            if(onDecode):
+                onDecode(decode)
+            
     candidates = demod.find_candidates(score_thresh = score_thresh, topN = topN)
     if(onOccupancy):
         occupancy, clear_freq = make_occupancy_array(candidates)
         onOccupancy(occupancy, clear_freq)
-    for c in candidates:
-        threading.Thread(target=decode_candidate, kwargs = ({'spectrum':demod.spectrum,'c':c,'cyclestart_str':cyclestart_str})).start()
+
+    if(onDecode):
+        for c in candidates:
+            threading.Thread(target=decode_candidate, kwargs = ({'spectrum':demod.spectrum,'c':c,'cyclestart_str':cyclestart_str})).start()
 
 def decode_candidate(spectrum, c, cyclestart_str):
     global duplicate_filter
