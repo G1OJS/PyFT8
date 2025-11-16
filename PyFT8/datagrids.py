@@ -30,6 +30,7 @@ class Spectrum:
         self.fbins_pertone = int(fbins_pertone)
         self.hops_persymb = int(hops_persymb)
         self.nHops = None
+        self.sync_hop0s = None
         self.FFT_len = int(self.fbins_pertone * self.sample_rate // self.sigspec.symbols_persec)
         self.nFreqs   = self.FFT_len // 2 + 1
         self.dt = 1 / (self.sigspec.symbols_persec * self.hops_persymb)
@@ -43,9 +44,12 @@ class Spectrum:
             0, (self.nHops+1)*self.dt,
             0, (self.nFreqs+1)*self.df
         )
-        sync_headroom = self.nHops - self.sigspec.num_symbols*self.hops_persymb
+        sync_template_nHops = self.sigspec.num_symbols*self.hops_persymb
+        sync_headroom = self.nHops - sync_template_nHops
         needed_headroom = int((self.hops_persymb * 1.5) / 0.16)
-        self.sync_hops = range( min(sync_headroom, needed_headroom ))
+        headroom = min(sync_headroom, needed_headroom)
+        self.sync_hop0s = range(headroom)
+        self.sync_hops = range(headroom + sync_template_nHops)
 
 # ============================================================
 # Candidate

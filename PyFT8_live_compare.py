@@ -65,7 +65,7 @@ def add_band_buttons():
 
 def run():
     threading.Thread(target=wsjtx_tailer).start()
-    threading.Thread(target=cycle_decoder, kwargs=({'onDecode':onDecode, 'score_thresh':1000000})).start()
+    threading.Thread(target=cycle_decoder, kwargs=({'onDecode':onDecode, 'score_thresh':900000})).start()
     start_UI("PyFT8_live_compare.html", process_UI_event)
     add_band_buttons()
 

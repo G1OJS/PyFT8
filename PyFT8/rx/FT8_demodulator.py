@@ -62,12 +62,13 @@ class FT8Demodulator:
             aud = audio_in[sample_idx:sample_idx + self.spectrum.FFT_len] * np.kaiser(self.spectrum.FFT_len, 14)
             self.spectrum.fine_grid_complex[hop_idx,:] = np.fft.rfft(aud)[:self.spectrum.nFreqs]
         self.spectrum.set_bounds(nHops_loaded)
+        self.abs_search1 = np.abs(self.spectrum.fine_grid_complex[self.spectrum.sync_hops,:])
         
     # ======================================================
     # Candidate search and sync
     # ======================================================
     
-    def find_candidates(self, topN=750, score_thresh = 100000):
+    def find_candidates(self, topN=750, score_thresh = 500000):
         n = self.spectrum.nHops
         test_hops = np.array([int(n*.25), int(n*.5), int(n*.75)])
         fg = np.abs(self.spectrum.fine_grid_complex[test_hops,:])
@@ -103,10 +104,10 @@ class FT8Demodulator:
         nsym, nfbins = self._csync.shape
         hop_idxs =  np.arange(nsym) * hps + hps//2
         f0 = c.bounds.f0_idx
-        strip = np.abs(self.spectrum.fine_grid_complex[:, f0:f0 + nfbins])
+        strip = np.abs(self.abs_search1[:, f0:f0 + nfbins])
         best_score = -1e30
         best_h0 = 0
-        for h0 in self.spectrum.sync_hops:
+        for h0 in self.spectrum.sync_hop0s:
             window = strip[h0 + hop_idxs]
             score = np.tensordot(window, self._csync)
             if score > best_score:
