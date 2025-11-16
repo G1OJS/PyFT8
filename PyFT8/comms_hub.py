@@ -5,10 +5,10 @@ import webbrowser
 import threading
 import PyFT8.timers as timers
 
-def start_UI(UI_callback):
+def start_UI(UI_filename, UI_callback):
     threading.Thread(target=start_UI_page_server, daemon=True).start()
     threading.Thread(target=start_UI_ws_server, args=(UI_callback,)).start()
-    webbrowser.open("http://localhost:8080/UI.html")
+    webbrowser.open("http://localhost:8080/" + UI_filename)
 
 #===================================================================================
 # HTTP server for UI page

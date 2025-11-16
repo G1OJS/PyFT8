@@ -94,6 +94,7 @@
 			if(t_cyc > 1.5 && t_cyc <12.6) {
 				for (const el of document.querySelectorAll(".transmitting_item")) {el.classList.remove("reply-highlight"); el.classList.add("reply-highlight_faded"); }
 			} 
+			if(t_cyc >=14) {document.getElementById('all_decodes').innerHTML=""}
 		}
 		function add_decode_row(decode_dict, grid_id) {
 			let dd = decode_dict;
@@ -141,7 +142,7 @@
 			if(dd.topic == 'add_band_button')   {add_band_button(dd.band_name, dd.band_freq)}
 			if(dd.topic == 'set_rxfreq') 		{rxFreq = parseInt(dd.freq); update_freq_markers();}
 			if(dd.topic == 'set_txfreq') 		{txFreq = parseInt(dd.freq); update_freq_markers();}
-			if(dd.topic == 'clear_decodes')		{document.getElementById('all_decodes').innerHTML=""}
+			//if(dd.topic == 'clear_decodes')		{document.getElementById('all_decodes').innerHTML=""}
 			if(dd.topic == "freq_occ_array") 	{update_spectrum(dd.histogram)}
 			if(dd.topic == 'decode_dict' || dd.topic == 'msg')		{
 				if (dd.priority) {add_decode_row(dd, 'priority_decodes')}

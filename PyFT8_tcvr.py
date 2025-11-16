@@ -95,7 +95,7 @@ class QSO:
             if(t_elapsed > 2 or t_elapsed <0):
                 timers.timedLog(f"[QSO.transmit] Waiting for {self.cycle} cycle start ({t_remaining:4.1f}s)")
                 timers.sleep(t_remaining)
-        self.decode_to_priority_ui(self.tx_msg)
+        self.tx_ogm_to_priority_ui(self.tx_msg)
         timers.sleep(0.1)
         threading.Thread(target = self.do_tx, args=(audio_data,)).start()
             
@@ -107,15 +107,15 @@ class QSO:
         rig.setPTTOFF()
         timers.timedLog(f"[QSO.transmit] PTT OFF")
 
-    def decode_to_priority_ui(self, msg):
+    def tx_ogm_to_priority_ui(self, msg):
         from PyFT8.comms_hub import config, send_to_ui_ws
         import PyFT8.timers as timers
         t_elapsed, t_remaining = timers.time_in_cycle()
         msg_parts = msg.split()
-        decode_to_priority_ui_dict = {'cyclestart_str':f"X_{timers.tnow_str()}", 'priority':True,
+        tx_ogm_dict = {'cyclestart_str':f"X_{timers.tnow_str()}", 'priority':True,
                     'snr':'+00', 'freq':str(int(config.txfreq)), 'dt':f"{t_elapsed:3.1f}",
                     'call_a':msg_parts[0], 'call_b':msg_parts[1], 'grid_rpt':msg_parts[2]}
-        send_to_ui_ws("msg", decode_to_priority_ui_dict)
+        send_to_ui_ws("msg", tx_ogm_dict)
 
     def log(self):
         import PyFT8.logging as logging
@@ -130,13 +130,10 @@ class QSO:
         logging.append_qso("PyFT8.adi", log_dict)
 
 QSO = QSO()
-decode_filter = False
 
 def onStart():
     from PyFT8.comms_hub import send_to_ui_ws
-    global decode_filter
     send_to_ui_ws("clear_decodes", {})
-    decode_filter = []
 
 def onDecode(decode):
     import PyFT8.timers as timers
@@ -144,11 +141,6 @@ def onDecode(decode):
     if(not decode):
         return
     decode_dict = decode['decode_dict']
-    key = f"{decode_dict['call_a']}{decode_dict['call_b']}"
-    if(key in decode_filter):
-        timers.timedLog(f"[QSO] Reject duplicate decode {decode_dict}")
-        return
-    decode_filter.append(key)
     if(decode_dict['call_a'] == config.myCall or decode_dict['call_b'] == config.myCall or 'rxfreq' in decode_dict):
         decode_dict.update({'priority':True})
     send_to_ui_ws("decode_dict", decode_dict)

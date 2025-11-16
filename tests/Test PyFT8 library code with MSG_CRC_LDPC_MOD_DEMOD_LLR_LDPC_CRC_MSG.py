@@ -73,7 +73,6 @@ for symb_idx, tone_idx in enumerate(symbols):
 timers.timedLog(f"Start to Load audio from {wav_file}")
 
 candidates = demod.find_candidates()
-candidates = demod.deduplicate_candidate_freqs(candidates)
 decoded_candidates = []
 for c in candidates:
     demod.sync_candidate(c)
@@ -87,7 +86,7 @@ wf.update_main(candidates=decoded_candidates)
 wf.show_zoom(candidates=decoded_candidates, phase = False, llr_overlay=False)
 wf.show_zoom(candidates=decoded_candidates, phase = True, llr_overlay=False)
 
-print(f"Payload symbols demodulated: {''.join([str(int(s)) for s in candidates[0].payload_symbols])}")
+#print(f"Payload symbols demodulated: {''.join([str(int(s)) for s in candidates[0].payload_symbols])}")
 print("bits expected / bits decoded")
 print("11100001111111000101001101010111000100000011110100001111000111001010001010001")
 print(''.join(str(int(b)) for b in candidates[0].payload_bits))

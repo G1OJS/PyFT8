@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<title>PyFT8 vs WSJT-x</title>
+	
+	<style>
+		:root {
+			--page-bg:#111; 	 --panel-bg:#555;
+			--table-color:black; --table-bg:#666;    --table-hover-bg:#333;
+			--even-bg: #8b91ad;  --odd-bg: #ad8b8b;
+			--cq-bg-hl:#93bf95;  --cq-bg:#405441;
+			--to-me-bg:#ff4d4d;  --by-me-bg:#e6e600;
+		}
+
+		body { font-family: sans-serif; background:var(--page-bg); color:#eee; margin:1em; }
+		#App {display:inline-block;  align-content: start; width:fit-content; background:var(--panel-bg); padding:1em; height:90vh;}
+		#clock {display: block; font-size: 1.17em; font-weight: bold;}
+		.grid_title {display: block; font-size: 1.17em; font-weight: bold; margin-left:0.5em}
+										
+		#DecodePanelsContainer 
+				{display:grid; grid-template-columns: repeat(2, max-content); 
+				background:var(--panel-bg); width:max-content;}	
+
+		.decodes_grid {display:grid; grid-template-columns: repeat( 7, max-content) auto; grid-auto-rows: min-content; 
+					   background:var(--table-bg); color:#8cf; margin:0.5em; height:25em; min-width:25em; 
+					   align-content: start; overflow-y:scroll;}	
+
+		.grid_row {display:contents; }
+		.grid_row.odd > div {background-color: var(--odd-bg);}
+		.grid_row.even > div{ background-color: var(--even-bg);}	
+		.grid_cell {padding:1px 5px 1px 5px; font-weight:600; color:var(--table-color);}
+	</style>
+	
+	<script>
+		let myCall = "G1OJS";
+		let spectrum_width = 0;
+		let txFreq = null;
+		let rxFreq = null;
+		function update_spectrum(spectrum_power) {
+			const spectrum = document.getElementById("Spectrum");
+			spectrum.innerHTML = "";
+			spectrum_power.forEach(v => {
+				const cell = document.createElement("div");
+				const brightness = Math.round(v * 255);
+				cell.style.background = `rgb(${brightness},${brightness/2},0)`;
+				spectrum.appendChild(cell);
+			});
+			spectrum_width = spectrum.offsetWidth;
+			update_freq_markers();
+		}
+		function update_freq_markers() {
+			const spectrum = document.getElementById("Spectrum");
+			const txMarker = document.querySelector(".txMarker");
+			const rxMarker = document.querySelector(".rxMarker");
+			const left = (document.getElementById("SpectrumContainer").clientWidth-spectrum_width)/2;
+			const toPx = f => left + ((f - 0) / (3500 - 0)) * spectrum_width;
+			if(txFreq) txMarker.style.left = `${toPx(txFreq)}px`;
+			if(rxFreq) rxMarker.style.left = `${toPx(rxFreq)}px`;
+			for (const tick of document.querySelectorAll('.tickMarker')){
+				let f = parseInt(tick.dataset.freq);
+				tick.style.left = `${toPx(f)}px`;
+			}
+		}
+		function update_clock() {
+			const t = new Date;
+			const utc = ("0" + t.getUTCHours()).slice(-2) + ":" + ("0" + t.getUTCMinutes()).slice(-2) + ":" + ("0" + t.getUTCSeconds()).slice(-2);
+			document.getElementById("clock").innerHTML = utc + " UTC";
+		}
+
+		function add_decode_row(decode_dict, grid_id) {
+			let dd = decode_dict;
+			let grid = document.getElementById(grid_id)
+			let row = grid.appendChild(document.createElement("div"));
+			row.className='grid_row';
+			let cs = dd.cyclestart_str;
+			if (cs.charAt(cs.length-1) == '5'){row.classList.add('odd')} else {row.classList.add('even')}
+			const fields = [dd.cyclestart_str.split('_')[1], dd.snr, dd.freq, dd.dt, dd.call_a, dd.call_b, dd.grid_rpt,''];
+			fields.forEach((field, idx) => {
+				const cell_div = document.createElement("div");
+				cell_div.textContent = field;
+				cell_div.className='grid_cell';
+				row.appendChild(cell_div);
+			});
+			grid.scrollTop = grid.scrollHeight;
+		}
+		
+		function handle_button_click(action){
+			console.log(action);
+			websocket.send(JSON.stringify({topic: "ui." + action}));
+		}
+				
+		const websocket = new WebSocket("ws://localhost:5678/");
+		websocket.onmessage = (event) => {
+			const dd = JSON.parse(event.data)
+			if(!dd) return;
+			if(dd.topic == 'add_band_button')   {add_band_button(dd.band_name, dd.band_freq)}
+			if(dd.topic == 'decode_dict')		{
+				if (dd.wsjtx) {
+					add_decode_row(dd, 'wsjtx_decodes');
+					n_wsjtx_decodes.innerText = 1+parseInt(n_wsjtx_decodes.innerText)
+				} else {
+					add_decode_row(dd, 'PyFT8_decodes');
+					n_PyFT8_decodes.innerText = 1+parseInt(n_PyFT8_decodes.innerText)
+				}
+				update_percent();
+			}
+		}
+		
+		function update_percent(){
+			let w = parseInt(n_wsjtx_decodes.innerText)
+			let p = parseInt(n_PyFT8_decodes.innerText)
+			if(w>0){
+				let pc = Math.round(100*p/w);
+				pc_PyFT8_decodes.innerText = pc + '%';
+			}
+		}
+		
+		function add_band_button(band_name, band_freq){
+			let parentEl = document.getElementById('buttons');
+			let btn = parentEl.appendChild(document.createElement("button"));
+			btn.className = 'button';
+			btn.innerText = band_name;
+			btn.dataset.action = `set-band-${band_name}-${band_freq}`;
+			btn.addEventListener("click", (event) => { handle_button_click(event.target.dataset.action)});
+		}
+		
+		document.addEventListener("DOMContentLoaded", (event) => { 
+			document.getElementById('buttons').addEventListener("click", (event) => { 
+				handle_button_click(event.target.dataset.action)
+			});
+			n_PyFT8_decodes = document.getElementById('n_PyFT8_decodes');
+			pc_PyFT8_decodes = document.getElementById('pc_PyFT8_decodes');
+			n_wsjtx_decodes = document.getElementById('n_wsjtx_decodes');
+			PyFT8_best_snr = document.getElementById('PyFT8_best_snr');
+		});
+		
+		setInterval(update_clock, 1000);
+	</script>
+	
+</head>
+
+<body>
+	<div id = 'App'>
+		<div id='clock'></div>
+		<div id = 'DecodePanelsContainer'>
+			<div class = 'DecodePanel'>
+				<div class='grid_title'>PyFT8 Decodes <span id = 'n_PyFT8_decodes'>0</span> (<span id = 'pc_PyFT8_decodes'>0%</span>) </div>
+				<div id="PyFT8_decodes" class = "decodes_grid"></div>
+			</div>
+			<div class = 'DecodePanel'>
+				<div class='grid_title'>WSJT-X Decodes <span id = 'n_wsjtx_decodes'>0</span></div>
+				<div id="wsjtx_decodes"  class = "decodes_grid"></div>
+			</div>
+		</div>
+		<div id = 'buttons'>
+		</div>
+		<div id = 'stats'>
+			<span>PyFT8 best snr:</span><span id = 'PyFT8_best_snr'>not coded</span>
+		</div>
+	</div>
+	
+</body>
+
+
+</html>
