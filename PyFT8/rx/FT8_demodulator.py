@@ -84,7 +84,7 @@ class FT8Demodulator:
         row = self.fine_abs_search1[-1,:] 
         for f0_idx in range(self.spectrum.nFreqs - nfBins_cand -10):
             score = np.sum(row[f0_idx:f0_idx+ nfBins_cand] * self._csync_lastsymb)
-            if(score > score_thresh*.04):
+            if(score > score_thresh*.08):
                 candidates.append(Candidate(FT8, self.spectrum, 0, f0_idx, score))
         candidates.sort(key=lambda c: -c.score)
         for i, c in enumerate(candidates):
@@ -102,6 +102,8 @@ class FT8Demodulator:
         candidates = filtered_cands
         for i, c in enumerate(candidates):
             c.sort_idx_sync=i
+        l = len(candidates)
+        timers.timedLog(f"Sync completed with {l} candidates")
         return candidates[:topN]
 
     def _sync_candidate(self, c):
@@ -157,7 +159,8 @@ class FT8Demodulator:
                 c.snr = np.clip(c.snr, -24,24).item()
                 decode = FT8_decode(c, cyclestart_str)
                 if(decode):
-                    c.message = decode['decode_dict']['message'] 
+                    c.message = decode['decode_dict']['message']
+                    timers.timedLog(f"Decoded {c.message}")
                 return decode
             iHop +=1
     

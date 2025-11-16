@@ -6,8 +6,6 @@ from PyFT8.comms_hub import config
 from PyFT8.datagrids import Candidate
 from PyFT8.rx.FT8_demodulator import FT8Demodulator
 from PyFT8.rx.waterfall import Waterfall
-global audio_in
-audio_in = None
 
 global demod, duplicate_filter, onDecode, onOccupancy, topN, score_thresh, cycle_len
 cycle_len = 15
@@ -33,9 +31,9 @@ def cycle_decoder():
         timers.timedLog("Cyclic demodulator requesting audio", silent = True)
         audio_in = audio.read_from_soundcard(timers.CYCLE_LENGTH - END_RECORD_GAP_SECONDS)
         timers.timedLog("Cyclic demodulator passed audio for demodulating", silent = True)
-        threading.Thread(target=_get_decodes).start()
+        threading.Thread(target=_get_decodes, kwargs=({'audio_in':audio_in})).start()
     
-def _get_decodes():
+def _get_decodes(audio_in):
     global demod, duplicate_filter
     demod = FT8Demodulator(hops_persymb = 5)
     cyclestart_str = timers.cyclestart_str(0)
