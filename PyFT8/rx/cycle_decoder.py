@@ -15,7 +15,7 @@ def start_cycle_decoder(onStart = None, onDecode = None, onOccupancy = None, onF
 def log_decode(decode):
     timers.timedLog("No callback specified, logging: {decode}", logfile = "default_decodes.log", silent = True)
 
-def cycle_decoder(onStart = None, onOccupancy = None, onDecode = log_decode, onFinished = None, topN = 500, score_thresh = 1000000, cycle_len = 15):
+def cycle_decoder(onStart = None, onOccupancy = None, onDecode = log_decode, onFinished = None, topN = 500, score_thresh = None, cycle_len = 15):
     global audio_in
     MAX_START_OFFSET_SECONDS = 0.5
     END_RECORD_GAP_SECONDS = 1
