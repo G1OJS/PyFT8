@@ -75,7 +75,7 @@ class FT8Demodulator:
     
     # sliding window = convolution - do in other domain?
 
-    def find_candidates(self, topN=750, score_thresh = 500000):
+    def find_candidates(self, topN=750, score_thresh = 500000, silent = False):
         candidates = []
         #1 - search using last timewise element of Costas template
         #    along last possible timewise row of grid for maximally-delayed candidate
@@ -84,13 +84,13 @@ class FT8Demodulator:
         row = self.fine_abs_search1[-1,:] 
         for f0_idx in range(self.spectrum.nFreqs - nfBins_cand -10):
             score = np.sum(row[f0_idx:f0_idx+ nfBins_cand] * self._csync_lastsymb)
-            if(score > score_thresh*.08):
+            if(score > score_thresh*.04):
                 candidates.append(Candidate(FT8, self.spectrum, 0, f0_idx, score))
         candidates.sort(key=lambda c: -c.score)
         for i, c in enumerate(candidates):
             c.score_init = c.score
             c.sort_idx_finder=i
-        timers.timedLog(f"Initial search completed with {len(candidates)} candidates")
+        timers.timedLog(f"Initial search completed with {len(candidates)} candidates", silent = silent)
 
         #2 - sync first Costas block to Costas template and discard low scores
         filtered_cands = []
@@ -103,7 +103,7 @@ class FT8Demodulator:
         for i, c in enumerate(candidates):
             c.sort_idx_sync=i
         l = len(candidates)
-        timers.timedLog(f"Sync completed with {l} candidates")
+        timers.timedLog(f"Sync completed with {l} candidates", silent = silent)
         return candidates[:topN]
 
     def _sync_candidate(self, c):
@@ -127,7 +127,7 @@ class FT8Demodulator:
     # Demodulation
     # ======================================================
 
-    def demodulate_candidate(self, candidate, cyclestart_str):
+    def demodulate_candidate(self, candidate, cyclestart_str, silent = False):
         # 2-symbol block decoder
         c = candidate
         decode = False
@@ -160,7 +160,7 @@ class FT8Demodulator:
                 decode = FT8_decode(c, cyclestart_str)
                 if(decode):
                     c.message = decode['decode_dict']['message']
-                    timers.timedLog(f"Decoded {c.message}")
+                    timers.timedLog(f"Decoded {c.message}", silent = silent)
                 return decode
             iHop +=1
     
