@@ -54,9 +54,9 @@ print(f"Channel symbols modulated:   {''.join([str(s) for s in symbols])}")
 
 
 # load audio early as we want to overwrite some of it
-wav_file='210703_133430.wav'
+wav_file='251114_135115.wav'
 audio_in = audio.read_wav_file(wav_file)
-demod.spectrum.load_audio(audio_in)
+demod.load_audio(audio_in)
 
 # 'modulate' onto channel grid
 m = np.max(abs(demod.spectrum.fine_grid_complex))  * rel_strength

@@ -34,7 +34,7 @@ def cycle_decoder(onStart = None, onOccupancy = None, onDecode = log_decode, onF
 def get_decodes(onStart=None, onDecode=None, onOccupancy=None, onFinished=None, topN=None, score_thresh=None):
     demod = FT8Demodulator(hops_persymb = 5)
     cyclestart_str = timers.cyclestart_str(0)
-    demod.spectrum.load_audio(audio_in)
+    demod.load_audio(audio_in)
     duplicate_filter = set()
 
     # decode the Rx freq first

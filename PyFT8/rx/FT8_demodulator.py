@@ -26,7 +26,8 @@ import PyFT8.FT8_crc as crc
 import PyFT8.timers as timers
 from PyFT8.comms_hub import config, send_to_ui_ws
 
-
+eps = 1e-12
+        
 class FT8Demodulator:
     def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=5, sigspec=FT8):
         # ft8c.f90 uses 4 hops per symbol and 2.5Hz fbins (2.5 bins per tone)
@@ -48,25 +49,35 @@ class FT8Demodulator:
             f0 = tone * self.fbins_pertone + self.fbins_pertone//2
             # positive region = all fine bins in symbol-backbone
             self._csync[sym_idx, f0 - self.fbins_pertone//2 : f0 + (self.fbins_pertone+1)//2] = 1.0
-
-               
+     
+    # ======================================================
+    # Load audio
+    # ======================================================
+    def load_audio(self, audio_in):
+        nSamps = len(audio_in)
+        nHops_loaded = int(self.hops_persymb * self.sigspec.symbols_persec * (nSamps-self.spectrum.FFT_len)/self.sample_rate)
+        self.spectrum.fine_grid_complex = np.zeros((nHops_loaded, self.spectrum.nFreqs), dtype = np.complex64)
+        for hop_idx in range(nHops_loaded):
+            sample_idx = int(hop_idx * self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb))
+            aud = audio_in[sample_idx:sample_idx + self.spectrum.FFT_len] * np.kaiser(self.spectrum.FFT_len, 14)
+            self.spectrum.fine_grid_complex[hop_idx,:] = np.fft.rfft(aud)[:self.spectrum.nFreqs]
+        self.spectrum.set_bounds(nHops_loaded)
+        
     # ======================================================
     # Candidate search and sync
     # ======================================================
-
-
+    
     def find_candidates(self, topN=750, score_thresh = 100000):
-        nf = self._csync.shape[1]   # number of fine bins covering the 8 tones
-        eps = 1e-12
-        noise_ratio = 1.0 / nf
-        fg = np.abs(self.spectrum.fine_grid_complex)  # [nHops, nFreqs]
+        n = self.spectrum.nHops
+        test_hops = np.array([int(n*.25), int(n*.5), int(n*.75)])
+        fg = np.abs(self.spectrum.fine_grid_complex[test_hops,:])
         candidates = []
-        for f0_idx in range(self.spectrum.nFreqs - nf):
-            strip = fg[:, f0_idx:f0_idx + nf]  
+        for f0_idx in range(self.spectrum.nFreqs - self.fbins_pertone):
+            strip = fg[:, f0_idx:f0_idx + self.fbins_pertone]  
             row_sum = strip.sum(axis=1)   
             row_max = strip.max(axis=1) 
             ratio = row_max / (row_sum + eps)
-            contrib = row_sum * np.maximum(ratio - noise_ratio, 0.0)
+            contrib = row_sum * np.maximum(ratio - 1/self.fbins_pertone, 0.0)
             score = contrib.sum()
             candidates.append(Candidate(FT8, self.spectrum, 0, f0_idx, score))
         candidates.sort(key=lambda c: -c.score)
@@ -83,31 +94,27 @@ class FT8Demodulator:
         filtered_cands.sort(key=lambda c: -c.score)
         candidates = filtered_cands
         for i, c in enumerate(candidates):
-            c.sort_idx_dedup_sync=i
+            c.sort_idx_sync=i
         return candidates
 
+
     def sync_candidate(self, c):
-        hp = self.spectrum.hops_persymb
-        nsym, w = self._csync.shape
+        hps = self.spectrum.hops_persymb
+        nsym, nfbins = self._csync.shape
+        hop_idxs =  np.arange(nsym) * hps + hps//2
         f0 = c.bounds.f0_idx
-        strip = np.abs(self.spectrum.fine_grid_complex[:, f0:f0+w])
+        strip = np.abs(self.spectrum.fine_grid_complex[:, f0:f0 + nfbins])
         best_score = -1e30
         best_h0 = 0
-
         for h0 in self.spectrum.sync_hops:
-            hop_idxs = h0 + np.arange(nsym) * hp + hp//2
-            mask = (hop_idxs >= 0) & (hop_idxs < strip.shape[0])
-            if not np.any(mask):
-                continue
-            window = strip[hop_idxs[mask]]
-            score = np.tensordot(window, self._csync[mask])
+            window = strip[h0 + hop_idxs]
+            score = np.tensordot(window, self._csync)
             if score > best_score:
                 best_score = score
                 best_h0 = h0
         c.score = best_score
         c.update_bounds(self.spectrum, FT8, self.spectrum.sync_hops[best_h0], f0)
-
-
+     
     # ======================================================
     # Demodulation
     # ======================================================
@@ -117,7 +124,8 @@ class FT8Demodulator:
         c = candidate
         decode = False
         iHop = 0
-        cspec_4d = c.fine_grid_complex.reshape(FT8.num_symbols, self.hops_persymb, FT8.tones_persymb, self.fbins_pertone)
+        cand_fine_grid_complex = self.spectrum.fine_grid_complex [ c.bounds.t0_idx : c.bounds.tn_idx, c.bounds.f0_idx : c.bounds.fn_idx]
+        cspec_4d = cand_fine_grid_complex.reshape(FT8.num_symbols, self.hops_persymb, FT8.tones_persymb, self.fbins_pertone)
         while not decode and iHop < self.hops_persymb:
             c.llr = []
             cspec = 0.2*cspec_4d[:,iHop,:,0]+ cspec_4d[:,iHop,:,1] + 0.2*cspec_4d[:,iHop,:,2]

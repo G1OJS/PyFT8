@@ -29,20 +29,14 @@ class Spectrum:
         self.sigspec = sigspec
         self.fbins_pertone = int(fbins_pertone)
         self.hops_persymb = int(hops_persymb)
+        self.nHops = None
         self.FFT_len = int(self.fbins_pertone * self.sample_rate // self.sigspec.symbols_persec)
         self.nFreqs   = self.FFT_len // 2 + 1
         self.dt = 1 / (self.sigspec.symbols_persec * self.hops_persymb)
         self.df = self.sample_rate / self.FFT_len
         
-    def load_audio(self, audio_in):
-        nSamps = len(audio_in)
-        self.nHops = int(self.hops_persymb * self.sigspec.symbols_persec * (nSamps-self.FFT_len)/self.sample_rate)
-        self.fine_grid_complex = np.zeros((self.nHops, self.nFreqs), dtype = np.complex64)
-        for hop_idx in range(self.nHops):
-            sample_idx = int(hop_idx * self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb))
-            aud = audio_in[sample_idx:sample_idx + self.FFT_len] * np.kaiser(self.FFT_len, 14)
-            self.fine_grid_complex[hop_idx,:] = np.fft.rfft(aud)[:self.nFreqs]
-
+    def set_bounds(self, nHops):
+        self.nHops = nHops
         self.bounds = Bounds(
             0, self.nHops,
             0, self.nFreqs,
@@ -75,7 +69,7 @@ class Candidate:
         self.bounds = Bounds(t0_idx, tn_idx, f0_idx, fn_idx,
                              t0_idx * spectrum.dt, tn_idx * spectrum.dt,
                              f0_idx * spectrum.df, fn_idx * spectrum.df)
-        self.fine_grid_complex = spectrum.fine_grid_complex [ t0_idx : tn_idx, f0_idx : fn_idx]
+
     
 
 
