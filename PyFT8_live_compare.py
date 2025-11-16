@@ -9,8 +9,9 @@ import threading
 from PyFT8.rig.IcomCIV import IcomCIV
 rig = IcomCIV()
 
-global PyFT8_has_decodes
+global PyFT8_has_decodes, wsjtx_has_decodes
 PyFT8_has_decodes = False
+wsjtx_has_decodes = False
 
 def wsjtx_tailer():
     def follow(path):
@@ -31,14 +32,19 @@ def wsjtx_tailer():
         on_wsjtx_decode(decode)
 
 def on_wsjtx_decode(decode):
+    global wsjtx_has_decodes
+    wsjtx_has_decodes = True
     if(not PyFT8_has_decodes): return
     decode_dict = decode['decode_dict']
     decode_dict.update({'wsjtx':True})
     send_to_ui_ws("decode_dict", decode_dict)
 
 def onDecode(decode):
-    global PyFT8_has_decodes
-    PyFT8_has_decodes = True
+    global PyFT8_has_decodes, wsjtx_has_decodes
+    if(not PyFT8_has_decodes or not wsjtx_has_decodes):
+        wsjtx_has_decodes = False
+        PyFT8_has_decodes = True
+        return
     decode_dict = decode['decode_dict']
     decode_dict.update({'wsjtx':False})
     send_to_ui_ws("decode_dict", decode_dict)
