@@ -1,7 +1,7 @@
 import sys
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 
-from PyFT8.rx.cycle_decoder import cycle_decoder
+from PyFT8.rx.cycle_decoder import start_cycle_decoder
 from PyFT8.comms_hub import config, start_UI
 import PyFT8.audio as audio
 import threading
@@ -131,10 +131,6 @@ class QSO:
 
 QSO = QSO()
 
-def onStart():
-    from PyFT8.comms_hub import send_to_ui_ws
-    send_to_ui_ws("clear_decodes", {})
-
 def onDecode(decode):
     import PyFT8.timers as timers
     from PyFT8.comms_hub import config, send_to_ui_ws
@@ -189,19 +185,9 @@ def add_band_buttons():
         send_to_ui_ws("add_band_button", {'band_name':band['band_name'], 'band_freq':band['band_freq']})
 
 def run():        
-    # if testing_from_wsjtx:
-    #config.data.update({"input_device":["CABLE", "Output"]})
-    #config.data.update({"output_device":["CABLE", "Input"]})
-    #audio.find_audio_devices()
-    
-    threading.Thread(target=cycle_decoder, kwargs=({'onStart':onStart, 'onDecode':onDecode, 'onOccupancy':onOccupancy, 'score_thresh':1000000})).start()
-    start_UI(process_UI_event)
+    start_cycle_decoder(onDecode, onOccupancy, 1000000)
+    start_UI("PyFT8_tcvr_UI.html", process_UI_event)
     add_band_buttons()
 
 run()
     
-#import PyFT8.timers as timers
-#config.data.update({"output_device":["CABLE", "Input"]})
-#audio.find_audio_devices()
-#QSO.cycle = timers.odd_even_now(from_click = True)
-#QSO.transmit("N1JFU EA6EE R-07")

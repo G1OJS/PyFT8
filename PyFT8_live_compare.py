@@ -1,7 +1,7 @@
 import sys
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 
-from PyFT8.rx.cycle_decoder import cycle_decoder
+from PyFT8.rx.cycle_decoder import start_cycle_decoder
 from PyFT8.comms_hub import config, start_UI, send_to_ui_ws
 import PyFT8.audio as audio
 import PyFT8.timers as timers
@@ -50,6 +50,7 @@ def onDecode(decode):
     send_to_ui_ws("decode_dict", decode_dict)
 
 def process_UI_event(event):
+    topic = event['topic']
     if("set-band" in topic):
         fields = topic.split("-")
         config.myFreq = float(fields[3])
@@ -65,7 +66,7 @@ def add_band_buttons():
 
 def run():
     threading.Thread(target=wsjtx_tailer).start()
-    threading.Thread(target=cycle_decoder, kwargs=({'onDecode':onDecode, 'score_thresh':200000})).start()
+    start_cycle_decoder(onDecode, None, 100000)
     start_UI("PyFT8_live_compare.html", process_UI_event)
     add_band_buttons()
 

@@ -9,13 +9,17 @@ from PyFT8.rx.waterfall import Waterfall
 global audio_in
 audio_in = None
 
-def start_cycle_decoder(onStart = None, onDecode = None, onOccupancy = None, onFinished = None):
-    threading.Thread(target=cycle_decoder, kwargs=({'onStart':onStart, 'onDecode':onDecode, 'onOccupancy':onOccupancy, 'onFinished':onFinished})).start()
+global demod, duplicate_filter, onDecode, onOccupancy, topN, score_thresh, cycle_len
+cycle_len = 15
+duplicate_filter = set()
 
-def log_decode(decode):
-    timers.timedLog("No callback specified, logging: {decode}", logfile = "default_decodes.log", silent = True)
+def start_cycle_decoder(onDecode1, onOccupancy1, score_thresh1):
+    global onDecode, onOccupancy, score_thresh, topN
+    topN = None
+    onDecode, onOccupancy, score_thresh = onDecode1, onOccupancy1, score_thresh1
+    threading.Thread(target=cycle_decoder).start()
 
-def cycle_decoder(onStart = None, onOccupancy = None, onDecode = log_decode, onFinished = None, topN = 500, score_thresh = None, cycle_len = 15):
+def cycle_decoder():
     global audio_in
     MAX_START_OFFSET_SECONDS = 0.5
     END_RECORD_GAP_SECONDS = 1
@@ -28,10 +32,11 @@ def cycle_decoder(onStart = None, onOccupancy = None, onDecode = log_decode, onF
             timers.timedLog(f"Arrived to start recording at {t_elapsed} into cycle, waiting for next", silent = True)
         timers.timedLog("Cyclic demodulator requesting audio", silent = True)
         audio_in = audio.read_from_soundcard(timers.CYCLE_LENGTH - END_RECORD_GAP_SECONDS)
-        threading.Thread(target=get_decodes, kwargs=({'onStart':onStart, 'onDecode':onDecode, 'onOccupancy':onOccupancy, 'onFinished':onFinished, 'topN':topN, 'score_thresh':score_thresh})).start()
         timers.timedLog("Cyclic demodulator passed audio for demodulating", silent = True)
-
-def get_decodes(onStart=None, onDecode=None, onOccupancy=None, onFinished=None, topN=None, score_thresh=None):
+        threading.Thread(target=get_decodes).start()
+    
+def get_decodes():
+    global demod, duplicate_filter
     demod = FT8Demodulator(hops_persymb = 5)
     cyclestart_str = timers.cyclestart_str(0)
     demod.load_audio(audio_in)
@@ -41,34 +46,29 @@ def get_decodes(onStart=None, onDecode=None, onOccupancy=None, onFinished=None, 
     timers.timedLog("[Cycle decoder] Get Rx freq decode")
     f0_idx = int(config.rxfreq / demod.spectrum.df)
     rx_freq_candidate = Candidate(demod.sigspec, demod.spectrum, 0, f0_idx, -50)
-    decode = demod.demodulate_candidate(rx_freq_candidate, cyclestart_str = cyclestart_str)
+    decode = demod.demodulate_candidate(rx_freq_candidate, cyclestart_str)
     timers.timedLog("[Cycle decoder] Rx freq decoding done")
-    if(onStart):
-        onStart()
     if(decode):
         duplicate_filter.add(decode['decode_dict']['message'] )
         decode['decode_dict'].update({'rxfreq': True})
         if(onDecode):
             onDecode(decode)
-        
     candidates = demod.find_candidates(score_thresh = score_thresh, topN = topN)
     if(onOccupancy):
         occupancy, clear_freq = make_occupancy_array(candidates)
         onOccupancy(occupancy, clear_freq)
     for c in candidates:
-        decode = demod.demodulate_candidate(c, cyclestart_str)
-        if(decode):
-            decode_dict = decode['decode_dict']
-            key = f"{decode_dict['call_a']}{decode_dict['call_b']}"
-            if(key in duplicate_filter):
-                #timers.timedLog(f"[QSO] Reject duplicate decode {decode_dict}")
-                continue
+        threading.Thread(target=decode_candidate, kwargs = ({'c':c,'cyclestart_str':cyclestart_str})).start()
+
+def decode_candidate(c, cyclestart_str):
+    global duplicate_filter
+    decode = demod.demodulate_candidate(c, cyclestart_str)
+    if(decode):
+        decode_dict = decode['decode_dict']
+        key = f"{decode_dict['call_a']}{decode_dict['call_b']}"
+        if(not key in duplicate_filter):
             duplicate_filter.add(key)
-            if(onDecode):
-                onDecode(decode)
-    timers.timedLog("[Cycle decoder] all decoding done")
-    if(onFinished):
-        onFinished()
+            onDecode(decode)
 
 def make_occupancy_array(candidates, f0=0, f1=3500, bin_hz=10):
     occupancy = np.arange(f0, f1 + bin_hz, bin_hz)

@@ -40,11 +40,11 @@ def start_UI_ws_server(callback):
             await asyncio.Future()  # run forever
     asyncio.run(ws_server())
 
-def send_to_ui_ws(topic, message):
+def send_to_ui_ws(topic, message, silent = True):
     if not isinstance(message, dict):
         message = {}    # should really raise exception here 
     if loop and loop.is_running():
-        timers.timedLog(f"[WebsocketsServer] sending message with topic {topic}")
+        timers.timedLog(f"[WebsocketsServer] sending message with topic {topic}", silent = silent)
         full_message = {"topic": topic, **message}
         asyncio.run_coroutine_threadsafe(message_queue.put(full_message), loop)
 
