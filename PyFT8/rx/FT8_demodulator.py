@@ -95,7 +95,7 @@ class FT8Demodulator:
         #2 - sync first Costas block to Costas template and discard low scores
         filtered_cands = []
         for c in candidates:
-            self.sync_candidate(c)
+            self._sync_candidate(c)
             if(c.score > score_thresh):
                 filtered_cands.append(c)
         filtered_cands.sort(key=lambda c: -c.score)
@@ -104,7 +104,7 @@ class FT8Demodulator:
             c.sort_idx_sync=i
         return candidates[:topN]
 
-    def sync_candidate(self, c):
+    def _sync_candidate(self, c):
         hps = self.spectrum.hops_persymb
         nsym, nfbins = self._csync.shape
         hop_idxs =  np.arange(nsym) * hps + hps//2

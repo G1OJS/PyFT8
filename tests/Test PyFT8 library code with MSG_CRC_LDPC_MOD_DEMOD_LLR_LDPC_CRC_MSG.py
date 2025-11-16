@@ -75,7 +75,6 @@ timers.timedLog(f"Start to Load audio from {wav_file}")
 candidates = demod.find_candidates()
 decoded_candidates = []
 for c in candidates:
-    demod.sync_candidate(c)
     decode = demod.demodulate_candidate(c, cyclestart_str="test")
     if(decode):
         decoded_candidates.append(c)

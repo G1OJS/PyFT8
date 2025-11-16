@@ -33,9 +33,9 @@ def cycle_decoder():
         timers.timedLog("Cyclic demodulator requesting audio", silent = True)
         audio_in = audio.read_from_soundcard(timers.CYCLE_LENGTH - END_RECORD_GAP_SECONDS)
         timers.timedLog("Cyclic demodulator passed audio for demodulating", silent = True)
-        threading.Thread(target=get_decodes).start()
+        threading.Thread(target=_get_decodes).start()
     
-def get_decodes():
+def _get_decodes():
     global demod, duplicate_filter
     demod = FT8Demodulator(hops_persymb = 5)
     cyclestart_str = timers.cyclestart_str(0)
@@ -58,9 +58,9 @@ def get_decodes():
         occupancy, clear_freq = make_occupancy_array(candidates)
         onOccupancy(occupancy, clear_freq)
     for c in candidates:
-        threading.Thread(target=decode_candidate, kwargs = ({'c':c,'cyclestart_str':cyclestart_str})).start()
+        threading.Thread(target=decode_candidate, kwargs = ({'spectrum':demod.spectrum,'c':c,'cyclestart_str':cyclestart_str})).start()
 
-def decode_candidate(c, cyclestart_str):
+def decode_candidate(spectrum, c, cyclestart_str):
     global duplicate_filter
     decode = demod.demodulate_candidate(c, cyclestart_str)
     if(decode):

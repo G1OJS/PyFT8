@@ -31,6 +31,7 @@ class Spectrum:
         self.hops_persymb = int(hops_persymb)
         self.nHops = None
         self.sync_hop0s = None
+        self.fine_grid_complex = None
         self.FFT_len = int(self.fbins_pertone * self.sample_rate // self.sigspec.symbols_persec)
         self.nFreqs   = self.FFT_len // 2 + 1
         self.dt = 1 / (self.sigspec.symbols_persec * self.hops_persymb)
