@@ -67,18 +67,18 @@ class FT8Demodulator:
     
     # sliding window = convolution - do in other domain?
 
-    def find_candidates(self, cyclestart_str = 'xxxxxx_xxxxxx', topN=7500, search_thresh = 5000, score_thresh = 50000, silent = False):
+    def find_candidates(self, cyclestart_str = 'xxxxxx_xxxxxx',  silent = False):
         candidates = []
-        #1 - search using last timewise element of Costas template
-        #    along last possible timewise row of grid for maximally-delayed candidate
-        # sort in order of score
+        search_thresh = 240000
+        score_thresh = 100000
+        output_limit = int(config.decoder_search_limit)
+        
         nfBins_cand = 8 * self.fbins_pertone
-        row = self.spectrum.fine_abs_search1[-1,:] 
-        for f0_idx in range(self.spectrum.nFreqs - nfBins_cand -10):
-            crow = row[f0_idx:f0_idx + nfBins_cand]
-            score = 1000* np.max(crow)/np.min(crow)
+        for f0_idx in range(50, self.spectrum.nFreqs - nfBins_cand -10):
+            score = np.sum(self.spectrum.fine_abs_search1[:,f0_idx])
             if(score > search_thresh):
-                candidates.append(Candidate(FT8, self.spectrum, (0, f0_idx), score, cyclestart_str))
+                c = Candidate(FT8, self.spectrum, (0, f0_idx), score, cyclestart_str)
+                candidates.append(c)
         candidates.sort(key=lambda c: -c.score)
         for i, c in enumerate(candidates):
             c.score_init = c.score
@@ -91,28 +91,32 @@ class FT8Demodulator:
             self._sync_candidate(c)
             if(c.score > score_thresh):
                 filtered_cands.append(c)
+                c.fill_arrays()
         filtered_cands.sort(key=lambda c: -c.score)
         candidates = filtered_cands
         for i, c in enumerate(candidates):
             c.sort_idx_sync=i
+        candidates = candidates[:output_limit]
         l = len(candidates)
         timers.timedLog(f"Sync completed with {l} candidates", silent = silent)
-        return candidates[:topN]
+        return candidates
 
     def _sync_candidate(self, c):
-        nsym, nfbins = self._csync.shape
-        hop_idxs =  np.arange(nsym) * self.spectrum.hops_persymb
+        nsymbs = c.sigspec.costas_len
+        hop_idxs =  np.arange(nsymbs) * self.spectrum.hops_persymb
+        sync = self._csync[:nsymbs,:]
         strip = self.spectrum.fine_abs_search1[:,c.fbins]
         best_score = -1e30
         best_h0 = 0
         for h0 in self.spectrum.hop0_range:
             window = strip[h0 + hop_idxs]
-            score = np.sum(window * self._csync) 
+            score = np.sum(window * sync) 
             if score > best_score:
                 best_score = score
                 best_h0 = h0
         c.score = best_score
-        c.fill_arrays(( best_h0, c.origin[1]))
+        c.set_origin(( best_h0, c.origin[1]))
+
      
     # ======================================================
     # Demodulation
@@ -205,11 +209,12 @@ def FT8_decode(signal):
     call_a = unpack_ft8_c28(c28_a)
     call_b =  unpack_ft8_c28(c28_b)
     grid_rpt = unpack_ft8_g15(g15, ir)
-    freq_str = f"{signal.origin[1]:4.0f}"
+    freq_str = f"{signal.origin[1]*signal.spectrum.df:4.0f}"
+    time_str = f"{signal.origin[0]*signal.spectrum.dt:4.1f}"
     message = f"{call_a} {call_b} {grid_rpt}"
-    all_txt_line = f"{signal.cyclestart_str}     0.000 Rx FT8    {signal.snr:+03d} {signal.origin[0]:4.1f} {signal.origin[1] :4.0f} {message}"
+    all_txt_line = f"{signal.cyclestart_str}     0.000 Rx FT8    {signal.snr:+03d} {time_str} {freq_str} {message}"
     decode_dict = {'cyclestart_str':signal.cyclestart_str , 'freq':freq_str, 'call_a':call_a,
                  'call_b':call_b, 'grid_rpt':grid_rpt, 't0_idx':signal.origin[0],
-                   'dt':f"{signal.origin[0] :4.1f}", 'snr':signal.snr, 'priority':False, 'message':message}
+                   'dt':time_str, 'snr':signal.snr, 'priority':False, 'message':message}
     return {'all_txt_line':all_txt_line, 'decode_dict':decode_dict}
 

@@ -21,9 +21,9 @@ def _find_device(device_str_contains):
 
 def find_audio_devices():
     global output_device_idx, input_device_idx
-    print(config.data)
-    input_device_idx = _find_device(config.data['input_device'])
-    output_device_idx = _find_device(config.data['output_device'])
+
+    input_device_idx = _find_device(config.soundcards['input_device'])
+    output_device_idx = _find_device(config.soundcards['output_device'])
 find_audio_devices()
 
 def read_from_soundcard(seconds, sample_rate = 12000):

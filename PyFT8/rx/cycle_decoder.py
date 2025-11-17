@@ -7,14 +7,13 @@ from PyFT8.datagrids import Candidate
 from PyFT8.rx.FT8_demodulator import FT8Demodulator
 from PyFT8.rx.waterfall import Waterfall
 
-global demod, duplicate_filter, onDecode, onOccupancy, topN, score_thresh, cycle_len
+global demod, duplicate_filter, onDecode, onOccupancy, cycle_len
 cycle_len = 15
 duplicate_filter = set()
 
-def start_cycle_decoder(onDecode1, onOccupancy1, score_thresh1):
-    global onDecode, onOccupancy, score_thresh, topN
-    topN = None
-    onDecode, onOccupancy, score_thresh = onDecode1, onOccupancy1, score_thresh1
+def start_cycle_decoder(onDecode1, onOccupancy1):
+    global onDecode, onOccupancy
+    onDecode, onOccupancy = onDecode1, onOccupancy1
     threading.Thread(target=cycle_decoder).start()
 
 def cycle_decoder():
@@ -35,7 +34,7 @@ def cycle_decoder():
     
 def _get_decodes(audio_in):
     global demod, duplicate_filter
-    demod = FT8Demodulator(hops_persymb = 5)
+    demod = FT8Demodulator()
     cyclestart_str = timers.cyclestart_str(0)
     demod.load_audio(audio_in)
     duplicate_filter = set()
@@ -44,8 +43,9 @@ def _get_decodes(audio_in):
     if(onDecode):
         timers.timedLog("[Cycle decoder] Get Rx freq decode")
         f0_idx = int(config.rxfreq / demod.spectrum.df)
-        rx_freq_candidate = Candidate(demod.sigspec, demod.spectrum, 0, f0_idx, -50, cyclestart_str)
-        decode = demod.demodulate_candidate(demod.spectrum, rx_freq_candidate)
+        rx_freq_candidate = Candidate(demod.sigspec, demod.spectrum, (0, f0_idx), -50, cyclestart_str)
+        rx_freq_candidate.fill_arrays()
+        decode = demod.demodulate_candidate(rx_freq_candidate)
         timers.timedLog("[Cycle decoder] Rx freq decoding done")
         if(decode):
             duplicate_filter.add(decode['decode_dict']['message'] )
@@ -53,14 +53,14 @@ def _get_decodes(audio_in):
             if(onDecode):
                 onDecode(decode)
             
-    candidates = demod.find_candidates(score_thresh = score_thresh, topN = topN)
+    candidates = demod.find_candidates(cyclestart_str = cyclestart_str)
     if(onOccupancy):
         occupancy, clear_freq = make_occupancy_array(candidates)
         onOccupancy(occupancy, clear_freq)
 
     if(onDecode):
         for c in candidates:
-            threading.Thread(target=decode_candidate, kwargs = ({'spectrum':demod.spectrum,'c':c,'cyclestart_str':cyclestart_str})).start()
+            threading.Thread(target=decode_candidate, kwargs = ({'c':c})).start()
 
 def decode_candidate(c):
     global duplicate_filter
@@ -75,7 +75,9 @@ def decode_candidate(c):
 def make_occupancy_array(candidates, f0=0, f1=3500, bin_hz=10):
     occupancy = np.arange(f0, f1 + bin_hz, bin_hz)
     for c in candidates:
-        occupancy[int((c.bounds.f0-f0)/bin_hz)] += c.score
+        bin0 = int((c.origin_physical[1]-f0)/bin_hz)
+        #binN = bin0 + int(c.sigspec.bw_Hz/bin_hz)
+        occupancy[bin0] += c.score
     occupancy = occupancy/np.max(occupancy)
     fs0, fs1 = 1000,1500
     bin0 = int((fs0-f0)/bin_hz)

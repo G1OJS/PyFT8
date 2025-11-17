@@ -8,12 +8,14 @@ from PyFT8.rx.FT8_demodulator import FT8Demodulator
 from PyFT8.rx.waterfall import Waterfall
 import PyFT8.timers as timers
 import PyFT8.audio as audio
+from PyFT8.comms_hub import config
 
 wav_file = "210703_133430.wav"
 #wav_file = '251114_135115.wav'
 #wav_file = "251115_135700.wav"
 
 demod = FT8Demodulator()
+config.decoder_search_limit = 500
 
 t_start_load = timers.tnow()
 print("\n")

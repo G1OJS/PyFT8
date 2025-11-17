@@ -6,8 +6,10 @@ from PyFT8.rx.waterfall import Waterfall
 from PyFT8.tx.FT8_encoder import pack_ft8_c28, pack_ft8_g15, encode_bits77
 import PyFT8.timers as timers
 import PyFT8.audio as audio
+from PyFT8.comms_hub import config
 
 demod = FT8Demodulator()
+config.decoder_search_limit = 500
 t0_idx = 6
 f0_idx = 320
 rel_strength = 10
@@ -73,7 +75,7 @@ for symb_idx, tone_idx in enumerate(symbols):
 # 'demodulate' as with any audio frame
 timers.timedLog(f"Start to Load audio from {wav_file}")
 
-candidates = demod.find_candidates(search_thresh = 10, score_thresh = 400000)
+candidates = demod.find_candidates()
 decoded_candidates = []
 for c in candidates:
     decode = demod.demodulate_candidate(c)
