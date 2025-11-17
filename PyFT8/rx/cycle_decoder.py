@@ -45,7 +45,7 @@ def _get_decodes(audio_in):
         timers.timedLog("[Cycle decoder] Get Rx freq decode")
         f0_idx = int(config.rxfreq / demod.spectrum.df)
         rx_freq_candidate = Candidate(demod.sigspec, demod.spectrum, 0, f0_idx, -50)
-        decode = demod.demodulate_candidate(rx_freq_candidate, cyclestart_str)
+        decode = demod.demodulate_candidate(demod.spectrum, rx_freq_candidate, cyclestart_str)
         timers.timedLog("[Cycle decoder] Rx freq decoding done")
         if(decode):
             duplicate_filter.add(decode['decode_dict']['message'] )
@@ -64,7 +64,7 @@ def _get_decodes(audio_in):
 
 def decode_candidate(spectrum, c, cyclestart_str):
     global duplicate_filter
-    decode = demod.demodulate_candidate(c, cyclestart_str)
+    decode = demod.demodulate_candidate(spectrum, c, cyclestart_str)
     if(decode):
         decode_dict = decode['decode_dict']
         key = f"{decode_dict['call_a']}{decode_dict['call_b']}"

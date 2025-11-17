@@ -127,12 +127,12 @@ class FT8Demodulator:
     # Demodulation
     # ======================================================
 
-    def demodulate_candidate(self, candidate, cyclestart_str, silent = False):
+    def demodulate_candidate(self, spectrum, candidate, cyclestart_str, silent = False):
         # 2-symbol block decoder
         c = candidate
         decode = False
         iconf = 0
-        cand_fine_grid_complex = self.spectrum.fine_grid_complex [ c.bounds.t0_idx : c.bounds.tn_idx, c.bounds.f0_idx : c.bounds.fn_idx]
+        cand_fine_grid_complex = spectrum.fine_grid_complex [ c.bounds.t0_idx : c.bounds.tn_idx, c.bounds.f0_idx : c.bounds.fn_idx]
         cspec_4d = cand_fine_grid_complex.reshape(FT8.num_symbols, self.hops_persymb, FT8.tones_persymb, self.fbins_pertone)
         configs = [(0,0.0),(0,0.2),(0,0.6),(0,1)]
         while not decode and iconf < len(configs):
@@ -148,8 +148,8 @@ class FT8Demodulator:
             V = ps * FT8.block_decode_wt2
             ones  = np.max(V,     where=(FT8.block_decode_wt2 > 0), initial=-np.inf, axis=(2, 3))
             zeros = np.max(-V,    where=(FT8.block_decode_wt2 < 0), initial=-np.inf, axis=(2, 3))
-            np.clip(ones,eps, 1e30)
-            np.clip(zeros,eps, 1e30)
+            ones = np.clip(ones,  0.0001, 1e30)
+            zeros = np.clip(zeros, 0.0001, 1e30)
             llr_block = np.log(ones ) - np.log(zeros )  
             llr_all = llr_block.reshape(-1)
             for i in range(len(llr_all)):
