@@ -6,11 +6,13 @@ from PyFT8.rx.waterfall import Waterfall
 from PyFT8.tx.FT8_encoder import pack_ft8_c28, pack_ft8_g15, encode_bits77
 import PyFT8.timers as timers
 import PyFT8.audio as audio
+from PyFT8.comms_hub import config
 
 demod = FT8Demodulator()
+config.decoder_search_limit = 500
 t0_idx = 6
 f0_idx = 320
-rel_strength = 0.8
+rel_strength = 10
 
 #VK1ABC 0b1110000111111100010100110101
 #VK3JPK 0b1110001000000111101000011110
@@ -57,6 +59,8 @@ print(f"Channel symbols modulated:   {''.join([str(s) for s in symbols])}")
 wav_file='251115_135700.wav'
 audio_in = audio.read_wav_file(wav_file)
 demod.load_audio(audio_in)
+w,h = demod.spectrum.fine_grid_complex.shape
+demod.spectrum.fine_grid_complex += np.random.rand(w, h) * 1e-5
 
 # 'modulate' onto channel grid
 m = np.max(abs(demod.spectrum.fine_grid_complex))  * rel_strength
@@ -71,10 +75,10 @@ for symb_idx, tone_idx in enumerate(symbols):
 # 'demodulate' as with any audio frame
 timers.timedLog(f"Start to Load audio from {wav_file}")
 
-candidates = demod.find_candidates(search_thresh = 10, score_thresh = 400000)
+candidates = demod.find_candidates()
 decoded_candidates = []
 for c in candidates:
-    decode = demod.demodulate_candidate(demod.spectrum, c, cyclestart_str="test")
+    decode = demod.demodulate_candidate(c)
     if(decode):
         decoded_candidates.append(c)
         print(decode['all_txt_line'], decode['decode_dict']['t0_idx'] )
@@ -87,6 +91,7 @@ wf.show_zoom(candidates=decoded_candidates, phase = True, llr_overlay=False)
 #print(f"Payload symbols demodulated: {''.join([str(int(s)) for s in candidates[0].payload_symbols])}")
 print("bits expected / bits decoded")
 print("11100001111111000101001101010111000100000011110100001111000111001010001010001")
-print(''.join(str(int(b)) for b in candidates[0].payload_bits))
+if(candidates):
+    print(''.join(str(int(b)) for b in candidates[0].payload_bits[:77]))
 
 

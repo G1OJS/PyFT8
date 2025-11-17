@@ -89,15 +89,25 @@ class Config:
         self.bands = []
         self.myBand = False
         self.myFreq = False
-        self.data = {"input_device":["Microphone","CODEC"], "output_device":["Speaker", "CODEC"]}
+        self.soundcards = {"input_device":["Microphone","CODEC"], "output_device":["Speaker", "CODEC"]}
         if(not self.check_config()):
             return
         parser = configparser.ConfigParser()
         parser.read("PyFT8.ini")
         self.myCall = parser.get("myStation","myCall")
         self.myGrid = parser.get("myStation","myGrid")
+
+        input_search = parser.get("sound","soundcard_rx").split("_")
+        self.soundcards.update({"input_device":input_search})
+        output_search = parser.get("sound","soundcard_tx").split("_")
+        self.soundcards.update({"output_device":output_search})
+
+        self.decoder_search_limit = parser.get("decoder","candidate_search_limit")
+        
         self.wsjtx_all_file = parser.get("paths","wsjtx_all_file")
+
         self.decoder = parser.get("options","decoder")
+
         for band_name, band_freq in parser.items("bands"):
             self.bands.append({"band_name":band_name, "band_freq":band_freq})
 
