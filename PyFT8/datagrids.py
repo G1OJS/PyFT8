@@ -16,13 +16,14 @@ class Spectrum:
         
     def fill_arrays(self, fine_grid_complex):
         self.fine_grid_complex = fine_grid_complex
+        self.fine_grid_pwr = np.abs(fine_grid_complex)**2
+      #  self.fine_grid_pwr = self.fine_grid_pwr / np.max(self.fine_grid_pwr)
         nHops_loaded = self.fine_grid_complex.shape[0]
         sync_headroom = nHops_loaded - self.sigspec.num_symbols*self.hops_persymb
         needed_headroom = int((self.hops_persymb * 1.5) / 0.16)
         headroom = min(sync_headroom, needed_headroom)
         sync_template_hops = self.sigspec.costas_len * self.hops_persymb
         self.hop0_range = range(headroom)
-        self.fine_abs_search1 = np.abs(self.fine_grid_complex[:headroom + sync_template_hops,:])
         self.extent = [0, self.sample_rate/2, 0,  (nHops_loaded / self.hops_persymb) / self.sigspec.symbols_persec ]
         self.df = self.extent[1]/self.fine_grid_complex.shape[1]
         self.dt = self.extent[3]/self.fine_grid_complex.shape[0]

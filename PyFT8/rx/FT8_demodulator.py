@@ -69,32 +69,30 @@ class FT8Demodulator:
 
     def find_candidates(self, cyclestart_str = 'xxxxxx_xxxxxx',  silent = False):
         candidates = []
-        search_thresh = 240000
-        score_thresh = 100000
         output_limit = int(config.decoder_search_limit)
         
         nfBins_cand = 8 * self.fbins_pertone
-        for f0_idx in range(50, self.spectrum.nFreqs - nfBins_cand -10):
-            score = np.sum(self.spectrum.fine_abs_search1[:,f0_idx])
-            if(score > search_thresh):
-                c = Candidate(FT8, self.spectrum, (0, f0_idx), score, cyclestart_str)
-                candidates.append(c)
-        candidates.sort(key=lambda c: -c.score)
-        for i, c in enumerate(candidates):
+        strips = []
+        f0_idxs = range(50, self.spectrum.nFreqs - nfBins_cand -10, 1)
+        for f0_idx in f0_idxs:
+            env = self.spectrum.fine_grid_pwr[:,f0_idx:f0_idx+nfBins_cand]
+            strips.append((np.std(env), f0_idx)) 
+        strips.sort(key=lambda s: -s[0])
+        for i, s in enumerate(strips[:800]):
+            f0_idx = int(s[1])
+            c = Candidate(FT8, self.spectrum, (0, f0_idx), s[0], cyclestart_str)
+            candidates.append(c)
             c.score_init = c.score
             c.sort_idx_finder=i
         timers.timedLog(f"Initial search completed with {len(candidates)} candidates", silent = False)
         
         #2 - sync first Costas block to Costas template and discard low scores
-        filtered_cands = []
         for c in candidates:
             self._sync_candidate(c)
-            if(c.score > score_thresh):
-                filtered_cands.append(c)
-                c.fill_arrays()
-        filtered_cands.sort(key=lambda c: -c.score)
-        candidates = filtered_cands
+        candidates.sort(key=lambda c: -c.score)    
+        candidates = candidates[:400]
         for i, c in enumerate(candidates):
+            c.fill_arrays()
             c.sort_idx_sync=i
         candidates = candidates[:output_limit]
         l = len(candidates)
@@ -105,7 +103,7 @@ class FT8Demodulator:
         nsymbs = c.sigspec.costas_len
         hop_idxs =  np.arange(nsymbs) * self.spectrum.hops_persymb
         sync = self._csync[:nsymbs,:]
-        strip = self.spectrum.fine_abs_search1[:,c.fbins]
+        strip = self.spectrum.fine_grid_pwr[:,c.fbins]
         best_score = -1e30
         best_h0 = 0
         for h0 in self.spectrum.hop0_range:
