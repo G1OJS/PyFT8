@@ -14,9 +14,7 @@ class Waterfall:
         self.fbins_pertone = spectrum.fbins_pertone
         self.t0, self.t1 = t0, t1 or spectrum.sigspec.frame_secs
         self.f0, self.f1 = f0, f1 or (spectrum.sample_rate / 2)
-        self.dt = spectrum.dt
-        self.df = spectrum.df
-        self.extent = spectrum.bounds.extent
+
 
         # Main figure
         self.fig, (self.ax_main) = plt.subplots(1,1,figsize=(10, 4))
@@ -25,6 +23,7 @@ class Waterfall:
         self.ax_main.set_ylabel("Time (s)")
         self.ax_main.set_xlim(self.f0, self.f1)
         self.ax_main.set_ylim(self.t0, self.t1)
+        self.extent_main = self.spectrum.extent
 
         self.zoom_axes = []
         self._candidate_patches = []
@@ -36,7 +35,7 @@ class Waterfall:
     def update_main(self, candidates=None, cyclestart_str=None):
         """Refresh main waterfall and draw candidate rectangles."""
         vals = np.abs(self.spectrum.fine_grid_complex)**2
-        self.im = self.ax_main.imshow(  vals, origin="lower", aspect="auto", extent=self.extent,
+        self.im = self.ax_main.imshow(  vals, origin="lower", aspect="auto", extent = self.extent_main, 
                                         cmap="inferno", interpolation="none", norm=LogNorm() )
         #self.im.autoscale()
         self.im.norm.vmin = self.im.norm.vmax/1000000
@@ -47,8 +46,9 @@ class Waterfall:
 
         if candidates:
             for c in candidates:
-                rect = patches.Rectangle( (c.bounds.f0, c.bounds.t0),
-                  c.bounds.fn - c.bounds.f0,c.bounds.tn - c.bounds.t0,
+                t0, f0 = c.origin
+                origin_img = (c.origin_physical[1], c.origin_physical[0])
+                rect = patches.Rectangle(origin_img, c.sigspec.bw_Hz, c.sigspec.dur_s,
                   linewidth=1.2,edgecolor="lime", facecolor="none"
                 )
                 self.ax_main.add_patch(rect)
@@ -92,7 +92,6 @@ class Waterfall:
         costas_pairs = [((symb_idx  + offset) * self.hops_persymb, tone * self.fbins_pertone)
                         for offset in (0, 36, 72) # magic numbers; move to a 'costas object' per mode
                         for symb_idx, tone in enumerate(self.costas)]
-
         
         for i, c in enumerate(candidates_with_decodes):
             ax = axes[i]
@@ -102,7 +101,7 @@ class Waterfall:
                             cmap="twilight" if phase else "inferno",
                             interpolation='none' )
             if(not phase): im.norm = LogNorm()
-            ax.set_title(f"{c.bounds.f0:.0f}Hz {c.bounds.t0:.2f}s {c.message}")
+            ax.set_title(f"{c.origin_physical[1]:.0f}Hz {c.origin_physical[0]:.2f}s {c.message}")
             ax.set_xlabel("freq bin index")
             ax.set_ylabel("hop index")
 
