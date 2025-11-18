@@ -50,7 +50,7 @@ def add_band_buttons():
 
 def run():
     start_wsjtx_tailer(on_wsjtx_decode)
-    start_cycle_decoder(onDecode, None)
+    start_cycle_decoder(onDecode, onOccupancy1 = None, prioritise_rxfreq = False)
     start_UI("PyFT8_live_compare.html", process_UI_event)
     add_band_buttons()
 

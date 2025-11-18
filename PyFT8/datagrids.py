@@ -33,28 +33,26 @@ class Spectrum:
 # ============================================================
 
 class Candidate:
-    def __init__(self, sigspec, spectrum, origin, score=None, cyclestart_str='xxxxxx_xxxxxx'):
+    def __init__(self, spectrum, f0_idx, size, cyclestart_str):
+        self.size = size
+        self.origin = (0, f0_idx)
+        self.spectrum = spectrum
+        self.cyclestart_str = cyclestart_str
+        self.fbins = range(self.origin[1], self.origin[1] + self.size[1])
+        self.fine_grid_pwr = self.spectrum.fine_grid_pwr[:,f0_idx:f0_idx + self.size[1]]
+
+    def prep_for_decode(self, sigspec, t0):
+        self.origin = (t0, self.origin[1])
+        self.tbins = range(self.origin[0], self.origin[0] + self.size[0])
         self.llr = None
         self.llr_std = None
         self.payload_bits = None
-        self.spectrum = spectrum
-        self.sigspec = sigspec
-        self.score = score
-        self.snr = -24
-        self.cyclestart_str = cyclestart_str
+        self.sigspec = sigspec  
         self.payload_bits = []
         self.message = None
-        self.set_origin(origin)
-
-    def set_origin(self, origin):
-        self.origin = origin
-        self.origin_physical = (self.spectrum.dt * origin[0], self.spectrum.df * origin[1])
-        self.tbins = range(self.origin[0], self.origin[0] + self.sigspec.num_symbols * self.spectrum.hops_persymb)
-        self.fbins = range(self.origin[1], self.origin[1] + self.sigspec.tones_persymb * self.spectrum.fbins_pertone)
-   
-    def fill_arrays(self, new_origin = None):
-        if(new_origin): self.set_origin(new_origin)
+        self.snr = -24
+        self.origin_physical = (self.spectrum.dt * self.origin[0], self.spectrum.df * self.origin[1])
         self.fine_grid_complex = self.spectrum.fine_grid_complex[self.tbins,:][:, self.fbins] 
-    
+
 
 

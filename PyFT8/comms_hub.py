@@ -102,7 +102,7 @@ class Config:
         output_search = parser.get("sound","soundcard_tx").split("_")
         self.soundcards.update({"output_device":output_search})
 
-        self.decoder_search_limit = parser.get("decoder","candidate_search_limit")
+      #  self.decoder_search_limit = parser.get("decoder","candidate_search_limit")
         
         self.wsjtx_all_file = parser.get("paths","wsjtx_all_file")
 

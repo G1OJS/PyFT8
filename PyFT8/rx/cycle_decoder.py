@@ -11,7 +11,7 @@ global demod, duplicate_filter, onDecode, onOccupancy, cycle_len
 cycle_len = 15
 duplicate_filter = set()
 
-def start_cycle_decoder(onDecode1, onOccupancy1):
+def start_cycle_decoder(onDecode1, onOccupancy1, prioritise_rxfreq = True):
     global onDecode, onOccupancy
     onDecode, onOccupancy = onDecode1, onOccupancy1
     threading.Thread(target=cycle_decoder).start()
@@ -40,11 +40,10 @@ def _get_decodes(audio_in):
     duplicate_filter = set()
 
     # decode the Rx freq first
-    if(onDecode):
+    if(onDecode and config.rxfreq >0):
         timers.timedLog("[Cycle decoder] Get Rx freq decode")
         f0_idx = int(config.rxfreq / demod.spectrum.df)
-        rx_freq_candidate = Candidate(demod.sigspec, demod.spectrum, (0, f0_idx), -50, cyclestart_str)
-        rx_freq_candidate.fill_arrays()
+        rx_freq_candidate = Candidate(demod.spectrum, f0_idx, demod.candidate_size, cyclestart_str)
         decode = demod.demodulate_candidate(rx_freq_candidate)
         timers.timedLog("[Cycle decoder] Rx freq decoding done")
         if(decode):
@@ -53,7 +52,7 @@ def _get_decodes(audio_in):
             if(onDecode):
                 onDecode(decode)
             
-    candidates = demod.find_candidates(cyclestart_str = cyclestart_str)
+    candidates = demod.find_candidates(cyclestart_str)
     if(onOccupancy):
         occupancy, clear_freq = make_occupancy_array(candidates)
         onOccupancy(occupancy, clear_freq)

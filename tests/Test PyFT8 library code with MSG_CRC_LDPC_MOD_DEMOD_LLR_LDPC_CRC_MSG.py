@@ -9,7 +9,7 @@ import PyFT8.audio as audio
 from PyFT8.comms_hub import config
 
 demod = FT8Demodulator()
-config.decoder_search_limit = 500
+#config.decoder_search_limit = 500
 
 #VK1ABC 0b1110000111111100010100110101
 #VK3JPK 0b1110001000000111101000011110
@@ -93,7 +93,8 @@ wf.update_main(candidates=decoded_candidates)
 #print(f"Payload symbols demodulated: {''.join([str(int(s)) for s in candidates[0].payload_symbols])}")
 print("bits expected / bits decoded")
 print("11100001111111000101001101010111000100000011110100001111000111001010001010001")
-if(candidates):
-    print(''.join(str(int(b)) for b in candidates[0].payload_bits[:77]))
+if(decoded_candidates):
+    for c in decoded_candidates:
+        print(''.join(str(int(b)) for b in c.payload_bits[:77]))
 
 
