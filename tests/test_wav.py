@@ -32,7 +32,7 @@ unique_decodes = set()
 heads = ['Tload+', 'Rx call', 'Tx call', 'GrRp', 'SyncScr', 't0', 'cfg', 'f0', 'sch_idx', 'iters']
 print(''.join([f"{t:>8} " for t in heads]))
 for i, c in enumerate(candidates):
-    decode = demod.demodulate_candidate(c, silent = True)
+    decode = demod.demodulate_candidate(c, silent = False)
     if(decode):
         tdelta = timers.tnow() - t_start_load 
         decoded_candidates.append(c)

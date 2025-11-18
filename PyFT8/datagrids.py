@@ -34,7 +34,6 @@ class Candidate:
         self.spectrum = spectrum
         self.cyclestart_str = cyclestart_str
 
-
     def prep_for_decode(self, sigspec, t0):
         self.origin = (t0, self.origin[1])
         self.llr = None
@@ -45,5 +44,6 @@ class Candidate:
         self.message = None
         self.snr = -24
         self.origin_physical = (self.spectrum.dt * self.origin[0], self.spectrum.df * self.origin[1])
-       
+        self.fine_grid_complex = self.spectrum.fine_grid_complex[self.origin[0]:self.origin[0] + self.size[0],:][:, self.origin[1]:self.origin[1] + self.size[1]] 
+
 

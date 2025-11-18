@@ -34,6 +34,7 @@ class FT8Demodulator:
         fbins_pertone=3
         hops_persymb=5
         sigspec=FT8
+        self.duplicate_filter = set()
         self.sample_rate = sample_rate
         self.fbins_pertone = fbins_pertone
         self.hops_persymb = hops_persymb
@@ -64,7 +65,7 @@ class FT8Demodulator:
             aud = audio_in[sample_idx:sample_idx + self.spectrum.FFT_len] * np.kaiser(self.spectrum.FFT_len, 14)
             fine_grid_complex[hop_idx,:] = np.fft.rfft(aud)[:self.spectrum.nFreqs]
         self.spectrum.fill_arrays(fine_grid_complex)
-        timers.timedLog(f"Loaded {nHops_loaded} hops ({nHops_loaded*0.16/self.hops_persymb:.2f}s)")
+        timers.timedLog(f"[load_audio] Loaded {nHops_loaded} hops ({nHops_loaded*0.16/self.hops_persymb:.2f}s)")
         
 
     # ======================================================
@@ -93,10 +94,10 @@ class FT8Demodulator:
                 c.prep_for_decode(FT8, best[0])
                 candidates.append(c)
         candidates.sort(key=lambda c: -c.score)
-        candidates = candidates[:5000]
+        candidates = candidates[:300]
         for i, c in enumerate(candidates):
             c.sort_idx = i
-        timers.timedLog(f"Sync completed with {len(candidates)} candidates", silent = False)
+        timers.timedLog(f"[find_candidates] Sync completed with {len(candidates)} candidates", silent = False)
         return candidates
 
     # ======================================================
@@ -105,10 +106,10 @@ class FT8Demodulator:
 
     def demodulate_candidate(self, candidate, silent = False):
         c = candidate
-        fine_grid_complex = self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0] + c.size[0],:][:, c.origin[1]:c.origin[1] + c.size[1]] 
+        #timers.timedLog(f"[demodulate_candidate] received candidate at {c.origin} sync score {c.score}", silent = silent)    
         decode = False
         iconf = 0
-        cspec_4d = fine_grid_complex.reshape(FT8.num_symbols, self.hops_persymb, FT8.tones_persymb, self.fbins_pertone)
+        cspec_4d = c.fine_grid_complex.reshape(FT8.num_symbols, self.hops_persymb, FT8.tones_persymb, self.fbins_pertone)
         configs = [(0,0.0),(0,0.2),(0,0.6),(0,1)] #config[0] is spare
         while not decode and iconf < len(configs):
             c.llr = []
@@ -140,7 +141,7 @@ class FT8Demodulator:
                     c.snr = -24 if c.score==0 else int(25*np.log10(c.score/47524936) +18 )
                     c.snr = np.clip(c.snr, -24,24).item()
                     c.message = decode['decode_dict']['message']
-                    timers.timedLog(f"Decoded {c.message:>18} rank: {c.sort_idx:8d} score: {c.score:8.3f} iterations: {c.n_its}", silent = silent)
+                    timers.timedLog(f"[demodulate_candidate] Decoded {c.message:>18} rank: {c.sort_idx:8d} score: {c.score:8.3f} iterations: {c.n_its}", silent = silent)
                     return decode
             iconf +=1
     
