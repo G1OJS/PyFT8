@@ -64,6 +64,7 @@ class FT8Demodulator:
             aud = audio_in[sample_idx:sample_idx + self.spectrum.FFT_len] * np.kaiser(self.spectrum.FFT_len, 14)
             fine_grid_complex[hop_idx,:] = np.fft.rfft(aud)[:self.spectrum.nFreqs]
         self.spectrum.fill_arrays(fine_grid_complex)
+        timers.timedLog(f"Loaded {nHops_loaded} hops ({nHops_loaded*0.16/self.hops_persymb:.2f}s)")
         
 
     # ======================================================
