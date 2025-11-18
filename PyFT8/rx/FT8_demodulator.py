@@ -75,21 +75,12 @@ class FT8Demodulator:
     def find_candidates(self, cyclestart_str = 'xxxxxx_xxxxxx',  silent = False):
         candidates = []
         #output_limit = int(config.decoder_search_limit) 
-        f0_idxs = range(50, self.spectrum.nFreqs - self.candidate_size[1] -10, 1)
+        f0_idxs = range(self.spectrum.nFreqs - self.candidate_size[1])
         for f0_idx in f0_idxs:
             c = Candidate(self.spectrum, f0_idx, self.candidate_size, cyclestart_str)
-            c.score = np.min(np.std(c.fine_grid_pwr[100:200], axis=0)/np.mean(c.fine_grid_pwr[100:200], axis=0))
-            if(c.score > 0.8):
-                candidates.append(c)
-        candidates.sort(key=lambda c: -c.score)                           
-        for i, c in enumerate(candidates):
-            c.score_init = c.score
-            c.sort_idx_finder=i
-        timers.timedLog(f"Initial search completed with {len(candidates)} candidates", silent = False)
-
-        candidates_to_filter = candidates
-        candidates=[]
-        for c in candidates_to_filter:
+            fc = self.spectrum.fine_grid_complex[:,f0_idx:f0_idx + c.size[1]]
+            c.fine_grid_pwr = np.abs(fc)**2
+            c.fine_grid_pwr = c.fine_grid_pwr / np.max(c.fine_grid_pwr)
             best = (0, -1e30)
             for h0 in range(self.spectrum.hop0_window_size):
                 window = c.fine_grid_pwr[h0 + self.hop_idxs_Costas]
@@ -97,9 +88,13 @@ class FT8Demodulator:
                 if test[1] > best[1]:
                     best = test
             c.score = best[1]
-            if(c.score > .1):
+            if(c.score > .44):
                 c.prep_for_decode(FT8, best[0])
                 candidates.append(c)
+        candidates.sort(key=lambda c: -c.score)
+        candidates = candidates[:5000]
+        for i, c in enumerate(candidates):
+            c.sort_idx = i
         timers.timedLog(f"Sync completed with {len(candidates)} candidates", silent = False)
         return candidates
 
@@ -109,9 +104,10 @@ class FT8Demodulator:
 
     def demodulate_candidate(self, candidate, silent = False):
         c = candidate
+        fine_grid_complex = self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0] + c.size[0],:][:, c.origin[1]:c.origin[1] + c.size[1]] 
         decode = False
         iconf = 0
-        cspec_4d = c.fine_grid_complex.reshape(FT8.num_symbols, self.hops_persymb, FT8.tones_persymb, self.fbins_pertone)
+        cspec_4d = fine_grid_complex.reshape(FT8.num_symbols, self.hops_persymb, FT8.tones_persymb, self.fbins_pertone)
         configs = [(0,0.0),(0,0.2),(0,0.6),(0,1)] #config[0] is spare
         while not decode and iconf < len(configs):
             c.llr = []
@@ -136,13 +132,14 @@ class FT8Demodulator:
             ncheck, bits, n_its = decode174_91(c.llr)
             if(ncheck == 0):
                 c.payload_bits = bits
+                c.n_its = n_its
                 decode = FT8_decode(c)
                 if(decode):
                     c.iconf = iconf
                     c.snr = -24 if c.score==0 else int(25*np.log10(c.score/47524936) +18 )
                     c.snr = np.clip(c.snr, -24,24).item()
                     c.message = decode['decode_dict']['message']
-                    timers.timedLog(f"Decoded {c.message:>18} init. rank: {c.sort_idx_finder:8d} init. score: {c.score_init:8.3f}, score: {c.score:8.3f}", silent = silent)
+                    timers.timedLog(f"Decoded {c.message:>18} rank: {c.sort_idx:8d} score: {c.score:8.3f} iterations: {c.n_its}", silent = silent)
                     return decode
             iconf +=1
     

@@ -16,8 +16,6 @@ class Spectrum:
         
     def fill_arrays(self, fine_grid_complex):
         self.fine_grid_complex = fine_grid_complex
-        self.fine_grid_pwr = np.abs(fine_grid_complex)**2
-        self.fine_grid_pwr = self.fine_grid_pwr / np.max(self.fine_grid_pwr)
         self.nHops_loaded = self.fine_grid_complex.shape[0]
         self.hop0_window_size = self.nHops_loaded - (self.sigspec.num_symbols + self.sigspec.costas_len) * self.hops_persymb
         self.search_band_hops = self.hop0_window_size + self.sigspec.costas_len * self.hops_persymb
@@ -35,13 +33,10 @@ class Candidate:
         self.origin = (0, f0_idx)
         self.spectrum = spectrum
         self.cyclestart_str = cyclestart_str
-        self.fbins = range(self.origin[1], self.origin[1] + self.size[1])
-        self.fine_grid_pwr = self.spectrum.fine_grid_pwr[:,f0_idx:f0_idx + self.size[1]]
-        self.fine_grid_pwr = self.fine_grid_pwr / np.max(self.fine_grid_pwr)
+
 
     def prep_for_decode(self, sigspec, t0):
         self.origin = (t0, self.origin[1])
-        self.tbins = range(self.origin[0], self.origin[0] + self.size[0])
         self.llr = None
         self.llr_std = None
         self.payload_bits = None
@@ -50,7 +45,5 @@ class Candidate:
         self.message = None
         self.snr = -24
         self.origin_physical = (self.spectrum.dt * self.origin[0], self.spectrum.df * self.origin[1])
-        self.fine_grid_complex = self.spectrum.fine_grid_complex[self.tbins,:][:, self.fbins] 
-
-
+       
 

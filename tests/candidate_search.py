@@ -66,7 +66,6 @@ matches = []
 f0_idxs = range(demod.spectrum.nFreqs - demod.candidate_size[1])
 for f0_idx in f0_idxs:
     c = Candidate(demod.spectrum, f0_idx, demod.candidate_size, "")
-    #score = np.min(np.std(c.fine_grid_pwr[100:200], axis=0)/np.mean(c.fine_grid_pwr[100:200], axis=0))
     best = (0, f0_idx, -1e30)
     for h0 in range(demod.spectrum.hop0_window_size):
         window = c.fine_grid_pwr[h0 + demod.hop_idxs_Costas]
