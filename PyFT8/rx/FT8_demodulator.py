@@ -73,8 +73,8 @@ class FT8Demodulator:
         f0_idxs = range(50, self.spectrum.nFreqs - self.candidate_size[1] -10, 1)
         for f0_idx in f0_idxs:
             c = Candidate(self.spectrum, f0_idx, self.candidate_size, cyclestart_str)
-            c.score = np.min(np.std(c.fine_grid_pwr, axis=0) / np.mean(c.fine_grid_pwr, axis=0))
-            if(c.score > 1.4):
+            c.score = np.min(np.std(c.fine_grid_pwr, axis=0)/np.mean(c.fine_grid_pwr, axis=0))
+            if(c.score > 0.7):
                 candidates.append(c)
         candidates.sort(key=lambda c: -c.score)                           
         for i, c in enumerate(candidates):
@@ -90,7 +90,6 @@ class FT8Demodulator:
     def demodulate_candidate(self, candidate, silent = False):
         c = candidate
         best = (0, -1e30)
-        c.fine_grid_pwr = c.fine_grid_pwr / np.max(c.fine_grid_pwr)
         for h0 in self.spectrum.hop0_range:
             window = c.fine_grid_pwr[h0 + self.hop_idxs_Costas]
             test = (h0, np.sum(window * self._csync)) 

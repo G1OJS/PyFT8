@@ -23,6 +23,7 @@ class Spectrum:
         needed_headroom = int((self.hops_persymb * 1.5) / 0.16)
         headroom = min(sync_headroom, needed_headroom)
         sync_template_hops = self.sigspec.costas_len * self.hops_persymb
+        self.search_band_nHops = headroom + sync_template_hops
         self.hop0_range = range(headroom)
         self.extent = [0, self.sample_rate/2, 0,  (nHops_loaded / self.hops_persymb) / self.sigspec.symbols_persec ]
         self.df = self.extent[1]/self.fine_grid_complex.shape[1]
@@ -39,7 +40,8 @@ class Candidate:
         self.spectrum = spectrum
         self.cyclestart_str = cyclestart_str
         self.fbins = range(self.origin[1], self.origin[1] + self.size[1])
-        self.fine_grid_pwr = self.spectrum.fine_grid_pwr[:,f0_idx:f0_idx + self.size[1]]
+        self.fine_grid_pwr = self.spectrum.fine_grid_pwr[:self.spectrum.search_band_nHops,f0_idx:f0_idx + self.size[1]]
+        self.fine_grid_pwr = self.fine_grid_pwr / np.max(self.fine_grid_pwr)
 
     def prep_for_decode(self, sigspec, t0):
         self.origin = (t0, self.origin[1])

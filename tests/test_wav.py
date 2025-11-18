@@ -12,7 +12,7 @@ from PyFT8.comms_hub import config
 
 wav_file = "210703_133430.wav"
 #wav_file = '251114_135115.wav'
-#wav_file = "251115_135700.wav"
+wav_file = "251115_135700.wav"
 
 demod = FT8Demodulator()
 #config.decoder_search_limit = 500
