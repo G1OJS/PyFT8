@@ -12,8 +12,8 @@ cycle_len = 15
 duplicate_filter = set()
 
 def start_cycle_decoder(onDecode1, onOccupancy1, prioritise_rxfreq = True):
-    global onDecode, onOccupancy
-    onDecode, onOccupancy = onDecode1, onOccupancy1
+    global onDecode, onOccupancy, prioritise_rx
+    onDecode, onOccupancy, prioritise_rx = onDecode1, onOccupancy1, prioritise_rxfreq
     threading.Thread(target=cycle_decoder).start()
 
 def cycle_decoder():
@@ -30,7 +30,8 @@ def cycle_decoder():
         timers.timedLog("Cyclic demodulator requesting audio", silent = True)
         audio_in = audio.read_from_soundcard(timers.CYCLE_LENGTH - END_RECORD_GAP_SECONDS)
         timers.timedLog("Cyclic demodulator passed audio for demodulating", silent = True)
-        threading.Thread(target=_get_decodes, kwargs=({'audio_in':audio_in})).start()
+        _get_decodes(audio_in)
+       # threading.Thread(target=_get_decodes, kwargs=({'audio_in':audio_in})).start()
     
 def _get_decodes(audio_in):
     global demod, duplicate_filter
@@ -40,7 +41,7 @@ def _get_decodes(audio_in):
     duplicate_filter = set()
 
     # decode the Rx freq first
-    if(onDecode and config.rxfreq >0):
+    if(onDecode and prioritise_rx):
         timers.timedLog("[Cycle decoder] Get Rx freq decode")
         f0_idx = int(config.rxfreq / demod.spectrum.df)
         rx_freq_candidate = Candidate(demod.spectrum, f0_idx, demod.candidate_size, cyclestart_str)

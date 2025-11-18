@@ -5,6 +5,18 @@ import webbrowser
 import threading
 import PyFT8.timers as timers
 
+
+import threading
+import traceback
+
+def my_excepthook(args):
+    print("Thread exception caught:\n",
+          "".join(traceback.format_exception(args.exc_type,
+                                             args.exc_value,
+                                             args.exc_traceback)))
+threading.excepthook = my_excepthook
+
+
 def start_UI(UI_filename, UI_callback):
     threading.Thread(target=start_UI_page_server, daemon=True).start()
     threading.Thread(target=start_UI_ws_server, args=(UI_callback,)).start()

@@ -29,7 +29,11 @@ from PyFT8.comms_hub import config, send_to_ui_ws
 eps = 1e-12
         
 class FT8Demodulator:
-    def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=5, sigspec=FT8):
+    def __init__(self):
+        sample_rate=12000
+        fbins_pertone=3
+        hops_persymb=5
+        sigspec=FT8
         self.sample_rate = sample_rate
         self.fbins_pertone = fbins_pertone
         self.hops_persymb = hops_persymb
@@ -61,6 +65,7 @@ class FT8Demodulator:
             fine_grid_complex[hop_idx,:] = np.fft.rfft(aud)[:self.spectrum.nFreqs]
         self.spectrum.fill_arrays(fine_grid_complex)
         
+
     # ======================================================
     # Candidate search and sync
     # ======================================================
@@ -73,14 +78,29 @@ class FT8Demodulator:
         f0_idxs = range(50, self.spectrum.nFreqs - self.candidate_size[1] -10, 1)
         for f0_idx in f0_idxs:
             c = Candidate(self.spectrum, f0_idx, self.candidate_size, cyclestart_str)
-            c.score = np.min(np.std(c.fine_grid_pwr, axis=0)/np.mean(c.fine_grid_pwr, axis=0))
-            if(c.score > 0.7):
+            c.score = np.min(np.std(c.fine_grid_pwr[100:200], axis=0)/np.mean(c.fine_grid_pwr[100:200], axis=0))
+            if(c.score > 0.8):
                 candidates.append(c)
         candidates.sort(key=lambda c: -c.score)                           
         for i, c in enumerate(candidates):
             c.score_init = c.score
             c.sort_idx_finder=i
         timers.timedLog(f"Initial search completed with {len(candidates)} candidates", silent = False)
+
+        candidates_to_filter = candidates
+        candidates=[]
+        for c in candidates_to_filter:
+            best = (0, -1e30)
+            for h0 in range(self.spectrum.hop0_window_size):
+                window = c.fine_grid_pwr[h0 + self.hop_idxs_Costas]
+                test = (h0, np.sum(window * self._csync)) 
+                if test[1] > best[1]:
+                    best = test
+            c.score = best[1]
+            if(c.score > .1):
+                c.prep_for_decode(FT8, best[0])
+                candidates.append(c)
+        timers.timedLog(f"Sync completed with {len(candidates)} candidates", silent = False)
         return candidates
 
     # ======================================================
@@ -89,16 +109,6 @@ class FT8Demodulator:
 
     def demodulate_candidate(self, candidate, silent = False):
         c = candidate
-        best = (0, -1e30)
-        for h0 in self.spectrum.hop0_range:
-            window = c.fine_grid_pwr[h0 + self.hop_idxs_Costas]
-            test = (h0, np.sum(window * self._csync)) 
-            if test[1] > best[1]:
-                best = test
-        c.score = best[1]
-        if(c.score < 1.4):
-            return None
-        c.prep_for_decode(FT8, best[0])
         decode = False
         iconf = 0
         cspec_4d = c.fine_grid_complex.reshape(FT8.num_symbols, self.hops_persymb, FT8.tones_persymb, self.fbins_pertone)
