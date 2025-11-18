@@ -94,7 +94,7 @@ class FT8Demodulator:
                 c.prep_for_decode(FT8, best[0])
                 candidates.append(c)
         candidates.sort(key=lambda c: -c.score)
-        candidates = candidates[:300]
+        candidates = candidates[:100]
         for i, c in enumerate(candidates):
             c.sort_idx = i
         timers.timedLog(f"[find_candidates] Sync completed with {len(candidates)} candidates", silent = False)

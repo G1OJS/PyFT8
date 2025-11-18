@@ -13,7 +13,7 @@ def start_cycle_decoder(onDecode, onOccupancy, prioritise_rxfreq = True):
 def cycle_decoder(onDecode, onOccupancy, prioritise_rxfreq):
     global audio_in
     timers.CYCLE_LENGTH = 15
-    END_RECORD_GAP_SECONDS = 0.5
+    END_RECORD_GAP_SECONDS = 0.25
 
     while True:
         t_elapsed, t_remain, = timers.time_in_cycle()
@@ -49,17 +49,16 @@ def _get_decodes(audio_in, onDecode, onOccupancy, prioritise_rxfreq ):
 
     if(onDecode):
         for c in candidates:
-            #decode_candidate(demod, c, onDecode)
             threading.Thread(target=decode_candidate, kwargs = ({'demod':demod, 'c':c, 'onDecode':onDecode})).start()
 
 def decode_candidate(demod, c, onDecode):
-    decode = demod.demodulate_candidate(c, silent = False)
+    decode = demod.demodulate_candidate(c, silent = True)
     if(decode):
         decode_dict = decode['decode_dict']
-        key = f"{decode_dict['call_a']}{decode_dict['call_b']}"
-        timers.timedLog(f"[cycle decoder] Received decode: {key}", silent = False)         
+        key = f"{decode_dict['call_a']}{decode_dict['call_b']}{decode_dict['grid_rpt']}"
         if(not key in demod.duplicate_filter):
             demod.duplicate_filter.add(key)
+            #timers.timedLog(f"[cycle decoder] Received distinct decode: {key}", silent = False)         
             onDecode(decode)
 
 def make_occupancy_array(candidates, f0=0, f1=3500, bin_hz=10):
