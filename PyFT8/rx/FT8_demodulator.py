@@ -29,27 +29,23 @@ from PyFT8.comms_hub import config, send_to_ui_ws
 eps = 1e-12
         
 class FT8Demodulator:
-    def __init__(self):
-        sample_rate=12000
-        fbins_pertone=3
-        hops_persymb=5
-        sigspec=FT8
+    def __init__(self, sample_rate=12000, fbins_pertone=3, hops_persymb=5, sigspec=FT8):
         self.sample_rate = sample_rate
         self.fbins_pertone = fbins_pertone
         self.hops_persymb = hops_persymb
         self.sigspec = sigspec
         self.spectrum = Spectrum( fbins_pertone=self.fbins_pertone, hops_persymb=self.hops_persymb,
                                   sample_rate=self.sample_rate, sigspec=self.sigspec)
-        self.candidate_size = (self.sigspec.num_symbols * self.hops_persymb,
-                               self.sigspec.tones_persymb * self.fbins_pertone)
-        # ---- Costas sync mask ---- nsym(7) x nfBins(7 * self.fbins_pertone)
+        
+        # ---- Costas sync mask ----
         nsym = self.sigspec.costas_len
-        self._csync = np.full((nsym, self.candidate_size[1]), -1/(nsym-1), np.float32)
+        w    = self.sigspec.tones_persymb * self.fbins_pertone
+        # background: uniform negative weight per symbol
+        self._csync = np.full((nsym, w), -1/(nsym-1), np.float32)
         for sym_idx, tone in enumerate(self.sigspec.costas):
             fbins = range(tone* self.fbins_pertone, (tone+1) * self.fbins_pertone)
             self._csync[sym_idx, fbins] = 1.0
             self._csync[sym_idx, 7*self.fbins_pertone:] = 0
-        self.hop_idxs_Costas =  np.arange(nsym) * self.spectrum.hops_persymb
      
     # ======================================================
     # Load audio
@@ -65,7 +61,6 @@ class FT8Demodulator:
             fine_grid_complex[hop_idx,:] = np.fft.rfft(aud)[:self.spectrum.nFreqs]
         self.spectrum.fill_arrays(fine_grid_complex)
         
-
     # ======================================================
     # Candidate search and sync
     # ======================================================
@@ -74,49 +69,69 @@ class FT8Demodulator:
 
     def find_candidates(self, cyclestart_str = 'xxxxxx_xxxxxx',  silent = False):
         candidates = []
-        #output_limit = int(config.decoder_search_limit) 
-        f0_idxs = range(50, self.spectrum.nFreqs - self.candidate_size[1] -10, 1)
+        output_limit = int(config.decoder_search_limit)
+        
+        nfBins_cand = 8 * self.fbins_pertone
+        strips = []
+        f0_idxs = range(50, self.spectrum.nFreqs - nfBins_cand -10, 1)
         for f0_idx in f0_idxs:
-            c = Candidate(self.spectrum, f0_idx, self.candidate_size, cyclestart_str)
-            c.score = np.min(np.std(c.fine_grid_pwr[100:200], axis=0)/np.mean(c.fine_grid_pwr[100:200], axis=0))
-            if(c.score > 0.8):
-                candidates.append(c)
-        candidates.sort(key=lambda c: -c.score)                           
-        for i, c in enumerate(candidates):
+            env = self.spectrum.fine_grid_pwr[:,f0_idx:f0_idx+nfBins_cand]
+            strips.append((np.std(env), f0_idx)) 
+        strips.sort(key=lambda s: -s[0])
+        for i, s in enumerate(strips[:800]):
+            f0_idx = int(s[1])
+            c = Candidate(FT8, self.spectrum, (0, f0_idx), s[0], cyclestart_str)
+            candidates.append(c)
             c.score_init = c.score
             c.sort_idx_finder=i
         timers.timedLog(f"Initial search completed with {len(candidates)} candidates", silent = False)
-
-        candidates_to_filter = candidates
-        candidates=[]
-        for c in candidates_to_filter:
-            best = (0, -1e30)
-            for h0 in range(self.spectrum.hop0_window_size):
-                window = c.fine_grid_pwr[h0 + self.hop_idxs_Costas]
-                test = (h0, np.sum(window * self._csync)) 
-                if test[1] > best[1]:
-                    best = test
-            c.score = best[1]
-            if(c.score > .1):
-                c.prep_for_decode(FT8, best[0])
-                candidates.append(c)
-        timers.timedLog(f"Sync completed with {len(candidates)} candidates", silent = False)
+        
+        #2 - sync first Costas block to Costas template and discard low scores
+        for c in candidates:
+            self._sync_candidate(c)
+        candidates.sort(key=lambda c: -c.score)    
+        candidates = candidates[:400]
+        for i, c in enumerate(candidates):
+            c.fill_arrays()
+            c.sort_idx_sync=i
+        candidates = candidates[:output_limit]
+        l = len(candidates)
+        timers.timedLog(f"Sync completed with {l} candidates", silent = silent)
         return candidates
 
+    def _sync_candidate(self, c):
+        nsymbs = c.sigspec.costas_len
+        hop_idxs =  np.arange(nsymbs) * self.spectrum.hops_persymb
+        sync = self._csync[:nsymbs,:]
+        strip = self.spectrum.fine_grid_pwr[:,c.fbins]
+        best_score = -1e30
+        best_h0 = 0
+        for h0 in self.spectrum.hop0_range:
+            window = strip[h0 + hop_idxs]
+            score = np.sum(window * sync) 
+            if score > best_score:
+                best_score = score
+                best_h0 = h0
+        c.score = best_score
+        c.set_origin(( best_h0, c.origin[1]))
+
+     
     # ======================================================
     # Demodulation
     # ======================================================
 
     def demodulate_candidate(self, candidate, silent = False):
+        # 2-symbol block decoder
         c = candidate
         decode = False
         iconf = 0
         cspec_4d = c.fine_grid_complex.reshape(FT8.num_symbols, self.hops_persymb, FT8.tones_persymb, self.fbins_pertone)
-        configs = [(0,0.0),(0,0.2),(0,0.6),(0,1)] #config[0] is spare
+        configs = [(0,0.0),(0,0.2),(0,0.6),(0,1)]
         while not decode and iconf < len(configs):
             c.llr = []
             shoulders = configs[iconf][1]
-            cspec = shoulders*cspec_4d[:,0,:,0]+ cspec_4d[:,0,:,1] + shoulders*cspec_4d[:,0,:,2]
+            iHop = configs[iconf][0]
+            cspec = shoulders*cspec_4d[:,iHop,:,0]+ cspec_4d[:,iHop,:,1] + shoulders*cspec_4d[:,iHop,:,2]
             power_per_tone_per_symbol = (np.abs(cspec)**2)
             E0 = power_per_tone_per_symbol[0:78:2]                        
             E1 = power_per_tone_per_symbol[1:79:2]
@@ -133,17 +148,17 @@ class FT8Demodulator:
                 if(int(i/3) in FT8.payload_symb_idxs):
                     c.llr.extend([llr_all[i]])
             c.llr = 3 * (c.llr - np.mean(c.llr)) / np.std(c.llr)
-            ncheck, bits, n_its = decode174_91(c.llr)
+            ncheck, c.payload_bits, n_its = decode174_91(c.llr)
             if(ncheck == 0):
-                c.payload_bits = bits
+                c.iHop = iHop
+                c.iconf = iconf
+                c.snr = -24 if c.score==0 else int(25*np.log10(c.score/47524936) +18 )
+                c.snr = np.clip(c.snr, -24,24).item()
                 decode = FT8_decode(c)
                 if(decode):
-                    c.iconf = iconf
-                    c.snr = -24 if c.score==0 else int(25*np.log10(c.score/47524936) +18 )
-                    c.snr = np.clip(c.snr, -24,24).item()
                     c.message = decode['decode_dict']['message']
-                    timers.timedLog(f"Decoded {c.message:>18} init. rank: {c.sort_idx_finder:8d} init. score: {c.score_init:8.3f}, score: {c.score:8.3f}", silent = silent)
-                    return decode
+                    timers.timedLog(f"Decoded {c.message}", silent = silent)
+                return decode
             iconf +=1
     
 # ======================================================
