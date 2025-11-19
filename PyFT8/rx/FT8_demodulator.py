@@ -87,7 +87,7 @@ class FT8Demodulator:
     def __init__(self):
         sample_rate=12000
         fbins_pertone=3
-        hops_persymb=2
+        hops_persymb=3
         sigspec=FT8
         self.sample_rate = sample_rate
         self.fbins_pertone = fbins_pertone
