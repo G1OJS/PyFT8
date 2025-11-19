@@ -1,7 +1,7 @@
 import sys
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 
-from PyFT8.rx.cycle_decoder import start_cycle_decoder
+from PyFT8.rx.cycle_decoder import Cycle_decoder
 from PyFT8.rx.wsjtx_all_tailer import start_wsjtx_tailer
 from PyFT8.comms_hub import config, start_UI, send_to_ui_ws
 import PyFT8.audio as audio
@@ -50,7 +50,7 @@ def add_band_buttons():
 
 def run():
     start_wsjtx_tailer(on_wsjtx_decode)
-    start_cycle_decoder(onDecode, onOccupancy = None, prioritise_rxfreq = False)
+    cd = Cycle_decoder(onDecode, onOccupancy = None, prioritise_rxfreq = False)
     start_UI("PyFT8_live_compare.html", process_UI_event)
     add_band_buttons()
 
