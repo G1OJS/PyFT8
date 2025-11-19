@@ -45,12 +45,12 @@ def decode_candidate(demod, c, onDecode):
             #timers.timedLog(f"[cycle decoder] Received distinct decode: {key}", silent = False)         
             onDecode(decode)
 
-def make_occupancy_array(candidates, f0=0, f1=3500, bin_hz=10):
+def make_occupancy_array(candidates, f0=0, f1=3500, bin_hz=10, sig_hz = 50):
     occupancy = np.arange(f0, f1 + bin_hz, bin_hz)
     for c in candidates:
-        bin0 = np.clip(int((c.origin_physical[1]-f0)/bin_hz),0,len(occupancy)-1)
-        #binN = bin0 + int(c.sigspec.bw_Hz/bin_hz)
-        occupancy[bin0] += c.score
+        bin0 = int((c.origin_physical[1]-f0)/bin_hz)
+        bin1 = bin0 + int(sig_hz/bin_hz)
+        occupancy[bin0:bin1] = occupancy[bin0:bin1] + c.max_pwr
     occupancy = occupancy/np.max(occupancy)
     fs0, fs1 = 1000,1500
     bin0 = int((fs0-f0)/bin_hz)

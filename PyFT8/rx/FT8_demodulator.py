@@ -110,7 +110,8 @@ class FT8Demodulator:
             c = Candidate(self.spectrum, f0_idx, self.candidate_size, cyclestart_str)
             fc = self.spectrum.fine_grid_complex[:,f0_idx:f0_idx + c.size[1]]
             c.fine_grid_pwr = np.abs(fc)**2
-            c.fine_grid_pwr = c.fine_grid_pwr / np.max(c.fine_grid_pwr)
+            c.max_pwr = np.max(c.fine_grid_pwr)
+            c.fine_grid_pwr = c.fine_grid_pwr / c.max_pwr
             best = (0, -1e30)
             for h0 in range(self.spectrum.hop0_window_size):
                 window = c.fine_grid_pwr[h0 + self.hop_idxs_Costas]
