@@ -79,11 +79,11 @@ timers.timedLog(f"Start to Load audio from {wav_file}")
 candidates = demod.find_candidates()
 decoded_candidates = []
 for c in candidates:
-    decode = demod.demodulate_candidate(c)
+    decode = demod.demodulate_candidate(c, silent=True)
     if(decode):
         decoded_candidates.append(c)
         d = decode['decode_dict']
-        print(d['call_a'], d['call_b'], d['grid_rpt'], c.score_init, c.score )
+        print(d['call_a'], d['call_b'], d['grid_rpt'], c.score )
 wf = Waterfall(demod.spectrum, f0=0, f1=3500)
 
 wf.update_main(candidates=decoded_candidates)
