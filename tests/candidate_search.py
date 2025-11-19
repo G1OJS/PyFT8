@@ -4,7 +4,7 @@ sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 import math
 import numpy as np
 
-from PyFT8.datagrids import Spectrum, Candidate
+from PyFT8.rx.FT8_demodulator import Spectrum, Candidate
 from PyFT8.signaldefs import FT8
 import PyFT8.FT8_crc as crc
 import PyFT8.timers as timers
@@ -37,9 +37,6 @@ class FT8Demodulator:
             self._csync[sym_idx, 7*self.fbins_pertone:] = 0
         self.hop_idxs_Costas =  np.arange(nsym) * self.spectrum.hops_persymb
      
-    # ======================================================
-    # Load audio
-    # ======================================================
     def load_audio(self, audio_in):
         nSamps = len(audio_in)
         nHops_loaded = int(self.hops_persymb * self.sigspec.symbols_persec * (nSamps-self.spectrum.FFT_len)/self.sample_rate)
@@ -50,6 +47,8 @@ class FT8Demodulator:
             aud = audio_in[sample_idx:sample_idx + self.spectrum.FFT_len] * np.kaiser(self.spectrum.FFT_len, 14)
             fine_grid_complex[hop_idx,:] = np.fft.rfft(aud)[:self.spectrum.nFreqs]
         self.spectrum.fill_arrays(fine_grid_complex)
+        timers.timedLog(f"[load_audio] Loaded {nHops_loaded} hops ({nHops_loaded*0.16/self.hops_persymb:.2f}s)")
+        
         
 wav_file = "210703_133430.wav"
 wav_file = "251115_135700.wav"
@@ -66,6 +65,9 @@ matches = []
 f0_idxs = range(demod.spectrum.nFreqs - demod.candidate_size[1])
 for f0_idx in f0_idxs:
     c = Candidate(demod.spectrum, f0_idx, demod.candidate_size, "")
+    fc = demod.spectrum.fine_grid_complex[:,f0_idx:f0_idx + c.size[1]]
+    c.fine_grid_pwr = np.abs(fc)**2
+    c.fine_grid_pwr = c.fine_grid_pwr / np.max(c.fine_grid_pwr)
     best = (0, f0_idx, -1e30)
     for h0 in range(demod.spectrum.hop0_window_size):
         window = c.fine_grid_pwr[h0 + demod.hop_idxs_Costas]

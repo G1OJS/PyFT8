@@ -18,8 +18,6 @@ Log to PyFT8.log: 12:19:29.74 (+0.94) Start to Show candidates
 
 import math
 import numpy as np
-
-from PyFT8.datagrids import Spectrum, Candidate
 from PyFT8.signaldefs import FT8
 from PyFT8.rx.decode174_91 import decode174_91
 import PyFT8.FT8_crc as crc
@@ -27,7 +25,47 @@ import PyFT8.timers as timers
 from PyFT8.comms_hub import config, send_to_ui_ws
 
 eps = 1e-12
+
+class Spectrum:
+    def __init__(self, sample_rate, fbins_pertone, hops_persymb, sigspec):
+        self.max_freq = 3500
+        self.sample_rate = float(sample_rate)
+        self.sigspec = sigspec
+        self.fbins_pertone = int(fbins_pertone)
+        self.hops_persymb = int(hops_persymb)
+        self.FFT_len = int(self.fbins_pertone * self.sample_rate // self.sigspec.symbols_persec)
+        FFT_out_len = int(self.FFT_len/2) + 1
+        fmax_fft = self.sample_rate/2
+        self.nFreqs = int(FFT_out_len * self.max_freq / fmax_fft)
         
+    def fill_arrays(self, fine_grid_complex):
+        self.fine_grid_complex = fine_grid_complex
+        self.nHops_loaded = self.fine_grid_complex.shape[0]
+        self.hop0_window_size = self.nHops_loaded - (self.sigspec.num_symbols + self.sigspec.costas_len) * self.hops_persymb
+        self.search_band_hops = self.hop0_window_size + self.sigspec.costas_len * self.hops_persymb
+        self.extent = [0, self.max_freq, 0,  (self.nHops_loaded / self.hops_persymb) / self.sigspec.symbols_persec ]
+        self.df = self.extent[1]/self.fine_grid_complex.shape[1]
+        self.dt = self.extent[3]/self.fine_grid_complex.shape[0]
+        
+class Candidate:
+    def __init__(self, spectrum, f0_idx, size, cyclestart_str):
+        self.size = size
+        self.origin = (0, f0_idx)
+        self.spectrum = spectrum
+        self.cyclestart_str = cyclestart_str
+
+    def prep_for_decode(self, sigspec, t0):
+        self.origin = (t0, self.origin[1])
+        self.llr = None
+        self.llr_std = None
+        self.payload_bits = None
+        self.sigspec = sigspec  
+        self.payload_bits = []
+        self.message = None
+        self.snr = -24
+        self.origin_physical = (self.spectrum.dt * self.origin[0], self.spectrum.df * self.origin[1])
+        self.fine_grid_complex = self.spectrum.fine_grid_complex[self.origin[0]:self.origin[0] + self.size[0],:][:, self.origin[1]:self.origin[1] + self.size[1]] 
+
 class FT8Demodulator:
     def __init__(self):
         sample_rate=12000
@@ -52,9 +90,6 @@ class FT8Demodulator:
             self._csync[sym_idx, 7*self.fbins_pertone:] = 0
         self.hop_idxs_Costas =  np.arange(nsym) * self.spectrum.hops_persymb
      
-    # ======================================================
-    # Load audio
-    # ======================================================
     def load_audio(self, audio_in):
         nSamps = len(audio_in)
         nHops_loaded = int(self.hops_persymb * self.sigspec.symbols_persec * (nSamps-self.spectrum.FFT_len)/self.sample_rate)
@@ -66,18 +101,11 @@ class FT8Demodulator:
             fine_grid_complex[hop_idx,:] = np.fft.rfft(aud)[:self.spectrum.nFreqs]
         self.spectrum.fill_arrays(fine_grid_complex)
         timers.timedLog(f"[load_audio] Loaded {nHops_loaded} hops ({nHops_loaded*0.16/self.hops_persymb:.2f}s)")
-        
-
-    # ======================================================
-    # Candidate search and sync
-    # ======================================================
-    
-    # sliding window = convolution - do in other domain?
 
     def find_candidates(self, cyclestart_str = 'xxxxxx_xxxxxx',  silent = False, prioritise_Hz = False):
         candidates = []
         output_limit = int(config.decoder_search_limit) 
-        f0_idxs = range(self.spectrum.nFreqs - self.candidate_size[1])
+        f0_idxs = range(0, self.spectrum.nFreqs - self.candidate_size[1], 2)
         for f0_idx in f0_idxs:
             c = Candidate(self.spectrum, f0_idx, self.candidate_size, cyclestart_str)
             fc = self.spectrum.fine_grid_complex[:,f0_idx:f0_idx + c.size[1]]
@@ -90,7 +118,7 @@ class FT8Demodulator:
                 if test[1] > best[1]:
                     best = test
             c.score = best[1]
-            if(c.score > .44):
+            if(c.score > 2.5):
                 c.prep_for_decode(FT8, best[0])
                 candidates.append(c)
                 if(prioritise_Hz and abs(c.origin_physical[1]-prioritise_Hz) < 1):
@@ -101,10 +129,6 @@ class FT8Demodulator:
             c.sort_idx = i
         timers.timedLog(f"[find_candidates] Sync completed with {len(candidates)} candidates", silent = False)
         return candidates
-
-    # ======================================================
-    # Demodulation
-    # ======================================================
 
     def demodulate_candidate(self, candidate, silent = False):
         c = candidate 
