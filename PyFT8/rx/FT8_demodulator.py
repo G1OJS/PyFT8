@@ -105,7 +105,7 @@ class FT8Demodulator:
     def find_candidates(self, cyclestart_str = 'xxxxxx_xxxxxx',  silent = False, prioritise_Hz = False):
         candidates = []
         output_limit = int(config.decoder_search_limit) 
-        f0_idxs = range(0, self.spectrum.nFreqs - self.candidate_size[1], 2)
+        f0_idxs = range(0, self.spectrum.nFreqs - self.candidate_size[1], 1)
         for f0_idx in f0_idxs:
             c = Candidate(self.spectrum, f0_idx, self.candidate_size, cyclestart_str)
             fc = self.spectrum.fine_grid_complex[:,f0_idx:f0_idx + c.size[1]]
@@ -119,7 +119,7 @@ class FT8Demodulator:
                 if test[1] > best[1]:
                     best = test
             c.score = best[1]
-            if(c.score > 2):
+            if(c.score > 1.5):
                 c.prep_for_decode(FT8, best[0])
                 candidates.append(c)
                 if(prioritise_Hz and abs(c.origin_physical[1]-prioritise_Hz) < 1):
@@ -136,7 +136,7 @@ class FT8Demodulator:
         decode = False
         iconf = 0
         cspec_4d = c.fine_grid_complex.reshape(FT8.num_symbols, self.hops_persymb, FT8.tones_persymb, self.fbins_pertone)
-        configs = [(0,0.0),(0,0.5),(0,1)] #config[0] is spare
+        configs = [(0,0.0),(0,0.2),(0,0.6),(0,1)] #config[0] is spare
         while not decode and iconf < len(configs):
             c.llr = []
             shoulders = configs[iconf][1]
