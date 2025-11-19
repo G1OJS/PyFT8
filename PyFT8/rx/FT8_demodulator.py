@@ -1,5 +1,7 @@
 """
-wave file test 13-11-2025 12:20
+wave file tests
+
+13-11-2025 12:20
 Log to PyFT8.log: 12:19:26.70 (+0.02) Start to Load audio from 210703_133430.wav
 Log to PyFT8.log: 12:19:27.26 (+0.57) Start to Find candidates
 Log to PyFT8.log: 12:19:27.52 (+0.26) Found 1500 candidates
@@ -14,6 +16,21 @@ test     0.000 Rx FT8    -22  0.5  640 N1JFU EA6EE R-07 17 None 17 307
 test     0.000 Rx FT8    -22  0.4 1646 K1JT EA3AGB -15 12 None 12 790
 Log to PyFT8.log: 12:19:28.80 (+1.21) Start to Show spectrum
 Log to PyFT8.log: 12:19:29.74 (+0.94) Start to Show candidates
+
+19-11-2025 15:32
+  Tload+  Rx call  Tx call     GrRp  SyncScr      snr       t0      cfg       f0  sch_idx    iters 
+    1.23    N1JFU    EA6EE     R-07    9.431       22       11        0      306        0        9
+    1.32        -        -        -    8.062       16       11        0      307        1        4
+    1.37   WM3PEN    EA6VQ      -09    7.974       15        5        0     1034        2        0
+    1.39        -        -        -    7.552       13        5        0     1035        3        0
+    1.42     W1FC    F5BZB      -08    4.441       -9       11        0     1233        8        0
+    1.50        -        -        -    4.093      -13        5        0     1036        9        4
+    2.12        -        -        -    3.072      -24       11        0     1234       25        0
+    2.55     K1JT   EA3AGB      -15    2.173      -24        8        0      790       76       16
+    4.07     K1JT    HA0DU     KN07    1.465      -24       12        0      282      264        6
+    4.26    A92EE    F5PSR      -14    1.428      -24        9        0      345      281        7
+    4.30 DONE. Unique decodes = 6
+
 """
 
 import math
@@ -70,7 +87,7 @@ class FT8Demodulator:
     def __init__(self):
         sample_rate=12000
         fbins_pertone=3
-        hops_persymb=5
+        hops_persymb=3
         sigspec=FT8
         self.duplicate_filter = set()
         self.sample_rate = sample_rate
@@ -119,11 +136,11 @@ class FT8Demodulator:
                 if test[1] > best[1]:
                     best = test
             c.score = best[1]
-            if(c.score > 1.5):
+            if(c.score > 1.4):
                 c.prep_for_decode(FT8, best[0])
                 candidates.append(c)
                 if(prioritise_Hz and abs(c.origin_physical[1]-prioritise_Hz) < 1):
-                    c.score = 20
+                    c.score = 10
         candidates.sort(key=lambda c: -c.score)
         candidates = candidates[:output_limit]
         for i, c in enumerate(candidates):
@@ -136,40 +153,36 @@ class FT8Demodulator:
         decode = False
         iconf = 0
         cspec_4d = c.fine_grid_complex.reshape(FT8.num_symbols, self.hops_persymb, FT8.tones_persymb, self.fbins_pertone)
-        configs = [(0,0.0),(0,0.2),(0,0.6),(0,1)] #config[0] is spare
-        while not decode and iconf < len(configs):
-            c.llr = []
-            shoulders = configs[iconf][1]
-            cspec = shoulders*cspec_4d[:,0,:,0]+ cspec_4d[:,0,:,1] + shoulders*cspec_4d[:,0,:,2]
-            power_per_tone_per_symbol = (np.abs(cspec)**2)
-            E0 = power_per_tone_per_symbol[0:78:2]                        
-            E1 = power_per_tone_per_symbol[1:79:2]
-            pair_score = E0[:, :, None] * E1[:, None, :]
-            ps = pair_score[:, None, :, :]
-            V = ps * FT8.block_decode_wt2
-            ones  = np.max(V,     where=(FT8.block_decode_wt2 > 0), initial=-np.inf, axis=(2, 3))
-            zeros = np.max(-V,    where=(FT8.block_decode_wt2 < 0), initial=-np.inf, axis=(2, 3))
-            ones = np.clip(ones,  0.0001, 1e30)
-            zeros = np.clip(zeros, 0.0001, 1e30) 
-            llr_block = np.log(ones ) - np.log(zeros )  
-            llr_all = llr_block.reshape(-1)
-            for i in range(len(llr_all)):
-                if(int(i/3) in FT8.payload_symb_idxs):
-                    c.llr.extend([llr_all[i]])
-            c.llr = 3 * (c.llr - np.mean(c.llr)) / np.std(c.llr)
-            ncheck, bits, n_its = decode174_91(c.llr)
-            if(ncheck == 0):
-                c.payload_bits = bits
-                c.snr = -24 if c.score==0 else int(10+100*np.log10(c.score/7))
-                c.snr = np.clip(c.snr, -24,24).item()
-                c.n_its = n_its
-                decode = FT8_decode(c)
-                if(decode):
-                    c.iconf = iconf
-                    c.message = decode['decode_dict']['message']
-                    #timers.timedLog(f"[demodulate_candidate] Decoded {c.message:>18} rank: {c.sort_idx:8d} score: {c.score:8.3f} iterations: {c.n_its}", silent = silent)
-                    return decode
-            iconf +=1
+        c.llr = []
+        cspec = cspec_4d[:,0,:,1]
+        power_per_tone_per_symbol = (np.abs(cspec)**2)
+        E0 = power_per_tone_per_symbol[0:78:2]                        
+        E1 = power_per_tone_per_symbol[1:79:2]
+        pair_score = E0[:, :, None] * E1[:, None, :]
+        ps = pair_score[:, None, :, :]
+        V = ps * FT8.block_decode_wt2
+        ones  = np.max(V,     where=(FT8.block_decode_wt2 > 0), initial=-np.inf, axis=(2, 3))
+        zeros = np.max(-V,    where=(FT8.block_decode_wt2 < 0), initial=-np.inf, axis=(2, 3))
+        ones = np.clip(ones,  0.0001, 1e30)
+        zeros = np.clip(zeros, 0.0001, 1e30) 
+        llr_block = np.log(ones ) - np.log(zeros )  
+        llr_all = llr_block.reshape(-1)
+        for i in range(len(llr_all)):
+            if(int(i/3) in FT8.payload_symb_idxs):
+                c.llr.extend([llr_all[i]])
+        c.llr = 3 * (c.llr - np.mean(c.llr)) / np.std(c.llr)
+        ncheck, bits, n_its = decode174_91(c.llr)
+        if(ncheck == 0):
+            c.payload_bits = bits
+            c.snr = -24 if c.score==0 else int(10+100*np.log10(c.score/7))
+            c.snr = np.clip(c.snr, -24,24).item()
+            c.n_its = n_its
+            decode = FT8_decode(c)
+            if(decode):
+                c.iconf = iconf
+                c.message = decode['decode_dict']['message']
+                #timers.timedLog(f"[demodulate_candidate] Decoded {c.message:>18} rank: {c.sort_idx:8d} score: {c.score:8.3f} iterations: {c.n_its}", silent = silent)
+                return decode
     
 # ======================================================
 # FT8 Unpacking functions
