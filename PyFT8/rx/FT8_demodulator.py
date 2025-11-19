@@ -87,7 +87,7 @@ class FT8Demodulator:
     def __init__(self):
         sample_rate=12000
         fbins_pertone=3
-        hops_persymb=5
+        hops_persymb=2
         sigspec=FT8
         self.sample_rate = sample_rate
         self.fbins_pertone = fbins_pertone
@@ -121,7 +121,7 @@ class FT8Demodulator:
     def find_candidates(self, cyclestart_str = 'xxxxxx_xxxxxx',  silent = False, prioritise_Hz = False):
         candidates = []
         output_limit = int(config.decoder_search_limit) 
-        f0_idxs = range(0, self.spectrum.nFreqs - self.candidate_size[1], 1)
+        f0_idxs = range(self.spectrum.nFreqs - self.candidate_size[1])
         for f0_idx in f0_idxs:
             c = Candidate(self.spectrum, f0_idx, self.candidate_size, cyclestart_str)
             fc = self.spectrum.fine_grid_complex[:,f0_idx:f0_idx + c.size[1]]
@@ -135,8 +135,14 @@ class FT8Demodulator:
                 if test[1] > best[1]:
                     best = test
             c.score = best[1]
-            if(c.score > 1.4):
+            if(c.score > .5):
+                # if there's an existing neighbour in frequency, replace it if we have a better score, otherwise don't append us 
+                neighbour_lf = [n for n in candidates if (c.origin[1] - n.origin[1] <=2)]
+                if(neighbour_lf):
+                    if(neighbour_lf[0].score >= c.score): continue
+                    if(neighbour_lf[0].score < c.score): candidates.remove(neighbour_lf[0])
                 c.prep_for_decode(FT8, best[0])
+                
                 candidates.append(c)
                 if(prioritise_Hz and abs(c.origin_physical[1]-prioritise_Hz) < 1):
                     c.score = 10
@@ -180,7 +186,6 @@ class FT8Demodulator:
             if(decode):
                 c.iconf = iconf
                 c.message = decode['decode_dict']['message']
-                #timers.timedLog(f"[demodulate_candidate] Decoded {c.message:>18} rank: {c.sort_idx:8d} score: {c.score:8.3f} iterations: {c.n_its}", silent = silent)
                 return decode
     
 # ======================================================

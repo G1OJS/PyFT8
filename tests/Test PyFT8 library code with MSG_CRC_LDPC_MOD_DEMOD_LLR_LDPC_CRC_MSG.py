@@ -87,7 +87,7 @@ for c in candidates:
 wf = Waterfall(demod.spectrum, f0=0, f1=3500)
 
 wf.update_main(candidates=decoded_candidates)
-#wf.show_zoom(candidates=decoded_candidates, phase = False, llr_overlay=False)
+wf.show_zoom(candidates=decoded_candidates, phase = False, llr_overlay=False)
 #wf.show_zoom(candidates=decoded_candidates, phase = True, llr_overlay=False)
 
 #print(f"Payload symbols demodulated: {''.join([str(int(s)) for s in candidates[0].payload_symbols])}")

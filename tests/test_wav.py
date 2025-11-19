@@ -45,7 +45,7 @@ print(f"{tdelta:8.2f} DONE. Unique decodes = {len(unique_decodes)}")
       
 wf = Waterfall(demod.spectrum, f1=3500)
 wf.update_main(candidates=decoded_candidates)
-#wf.show_zoom(candidates=decoded_candidates)
+wf.show_zoom(candidates=decoded_candidates)
 
 
 

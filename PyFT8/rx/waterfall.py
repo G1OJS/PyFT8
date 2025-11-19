@@ -4,7 +4,7 @@ from matplotlib.colors import LogNorm
 import numpy as np
 
 class Waterfall:
-    def __init__(self, spectrum, t0=0, t1=None, f0=100, f1=None):
+    def __init__(self, spectrum, t0=0, t1=15, f0=100, f1=3500):
         """
         Main FT8 waterfall display with candidate zooms and optional overlays.
         """
@@ -12,8 +12,8 @@ class Waterfall:
         self.costas = spectrum.sigspec.costas
         self.hops_persymb = spectrum.hops_persymb
         self.fbins_pertone = spectrum.fbins_pertone
-        self.t0, self.t1 = t0, t1 or spectrum.sigspec.frame_secs
-        self.f0, self.f1 = f0, f1 or (spectrum.sample_rate / 2)
+        self.t0, self.t1 = t0, t1 
+        self.f0, self.f1 = f0, f1 
         self.plt = plt
 
 
@@ -86,7 +86,7 @@ class Waterfall:
             ax = axes[i]
             cspec = c.fine_grid_complex
             vals = np.angle(cspec) if phase else np.abs(cspec)**2
-            im = ax.imshow( vals, origin="lower", aspect="auto",
+            im = ax.imshow( vals, origin="lower", aspect="auto", extent=[-0.5, vals.shape[1]-0.5, -0.5, vals.shape[0]-0.5],
                             cmap="twilight" if phase else "inferno",
                             interpolation='none' )
             if(not phase): im.norm = LogNorm()
@@ -95,9 +95,9 @@ class Waterfall:
             ax.set_ylabel("hop index")
 
             # --- Costas rectangles ---
-            for symb_idx, tone_idx in costas_pairs:
+            for hop_idx, fbin_idx in costas_pairs:
                 rect = patches.Rectangle(
-                    (tone_idx - 0.5, symb_idx - 0.5), self.fbins_pertone, self.hops_persymb,
+                    (fbin_idx - 0.5, hop_idx - 0.5), self.fbins_pertone, self.hops_persymb,
                     edgecolor='lime', facecolor='none', linewidth=1.2
                 )
                 ax.add_patch(rect)
