@@ -74,9 +74,9 @@ class FT8Demodulator:
     
     # sliding window = convolution - do in other domain?
 
-    def find_candidates(self, cyclestart_str = 'xxxxxx_xxxxxx',  silent = False):
+    def find_candidates(self, cyclestart_str = 'xxxxxx_xxxxxx',  silent = False, prioritise_Hz = False):
         candidates = []
-        #output_limit = int(config.decoder_search_limit) 
+        output_limit = int(config.decoder_search_limit) 
         f0_idxs = range(self.spectrum.nFreqs - self.candidate_size[1])
         for f0_idx in f0_idxs:
             c = Candidate(self.spectrum, f0_idx, self.candidate_size, cyclestart_str)
@@ -93,8 +93,10 @@ class FT8Demodulator:
             if(c.score > .44):
                 c.prep_for_decode(FT8, best[0])
                 candidates.append(c)
+                if(prioritise_Hz and abs(c.origin_physical[1]-prioritise_Hz) < 1):
+                    c.score = 20
         candidates.sort(key=lambda c: -c.score)
-        candidates = candidates[:100]
+        candidates = candidates[:output_limit]
         for i, c in enumerate(candidates):
             c.sort_idx = i
         timers.timedLog(f"[find_candidates] Sync completed with {len(candidates)} candidates", silent = False)

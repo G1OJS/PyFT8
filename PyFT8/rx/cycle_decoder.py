@@ -27,26 +27,11 @@ def cycle_decoder(onDecode, onOccupancy, prioritise_rxfreq):
 def _get_decodes(audio_in, onDecode, onOccupancy, prioritise_rxfreq ):
     demod = FT8Demodulator()
     cyclestart_str = timers.cyclestart_str(0)
-    demod.load_audio(audio_in)
-   
-    # decode the Rx freq first
-    if(onDecode and prioritise_rxfreq):
-        timers.timedLog("[Cycle decoder] Get Rx freq decode")
-        f0_idx = int(config.rxfreq / demod.spectrum.df)
-        rx_freq_candidate = Candidate(demod.spectrum, f0_idx, demod.candidate_size, cyclestart_str)
-        decode = demod.demodulate_candidate(rx_freq_candidate)
-        timers.timedLog("[Cycle decoder] Rx freq decoding done")
-        if(decode):
-            demod.duplicate_filter.add(decode['decode_dict']['message'] )
-            decode['decode_dict'].update({'rxfreq': True})
-            if(onDecode):
-                onDecode(decode)
-            
-    candidates = demod.find_candidates(cyclestart_str)
+    demod.load_audio(audio_in)  
+    candidates = demod.find_candidates(cyclestart_str, prioritise_Hz = config.rxfreq if prioritise_rxfreq else False)
     if(onOccupancy):
         occupancy, clear_freq = make_occupancy_array(candidates)
         onOccupancy(occupancy, clear_freq)
-
     if(onDecode):
         for c in candidates:
             threading.Thread(target=decode_candidate, kwargs = ({'demod':demod, 'c':c, 'onDecode':onDecode})).start()
@@ -64,7 +49,7 @@ def decode_candidate(demod, c, onDecode):
 def make_occupancy_array(candidates, f0=0, f1=3500, bin_hz=10):
     occupancy = np.arange(f0, f1 + bin_hz, bin_hz)
     for c in candidates:
-        bin0 = int((c.origin_physical[1]-f0)/bin_hz)
+        bin0 = np.clip(int((c.origin_physical[1]-f0)/bin_hz),0,len(occupancy)-1)
         #binN = bin0 + int(c.sigspec.bw_Hz/bin_hz)
         occupancy[bin0] += c.score
     occupancy = occupancy/np.max(occupancy)
