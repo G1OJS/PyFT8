@@ -13,14 +13,10 @@ def cycle_decoder(onDecode, onOccupancy, prioritise_rxfreq):
     global audio_in
     timers.CYCLE_LENGTH = 15
     END_RECORD_GAP_SECONDS = 0.25
-
     while True:
-        t_elapsed, t_remain, = timers.time_in_cycle()
-        if(t_remain <14):
-            timers.timedLog(f"[Cycle decoder] waiting {t_remain:.2f}s for cycle start", silent = False)
-            timers.sleep(t_remain)
+        while ((timers.tnow() %15) >0.2):
+            timers.sleep(0.05)
         audio_in = audio.read_from_soundcard(timers.CYCLE_LENGTH - END_RECORD_GAP_SECONDS)
-        timers.timedLog("Cyclic demodulator passed audio for demodulating", silent = True)
         threading.Thread(target=_get_decodes, kwargs=({'audio_in':audio_in, 'onDecode':onDecode, 'onOccupancy':onOccupancy , 'prioritise_rxfreq':prioritise_rxfreq})).start()
     
 def _get_decodes(audio_in, onDecode, onOccupancy, prioritise_rxfreq ):
