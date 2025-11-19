@@ -7,75 +7,49 @@ from PyFT8.datagrids import Candidate
 from PyFT8.rx.FT8_demodulator import FT8Demodulator
 from PyFT8.rx.waterfall import Waterfall
 
-global demod, duplicate_filter, onDecode, onOccupancy, cycle_len
-cycle_len = 15
-duplicate_filter = set()
+def start_cycle_decoder(onDecode, onOccupancy, prioritise_rxfreq = True):
+    threading.Thread(target=cycle_decoder, kwargs=({'onDecode':onDecode, 'onOccupancy':onOccupancy,'prioritise_rxfreq':prioritise_rxfreq})).start()
 
-def start_cycle_decoder(onDecode1, onOccupancy1):
-    global onDecode, onOccupancy
-    onDecode, onOccupancy = onDecode1, onOccupancy1
-    threading.Thread(target=cycle_decoder).start()
-
-def cycle_decoder():
+def cycle_decoder(onDecode, onOccupancy, prioritise_rxfreq):
     global audio_in
-    MAX_START_OFFSET_SECONDS = 0.5
-    END_RECORD_GAP_SECONDS = 1
+    timers.CYCLE_LENGTH = 15
+    END_RECORD_GAP_SECONDS = 0.25
 
-    timers.CYCLE_LENGTH = cycle_len
     while True:
         t_elapsed, t_remain, = timers.time_in_cycle()
-        timers.sleep(t_remain)
-        if(t_elapsed <5 and t_elapsed > MAX_START_OFFSET_SECONDS):
-            timers.timedLog(f"Arrived to start recording at {t_elapsed} into cycle, waiting for next", silent = True)
-        timers.timedLog("Cyclic demodulator requesting audio", silent = True)
+        if(t_remain <14):
+            timers.timedLog(f"[Cycle decoder] waiting {t_remain:.2f}s for cycle start", silent = False)
+            timers.sleep(t_remain)
         audio_in = audio.read_from_soundcard(timers.CYCLE_LENGTH - END_RECORD_GAP_SECONDS)
         timers.timedLog("Cyclic demodulator passed audio for demodulating", silent = True)
-        threading.Thread(target=_get_decodes, kwargs=({'audio_in':audio_in})).start()
+        threading.Thread(target=_get_decodes, kwargs=({'audio_in':audio_in, 'onDecode':onDecode, 'onOccupancy':onOccupancy , 'prioritise_rxfreq':prioritise_rxfreq})).start()
     
-def _get_decodes(audio_in):
-    global demod, duplicate_filter
+def _get_decodes(audio_in, onDecode, onOccupancy, prioritise_rxfreq ):
     demod = FT8Demodulator()
     cyclestart_str = timers.cyclestart_str(0)
-    demod.load_audio(audio_in)
-    duplicate_filter = set()
-
-    # decode the Rx freq first
-    if(onDecode):
-        timers.timedLog("[Cycle decoder] Get Rx freq decode")
-        f0_idx = int(config.rxfreq / demod.spectrum.df)
-        rx_freq_candidate = Candidate(demod.sigspec, demod.spectrum, (0, f0_idx), -50, cyclestart_str)
-        rx_freq_candidate.fill_arrays()
-        decode = demod.demodulate_candidate(rx_freq_candidate)
-        timers.timedLog("[Cycle decoder] Rx freq decoding done")
-        if(decode):
-            duplicate_filter.add(decode['decode_dict']['message'] )
-            decode['decode_dict'].update({'rxfreq': True})
-            if(onDecode):
-                onDecode(decode)
-            
-    candidates = demod.find_candidates(cyclestart_str = cyclestart_str)
+    demod.load_audio(audio_in)  
+    candidates = demod.find_candidates(cyclestart_str, prioritise_Hz = config.rxfreq if prioritise_rxfreq else False)
     if(onOccupancy):
         occupancy, clear_freq = make_occupancy_array(candidates)
         onOccupancy(occupancy, clear_freq)
-
     if(onDecode):
         for c in candidates:
-            threading.Thread(target=decode_candidate, kwargs = ({'c':c})).start()
+            threading.Thread(target=decode_candidate, kwargs = ({'demod':demod, 'c':c, 'onDecode':onDecode})).start()
 
-def decode_candidate(c):
-    global duplicate_filter
-    decode = demod.demodulate_candidate(c)
+def decode_candidate(demod, c, onDecode):
+    decode = demod.demodulate_candidate(c, silent = True)
     if(decode):
         decode_dict = decode['decode_dict']
-        key = f"{decode_dict['call_a']}{decode_dict['call_b']}"
-        if(not key in duplicate_filter):
-            duplicate_filter.add(key)
+        key = f"{decode_dict['call_a']}{decode_dict['call_b']}{decode_dict['grid_rpt']}"
+        if(not key in demod.duplicate_filter):
+            demod.duplicate_filter.add(key)
+            #timers.timedLog(f"[cycle decoder] Received distinct decode: {key}", silent = False)         
             onDecode(decode)
 
 def make_occupancy_array(candidates, f0=0, f1=3500, bin_hz=10):
     occupancy = np.arange(f0, f1 + bin_hz, bin_hz)
     for c in candidates:
-        bin0 = int((c.origin_physical[1]-f0)/bin_hz)
+        bin0 = np.clip(int((c.origin_physical[1]-f0)/bin_hz),0,len(occupancy)-1)
         #binN = bin0 + int(c.sigspec.bw_Hz/bin_hz)
         occupancy[bin0] += c.score
     occupancy = occupancy/np.max(occupancy)

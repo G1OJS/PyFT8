@@ -16,15 +16,10 @@ class Spectrum:
         
     def fill_arrays(self, fine_grid_complex):
         self.fine_grid_complex = fine_grid_complex
-        self.fine_grid_pwr = np.abs(fine_grid_complex)**2
-      #  self.fine_grid_pwr = self.fine_grid_pwr / np.max(self.fine_grid_pwr)
-        nHops_loaded = self.fine_grid_complex.shape[0]
-        sync_headroom = nHops_loaded - self.sigspec.num_symbols*self.hops_persymb
-        needed_headroom = int((self.hops_persymb * 1.5) / 0.16)
-        headroom = min(sync_headroom, needed_headroom)
-        sync_template_hops = self.sigspec.costas_len * self.hops_persymb
-        self.hop0_range = range(headroom)
-        self.extent = [0, self.sample_rate/2, 0,  (nHops_loaded / self.hops_persymb) / self.sigspec.symbols_persec ]
+        self.nHops_loaded = self.fine_grid_complex.shape[0]
+        self.hop0_window_size = self.nHops_loaded - (self.sigspec.num_symbols + self.sigspec.costas_len) * self.hops_persymb
+        self.search_band_hops = self.hop0_window_size + self.sigspec.costas_len * self.hops_persymb
+        self.extent = [0, self.sample_rate/2, 0,  (self.nHops_loaded / self.hops_persymb) / self.sigspec.symbols_persec ]
         self.df = self.extent[1]/self.fine_grid_complex.shape[1]
         self.dt = self.extent[3]/self.fine_grid_complex.shape[0]
         
@@ -33,28 +28,22 @@ class Spectrum:
 # ============================================================
 
 class Candidate:
-    def __init__(self, sigspec, spectrum, origin, score=None, cyclestart_str='xxxxxx_xxxxxx'):
+    def __init__(self, spectrum, f0_idx, size, cyclestart_str):
+        self.size = size
+        self.origin = (0, f0_idx)
+        self.spectrum = spectrum
+        self.cyclestart_str = cyclestart_str
+
+    def prep_for_decode(self, sigspec, t0):
+        self.origin = (t0, self.origin[1])
         self.llr = None
         self.llr_std = None
         self.payload_bits = None
-        self.spectrum = spectrum
-        self.sigspec = sigspec
-        self.score = score
-        self.snr = -24
-        self.cyclestart_str = cyclestart_str
+        self.sigspec = sigspec  
         self.payload_bits = []
         self.message = None
-        self.set_origin(origin)
-
-    def set_origin(self, origin):
-        self.origin = origin
-        self.origin_physical = (self.spectrum.dt * origin[0], self.spectrum.df * origin[1])
-        self.tbins = range(self.origin[0], self.origin[0] + self.sigspec.num_symbols * self.spectrum.hops_persymb)
-        self.fbins = range(self.origin[1], self.origin[1] + self.sigspec.tones_persymb * self.spectrum.fbins_pertone)
-   
-    def fill_arrays(self, new_origin = None):
-        if(new_origin): self.set_origin(new_origin)
-        self.fine_grid_complex = self.spectrum.fine_grid_complex[self.tbins,:][:, self.fbins] 
-    
+        self.snr = -24
+        self.origin_physical = (self.spectrum.dt * self.origin[0], self.spectrum.df * self.origin[1])
+        self.fine_grid_complex = self.spectrum.fine_grid_complex[self.origin[0]:self.origin[0] + self.size[0],:][:, self.origin[1]:self.origin[1] + self.size[1]] 
 
 
