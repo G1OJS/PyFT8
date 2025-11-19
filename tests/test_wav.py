@@ -2,8 +2,6 @@ import sys
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 
 import numpy as np
-#from PyFT8.datagrids import Spectrum, Candidate
-#from PyFT8.signaldefs import FT8
 from PyFT8.rx.FT8_demodulator import FT8Demodulator
 from PyFT8.rx.waterfall import Waterfall
 import PyFT8.timers as timers
@@ -15,8 +13,6 @@ wav_file = "210703_133430.wav"
 wav_file = "251115_135700.wav"
 
 demod = FT8Demodulator()
-#config.decoder_search_limit = 500
-
 t_start_load = timers.tnow()
 print("\n")
 timers.timedLog(f"Loading audio from {wav_file}")

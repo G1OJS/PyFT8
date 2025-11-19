@@ -7,21 +7,25 @@ import numpy as np
 
 class Spectrum:
     def __init__(self, sample_rate, fbins_pertone, hops_persymb, sigspec):
+        self.max_freq = 3500
         self.sample_rate = float(sample_rate)
         self.sigspec = sigspec
         self.fbins_pertone = int(fbins_pertone)
         self.hops_persymb = int(hops_persymb)
         self.FFT_len = int(self.fbins_pertone * self.sample_rate // self.sigspec.symbols_persec)
-        self.nFreqs   = self.FFT_len // 2 + 1
+        FFT_out_len = int(self.FFT_len/2) + 1
+        fmax_fft = self.sample_rate/2
+        self.nFreqs = int(FFT_out_len * self.max_freq / fmax_fft)
         
     def fill_arrays(self, fine_grid_complex):
         self.fine_grid_complex = fine_grid_complex
         self.nHops_loaded = self.fine_grid_complex.shape[0]
         self.hop0_window_size = self.nHops_loaded - (self.sigspec.num_symbols + self.sigspec.costas_len) * self.hops_persymb
         self.search_band_hops = self.hop0_window_size + self.sigspec.costas_len * self.hops_persymb
-        self.extent = [0, self.sample_rate/2, 0,  (self.nHops_loaded / self.hops_persymb) / self.sigspec.symbols_persec ]
+        self.extent = [0, self.max_freq, 0,  (self.nHops_loaded / self.hops_persymb) / self.sigspec.symbols_persec ]
         self.df = self.extent[1]/self.fine_grid_complex.shape[1]
         self.dt = self.extent[3]/self.fine_grid_complex.shape[0]
+        
         
 # ============================================================
 # Candidate

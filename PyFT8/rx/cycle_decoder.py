@@ -3,7 +3,6 @@ import numpy as np
 import PyFT8.timers as timers
 import PyFT8.audio as audio
 from PyFT8.comms_hub import config
-from PyFT8.datagrids import Candidate
 from PyFT8.rx.FT8_demodulator import FT8Demodulator
 from PyFT8.rx.waterfall import Waterfall
 

@@ -107,12 +107,11 @@ class FT8Demodulator:
     # ======================================================
 
     def demodulate_candidate(self, candidate, silent = False):
-        c = candidate
-        #timers.timedLog(f"[demodulate_candidate] received candidate at {c.origin} sync score {c.score}", silent = silent)    
+        c = candidate 
         decode = False
         iconf = 0
         cspec_4d = c.fine_grid_complex.reshape(FT8.num_symbols, self.hops_persymb, FT8.tones_persymb, self.fbins_pertone)
-        configs = [(0,0.0),(0,0.2),(0,0.6),(0,1)] #config[0] is spare
+        configs = [(0,0.0),(0,0.5),(0,1)] #config[0] is spare
         while not decode and iconf < len(configs):
             c.llr = []
             shoulders = configs[iconf][1]
@@ -126,7 +125,7 @@ class FT8Demodulator:
             ones  = np.max(V,     where=(FT8.block_decode_wt2 > 0), initial=-np.inf, axis=(2, 3))
             zeros = np.max(-V,    where=(FT8.block_decode_wt2 < 0), initial=-np.inf, axis=(2, 3))
             ones = np.clip(ones,  0.0001, 1e30)
-            zeros = np.clip(zeros, 0.0001, 1e30)
+            zeros = np.clip(zeros, 0.0001, 1e30) 
             llr_block = np.log(ones ) - np.log(zeros )  
             llr_all = llr_block.reshape(-1)
             for i in range(len(llr_all)):
@@ -143,7 +142,7 @@ class FT8Demodulator:
                     c.snr = -24 if c.score==0 else int(25*np.log10(c.score/47524936) +18 )
                     c.snr = np.clip(c.snr, -24,24).item()
                     c.message = decode['decode_dict']['message']
-                    timers.timedLog(f"[demodulate_candidate] Decoded {c.message:>18} rank: {c.sort_idx:8d} score: {c.score:8.3f} iterations: {c.n_its}", silent = silent)
+                    #timers.timedLog(f"[demodulate_candidate] Decoded {c.message:>18} rank: {c.sort_idx:8d} score: {c.score:8.3f} iterations: {c.n_its}", silent = silent)
                     return decode
             iconf +=1
     
