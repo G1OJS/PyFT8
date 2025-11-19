@@ -160,12 +160,12 @@ class FT8Demodulator:
             ncheck, bits, n_its = decode174_91(c.llr)
             if(ncheck == 0):
                 c.payload_bits = bits
+                c.snr = -24 if c.score==0 else int(10+100*np.log10(c.score/7))
+                c.snr = np.clip(c.snr, -24,24).item()
                 c.n_its = n_its
                 decode = FT8_decode(c)
                 if(decode):
                     c.iconf = iconf
-                    c.snr = -24 if c.score==0 else int(25*np.log10(c.score/47524936) +18 )
-                    c.snr = np.clip(c.snr, -24,24).item()
                     c.message = decode['decode_dict']['message']
                     #timers.timedLog(f"[demodulate_candidate] Decoded {c.message:>18} rank: {c.sort_idx:8d} score: {c.score:8.3f} iterations: {c.n_its}", silent = silent)
                     return decode

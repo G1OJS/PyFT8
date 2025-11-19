@@ -25,7 +25,7 @@ print("\n")
 
 decoded_candidates = []
 unique_decodes = set()
-heads = ['Tload+', 'Rx call', 'Tx call', 'GrRp', 'SyncScr', 't0', 'cfg', 'f0', 'sch_idx', 'iters']
+heads = ['Tload+', 'Rx call', 'Tx call', 'GrRp', 'SyncScr', 'snr', 't0', 'cfg', 'f0', 'sch_idx', 'iters']
 print(''.join([f"{t:>8} " for t in heads]))
 for i, c in enumerate(candidates):
     decode = demod.demodulate_candidate(c, silent = True)
@@ -36,7 +36,8 @@ for i, c in enumerate(candidates):
         msg = f"{dd['call_a']} {dd['call_b']} {dd['grid_rpt']}"
         if(msg in unique_decodes):
             dd.update({'call_a':'-', 'call_b':'-', 'grid_rpt':'-'})
-        print(f"{tdelta:8.2f} {dd['call_a']:>8} {dd['call_b']:>8} {dd['grid_rpt']:>8} {c.score:8.3f} {c.origin[0]:>8} {c.iconf:>8} {c.origin[1]:>8} {c.sort_idx:>8} {c.n_its:>8}")
+        print(f"{tdelta:8.2f} {dd['call_a']:>8} {dd['call_b']:>8} {dd['grid_rpt']:>8} {c.score:8.3f} {c.snr:8.0f} "
+              +f"{c.origin[0]:>8} {c.iconf:>8} {c.origin[1]:>8} {c.sort_idx:>8} {c.n_its:>8}")
         unique_decodes.add(msg)
 tdelta = timers.tnow() - t_start_load
 print(f"{tdelta:8.2f} DONE. Unique decodes = {len(unique_decodes)}")
