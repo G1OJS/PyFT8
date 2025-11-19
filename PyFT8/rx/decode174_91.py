@@ -63,7 +63,7 @@ def count_syndrome_checks(zn):
     decoded_bits174_LE_list = (zn > 0).astype(int).tolist() 
     decoded_bits91_int = bitsLE_to_int(decoded_bits174_LE_list[0:91])
     if(not check_crc(decoded_bits91_int)):
-        return -1, []
+        return -999, []
     return ncheck, decoded_bits174_LE_list
     
 def decode174_91(llr, maxiterations = 30, nstall_max = 8, ncheck_max = 30):
@@ -74,7 +74,7 @@ def decode174_91(llr, maxiterations = 30, nstall_max = 8, ncheck_max = 30):
     zn = np.array(llr, dtype=np.float32)            # working copy of llrs
     ncheck, decoded_bits174_LE_list = count_syndrome_checks(zn)
     if(ncheck == 0):
-        return 0, decoded_bits174_LE_list, -1
+        return 0, decoded_bits174_LE_list, 0
     
     for it in range(maxiterations + 1):
         for i in range(kN):

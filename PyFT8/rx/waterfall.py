@@ -14,6 +14,7 @@ class Waterfall:
         self.fbins_pertone = spectrum.fbins_pertone
         self.t0, self.t1 = t0, t1 or spectrum.sigspec.frame_secs
         self.f0, self.f1 = f0, f1 or (spectrum.sample_rate / 2)
+        self.plt = plt
 
 
         # Main figure
@@ -57,18 +58,6 @@ class Waterfall:
         self.fig.canvas.draw_idle()
         self.fig.canvas.flush_events()  # <-- forces actual draw
         plt.pause(0.1)
-
-    # ----------------------------------------------------------
-    def show_decodes(self, decodes):
-        """Update the text panel with latest decode messages."""
-        self.textaxis.axis('off')
-        self.textaxis.clear()
-        self.textaxis.text(0, 1, "\n".join(decodes),
-                               va='top', family='monospace', fontsize=9)
-        self.fig.canvas.draw()
-        self.textaxis.axis('off')
-        self.fig.canvas.flush_events()
-        self.textaxis.axis('off')
         
     # ----------------------------------------------------------
     def show_zoom(self, candidates, llr_overlay=True, cols=3, phase = False):
