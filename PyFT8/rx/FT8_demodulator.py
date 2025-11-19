@@ -119,7 +119,7 @@ class FT8Demodulator:
                 if test[1] > best[1]:
                     best = test
             c.score = best[1]
-            if(c.score > 2.5):
+            if(c.score > 2):
                 c.prep_for_decode(FT8, best[0])
                 candidates.append(c)
                 if(prioritise_Hz and abs(c.origin_physical[1]-prioritise_Hz) < 1):
