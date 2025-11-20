@@ -18,8 +18,8 @@ print("\n")
 timers.timedLog(f"Loading audio from {wav_file}")
 audio_in = audio.read_wav_file(wav_file)
 timers.timedLog(f"Finding candidates")
-demod.load_audio(audio_in)
-candidates = demod.find_candidates(silent = True)
+spectrum = demod.load_audio(audio_in)
+candidates = demod.find_candidates(spectrum, silent = True)
 timers.timedLog(f"Found {len(candidates)} candidates")
 print("\n")
 
@@ -28,7 +28,7 @@ unique_decodes = set()
 heads = ['Tload+', 'Rx call', 'Tx call', 'GrRp', 'SyncScr', 'SyncPwr', 'snr', 't0', 'cfg', 'f0', 'sch_idx', 'iters']
 print(''.join([f"{t:>8} " for t in heads]))
 for i, c in enumerate(candidates):
-    decode = demod.demodulate_candidate(c, silent = True)
+    decode = demod.demodulate_candidate(spectrum, c, silent = True)
     if(decode):
         tdelta = timers.tnow() - t_start_load 
         decoded_candidates.append(c)
@@ -43,7 +43,7 @@ tdelta = timers.tnow() - t_start_load
 print(f"{tdelta:8.2f} DONE. Unique decodes = {len(unique_decodes)}")
 
       
-wf = Waterfall(demod.spectrum, f1=3500)
+wf = Waterfall(spectrum, f1=3500)
 wf.update_main(candidates=decoded_candidates)
 wf.show_zoom(candidates=decoded_candidates)
 

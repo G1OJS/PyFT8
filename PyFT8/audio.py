@@ -35,7 +35,7 @@ def read_from_soundcard(seconds, sample_rate = 12000):
     stream.close()
     return data
 
-def read_from_soundcard_chunked(samples, callback, sample_rate = 12000):
+def read_from_soundcard_chunked(input_device_idx, samples, callback, sample_rate=12000):
     stream = pya.open(format = pyaudio.paInt16, channels = 1, rate = sample_rate,
                   input=True, input_device_index = input_device_idx,
                   frames_per_buffer = samples, stream_callback = callback)

@@ -16,67 +16,62 @@ class Cycle_decoder:
         self.onOccupancy = onOccupancy
         self.prioritise_rxfreq = prioritise_rxfreq
         self.nHops_loaded = 0
-        self.duplicate_filter = set()
-        self.samples_perhop = 384
-        self.hops_percycle = 467
-        threading.Thread(target = self.cycle_decoder).start()
-
-    def cycle_decoder(self):
-        input_device_idx=audio._find_device(config.soundcards['input_device'])
-        self.init_cycle()
-        audio.read_from_soundcard_chunked(384, self.cycle_decoder_audio_cb)
-
-    def init_cycle(self):
-        print("Wait for new Cycle\n")
-        self.duplicate_filter = set()
-        self.audio_start = timers.tnow() %15;
         self.searched = False
         self.decoded = False
         self.candidates = []
-        print(len(self.audio_in))
-        while ((timers.tnow() %15) >0.2):
-            self.audio_in = []
-            self.nHops_loaded = 0
-            timers.sleep(0.05)
+        self.duplicate_filter = set()
+        self.samples_perhop = 384
+        self.hops_percycle = 464
+        input_device_idx = audio._find_device(config.soundcards['input_device'])
+        while (int(timers.tnow()) %15):
+            print("wait")
+            timers.sleep(0.1)
+        threading.Thread(target = audio.read_from_soundcard_chunked,
+                         kwargs=({'input_device_idx':input_device_idx, 'samples':384, 'callback':self.cycle_decoder_audio_cb })).start()
 
     def cycle_decoder_audio_cb(self, in_data, frame_count, time_info, status):
         data = np.frombuffer(in_data, dtype=np.int16)
         self.audio_in.extend(data)
-        
         self.nHops_loaded +=1
-        if(self.nHops_loaded > 300 and not self.searched):
+        if(self.nHops_loaded > 200 and not self.searched):
             threading.Thread(target = self._get_candidates, kwargs = ({'audio_in':self.audio_in})).start()
             self.searched = True
         if(self.nHops_loaded > self.hops_percycle and not self.decoded):
+            threading.Thread(target = self._get_decodes, kwargs = ({'audio_in':self.audio_in, 'candidates':self.candidates})).start()
             self.decoded = True
-            threading.Thread(target = self._get_decodes, kwargs = ({'audio_in':self.audio_in})).start()
-            self.init_cycle()
+            self.duplicate_filter = set()
+            self.audio_start = timers.tnow() %15;
+            self.searched = False
+            self.decoded = False
+            self.candidates = []
+            while (int(timers.tnow()) %15):
+                self.nHops_loaded = 0
+                self.audio_in = []
+                timers.sleep(0.1)
         return (None, pyaudio.paContinue)
 
     def _get_candidates(self, audio_in):
         cyclestart_str = timers.cyclestart_str(0)
-        self.demod.load_audio(audio_in)  
-        self.candidates = self.demod.find_candidates(cyclestart_str, prioritise_Hz = config.rxfreq if self.prioritise_rxfreq else False)
+        spectrum = self.demod.load_audio(audio_in)  
+        self.candidates = self.demod.find_candidates(spectrum, cyclestart_str, prioritise_Hz = config.rxfreq if self.prioritise_rxfreq else False)
 
-    def _get_decodes(self, audio_in):
+    def _get_decodes(self, audio_in, candidates):
+        spectrum = self.demod.load_audio(audio_in)
         if(self.onOccupancy):
             occupancy, clear_freq = self._make_occupancy_array(candidates)
             self.onOccupancy(occupancy, clear_freq)
         if(self.onDecode):
-            for c in self.candidates:
-                threading.Thread(target = self._decode_candidate, kwargs = ({'c':c})).start()
-
-    def _decode_candidate(self, c):
-        decode = self.demod.demodulate_candidate(c, silent = True)
-        if(decode):
-            decode_dict = decode['decode_dict']
-            key = f"{decode_dict['call_a']}{decode_dict['call_b']}{decode_dict['grid_rpt']}"
-            if(not key in self.duplicate_filter):
-                self.duplicate_filter.add(key)
-                dt = c.origin_physical[0] + self.audio_start - 0.3
-                dt = f"{dt:4.1f}"
-                decode_dict.update({'dt': dt})
-                self.onDecode(decode)
+            for c in candidates:
+                decode = self.demod.demodulate_candidate(spectrum, c, silent = True)
+                if(decode):
+                    decode_dict = decode['decode_dict']
+                    key = f"{decode_dict['call_a']}{decode_dict['call_b']}{decode_dict['grid_rpt']}"
+                    if(not key in self.duplicate_filter):
+                        self.duplicate_filter.add(key)
+                        dt = c.origin_physical[0] + self.audio_start - 0.3
+                        dt = f"{dt:4.1f}"
+                        decode_dict.update({'dt': dt})
+                        self.onDecode(decode)
 
     def _make_occupancy_array(self, candidates, f0=0, f1=3500, bin_hz=10, sig_hz = 50):
         occupancy = np.arange(f0, f1 + bin_hz, bin_hz)
