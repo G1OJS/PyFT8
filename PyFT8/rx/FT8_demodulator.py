@@ -70,6 +70,11 @@ class Candidate:
         self.origin = (0, f0_idx)
         self.spectrum = spectrum
         self.cyclestart_str = cyclestart_str
+        # create complex and power arrays for the candidate bandwidth and all available hops
+        self.fine_grid_complex = self.spectrum.fine_grid_complex[:,f0_idx:f0_idx + self.size[1]]
+        self.fine_grid_pwr = np.abs(self.fine_grid_complex)**2
+        self.max_pwr = np.max(self.fine_grid_pwr)
+        self.fine_grid_pwr = self.fine_grid_pwr / self.max_pwr
 
     def prep_for_decode(self, sigspec, t0):
         self.origin = (t0, self.origin[1])
@@ -81,7 +86,15 @@ class Candidate:
         self.message = None
         self.snr = -24
         self.origin_physical = (self.spectrum.dt * self.origin[0], self.spectrum.df * self.origin[1])
-        self.fine_grid_complex = self.spectrum.fine_grid_complex[self.origin[0]:self.origin[0] + self.size[0],:][:, self.origin[1]:self.origin[1] + self.size[1]] 
+        # select only the one synced hop t0 and the centre fbin
+        nHops = self.sigspec.num_symbols*self.spectrum.hops_persymb
+        t0 = self.origin[0]
+        self.fine_grid_complex = self.fine_grid_complex[t0:t0+nHops,:]
+        tmp = self.fine_grid_complex.reshape(self.sigspec.num_symbols, self.spectrum.hops_persymb, self.sigspec.tones_persymb, self.spectrum.fbins_pertone)
+        self.synced_grid_complex = tmp[:,0,:,1]
+        self.synced_grid_pwr = np.abs(self.synced_grid_complex)**2
+        self.synced_pwr = np.max(self.synced_grid_pwr)
+        self.synced_grid_pwr = self.synced_grid_pwr / self.synced_pwr
 
 class FT8Demodulator:
     def __init__(self):
@@ -126,10 +139,6 @@ class FT8Demodulator:
         f0_idxs = range(self.spectrum.nFreqs - self.candidate_size[1])
         for f0_idx in f0_idxs:
             c = Candidate(self.spectrum, f0_idx, self.candidate_size, cyclestart_str)
-            fc = self.spectrum.fine_grid_complex[:,f0_idx:f0_idx + c.size[1]]
-            c.fine_grid_pwr = np.abs(fc)**2
-            c.max_pwr = np.max(c.fine_grid_pwr)
-            c.fine_grid_pwr = c.fine_grid_pwr / c.max_pwr
             best = (0, -1e30)
             for h0 in range(self.spectrum.hop0_window_size):
                 window = c.fine_grid_pwr[h0 + self.hop_idxs_Costas]
@@ -159,11 +168,9 @@ class FT8Demodulator:
         c = candidate 
         decode = False
         iconf = 0
-        cspec_4d = c.fine_grid_complex.reshape(FT8.num_symbols, self.hops_persymb, FT8.tones_persymb, self.fbins_pertone)
         c.llr = []
-        cspec = cspec_4d[:,0,:,1]
-        power_per_tone_per_symbol = (np.abs(cspec)**2)
-        E0 = power_per_tone_per_symbol[0:78:2]                        
+        power_per_tone_per_symbol = c.synced_grid_pwr
+        E0 = power_per_tone_per_symbol[0:78:2]                      
         E1 = power_per_tone_per_symbol[1:79:2]
         pair_score = E0[:, :, None] * E1[:, None, :]
         ps = pair_score[:, None, :, :]

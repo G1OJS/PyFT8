@@ -97,7 +97,7 @@ class Waterfall:
             # --- Costas rectangles ---
             for hop_idx, fbin_idx in costas_pairs:
                 rect = patches.Rectangle(
-                    (fbin_idx - 0.5, hop_idx - 0.5), self.fbins_pertone, self.hops_persymb,
+                    (fbin_idx - 0.5, hop_idx - 0.5 - c.spectrum.hops_persymb//2), self.fbins_pertone, self.hops_persymb,
                     edgecolor='lime', facecolor='none', linewidth=1.2
                 )
                 ax.add_patch(rect)
