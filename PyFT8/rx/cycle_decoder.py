@@ -20,6 +20,7 @@ class Cycle_decoder:
             while ((timers.tnow() %15) >0.2):
                 timers.sleep(0.05)
             self.duplicate_filter = set()
+            self.audio_start = timers.tnow() %15;
             audio_in = audio.read_from_soundcard(timers.CYCLE_LENGTH - END_RECORD_GAP_SECONDS)
             threading.Thread(target = self._get_decodes, kwargs=({'audio_in':audio_in, 'onDecode':onDecode, 'onOccupancy':onOccupancy , 'prioritise_rxfreq':prioritise_rxfreq})).start()
         
@@ -42,6 +43,9 @@ class Cycle_decoder:
             key = f"{decode_dict['call_a']}{decode_dict['call_b']}{decode_dict['grid_rpt']}"
             if(not key in self.duplicate_filter):
                 self.duplicate_filter.add(key)
+                dt = c.origin_physical[0] + self.audio_start - 0.5
+                dt = f"{dt:4.1f}"
+                decode_dict.update({'dt': dt})
                 onDecode(decode)
 
     def _make_occupancy_array(self, candidates, f0=0, f1=3500, bin_hz=10, sig_hz = 50):

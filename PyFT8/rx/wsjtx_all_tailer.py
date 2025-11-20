@@ -19,7 +19,7 @@ def wsjtx_all_tailer(all_txt_path, on_wsjtx_decode):
     for line in follow():
         ls = line.split()
         try:
-            decode_dict = {'cyclestart_str':ls[0],'snr':ls[4], 'freq':ls[6], 'call_a':ls[7], 'call_b':ls[8], 'grid_rpt':ls[9]}
+            decode_dict = {'cyclestart_str':ls[0],'snr':ls[4], 'dt':ls[5], 'freq':ls[6], 'call_a':ls[7], 'call_b':ls[8], 'grid_rpt':ls[9]}
         except:
             pass
         decode = {'decode_dict':decode_dict,'all_txt_line':line}

@@ -88,7 +88,6 @@ class Candidate:
         self.origin_physical = (self.spectrum.dt * self.origin[0], self.spectrum.df * self.origin[1])
         # select only the one synced hop t0 and the centre fbin
         nHops = self.sigspec.num_symbols*self.spectrum.hops_persymb
-        t0 = self.origin[0]
         self.fine_grid_complex = self.fine_grid_complex[t0:t0+nHops,:]
         tmp = self.fine_grid_complex.reshape(self.sigspec.num_symbols, self.spectrum.hops_persymb, self.sigspec.tones_persymb, self.spectrum.fbins_pertone)
         self.synced_grid_complex = tmp[:,0,:,1]
@@ -146,14 +145,14 @@ class FT8Demodulator:
                 if test[1] > best[1]:
                     best = test
             c.score = best[1]
-            if(c.score > .5):
+            if(c.score > config.decoder_candidate_search_score_threshold):
                 # if there's an existing neighbour in frequency, replace it if we have a better score, otherwise don't append us 
                 neighbour_lf = [n for n in candidates if (c.origin[1] - n.origin[1] <=2)]
                 if(neighbour_lf):
                     if(neighbour_lf[0].score >= c.score): continue
                     if(neighbour_lf[0].score < c.score): candidates.remove(neighbour_lf[0])
                 c.prep_for_decode(FT8, best[0])
-                
+                # append candidate and prioritise if necessary
                 candidates.append(c)
                 if(prioritise_Hz and abs(c.origin_physical[1]-prioritise_Hz) < 1):
                     c.score = 10
@@ -186,6 +185,8 @@ class FT8Demodulator:
                 c.llr.extend([llr_all[i]])
         c.llr = 3 * (c.llr - np.mean(c.llr)) / (np.std(c.llr)+.001)
         bits, n_its = self.ldpc.decode(c.llr)
+        #tag = 'decoded' if bits else ''
+        #timers.timedLog(f"Candidate {c.origin_physical[0]} {tag}", logfile = "decoder.log")
         if(bits):
             c.payload_bits = bits
             c.snr = -24 if c.score==0 else int(10+100*np.log10(c.score/7))
@@ -243,8 +244,8 @@ def FT8_decode(signal):
     call_a = unpack_ft8_c28(c28_a)
     call_b =  unpack_ft8_c28(c28_b)
     grid_rpt = unpack_ft8_g15(g15, ir)
-    freq_str = f"{signal.origin[1]*signal.spectrum.df:4.0f}"
-    time_str = f"{signal.origin[0]*signal.spectrum.dt:4.1f}"
+    freq_str = f"{signal.origin_physical[1]:4.0f}"
+    time_str = f"{signal.origin_physical[0]:4.1f}"
     message = f"{call_a} {call_b} {grid_rpt}"
     all_txt_line = f"{signal.cyclestart_str}     0.000 Rx FT8    {signal.snr:+03d} {time_str} {freq_str} {message}"
     decode_dict = {'cyclestart_str':signal.cyclestart_str , 'freq':freq_str, 'call_a':call_a,

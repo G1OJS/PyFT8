@@ -23,8 +23,8 @@
 				{display:grid; grid-template-columns: repeat(2, max-content); 
 				background:var(--panel-bg); width:max-content;}	
 
-		.decodes_grid {display:grid; grid-template-columns: repeat( 7, max-content) auto; grid-auto-rows: min-content; 
-					   background:var(--table-bg); color:#8cf; margin:0.5em; height:25em; min-width:25em; 
+		.decodes_grid {display:grid; grid-template-columns: repeat(8, max-content) auto; grid-auto-rows: min-content; 
+					   background:var(--table-bg); color:#8cf; margin:0.5em; height:25em; min-width:30em; 
 					   align-content: start; overflow-y:scroll;}	
 
 		.grid_row {display:contents; }
@@ -38,6 +38,27 @@
 		let spectrum_width = 0;
 		let txFreq = null;
 		let rxFreq = null;
+		let best_snr = 24;
+		
+		function match_wsjtx_row(key) {
+			const rows = document.querySelectorAll('#wsjtx_decodes > .grid_row');
+			const start = Math.max(0, rows.length - 50);  // only search the tail
+			for (let i = start; i < rows.length; i++) {
+				const ws = rows[i];
+				const cycle = ws.querySelector(':scope > div:nth-child(1)').textContent.trim();
+				const call_a = ws.querySelector(':scope > div:nth-child(6)').textContent.trim();
+				const call_b = ws.querySelector(':scope > div:nth-child(7)').textContent.trim();
+				if (cycle + call_a + call_b == key) {
+					const cyc_sec = ws.querySelector(':scope > div:nth-child(2)').textContent.trim();
+					const snr = ws.querySelector(':scope > div:nth-child(3)').textContent.trim();
+					const freq = ws.querySelector(':scope > div:nth-child(4)').textContent.trim();
+					const dt = ws.querySelector(':scope > div:nth-child(5)').textContent.trim();
+					return {'cyc_sec':cyc_sec, 'dt':dt, 'freq':freq, 'snr':snr};  // matched row element
+				}
+			}
+			return null;
+		}
+
 		function update_spectrum(spectrum_power) {
 			const spectrum = document.getElementById("Spectrum");
 			spectrum.innerHTML = "";
@@ -76,7 +97,8 @@
 			row.className='grid_row';
 			let cs = dd.cyclestart_str;
 			if (cs.charAt(cs.length-1) == '5'){row.classList.add('odd')} else {row.classList.add('even')}
-			const fields = [dd.cyclestart_str.split('_')[1], dd.snr, dd.freq, dd.dt, dd.call_a, dd.call_b, dd.grid_rpt,''];
+			const snr_fmt = (parseInt(dd.snr)<0? "":"+") + dd.snr
+			const fields = [dd.cyclestart_str.split('_')[1], dd.cyc_sec, snr_fmt, dd.freq, dd.dt, dd.call_a, dd.call_b, dd.grid_rpt,''];
 			fields.forEach((field, idx) => {
 				const cell_div = document.createElement("div");
 				cell_div.textContent = field;
@@ -97,10 +119,23 @@
 			if(!dd) return;
 			if(dd.topic == 'add_band_button')   {add_band_button(dd.band_name, dd.band_freq)}
 			if(dd.topic == 'decode_dict')		{
+				const t = new Date / 1000;
+				const cyc_sec = (t %15).toFixed(2)
+				dd.cyc_sec = cyc_sec;
 				if (dd.wsjtx) {
 					add_decode_row(dd, 'wsjtx_decodes');
 					n_wsjtx_decodes.innerText = 1+parseInt(n_wsjtx_decodes.innerText)
 				} else {
+					key = dd.cyclestart_str.split("_")[1]+dd.call_a+dd.call_b
+					x = match_wsjtx_row(key);
+					if(x) {
+						dd.cyc_sec += ' ('+x.cyc_sec+')'
+						dd.snr += ' ('+x.snr+')'
+						dd.dt += ' ('+x.dt+')'
+						dd.freq += ' ('+x.freq+')'
+						let true_snr = parseInt(x.snr);
+						if (true_snr < best_snr) {best_snr = true_snr; PyFT8_best_snr.innerText = best_snr;}
+					}
 					add_decode_row(dd, 'PyFT8_decodes');
 					n_PyFT8_decodes.innerText = 1+parseInt(n_PyFT8_decodes.innerText)
 				}
@@ -157,7 +192,7 @@
 		<div id = 'buttons'>
 		</div>
 		<div id = 'stats'>
-			<span>PyFT8 best snr:</span><span id = 'PyFT8_best_snr'>not coded</span>
+			<span>PyFT8 best snr: </span><span id = 'PyFT8_best_snr'></span>
 		</div>
 	</div>
 	
