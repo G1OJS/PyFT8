@@ -1,16 +1,16 @@
 
 """
-maxiterations = 30, nstall_max = 8, ncheck_max = 30
+maxiterations = 20, nstall_max = 8, ncheck_max = 30
 snr_dB, success%
-0.0, 0% time = 1.1
-1.0, 2% time = 4.4
-2.0, 14% time = 11.3
-3.0, 60% time = 20.1
-4.0, 90% time = 27.9
-5.0, 100% time = 31.7
-6.0, 100% time = 33.8
-7.0, 100% time = 35.1
-8.0, 100% time = 35.7
+0.0, 0% time = 1.9
+1.0, 4% time = 1.5
+2.0, 18% time = 5.7
+3.0, 64% time = 9.8
+4.0, 84% time = 6.1
+5.0, 100% time = 3.0
+6.0, 100% time = 2.1
+7.0, 100% time = 1.0
+8.0, 100% time = 0.6
 """
 
 import numpy as np
