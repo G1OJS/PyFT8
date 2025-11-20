@@ -84,7 +84,6 @@ class Candidate:
         self.sigspec = sigspec  
         self.payload_bits = []
         self.message = None
-        self.snr = -24
         self.origin_physical = (self.spectrum.dt * self.origin[0], self.spectrum.df * self.origin[1])
         # select only the one synced hop t0 and the centre fbin
         nHops = self.sigspec.num_symbols*self.spectrum.hops_persymb
@@ -94,6 +93,8 @@ class Candidate:
         self.synced_grid_pwr = np.abs(self.synced_grid_complex)**2
         self.synced_pwr = np.max(self.synced_grid_pwr)
         self.synced_grid_pwr = self.synced_grid_pwr / self.synced_pwr
+        self.snr = 10*np.log10(self.synced_pwr)-107
+        self.snr = int(np.clip(self.snr, -24,24).item())
 
 class FT8Demodulator:
     def __init__(self):
@@ -189,8 +190,6 @@ class FT8Demodulator:
         #timers.timedLog(f"Candidate {c.origin_physical[0]} {tag}", logfile = "decoder.log")
         if(bits):
             c.payload_bits = bits
-            c.snr = -24 if c.score==0 else int(10+100*np.log10(c.score/7))
-            c.snr = np.clip(c.snr, -24,24).item()
             c.n_its = n_its
             decode = FT8_decode(c)
             if(decode):

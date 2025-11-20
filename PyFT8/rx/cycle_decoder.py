@@ -43,7 +43,7 @@ class Cycle_decoder:
             key = f"{decode_dict['call_a']}{decode_dict['call_b']}{decode_dict['grid_rpt']}"
             if(not key in self.duplicate_filter):
                 self.duplicate_filter.add(key)
-                dt = c.origin_physical[0] + self.audio_start - 0.5
+                dt = c.origin_physical[0] + self.audio_start - 0.3
                 dt = f"{dt:4.1f}"
                 decode_dict.update({'dt': dt})
                 onDecode(decode)

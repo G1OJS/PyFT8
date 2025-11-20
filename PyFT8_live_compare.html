@@ -124,7 +124,9 @@
 			if(dd.topic == 'add_band_button')   {add_band_button(dd.band_name, dd.band_freq)}
 			if(dd.topic == 'decode_dict')		{
 				const t = new Date / 1000;
-				const cyc_sec = (t %15).toFixed(2)
+				let cyc_sec = (t %15); 
+				if(cyc_sec>7) {cyc_sec -=15}
+				cyc_sec = cyc_sec.toFixed(2);
 				dd.cyc_sec = cyc_sec;
 				if (dd.wsjtx) {
 					add_decode_row(dd, 'wsjtx_decodes');
