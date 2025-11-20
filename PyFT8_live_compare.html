@@ -25,12 +25,16 @@
 
 		.decodes_grid {display:grid; grid-template-columns: repeat(8, max-content) auto; grid-auto-rows: min-content; 
 					   background:var(--table-bg); color:#8cf; margin:0.5em; height:25em; min-width:30em; 
-					   align-content: start; overflow-y:scroll;}	
+					   align-content: start; overflow-y:scroll; }	
 
 		.grid_row {display:contents; }
 		.grid_row.odd > div {background-color: var(--odd-bg);}
 		.grid_row.even > div{ background-color: var(--even-bg);}	
 		.grid_cell {padding:1px 5px 1px 5px; font-weight:600; color:var(--table-color);}
+
+		.grid_row.header {display: contents;position: sticky;top: 0;z-index: 20;}
+		.grid_row.header > .grid_cell {background: var(--table-bg);position: sticky;top: 0;z-index: 21; color:lime; border-right:1px lime dashed;}
+		
 	</style>
 	
 	<script>
@@ -180,13 +184,22 @@
 	<div id = 'App'>
 		<div id='clock'></div>
 		<div id = 'DecodePanelsContainer'>
+		
 			<div class = 'DecodePanel'>
 				<div class='grid_title'>PyFT8 Decodes <span id = 'n_PyFT8_decodes'>0</span> (<span id = 'pc_PyFT8_decodes'>0%</span>) </div>
-				<div id="PyFT8_decodes" class = "decodes_grid"></div>
+				<div id="PyFT8_decodes" class = "decodes_grid">
+					<div class = 'grid_row header'>
+						<div class='grid_cell'>Cycle</div><div class='grid_cell'>t_decode</div><div class='grid_cell'>snr</div><div class='grid_cell'>Freq</div><div class='grid_cell'>dt</div><div class='grid_cell'>Call_a</div><div class='grid_cell'>Call_b</div><div class='grid_cell'>Grid_rpt</div><div class='grid_cell'></div>
+					</div>
+				</div>
 			</div>
 			<div class = 'DecodePanel'>
 				<div class='grid_title'>WSJT-X Decodes <span id = 'n_wsjtx_decodes'>0</span></div>
-				<div id="wsjtx_decodes"  class = "decodes_grid"></div>
+				<div id="wsjtx_decodes"  class = "decodes_grid">
+					<div class = 'grid_row header'>
+						<div class='grid_cell'>Cycle</div><div class='grid_cell'>t_decode</div><div class='grid_cell'>snr</div><div class='grid_cell'>Freq</div><div class='grid_cell'>dt</div><div class='grid_cell'>Call_a</div><div class='grid_cell'>Call_b</div><div class='grid_cell'>Grid_rpt</div><div class='grid_cell'></div>
+					</div>
+				</div>
 			</div>
 		</div>
 		<div id = 'buttons'>
