@@ -36,7 +36,7 @@ Log to PyFT8.log: 12:19:29.74 (+0.94) Start to Show candidates
 import math
 import numpy as np
 from PyFT8.signaldefs import FT8
-from PyFT8.rx.decode174_91 import decode174_91
+from PyFT8.rx.decode174_91_v5_0 import LDPC174_91
 import PyFT8.FT8_crc as crc
 import PyFT8.timers as timers
 from PyFT8.comms_hub import config, send_to_ui_ws
@@ -97,6 +97,7 @@ class FT8Demodulator:
                                   sample_rate=self.sample_rate, sigspec=self.sigspec)
         self.candidate_size = (self.sigspec.num_symbols * self.hops_persymb,
                                self.sigspec.tones_persymb * self.fbins_pertone)
+        self.ldpc = LDPC174_91(30,8,30)
         # ---- Costas sync mask ---- nsym(7) x nfBins(7 * self.fbins_pertone)
         nsym = self.sigspec.costas_len
         self._csync = np.full((nsym, self.candidate_size[1]), -1/(nsym-1), np.float32)
@@ -105,6 +106,7 @@ class FT8Demodulator:
             self._csync[sym_idx, fbins] = 1.0
             self._csync[sym_idx, 7*self.fbins_pertone:] = 0
         self.hop_idxs_Costas =  np.arange(nsym) * self.spectrum.hops_persymb
+        
      
     def load_audio(self, audio_in):
         nSamps = len(audio_in)
@@ -176,8 +178,8 @@ class FT8Demodulator:
             if(int(i/3) in FT8.payload_symb_idxs):
                 c.llr.extend([llr_all[i]])
         c.llr = 3 * (c.llr - np.mean(c.llr)) / np.std(c.llr)
-        ncheck, bits, n_its = decode174_91(c.llr)
-        if(ncheck == 0):
+        bits, n_its = self.ldpc.decode(c.llr)
+        if(bits):
             c.payload_bits = bits
             c.snr = -24 if c.score==0 else int(10+100*np.log10(c.score/7))
             c.snr = np.clip(c.snr, -24,24).item()
