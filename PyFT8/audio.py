@@ -21,7 +21,6 @@ def _find_device(device_str_contains):
 
 def find_audio_devices():
     global output_device_idx, input_device_idx
-
     input_device_idx = _find_device(config.soundcards['input_device'])
     output_device_idx = _find_device(config.soundcards['output_device'])
 find_audio_devices()
@@ -35,6 +34,11 @@ def read_from_soundcard(seconds, sample_rate = 12000):
     data = np.frombuffer(stream.read(nFrames, exception_on_overflow=False), dtype=np.int16)
     stream.close()
     return data
+
+def read_from_soundcard_chunked(samples, callback, sample_rate = 12000):
+    stream = pya.open(format = pyaudio.paInt16, channels = 1, rate = sample_rate,
+                  input=True, input_device_index = input_device_idx,
+                  frames_per_buffer = samples, stream_callback = callback)
 
 def read_wav_file(filename = 'audio_in.wav', sample_rate = 12000):
      import wave

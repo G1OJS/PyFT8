@@ -58,7 +58,7 @@ class Spectrum:
     def fill_arrays(self, fine_grid_complex):
         self.fine_grid_complex = fine_grid_complex
         self.nHops_loaded = self.fine_grid_complex.shape[0]
-        self.hop0_window_size = self.nHops_loaded - (self.sigspec.num_symbols + self.sigspec.costas_len) * self.hops_persymb
+        self.hop0_window_size = 15 * self.hops_persymb
         self.search_band_hops = self.hop0_window_size + self.sigspec.costas_len * self.hops_persymb
         self.extent = [0, self.max_freq, 0,  (self.nHops_loaded / self.hops_persymb) / self.sigspec.symbols_persec ]
         self.df = self.extent[1]/self.fine_grid_complex.shape[1]
@@ -76,7 +76,7 @@ class Candidate:
         self.max_pwr = np.max(self.fine_grid_pwr)
         self.fine_grid_pwr = self.fine_grid_pwr / self.max_pwr
 
-    def prep_for_decode(self, sigspec, t0):
+    def set_origin(self, sigspec, t0):
         self.origin = (t0, self.origin[1])
         self.llr = None
         self.llr_std = None
@@ -85,8 +85,10 @@ class Candidate:
         self.payload_bits = []
         self.message = None
         self.origin_physical = (self.spectrum.dt * self.origin[0], self.spectrum.df * self.origin[1])
-        # select only the one synced hop t0 and the centre fbin
+
+    def prep_for_decode(self):
         nHops = self.sigspec.num_symbols*self.spectrum.hops_persymb
+        t0 = self.origin[0]
         self.fine_grid_complex = self.fine_grid_complex[t0:t0+nHops,:]
         tmp = self.fine_grid_complex.reshape(self.sigspec.num_symbols, self.spectrum.hops_persymb, self.sigspec.tones_persymb, self.spectrum.fbins_pertone)
         self.synced_grid_complex = tmp[:,0,:,1]
@@ -152,7 +154,7 @@ class FT8Demodulator:
                 if(neighbour_lf):
                     if(neighbour_lf[0].score >= c.score): continue
                     if(neighbour_lf[0].score < c.score): candidates.remove(neighbour_lf[0])
-                c.prep_for_decode(FT8, best[0])
+                c.set_origin(FT8, best[0])
                 # append candidate and prioritise if necessary
                 candidates.append(c)
                 if(prioritise_Hz and abs(c.origin_physical[1]-prioritise_Hz) < 1):
@@ -165,7 +167,8 @@ class FT8Demodulator:
         return candidates
 
     def demodulate_candidate(self, candidate, silent = False):
-        c = candidate 
+        c = candidate
+        c.prep_for_decode()
         decode = False
         iconf = 0
         c.llr = []
