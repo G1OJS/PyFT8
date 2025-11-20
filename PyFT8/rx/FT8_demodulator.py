@@ -184,7 +184,7 @@ class FT8Demodulator:
         for i in range(len(llr_all)):
             if(int(i/3) in FT8.payload_symb_idxs):
                 c.llr.extend([llr_all[i]])
-        c.llr = 3 * (c.llr - np.mean(c.llr)) / np.std(c.llr)
+        c.llr = 3 * (c.llr - np.mean(c.llr)) / (np.std(c.llr)+.001)
         bits, n_its = self.ldpc.decode(c.llr)
         if(bits):
             c.payload_bits = bits
