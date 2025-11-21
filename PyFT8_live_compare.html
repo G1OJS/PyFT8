@@ -46,7 +46,7 @@
 		
 		function match_wsjtx_row(key) {
 			const rows = document.querySelectorAll('#wsjtx_decodes > .grid_row');
-			const start = Math.max(0, rows.length - 50);  // only search the tail
+			const start = Math.max(0, rows.length - 150);  // only search the tail
 			for (let i = start; i < rows.length; i++) {
 				const ws = rows[i];
 				const cycle = ws.querySelector(':scope > div:nth-child(1)').textContent.trim();

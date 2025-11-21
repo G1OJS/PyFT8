@@ -1,7 +1,8 @@
 import time
 import threading
+from PyFT8.signaldefs import FT8
 
-CYCLE_LENGTH = 15
+CYCLE_LENGTH = FT8.cycle_seconds
 
 def sleep_until(cycle_seconds = 0):
     t_elapsed, t_remain, = time_in_cycle()
@@ -56,14 +57,3 @@ def odd_even_now(from_click = False, swap = False):
     cycle = ['even','odd'][int(t)]
     timedLog(f"[odd_even_now] cycle is {cycle}")
     return cycle
-
-
-def test():
-    while True:
-        sleep(1)
-        print(tnow_str(), time_in_cycle('odd'))
-       # cycle = odd_even_now(from_click = True)
-       # _, t_remain = time_in_cycle(cycle)
-       # print(tnow_str(), cycle, t_remain )
-
-#test()

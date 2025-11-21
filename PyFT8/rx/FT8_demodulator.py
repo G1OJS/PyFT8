@@ -44,54 +44,61 @@ from PyFT8.comms_hub import config, send_to_ui_ws
 eps = 1e-12
 
 class Spectrum:
-    def __init__(self, sample_rate, fbins_pertone, hops_persymb, symbols_persec):
+    def __init__(self, demodspec):
+        self.sigspec = demodspec.sigspec
         self.max_freq = 3500
-        self.fbins_pertone = int(fbins_pertone)
-        self.hops_persymb = int(hops_persymb)
-        self.FFT_len = int(self.fbins_pertone * sample_rate // symbols_persec)
+        self.hops_percycle = 460
+        self.samples_perhop = 384
+        self.audio_start = 0
+        self.audio_in = []
+        self.dt = self.samples_perhop / demodspec.sample_rate
+        self.candidates = []
+        self.duplicate_filter = set()
+        self.cyclestart_str = 'xxxxxx_xxxxxx'
+        self.fbins_pertone = demodspec.fbins_pertone
+        self.hops_persymb = demodspec.hops_persymb
+        self.FFT_len = int(self.fbins_pertone * demodspec.sample_rate // self.sigspec.symbols_persec)
         FFT_out_len = int(self.FFT_len/2) + 1
-        fmax_fft = sample_rate/2
+        fmax_fft = demodspec.sample_rate/2
         self.nFreqs = int(FFT_out_len * self.max_freq / fmax_fft)
+        self.df = self.max_freq / self.nFreqs
+        self.fine_grid_complex = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.complex64)
+        self.nHops_loaded = 0
+        self.searched = False
+        self.candidate_size = (self.sigspec.num_symbols * demodspec.hops_persymb,
+                               self.sigspec.tones_persymb * demodspec.fbins_pertone)
+        self._csync = np.full((self.sigspec.costas_len, self.candidate_size[1]), -1/(self.sigspec.costas_len-1), np.float32)
+        for sym_idx, tone in enumerate(self.sigspec.costas):
+            fbins = range(tone* demodspec.fbins_pertone, (tone+1) * demodspec.fbins_pertone)
+            self._csync[sym_idx, fbins] = 1.0
+            self._csync[sym_idx, 7*demodspec.fbins_pertone:] = 0
+        self.hop_idxs_Costas =  np.arange(self.sigspec.costas_len) * demodspec.hops_persymb
 
 class Candidate:
-    def __init__(self, sigspec, f0_idx, size, cyclestart_str):
+    def __init__(self, spectrum, sigspec):
+        self.size = spectrum.candidate_size
+        self.spectrum = spectrum
+        self.cyclestart_str = spectrum.cyclestart_str
         self.sigspec = sigspec
-        self.cyclestart_str = cyclestart_str
-        self.size = size
-        self.origin = (0, f0_idx)
+        self.origin = None
         self.origin_physical = None
         self.llr = None
         self.llr_std = None
         self.payload_bits = []
-        self.message = None
+        self.decode_tried = False
         
 class FT8Demodulator:
     def __init__(self):
-        sample_rate=12000
-        fbins_pertone=3
-        hops_persymb=5
-        sigspec=FT8
-        self.sample_rate = sample_rate
-        self.fbins_pertone = fbins_pertone
-        self.hops_persymb = hops_persymb
-        self.sigspec = sigspec
-        self.candidate_size = (self.sigspec.num_symbols * self.hops_persymb,
-                               self.sigspec.tones_persymb * self.fbins_pertone)
+        self.sigspec = FT8
+        self.sample_rate=12000
+        self.fbins_pertone=3
+        self.hops_persymb=5
+        slack_hops =  int(self.hops_persymb * self.sigspec.symbols_persec * (self.sigspec.cycle_seconds - self.sigspec.signal_seconds) )
+        self.sync_range = range(slack_hops)
         self.ldpc = LDPC174_91(30,8,30)
-        self.hop0_window_size = 15 * self.hops_persymb
-        self.search_band_hops = self.hop0_window_size + self.sigspec.costas_len * self.hops_persymb
-        # ---- Costas sync mask ---- nsym(7) x nfBins(7 * self.fbins_pertone)
-        nsym = self.sigspec.costas_len
-        self._csync = np.full((nsym, self.candidate_size[1]), -1/(nsym-1), np.float32)
-        for sym_idx, tone in enumerate(self.sigspec.costas):
-            fbins = range(tone* self.fbins_pertone, (tone+1) * self.fbins_pertone)
-            self._csync[sym_idx, fbins] = 1.0
-            self._csync[sym_idx, 7*self.fbins_pertone:] = 0
-        self.hop_idxs_Costas =  np.arange(nsym) * self.hops_persymb
         
     def load_audio(self, audio_in):
-        spectrum = Spectrum(fbins_pertone=self.fbins_pertone, hops_persymb=self.hops_persymb,
-                            sample_rate=self.sample_rate, symbols_persec = self.sigspec.symbols_persec)
+        spectrum = Spectrum(self)
         nSamps = len(audio_in)
         nHops_loaded = int(self.hops_persymb * self.sigspec.symbols_persec * (nSamps-spectrum.FFT_len)/self.sample_rate)
         spectrum.fine_grid_complex = np.zeros((nHops_loaded, spectrum.nFreqs), dtype = np.complex64)
@@ -107,57 +114,55 @@ class FT8Demodulator:
         timers.timedLog(f"[load_audio] Loaded {nHops_loaded} hops ({nHops_loaded*0.16/self.hops_persymb:.2f}s)")
         return spectrum
 
-    def find_candidates(self, spectrum, cyclestart_str = 'xxxxxx_xxxxxx',  silent = False, prioritise_Hz = False):
-        candidates = []
+    def find_candidates(self, spectrum,  silent = False, prioritise_Hz = False):
+        spectrum.searched = True
         output_limit = int(config.decoder_search_limit) 
-        f0_idxs = range(spectrum.nFreqs - self.candidate_size[1])
+        f0_idxs = range(spectrum.nFreqs - spectrum.candidate_size[1])
         for f0_idx in f0_idxs:
-            c = Candidate(self.sigspec, f0_idx, self.candidate_size, cyclestart_str)
+            c = Candidate(spectrum, self.sigspec)
+            c.origin = (0, f0_idx)
             c.fine_grid_complex = spectrum.fine_grid_complex[:,f0_idx:f0_idx + c.size[1]]
             c.fine_grid_pwr = np.abs(c.fine_grid_complex)**2
             c.max_pwr = np.max(c.fine_grid_pwr)
             c.fine_grid_pwr = c.fine_grid_pwr / c.max_pwr
             best = (0, -1e30)
-            for h0 in range(self.hop0_window_size):
-                window = c.fine_grid_pwr[h0 + self.hop_idxs_Costas]
-                test = (h0, np.sum(window * self._csync)) 
+            for h0 in self.sync_range:
+                test = (h0, np.sum(c.fine_grid_pwr[h0 + spectrum.hop_idxs_Costas] * spectrum._csync)) 
                 if test[1] > best[1]:
                     best = test
             c.score = best[1]
             if(c.score > config.decoder_candidate_search_score_threshold):
                 # if there's an existing neighbour in frequency, replace it if we have a better score, otherwise don't append us 
-                neighbour_lf = [n for n in candidates if (c.origin[1] - n.origin[1] <=2)]
+                neighbour_lf = [n for n in spectrum.candidates if (c.origin[1] - n.origin[1] <=2)]
                 if(neighbour_lf):
                     if(neighbour_lf[0].score >= c.score): continue
-                    if(neighbour_lf[0].score < c.score): candidates.remove(neighbour_lf[0])
+                    if(neighbour_lf[0].score < c.score): spectrum.candidates.remove(neighbour_lf[0])
                 c.origin = (best[0], c.origin[1])
                 c.origin_physical = spectrum.dt * c.origin[0], spectrum.df * c.origin[1]
+                c.last_hop = c.origin[0] + c.size[0]
                 # append candidate and prioritise if necessary
-                candidates.append(c)
+                spectrum.candidates.append(c)
                 if(prioritise_Hz and abs(c.origin_physical[1]-prioritise_Hz) < 1):
                     c.score = 10
-        candidates.sort(key=lambda c: -c.score)
-        candidates = candidates[:output_limit]
-        for i, c in enumerate(candidates):
+        spectrum.candidates.sort(key=lambda c: -c.score)
+        spectrum.candidates = spectrum.candidates[:output_limit]
+        for i, c in enumerate(spectrum.candidates):
             c.sort_idx = i
-        timers.timedLog(f"[find_candidates] Sync completed with {len(candidates)} candidates", silent = False)
-        return candidates
+        timers.timedLog(f"[find_candidates] Sync completed with {len(spectrum.candidates)} candidates", silent = False)
 
-    def demodulate_candidate(self, spectrum, candidate, silent = False):
+    def demodulate_candidate(self, spectrum, candidate, onDecode = None):
         c = candidate
-        t0 = c.origin[0]
-        if(t0+c.size[0] > spectrum.fine_grid_complex.shape[0]):
+        c.decode_tried = True
+        if(c.origin[0] + spectrum.candidate_size[0] > spectrum.fine_grid_complex.shape[0]):
             return None
-        f0 = c.origin[1]
-        c.fine_grid_complex = spectrum.fine_grid_complex[t0:t0+c.size[0],f0:f0+c.size[1]]
-        tmp = c.fine_grid_complex.reshape(self.sigspec.num_symbols, spectrum.hops_persymb, self.sigspec.tones_persymb, spectrum.fbins_pertone)
+        c.fine_grid_complex = spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]]
+        tmp = c.fine_grid_complex.reshape(self.sigspec.num_symbols, self.hops_persymb, self.sigspec.tones_persymb, self.fbins_pertone)
         c.synced_grid_complex = tmp[:,0,:,1]
         c.synced_grid_pwr = np.abs(c.synced_grid_complex)**2
         c.synced_pwr = np.max(c.synced_grid_pwr)
         c.synced_grid_pwr = c.synced_grid_pwr / c.synced_pwr
         c.snr = 10*np.log10(c.synced_pwr)-107
         c.snr = int(np.clip(c.snr, -24,24).item())
-        decode = False
         iconf = 0
         c.llr = []
         E0 = c.synced_grid_pwr[0:78:2]                      
@@ -176,16 +181,22 @@ class FT8Demodulator:
                 c.llr.extend([llr_all[i]])
         c.llr = 3 * (c.llr - np.mean(c.llr)) / (np.std(c.llr)+.001)
         bits, n_its = self.ldpc.decode(c.llr)
-        #tag = 'decoded' if bits else ''
-        #timers.timedLog(f"Candidate {c.origin_physical[0]} {tag}", logfile = "decoder.log")
         if(bits):
             c.payload_bits = bits
             c.n_its = n_its
+            c.iconf = iconf
             decode = FT8_decode(c)
             if(decode):
-                c.iconf = iconf
-                c.message = decode['decode_dict']['message']
-                return decode
+                decode_dict = decode['decode_dict']
+                key = f"{decode_dict['call_a']}{decode_dict['call_b']}{decode_dict['grid_rpt']}"
+                if(not key in spectrum.duplicate_filter):
+                    spectrum.duplicate_filter.add(key)
+                    dt = c.origin_physical[0] + spectrum.audio_start - 0.3
+                    if(dt>7): dt -=15
+                    dt = f"{dt:4.1f}"
+                    decode_dict.update({'dt': dt})
+                if(onDecode): onDecode(decode)
+                if(not onDecode): return decode
     
 # ======================================================
 # FT8 Unpacking functions
