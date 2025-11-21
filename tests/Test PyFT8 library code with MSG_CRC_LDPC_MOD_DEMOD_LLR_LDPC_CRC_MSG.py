@@ -56,13 +56,13 @@ print(f"Channel symbols modulated:   {''.join([str(s) for s in symbols])}")
 wav_file='210703_133430.wav'
 audio_in = audio.read_wav_file(wav_file)
 spectrum = demod.load_audio(audio_in)
-w,h = spectrum.fine_grid_complex.shape
 
 t0_idx = 6
 f0_idx = 320
 rel_strength = 10
 # 'modulate' onto channel grid
-spectrum.fine_grid_complex=(np.random.rand(w, h))
+nh,nf = spectrum.fine_grid_complex.shape
+spectrum.fine_grid_complex=(np.random.rand(nh, nf))
 m = np.max(np.abs(spectrum.fine_grid_complex))  * rel_strength
 for symb_idx, tone_idx in enumerate(symbols):
     f0 = f0_idx + tone_idx * demod.fbins_pertone
@@ -78,12 +78,12 @@ demod.find_candidates(spectrum, False, silent = True)
 candidates = spectrum.candidates
 decoded_candidates = []
 for c in candidates:
-    decode = demod.demodulate_candidate(spectrum, c)
+    decode = demod.demodulate_candidate(c)
     if(decode):
         decoded_candidates.append(c)
         d = decode['decode_dict']
         print(d['call_a'], d['call_b'], d['grid_rpt'], c.score )
-wf = Waterfall(spectrum, f0=0, f1=3500)
+wf = Waterfall(spectrum)
 
 wf.update_main(candidates=decoded_candidates)
 wf.show_zoom(candidates=decoded_candidates, phase = False, llr_overlay=False)

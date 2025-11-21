@@ -29,7 +29,7 @@ unique_decodes = set()
 heads = ['Tload+', 'Rx call', 'Tx call', 'GrRp', 'SyncScr', 'SyncPwr', 'snr', 't0', 'cfg', 'f0', 'sch_idx', 'iters']
 print(''.join([f"{t:>8} " for t in heads]))
 for i, c in enumerate(candidates):
-    decode = demod.demodulate_candidate(spectrum, c)
+    decode = demod.demodulate_candidate(c)
     if(decode):
         tdelta = timers.tnow() - t_start_load 
         decoded_candidates.append(c)
@@ -44,7 +44,7 @@ tdelta = timers.tnow() - t_start_load
 print(f"{tdelta:8.2f} DONE. Unique decodes = {len(unique_decodes)}")
 
       
-wf = Waterfall(spectrum, f1=3500)
+wf = Waterfall(spectrum)
 wf.update_main(candidates=decoded_candidates)
 wf.show_zoom(candidates=decoded_candidates)
 

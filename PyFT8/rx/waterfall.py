@@ -4,7 +4,7 @@ from matplotlib.colors import LogNorm
 import numpy as np
 
 class Waterfall:
-    def __init__(self, spectrum, t0=0, t1=15, f0=100, f1=3500):
+    def __init__(self, spectrum):
         """
         Main FT8 waterfall display with candidate zooms and optional overlays.
         """
@@ -12,8 +12,6 @@ class Waterfall:
         self.fine_grid_complex = spectrum.fine_grid_complex
         self.hops_persymb = spectrum.hops_persymb
         self.fbins_pertone = spectrum.fbins_pertone
-        self.t0, self.t1 = t0, t1 
-        self.f0, self.f1 = f0, f1 
         self.plt = plt
 
         # Main figure
@@ -21,9 +19,9 @@ class Waterfall:
         self.ax_main.set_title("FT8 Waterfall")
         self.ax_main.set_xlabel("Frequency (Hz)")
         self.ax_main.set_ylabel("Time (s)")
-        self.ax_main.set_xlim(self.f0, self.f1)
-        self.ax_main.set_ylim(self.t0, self.t1)
-        self.extent_main = self.spectrum.extent
+        self.extent_main = [0, spectrum.max_freq, 0,  spectrum.nHops_loaded /(spectrum.sigspec.symbols_persec * spectrum.hops_persymb) ]
+        self.ax_main.set_xlim(self.extent_main[0],self.extent_main[1])
+        self.ax_main.set_ylim(self.extent_main[2],self.extent_main[3])
 
         self.zoom_axes = []
         self._candidate_patches = []
@@ -34,7 +32,7 @@ class Waterfall:
     # ----------------------------------------------------------
     def update_main(self, candidates=None, cyclestart_str=None):
         """Refresh main waterfall and draw candidate rectangles."""
-        vals = np.abs(self.fine_grid_complex)**2
+        vals = np.abs(self.fine_grid_complex[:self.spectrum.nHops_loaded,:])**2
         self.im = self.ax_main.imshow(  vals, origin="lower", aspect="auto", extent = self.extent_main, 
                                         cmap="inferno", interpolation="none", norm=LogNorm() )
         #self.im.autoscale()
@@ -46,8 +44,8 @@ class Waterfall:
 
         if candidates:
             for c in candidates:
-                origin_img = (c.origin_physical[1], c.origin_physical[0])
-                rect = patches.Rectangle(origin_img, c.sigspec.bw_Hz, c.sigspec.signal_seconds,
+                origin_img = (c.origin_physical[1] - self.spectrum.dt/2, c.origin_physical[0])
+                rect = patches.Rectangle(origin_img, c.sigspec.bw_Hz, (c.sigspec.num_symbols-1) / c.sigspec.symbols_persec,
                   linewidth=1.2,edgecolor="lime", facecolor="none"
                 )
                 self.ax_main.add_patch(rect)
@@ -87,7 +85,7 @@ class Waterfall:
                         for symb_idx, tone in enumerate(c.sigspec.costas)]
             for hop_idx, fbin_idx in costas_pairs:
                 rect = patches.Rectangle(
-                    (fbin_idx - 0.5, hop_idx - 0.5 - self.spectrum.hops_persymb//2), self.fbins_pertone, self.hops_persymb,
+                    (fbin_idx - 0.5, hop_idx - 0.5 ), self.fbins_pertone, self.hops_persymb,
                     edgecolor='lime', facecolor='none', linewidth=1.2
                 )
                 ax.add_patch(rect)

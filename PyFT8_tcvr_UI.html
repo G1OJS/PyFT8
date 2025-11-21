@@ -88,13 +88,9 @@
 			if(t_cyc > 12.6) {
 				for (const el of document.querySelectorAll(".transmitting_item.button")) {el.classList.add("reply-highlight"); el.classList.remove("reply-highlight_faded"); }
 			}
-			if(t_cyc < 1.5) {
-				for (const el of document.querySelectorAll(".transmitting_item")) {el.classList.add("reply-highlight"); el.classList.remove("reply-highlight_faded"); }
-			}
 			if(t_cyc > 1.5 && t_cyc <12.6) {
 				for (const el of document.querySelectorAll(".transmitting_item")) {el.classList.remove("reply-highlight"); el.classList.add("reply-highlight_faded"); }
 			} 
-			//if(t_cyc >=14) {document.getElementById('all_decodes').innerHTML=""}
 		}
 		function add_decode_row(decode_dict, grid_id) {
 			let dd = decode_dict;
@@ -108,7 +104,7 @@
 			if(dd.call_a == "CQ" || dd.call_a == myCall) {
 				const t = new Date;
 				t_cyc = t.getUTCSeconds() %15;
-				if(t_cyc < 1.5) {row.classList.add("reply-highlight"); }
+				row.classList.add("reply-highlight");
 				row.classList.add("transmitting_item");
 			}
 			const fields = [dd.cyclestart_str.split('_')[1], dd.snr, dd.freq, '', dd.call_a, dd.call_b, dd.grid_rpt,''];
@@ -135,6 +131,7 @@
 		function handle_button_click(action){
 			console.log(action);
 			websocket.send(JSON.stringify({topic: "ui." + action}));
+			if(action.search('set-band')==0) {console.log("Clear grids"); for (const el of document.querySelectorAll('.decodes_grid')) {el.innerHTML=""}}
 		}
 
 		const websocket = new WebSocket("ws://localhost:5678/");
@@ -169,8 +166,7 @@
 			});
 		});
 		
-		
-		setInterval(update_clock, 1000);
+		setInterval(update_clock, 250);
 	</script>
 	
 </head>

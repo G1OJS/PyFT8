@@ -97,6 +97,12 @@
 		function handle_button_click(action){
 			console.log(action);
 			websocket.send(JSON.stringify({topic: "ui." + action}));
+			if(action.search('set-band')==0) {
+				console.log("Clear grids"); 
+				for (const el of document.querySelectorAll('.decodes_grid')) {el.innerHTML=""}}
+				n_PyFT8_decodes.innerText = '0';
+				n_wsjtx_decodes.innerText = '0';
+				update_percent();
 		}
 				
 		const websocket = new WebSocket("ws://localhost:5678/");

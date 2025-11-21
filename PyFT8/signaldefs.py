@@ -14,7 +14,6 @@ class SignalSpec:
     symbols_persec: float
     num_symbols: int
     cycle_seconds: int
-    signal_seconds: float
     payload_symb_idxs: list[int]
     tones_persymb: int
     bw_Hz: float
@@ -41,7 +40,7 @@ gray_mask = np.array(gray_map, dtype=bool)
 payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
 
 FT8  = SignalSpec("FT8",  frame_secs=15.0,  symbols_persec=6.25, cycle_seconds = 15,
-                  num_symbols=79, signal_seconds = 79*0.16, payload_symb_idxs = payload_symb_idxs,
+                  num_symbols=79, payload_symb_idxs = payload_symb_idxs,
                   tones_persymb=8, bw_Hz = 8*6.25, costas=[3,1,4,0,6,5,2], costas_len = 7,
                   gray_map = [0,1,3,2,5,6,4,7],
                   gray_mask = gray_mask,

@@ -74,7 +74,6 @@ class Cycle_decoder:
                 for c in self.spectrum.candidates:
                     if (not c.decode_tried and self.spectrum.nHops_loaded > c.last_hop):
                         c.decode_tried = True
-                        c.fine_grid_complex = (self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]].copy())
                         threading.Thread(target=self.demod.demodulate_candidate, kwargs={'candidate': c,'onDecode': self.onDecode}).start()
 
     def do_FFT(self, spectrum):

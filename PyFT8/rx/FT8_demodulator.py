@@ -45,8 +45,6 @@ eps = 1e-12
 
 class Spectrum:
     def __init__(self, demodspec):
-       # self.fbins_pertone = demodspec.fbins_pertone
-       # self.hops_persymb = demodspec.hops_persymb
         self.sigspec = demodspec.sigspec
         self.hops_persymb = demodspec.hops_persymb
         self.fbins_pertone = demodspec.fbins_pertone
@@ -89,6 +87,11 @@ class Candidate:
         self.llr_std = None
         self.payload_bits = []
         self.decode_tried = False
+
+    @property
+    def fine_grid_complex(self):
+        c = self
+        return self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]].copy()
         
 class FT8Demodulator:
     def __init__(self):
@@ -98,23 +101,21 @@ class FT8Demodulator:
         self.hops_persymb=5
         self.decode_load = 0
         self.samples_perhop = int(self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb) )
-        slack_hops =  int(self.hops_persymb * self.sigspec.symbols_persec * (self.sigspec.cycle_seconds - self.sigspec.signal_seconds) )
+        slack_hops =  int(self.hops_persymb * self.sigspec.symbols_persec * (self.sigspec.cycle_seconds - self.sigspec.num_symbols / self.sigspec.symbols_persec) )
         self.sync_range = range(slack_hops)
         self.ldpc = LDPC174_91(30,8,30)
         
     def load_audio(self, audio_in):
         spectrum = Spectrum(self)
-        nSamps = len(audio_in)
-        nHops_loaded = int(self.hops_persymb * self.sigspec.symbols_persec * (nSamps-spectrum.FFT_len)/self.sample_rate)
-        for hop_idx in range(nHops_loaded):
-            sample_idx = int(hop_idx * self.samples_perhop)
+        samples_available = len(audio_in)
+        sample_idx = 0
+        spectrum.nHops_loaded = 0
+        while sample_idx < samples_available - spectrum.FFT_len:
             aud = audio_in[sample_idx:sample_idx + spectrum.FFT_len] * np.kaiser(spectrum.FFT_len, 14)
-            spectrum.fine_grid_complex[hop_idx,:] = np.fft.rfft(aud)[:spectrum.nFreqs]
-        spectrum.nHops_loaded = nHops_loaded
-        spectrum.extent = [0, spectrum.max_freq, 0,  (spectrum.nHops_loaded / self.hops_persymb) / self.sigspec.symbols_persec ]
-        spectrum.dt = spectrum.extent[3]/spectrum.nHops_loaded
-        spectrum.df = spectrum.extent[1]/spectrum.nFreqs
-        timers.timedLog(f"[load_audio] Loaded {nHops_loaded} hops ({nHops_loaded*0.16/self.hops_persymb:.2f}s)")
+            spectrum.fine_grid_complex[spectrum.nHops_loaded,:] = np.fft.rfft(aud)[:spectrum.nFreqs]
+            sample_idx += self.samples_perhop
+            spectrum.nHops_loaded +=1
+        timers.timedLog(f"[load_audio] Loaded {spectrum.nHops_loaded} hops ({spectrum.nHops_loaded/(self.sigspec.symbols_persec * self.hops_persymb):.2f}s)")
         return spectrum
 
     def find_candidates(self, spectrum, prioritise_Hz, silent = False):
@@ -125,7 +126,6 @@ class FT8Demodulator:
         for f0_idx in f0_idxs:
             c = Candidate(spectrum, self.sigspec)
             c.origin = (0, f0_idx)
-            c.fine_grid_complex = spectrum.fine_grid_complex[:,f0_idx:f0_idx + c.size[1]]
             c.fine_grid_pwr = np.abs(c.fine_grid_complex)**2
             c.max_pwr = np.max(c.fine_grid_pwr)
             c.fine_grid_pwr = c.fine_grid_pwr / c.max_pwr
@@ -160,8 +160,6 @@ class FT8Demodulator:
     def demodulate_candidate(self, candidate, onDecode = None):
         self.decode_load +=1
         c = candidate
-        if(c.fine_grid_complex.shape[0] != (self.sigspec.num_symbols * self.hops_persymb)):
-            return
         tmp = c.fine_grid_complex.reshape(self.sigspec.num_symbols, self.hops_persymb, self.sigspec.tones_persymb, self.fbins_pertone)
         c.synced_grid_complex = tmp[:,0,:,1]
         c.synced_grid_pwr = np.abs(c.synced_grid_complex)**2
