@@ -1,7 +1,8 @@
 import time
 import threading
+from PyFT8.signaldefs import FT8
 
-CYCLE_LENGTH = 15
+CYCLE_LENGTH = FT8.cycle_seconds
 
 def sleep_until(cycle_seconds = 0):
     t_elapsed, t_remain, = time_in_cycle()
@@ -35,19 +36,23 @@ def cyclestart_str(cycle_offset):
     return time.strftime("%y%m%d_%H%M%S", time.gmtime(CYCLE_LENGTH * cycle_offset + CYCLE_LENGTH * int(time.time() / 15)))
 
 last_timedLog = False
-def timedLog(msg, silent = False, logfile = 'PyFT8.log'):
+def timedLog(msg, silent = False, logfile = None):
     global last_timedLog
-    with open (logfile, 'a') as f:
-        t = time.time()
-        seconds_since_last_msg = t - last_timedLog if last_timedLog else 0
-        decimal_seconds = f"{t-int(t):.2f}"
-        decimal_seconds = decimal_seconds.replace('0.','')
-        time_str = f"{time.strftime('%H:%M:%S', time.gmtime(t))}.{decimal_seconds} ({seconds_since_last_msg:+04.2f})"
-        output_str = f"{time_str} {msg}"
-        if (not silent):
-            print(f"Log to {logfile}: {output_str}")
-        f.write(f"{output_str}\n")
-        if(not silent): last_timedLog = t
+    t = time.time()
+    seconds_since_last_msg = t - last_timedLog if last_timedLog else 0
+    decimal_seconds = f"{t-int(t):.2f}"
+    decimal_seconds = decimal_seconds.replace('0.','')
+  #  time_str = f"{time.strftime('%H:%M:%S', time.gmtime(t))}.{decimal_seconds} ({seconds_since_last_msg:+04.2f})"
+  #  t_elapsed, _ = time_in_cycle()
+    t_elapsed = t % CYCLE_LENGTH
+    time_str = f"{t_elapsed:5.1f}"
+    output_str = f"{time_str} {msg}"
+    if (not silent):
+        print(f"Log to {logfile}: {output_str}")
+    if(logfile):
+        with open (logfile, 'a') as f:
+            f.write(f"{output_str}\n")
+    if(not silent): last_timedLog = t
 
 def odd_even_now(from_click = False, swap = False):
     t_grace = 0 if(not from_click) else CYCLE_LENGTH/2
@@ -56,14 +61,3 @@ def odd_even_now(from_click = False, swap = False):
     cycle = ['even','odd'][int(t)]
     timedLog(f"[odd_even_now] cycle is {cycle}")
     return cycle
-
-
-def test():
-    while True:
-        sleep(1)
-        print(tnow_str(), time_in_cycle('odd'))
-       # cycle = odd_even_now(from_click = True)
-       # _, t_remain = time_in_cycle(cycle)
-       # print(tnow_str(), cycle, t_remain )
-
-#test()

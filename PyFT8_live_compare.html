@@ -44,25 +44,6 @@
 		let rxFreq = null;
 		let best_snr = 24;
 		
-		function match_wsjtx_row(key) {
-			const rows = document.querySelectorAll('#wsjtx_decodes > .grid_row');
-			const start = Math.max(0, rows.length - 50);  // only search the tail
-			for (let i = start; i < rows.length; i++) {
-				const ws = rows[i];
-				const cycle = ws.querySelector(':scope > div:nth-child(1)').textContent.trim();
-				const call_a = ws.querySelector(':scope > div:nth-child(6)').textContent.trim();
-				const call_b = ws.querySelector(':scope > div:nth-child(7)').textContent.trim();
-				if (cycle + call_a + call_b == key) {
-					const cyc_sec = ws.querySelector(':scope > div:nth-child(2)').textContent.trim();
-					const snr = ws.querySelector(':scope > div:nth-child(3)').textContent.trim();
-					const freq = ws.querySelector(':scope > div:nth-child(4)').textContent.trim();
-					const dt = ws.querySelector(':scope > div:nth-child(5)').textContent.trim();
-					return {'cyc_sec':cyc_sec, 'dt':dt, 'freq':freq, 'snr':snr};  // matched row element
-				}
-			}
-			return null;
-		}
-
 		function update_spectrum(spectrum_power) {
 			const spectrum = document.getElementById("Spectrum");
 			spectrum.innerHTML = "";
@@ -110,6 +91,7 @@
 				row.appendChild(cell_div);
 			});
 			grid.scrollTop = grid.scrollHeight;
+			return row
 		}
 		
 		function handle_button_click(action){
@@ -128,22 +110,13 @@
 				if(cyc_sec>7) {cyc_sec -=15}
 				cyc_sec = cyc_sec.toFixed(2);
 				dd.cyc_sec = cyc_sec;
-				if (dd.wsjtx) {
-					add_decode_row(dd, 'wsjtx_decodes');
+				if (dd.source == 'WSJTX') {
+					new_row = add_decode_row(dd, 'wsjtx_decodes');
 					n_wsjtx_decodes.innerText = 1+parseInt(n_wsjtx_decodes.innerText)
+					const pyft8_rows = document.querySelectorAll('#PyFT8_decodes > .grid_row')
 				} else {
-					key = dd.cyclestart_str.split("_")[1]+dd.call_a+dd.call_b
-					x = match_wsjtx_row(key);
-					if(x) {
-						dd.cyc_sec += ' ('+x.cyc_sec+')'
-						dd.snr += ' ('+x.snr+')'
-						dd.dt += ' ('+x.dt+')'
-						dd.freq += ' ('+x.freq+')'
-						let true_snr = parseInt(x.snr);
-						if (true_snr < best_snr) {best_snr = true_snr; PyFT8_best_snr.innerText = best_snr;}
-					}
-					add_decode_row(dd, 'PyFT8_decodes');
-					n_PyFT8_decodes.innerText = 1+parseInt(n_PyFT8_decodes.innerText)
+					new_row = add_decode_row(dd, 'PyFT8_decodes');
+					n_PyFT8_decodes.innerText = 1+parseInt(n_PyFT8_decodes.innerText);
 				}
 				update_percent();
 			}

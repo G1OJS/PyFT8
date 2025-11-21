@@ -9,13 +9,12 @@ class Waterfall:
         Main FT8 waterfall display with candidate zooms and optional overlays.
         """
         self.spectrum = spectrum
-        self.costas = spectrum.sigspec.costas
+        self.fine_grid_complex = spectrum.fine_grid_complex
         self.hops_persymb = spectrum.hops_persymb
         self.fbins_pertone = spectrum.fbins_pertone
         self.t0, self.t1 = t0, t1 
         self.f0, self.f1 = f0, f1 
         self.plt = plt
-
 
         # Main figure
         self.fig, (self.ax_main) = plt.subplots(1,1,figsize=(10, 4))
@@ -35,7 +34,7 @@ class Waterfall:
     # ----------------------------------------------------------
     def update_main(self, candidates=None, cyclestart_str=None):
         """Refresh main waterfall and draw candidate rectangles."""
-        vals = np.abs(self.spectrum.fine_grid_complex)**2
+        vals = np.abs(self.fine_grid_complex)**2
         self.im = self.ax_main.imshow(  vals, origin="lower", aspect="auto", extent = self.extent_main, 
                                         cmap="inferno", interpolation="none", norm=LogNorm() )
         #self.im.autoscale()
@@ -47,9 +46,8 @@ class Waterfall:
 
         if candidates:
             for c in candidates:
-                t0, f0 = c.origin
                 origin_img = (c.origin_physical[1], c.origin_physical[0])
-                rect = patches.Rectangle(origin_img, c.sigspec.bw_Hz, c.sigspec.dur_s,
+                rect = patches.Rectangle(origin_img, c.sigspec.bw_Hz, c.sigspec.signal_seconds,
                   linewidth=1.2,edgecolor="lime", facecolor="none"
                 )
                 self.ax_main.add_patch(rect)
@@ -62,27 +60,17 @@ class Waterfall:
     # ----------------------------------------------------------
     def show_zoom(self, candidates, llr_overlay=True, cols=3, phase = False):
         """
-        Create per-candidate zoom boxes (gridded subplots).
+        Create per-candidate zoom boxes.
         Optionally overlay LLRs if candidate.llr is present.
         """
-        candidates_with_decodes = []
-        for i, c in enumerate(candidates):
-            if c.message:
-                candidates_with_decodes.append(c)
-        
-        n = len(candidates_with_decodes)
+        n = len(candidates)
         if (n==0): return
         rows = int(np.ceil(n / cols))
         zoom_fig, axes = plt.subplots(rows, cols, figsize=(3.5 * cols, 5 * rows))
         axes = np.atleast_1d(axes).flatten()
         self.zoom_axes = axes
 
-        # Precompute Costas skeleton (symbol, tone index pairs)
-        costas_pairs = [((symb_idx  + offset) * self.hops_persymb, tone * self.fbins_pertone)
-                        for offset in (0, 36, 72) # magic numbers; move to a 'costas object' per mode
-                        for symb_idx, tone in enumerate(self.costas)]
-        
-        for i, c in enumerate(candidates_with_decodes):
+        for i, c in enumerate(candidates):
             ax = axes[i]
             cspec = c.fine_grid_complex
             vals = np.angle(cspec) if phase else np.abs(cspec)**2
@@ -94,10 +82,12 @@ class Waterfall:
             ax.set_xlabel("freq bin index")
             ax.set_ylabel("hop index")
 
-            # --- Costas rectangles ---
+            costas_pairs = [((symb_idx  + offset) * self.hops_persymb, tone * self.fbins_pertone)
+                        for offset in (0, 36, 72) # magic numbers; move to a 'costas object' per mode
+                        for symb_idx, tone in enumerate(c.sigspec.costas)]
             for hop_idx, fbin_idx in costas_pairs:
                 rect = patches.Rectangle(
-                    (fbin_idx - 0.5, hop_idx - 0.5 - c.spectrum.hops_persymb//2), self.fbins_pertone, self.hops_persymb,
+                    (fbin_idx - 0.5, hop_idx - 0.5 - self.spectrum.hops_persymb//2), self.fbins_pertone, self.hops_persymb,
                     edgecolor='lime', facecolor='none', linewidth=1.2
                 )
                 ax.add_patch(rect)
@@ -112,11 +102,10 @@ class Waterfall:
                 llr_ax.set_yticks([])
                 llr_ax.set_title("LLR", fontsize=8)
 
-
         for ax in axes[n:]:
             ax.axis("off")
 
         zoom_fig.tight_layout(h_pad=3)
         self.fig.canvas.draw_idle()
-        self.fig.canvas.flush_events()  # <-- forces actual draw
+        self.fig.canvas.flush_events() 
         plt.pause(0.001)

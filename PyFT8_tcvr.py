@@ -1,7 +1,7 @@
 import sys
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 
-from PyFT8.rx.cycle_decoder import start_cycle_decoder
+from PyFT8.rx.cycle_decoder import Cycle_decoder
 from PyFT8.rx.wsjtx_all_tailer import start_wsjtx_tailer
 
 from PyFT8.comms_hub import config, start_UI
@@ -187,7 +187,7 @@ def add_band_buttons():
         send_to_ui_ws("add_band_button", {'band_name':band['band_name'], 'band_freq':band['band_freq']})
 
 def run():        
-    start_cycle_decoder(None if config.decoder == 'wsjtx' else onDecode, onOccupancy, prioritise_rxfreq = True)
+    cd = Cycle_decoder(None if config.decoder == 'wsjtx' else onDecode, onOccupancy, prioritise_rxfreq = True)
     if(config.decoder == 'wsjtx') : start_wsjtx_tailer(onDecode)
     start_UI("PyFT8_tcvr_UI.html", process_UI_event)
     add_band_buttons()
