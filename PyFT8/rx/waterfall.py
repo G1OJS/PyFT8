@@ -47,7 +47,7 @@ class Waterfall:
         if candidates:
             for c in candidates:
                 origin_img = (c.origin_physical[1], c.origin_physical[0])
-                rect = patches.Rectangle(origin_img, c.sigspec.bw_Hz, c.sigspec.dur_s,
+                rect = patches.Rectangle(origin_img, c.sigspec.bw_Hz, c.sigspec.signal_seconds,
                   linewidth=1.2,edgecolor="lime", facecolor="none"
                 )
                 self.ax_main.add_patch(rect)

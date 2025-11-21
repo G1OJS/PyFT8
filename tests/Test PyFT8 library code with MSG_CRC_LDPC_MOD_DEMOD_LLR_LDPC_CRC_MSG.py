@@ -55,36 +55,35 @@ print(f"Channel symbols modulated:   {''.join([str(s) for s in symbols])}")
 # load audio early as we want to overwrite some of it
 wav_file='210703_133430.wav'
 audio_in = audio.read_wav_file(wav_file)
-demod.load_audio(audio_in)
-w,h = demod.spectrum.fine_grid_complex.shape
+spectrum = demod.load_audio(audio_in)
+w,h = spectrum.fine_grid_complex.shape
 
 t0_idx = 6
 f0_idx = 320
 rel_strength = 10
 # 'modulate' onto channel grid
-demod.spectrum.fill_arrays(np.random.rand(w, h))
-m = np.max(np.abs(demod.spectrum.fine_grid_complex))  * rel_strength
+spectrum.fine_grid_complex=(np.random.rand(w, h))
+m = np.max(np.abs(spectrum.fine_grid_complex))  * rel_strength
 for symb_idx, tone_idx in enumerate(symbols):
     f0 = f0_idx + tone_idx * demod.fbins_pertone
     f1 = f0 + demod.fbins_pertone
     t0 = t0_idx + symb_idx * demod.hops_persymb
     t1 = t0 + demod.hops_persymb
-    demod.spectrum.fine_grid_complex[t0:t1, f0:f1] = m
-demod.spectrum.fill_arrays(demod.spectrum.fine_grid_complex)
-
+    spectrum.fine_grid_complex[t0:t1, f0:f1] = m
 
 # 'demodulate' as with any audio frame
 timers.timedLog(f"Start to Load audio from {wav_file}")
 
-candidates = demod.find_candidates()
+demod.find_candidates(spectrum, False, silent = True)
+candidates = spectrum.candidates
 decoded_candidates = []
 for c in candidates:
-    decode = demod.demodulate_candidate(c, silent=True)
+    decode = demod.demodulate_candidate(spectrum, c)
     if(decode):
         decoded_candidates.append(c)
         d = decode['decode_dict']
         print(d['call_a'], d['call_b'], d['grid_rpt'], c.score )
-wf = Waterfall(demod.spectrum, f0=0, f1=3500)
+wf = Waterfall(spectrum, f0=0, f1=3500)
 
 wf.update_main(candidates=decoded_candidates)
 wf.show_zoom(candidates=decoded_candidates, phase = False, llr_overlay=False)

@@ -19,7 +19,8 @@ timers.timedLog(f"Loading audio from {wav_file}")
 audio_in = audio.read_wav_file(wav_file)
 timers.timedLog(f"Finding candidates")
 spectrum = demod.load_audio(audio_in)
-candidates = demod.find_candidates(spectrum, silent = True)
+demod.find_candidates(spectrum, False, silent = True)
+candidates=spectrum.candidates
 timers.timedLog(f"Found {len(candidates)} candidates")
 print("\n")
 
@@ -28,7 +29,7 @@ unique_decodes = set()
 heads = ['Tload+', 'Rx call', 'Tx call', 'GrRp', 'SyncScr', 'SyncPwr', 'snr', 't0', 'cfg', 'f0', 'sch_idx', 'iters']
 print(''.join([f"{t:>8} " for t in heads]))
 for i, c in enumerate(candidates):
-    decode = demod.demodulate_candidate(spectrum, c, silent = True)
+    decode = demod.demodulate_candidate(spectrum, c)
     if(decode):
         tdelta = timers.tnow() - t_start_load 
         decoded_candidates.append(c)

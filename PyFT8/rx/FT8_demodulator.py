@@ -160,6 +160,8 @@ class FT8Demodulator:
         self.decode_load +=1
         c = candidate
         c.fine_grid_complex = spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]]
+        if(c.fine_grid_complex.shape[0] < c.size[0]):
+            return
         tmp = c.fine_grid_complex.reshape(self.sigspec.num_symbols, self.hops_persymb, self.sigspec.tones_persymb, self.fbins_pertone)
         c.synced_grid_complex = tmp[:,0,:,1]
         c.synced_grid_pwr = np.abs(c.synced_grid_complex)**2
@@ -192,13 +194,14 @@ class FT8Demodulator:
             decode = FT8_decode(c)
             if(decode):
                 decode_dict = decode['decode_dict']
-                key = f"{decode_dict['call_a']}{decode_dict['call_b']}{decode_dict['grid_rpt']}"
+                key = f"{decode_dict['call_a']} {decode_dict['call_b']} {decode_dict['grid_rpt']}"
                 if(not key in spectrum.duplicate_filter):
                     spectrum.duplicate_filter.add(key)
                     dt = c.origin_physical[0] + spectrum.audio_start - 0.3
                     if(dt>7): dt -=15
                     dt = f"{dt:4.1f}"
                     decode_dict.update({'dt': dt})
+                    c.message = key
                 if(onDecode): onDecode(decode)
                 if(not onDecode): return decode
         self.decode_load -=1

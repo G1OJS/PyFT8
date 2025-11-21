@@ -54,6 +54,7 @@ class Cycle_decoder:
         self.spectrum.nHops_loaded +=1
  
     def _make_occupancy_array(self, spectrum, f0=0, f1=3500, bin_hz=10, sig_hz = 50):
+        if(not spectrum): return
         occupancy = np.arange(f0, f1 + bin_hz, bin_hz)
         for c in spectrum.candidates:
             bin0 = int((c.origin_physical[1]-f0)/bin_hz)
