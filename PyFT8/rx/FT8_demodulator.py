@@ -45,26 +45,27 @@ eps = 1e-12
 
 class Spectrum:
     def __init__(self, demodspec):
-        self.fbins_pertone = demodspec.fbins_pertone
-        self.hops_persymb = demodspec.hops_persymb
+       # self.fbins_pertone = demodspec.fbins_pertone
+       # self.hops_persymb = demodspec.hops_persymb
         self.sigspec = demodspec.sigspec
+        self.hops_persymb = demodspec.hops_persymb
+        self.fbins_pertone = demodspec.fbins_pertone
         self.max_freq = 3500
-        self.samples_perhop = int(demodspec.sample_rate / (self.sigspec.symbols_persec * demodspec.hops_persymb) )
-        self.hops_percycle = int(demodspec.sample_rate * self.sigspec.cycle_seconds / self.samples_perhop)
         self.audio_start = 0
         self.audio_in = []
-        self.dt = self.samples_perhop / demodspec.sample_rate
+        self.dt = demodspec.samples_perhop / demodspec.sample_rate
         self.candidates = []
         self.start_decoding_after_hop = 1e9
         self.duplicate_filter = set()
         self.cyclestart_str = 'xxxxxx_xxxxxx'
-        self.FFT_len = int(self.fbins_pertone * demodspec.sample_rate // self.sigspec.symbols_persec)
+        self.FFT_len = int(demodspec.fbins_pertone * demodspec.sample_rate // self.sigspec.symbols_persec)
         FFT_out_len = int(self.FFT_len/2) + 1
         fmax_fft = demodspec.sample_rate/2
         self.nFreqs = int(FFT_out_len * self.max_freq / fmax_fft)
         self.df = self.max_freq / self.nFreqs
-        self.fine_grid_complex = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.complex64)
         self.nHops_loaded = 0
+        self.hops_percycle = int(demodspec.sample_rate * self.sigspec.cycle_seconds / demodspec.samples_perhop)
+        self.fine_grid_complex = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.complex64)
         self.FFT_start_sample_idx = 0
         self.searched = False
         self.candidate_size = (self.sigspec.num_symbols * demodspec.hops_persymb,
@@ -96,6 +97,7 @@ class FT8Demodulator:
         self.fbins_pertone=3
         self.hops_persymb=5
         self.decode_load = 0
+        self.samples_perhop = int(self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb) )
         slack_hops =  int(self.hops_persymb * self.sigspec.symbols_persec * (self.sigspec.cycle_seconds - self.sigspec.signal_seconds) )
         self.sync_range = range(slack_hops)
         self.ldpc = LDPC174_91(30,8,30)
@@ -104,9 +106,8 @@ class FT8Demodulator:
         spectrum = Spectrum(self)
         nSamps = len(audio_in)
         nHops_loaded = int(self.hops_persymb * self.sigspec.symbols_persec * (nSamps-spectrum.FFT_len)/self.sample_rate)
-        spectrum.fine_grid_complex = np.zeros((nHops_loaded, spectrum.nFreqs), dtype = np.complex64)
         for hop_idx in range(nHops_loaded):
-            sample_idx = int(hop_idx * spectrum.samples_perhop)
+            sample_idx = int(hop_idx * self.samples_perhop)
             aud = audio_in[sample_idx:sample_idx + spectrum.FFT_len] * np.kaiser(spectrum.FFT_len, 14)
             spectrum.fine_grid_complex[hop_idx,:] = np.fft.rfft(aud)[:spectrum.nFreqs]
         spectrum.nHops_loaded = nHops_loaded
@@ -156,11 +157,10 @@ class FT8Demodulator:
             c.sort_idx = i
         timers.timedLog(f" in {spectrum.cyclestart_str} [find_candidates] Sync completed with {len(spectrum.candidates)} candidates", silent = False)
 
-    def demodulate_candidate(self, spectrum, candidate, onDecode = None):
+    def demodulate_candidate(self, candidate, onDecode = None):
         self.decode_load +=1
         c = candidate
-        c.fine_grid_complex = spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]]
-        if(c.fine_grid_complex.shape[0] < c.size[0]):
+        if(c.fine_grid_complex.shape[0] != (self.sigspec.num_symbols * self.hops_persymb)):
             return
         tmp = c.fine_grid_complex.reshape(self.sigspec.num_symbols, self.hops_persymb, self.sigspec.tones_persymb, self.fbins_pertone)
         c.synced_grid_complex = tmp[:,0,:,1]
@@ -195,9 +195,9 @@ class FT8Demodulator:
             if(decode):
                 decode_dict = decode['decode_dict']
                 key = f"{decode_dict['call_a']} {decode_dict['call_b']} {decode_dict['grid_rpt']}"
-                if(not key in spectrum.duplicate_filter):
-                    spectrum.duplicate_filter.add(key)
-                    dt = c.origin_physical[0] + spectrum.audio_start - 0.3
+                if(not key in c.spectrum.duplicate_filter):
+                    c.spectrum.duplicate_filter.add(key)
+                    dt = c.origin_physical[0] + c.spectrum.audio_start - 0.3
                     if(dt>7): dt -=15
                     dt = f"{dt:4.1f}"
                     decode_dict.update({'dt': dt})
