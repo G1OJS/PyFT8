@@ -21,10 +21,9 @@ class Cycle_decoder:
         self.candidates = []
         self.duplicate_filter = set()
         self.samples_perhop = 384
-        self.hops_percycle = 464
+        self.hops_percycle = 460
         input_device_idx = audio._find_device(config.soundcards['input_device'])
         while (int(timers.tnow()) %15):
-            print("wait")
             timers.sleep(0.1)
         threading.Thread(target = audio.read_from_soundcard_chunked,
                          kwargs=({'input_device_idx':input_device_idx, 'samples':384, 'callback':self.cycle_decoder_audio_cb })).start()
@@ -69,6 +68,7 @@ class Cycle_decoder:
                     if(not key in self.duplicate_filter):
                         self.duplicate_filter.add(key)
                         dt = c.origin_physical[0] + self.audio_start - 0.3
+                        if(dt>7): dt -=15
                         dt = f"{dt:4.1f}"
                         decode_dict.update({'dt': dt})
                         self.onDecode(decode)
