@@ -23,10 +23,10 @@ def on_wsjtx_decode(decode):
     decode_dict.update({'source':'WSJTX'})
     send_to_ui_ws("decode_dict", decode_dict)
 
-def onDecode(decode):
+def onDecode(candidate):
     global PyFT8_has_decodes
     PyFT8_has_decodes = True
-    decode_dict = decode['decode_dict']
+    decode_dict = candidate.decode_dict
     decode_dict.update({'source':'PyFT8'})
     send_to_ui_ws("decode_dict", decode_dict)
 

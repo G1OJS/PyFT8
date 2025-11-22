@@ -87,12 +87,15 @@ class Candidate:
         self.llr = None
         self.llr_std = None
         self.payload_bits = []
-        self.decode_tried = False
+        self.decode_dict = None
+        self.sent_for_decode = False
 
     @property
     def fine_grid_complex(self):
         c = self
         return self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]].copy()
+
+
         
 class FT8Demodulator:
     def __init__(self):
@@ -117,13 +120,14 @@ class FT8Demodulator:
             spectrum.fine_grid_complex[spectrum.nHops_loaded,:] = np.fft.rfft(aud)[:spectrum.nFreqs]
             sample_idx += self.samples_perhop
             spectrum.nHops_loaded +=1
-        timers.timedLog(f"[load_audio] Loaded {spectrum.nHops_loaded} hops ({spectrum.nHops_loaded/(self.sigspec.symbols_persec * self.hops_persymb):.2f}s)")
+        timers.timedLog(f"[load_audio] Loaded {spectrum.nHops_loaded} hops ({spectrum.nHops_loaded/(self.sigspec.symbols_persec * self.hops_persymb):.2f}s)", logfile = 'decodes.log', )
         return spectrum
 
-    def find_candidates(self, spectrum, prioritise_Hz, silent = False):
+    def find_candidates(self, spectrum, prioritise_Hz, silent = False, onCandidate_found = None):
         spectrum.cyclestart_str = timers.cyclestart_str(0)
-        timers.timedLog(f" in {spectrum.cyclestart_str} [find_candidates] start searching for candidates", silent = False)
-        output_limit = int(config.decoder_search_limit) 
+        timers.timedLog(f" in {spectrum.cyclestart_str} [find_candidates] start searching for candidates", logfile = 'decodes.log', silent = False)
+        candidate_limit_per_cycle = int(config.decoder_search_limit)
+        self.candidates = []
         f0_idxs = range(spectrum.nFreqs - spectrum.candidate_size[1])
         for f0_idx in f0_idxs:
             c = Candidate(spectrum, self.sigspec)
@@ -154,14 +158,16 @@ class FT8Demodulator:
                 spectrum.candidates.append(c)
                 if(prioritise_Hz and abs(c.origin_physical[1]-prioritise_Hz) < 1):
                     c.score = 10
-        timers.timedLog(f" in {spectrum.cyclestart_str} [find_candidates] found {len(spectrum.candidates)} candidates", silent = False)
+                if(onCandidate_found):
+                    onCandidate_found(c)
+        timers.timedLog(f" in {spectrum.cyclestart_str} [find_candidates] found {len(spectrum.candidates)} candidates", logfile = 'decodes.log',  silent = False)
         spectrum.candidates.sort(key=lambda c: -c.score)
-        spectrum.candidates = spectrum.candidates[:output_limit]
+        spectrum.candidates = spectrum.candidates[:candidate_limit_per_cycle]
         for i, c in enumerate(spectrum.candidates):
             c.sort_idx = i
-        timers.timedLog(f" in {spectrum.cyclestart_str} [find_candidates] Sync completed with {len(spectrum.candidates)} candidates", silent = False)
+        timers.timedLog(f" in {spectrum.cyclestart_str} [find_candidates] Sync completed with {len(spectrum.candidates)} candidates", logfile = 'decodes.log', silent = False)
 
-    def demodulate_candidate(self, candidate, onDecode = None):
+    def demodulate_candidate(self, candidate, onResult = None):
         self.decode_load +=1
         c = candidate
         tmp = c.fine_grid_complex.reshape(self.sigspec.num_symbols, self.hops_persymb, self.sigspec.tones_persymb, self.fbins_pertone)
@@ -189,7 +195,7 @@ class FT8Demodulator:
                 c.llr.extend([llr_all[i]])
         c.llr = 3 * (c.llr - np.mean(c.llr)) / (np.std(c.llr)+.001)
         bits, n_its = self.ldpc.decode(c.llr)
-        self.decode_load -=1
+        self.decode_load -=1      
         if(bits):
             c.payload_bits = bits
             c.n_its = n_its
@@ -198,7 +204,6 @@ class FT8Demodulator:
             if(decode):
                 decode_dict = decode['decode_dict']
                 key = f"{decode_dict['call_a']} {decode_dict['call_b']} {decode_dict['grid_rpt']}"
-                timers.timedLog(f"Decoded {c.info}: {key}", logfile = 'decodes.log', silent = True)
                 if(not key in c.spectrum.duplicate_filter):
                     c.spectrum.duplicate_filter.add(key)
                     dt = c.origin_physical[0] + c.spectrum.audio_start - 0.3
@@ -206,8 +211,9 @@ class FT8Demodulator:
                     dt = f"{dt:4.1f}"
                     decode_dict.update({'dt': dt})
                     c.message = key
-                if(onDecode): onDecode(decode)
-                if(not onDecode): return decode
+                    c.decode_dict = decode_dict
+                if(not onResult): return decode
+        if(onResult): onResult(c)
         
     
 # ======================================================

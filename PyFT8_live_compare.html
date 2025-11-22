@@ -99,7 +99,7 @@
 			websocket.send(JSON.stringify({topic: "ui." + action}));
 			if(action.search('set-band')==0) {
 				console.log("Clear grids"); 
-				for (const el of document.querySelectorAll('.grid_row')) {el.remove()}}
+				for (const el of document.querySelectorAll('.grid_row:not(.header)')) {el.remove()}}
 				n_PyFT8_decodes.innerText = '0';
 				n_wsjtx_decodes.innerText = '0';
 				update_percent();
@@ -123,7 +123,6 @@
 				if (dd.source == 'WSJTX') {
 					new_row = add_decode_row(dd, 'wsjtx_decodes');
 					n_wsjtx_decodes.innerText = 1+parseInt(n_wsjtx_decodes.innerText)
-					const pyft8_rows = document.querySelectorAll('#PyFT8_decodes > .grid_row')
 				} else {
 					new_row = add_decode_row(dd, 'PyFT8_decodes');
 					n_PyFT8_decodes.innerText = 1+parseInt(n_PyFT8_decodes.innerText);

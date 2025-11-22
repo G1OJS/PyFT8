@@ -133,12 +133,10 @@ class QSO:
 
 QSO = QSO()
 
-def onDecode(decode):
+def onDecode(candidate):
     import PyFT8.timers as timers
     from PyFT8.comms_hub import config, send_to_ui_ws
-    if(not decode):
-        return
-    decode_dict = decode['decode_dict']
+    decode_dict = candidate.decode_dict
     if(decode_dict['call_a'] == config.myCall or decode_dict['call_b'] == config.myCall or 'rxfreq' in decode_dict or decode_dict['freq']==config.rxfreq or decode_dict['call_b']==QSO.their_call):
         decode_dict.update({'priority':True})
     send_to_ui_ws("decode_dict", decode_dict)
