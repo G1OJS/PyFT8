@@ -156,9 +156,12 @@ class FT8Demodulator:
         for i, c in enumerate(spectrum.candidates):
             c.sort_idx = i
         timers.timedLog(f" in {spectrum.cyclestart_str} [find_candidates] Sync completed with {len(spectrum.candidates)} candidates", silent = False)
+        send_to_ui_ws("decode_queue", {'n_candidates':len(spectrum.candidates)})
+
 
     def demodulate_candidate(self, candidate, onDecode = None):
         self.decode_load +=1
+        send_to_ui_ws("decode_queue",{'len':self.decode_load})
         c = candidate
         tmp = c.fine_grid_complex.reshape(self.sigspec.num_symbols, self.hops_persymb, self.sigspec.tones_persymb, self.fbins_pertone)
         c.synced_grid_complex = tmp[:,0,:,1]
@@ -185,6 +188,8 @@ class FT8Demodulator:
                 c.llr.extend([llr_all[i]])
         c.llr = 3 * (c.llr - np.mean(c.llr)) / (np.std(c.llr)+.001)
         bits, n_its = self.ldpc.decode(c.llr)
+        self.decode_load -=1
+        send_to_ui_ws("decode_queue",{'len':self.decode_load})
         if(bits):
             c.payload_bits = bits
             c.n_its = n_its
@@ -202,7 +207,7 @@ class FT8Demodulator:
                     c.message = key
                 if(onDecode): onDecode(decode)
                 if(not onDecode): return decode
-        self.decode_load -=1
+        
     
 # ======================================================
 # FT8 Unpacking functions

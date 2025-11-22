@@ -110,6 +110,10 @@
 			const dd = JSON.parse(event.data)
 			if(!dd) return;
 			if(dd.topic == 'add_band_button')   {add_band_button(dd.band_name, dd.band_freq)}
+			if(dd.topic == 'decode_queue') {
+				if(dd.len) {document.getElementById('decode_queue').innerText = dd.len}
+				if(dd.n_candidates) {document.getElementById('n_candidates').innerText = dd.n_candidates}
+			}
 			if(dd.topic == 'decode_dict')		{
 				const t = new Date / 1000;
 				let cyc_sec = (t %15); 
@@ -167,7 +171,7 @@
 		<div id = 'DecodePanelsContainer'>
 		
 			<div class = 'DecodePanel'>
-				<div class='grid_title'>PyFT8 Decodes <span id = 'n_PyFT8_decodes'>0</span> (<span id = 'pc_PyFT8_decodes'>0%</span>) </div>
+				<div class='grid_title'>PyFT8 Decodes <span id = 'n_PyFT8_decodes'>0</span> (<span id = 'pc_PyFT8_decodes'>0%</span>) Cands: <span id='n_candidates'>0</span> Queue: <span id='decode_queue'>0</span></div>
 				<div id="PyFT8_decodes" class = "decodes_grid">
 					<div class = 'grid_row header'>
 						<div class='grid_cell'>Cycle</div><div class='grid_cell'>t_decode</div><div class='grid_cell'>snr</div><div class='grid_cell'>Freq</div><div class='grid_cell'>dt</div><div class='grid_cell'>Call_a</div><div class='grid_cell'>Call_b</div><div class='grid_cell'>Grid_rpt</div><div class='grid_cell'></div>
