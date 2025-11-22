@@ -2,7 +2,7 @@ import threading
 import numpy as np
 import PyFT8.timers as timers
 import PyFT8.audio as audio
-from PyFT8.comms_hub import config
+from PyFT8.comms_hub import config, send_to_ui_ws
 from PyFT8.rx.FT8_demodulator import FT8Demodulator, Spectrum
 from PyFT8.rx.waterfall import Waterfall
 import pyaudio
@@ -32,49 +32,55 @@ class Cycle_decoder:
                          stream_callback=None)
         
         while self.running:
-            data = stream.read(self.demod.samples_perhop,
-                               exception_on_overflow=False)
+            data = stream.read(self.demod.samples_perhop, exception_on_overflow=False)
             self.audio_queue.put(data)
 
     def processing_thread(self):
         self.spectrum = Spectrum(self.demod)
         self.last_cycle_time = int(timers.tnow()) % 15
-        self.candidate_search_after_hop = (
-            np.max(self.demod.sync_range) +
-            np.max(self.spectrum.hop_idxs_Costas)
-        )
+        self.candidate_search_after_hop = (np.max(self.demod.sync_range) + np.max(self.spectrum.hop_idxs_Costas))
+                
         while self.running:
-            in_data = self.audio_queue.get()
+            audio_samples = self.audio_queue.get()
             cycle_time = int(timers.tnow()) % 15
+            cands_to_decode = []
+            # cycle rollover
             if (cycle_time < self.last_cycle_time):
+                timers.timedLog(f"Cycle rollover")
                 if (self.onOccupancy):
-                    threading.Thread(
-                        target=self._make_occupancy_array,
-                        kwargs={'spectrum': self.spectrum}
-                    ).start()
+                    threading.Thread( target=self._make_occupancy_array, kwargs={'spectrum': self.spectrum} ).start()
                 self.spectrum = Spectrum(self.demod)
-                self.candidate_search_after_hop = (
-                    np.max(self.demod.sync_range) +
-                    np.max(self.spectrum.hop_idxs_Costas)
-                )
-                timers.timedLog(f"Decode load is: {self.demod.decode_load}")
+                # duplicate code - might not be needed (else refactor) <<<<<<<<
+                cands_to_decode = [c for c in self.spectrum.candidates if(not c.decode_tried and self.spectrum.nHops_loaded > c.last_hop - 5*7)]
+                send_to_ui_ws("decode_queue", {'n_candidates':len(cands_to_decode), 'parallel_decodes':self.demod.decode_load})
+                for c in cands_to_decode:
+                    c.decode_tried = True
+                    timers.timedLog(f"At cycle rollover, candidate {c.origin} was not sent for decode; sending now.")
+                    threading.Thread(target=self.demod.demodulate_candidate, kwargs={'candidate': c,'onDecode': self.onDecode}).start()
+                # >>>>>>>>>>>>
             self.last_cycle_time = cycle_time
 
-            data = np.frombuffer(in_data, dtype=np.int16)
-            self.spectrum.audio_in.extend(data)
+            # send audio for FFT
+            audio_samples = np.frombuffer(audio_samples, dtype=np.int16)
+            self.spectrum.audio_in.extend(audio_samples)
             self.do_FFT(self.spectrum)
 
-            if (self.spectrum.nHops_loaded > self.candidate_search_after_hop
-                    and not self.spectrum.searched):
+            # trigger thread to search spectrum for candidates
+            if (self.spectrum.nHops_loaded > self.candidate_search_after_hop and not self.spectrum.searched):
                 self.spectrum.searched = True
                 prioritise_Hz = config.rxfreq if self.prioritise_rxfreq else False
                 threading.Thread(target=self.demod.find_candidates, kwargs={'spectrum': self.spectrum, 'prioritise_Hz': prioritise_Hz}).start()
 
+            # trigger threads for candidate decodes
+            # (might need to go in its own thread with a copy of the candidate list and spectrum)
+            # this is the next target for development - progressive trials of different decoding techniqes, including
+            # potentially an early sweep for candidated decodable without LDPC as soon as 91 bits received
             if (self.spectrum.nHops_loaded > self.spectrum.start_decoding_after_hop):
-                for c in self.spectrum.candidates:
-                    if (not c.decode_tried and self.spectrum.nHops_loaded > c.last_hop):
-                        c.decode_tried = True
-                        threading.Thread(target=self.demod.demodulate_candidate, kwargs={'candidate': c,'onDecode': self.onDecode}).start()
+                cands_to_decode = [c for c in self.spectrum.candidates if(not c.decode_tried and self.spectrum.nHops_loaded > c.last_hop - 5*7)]
+                send_to_ui_ws("decode_queue", {'n_candidates':len(cands_to_decode), 'parallel_decodes':self.demod.decode_load})
+                for c in cands_to_decode:
+                    c.decode_tried = True
+                    threading.Thread(target=self.demod.demodulate_candidate, kwargs={'candidate': c,'onDecode': self.onDecode}).start()
 
     def do_FFT(self, spectrum):
         FFT_start_sample_idx = int(len(self.spectrum.audio_in) - self.spectrum.FFT_len)
