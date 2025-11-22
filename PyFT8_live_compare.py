@@ -13,7 +13,10 @@ rig = IcomCIV()
 
 global PyFT8_has_decodes
 PyFT8_has_decodes = False
-
+import os
+if(os.path.exists('decodes.log')):
+    os.remove('decodes.log')
+    
 def on_wsjtx_decode(decode):
     if(not PyFT8_has_decodes): return
     decode_dict = decode['decode_dict']
