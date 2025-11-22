@@ -1,4 +1,20 @@
 # Python FT8 Rx and Tx with Browser-based UI
+PyFT8 provides useable FT8 transceiving capability in a web browser, with minimal open source Python code.
+
+It's in development (22-Nov 2025) and I hope to make it more useable for those who don't necessarily want to dig into the code.
+
+## Key features of V5.0.4:
+* Gets up to 50% of WSJT-x decodes using a very much simpler algorithm
+* Gets decodes around 1 to 2 seconds *before* WSJT-X does
+* Browser-based UI 'transceiver' can be used to make FT8 QSOs (Rx and Tx, just like WSJT-X)
+     - Note: could be developed to run your FT8 station over the web!
+* Option to use WSJT-X as an external decoder instead of the internal PyFT8 one
+* CAT support for Icom IC-7100 (more to follow)
+* No dependence on Hamlib or Omnirig
+* Finds sound devices by *name* so is immune to Windows reordering sound devices
+* Open source Python code includes test code aimed at *illustrating* the entire encode->modulate->demodulate->decode chain
+* Uses only Python and Javascript
+
 This project provides a working demo of the entire FT8 coding and decoding chain, with a working browser-based GUI.
 
 Although the code is light on comments, I've tried to use clear variable names and structure to make the need for comments minimal. 
@@ -18,7 +34,6 @@ to search for the signals (Costas patterns).
 <img width="987" height="262" alt="waterfall" src="https://github.com/user-attachments/assets/bb97c336-3150-466d-b102-1885fff971b4" />
 
 <img width="1039" height="986" alt="candidate detail" src="https://github.com/user-attachments/assets/cc9ad981-77b1-4997-a1c5-688589342ae9" />
-
 
 ## Approach
 You won't find many comments in the code; I try to make things as obvious as possible via variable names and logical structure, to 
