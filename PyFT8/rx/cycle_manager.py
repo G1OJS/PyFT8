@@ -98,9 +98,10 @@ class Cycle_manager():
                 self.cands_to_decode.sort(key=lambda c: -c.score)
                 for c in self.cands_to_decode:
                     if(not c.sent_for_decode and self.spectrum.nHops_loaded > c.last_data_hop):
-                        if(timers.tnow() - c.cycle_epoch >30):
-                            self.cands_to_decode.remove(c)
-                            if(self.verbose): timers.timedLog(f"Dump {c.info} (stale)", logfile = 'decodes.log', silent = False)
+                        if(timers.tnow() - c.cycle_epoch >45):
+                            if(self.verbose): timers.timedLog(f"Warning {c.info} still in decode after 30 seconds", logfile = 'decodes.log', silent = False)
+                        if(timers.tnow() - c.cycle_epoch >135):
+                            if(self.verbose): timers.timedLog(f"Warning {c.info} still in decode after 60 seconds", logfile = 'decodes.log', silent = False)
                         else:
                             c.sent_for_decode = True
                             if(self.verbose): timers.timedLog(f"Send {c.info} for decode", logfile = 'decodes.log', silent = True)

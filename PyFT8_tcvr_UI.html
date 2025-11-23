@@ -16,7 +16,8 @@
 
 		body { font-family: sans-serif; background:var(--page-bg); color:#eee; margin:1em; }
 		#App {display:inline-block;  align-content: start; width:fit-content; background:var(--panel-bg); padding:1em; height:90vh;}
-		#clock {display: block; font-size: 1.17em; font-weight: bold;}
+		#logo {display: block; font-size: 2em; font-weight: bold;}
+		#banner {display: block; font-size: 1.17em; font-weight: bold;}
 		.grid_title {display: block; font-size: 1.17em; font-weight: bold; margin-left:0.5em}
 		
 		#SpectrumContainer {display: flex; position: relative; justify-content: center;  width: calc(2 * 25em + 2 * 1em); 
@@ -143,7 +144,10 @@
 			if(!dd) return;
 			console.log(dd);
 			if(dd.topic == 'add_band_button')   {add_band_button(dd.band_name, dd.band_freq)}
-			if(dd.topic == 'set_myCall') 		{myCall = parseInt(dd.myCall)}
+			if(dd.topic == 'set_myCall') 		{
+				myCall = dd.myCall;
+				document.getElementById('myCall').innerText = myCall;
+			}
 			if(dd.topic == 'set_rxfreq') 		{rxFreq = parseInt(dd.freq); update_freq_markers();}
 			if(dd.topic == 'set_txfreq') 		{txFreq = parseInt(dd.freq); update_freq_markers();}
 			if(dd.topic == 'decode_queue') {
@@ -180,7 +184,10 @@
 
 <body>
 	<div id = 'App'>
-		<div id='clock'></div>
+		<div id = 'logo'>PyFT8 Transceiver</div>
+		<div id = 'banner'>
+			My Callsign: <span id='myCall'></span> Time: <span id='clock'></span>
+		</div>
 		<div id="SpectrumContainer">
 			<div id="Spectrum"></div>
 			<div id="freqMarkers">

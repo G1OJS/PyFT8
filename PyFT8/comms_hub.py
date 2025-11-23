@@ -118,6 +118,11 @@ class Config:
 
         self.decoder = parser.get("options","decoder")
 
+        self.COM_port = parser.get("radio","com_port")
+        self.baudrate = parser.get("radio","baudrate")
+        self.PTT_on = bytes.fromhex(parser.get("radio","ptt_on"))
+        self.PTT_off = bytes.fromhex(parser.get("radio","ptt_off"))
+
         for band_name, band_freq in parser.items("bands"):
             self.bands.append({"band_name":band_name, "band_freq":band_freq})
 

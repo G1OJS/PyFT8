@@ -4,7 +4,7 @@ sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 from PyFT8.rx.cycle_manager import Cycle_manager
 from PyFT8.rx.wsjtx_all_tailer import start_wsjtx_tailer
 
-from PyFT8.comms_hub import config, start_UI
+from PyFT8.comms_hub import config, start_UI, send_to_ui_ws
 import PyFT8.audio as audio
 import threading
 from PyFT8.rig.IcomCIV import IcomCIV

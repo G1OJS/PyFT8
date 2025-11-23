@@ -1,13 +1,15 @@
 
 import PyFT8.timers as timers
+from PyFT8.comms_hub import config
 
 class IcomCIV:
     import serial
 
-    def __init__(self, port='COM4', baudrate=9600, timeout=0.1):
+    def __init__(self):
+        port = config.COM_port
         self.serial_port = False
         try:
-            self.serial_port = self.serial.Serial(port=port, baudrate=baudrate, timeout=timeout)
+            self.serial_port = self.serial.Serial(port = port, baudrate = config.baudrate, timeout = 0.1)
             if (self.serial_port):
                 timers.timedLog(f"Connected to {port}")
         except IOError:
@@ -18,18 +20,6 @@ class IcomCIV:
         timers.timedLog(f"CAT: {msg}")
         if(not self.serial_port): return
         self.serial_port.write(msg)
-
-    def getFreqHz(self):
-        while self.serial_port.read():
-            pass
-        timers.timedLog(f"CAT command: get frequency")
-        self.sendCAT(b'\x03')
-        if(not self.serial_port): return
-        resp = self.serial_port.read_until()
-        timers.timedLog(f"CAT: Icom responded with {resp}")
-        if(len(resp)<10):
-            return False
-        return int("".join(f"{(b >> 4) & 0x0F}{b & 0x0F}" for b in reversed(resp[11:16])))
 
     def setFreqHz(self, freqHz):
         s = f"{freqHz:09d}"
@@ -48,16 +38,27 @@ class IcomCIV:
     def setPTTON(self):
         timers.timedLog(f"CAT command: PTT On")
         if(not self.serial_port): return
-        self.sendCAT(b'\x1c\x00\x01')
+        self.sendCAT(config.PTT_on)
 
     def setPTTOFF(self):
         timers.timedLog(f"CAT command: PTT Off")
         if(not self.serial_port): return
-        self.sendCAT(b'\x1c\x00\x00')            
+        self.sendCAT(config.PTT_off)
 
-#icom = IcomCIV()
-#icom.setPTTON()
-#icom.setUSBD();
-#icom.setFreqHz(14123450)
 
+#====================================================
+# Not used in PyFT8
+#====================================================
+
+    def getFreqHz(self):
+        while self.serial_port.read():
+            pass
+        timers.timedLog(f"CAT command: get frequency")
+        self.sendCAT(b'\x03')
+        if(not self.serial_port): return
+        resp = self.serial_port.read_until()
+        timers.timedLog(f"CAT: Icom responded with {resp}")
+        if(len(resp)<10):
+            return False
+        return int("".join(f"{(b >> 4) & 0x0F}{b & 0x0F}" for b in reversed(resp[11:16])))
 
