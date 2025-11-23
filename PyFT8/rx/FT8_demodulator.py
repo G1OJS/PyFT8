@@ -189,7 +189,7 @@ class FT8Demodulator:
                 key = f"{decode_dict['call_a']} {decode_dict['call_b']} {decode_dict['grid_rpt']}"
                 if(not key in c.spectrum.duplicate_filter):
                     c.spectrum.duplicate_filter.add(key)
-                    dt = c.origin_physical[0] + c.spectrum.audio_start - 0.3
+                    dt = c.origin_physical[0] + c.spectrum.audio_start - 0.3 -0.5
                     if(dt>7): dt -=15
                     dt = f"{dt:4.1f}"
                     decode_dict.update({'dt': dt})
