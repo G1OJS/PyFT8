@@ -1,20 +1,12 @@
 import numpy as np
 import sys
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
-from PyFT8.rx.FT8_demodulator import FT8Demodulator, unpack_ft8_c28, unpack_ft8_g15
+from PyFT8.rx.cycle_decoder import Cycle_decoder
 from PyFT8.rx.waterfall import Waterfall
 from PyFT8.tx.FT8_encoder import pack_ft8_c28, pack_ft8_g15, encode_bits77
 import PyFT8.timers as timers
 import PyFT8.audio as audio
 from PyFT8.comms_hub import config
-
-demod = FT8Demodulator()
-#config.decoder_search_limit = 500
-
-#VK1ABC 0b1110000111111100010100110101
-#VK3JPK 0b1110001000000111101000011110
-#QF22 0b111001010001010
-#StandardMessage(VK1ABC VK3JPK QF22) 0b11100001111111000101001101010111000100000011110100001111000111001010001010001
 
 c28a = pack_ft8_c28("VK1ABC")
 c28b = pack_ft8_c28("VK3JPK")
@@ -51,39 +43,27 @@ print(f"{bits174_int:0174b}")
 print(f"Payload symbols  expected:   {'7027413236410076024143535324211637464027735642254300025301'}")
 print(f"Channel symbols modulated:   {''.join([str(s) for s in symbols])}")
 
+symbols_framed = [-10]*7
+symbols_framed.extend(symbols)
+symbols_framed.extend([-10]*7)
+print(f"({len(symbols)} symbols)")
+audio_data = audio.create_ft8_wave(symbols_framed, f_base = config.txfreq, amplitude = 0.5)
+audio_data = audio_data * 0.01*np.random.rand(len(audio_data))
 
-# load audio early as we want to overwrite some of it
-wav_file='210703_133430.wav'
-audio_in = audio.read_wav_file(wav_file)
-spectrum = demod.load_audio(audio_in)
-
-t0_idx = 6
-f0_idx = 320
-rel_strength = 10
-# 'modulate' onto channel grid
-nh,nf = spectrum.fine_grid_complex.shape
-spectrum.fine_grid_complex=(np.random.rand(nh, nf))
-m = np.max(np.abs(spectrum.fine_grid_complex))  * rel_strength
-for symb_idx, tone_idx in enumerate(symbols):
-    f0 = f0_idx + tone_idx * demod.fbins_pertone
-    f1 = f0 + demod.fbins_pertone
-    t0 = t0_idx + symb_idx * demod.hops_persymb
-    t1 = t0 + demod.hops_persymb
-    spectrum.fine_grid_complex[t0:t1, f0:f1] = m
-
-# 'demodulate' as with any audio frame
-timers.timedLog(f"Start to Load audio from {wav_file}")
-
-demod.find_candidates(spectrum, False, silent = True)
-candidates = spectrum.candidates
 decoded_candidates = []
-for c in candidates:
-    decode = demod.demodulate_candidate(c)
-    if(decode):
-        decoded_candidates.append(c)
-        d = decode['decode_dict']
-        print(d['call_a'], d['call_b'], d['grid_rpt'], c.score )
-wf = Waterfall(spectrum)
+def onDecode(candidate):
+    decoded_candidates.append(candidate)
+
+decoder = Cycle_decoder(onDecode, None, audio_in = audio_data)
+
+while(len(decoder.cands_to_decode) > 0):
+    timers.sleep(0.1)
+decoder.running = False
+
+for c in decoded_candidates:
+    d = c.decode_dict
+    print(d['call_a'], d['call_b'], d['grid_rpt'], c.score )
+wf = Waterfall(decoder.spectrum)
 
 wf.update_main(candidates=decoded_candidates)
 wf.show_zoom(candidates=decoded_candidates, phase = False, llr_overlay=False)

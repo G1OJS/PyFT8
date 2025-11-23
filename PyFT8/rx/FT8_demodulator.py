@@ -95,10 +95,9 @@ class Candidate:
         c = self
         return self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]].copy()
 
-
-        
 class FT8Demodulator:
-    def __init__(self):
+    def __init__(self, max_iters = 30, max_stall = 8, max_checks = 30, sync_score_thresh = None):
+        self.sync_score_thresh = sync_score_thresh if  sync_score_thresh else config.decoder_candidate_search_score_threshold
         self.sigspec = FT8
         self.sample_rate=12000
         self.fbins_pertone=3
@@ -108,25 +107,11 @@ class FT8Demodulator:
         self.hops_persec = self.sample_rate / self.samples_perhop 
         slack_hops =  int(self.hops_persymb * self.sigspec.symbols_persec * (self.sigspec.cycle_seconds - self.sigspec.num_symbols / self.sigspec.symbols_persec) )
         self.sync_range = range(slack_hops)
-        self.ldpc = LDPC174_91(30,8,30)
-        
-    def load_audio(self, audio_in):
-        spectrum = Spectrum(self)
-        samples_available = len(audio_in)
-        sample_idx = 0
-        spectrum.nHops_loaded = 0
-        while sample_idx < samples_available - spectrum.FFT_len:
-            aud = audio_in[sample_idx:sample_idx + spectrum.FFT_len] * np.kaiser(spectrum.FFT_len, 14)
-            spectrum.fine_grid_complex[spectrum.nHops_loaded,:] = np.fft.rfft(aud)[:spectrum.nFreqs]
-            sample_idx += self.samples_perhop
-            spectrum.nHops_loaded +=1
-        timers.timedLog(f"[load_audio] Loaded {spectrum.nHops_loaded} hops ({spectrum.nHops_loaded/(self.sigspec.symbols_persec * self.hops_persymb):.2f}s)", logfile = 'decodes.log', )
-        return spectrum
+        self.ldpc = LDPC174_91(max_iters, max_stall, max_checks)
 
     def find_candidates(self, spectrum, prioritise_Hz, silent = False, onCandidate_found = None):
         spectrum.cyclestart_str = timers.cyclestart_str(0)
         timers.timedLog(f" in {spectrum.cyclestart_str} [find_candidates] start searching for candidates", logfile = 'decodes.log', silent = False)
-        candidate_limit_per_cycle = int(config.decoder_search_limit)
         self.candidates = []
         f0_idxs = range(spectrum.nFreqs - spectrum.candidate_size[1])
         for f0_idx in f0_idxs:
@@ -141,7 +126,7 @@ class FT8Demodulator:
                 if test[1] > best[1]:
                     best = test
             c.score = best[1]
-            if(c.score > config.decoder_candidate_search_score_threshold):
+            if(c.score > self.sync_score_thresh):
                 # if there's an existing neighbour in frequency, replace it if we have a better score, otherwise don't append us 
                 neighbour_lf = [n for n in spectrum.candidates if (c.origin[1] - n.origin[1] <=2)]
                 if(neighbour_lf):
@@ -160,13 +145,11 @@ class FT8Demodulator:
                     c.score = 10
                 if(onCandidate_found):
                     onCandidate_found(c)
-        timers.timedLog(f" in {spectrum.cyclestart_str} [find_candidates] found {len(spectrum.candidates)} candidates", logfile = 'decodes.log',  silent = False)
         spectrum.candidates.sort(key=lambda c: -c.score)
-        spectrum.candidates = spectrum.candidates[:candidate_limit_per_cycle]
         for i, c in enumerate(spectrum.candidates):
             c.sort_idx = i
-        timers.timedLog(f" in {spectrum.cyclestart_str} [find_candidates] Sync completed with {len(spectrum.candidates)} candidates", logfile = 'decodes.log', silent = False)
-
+        timers.timedLog(f" in {spectrum.cyclestart_str} [find_candidates] found {len(spectrum.candidates)} candidates", logfile = 'decodes.log',  silent = False)
+     
     def demodulate_candidate(self, candidate, onResult = None):
         self.decode_load +=1
         c = candidate
@@ -179,8 +162,8 @@ class FT8Demodulator:
         c.snr = int(np.clip(c.snr, -24,24).item())
         iconf = 0
         c.llr = []
-        E0 = c.synced_grid_pwr[0:78:2]                      
-        E1 = c.synced_grid_pwr[1:79:2]
+        E0 = c.synced_grid_pwr[0:78:2]   # potential to speed up as we don't need                    
+        E1 = c.synced_grid_pwr[1:79:2]   # to decode costas blocks
         pair_score = E0[:, :, None] * E1[:, None, :]
         ps = pair_score[:, None, :, :]
         V = ps * FT8.block_decode_wt2

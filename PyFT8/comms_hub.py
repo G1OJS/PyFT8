@@ -115,7 +115,7 @@ class Config:
         self.soundcards.update({"output_device":output_search})
 
         self.decoder_candidate_search_score_threshold = float(parser.get("decoder","candidate_search_score_threshold"))
-        self.decoder_search_limit = parser.get("decoder","candidate_search_limit")
+        self.decoder_candidate_limit = parser.get("decoder","candidate_limit")
         
         self.wsjtx_all_file = parser.get("paths","wsjtx_all_file")
 

@@ -8,24 +8,30 @@ from PyFT8.rx.waterfall import Waterfall
 import pyaudio
 import queue
 
-class Cycle_decoder:
-    def __init__(self, onDecode, onOccupancy, prioritise_rxfreq = True):
+class Cycle_decoder():
+    def __init__(self, onDecode, onOccupancy, prioritise_rxfreq = True, audio_in = None):
         self.verbose = False
         self.last_cycle_time = 16
         self.demod = FT8Demodulator()
+        self.running = True
+        self.spectrum = Spectrum(self.demod)
+        self.spectrum.nHops_loaded = 0
         self.onDecode = onDecode
         self.onOccupancy = onOccupancy
         self.cands_to_decode = []
         self.prioritise_rxfreq = prioritise_rxfreq
-        self.candidate_limit_per_cycle = int(config.decoder_search_limit)
+        self.candidate_limit = int(config.decoder_candidate_limit)
         input_device_idx = audio._find_device(config.soundcards['input_device'])   
         self.audio_queue = queue.Queue(maxsize=50)
-        self.running = True
-        while int(timers.tnow()) % 15 < 14:
-            timers.sleep(0.05)
-        threading.Thread(target=self.threaded_audio_reader, daemon=True).start()
-        threading.Thread(target=self.threaded_candidate_generator, daemon=True).start()
         threading.Thread(target=self.threaded_decoding_manager, daemon=True).start()
+        # audio_in is e.g. from wav file for testing, otherwise start monitoring sound card
+        if(any(audio_in)):
+            self.find_candidates_from_audio_in(audio_in)
+        else:
+            while int(timers.tnow()) % 15 < 14:
+                timers.sleep(0.05)
+            threading.Thread(target=self.threaded_audio_reader, daemon=True).start()
+            threading.Thread(target=self.threaded_candidate_generator, daemon=True, kwargs={'audio_in':audio_in}).start()
 
     def threaded_audio_reader(self):
         pa = pyaudio.PyAudio()
@@ -70,10 +76,22 @@ class Cycle_decoder:
         n_cands = len(self.cands_to_decode)
         if(self.verbose): timers.timedLog(f"Add {c.info} to decode pool size: {n_cands} to decode: {n_cands_to_decode}", logfile = 'decodes.log', silent = True)
 
+    def find_candidates_from_audio_in(self, audio_in):
+        # inject audio e.g. from wav file for testing 
+        sample_idx = 0
+        while sample_idx < len(audio_in) - self.spectrum.FFT_len:
+            self.spectrum.audio_in.extend(audio_in[sample_idx:sample_idx + self.spectrum.FFT_len])
+            self.do_FFT(self.spectrum)
+            sample_idx += self.demod.samples_perhop
+        timers.timedLog(f"[load_audio] Loaded {self.spectrum.nHops_loaded} hops ({self.spectrum.nHops_loaded/(self.demod.sigspec.symbols_persec * self.demod.hops_persymb):.2f}s)", logfile = 'decodes.log', )
+        self.demod.find_candidates(self.spectrum, False)
+        for c in self.spectrum.candidates:
+            self.cands_to_decode.append(c)
+
     def threaded_decoding_manager(self):
         while self.running:
             self.cands_to_decode.sort(key=lambda c: -c.score)
-            self.cands_to_decode = self.cands_to_decode[:self.candidate_limit_per_cycle]
+            self.cands_to_decode = self.cands_to_decode[:self.candidate_limit]
             for c in self.cands_to_decode:
                 if(not c.sent_for_decode and self.spectrum.nHops_loaded > c.last_data_hop):
                     c.sent_for_decode = True
