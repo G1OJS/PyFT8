@@ -9,7 +9,9 @@ import pyaudio
 import queue
 
 class Cycle_manager():
-    def __init__(self, onDecode, onOccupancy, prioritise_rxfreq = False, audio_in = [], verbose = True, sync_score_thresh = 3, iteration_sleep = 0):
+    def __init__(self, onDecode, onOccupancy,
+                 prioritise_rxfreq = False, audio_in = [], verbose = True,
+                 sync_score_thresh = 3, iteration_sleep = 0):
         self.verbose = verbose
         self.last_cycle_time = 16
         self.sync_score_thresh = sync_score_thresh
@@ -59,7 +61,7 @@ class Cycle_manager():
     def threaded_spectrum_filler(self):
         self.spectrum = Spectrum(self.demod)
         while self.running:
-            cycle_time = int(timers.tnow()) % 15
+            cycle_time = timers.tnow() % 15
             # cycle rollover
             if (cycle_time < self.last_cycle_time):
                 timers.timedLog(f"Cycle rollover {cycle_time:.2f}", logfile = 'decodes.log')
