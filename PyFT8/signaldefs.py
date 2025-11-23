@@ -22,10 +22,17 @@ class SignalSpec:
     gray_map: list[int]  | None = None
     gray_map_tuples: list[()]  | None = None
     gray_mask: bool   | None = None
+    block_decode_wt1: int | None = None
     block_decode_wt2: int | None = None
 
 # ---- FT8 ----
 gray_map = np.array([[0,0,0],[0,0,1],[0,1,1],[0,1,0],[1,1,0],[1,0,0],[1,0,1],[1,1,1]])
+
+# - weights for 1-symbol block decoder if used
+w = np.zeros((3, 8), dtype=np.int8)
+for b in range(3):
+    w[b] = np.where(gray_map[:, b].astype(bool), +1, -1)
+block_decode_wt1 = w[None, :, :]
 
 # - weights for 2-symbol block decoder if used
 w = np.zeros((6, 8, 8), dtype=np.int8)
@@ -44,6 +51,7 @@ FT8  = SignalSpec("FT8",  frame_secs=15.0,  symbols_persec=6.25, cycle_seconds =
                   tones_persymb=8, bw_Hz = 8*6.25, costas=[3,1,4,0,6,5,2], costas_len = 7,
                   gray_map = [0,1,3,2,5,6,4,7],
                   gray_mask = gray_mask,
+                  block_decode_wt1 = block_decode_wt1,
                   block_decode_wt2 = block_decode_wt2)
 
 # ---- FT4 ----

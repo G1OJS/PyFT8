@@ -53,6 +53,8 @@ class Spectrum:
         self.audio_in = []
         self.dt = demodspec.samples_perhop / demodspec.sample_rate
         self.candidates = []
+        self.n_candidates = 0
+        self.n_decodes = 0
         self.duplicate_filter = set()
         self.cyclestart_str = 'xxxxxx_xxxxxx'
         self.cycle_epoch = timers.tnow()
@@ -139,22 +141,22 @@ class FT8Demodulator:
                 c.info = f"{c.origin} {c.score:5.2f}"
                 # append candidate and prioritise if necessary
                 spectrum.candidates.append(c)
+                spectrum.n_candidates +=1
                 if(prioritise_Hz and abs(c.origin_physical[1]-prioritise_Hz) < 1):
                     c.score = 10
                 if(onCandidate_found):
                     onCandidate_found(c)
      
     def demodulate_candidate(self, candidate, onResult):
-        self.decode_load +=1
         c = candidate
         tmp = c.fine_grid_complex.reshape(self.sigspec.num_symbols, self.hops_persymb, self.sigspec.tones_persymb, self.fbins_pertone)
-        c.synced_grid_complex = tmp[:,0,:,1]
-        c.synced_grid_pwr = np.abs(c.synced_grid_complex)**2
-        c.synced_pwr = np.max(c.synced_grid_pwr)
-        c.synced_grid_pwr = c.synced_grid_pwr / c.synced_pwr
+        tmp = tmp[:,0,:,:] 
+        tmp = np.abs(tmp)**2
+        c.synced_pwr = np.max(tmp)
+        c.synced_grid_pwr = tmp[:,:,1]/c.synced_pwr
         c.snr = 10*np.log10(c.synced_pwr)-107
         c.snr = int(np.clip(c.snr, -24,24).item())
-        iconf = 0
+        self.decode_load +=1
         c.llr = []
         E0 = c.synced_grid_pwr[0:78:2]   # potential to speed up as we don't need                    
         E1 = c.synced_grid_pwr[1:79:2]   # to decode costas blocks
@@ -165,7 +167,7 @@ class FT8Demodulator:
         zeros = np.max(-V,    where=(FT8.block_decode_wt2 < 0), initial=-np.inf, axis=(2, 3))
         ones = np.clip(ones,  0.0001, 1e30)
         zeros = np.clip(zeros, 0.0001, 1e30) 
-        llr_block = np.log(ones ) - np.log(zeros )  
+        llr_block = np.log(ones +eps) - np.log(zeros +eps)  
         llr_all = llr_block.reshape(-1)
         for i in range(len(llr_all)):
             if(int(i/3) in FT8.payload_symb_idxs):
@@ -176,7 +178,7 @@ class FT8Demodulator:
         if(bits):
             c.payload_bits = bits
             c.n_its = n_its
-            c.iconf = iconf
+            c.iconf = 0
             decode = FT8_decode(c)
             if(decode):
                 decode_dict = decode['decode_dict']
@@ -189,8 +191,8 @@ class FT8Demodulator:
                     decode_dict.update({'dt': dt})
                     c.message = key
                     c.decode_dict = decode_dict
+                    c.spectrum.n_decodes +=1
         onResult(c)
-        
     
 # ======================================================
 # FT8 Unpacking functions

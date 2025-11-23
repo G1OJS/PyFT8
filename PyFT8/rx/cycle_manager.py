@@ -19,13 +19,13 @@ class Cycle_manager():
         self.running = True
         self.spectrum = Spectrum(self.demod)
         self.spectrum.nHops_loaded = 0
+        self.time_window = np.kaiser(self.spectrum.FFT_len, 19)
         self.onDecode = onDecode
         self.onOccupancy = onOccupancy
         self.cands_to_decode = []
         self.prioritise_Hz = config.rxfreq if prioritise_rxfreq else False
         input_device_idx = audio._find_device(config.soundcards['input_device'])   
         self.audio_queue = queue.Queue(maxsize=50)
-        threading.Thread(target=self.threaded_decoding_manager, daemon=True).start()
         # audio_in is e.g. from wav file for testing, otherwise start monitoring sound card
         if(any(audio_in)):
             self.find_candidates_from_audio_in(audio_in, sync_score_thresh)
@@ -34,6 +34,7 @@ class Cycle_manager():
                 timers.sleep(0.05)
             threading.Thread(target=self.threaded_audio_reader, daemon=True).start()
             threading.Thread(target=self.threaded_spectrum_filler, daemon=True).start()
+        threading.Thread(target=self.threaded_decoding_manager, daemon=True).start()
 
     def find_candidates_from_audio_in(self, audio_in, sync_score_thresh):
         # inject audio e.g. from wav file for testing 
@@ -42,7 +43,7 @@ class Cycle_manager():
             self.spectrum.audio_in.extend(audio_in[sample_idx:sample_idx + self.spectrum.FFT_len])
             self.do_FFT(self.spectrum)
             sample_idx += self.demod.samples_perhop
-        timers.timedLog(f"[load_audio] Loaded {self.spectrum.nHops_loaded} hops ({self.spectrum.nHops_loaded/(self.demod.sigspec.symbols_persec * self.demod.hops_persymb):.2f}s)", logfile = 'decodes.log', )
+        timers.timedLog(f"[bulk_load_audio] Loaded {self.spectrum.nHops_loaded} hops ({self.spectrum.nHops_loaded/(self.demod.sigspec.symbols_persec * self.demod.hops_persymb):.2f}s)", logfile = 'decodes.log', )
         self.demod.find_candidates(self.spectrum, False, self.onCandidate_found, sync_score_thresh)
 
     def threaded_audio_reader(self):
@@ -64,7 +65,9 @@ class Cycle_manager():
             cycle_time = timers.tnow() % 15
             # cycle rollover
             if (cycle_time < self.last_cycle_time):
-                timers.timedLog(f"Cycle rollover {cycle_time:.2f}", logfile = 'decodes.log')
+                timers.timedLog(f"Cycle rollover {cycle_time:.2f} last cycle: "
+                                +f"cands={self.spectrum.n_candidates} decodes={self.spectrum.n_decodes} "
+                                +f"({100*self.spectrum.n_decodes/(self.spectrum.n_candidates+.01):.0f}%)", logfile = 'decodes.log')
                 if(cycle_time > 0.05):
                     self.sync_score_thresh *= 1.1
                     if(self.verbose): timers.timedLog(f"[cycle_manager] Adjust threshold UP to {self.sync_score_thresh:.2f})", logfile = 'decodes.log', silent = False)
@@ -72,8 +75,6 @@ class Cycle_manager():
                     threading.Thread( target=self._make_occupancy_array, kwargs={'spectrum': self.spectrum} ).start()
                 self.spectrum = Spectrum(self.demod)
             self.last_cycle_time = cycle_time
-
-
             # send audio for FFT
             audio_samples = np.frombuffer(self.audio_queue.get(), dtype=np.int16)
             self.spectrum.audio_in.extend(audio_samples)
@@ -82,7 +83,8 @@ class Cycle_manager():
     def do_FFT(self, spectrum):
         FFT_start_sample_idx = int(len(self.spectrum.audio_in) - self.spectrum.FFT_len)
         if(FFT_start_sample_idx >0 and self.spectrum.nHops_loaded < self.spectrum.hops_percycle):
-            aud = self.spectrum.audio_in[FFT_start_sample_idx:FFT_start_sample_idx + self.spectrum.FFT_len] * np.kaiser(self.spectrum.FFT_len, 14)
+            aud = self.spectrum.audio_in[FFT_start_sample_idx:FFT_start_sample_idx + self.spectrum.FFT_len]
+            aud *= self.time_window
             self.spectrum.fine_grid_complex[self.spectrum.nHops_loaded,:] = np.fft.rfft(aud)[:self.spectrum.nFreqs]
         self.spectrum.nHops_loaded +=1
 

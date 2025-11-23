@@ -14,11 +14,11 @@ def onDecode(candidate):
 
 wav_file = "210703_133430.wav"
 #wav_file = '251114_135115.wav'
-#wav_file = "251115_135700.wav"
+wav_file = "251115_135700.wav"
 
 timers.timedLog(f"Loading audio from {wav_file}")
 audio_in = audio.read_wav_file(wav_file)
-cycle_manager = Cycle_manager(onDecode, None, audio_in = audio_in, sync_score_thresh=1.5, iteration_sleep=0)
+cycle_manager = Cycle_manager(onDecode, None, audio_in = audio_in, sync_score_thresh=2.5, iteration_sleep=0, verbose = False)
 while(len(cycle_manager.cands_to_decode) > 0):
     timers.sleep(0.1)
 cycle_manager.running = False

@@ -35,8 +35,7 @@ class Waterfall:
         vals = np.abs(self.fine_grid_complex[:self.spectrum.nHops_loaded,:])**2
         self.im = self.ax_main.imshow(  vals, origin="lower", aspect="auto", extent = self.extent_main, 
                                         cmap="inferno", interpolation="none", norm=LogNorm() )
-        #self.im.autoscale()
-        self.im.norm.vmin = self.im.norm.vmax/1000000
+        self.im.norm.vmin = self.im.norm.vmax/100000
         if(cyclestart_str):
             self.ax_main.set_title(f"FT8 Waterfall for {cyclestart_str}")
         [p.remove() for p in reversed(self._candidate_patches)]
@@ -75,7 +74,9 @@ class Waterfall:
             im = ax.imshow( vals, origin="lower", aspect="auto", extent=[-0.5, vals.shape[1]-0.5, -0.5, vals.shape[0]-0.5],
                             cmap="twilight" if phase else "inferno",
                             interpolation='none' )
-            if(not phase): im.norm = LogNorm()
+            if(not phase):
+                vmax = np.max(vals)
+                im.norm = LogNorm(vmin=vmax/100000, vmax=vmax)
             ax.set_title(f"{c.origin_physical[1]:.0f}Hz {c.origin_physical[0]:.2f}s {c.message}")
             ax.set_xlabel("freq bin index")
             ax.set_ylabel("hop index")
@@ -85,8 +86,8 @@ class Waterfall:
                         for symb_idx, tone in enumerate(c.sigspec.costas)]
             for hop_idx, fbin_idx in costas_pairs:
                 rect = patches.Rectangle(
-                    (fbin_idx - 0.5, hop_idx - 0.5 ), self.fbins_pertone, 1,
-                    edgecolor='none', facecolor='blue'
+                    (fbin_idx - 0.5, hop_idx - 1 ), self.fbins_pertone, 3,
+                    edgecolor='lime', facecolor='none'
                 )
                 ax.add_patch(rect)
 
