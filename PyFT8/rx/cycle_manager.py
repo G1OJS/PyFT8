@@ -8,8 +8,8 @@ from PyFT8.rx.waterfall import Waterfall
 import pyaudio
 import queue
 
-class Cycle_decoder():
-    def __init__(self, onDecode, onOccupancy, prioritise_rxfreq = True, audio_in = None):
+class Cycle_manager():
+    def __init__(self, onDecode, onOccupancy, prioritise_rxfreq = True, audio_in = []):
         self.verbose = False
         self.last_cycle_time = 16
         self.demod = FT8Demodulator()
@@ -31,7 +31,7 @@ class Cycle_decoder():
             while int(timers.tnow()) % 15 < 14:
                 timers.sleep(0.05)
             threading.Thread(target=self.threaded_audio_reader, daemon=True).start()
-            threading.Thread(target=self.threaded_candidate_generator, daemon=True, kwargs={'audio_in':audio_in}).start()
+            threading.Thread(target=self.threaded_candidate_generator, daemon=True).start()
 
     def threaded_audio_reader(self):
         pa = pyaudio.PyAudio()
@@ -49,7 +49,6 @@ class Cycle_decoder():
     def threaded_candidate_generator(self):
         self.spectrum = Spectrum(self.demod)
         while self.running:
-            audio_samples = self.audio_queue.get()
             cycle_time = int(timers.tnow()) % 15
             # cycle rollover
             if (cycle_time < self.last_cycle_time):
@@ -60,6 +59,7 @@ class Cycle_decoder():
             self.last_cycle_time = cycle_time
 
             # send audio for FFT
+            audio_samples = self.audio_queue.get()
             audio_samples = np.frombuffer(audio_samples, dtype=np.int16)
             self.spectrum.audio_in.extend(audio_samples)
             self.do_FFT(self.spectrum)

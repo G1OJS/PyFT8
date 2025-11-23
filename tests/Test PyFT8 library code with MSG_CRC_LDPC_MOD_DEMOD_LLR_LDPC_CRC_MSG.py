@@ -1,7 +1,7 @@
 import numpy as np
 import sys
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
-from PyFT8.rx.cycle_decoder import Cycle_decoder
+from PyFT8.rx.cycle_manager import Cycle_manager
 from PyFT8.rx.waterfall import Waterfall
 from PyFT8.tx.FT8_encoder import pack_ft8_c28, pack_ft8_g15, encode_bits77
 import PyFT8.timers as timers
@@ -54,7 +54,7 @@ decoded_candidates = []
 def onDecode(candidate):
     decoded_candidates.append(candidate)
 
-decoder = Cycle_decoder(onDecode, None, audio_in = audio_data)
+decoder = Cycle_manager(onDecode, None, audio_in = audio_data)
 
 while(len(decoder.cands_to_decode) > 0):
     timers.sleep(0.1)
