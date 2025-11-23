@@ -54,7 +54,7 @@
 	</style>
 	
 	<script>
-		let myCall = "G1OJS";
+		let myCall = "";
 		let spectrum_width = 0;
 		let txFreq = null;
 		let rxFreq = null;
@@ -143,6 +143,7 @@
 			if(!dd) return;
 			console.log(dd);
 			if(dd.topic == 'add_band_button')   {add_band_button(dd.band_name, dd.band_freq)}
+			if(dd.topic == 'set_myCall') 		{myCall = parseInt(dd.myCall)}
 			if(dd.topic == 'set_rxfreq') 		{rxFreq = parseInt(dd.freq); update_freq_markers();}
 			if(dd.topic == 'set_txfreq') 		{txFreq = parseInt(dd.freq); update_freq_markers();}
 			if(dd.topic == 'decode_queue') {

@@ -191,6 +191,6 @@ def run():
     if(config.decoder == 'wsjtx') : start_wsjtx_tailer(onDecode)
     start_UI("PyFT8_tcvr_UI.html", process_UI_event)
     add_band_buttons()
-
+    send_to_ui_ws("set_myCall", {'myCall':config.myCall})
 run()
     

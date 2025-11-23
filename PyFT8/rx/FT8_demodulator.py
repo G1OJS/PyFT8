@@ -55,6 +55,7 @@ class Spectrum:
         self.candidates = []
         self.duplicate_filter = set()
         self.cyclestart_str = 'xxxxxx_xxxxxx'
+        self.cycle_epoch = timers.tnow()
         self.FFT_len = int(demodspec.fbins_pertone * demodspec.sample_rate // self.sigspec.symbols_persec)
         FFT_out_len = int(self.FFT_len/2) + 1
         fmax_fft = demodspec.sample_rate/2
@@ -74,12 +75,13 @@ class Spectrum:
             self._csync[sym_idx, self.sigspec.costas_len*demodspec.fbins_pertone:] = 0
         self.hop_idxs_Costas =  np.arange(self.sigspec.costas_len) * demodspec.hops_persymb
         self.candidate_search_after_hop  = (np.max(demodspec.sync_range) + np.max(self.hop_idxs_Costas))
-        self.start_decoding_after_hop = 1e9
+        self.start_decoding_after_hop = (self.sigspec.num_symbols - self.sigspec.costas_len) * demodspec.hops_persymb 
 
 class Candidate:
     def __init__(self, spectrum, sigspec):
         self.size = spectrum.candidate_size
         self.spectrum = spectrum
+        self.cycle_epoch = spectrum.cycle_epoch
         self.cyclestart_str = spectrum.cyclestart_str
         self.sigspec = sigspec
         self.origin = None
@@ -134,8 +136,6 @@ class FT8Demodulator:
                 c.origin_physical = spectrum.dt * c.origin[0], spectrum.df * c.origin[1]
                 c.last_hop = c.origin[0] + c.size[0]
                 c.last_data_hop = c.last_hop - self.sigspec.costas_len * self.hops_persymb
-                if(c.last_data_hop < spectrum.start_decoding_after_hop):
-                    spectrum.start_decoding_after_hop = c.last_data_hop
                 c.info = f"{c.origin} {c.score:5.2f}"
                 # append candidate and prioritise if necessary
                 spectrum.candidates.append(c)
