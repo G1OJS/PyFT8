@@ -11,15 +11,15 @@ import queue
 class Cycle_manager():
     def __init__(self, onDecode, onOccupancy,
                  prioritise_rxfreq = False, audio_in = [], verbose = True,
-                 sync_score_thresh = 3, iteration_sleep = 0):
+                 sync_score_thresh = 3, max_iters = 27, max_stall = 7, max_checks = 34, iteration_sleep = 0):
         self.verbose = verbose
         self.last_cycle_time = 16
         self.sync_score_thresh = sync_score_thresh
-        self.demod = FT8Demodulator(iteration_sleep = iteration_sleep)
+        self.demod = FT8Demodulator(max_iters, max_stall, max_checks, iteration_sleep)
         self.running = True
         self.spectrum = Spectrum(self.demod)
         self.spectrum.nHops_loaded = 0
-        self.time_window = np.kaiser(self.spectrum.FFT_len, 19)
+        self.time_window = np.kaiser(self.spectrum.FFT_len, 20)
         self.onDecode = onDecode
         self.onOccupancy = onOccupancy
         self.cands_to_decode = []

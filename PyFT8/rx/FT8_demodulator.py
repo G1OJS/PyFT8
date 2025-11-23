@@ -100,7 +100,7 @@ class Candidate:
         return self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]].copy()
 
 class FT8Demodulator:
-    def __init__(self, max_iters = 40, max_stall = 8, max_checks = 35, iteration_sleep = 0):
+    def __init__(self, max_iters, max_stall, max_checks, iteration_sleep):
         self.sigspec = FT8
         self.sample_rate=12000
         self.fbins_pertone=3
