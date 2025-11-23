@@ -9,10 +9,11 @@ import pyaudio
 import queue
 
 class Cycle_manager():
-    def __init__(self, onDecode, onOccupancy, prioritise_rxfreq = True, audio_in = []):
-        self.verbose = False
+    def __init__(self, onDecode, onOccupancy, prioritise_rxfreq = True, audio_in = [], verbose = True, sync_score_thresh = 3, iteration_sleep = 0):
+        self.verbose = verbose
         self.last_cycle_time = 16
-        self.demod = FT8Demodulator()
+        self.sync_score_thresh = sync_score_thresh
+        self.demod = FT8Demodulator(iteration_sleep = iteration_sleep)
         self.running = True
         self.spectrum = Spectrum(self.demod)
         self.spectrum.nHops_loaded = 0
@@ -20,13 +21,12 @@ class Cycle_manager():
         self.onOccupancy = onOccupancy
         self.cands_to_decode = []
         self.prioritise_rxfreq = prioritise_rxfreq
-        self.candidate_limit = int(config.decoder_candidate_limit)
         input_device_idx = audio._find_device(config.soundcards['input_device'])   
         self.audio_queue = queue.Queue(maxsize=50)
         threading.Thread(target=self.threaded_decoding_manager, daemon=True).start()
         # audio_in is e.g. from wav file for testing, otherwise start monitoring sound card
         if(any(audio_in)):
-            self.find_candidates_from_audio_in(audio_in)
+            self.find_candidates_from_audio_in(audio_in, sync_score_thresh)
         else:
             while int(timers.tnow()) % 15 < 14:
                 timers.sleep(0.05)
@@ -68,15 +68,11 @@ class Cycle_manager():
             if (self.spectrum.nHops_loaded > self.spectrum.candidate_search_after_hop and not self.spectrum.searched):
                 self.spectrum.searched = True
                 prioritise_Hz = config.rxfreq if self.prioritise_rxfreq else False
-                threading.Thread(target=self.demod.find_candidates, kwargs={'spectrum':self.spectrum, 'prioritise_Hz':prioritise_Hz, 'onCandidate_found':self.onCandidate_found}).start()
+                threading.Thread(target=self.demod.find_candidates,
+                                 kwargs={'spectrum':self.spectrum, 'prioritise_Hz':prioritise_Hz,
+                                         'onCandidate_found':self.onCandidate_found, 'sync_score_thresh':self.sync_score_thresh}).start()
 
-    def onCandidate_found(self, c):
-        self.cands_to_decode.append(c)
-        n_cands_to_decode = len([c for c in self.cands_to_decode if not c.sent_for_decode])
-        n_cands = len(self.cands_to_decode)
-        if(self.verbose): timers.timedLog(f"Add {c.info} to decode pool size: {n_cands} to decode: {n_cands_to_decode}", logfile = 'decodes.log', silent = True)
-
-    def find_candidates_from_audio_in(self, audio_in):
+    def find_candidates_from_audio_in(self, audio_in, sync_score_thresh):
         # inject audio e.g. from wav file for testing 
         sample_idx = 0
         while sample_idx < len(audio_in) - self.spectrum.FFT_len:
@@ -84,14 +80,11 @@ class Cycle_manager():
             self.do_FFT(self.spectrum)
             sample_idx += self.demod.samples_perhop
         timers.timedLog(f"[load_audio] Loaded {self.spectrum.nHops_loaded} hops ({self.spectrum.nHops_loaded/(self.demod.sigspec.symbols_persec * self.demod.hops_persymb):.2f}s)", logfile = 'decodes.log', )
-        self.demod.find_candidates(self.spectrum, False)
-        for c in self.spectrum.candidates:
-            self.cands_to_decode.append(c)
+        self.demod.find_candidates(self.spectrum, False, self.onCandidate_found, sync_score_thresh)
 
     def threaded_decoding_manager(self):
         while self.running:
             self.cands_to_decode.sort(key=lambda c: -c.score)
-            self.cands_to_decode = self.cands_to_decode[:self.candidate_limit]
             for c in self.cands_to_decode:
                 if(not c.sent_for_decode and self.spectrum.nHops_loaded > c.last_data_hop):
                     c.sent_for_decode = True
@@ -100,6 +93,12 @@ class Cycle_manager():
             n_cands = len([c for c in self.cands_to_decode if not c.sent_for_decode])
             send_to_ui_ws("decode_queue", {'n_candidates':n_cands, 'parallel_decodes':self.demod.decode_load})
             timers.sleep(0.25)
+
+    def onCandidate_found(self, c):
+        self.cands_to_decode.append(c)
+        n_cands_to_decode = len([c for c in self.cands_to_decode if not c.sent_for_decode])
+        n_cands = len(self.cands_to_decode)
+        if(self.verbose): timers.timedLog(f"Add {c.info} to decode pool size: {n_cands} to decode: {n_cands_to_decode}", logfile = 'decodes.log', silent = True)
 
     def onResult(self,c):
         c_decoded = c if(c.decode_dict) else None
@@ -111,6 +110,10 @@ class Cycle_manager():
             timers.timedLog(f"                  pool size: {n_cands} to decode: {n_cands_to_decode}", logfile = 'decodes.log', silent = True)
         if(c_decoded):
             self.onDecode(c_decoded)
+            if(self.sync_score_thresh > c.score * 0.9):
+                self.sync_score_thresh = c.score * 0.9
+                if(self.verbose): timers.timedLog(f"[cycle_manager] Adjust threshold DOWN to {self.sync_score_thresh})", logfile = 'decodes.log', silent = False)
+
 
     def do_FFT(self, spectrum):
         FFT_start_sample_idx = int(len(self.spectrum.audio_in) - self.spectrum.FFT_len)

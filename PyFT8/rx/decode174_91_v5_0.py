@@ -18,10 +18,11 @@ from PyFT8.FT8_crc import check_crc
 import time
 
 class LDPC174_91:
-    def __init__(self, max_it, max_nstall, max_ncheck):
+    def __init__(self, max_it, max_nstall, max_ncheck, iteration_sleep):
         self.max_iterations = max_it
         self.max_nstall = max_nstall
         self.max_ncheck = max_ncheck
+        self.iteration_sleep = iteration_sleep
 
         self.kNCW = 3
         self.kNRW = [7,6,6,6,7,6,7,6,6,7,6,6,7,7,6,6,6,7,6,7,6,7,6,6,6,7,6,6,6,7,6,6,6,6,7,6,6,6,7,7,6,6,6,6,7,7,6,6,6,6,7,6,6,6,7,6,6,6,6,7,6,6,6,7,6,6,6,7,7,6,6,7,6,6,6,6,6,6,6,7,6,6,6]
@@ -91,6 +92,7 @@ class LDPC174_91:
             return self.decoded_bits174_LE_list, self.it
 
         while True:
+            if(self.iteration_sleep >0): time.sleep(self.iteration_sleep)
             zn += np.sum(tov, axis = 0)
             if (self.exit_check(zn)):
                 return self.decoded_bits174_LE_list, self.it

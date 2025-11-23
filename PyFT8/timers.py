@@ -40,15 +40,13 @@ def timedLog(msg, silent = False, logfile = None):
     global last_timedLog
     t = time.time()
     seconds_since_last_msg = t - last_timedLog if last_timedLog else 0
-    decimal_seconds = f"{t-int(t):.2f}"
-    decimal_seconds = decimal_seconds.replace('0.','')
-  #  time_str = f"{time.strftime('%H:%M:%S', time.gmtime(t))}.{decimal_seconds} ({seconds_since_last_msg:+04.2f})"
-  #  t_elapsed, _ = time_in_cycle()
+    time_str = f"{time.strftime('%H:%M:%S')}"
     t_elapsed = t % CYCLE_LENGTH
-    time_str = f"{t_elapsed:5.1f}"
-    output_str = f"{time_str} {msg}"
+    time_str = f"{time_str} ({t_elapsed:4.1f})"
+    lf = f"Log to {logfile}:" if logfile else ''
+    output_str = f"{time_str} {lf} {msg}"
     if (not silent):
-        print(f"Log to {logfile}: {output_str}")
+        print(f"{output_str}")
     if(logfile):
         with open (logfile, 'a') as f:
             f.write(f"{output_str}\n")

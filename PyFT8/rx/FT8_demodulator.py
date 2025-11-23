@@ -96,8 +96,7 @@ class Candidate:
         return self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]].copy()
 
 class FT8Demodulator:
-    def __init__(self, max_iters = 30, max_stall = 8, max_checks = 30, sync_score_thresh = None):
-        self.sync_score_thresh = sync_score_thresh if  sync_score_thresh else config.decoder_candidate_search_score_threshold
+    def __init__(self, max_iters = 40, max_stall = 8, max_checks = 35, iteration_sleep = 0):
         self.sigspec = FT8
         self.sample_rate=12000
         self.fbins_pertone=3
@@ -107,11 +106,10 @@ class FT8Demodulator:
         self.hops_persec = self.sample_rate / self.samples_perhop 
         slack_hops =  int(self.hops_persymb * self.sigspec.symbols_persec * (self.sigspec.cycle_seconds - self.sigspec.num_symbols / self.sigspec.symbols_persec) )
         self.sync_range = range(slack_hops)
-        self.ldpc = LDPC174_91(max_iters, max_stall, max_checks)
+        self.ldpc = LDPC174_91(max_iters, max_stall, max_checks, iteration_sleep)
 
-    def find_candidates(self, spectrum, prioritise_Hz, silent = False, onCandidate_found = None):
+    def find_candidates(self, spectrum, prioritise_Hz, onCandidate_found, sync_score_thresh, silent = False):
         spectrum.cyclestart_str = timers.cyclestart_str(0)
-        timers.timedLog(f" in {spectrum.cyclestart_str} [find_candidates] start searching for candidates", logfile = 'decodes.log', silent = False)
         self.candidates = []
         f0_idxs = range(spectrum.nFreqs - spectrum.candidate_size[1])
         for f0_idx in f0_idxs:
@@ -126,7 +124,7 @@ class FT8Demodulator:
                 if test[1] > best[1]:
                     best = test
             c.score = best[1]
-            if(c.score > self.sync_score_thresh):
+            if(c.score > sync_score_thresh):
                 # if there's an existing neighbour in frequency, replace it if we have a better score, otherwise don't append us 
                 neighbour_lf = [n for n in spectrum.candidates if (c.origin[1] - n.origin[1] <=2)]
                 if(neighbour_lf):
@@ -145,12 +143,8 @@ class FT8Demodulator:
                     c.score = 10
                 if(onCandidate_found):
                     onCandidate_found(c)
-        spectrum.candidates.sort(key=lambda c: -c.score)
-        for i, c in enumerate(spectrum.candidates):
-            c.sort_idx = i
-        timers.timedLog(f" in {spectrum.cyclestart_str} [find_candidates] found {len(spectrum.candidates)} candidates", logfile = 'decodes.log',  silent = False)
      
-    def demodulate_candidate(self, candidate, onResult = None):
+    def demodulate_candidate(self, candidate, onResult):
         self.decode_load +=1
         c = candidate
         tmp = c.fine_grid_complex.reshape(self.sigspec.num_symbols, self.hops_persymb, self.sigspec.tones_persymb, self.fbins_pertone)
@@ -195,8 +189,7 @@ class FT8Demodulator:
                     decode_dict.update({'dt': dt})
                     c.message = key
                     c.decode_dict = decode_dict
-                if(not onResult): return decode
-        if(onResult): onResult(c)
+        onResult(c)
         
     
 # ======================================================
