@@ -43,7 +43,7 @@ paragraphs, it's probably a mistake.
 
 Do feel free to get in touch and ask how anything works. I might add some diagrams etc at some point too - especially
 if I find an approach that seems to offer something improved and/or very compact (I'm very pleased for e.g. that the entire candidate
-search, synch, and demodulate process all works by refering to a single time-frequency grid; read the audio, FFT 3 times for each 
+search, synch, and demodulate process all works by refering to a single time-frequency grid; read the audio, FFT 5 times for each 
 symbol duration, store it, and that's used for everything that follows.)
 
 ## Limitations
@@ -55,7 +55,7 @@ code doesn't (yet) have the full capability of the advanced decoders used in WSJ
 |-----|------|-------|
 |Find candidate signals|Search the frequency spectrum for regions with the bandwidth of an FT8 signal that have the greatest power| TBD |
 |Syncronise signals in time | Search each candidate in the time axis using the Costas synchronisation template, taking the maximum (or sum) over the three synch blocks | TBD|
-|Use of FFTs for the above | A single time-frequency grid with 5 time samples per symbol and 3 frequency samples per tone| Several FFTs per operation, details TBC|
+|Use of FFTs for the above | A single time-frequency grid with 5 time samples per symbol and 3 frequency samples per tone| Several FFTs per operation, details in VK3JPK's great write-up [here](https://nbviewer.org/github/vk3jpk/ft8-notes/blob/master/Receive.ipynb)|
 |Demodulation|Extract 1 sample per symbol, 1 sample per tone grid. Correlate each pair of symbols along with Gray code to create Log Likelyhood Ratios for each bit. | Noncoherent block detection over 3 symbols - creates LLRs by correlating the 512 possible tone sequences (3 symbols with 8 possible tones each) with the actual received symbols. This is done in the frequency domain by combining the whole-symbol correlations already calculated.  |
 |Decoding the FEC code | Belief Propagation LDPC decoder | Belief Propagation LDPC decoder |
 |Further decoding if LDPC fails| None | Ordered Statistics Decoding |
