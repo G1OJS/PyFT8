@@ -10,8 +10,8 @@
 			--page-bg:#111; 	 --panel-bg:#555;
 			--table-color:black; --table-bg:#666;    --table-hover-bg:#333;
 			--even-bg: #8b91ad;  --odd-bg: #ad8b8b;
-			--cq-bg-hl:#93bf95;  --cq-bg:#405441;
-			--to-me-bg:#ff4d4d;  --by-me-bg:#e6e600;
+			--cq-bg-hl:#93bf95;  --cq-bg:#81a383;
+			--to-me-bg:#ff4d4d;  --by-me-bg:#bfbf3d;
 		}	
 		body { font-family: sans-serif; background:var(--page-bg); color:#ddf; margin:1em; }
 		
@@ -92,7 +92,7 @@
 			if(t_cyc > 12.6) {
 				for (const el of document.querySelectorAll(".transmitting_item.button")) {el.classList.add("reply-highlight"); el.classList.remove("reply-highlight_faded"); }
 			}
-			if(t_cyc > 1.5 && t_cyc <12.6) {
+			if(t_cyc > 1.5 && t_cyc <11) {
 				for (const el of document.querySelectorAll(".transmitting_item")) {el.classList.remove("reply-highlight"); el.classList.add("reply-highlight_faded"); }
 			} 
 		}
