@@ -105,7 +105,6 @@ class FT8Demodulator:
         self.sample_rate=12000
         self.fbins_pertone=3
         self.hops_persymb=5
-        self.decode_load = 0
         self.samples_perhop = int(self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb) )
         self.hops_persec = self.sample_rate / self.samples_perhop 
         slack_hops =  int(self.hops_persymb * self.sigspec.symbols_persec * (self.sigspec.cycle_seconds - self.sigspec.num_symbols / self.sigspec.symbols_persec) )
@@ -157,7 +156,6 @@ class FT8Demodulator:
         c.synced_grid_pwr = tmp[:,:,1]/c.synced_pwr
         c.snr = 10*np.log10(c.synced_pwr)-107
         c.snr = int(np.clip(c.snr, -24,24).item())
-        self.decode_load +=1
         c.llr = []
         E0 = c.synced_grid_pwr[0:78:2]   # potential to speed up as we don't need                    
         E1 = c.synced_grid_pwr[1:79:2]   # to decode costas blocks
@@ -175,7 +173,6 @@ class FT8Demodulator:
                 c.llr.extend([llr_all[i]])
         c.llr = 3 * (c.llr - np.mean(c.llr)) / (np.std(c.llr)+.001)
         bits, n_its = self.ldpc.decode(c.llr, bail_time = t0 + timeout)
-        self.decode_load -=1      
         if(bits):
             c.payload_bits = bits
             c.n_its = n_its

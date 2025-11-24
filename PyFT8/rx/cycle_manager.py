@@ -19,6 +19,7 @@ class Cycle_manager():
         self.running = True
         self.spectrum = Spectrum(self.demod)
         self.spectrum.nHops_loaded = 0
+        self.decode_load = 0
         self.time_window = np.kaiser(self.spectrum.FFT_len, 20)
         self.onDecode = onDecode
         self.onOccupancy = onOccupancy
@@ -102,30 +103,30 @@ class Cycle_manager():
                 self.cands_to_decode.sort(key=lambda c: -c.score)
                 for c in self.cands_to_decode:
                     if(not c.sent_for_decode and self.spectrum.nHops_loaded > c.last_data_hop):
-                        if(timers.tnow() - c.cycle_epoch >45):
-                            if(self.verbose): timers.timedLog(f"Warning {c.info} still in decode after 30 seconds", logfile = 'decodes.log', silent = False)
-                        if(timers.tnow() - c.cycle_epoch >135):
-                            if(self.verbose): timers.timedLog(f"Warning {c.info} still in decode after 60 seconds", logfile = 'decodes.log', silent = False)
-                        else:
-                            c.sent_for_decode = True
-                            if(self.verbose): timers.timedLog(f"Send {c.info} for decode", logfile = 'decodes.log', silent = True)
-                            threading.Thread(target=self.demod.demodulate_candidate, kwargs={'candidate': c, 'onResult': self.onResult}).start()
-                n_cands = len([c for c in self.cands_to_decode if not c.sent_for_decode])
-                send_to_ui_ws("decode_queue", {'n_candidates':n_cands, 'parallel_decodes':self.demod.decode_load})
-                
+                        self.send_for_decode(c)
+
+            n_cands = len([c for c in self.cands_to_decode if not c.sent_for_decode])
+            send_to_ui_ws("decode_queue", {'n_candidates':n_cands, 'parallel_decodes':self.decode_load})    
             timers.sleep(0.25)
 
     def onCandidate_found(self, c):
         self.cands_to_decode.append(c)
 
+    def send_for_decode(self,c):
+        if(self.verbose): timers.timedLog(f"Send {c.info} for decode", logfile = 'decodes.log', silent = True)
+        threading.Thread(target=self.demod.demodulate_candidate, kwargs={'candidate': c, 'onResult': self.onResult}).start()
+        c.sent_for_decode = True
+        self.decode_load +=1  
+        
     def onResult(self,c):
         c_decoded = c if(c.decode_dict) else None
         self.cands_to_decode.remove(c)
+        self.decode_load -=1  
         if(c_decoded):
-            self.onDecode(c_decoded)
             if(self.sync_score_thresh > c.score * 0.9):
                 self.sync_score_thresh = c.score * 0.9
                 if(self.verbose): timers.timedLog(f"[cycle_manager] Adjust threshold DOWN to {self.sync_score_thresh:.2f})", logfile = 'decodes.log', silent = False)
+            self.onDecode(c_decoded)
  
     def _make_occupancy_array(self, spectrum, f0=0, f1=3500, bin_hz=10, sig_hz = 50):
         if(not spectrum): return

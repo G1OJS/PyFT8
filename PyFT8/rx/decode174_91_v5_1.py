@@ -91,15 +91,13 @@ class LDPC174_91:
         tanhtoc = np.zeros((7, self.kM), dtype=np.float64)
         tov = np.zeros((self.kNCW, self.kN), dtype=np.float32)    # check -> message messages
         zn = np.array(llr, dtype=np.float32)            # working copy of llrs
-        if (self.exit_check(zn)):
-            return self.decoded_bits174_LE_list, self.it
 
         while True:
-            if(self.iteration_sleep >0): time.sleep(self.iteration_sleep)
-            zn += np.sum(tov, axis = 0)
             if (self.exit_check(zn)):
                 return self.decoded_bits174_LE_list, self.it
-            
+            if(self.iteration_sleep >0):
+                time.sleep(self.iteration_sleep)
+
             toc = zn[self.VN]                 
             tov_gather = tov[:, self.VN]     
             sum_all = tov_gather.sum(axis=0) 
@@ -109,7 +107,6 @@ class LDPC174_91:
             toc -= (sum_all - excl_vals)
             tanhtoc = np.tanh(-toc / 2.0)
 
-            t0 = time.time()
             for kk in range(self.kNCW):
                 for variable_node in range(self.kN):
                     ichk = self.kMN[kk, variable_node] - 1
@@ -119,5 +116,7 @@ class LDPC174_91:
                     Tmn = np.prod(tvals)
                     Tmn = np.clip(Tmn, -0.999, 0.999)
                     tov[kk, variable_node] = np.atanh(-Tmn)
+            zn += np.sum(tov, axis = 0)
+
             self.it +=1
 
