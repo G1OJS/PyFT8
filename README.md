@@ -55,8 +55,8 @@ code doesn't (yet) have the full capability of the advanced decoders used in WSJ
 |-----|------|-------|
 |Find candidate signals|Search the frequency spectrum for regions with the bandwidth of an FT8 signal that have the greatest power| TBD |
 |Syncronise signals in time | Search each candidate in the time axis using the Costas synchronisation template, taking the maximum (or sum) over the three synch blocks | TBD|
-|Use of FFTs for the above | A single time-frequency grid with 3 time samples per symbol and 3 frequency samples per tone| Several FFTs per operation, details TBC|
-|Demodulation|Sum powers to create a 1 sample per symbol, 1 sample per tone grid. Use Gray code to create Log Likelyhood Ratios for each bit. | Noncoherent block detection over 3 symbols - creates LLRs by correlating the 512 possible tone sequences (3 symbols with 8 possible tones each) with the actual received symbols. This is done in the frequency domain by combining the whole-symbol correlations already calculated.  |
+|Use of FFTs for the above | A single time-frequency grid with 5 time samples per symbol and 3 frequency samples per tone| Several FFTs per operation, details TBC|
+|Demodulation|Extract 1 sample per symbol, 1 sample per tone grid. Correlate each pair of symbols along with Gray code to create Log Likelyhood Ratios for each bit. | Noncoherent block detection over 3 symbols - creates LLRs by correlating the 512 possible tone sequences (3 symbols with 8 possible tones each) with the actual received symbols. This is done in the frequency domain by combining the whole-symbol correlations already calculated.  |
 |Decoding the FEC code | Belief Propagation LDPC decoder | Belief Propagation LDPC decoder |
 |Further decoding if LDPC fails| None | Ordered Statistics Decoding |
 |Further signal extraction | None | Subtraction of the idealised power of the decoded signals, then rescanning the residual spectrum. Further synchronisation adjustments TBC|
