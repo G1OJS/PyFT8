@@ -36,6 +36,24 @@ class Cycle_manager():
             threading.Thread(target=self.threaded_audio_reader, daemon=True).start()
             threading.Thread(target=self.threaded_spectrum_filler, daemon=True).start()
         threading.Thread(target=self.threaded_decoding_manager, daemon=True).start()
+        self.decode_queue = queue.Queue()
+        self.decode_workers = []
+        num_workers = 3
+        for _ in range(num_workers):
+            t = threading.Thread(target=self.decode_worker, daemon=True)
+            t.start()
+            self.decode_workers.append(t)
+
+    def decode_worker(self):
+        """Worker thread: pull candidates off the queue and decode them."""
+        while self.running:
+            c = self.decode_queue.get()   # waits for a job
+            try:
+                self.demod.demodulate_candidate(c, self.onResult, self.timeout)
+            except Exception as e:
+                print("Decode worker error:", e)
+            finally:
+                self.decode_queue.task_done()
 
     def find_candidates_from_audio_in(self, audio_in, sync_score_thresh):
         # inject audio e.g. from wav file for testing 
@@ -107,7 +125,7 @@ class Cycle_manager():
                     if(self.verbose): timers.timedLog(f"Send {c.info} for decode", logfile = 'decodes.log', silent = True)
                     c.sent_for_decode = True
                     self.decode_load +=1
-                    self.demod.demodulate_candidate(c, self.onResult, self.timeout)
+                    self.decode_queue.put(c)
 
             n_cands = len(self.cands_to_decode)
             send_to_ui_ws("decode_queue", {'n_candidates':n_cands, 'parallel_decodes':self.decode_load})    
