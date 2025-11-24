@@ -36,7 +36,7 @@ Log to PyFT8.log: 12:19:29.74 (+0.94) Start to Show candidates
 import math
 import numpy as np
 from PyFT8.signaldefs import FT8
-from PyFT8.rx.decode174_91_v5_0 import LDPC174_91
+from PyFT8.rx.decode174_91_v5_1 import LDPC174_91
 import PyFT8.FT8_crc as crc
 import PyFT8.timers as timers
 from PyFT8.comms_hub import config, send_to_ui_ws
@@ -147,8 +147,9 @@ class FT8Demodulator:
                 if(onCandidate_found):
                     onCandidate_found(c)
      
-    def demodulate_candidate(self, candidate, onResult):
+    def demodulate_candidate(self, candidate, onResult, timeout = 30):
         c = candidate
+        t0 = timers.tnow()
         tmp = c.fine_grid_complex.reshape(self.sigspec.num_symbols, self.hops_persymb, self.sigspec.tones_persymb, self.fbins_pertone)
         tmp = tmp[:,0,:,:] 
         tmp = np.abs(tmp)**2
@@ -173,7 +174,7 @@ class FT8Demodulator:
             if(int(i/3) in FT8.payload_symb_idxs):
                 c.llr.extend([llr_all[i]])
         c.llr = 3 * (c.llr - np.mean(c.llr)) / (np.std(c.llr)+.001)
-        bits, n_its = self.ldpc.decode(c.llr)
+        bits, n_its = self.ldpc.decode(c.llr, bail_time = t0 + timeout)
         self.decode_load -=1      
         if(bits):
             c.payload_bits = bits

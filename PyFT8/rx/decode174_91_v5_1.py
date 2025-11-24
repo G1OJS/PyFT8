@@ -66,6 +66,8 @@ class LDPC174_91:
         return n
 
     def exit_check(self, zn):
+        if (time.time()> self.bail_time):
+            return False
         synd_checks = [ sum(1 for llr in zn[self.synd_check_idxs[i]] if llr > 0) %2 for i in range(self.kM)]
         self.ncheck = np.sum(synd_checks)
         self.nstall = 0 if(self.ncheck < self.ncheck_last) else self.nstall + 1
@@ -80,10 +82,11 @@ class LDPC174_91:
             return True
         return False
                  
-    def decode(self, llr):
+    def decode(self, llr, bail_time = 1e30):
         self.it = 0
         self.ncheck_last = 0
         self.nstall = 0
+        self.bail_time = bail_time
         toc = np.zeros((7, self.kM), dtype=np.float32)       # message -> check messages
         tanhtoc = np.zeros((7, self.kM), dtype=np.float64)
         tov = np.zeros((self.kNCW, self.kN), dtype=np.float32)    # check -> message messages
