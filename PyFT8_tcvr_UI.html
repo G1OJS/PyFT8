@@ -12,13 +12,13 @@
 			--even-bg: #8b91ad;  --odd-bg: #ad8b8b;
 			--cq-bg-hl:#93bf95;  --cq-bg:#405441;
 			--to-me-bg:#ff4d4d;  --by-me-bg:#e6e600;
-		}
-
-		body { font-family: sans-serif; background:var(--page-bg); color:#eee; margin:1em; }
+		}	
+		body { font-family: sans-serif; background:var(--page-bg); color:#ddf; margin:1em; }
+		
 		#App {display:inline-block;  align-content: start; width:fit-content; background:var(--panel-bg); padding:1em; height:90vh;}
-		#logo {display: block; font-size: 2em; font-weight: bold;}
-		#banner {display: block; font-size: 1.17em; font-weight: bold;}
-		.grid_title {display: block; font-size: 1.17em; font-weight: bold; margin-left:0.5em}
+		#logo {display: block; font-size: 2em; font-weight: bold; color:#fff;}
+		#banner {display: block; font-size: 1.17em; font-weight: bold; color:#ddf;}
+		.grid_title {display: block; font-size: 1.17em; font-weight: bold; color:#fff; margin-left:0.5em}
 		
 		#SpectrumContainer {display: flex; position: relative; justify-content: center;  width: calc(2 * 25em + 2 * 1em); 
 							height: 40px; margin: 1em 0em 1em 0em; border: 1px solid white }
@@ -50,7 +50,7 @@
 		.grid_row.reply-highlight_faded > div {background-color: var(--cq-bg); transition: 1s linear all;}
 		
 		.grid_row.header {display: contents;position: sticky;top: 0;z-index: 20;}
-		.grid_row.header > .grid_cell {background: var(--table-bg);position: sticky;top: 0;z-index: 21; color:lime; border-right:1px lime dashed;}
+		.grid_row.header > .grid_cell {background: var(--table-bg);position: sticky;top: 0;z-index: 21; color:#ddf; border-right:1px lime dashed;}
 
 	</style>
 	
@@ -184,7 +184,7 @@
 
 <body>
 	<div id = 'App'>
-		<div id = 'logo'>PyFT8 Transceiver</div>
+		<div id = 'logo'>G1OJS PyFT8 Transceiver</div>
 		<div id = 'banner'>
 			My Callsign: <span id='myCall'></span> Time: <span id='clock'></span>
 		</div>
@@ -202,8 +202,7 @@
 		<div id = 'DecodePanelsContainer'>
 			<div class = 'DecodePanel'>
 				<div class='grid_title'>
-					All decodes <span id = 'n_PyFT8_decodes'>0</span> 
-					(<span id = 'pc_PyFT8_decodes'>0%</span>) 
+					All decodes -  
 					Cands: <span id='n_candidates'>0</span> 
 					Parallel: <span id='parallel_decodes'>0</span>
 				</div>
@@ -214,7 +213,7 @@
 				</div>
 			</div>
 			<div class = 'DecodePanel'>
-				<div class='grid_title'>Priority decodes</div>
+				<div class='grid_title'>Priority decodes -</div>
 				<div id="priority_decodes"  class = "decodes_grid">
 					<div class = 'grid_row header'>
 						<div class='grid_cell'>Cycle</div><div class='grid_cell'>snr</div><div class='grid_cell'>Freq</div><div class='grid_cell'>Call_a</div><div class='grid_cell'>Call_b</div><div class='grid_cell'>Grid_rpt</div><div class='grid_cell'></div>

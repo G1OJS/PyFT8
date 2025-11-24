@@ -11,8 +11,9 @@ import queue
 class Cycle_manager():
     def __init__(self, onDecode, onOccupancy,
                  prioritise_rxfreq = False, audio_in = [], verbose = True,
-                 sync_score_thresh = 3, max_iters = 27, max_stall = 7, max_checks = 34, iteration_sleep = 0):
+                 sync_score_thresh = 3, max_iters = 27, max_stall = 7, max_checks = 34, iteration_sleep = 0, timeout = 15):
         self.verbose = verbose
+        self.timeout = timeout
         self.last_cycle_time = 16
         self.sync_score_thresh = sync_score_thresh
         self.demod = FT8Demodulator(max_iters, max_stall, max_checks, iteration_sleep)
@@ -114,7 +115,7 @@ class Cycle_manager():
 
     def send_for_decode(self,c):
         if(self.verbose): timers.timedLog(f"Send {c.info} for decode", logfile = 'decodes.log', silent = True)
-        threading.Thread(target=self.demod.demodulate_candidate, kwargs={'candidate': c, 'onResult': self.onResult}).start()
+        threading.Thread(target=self.demod.demodulate_candidate, kwargs={'candidate': c, 'onResult': self.onResult, 'timeout':self.timeout}).start()
         c.sent_for_decode = True
         self.decode_load +=1  
         
