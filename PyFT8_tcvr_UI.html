@@ -11,7 +11,8 @@
 			--table-color:black; --table-bg:#666;    --table-hover-bg:#333;
 			--even-bg: #8b91ad;  --odd-bg: #ad8b8b;
 			--cq-bg-hl:#93bf95;  --cq-bg:#81a383;
-			--to-me-bg:#ff4d4d;  --by-me-bg:#bfbf3d;
+			--to-me-bg:#ff4d4d;  
+			--by-me-bg:#bfbf3d;  --by-me-bg-hl:#f7f74d;
 		}	
 		body { font-family: sans-serif; background:var(--page-bg); color:#ddf; margin:1em; }
 		
@@ -43,6 +44,7 @@
 		.grid_row:hover > div {background-color: var(--table-hover-bg);}
 		.grid_row.sentTomyCall > div {background-color: var(--to-me-bg);}
 		.grid_row.sentBymyCall > div {background-color: var(--by-me-bg);}	
+		.grid_row.sentBymyCall.highlight > div {background-color: var(--by-me-bg-hl);}	
 		.grid_cell {padding:1px 5px 1px 5px; font-weight:600; color:var(--table-color);}
 		.reply-highlight {background-color: var(--cq-bg-hl);}
 		.reply-highlight_faded {background-color: var(--cq-bg); transition: 1s linear all;}
@@ -95,6 +97,10 @@
 			if(t_cyc > 1.5 && t_cyc <11) {
 				for (const el of document.querySelectorAll(".transmitting_item")) {el.classList.remove("reply-highlight"); el.classList.add("reply-highlight_faded"); }
 			} 
+			for (const el of document.querySelectorAll(".sentBymyCall")) {
+				const t_match_str = ("0" + t.getUTCHours()).slice(-2) + ("0" + t.getUTCMinutes()).slice(-2) + ("0" + 15*Math.round(t.getUTCSeconds()/15)).slice(-2)
+				if(el.firstChild.innerHTML == t_match_str) {el.classList.add("highlight")} else {el.classList.remove("highlight")} 
+			}
 		}
 		function add_decode_row(decode_dict, grid_id) {
 			let dd = decode_dict;

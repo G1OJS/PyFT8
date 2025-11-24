@@ -93,6 +93,8 @@ class Candidate:
         self.payload_bits = []
         self.decode_dict = None
         self.sent_for_decode = False
+        self.time_in_decode = None
+        self.n_its = -1
 
     @property
     def fine_grid_complex(self):
@@ -137,7 +139,7 @@ class FT8Demodulator:
                 c.origin_physical = spectrum.dt * c.origin[0], spectrum.df * c.origin[1]
                 c.last_hop = c.origin[0] + c.size[0]
                 c.last_data_hop = c.last_hop - self.sigspec.costas_len * self.hops_persymb
-                c.info = f"{c.origin} {c.score:5.2f}"
+                c.info = f"{c.cyclestart_str} {c.origin} {c.score:5.2f}"
                 # append candidate and prioritise if necessary
                 spectrum.candidates.append(c)
                 spectrum.n_candidates +=1
@@ -146,9 +148,9 @@ class FT8Demodulator:
                 if(onCandidate_found):
                     onCandidate_found(c)
      
-    def demodulate_candidate(self, candidate, onResult, timeout = 30):
+    def demodulate_candidate(self, candidate, onResult, timeout):
         c = candidate
-        t0 = timers.tnow()
+        t_start_decode = timers.tnow()
         tmp = c.fine_grid_complex.reshape(self.sigspec.num_symbols, self.hops_persymb, self.sigspec.tones_persymb, self.fbins_pertone)
         tmp = tmp[:,0,:,:] 
         tmp = np.abs(tmp)**2
@@ -172,12 +174,12 @@ class FT8Demodulator:
             if(int(i/3) in FT8.payload_symb_idxs):
                 c.llr.extend([llr_all[i]])
         c.llr = 3 * (c.llr - np.mean(c.llr)) / (np.std(c.llr)+.001)
-        bits, n_its = self.ldpc.decode(c.llr, bail_time = t0 + timeout)
+        bits, n_its = self.ldpc.decode(c.llr, bail_time = t_start_decode + timeout)
         if(bits):
             c.payload_bits = bits
             c.n_its = n_its
             c.iconf = 0
-            decode = FT8_decode(c)
+            decode = FT8_unpack(c)
             if(decode):
                 decode_dict = decode['decode_dict']
                 key = f"{decode_dict['call_a']} {decode_dict['call_b']} {decode_dict['grid_rpt']}"
@@ -190,6 +192,7 @@ class FT8Demodulator:
                     c.message = key
                     c.decode_dict = decode_dict
                     c.spectrum.n_decodes +=1
+        c.time_in_decode = timers.tnow() - t_start_decode
         onResult(c)
     
 # ======================================================
@@ -225,7 +228,7 @@ def unpack_ft8_g15(g15, ir):
     return f"{R}{snr:+03d}"
 
 
-def FT8_decode(signal):
+def FT8_unpack(signal):
     # need to add support for /P and R+report (R-05)
     bits = signal.payload_bits
     i3 = 4*bits[74]+2*bits[75]+bits[76]

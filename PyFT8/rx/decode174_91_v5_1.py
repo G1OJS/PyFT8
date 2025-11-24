@@ -67,7 +67,9 @@ class LDPC174_91:
 
     def exit_check(self, zn):
         if (time.time()> self.bail_time):
-            return False
+            import PyFT8.timers as timers
+            timers.timedLog(f"LDPC bailout at iteration {self.it}", logfile = 'decodes.log')
+            return True
         synd_checks = [ sum(1 for llr in zn[self.synd_check_idxs[i]] if llr > 0) %2 for i in range(self.kM)]
         self.ncheck = np.sum(synd_checks)
         self.nstall = 0 if(self.ncheck < self.ncheck_last) else self.nstall + 1
