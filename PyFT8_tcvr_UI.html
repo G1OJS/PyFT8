@@ -10,8 +10,8 @@
 			--page-bg:#111; 	 --panel-bg:#555;
 			--table-color:black; --table-bg:#666;    --table-hover-bg:#333;
 			--even-bg: #8b91ad;  --odd-bg: #ad8b8b;
-			--cq-bg-hl:#93bf95;  --cq-bg:#81a383;
-			--to-me-bg:#ff4d4d;  
+			--cq-bg:#81a383;     --cq-bg-hl:#93bf95;
+			--to-me-bg:#bf3939;  --to-me-bg-hl:#ff4d4d;
 			--by-me-bg:#bfbf3d;  --by-me-bg-hl:#f7f74d;
 		}	
 		body { font-family: sans-serif; background:var(--page-bg); color:#ddf; margin:1em; }
@@ -42,17 +42,25 @@
 		.grid_row.odd > div {background-color: var(--odd-bg);}
 		.grid_row.even > div{ background-color: var(--even-bg);}	
 		.grid_row:hover > div {background-color: var(--table-hover-bg);}
+		
+		/* disappearing highlights for Tx and Rx with myCall */
 		.grid_row.sentTomyCall > div {background-color: var(--to-me-bg);}
+		.grid_row.sentTomyCall.highlight > div {background-color: var(--to-me-bg-hl);}
 		.grid_row.sentBymyCall > div {background-color: var(--by-me-bg);}	
 		.grid_row.sentBymyCall.highlight > div {background-color: var(--by-me-bg-hl);}	
-		.grid_cell {padding:1px 5px 1px 5px; font-weight:600; color:var(--table-color);}
-		.reply-highlight {background-color: var(--cq-bg-hl);}
-		.reply-highlight_faded {background-color: var(--cq-bg); transition: 1s linear all;}
-		.grid_row.reply-highlight > div {background-color: var(--cq-bg-hl);}
-		.grid_row.reply-highlight_faded > div {background-color: var(--cq-bg); transition: 1s linear all;}
+
+		/* disappearing highlights for CQ rows */
+		.grid_row.cq > div {background-color: var(--cq-bg-hl);}
+		.grid_row.cq_faded > div {background-color: var(--cq-bg); transition: 1s linear all;}
+		/* disappearing highlights for buttons - sharing the same colour variables as CQ */
+		.cq {background-color: var(--cq-bg-hl);}
+		.cq_faded {background-color: var(--cq-bg); transition: 1s linear all;}
 		
+		/* top rows - headings */
 		.grid_row.header {display: contents;position: sticky;top: 0;z-index: 20;}
 		.grid_row.header > .grid_cell {background: var(--table-bg);position: sticky;top: 0;z-index: 21; color:#ddf; border-right:1px lime dashed;}
+
+		.grid_cell {padding:1px 5px 1px 5px; font-weight:600; color:var(--table-color);}
 
 	</style>
 	
@@ -92,10 +100,12 @@
 			document.getElementById("clock").innerHTML = utc + " UTC";
 			t_cyc = t.getUTCSeconds() %15;
 			if(t_cyc > 12.6) {
-				for (const el of document.querySelectorAll(".transmitting_item.button")) {el.classList.add("reply-highlight"); el.classList.remove("reply-highlight_faded"); }
+				for (const el of document.querySelectorAll(".transmitting_button")) {el.classList.add("cq"); el.classList.remove("cq_faded"); }
 			}
 			if(t_cyc > 1.5 && t_cyc <11) {
-				for (const el of document.querySelectorAll(".transmitting_item")) {el.classList.remove("reply-highlight"); el.classList.add("reply-highlight_faded"); }
+				for (const el of document.querySelectorAll(".transmitting_button")) {el.classList.remove("cq"); el.classList.add("cq_faded"); }
+				for (const el of document.querySelectorAll(".cq")) {el.classList.remove("cq"); el.classList.add("cq_faded"); }
+				for (const el of document.querySelectorAll(".sentTomyCall")) {el.classList.remove("sentTomyCall"); el.classList.add("sentTomyCall_faded"); }
 			} 
 			for (const el of document.querySelectorAll(".sentBymyCall")) {
 				const t_match_str = ("0" + t.getUTCHours()).slice(-2) + ("0" + t.getUTCMinutes()).slice(-2) + ("0" + 15*Math.round(t.getUTCSeconds()/15)).slice(-2)
@@ -109,13 +119,16 @@
 			row.className='grid_row';
 			let cs = dd.cyclestart_str;
 			if (cs.charAt(cs.length-1) == '5'){row.classList.add('odd')} else {row.classList.add('even')}
-			if(dd.call_a == myCall) {row.classList.add('sentTomyCall')}
-			if(dd.call_b == myCall) {row.classList.add('sentBymyCall')}
-			if(dd.call_a == "CQ" || dd.call_a == myCall) {
+			if(dd.call_a == "CQ" && dd.call_b != myCall) {
 				const t = new Date;
 				t_cyc = t.getUTCSeconds() %15;
-				row.classList.add("reply-highlight");
-				row.classList.add("transmitting_item");
+				row.classList.add("cq");
+			}
+			if(dd.call_a == myCall) {
+				row.classList.add('sentTomyCall')
+			}
+			if(dd.call_b == myCall) {
+				row.classList.add('sentBymyCall')
 			}
 			const fields = [dd.cyclestart_str.split('_')[1], dd.snr, dd.freq, dd.call_a, dd.call_b, dd.grid_rpt,''];
 			fields.forEach((field, idx) => {
@@ -228,8 +241,8 @@
 			</div>
 		</div>
 		<div id = 'buttons'>
-			<button class = 'button transmitting_item' data-action = 'call-cq'>Call CQ</button>
-			<button class = 'button transmitting_item' data-action = 'repeat-last'>Repeat last</button>
+			<button class = 'button transmitting_button' data-action = 'call-cq'>Call CQ</button>
+			<button class = 'button transmitting_button' data-action = 'repeat-last'>Repeat last</button>
 		</div>
 	</div>
 	
