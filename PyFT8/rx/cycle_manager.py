@@ -9,15 +9,13 @@ import queue
 
 class Cycle_manager():
     def __init__(self, onDecode, onOccupancy,
-                 prioritise_rxfreq = False, audio_in = [], verbose = True,
-                 sync_score_thresh = 3, max_iters = 30, max_stall = 7, max_checks = 999, timeout = 5):
+                 prioritise_rxfreq = False, audio_in = [], verbose = True, max_iters = 70, max_stall = 8, max_ncheck = 30):
         self.verbose = verbose
-        self.timeout = timeout
         self.cand_lock = threading.Lock()
         self.max_lifetime = 10
         self.last_cycle_time = 16
-        self.sync_score_thresh = sync_score_thresh
-        self.demod = FT8Demodulator(max_iters, max_stall, max_checks)
+        self.sync_score_thresh = 3
+        self.demod = FT8Demodulator(max_iters, max_stall, max_ncheck)
         self.running = True
         self.spectrum = Spectrum(self.demod)
         self.spectrum.nHops_loaded = 0
@@ -40,7 +38,7 @@ class Cycle_manager():
         threading.Thread(target=self.threaded_decoding_manager, daemon=True).start()
         self.decode_queue = queue.Queue()
         self.decode_workers = []
-        num_workers = 3
+        num_workers = 10
         for _ in range(num_workers):
             t = threading.Thread(target=self.decode_worker, daemon=True)
             t.start()
@@ -51,7 +49,7 @@ class Cycle_manager():
         while self.running:
             c = self.decode_queue.get()   # waits for a job
             try:
-                self.demod.demodulate_candidate(c, self.onResult, self.timeout)
+                self.demod.demodulate_candidate(c, self.onResult)
             except Exception as e:
                 print("Decode worker error:", e)
             finally:

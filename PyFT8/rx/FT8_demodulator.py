@@ -102,7 +102,7 @@ class Candidate:
         return self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]].copy()
 
 class FT8Demodulator:
-    def __init__(self, max_iters, max_stall, max_checks):
+    def __init__(self, max_iters, max_stall, max_ncheck):
         self.sigspec = FT8
         self.sample_rate=12000
         self.fbins_pertone=3
@@ -111,7 +111,7 @@ class FT8Demodulator:
         self.hops_persec = self.sample_rate / self.samples_perhop 
         slack_hops =  int(self.hops_persymb * self.sigspec.symbols_persec * (self.sigspec.cycle_seconds - self.sigspec.num_symbols / self.sigspec.symbols_persec) )
         self.sync_range = range(slack_hops)
-        self.ldpc = LDPC174_91(max_iters, max_stall, max_checks)
+        self.ldpc = LDPC174_91(max_iters, max_stall, max_ncheck)
 
     def find_candidates(self, spectrum, prioritise_Hz, onCandidate_found, sync_score_thresh, silent = False):
         spectrum.cyclestart_str = timers.cyclestart_str(0)
@@ -148,7 +148,7 @@ class FT8Demodulator:
                 if(onCandidate_found):
                     onCandidate_found(c)
      
-    def demodulate_candidate(self, candidate, onResult, timeout):
+    def demodulate_candidate(self, candidate, onResult):
         c = candidate
         t_start_decode = timers.tnow()
         tmp = c.fine_grid_complex.reshape(self.sigspec.num_symbols, self.hops_persymb, self.sigspec.tones_persymb, self.fbins_pertone)
@@ -174,7 +174,7 @@ class FT8Demodulator:
             if(int(i/3) in FT8.payload_symb_idxs):
                 c.llr.extend([llr_all[i]])
         c.llr = 3 * (c.llr - np.mean(c.llr)) / (np.std(c.llr)+.001)
-        c.payload_bits, c.n_its, c.ldpc_return_reasons = self.ldpc.decode(c.llr, bail_time = t_start_decode + timeout)
+        c.payload_bits, c.n_its, c.ldpc_return_reasons = self.ldpc.decode(c.llr)
         if(c.payload_bits):
             c.iconf = 0
             decode = FT8_unpack(c)

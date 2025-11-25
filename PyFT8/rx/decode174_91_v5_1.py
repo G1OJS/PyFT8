@@ -22,7 +22,6 @@ class LDPC174_91:
         self.max_iterations = max_it
         self.max_nstall = max_nstall
         self.max_ncheck = max_ncheck
-
         self.kNCW = 3
         self.kNRW = [7,6,6,6,7,6,7,6,6,7,6,6,7,7,6,6,6,7,6,7,6,7,6,6,6,7,6,6,6,7,6,6,6,6,7,6,6,6,7,7,6,6,6,6,7,7,6,6,6,6,7,6,6,6,7,6,6,6,6,7,6,6,6,7,6,6,6,7,7,6,6,7,6,6,6,6,6,6,6,7,6,6,6]
         self.kMN = np.array([
@@ -75,19 +74,18 @@ class LDPC174_91:
             if(check_crc(decoded_bits91_int)):
                 self.reason = 'Decoded'
                 return True
-        early_exit_conditions = [self.it > self.max_iterations, self.nstall > self.max_nstall, self.ncheck > self.max_ncheck, (time.time()> self.bail_time)]
+        early_exit_conditions = [self.it > self.max_iterations, self.nstall > self.max_nstall, self.ncheck > self.max_ncheck]
         if(any(early_exit_conditions)):
             self.decoded_bits174_LE_list = []
-            reasons = ['max_its reached', 'stall', 'high initial errors', 'timeout']
+            reasons = ['max_its reached', 'stall', 'max_checks']
             self.reason = f"Early exit: {reasons[int(np.where(early_exit_conditions)[0])]}"
             return True
         return False
                  
-    def decode(self, llr, bail_time = 1e30):
+    def decode(self, llr):
         self.it = 0
         self.ncheck_last = 0
         self.nstall = 0
-        self.bail_time = bail_time
         toc = np.zeros((7, self.kM), dtype=np.float32)       # message -> check messages
         tanhtoc = np.zeros((7, self.kM), dtype=np.float64)
         tov = np.zeros((self.kNCW, self.kN), dtype=np.float32)    # check -> message messages
