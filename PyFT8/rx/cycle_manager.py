@@ -10,9 +10,11 @@ import queue
 class Cycle_manager():
     def __init__(self, onDecode, onOccupancy,
                  prioritise_rxfreq = False, audio_in = [], verbose = True,
-                 sync_score_thresh = 3, max_iters = 27, max_stall = 7, max_checks = 34, iteration_sleep = 0, timeout = 15):
+                 sync_score_thresh = 3, max_iters = 27, max_stall = 7, max_checks = 34, iteration_sleep = 0, timeout = 5):
         self.verbose = verbose
         self.timeout = timeout
+        self.cand_lock = threading.Lock()
+        self.max_lifetime = 10
         self.last_cycle_time = 16
         self.sync_score_thresh = sync_score_thresh
         self.demod = FT8Demodulator(max_iters, max_stall, max_checks, iteration_sleep)
@@ -119,8 +121,19 @@ class Cycle_manager():
                     
             if (self.spectrum.nHops_loaded > self.spectrum.start_decoding_after_hop):   
                 self.cands_to_decode.sort(key=lambda c: -c.score)
-                send_for_decode = [c for c in self.cands_to_decode
-                                   if (not c.sent_for_decode and self.spectrum.nHops_loaded > c.last_data_hop)]
+
+                t = timers.tnow()
+                with self.cand_lock:
+                    stale = [c for c in self.cands_to_decode
+                             if (not c.sent_for_decode and (t - c.created_at) > self.max_lifetime)]
+                    for c in stale:
+                        self.cands_to_decode.remove(c)
+                if stale and self.verbose:
+                    timers.timedLog(f"[prune] removed {len(stale)} stale candidates")
+
+                with self.cand_lock:  
+                    send_for_decode = [c for c in self.cands_to_decode
+                                       if (not c.sent_for_decode and self.spectrum.nHops_loaded > c.last_data_hop)]
                 for c in send_for_decode:
                     if(self.verbose): timers.timedLog(f"Send {c.info} for decode", logfile = 'decodes.log', silent = True)
                     c.sent_for_decode = True
@@ -132,6 +145,7 @@ class Cycle_manager():
             timers.sleep(0.25)
 
     def onCandidate_found(self, c):
+        c.created_at = timers.tnow()
         self.cands_to_decode.append(c)
         
     def onResult(self,c):
@@ -145,7 +159,7 @@ class Cycle_manager():
                 if(self.verbose): timers.timedLog(f"[cycle_manager] Adjust threshold DOWN to {self.sync_score_thresh:.2f})", logfile = 'decodes.log', silent = False)
             result = 'decoded'
             self.onDecode(c_decoded)
-        if(self.verbose): timers.timedLog(f"Result received for {c.info}, time taken {c.time_in_decode}, "
+        if(self.verbose): timers.timedLog(f"Result received for {c.info}, time taken {c.time_in_decode:6.3f}, "
                           +f"iterations = {c.n_its} result: {result}", logfile = 'decodes.log', silent = True)
  
     def _make_occupancy_array(self, spectrum, f0=0, f1=3500, bin_hz=10, sig_hz = 50):
