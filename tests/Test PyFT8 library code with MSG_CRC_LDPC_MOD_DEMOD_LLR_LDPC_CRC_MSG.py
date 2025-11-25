@@ -54,7 +54,7 @@ decoded_candidates = []
 def onDecode(candidate):
     decoded_candidates.append(candidate)
 
-cycle_manager = Cycle_manager(onDecode, None, audio_in = audio_data, sync_score_thresh=4)
+cycle_manager = Cycle_manager(onDecode, None, audio_in = audio_data, sync_score_thresh=4.5)
 
 while(len(cycle_manager.cands_to_decode) > 0):
     timers.sleep(0.1)
@@ -64,9 +64,9 @@ for c in decoded_candidates:
     d = c.decode_dict
     print(d['call_a'], d['call_b'], d['grid_rpt'], c.score )
     
-wf = Waterfall(cycle_manager.spectrum)
-wf.update_main(candidates=decoded_candidates)
-wf.show_zoom(candidates=decoded_candidates, phase = False, llr_overlay=False)
+#wf = Waterfall(cycle_manager.spectrum)
+#wf.update_main(candidates=decoded_candidates)
+#wf.show_zoom(candidates=decoded_candidates, phase = False, llr_overlay=False)
 #wf.show_zoom(candidates=decoded_candidates, phase = True, llr_overlay=False)
 
 #print(f"Payload symbols demodulated: {''.join([str(int(s)) for s in candidates[0].payload_symbols])}")

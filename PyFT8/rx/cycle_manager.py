@@ -11,7 +11,7 @@ class Cycle_manager():
     def __init__(self, onDecode, onOccupancy,
                  prioritise_rxfreq = False, audio_in = [], verbose = True,
                  sync_score_thresh = 3, max_iters = 90, max_stall = 8,
-                 max_ncheck = 35, min_sd = 2):
+                 max_ncheck = 40, min_sd = 2):
         self.verbose = verbose
         self.cand_lock = threading.Lock()
         self.max_lifetime = 10
@@ -45,6 +45,8 @@ class Cycle_manager():
             t = threading.Thread(target=self.decode_worker, daemon=True)
             t.start()
             self.decode_workers.append(t)
+        with open('success_fail_metrics.log', 'w') as f:
+            f.write("{timestamp} {c.decoded} {c.score} {c.llr_sd} {c.snr} {c.n_its} {c.time_in_decode}\n")
 
     def decode_worker(self):
         """Worker thread: pull candidates off the queue and decode them."""
@@ -148,6 +150,10 @@ class Cycle_manager():
         self.cands_to_decode.append(c)
         
     def onResult(self,c):
+        metrics = f"{c.decoded:>7} {c.score:7.2f} "
+        metrics = metrics + f"{c.llr_sd:7.2f} {c.snr:7.1f} "
+        metrics = metrics + f"{c.n_its:7.1f} {c.time_in_decode:7.3f}"
+        if(self.verbose): timers.timedLog(metrics, logfile='success_fail_metrics.log', silent = True)
         c_decoded = c if(c.decode_dict) else None
         self.cands_to_decode.remove(c)
         self.decode_load -=1

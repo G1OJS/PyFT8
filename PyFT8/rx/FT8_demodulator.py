@@ -93,8 +93,9 @@ class Candidate:
         self.payload_bits = []
         self.decode_dict = None
         self.sent_for_decode = False
-        self.time_in_decode = None
-        self.n_its = None
+        self.time_in_decode = 0
+        self.decoded = None
+        self.n_its = -1
 
     @property
     def fine_grid_complex(self):
@@ -177,6 +178,7 @@ class FT8Demodulator:
 
         c.llr = c.llr - np.mean(c.llr)
         c.llr_sd = np.std(c.llr)
+        c.decoded = False
         if(c.llr_sd > self.min_sd):
             c.llr = 4.5 * c.llr / (c.llr_sd+.001)
             c.payload_bits, c.n_its = self.ldpc.decode(c.llr)
@@ -184,6 +186,7 @@ class FT8Demodulator:
                 c.iconf = 0
                 decode = FT8_unpack(c)
                 if(decode):
+                    c.decoded = True
                     decode_dict = decode['decode_dict']
                     key = f"{decode_dict['call_a']} {decode_dict['call_b']} {decode_dict['grid_rpt']}"
                     if(not key in c.spectrum.duplicate_filter):
