@@ -10,14 +10,14 @@ import queue
 class Cycle_manager():
     def __init__(self, onDecode, onOccupancy,
                  prioritise_rxfreq = False, audio_in = [], verbose = True,
-                 sync_score_thresh = 3, max_iters = 27, max_stall = 7, max_checks = 34, iteration_sleep = 0, timeout = 5):
+                 sync_score_thresh = 3, max_iters = 30, max_stall = 7, max_checks = 999, timeout = 5):
         self.verbose = verbose
         self.timeout = timeout
         self.cand_lock = threading.Lock()
         self.max_lifetime = 10
         self.last_cycle_time = 16
         self.sync_score_thresh = sync_score_thresh
-        self.demod = FT8Demodulator(max_iters, max_stall, max_checks, iteration_sleep)
+        self.demod = FT8Demodulator(max_iters, max_stall, max_checks)
         self.running = True
         self.spectrum = Spectrum(self.demod)
         self.spectrum.nHops_loaded = 0
@@ -152,15 +152,13 @@ class Cycle_manager():
         c_decoded = c if(c.decode_dict) else None
         self.cands_to_decode.remove(c)
         self.decode_load -=1
-        result = 'failed'
         if(c_decoded):
             if(self.sync_score_thresh > c.score * 0.9):
                 self.sync_score_thresh = c.score * 0.9
                 if(self.verbose): timers.timedLog(f"[cycle_manager] Adjust threshold DOWN to {self.sync_score_thresh:.2f})", logfile = 'decodes.log', silent = False)
-            result = 'decoded'
             self.onDecode(c_decoded)
         if(self.verbose): timers.timedLog(f"Result received for {c.info}, time taken {c.time_in_decode:6.3f}, "
-                          +f"iterations = {c.n_its} result: {result}", logfile = 'decodes.log', silent = True)
+                          +f"iterations = {c.n_its} result: {c.ldpc_return_reasons}", logfile = 'decodes.log', silent = True)
  
     def _make_occupancy_array(self, spectrum, f0=0, f1=3500, bin_hz=10, sig_hz = 50):
         if(not spectrum): return

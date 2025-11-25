@@ -54,7 +54,7 @@ decoded_candidates = []
 def onDecode(candidate):
     decoded_candidates.append(candidate)
 
-cycle_manager = Cycle_manager(onDecode, None, audio_in = audio_data, sync_score_thresh=4, iteration_sleep=0)
+cycle_manager = Cycle_manager(onDecode, None, audio_in = audio_data, sync_score_thresh=4)
 
 while(len(cycle_manager.cands_to_decode) > 0):
     timers.sleep(0.1)

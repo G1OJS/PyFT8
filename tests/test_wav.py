@@ -17,7 +17,7 @@ wav_file = "210703_133430.wav"
 
 timers.timedLog(f"Loading audio from {wav_file}")
 audio_in = audio.read_wav_file(wav_file)
-cycle_manager = Cycle_manager(onDecode, None, audio_in = audio_in, sync_score_thresh=1.5, iteration_sleep=0, verbose = False)
+cycle_manager = Cycle_manager(onDecode, None, audio_in = audio_in, sync_score_thresh=1.5, verbose = False)
 while(len(cycle_manager.cands_to_decode) > 0):
     timers.sleep(0.1)
 cycle_manager.running = False

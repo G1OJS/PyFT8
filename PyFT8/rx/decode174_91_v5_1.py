@@ -18,11 +18,10 @@ from PyFT8.FT8_crc import check_crc
 import time
 
 class LDPC174_91:
-    def __init__(self, max_it, max_nstall, max_ncheck, iteration_sleep):
+    def __init__(self, max_it, max_nstall, max_ncheck):
         self.max_iterations = max_it
         self.max_nstall = max_nstall
         self.max_ncheck = max_ncheck
-        self.iteration_sleep = iteration_sleep
 
         self.kNCW = 3
         self.kNRW = [7,6,6,6,7,6,7,6,6,7,6,6,7,7,6,6,6,7,6,7,6,7,6,6,6,7,6,6,6,7,6,6,6,6,7,6,6,6,7,7,6,6,6,6,7,7,6,6,6,6,7,6,6,6,7,6,6,6,6,7,6,6,6,7,6,6,6,7,7,6,6,7,6,6,6,6,6,6,6,7,6,6,6]
@@ -66,10 +65,6 @@ class LDPC174_91:
         return n
 
     def exit_check(self, zn):
-        if (time.time()> self.bail_time):
-            import PyFT8.timers as timers
-            timers.timedLog(f"LDPC bailout at iteration {self.it}", logfile = 'decodes.log')
-            return True
         synd_checks = [ sum(1 for llr in zn[self.synd_check_idxs[i]] if llr > 0) %2 for i in range(self.kM)]
         self.ncheck = np.sum(synd_checks)
         self.nstall = 0 if(self.ncheck < self.ncheck_last) else self.nstall + 1
@@ -78,9 +73,13 @@ class LDPC174_91:
             self.decoded_bits174_LE_list = (zn > 0).astype(int).tolist() 
             decoded_bits91_int = self.bitsLE_to_int(self.decoded_bits174_LE_list[0:91])
             if(check_crc(decoded_bits91_int)):
+                self.reason = 'Decoded'
                 return True
-        if(self.it > self.max_iterations or self.nstall > self.max_nstall or self.ncheck > self.max_ncheck):
+        early_exit_conditions = [self.it > self.max_iterations, self.nstall > self.max_nstall, self.ncheck > self.max_ncheck, (time.time()> self.bail_time)]
+        if(any(early_exit_conditions)):
             self.decoded_bits174_LE_list = []
+            reasons = ['max_its reached', 'stall', 'high initial errors', 'timeout']
+            self.reason = f"Early exit: {reasons[int(np.where(early_exit_conditions)[0])]}"
             return True
         return False
                  
@@ -96,9 +95,7 @@ class LDPC174_91:
 
         while True:
             if (self.exit_check(zn)):
-                return self.decoded_bits174_LE_list, self.it
-            if(self.iteration_sleep >0):
-                time.sleep(self.iteration_sleep)
+                return self.decoded_bits174_LE_list, self.it, self.reason
 
             toc = zn[self.VN]                 
             tov_gather = tov[:, self.VN]     
