@@ -10,14 +10,13 @@ import queue
 class Cycle_manager():
     def __init__(self, onDecode, onOccupancy,
                  prioritise_rxfreq = False, audio_in = [], verbose = True,
-                 sync_score_thresh = 3, max_iters = 90, max_stall = 8,
-                 max_ncheck = 40, min_sd = 2):
+                 max_iters = 90, max_stall = 8, max_ncheck = 40,
+                 sync_score_thresh = 3, min_sd = 2):
         self.verbose = verbose
         self.cand_lock = threading.Lock()
         self.max_lifetime = 10
         self.last_cycle_time = 16
-        self.sync_score_thresh = sync_score_thresh
-        self.demod = FT8Demodulator(max_iters, max_stall, max_ncheck, min_sd)
+        self.demod = FT8Demodulator(max_iters, max_stall, max_ncheck, min_sd, sync_score_thresh)
         self.running = True
         self.spectrum = Spectrum(self.demod)
         self.spectrum.nHops_loaded = 0
@@ -31,7 +30,7 @@ class Cycle_manager():
         self.audio_queue = queue.Queue(maxsize=50)
         # audio_in is e.g. from wav file for testing, otherwise start monitoring sound card
         if(any(audio_in)):
-            self.find_candidates_from_audio_in(audio_in, self.sync_score_thresh)
+            self.find_candidates_from_audio_in(audio_in)
         else:
             while int(timers.tnow()) % 15 < 14:
                 timers.sleep(0.05)
@@ -59,7 +58,7 @@ class Cycle_manager():
             finally:
                 self.decode_queue.task_done()
 
-    def find_candidates_from_audio_in(self, audio_in, sync_score_thresh):
+    def find_candidates_from_audio_in(self, audio_in):
         # inject audio e.g. from wav file for testing 
         sample_idx = 0
         while sample_idx < len(audio_in) - self.spectrum.FFT_len:
@@ -67,7 +66,7 @@ class Cycle_manager():
             self.do_FFT(self.spectrum)
             sample_idx += self.demod.samples_perhop
         timers.timedLog(f"[bulk_load_audio] Loaded {self.spectrum.nHops_loaded} hops ({self.spectrum.nHops_loaded/(self.demod.sigspec.symbols_persec * self.demod.hops_persymb):.2f}s)", logfile = 'decodes.log', )
-        self.demod.find_candidates(self.spectrum, False, self.onCandidate_found, sync_score_thresh)
+        self.demod.find_candidates(self.spectrum, False, self.onCandidate_found)
 
     def threaded_audio_reader(self):
         pa = pyaudio.PyAudio()
@@ -93,9 +92,6 @@ class Cycle_manager():
                 if(self.verbose): timers.timedLog(f"All cands = {len(self.cands_to_decode)} "
                                 +f"\n This cycle: candidates = {self.spectrum.n_candidates} decodes = {self.spectrum.n_decodes}"
                                 +f"({100*self.spectrum.n_decodes/(self.spectrum.n_candidates+.01):.0f}%)", logfile = 'decodes.log')
-                if(cycle_time > 0.05):
-                    self.sync_score_thresh *= 1.1
-                    if(self.verbose): timers.timedLog(f"[cycle_manager] Adjust threshold UP to {self.sync_score_thresh:.2f})", logfile = 'decodes.log', silent = False)
                 if (self.onOccupancy):
                     self._make_occupancy_array(self.spectrum)
                 self.spectrum = Spectrum(self.demod)
@@ -119,7 +115,7 @@ class Cycle_manager():
             if (self.spectrum.nHops_loaded > self.spectrum.candidate_search_after_hop):
                 if (not self.spectrum.searched):
                     self.spectrum.searched = True
-                    self.demod.find_candidates(self.spectrum, self.prioritise_Hz, self.onCandidate_found, self.sync_score_thresh)
+                    self.demod.find_candidates(self.spectrum, self.prioritise_Hz, self.onCandidate_found)
                     
             if (self.spectrum.nHops_loaded > self.spectrum.start_decoding_after_hop):   
                 self.cands_to_decode.sort(key=lambda c: -c.score)
@@ -150,17 +146,13 @@ class Cycle_manager():
         self.cands_to_decode.append(c)
         
     def onResult(self,c):
-        metrics = f"{c.decoded:>7} {c.score:7.2f} "
-        metrics = metrics + f"{c.llr_sd:7.2f} {c.snr:7.1f} "
-        metrics = metrics + f"{c.n_its:7.1f} {c.time_in_decode:7.3f}"
-        if(self.verbose): timers.timedLog(metrics, logfile='success_fail_metrics.log', silent = True)
+        if(self.verbose): 
+            metrics = f"{c.decoded:>7} {c.score:7.2f} {c.llr_sd:7.2f} {c.snr:7.1f} {c.n_its:7.1f} {c.time_in_decode:7.3f}"
+            timers.timedLog(metrics, logfile='success_fail_metrics.log', silent = True)
         c_decoded = c if(c.decode_dict) else None
         self.cands_to_decode.remove(c)
         self.decode_load -=1
         if(c_decoded):
-            if(self.sync_score_thresh > c.score * 0.9):
-                self.sync_score_thresh = c.score * 0.9
-                if(self.verbose): timers.timedLog(f"[cycle_manager] Adjust threshold DOWN to {self.sync_score_thresh:.2f})", logfile = 'decodes.log', silent = False)
             self.onDecode(c_decoded)
  
     def _make_occupancy_array(self, spectrum, f0=0, f1=3500, bin_hz=10, sig_hz = 50):

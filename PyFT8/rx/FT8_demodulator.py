@@ -103,11 +103,12 @@ class Candidate:
         return self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]].copy()
 
 class FT8Demodulator:
-    def __init__(self, max_iters, max_stall, max_ncheck, min_sd):
+    def __init__(self, max_iters, max_stall, max_ncheck, min_sd, sync_score_thresh):
         self.sigspec = FT8
         self.sample_rate=12000
         self.fbins_pertone=3
         self.hops_persymb=5
+        self.sync_score_thresh = sync_score_thresh
         self.min_sd = min_sd
         self.samples_perhop = int(self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb) )
         self.hops_persec = self.sample_rate / self.samples_perhop 
@@ -115,7 +116,7 @@ class FT8Demodulator:
         self.sync_range = range(slack_hops)
         self.ldpc = LDPC174_91(max_iters, max_stall, max_ncheck)
 
-    def find_candidates(self, spectrum, prioritise_Hz, onCandidate_found, sync_score_thresh, silent = False):
+    def find_candidates(self, spectrum, prioritise_Hz, onCandidate_found, silent = False):
         spectrum.cyclestart_str = timers.cyclestart_str(0)
         self.candidates = []
         f0_idxs = range(spectrum.nFreqs - spectrum.candidate_size[1])
@@ -131,7 +132,7 @@ class FT8Demodulator:
                 if test[1] > best[1]:
                     best = test
             c.score = best[1]
-            if(c.score > sync_score_thresh):
+            if(c.score > self.sync_score_thresh):
                 # if there's an existing neighbour in frequency, replace it if we have a better score, otherwise don't append us 
                 neighbour_lf = [n for n in spectrum.candidates if (c.origin[1] - n.origin[1] <=2)]
                 if(neighbour_lf):
