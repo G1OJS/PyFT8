@@ -9,12 +9,12 @@ import queue
 
 class Cycle_manager():
     def __init__(self, onDecode, onOccupancy,
-                 prioritise_rxfreq = False, audio_in = [], verbose = True, max_iters = 70, max_stall = 8, max_ncheck = 30):
+                 prioritise_rxfreq = False, audio_in = [], verbose = True, sync_score_thresh = 3, max_iters = 70, max_stall = 8, max_ncheck = 35):
         self.verbose = verbose
         self.cand_lock = threading.Lock()
         self.max_lifetime = 10
         self.last_cycle_time = 16
-        self.sync_score_thresh = 3
+        self.sync_score_thresh = sync_score_thresh
         self.demod = FT8Demodulator(max_iters, max_stall, max_ncheck)
         self.running = True
         self.spectrum = Spectrum(self.demod)
@@ -29,7 +29,7 @@ class Cycle_manager():
         self.audio_queue = queue.Queue(maxsize=50)
         # audio_in is e.g. from wav file for testing, otherwise start monitoring sound card
         if(any(audio_in)):
-            self.find_candidates_from_audio_in(audio_in, sync_score_thresh)
+            self.find_candidates_from_audio_in(audio_in, self.sync_score_thresh)
         else:
             while int(timers.tnow()) % 15 < 14:
                 timers.sleep(0.05)
