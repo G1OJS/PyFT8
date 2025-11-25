@@ -72,15 +72,11 @@ class LDPC174_91:
             self.decoded_bits174_LE_list = (zn > 0).astype(int).tolist() 
             decoded_bits91_int = self.bitsLE_to_int(self.decoded_bits174_LE_list[0:91])
             if(check_crc(decoded_bits91_int)):
-                self.reason = 'Decoded'
                 return True
-        early_exit_conditions = [self.it > self.max_iterations, self.nstall > self.max_nstall, self.ncheck > self.max_ncheck]
-        if(any(early_exit_conditions)):
+        if(self.it > self.max_iterations or self.nstall > self.max_nstall or self.ncheck > self.max_ncheck):
             self.decoded_bits174_LE_list = []
-            reasons = ['max_its reached', 'stall', 'max_checks']
-            self.reason = f"Early exit: {reasons[int(np.where(early_exit_conditions)[0])]}"
             return True
-        return False
+        return False # false means 'don't exit, keep going'
                  
     def decode(self, llr):
         self.it = 0
@@ -93,7 +89,7 @@ class LDPC174_91:
 
         while True:
             if (self.exit_check(zn)):
-                return self.decoded_bits174_LE_list, self.it, self.reason
+                return self.decoded_bits174_LE_list, self.it
 
             toc = zn[self.VN]                 
             tov_gather = tov[:, self.VN]     

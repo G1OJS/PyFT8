@@ -102,11 +102,12 @@ class Candidate:
         return self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]].copy()
 
 class FT8Demodulator:
-    def __init__(self, max_iters, max_stall, max_ncheck):
+    def __init__(self, max_iters, max_stall, max_ncheck, min_sd):
         self.sigspec = FT8
         self.sample_rate=12000
         self.fbins_pertone=3
         self.hops_persymb=5
+        self.min_sd = min_sd
         self.samples_perhop = int(self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb) )
         self.hops_persec = self.sample_rate / self.samples_perhop 
         slack_hops =  int(self.hops_persymb * self.sigspec.symbols_persec * (self.sigspec.cycle_seconds - self.sigspec.num_symbols / self.sigspec.symbols_persec) )
@@ -173,23 +174,27 @@ class FT8Demodulator:
         for i in range(len(llr_all)):
             if(int(i/3) in FT8.payload_symb_idxs):
                 c.llr.extend([llr_all[i]])
-        c.llr = 3 * (c.llr - np.mean(c.llr)) / (np.std(c.llr)+.001)
-        c.payload_bits, c.n_its, c.ldpc_return_reasons = self.ldpc.decode(c.llr)
-        if(c.payload_bits):
-            c.iconf = 0
-            decode = FT8_unpack(c)
-            if(decode):
-                decode_dict = decode['decode_dict']
-                key = f"{decode_dict['call_a']} {decode_dict['call_b']} {decode_dict['grid_rpt']}"
-                if(not key in c.spectrum.duplicate_filter):
-                    c.spectrum.duplicate_filter.add(key)
-                    dt = c.origin_physical[0] + c.spectrum.audio_start - 0.3 -0.5
-                    if(dt>7): dt -=15
-                    dt = f"{dt:4.1f}"
-                    decode_dict.update({'dt': dt})
-                    c.message = key
-                    c.decode_dict = decode_dict
-                    c.spectrum.n_decodes +=1
+
+        c.llr = c.llr - np.mean(c.llr)
+        c.llr_sd = np.std(c.llr)
+        if(c.llr_sd > self.min_sd):
+            c.llr = 4.5 * c.llr / (c.llr_sd+.001)
+            c.payload_bits, c.n_its = self.ldpc.decode(c.llr)
+            if(c.payload_bits):
+                c.iconf = 0
+                decode = FT8_unpack(c)
+                if(decode):
+                    decode_dict = decode['decode_dict']
+                    key = f"{decode_dict['call_a']} {decode_dict['call_b']} {decode_dict['grid_rpt']}"
+                    if(not key in c.spectrum.duplicate_filter):
+                        c.spectrum.duplicate_filter.add(key)
+                        dt = c.origin_physical[0] + c.spectrum.audio_start - 0.3 -0.5
+                        if(dt>7): dt -=15
+                        dt = f"{dt:4.1f}"
+                        decode_dict.update({'dt': dt})
+                        c.message = key
+                        c.decode_dict = decode_dict
+                        c.spectrum.n_decodes +=1
         c.time_in_decode = timers.tnow() - t_start_decode
         onResult(c)
     

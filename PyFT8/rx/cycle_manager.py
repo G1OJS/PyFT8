@@ -9,13 +9,13 @@ import queue
 
 class Cycle_manager():
     def __init__(self, onDecode, onOccupancy,
-                 prioritise_rxfreq = False, audio_in = [], verbose = True, sync_score_thresh = 3, max_iters = 70, max_stall = 8, max_ncheck = 35):
+                 prioritise_rxfreq = False, audio_in = [], verbose = True, sync_score_thresh = 3, max_iters = 90, max_stall = 8, max_ncheck = 45, min_sd = 2.5):
         self.verbose = verbose
         self.cand_lock = threading.Lock()
         self.max_lifetime = 10
         self.last_cycle_time = 16
         self.sync_score_thresh = sync_score_thresh
-        self.demod = FT8Demodulator(max_iters, max_stall, max_ncheck)
+        self.demod = FT8Demodulator(max_iters, max_stall, max_ncheck, min_sd)
         self.running = True
         self.spectrum = Spectrum(self.demod)
         self.spectrum.nHops_loaded = 0
@@ -155,8 +155,6 @@ class Cycle_manager():
                 self.sync_score_thresh = c.score * 0.9
                 if(self.verbose): timers.timedLog(f"[cycle_manager] Adjust threshold DOWN to {self.sync_score_thresh:.2f})", logfile = 'decodes.log', silent = False)
             self.onDecode(c_decoded)
-        if(self.verbose): timers.timedLog(f"Result received for {c.info}, time taken {c.time_in_decode:6.3f}, "
-                          +f"iterations = {c.n_its} result: {c.ldpc_return_reasons}", logfile = 'decodes.log', silent = True)
  
     def _make_occupancy_array(self, spectrum, f0=0, f1=3500, bin_hz=10, sig_hz = 50):
         if(not spectrum): return
