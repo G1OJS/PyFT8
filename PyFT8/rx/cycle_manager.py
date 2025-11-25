@@ -9,7 +9,9 @@ import queue
 
 class Cycle_manager():
     def __init__(self, onDecode, onOccupancy,
-                 prioritise_rxfreq = False, audio_in = [], verbose = True, sync_score_thresh = 3, max_iters = 90, max_stall = 8, max_ncheck = 45, min_sd = 2.5):
+                 prioritise_rxfreq = False, audio_in = [], verbose = True,
+                 sync_score_thresh = 3, max_iters = 90, max_stall = 8,
+                 max_ncheck = 35, min_sd = 2):
         self.verbose = verbose
         self.cand_lock = threading.Lock()
         self.max_lifetime = 10
@@ -126,14 +128,13 @@ class Cycle_manager():
                              if (not c.sent_for_decode and (t - c.created_at) > self.max_lifetime)]
                     for c in stale:
                         self.cands_to_decode.remove(c)
-                if stale and self.verbose:
-                    timers.timedLog(f"[prune] removed {len(stale)} stale candidates")
+                if stale:
+                    if(self.verbose): timers.timedLog(f"[prune] removed {len(stale)} stale candidates")
 
                 with self.cand_lock:  
                     send_for_decode = [c for c in self.cands_to_decode
                                        if (not c.sent_for_decode and self.spectrum.nHops_loaded > c.last_data_hop)]
                 for c in send_for_decode:
-                    if(self.verbose): timers.timedLog(f"Send {c.info} for decode", logfile = 'decodes.log', silent = True)
                     c.sent_for_decode = True
                     self.decode_load +=1
                     self.decode_queue.put(c)
