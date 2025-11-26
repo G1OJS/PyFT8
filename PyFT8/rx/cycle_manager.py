@@ -67,7 +67,7 @@ class Cycle_manager():
             self.do_FFT(self.spectrum)
             sample_idx += self.demod.samples_perhop
         timers.timedLog(f"[bulk_load_audio] Loaded {self.spectrum.nHops_loaded} hops ({self.spectrum.nHops_loaded/(self.demod.sigspec.symbols_persec * self.demod.hops_persymb):.2f}s)", logfile = 'decodes.log', )
-        self.demod.find_candidates(self.spectrum, False, self.onCandidate_found)
+        self.demod.find_candidates(self.spectrum, self.onCandidate_found)
 
     def threaded_audio_reader(self):
         pa = pyaudio.PyAudio()

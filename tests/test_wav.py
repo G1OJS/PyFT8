@@ -20,10 +20,12 @@ wav_file = "210703_133430.wav"
 
 timers.timedLog(f"Loading audio from {wav_file}")
 audio_in = audio.read_wav_file(wav_file)
-cycle_manager = Cycle_manager(onDecode, None, audio_in = audio_in, sync_score_thresh = 1.5, min_sd = 1.5, verbose = False)
+cycle_manager = Cycle_manager(onDecode, onOccupancy = None, verbose = True, audio_in = audio_in, 
+                              sync_score_thresh = 0, min_sd = 0,
+                              max_parallel_decodes = 50, max_candidate_lifetime = 60)
 heads = ['Rx call', 'Tx call', 'GrRp', 'SyncScr', 'SyncPwr', 'snr', 't0', 'f0', 'iters']
 print(''.join([f"{t:>8} " for t in heads]))
-while(len(cycle_manager.cands_to_decode) > 0):
+while(len(cycle_manager.cands_to_decode)>0):
     timers.sleep(0.1)
 cycle_manager.running = False
 
