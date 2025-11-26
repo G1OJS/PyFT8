@@ -48,24 +48,25 @@ symbols_framed.extend(symbols)
 symbols_framed.extend([-10]*7)
 print(f"({len(symbols)} symbols)")
 audio_data = audio.create_ft8_wave(symbols_framed, f_base = config.txfreq, amplitude = 0.5)
-audio_data = audio_data * 0.01*np.random.rand(len(audio_data))
+audio_data = audio_data * np.random.rand(len(audio_data))
 
 decoded_candidates = []
 def onDecode(candidate):
     decoded_candidates.append(candidate)
+    
 
-cycle_manager = Cycle_manager(onDecode, None, audio_in = audio_data, sync_score_thresh = 4.5, min_sd = 2)
+cycle_manager = Cycle_manager(onDecode, None, audio_in = audio_data, sync_score_thresh = 4, min_sd = 2)
 
-while(len(cycle_manager.cands_to_decode) > 0):
-    timers.sleep(0.1)
+while len(decoded_candidates)<1:
+    timers.sleep(0.25)
 cycle_manager.running = False
 
 for c in decoded_candidates:
     d = c.decode_dict
     print(d['call_a'], d['call_b'], d['grid_rpt'], c.score )
     
-#wf = Waterfall(cycle_manager.spectrum)
-#wf.update_main(candidates=decoded_candidates)
+wf = Waterfall(cycle_manager.spectrum)
+wf.update_main(candidates=decoded_candidates)
 #wf.show_zoom(candidates=decoded_candidates, phase = False, llr_overlay=False)
 #wf.show_zoom(candidates=decoded_candidates, phase = True, llr_overlay=False)
 

@@ -11,12 +11,11 @@ class Cycle_manager():
     def __init__(self, onDecode, onOccupancy, audio_in = [], verbose = True,
                  max_iters = 90, max_stall = 8, max_ncheck = 30,
                  sync_score_thresh = 3, min_sd = 2,
-                 max_parallel_decodes = 20, max_candidate_lifetime = 5):
+                 max_parallel_decodes = 20):
         self.max_parallel_decodes = max_parallel_decodes
         self.verbose = verbose
         self.live = True
         self.cand_lock = threading.Lock()
-        self.max_candidate_lifetime = max_candidate_lifetime
         self.last_cycle_time = 1e9
         self.demod = FT8Demodulator(max_iters, max_stall, max_ncheck, min_sd, sync_score_thresh)
         self.running = True
@@ -113,45 +112,32 @@ class Cycle_manager():
     def threaded_decoding_manager(self):
         while self.running:
             
-            if (self.spectrum.nHops_loaded > self.spectrum.candidate_search_after_hop):
-                if (not self.spectrum.searched):
-                    self.spectrum.searched = True
-                    self.demod.find_candidates(self.spectrum, self.onCandidate_found)
-                    if (self.onOccupancy):
-                        self._make_occupancy_array(self.spectrum)
+            if (self.spectrum.nHops_loaded > self.spectrum.candidate_search_after_hop and not self.spectrum.searched):
+                self.spectrum.searched = True
+                self.demod.find_candidates(self.spectrum, self.onCandidate_found)
+                if (self.onOccupancy):
+                    self._make_occupancy_array(self.spectrum)
                     
-            if (True or self.spectrum.nHops_loaded > self.spectrum.start_decoding_after_hop):  # should this run continuously? 
-                t = timers.tnow()
-                with self.cand_lock:
-                    stale = [c for c in self.cands_to_decode
-                             if (not c.sent_for_decode and (t - c.grid_filled_at) < self.max_candidate_lifetime)]
-                    stale.sort(key=lambda c: c.score + 100*(np.abs(c.origin_physical[1]-config.rxfreq)<2))
-                    max_sync_score_pruned = np.max([c.score for c in stale]) if stale else 0
-                    for c in stale:
-                        self.cands_to_decode.remove(c)
-                if stale:
-                    if(self.verbose):
-                        timers.timedLog(f"[prune] removed {len(stale)} stale candidates with max sync score {max_sync_score_pruned:5.1f}")
-                with self.cand_lock:  
-                    self.cands_to_decode.sort(key=lambda c: -c.score - 100*(np.abs(c.origin_physical[1]-config.rxfreq)<2))
-                    send_for_decode = [c for c in self.cands_to_decode 
-                                       if (not c.sent_for_decode
-                                           and (self.spectrum.nHops_loaded > c.last_data_hop or c.grid_is_full) )]
+            with self.cand_lock:  
+                self.cands_to_decode.sort(key=lambda c: -c.score - 100*(np.abs(c.origin_physical[1]-config.rxfreq)<2))
+                send_for_decode = [c for c in self.cands_to_decode 
+                                   if (not c.sent_for_decode
+                                       and (self.spectrum.nHops_loaded > c.last_data_hop or c.grid_is_full) )]
 
-                with self.cand_lock:
-                    for c in send_for_decode:
-                        if(not c.grid_is_full):
-                            c.fine_grid_complex_full = c.fine_grid_complex
-                            c.grid_is_full = True
-                            c.grid_filled_at = timers.tnow()
-
+            with self.cand_lock:
                 for c in send_for_decode:
-                    if self.decode_load >= self.max_parallel_decodes:
-                        break
-                    self.decode_load +=1
-                    with self.cand_lock:
-                        c.sent_for_decode = True
-                    self.decode_queue.put(c)
+                    if(not c.grid_is_full):
+                        c.fine_grid_complex_full = c.fine_grid_complex
+                        c.grid_is_full = True
+                        c.grid_filled_at = timers.tnow()
+
+            for c in send_for_decode:
+                if self.decode_load >= self.max_parallel_decodes:
+                    break
+                self.decode_load +=1
+                with self.cand_lock:
+                    c.sent_for_decode = True
+                self.decode_queue.put(c)
 
             n_cands = len(self.cands_to_decode)
             loading_info = {'n_candidates':n_cands, 'parallel_decodes':self.decode_load}

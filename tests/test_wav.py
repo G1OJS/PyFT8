@@ -47,6 +47,7 @@ def non_threaded_decode(audio_in):
     timers.timedLog(f"[bulk_load_audio] Loaded {demod.spectrum.nHops_loaded} hops ({demod.spectrum.nHops_loaded/(demod.sigspec.symbols_persec * demod.hops_persymb):.2f}s)", logfile = 'decodes.log', )
     demod.find_candidates(demod.spectrum, onCandidate_found)
     for c in cands_to_decode:
+        c.fine_grid_complex_full = c.fine_grid_complex
         demod.demodulate_candidate(c, onResult)
 
 #============================================
@@ -60,7 +61,7 @@ def threaded_decode():
     cycle_manager = Cycle_manager(onDecode, onOccupancy = None, verbose = True, audio_in = audio_in, 
                               sync_score_thresh = 1.5, min_sd = .5,
                               max_iters = 30, max_stall = 8, max_ncheck = 30,
-                              max_parallel_decodes = 10, max_candidate_lifetime = 1000)
+                              max_parallel_decodes = 10)
     pending = 0
     while pending == 0:
         with cycle_manager.cand_lock:
@@ -92,9 +93,9 @@ audio_in = audio.read_wav_file(wav_file)
 heads = ['Tload+', 'Rx call', 'Tx call', 'GrRp', 'Frozen at hop', 'SyncScr', 'LLR_sd', 'snr', 't0', 'f0', 'iters', 'llr_hash']
 print(''.join([f"{t:>8} " for t in heads]))
 
-non_threaded_decode(audio_in)
+#non_threaded_decode(audio_in)
 
-#threaded_decode()
+threaded_decode()
 
 print(f"DONE. Unique decodes = {len(decoded_candidates)}")
 

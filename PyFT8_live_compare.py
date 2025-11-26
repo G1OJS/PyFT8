@@ -50,10 +50,8 @@ def run():
     cycle_manager = Cycle_manager(None if config.decoder == 'wsjtx' else onDecode,
                               onOccupancy = None, verbose = True,
                               max_iters = 50, max_stall = 8, max_ncheck = 33,
-                              sync_score_thresh = 3, min_sd = 1.5,
-                              max_parallel_decodes = 150, max_candidate_lifetime = 2)
-                                # realised that max_candidate_lifetime is actually period for
-                                # sending for decode after candidate grid is full - not that useful?
+                              sync_score_thresh = 2.5, min_sd = 1.5,
+                              max_parallel_decodes = 50)
     start_UI("PyFT8_live_compare.html", process_UI_event)
     add_band_buttons()
 
