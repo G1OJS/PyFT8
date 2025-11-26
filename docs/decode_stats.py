@@ -1,20 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-with open('../success_fail_metrics.log') as f:
-    with open('metrics.log', 'w') as f_o:
-        for i, l in enumerate(f.readlines()):
-            if(i==0):
-                l = l.replace('{','').replace('}','').replace('c.','')
-            else:
-                l = l.replace('(','').replace(')','')
-            f_o.write(l)
-        
 
 import pandas as pd
-df = pd.read_csv('metrics.log', sep=r"\s+", header=0)
+df = pd.read_csv('../success_fail_metrics.log', sep=r"\s+", header=0)
 
-
+peak_cands = df['peak_cands'].values
 decoded = df['decoded'].values
 llr_sd  = df['llr_sd'].values.astype(float)
 score  = df['score'].values.astype(float)

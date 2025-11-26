@@ -8,14 +8,14 @@ import pyaudio
 import queue
 
 class Cycle_manager():
-    def __init__(self, onDecode, onOccupancy,
-                 prioritise_rxfreq = False, audio_in = [], verbose = True,
+    def __init__(self, onDecode, onOccupancy, audio_in = [], verbose = True,
                  max_iters = 90, max_stall = 8, max_ncheck = 40,
                  sync_score_thresh = 3, min_sd = 2):
         self.verbose = verbose
         self.cand_lock = threading.Lock()
         self.max_lifetime = 10
         self.last_cycle_time = 16
+        self.peak_cands = 0
         self.demod = FT8Demodulator(max_iters, max_stall, max_ncheck, min_sd, sync_score_thresh)
         self.running = True
         self.spectrum = Spectrum(self.demod)
@@ -25,7 +25,6 @@ class Cycle_manager():
         self.onDecode = onDecode
         self.onOccupancy = onOccupancy
         self.cands_to_decode = []
-        self.prioritise_Hz = config.rxfreq if prioritise_rxfreq else False
         self.input_device_idx = audio._find_device(config.soundcards['input_device'])   
         self.audio_queue = queue.Queue(maxsize=50)
         # audio_in is e.g. from wav file for testing, otherwise start monitoring sound card
@@ -45,7 +44,7 @@ class Cycle_manager():
             t.start()
             self.decode_workers.append(t)
         with open('success_fail_metrics.log', 'w') as f:
-            f.write("{timestamp} {c.decoded} {c.score} {c.llr_sd} {c.snr} {c.n_its} {c.time_in_decode}\n")
+            f.write("timestamp peak_cands decoded score llr_sd snr n_its time_in_decode\n")
 
     def decode_worker(self):
         """Worker thread: pull candidates off the queue and decode them."""
@@ -88,10 +87,8 @@ class Cycle_manager():
             cycle_time = timers.tnow() % 15
             # cycle rollover
             if (cycle_time < self.last_cycle_time):
-                timers.timedLog(f"Cycle rollover {cycle_time:.2f}: ")
-                if(self.verbose): timers.timedLog(f"All cands = {len(self.cands_to_decode)} "
-                                +f"\n This cycle: candidates = {self.spectrum.n_candidates} decodes = {self.spectrum.n_decodes}"
-                                +f"({100*self.spectrum.n_decodes/(self.spectrum.n_candidates+.01):.0f}%)", logfile = 'decodes.log')
+                timers.timedLog(f"Cycle rollover {cycle_time:.2f}: peak cands = {self.peak_cands} ")
+                self.peak_cands = 0
                 if (self.onOccupancy):
                     self._make_occupancy_array(self.spectrum)
                 self.spectrum = Spectrum(self.demod)
@@ -115,10 +112,10 @@ class Cycle_manager():
             if (self.spectrum.nHops_loaded > self.spectrum.candidate_search_after_hop):
                 if (not self.spectrum.searched):
                     self.spectrum.searched = True
-                    self.demod.find_candidates(self.spectrum, self.prioritise_Hz, self.onCandidate_found)
+                    self.demod.find_candidates(self.spectrum, self.onCandidate_found)
                     
             if (self.spectrum.nHops_loaded > self.spectrum.start_decoding_after_hop):   
-                self.cands_to_decode.sort(key=lambda c: -c.score)
+                self.cands_to_decode.sort(key=lambda c: -c.score - 100*(np.abs(c.origin_physical[1]-config.rxfreq)<2))
 
                 t = timers.tnow()
                 with self.cand_lock:
@@ -138,6 +135,7 @@ class Cycle_manager():
                     self.decode_queue.put(c)
 
             n_cands = len(self.cands_to_decode)
+            if(n_cands > self.peak_cands): self.peak_cands = n_cands
             send_to_ui_ws("decode_queue", {'n_candidates':n_cands, 'parallel_decodes':self.decode_load})    
             timers.sleep(0.25)
 
@@ -147,7 +145,7 @@ class Cycle_manager():
         
     def onResult(self,c):
         if(self.verbose): 
-            metrics = f"{c.decoded:>7} {c.score:7.2f} {c.llr_sd:7.2f} {c.snr:7.1f} {c.n_its:7.1f} {c.time_in_decode:7.3f}"
+            metrics = f"{self.peak_cands} {c.decoded:>7} {c.score:7.2f} {c.llr_sd:7.2f} {c.snr:7.1f} {c.n_its:7.1f} {c.time_in_decode:7.3f}"
             timers.timedLog(metrics, logfile='success_fail_metrics.log', silent = True)
         c_decoded = c if(c.decode_dict) else None
         self.cands_to_decode.remove(c)

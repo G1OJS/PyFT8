@@ -183,6 +183,7 @@ def process_UI_event(event):
         timers.timedLog(f"[process_UI_event] Clicked on message {selected_message}")
         config.txfreq = config.clearest_txfreq
         config.rxfreq = int(selected_message['freq'])
+        timers.timedLog(f"[process_UI_event] Set Rx freq to {config.rxfreq}", logfile = 'QSO.progress.log')
         QSO.tx_cycle = QSO.tx_cycle_from_clicked_message(selected_message)
         selected_message.update({'priority':True})
         send_to_ui_ws("msg", selected_message)
@@ -210,8 +211,7 @@ def add_band_buttons():
         send_to_ui_ws("add_band_button", {'band_name':band['band_name'], 'band_freq':band['band_freq']})
 
 def run():        
-    cycle_manager = Cycle_manager(None if config.decoder == 'wsjtx' else onDecode,
-                                  onOccupancy, prioritise_rxfreq = True,
+    cycle_manager = Cycle_manager(None if config.decoder == 'wsjtx' else onDecode, onOccupancy, 
                                   sync_score_thresh = 3, min_sd = 2)
     if(config.decoder == 'wsjtx') : start_wsjtx_tailer(onDecode)
     start_UI("PyFT8_tcvr_UI.html", process_UI_event)

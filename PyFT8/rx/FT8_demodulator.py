@@ -53,8 +53,6 @@ class Spectrum:
         self.audio_in = []
         self.dt = demodspec.samples_perhop / demodspec.sample_rate
         self.candidates = []
-        self.n_candidates = 0
-        self.n_decodes = 0
         self.duplicate_filter = set()
         self.cyclestart_str = 'xxxxxx_xxxxxx'
         self.cycle_epoch = timers.tnow()
@@ -116,9 +114,8 @@ class FT8Demodulator:
         self.sync_range = range(slack_hops)
         self.ldpc = LDPC174_91(max_iters, max_stall, max_ncheck)
 
-    def find_candidates(self, spectrum, prioritise_Hz, onCandidate_found, silent = False):
+    def find_candidates(self, spectrum, onCandidate_found):
         spectrum.cyclestart_str = timers.cyclestart_str(0)
-        self.candidates = []
         f0_idxs = range(spectrum.nFreqs - spectrum.candidate_size[1])
         for f0_idx in f0_idxs:
             c = Candidate(spectrum, self.sigspec)
@@ -133,23 +130,12 @@ class FT8Demodulator:
                     best = test
             c.score = best[1]
             if(c.score > self.sync_score_thresh):
-                # if there's an existing neighbour in frequency, replace it if we have a better score, otherwise don't append us 
-                neighbour_lf = [n for n in spectrum.candidates if (c.origin[1] - n.origin[1] <=2)]
-                if(neighbour_lf):
-                    if(neighbour_lf[0].score >= c.score): continue
-                    if(neighbour_lf[0].score < c.score): spectrum.candidates.remove(neighbour_lf[0])
                 c.origin = (best[0], c.origin[1])
                 c.origin_physical = spectrum.dt * c.origin[0], spectrum.df * c.origin[1]
                 c.last_hop = c.origin[0] + c.size[0]
                 c.last_data_hop = c.last_hop - self.sigspec.costas_len * self.hops_persymb
                 c.info = f"{c.cyclestart_str} {c.origin} {c.score:5.2f}"
-                # append candidate and prioritise if necessary
-                spectrum.candidates.append(c)
-                spectrum.n_candidates +=1
-                if(prioritise_Hz and abs(c.origin_physical[1]-prioritise_Hz) < 1):
-                    c.score = 10
-                if(onCandidate_found):
-                    onCandidate_found(c)
+                onCandidate_found(c)
      
     def demodulate_candidate(self, candidate, onResult):
         c = candidate
@@ -198,7 +184,6 @@ class FT8Demodulator:
                         decode_dict.update({'dt': dt})
                         c.message = key
                         c.decode_dict = decode_dict
-                        c.spectrum.n_decodes +=1
         c.time_in_decode = timers.tnow() - t_start_decode
         onResult(c)
     

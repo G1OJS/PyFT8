@@ -23,9 +23,9 @@ def cyclestart_str(cycle_offset):
 
 def timedLog(msg, silent = False, logfile = None):
     t = time.time()
-    time_str = f"{time.strftime('%H:%M:%S')}"
+    time_str = cyclestart_str(0)
     t_elapsed = t % CYCLE_LENGTH
-    time_str = f"{time_str} ({t_elapsed:4.1f})"
+    time_str = f"{time_str}_{t_elapsed:.1f}"
     lf = f"Log to {logfile}:" if logfile else ''
     if (not silent):
         print(f"{time_str} {lf} {msg}")
