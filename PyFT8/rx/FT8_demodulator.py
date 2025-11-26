@@ -52,7 +52,6 @@ class Spectrum:
         self.audio_start = 0
         self.audio_in = []
         self.dt = demodspec.samples_perhop / demodspec.sample_rate
-        self.candidates = []
         self.duplicate_filter = set()
         self.cyclestart_str = 'xxxxxx_xxxxxx'
         self.cycle_epoch = timers.tnow()
@@ -60,6 +59,7 @@ class Spectrum:
         FFT_out_len = int(self.FFT_len/2) + 1
         fmax_fft = demodspec.sample_rate/2
         self.nFreqs = int(FFT_out_len * self.max_freq / fmax_fft)
+        self.occupancy = None
         self.df = self.max_freq / self.nFreqs
         self.nHops_loaded = 0
         self.hops_percycle = int(demodspec.sample_rate * self.sigspec.cycle_seconds / demodspec.samples_perhop)
@@ -116,12 +116,14 @@ class FT8Demodulator:
 
     def find_candidates(self, spectrum, onCandidate_found):
         spectrum.cyclestart_str = timers.cyclestart_str(0)
+        spectrum.occupancy = np.zeros(spectrum.nFreqs)
         f0_idxs = range(spectrum.nFreqs - spectrum.candidate_size[1])
         for f0_idx in f0_idxs:
             c = Candidate(spectrum, self.sigspec)
             c.origin = (0, f0_idx)
             c.fine_grid_pwr = np.abs(c.fine_grid_complex)**2
             c.max_pwr = np.max(c.fine_grid_pwr)
+            spectrum.occupancy[c.origin[1]:c.origin[1]+c.size[1]] += c.max_pwr
             c.fine_grid_pwr = c.fine_grid_pwr / c.max_pwr
             best = (0, -1e30)
             for h0 in self.sync_range:

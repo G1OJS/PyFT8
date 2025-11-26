@@ -78,3 +78,5 @@ header
 <call:5>LY2TS <gridsquare:4>KO05 <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:3>+02 <rst_rcvd:3>-02 <qso_date:8>20251124 <time_on:6>165557 <qso_date_off:8>20251124 <time_off:6>165557 <band:5>False <freq:5>False <comment:5>PyFT8 <eor>
 
 <call:5>LY2TS <gridsquare:5>False <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:3>+02 <rst_rcvd:3>-06 <qso_date:8>20251124 <time_on:6>165617 <qso_date_off:8>20251124 <time_off:6>165617 <band:5>False <freq:5>False <comment:5>PyFT8 <eor>
+
+<call:5>F5PIO <gridsquare:4>JN19 <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:3>+12 <rst_rcvd:3>+12 <qso_date:8>20251126 <time_on:6>095657 <qso_date_off:8>20251126 <time_off:6>095700 <band:5>False <freq:5>False <comment:5>PyFT8 <eor>

@@ -170,7 +170,9 @@ def onDecode(candidate):
 
 def onOccupancy(occupancy, clear_freq):
     from PyFT8.comms_hub import config, send_to_ui_ws
+    import PyFT8.timers as timers
     config.update_clearest_txfreq(clear_freq)
+    timers.timedLog(f"[onOccupancy] occupancy data received, set Tx to {config.txfreq}")
     send_to_ui_ws("freq_occ_array", {'histogram':occupancy.tolist()})
 
 def process_UI_event(event):
@@ -212,7 +214,7 @@ def add_band_buttons():
 
 def run():        
     cycle_manager = Cycle_manager(None if config.decoder == 'wsjtx' else onDecode, onOccupancy, 
-                                  sync_score_thresh = 3, min_sd = 2)
+                                  sync_score_thresh = 4, min_sd = 2.5)
     if(config.decoder == 'wsjtx') : start_wsjtx_tailer(onDecode)
     start_UI("PyFT8_tcvr_UI.html", process_UI_event)
     add_band_buttons()

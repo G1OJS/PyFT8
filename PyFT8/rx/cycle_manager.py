@@ -89,8 +89,6 @@ class Cycle_manager():
             if (cycle_time < self.last_cycle_time):
                 timers.timedLog(f"Cycle rollover {cycle_time:.2f}: peak cands = {self.peak_cands} ")
                 self.peak_cands = 0
-                if (self.onOccupancy):
-                    self._make_occupancy_array(self.spectrum)
                 self.spectrum = Spectrum(self.demod)
             self.last_cycle_time = cycle_time
             # send audio for FFT
@@ -113,6 +111,8 @@ class Cycle_manager():
                 if (not self.spectrum.searched):
                     self.spectrum.searched = True
                     self.demod.find_candidates(self.spectrum, self.onCandidate_found)
+                    if (self.onOccupancy):
+                        self._make_occupancy_array(self.spectrum)
                     
             if (self.spectrum.nHops_loaded > self.spectrum.start_decoding_after_hop):   
                 self.cands_to_decode.sort(key=lambda c: -c.score - 100*(np.abs(c.origin_physical[1]-config.rxfreq)<2))
@@ -153,14 +153,13 @@ class Cycle_manager():
         if(c_decoded):
             self.onDecode(c_decoded)
  
-    def _make_occupancy_array(self, spectrum, f0=0, f1=3500, bin_hz=10, sig_hz = 50):
+    def _make_occupancy_array(self, spectrum, f0=0, f1=3500, bin_hz=10):
         if(not spectrum): return
-        occupancy = np.arange(f0, f1 + bin_hz, bin_hz)
-        for c in spectrum.candidates:
-            bin0 = int((c.origin_physical[1]-f0)/bin_hz)
-            bin1 = bin0 + int(sig_hz/bin_hz)
-            occupancy[bin0:bin1] = occupancy[bin0:bin1] + c.max_pwr
-        occupancy = occupancy/np.max(occupancy)
+        occupancy_fine = spectrum.occupancy/np.max(spectrum.occupancy)
+        n_out = int((f1-f0)/bin_hz)
+        occupancy = np.zeros(n_out)
+        for i in range(n_out):
+            occupancy[i] = occupancy_fine[int((f0+bin_hz*i)/spectrum.df)]
         fs0, fs1 = 1000,1500
         bin0 = int((fs0-f0)/bin_hz)
         bin1 = int((fs1-f0)/bin_hz)
