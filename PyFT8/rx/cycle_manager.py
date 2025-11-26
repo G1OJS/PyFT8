@@ -9,7 +9,7 @@ import queue
 
 class Cycle_manager():
     def __init__(self, onDecode, onOccupancy, audio_in = [], verbose = True,
-                 max_iters = 90, max_stall = 8, max_ncheck = 40,
+                 max_iters = 90, max_stall = 8, max_ncheck = 30,
                  sync_score_thresh = 3, min_sd = 2,
                  max_parallel_decodes = 20, max_candidate_lifetime = 10):
         self.max_parallel_decodes = max_parallel_decodes
@@ -18,7 +18,6 @@ class Cycle_manager():
         self.cand_lock = threading.Lock()
         self.max_candidate_lifetime = max_candidate_lifetime
         self.last_cycle_time = 1e9
-        self.peak_cands = 0
         self.demod = FT8Demodulator(max_iters, max_stall, max_ncheck, min_sd, sync_score_thresh)
         self.running = True
         self.spectrum = Spectrum(self.demod)
@@ -66,11 +65,12 @@ class Cycle_manager():
         sample_idx = 0
         self.live = False
         while sample_idx < len(audio_in) - self.spectrum.FFT_len:
+            timers.sleep(0.01)
             self.spectrum.audio_in.extend(audio_in[sample_idx:sample_idx + self.spectrum.FFT_len])
             self.do_FFT(self.spectrum)
             sample_idx += self.demod.samples_perhop
+        self.audio_loaded_at = timers.tnow()
         timers.timedLog(f"[bulk_load_audio] Loaded {self.spectrum.nHops_loaded} hops ({self.spectrum.nHops_loaded/(self.demod.sigspec.symbols_persec * self.demod.hops_persymb):.2f}s)", logfile = 'decodes.log', )
-        self.demod.find_candidates(self.spectrum, self.onCandidate_found)
 
     def threaded_audio_reader(self):
         pa = pyaudio.PyAudio()
@@ -92,8 +92,7 @@ class Cycle_manager():
             cycle_time = timers.tnow() % self.demod.sigspec.cycle_seconds 
             # cycle rollover
             if (self.live and cycle_time < self.last_cycle_time):
-                timers.timedLog(f"Cycle rollover {cycle_time:.2f}: peak cands = {self.peak_cands} ")
-                self.peak_cands = 0
+                timers.timedLog(f"Cycle rollover {cycle_time:.2f}")
                 self.spectrum = Spectrum(self.demod)
             self.last_cycle_time = cycle_time
             # send audio for FFT
@@ -122,21 +121,21 @@ class Cycle_manager():
             if (self.spectrum.nHops_loaded > self.spectrum.start_decoding_after_hop):  # should this run continuously? 
 
                 t = timers.tnow()
-                if(self.live):
-                    with self.cand_lock:
-                        stale = [c for c in self.cands_to_decode
-                                 if (not c.sent_for_decode and (t - c.created_at) > self.max_candidate_lifetime)]
-                        stale.sort(key=lambda c: c.score + 100*(np.abs(c.origin_physical[1]-config.rxfreq)<2))
-                        max_sync_score_pruned = np.max([c.score for c in stale]) if stale else 0
-                        for c in stale:
-                            self.cands_to_decode.remove(c)
-                    if stale:
-                        if(self.verbose): timers.timedLog(f"[prune] removed {len(stale)} stale candidates with max sync score {max_sync_score_pruned:5.1f}")
+                with self.cand_lock:
+                    stale = [c for c in self.cands_to_decode
+                             if (not c.sent_for_decode and (t - c.created_at) > self.max_candidate_lifetime)]
+                    stale.sort(key=lambda c: c.score + 100*(np.abs(c.origin_physical[1]-config.rxfreq)<2))
+                    max_sync_score_pruned = np.max([c.score for c in stale]) if stale else 0
+                    for c in stale:
+                        self.cands_to_decode.remove(c)
+                if stale:
+                    if(self.verbose):
+                        timers.timedLog(f"[prune] removed {len(stale)} stale candidates with max sync score {max_sync_score_pruned:5.1f}")
 
                 with self.cand_lock:  
                     self.cands_to_decode.sort(key=lambda c: -c.score - 100*(np.abs(c.origin_physical[1]-config.rxfreq)<2))
-                    send_for_decode = [c for c in self.cands_to_decode # what happens if we send candidates from the previous cycle? Do they have their spectrum
-                                       if (not c.sent_for_decode and self.spectrum.nHops_loaded > c.last_data_hop)] # this condition should be 'candidate is full'
+                    send_for_decode = [c for c in self.cands_to_decode 
+                                       if (not c.sent_for_decode and self.spectrum.nHops_loaded > c.last_data_hop)] 
                     for c in send_for_decode:
                         if self.decode_load >= self.max_parallel_decodes:
                             break
@@ -145,25 +144,26 @@ class Cycle_manager():
                         self.decode_queue.put(c)
 
             n_cands = len(self.cands_to_decode)
-            if(n_cands > self.peak_cands): self.peak_cands = n_cands
             loading_info = {'n_candidates':n_cands, 'parallel_decodes':self.decode_load}
             send_to_ui_ws("decode_queue", loading_info)    
-            if(not self.live): timers.timedLog(f"decoder load: {loading_info}")
             timers.sleep(0.25)
 
     def onCandidate_found(self, c):
-        c.created_at = timers.tnow()
-        self.cands_to_decode.append(c)
+        with self.cand_lock:  
+            c.created_at = timers.tnow()
+            c.frozen_at_hop = self.spectrum.nHops_loaded
+            _ = c.fine_grid_complex # ensure c has a copy of spectrum
+            self.cands_to_decode.append(c)
         
     def onResult(self,c):
-        if(self.verbose): 
-            metrics = f"{c.id} {c.decoded:>7} {c.score:7.2f} {c.llr_sd:7.2f} {c.snr:7.1f} {c.n_its:7.1f} {c.time_in_decode:7.3f}"
-            timers.timedLog(metrics, logfile='success_fail_metrics.log', silent = True)
-        c_decoded = c if(c.decode_dict) else None
-        self.cands_to_decode.remove(c)
-        self.decode_load -=1
-        if(c_decoded):
-            self.onDecode(c_decoded)
+        with self.cand_lock: 
+            if(self.verbose): 
+                metrics = f"{c.id} {c.decoded:>7} {c.score:7.2f} {c.llr_sd:7.2f} {c.snr:7.1f} {c.n_its:7.1f} {c.time_in_decode:7.3f}"
+                timers.timedLog(metrics, logfile='success_fail_metrics.log', silent = True)
+            self.cands_to_decode.remove(c)
+            self.decode_load -=1
+        if(c.decoded):
+            self.onDecode(c)
  
     def _make_occupancy_array(self, spectrum, f0=0, f1=3500, bin_hz=10):
         if(not spectrum): return

@@ -94,8 +94,9 @@ class Candidate:
         self.payload_bits = []
         self.decode_dict = None
         self.sent_for_decode = False
-        self.time_in_decode = 0
-        self.decoded = None
+        self.decoded = False
+        self.time_in_decode = None
+        self.decode_dict = False
         self.n_its = -1
 
     @property
@@ -162,7 +163,7 @@ class FT8Demodulator:
         zeros = np.max(-V,    where=(FT8.block_decode_wt2 < 0), initial=-np.inf, axis=(2, 3))
         ones = np.clip(ones,  0.0001, 1e30)
         zeros = np.clip(zeros, 0.0001, 1e30) 
-        llr_block = np.log(ones +eps) - np.log(zeros +eps)  
+        llr_block = np.log(ones) - np.log(zeros)  
         llr_all = llr_block.reshape(-1)
         for i in range(len(llr_all)):
             if(int(i/3) in FT8.payload_symb_idxs):
@@ -170,15 +171,12 @@ class FT8Demodulator:
 
         c.llr = c.llr - np.mean(c.llr)
         c.llr_sd = np.std(c.llr)
-        c.decoded = False
         if(c.llr_sd > self.min_sd):
             c.llr = 3 * c.llr / (c.llr_sd+.001)
             c.payload_bits, c.n_its = self.ldpc.decode(c.llr)
             if(c.payload_bits):
-                c.iconf = 0
                 decode = FT8_unpack(c)
                 if(decode):
-                    c.decoded = True
                     decode_dict = decode['decode_dict']
                     key = f"{decode_dict['call_a']} {decode_dict['call_b']} {decode_dict['grid_rpt']}"
                     if(not key in c.spectrum.duplicate_filter):
@@ -188,6 +186,7 @@ class FT8Demodulator:
                         dt = f"{dt:4.1f}"
                         decode_dict.update({'dt': dt})
                         c.message = key
+                        c.decoded = True
                         c.decode_dict = decode_dict
         c.time_in_decode = timers.tnow() - t_start_decode
         onResult(c)
