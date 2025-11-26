@@ -72,7 +72,6 @@ def threaded_decode():
             pending = len(cycle_manager.cands_to_decode)
             running = cycle_manager.decode_load
         queued = cycle_manager.decode_queue.qsize()
-    #    print(pending,running,queued)
         if pending == 0 and running == 0 and queued == 0:
             break
         timers.sleep(0.1)
@@ -93,9 +92,9 @@ audio_in = audio.read_wav_file(wav_file)
 heads = ['Tload+', 'Rx call', 'Tx call', 'GrRp', 'Frozen at hop', 'SyncScr', 'LLR_sd', 'snr', 't0', 'f0', 'iters', 'llr_hash']
 print(''.join([f"{t:>8} " for t in heads]))
 
-#non_threaded_decode(audio_in)
+non_threaded_decode(audio_in)
 
-threaded_decode()
+#threaded_decode()
 
 print(f"DONE. Unique decodes = {len(decoded_candidates)}")
 
