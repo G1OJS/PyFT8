@@ -19,7 +19,7 @@ def sleep(secs):
         time.sleep(secs)
 
 def cyclestart_str(cycle_offset):
-    return time.strftime("%y%m%d_%H%M%S", time.gmtime(CYCLE_LENGTH * cycle_offset + CYCLE_LENGTH * int(time.time() / 15)))
+    return time.strftime("%y%m%d_%H%M%S", time.gmtime(CYCLE_LENGTH * cycle_offset + CYCLE_LENGTH * int(time.time() / CYCLE_LENGTH)))
 
 def timedLog(msg, silent = False, logfile = None):
     t = time.time()

@@ -172,7 +172,7 @@ class FT8Demodulator:
         c.llr_sd = np.std(c.llr)
         c.decoded = False
         if(c.llr_sd > self.min_sd):
-            c.llr = 4.5 * c.llr / (c.llr_sd+.001)
+            c.llr = 3 * c.llr / (c.llr_sd+.001)
             c.payload_bits, c.n_its = self.ldpc.decode(c.llr)
             if(c.payload_bits):
                 c.iconf = 0
@@ -184,7 +184,7 @@ class FT8Demodulator:
                     if(not key in c.spectrum.duplicate_filter):
                         c.spectrum.duplicate_filter.add(key)
                         dt = c.origin_physical[0] + c.spectrum.audio_start - 0.3 -0.5
-                        if(dt>7): dt -=15
+                        if(dt>self.sigspec.cycle_seconds//2): dt -=self.sigspec.cycle_seconds
                         dt = f"{dt:4.1f}"
                         decode_dict.update({'dt': dt})
                         c.message = key
