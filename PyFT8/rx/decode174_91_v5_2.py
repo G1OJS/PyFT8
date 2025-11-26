@@ -62,34 +62,34 @@ class LDPC174_91:
         for b in bits:
             n = (n << 1) | (b & 1)
         return n
-
-    def exit_check(self, zn):
-        synd_checks = [ sum(1 for llr in zn[self.synd_check_idxs[i]] if llr > 0) %2 for i in range(self.kM)]
-        self.ncheck = np.sum(synd_checks)
-        self.nstall = 0 if(self.ncheck < self.ncheck_last) else self.nstall + 1
-        self.ncheck_last = self.ncheck
-        if (self.ncheck == 0):
-            self.decoded_bits174_LE_list = (zn > 0).astype(int).tolist() 
-            decoded_bits91_int = self.bitsLE_to_int(self.decoded_bits174_LE_list[0:91])
-            if(check_crc(decoded_bits91_int)):
-                return True
-        if(self.it > self.max_iterations or self.nstall > self.max_nstall or self.ncheck > self.max_ncheck):
-            self.decoded_bits174_LE_list = []
-            return True
-        return False # false means 'don't exit, keep going'
-                 
+            
     def decode(self, llr):
-        self.it = 0
-        self.ncheck_last = 0
-        self.nstall = 0
+        it = 0
+        ncheck_last = 0
+        nstall = 0
+
+        def exit_check(zn, it, nstall, ncheck_last):
+            synd_checks = [ sum(1 for llr in zn[self.synd_check_idxs[i]] if llr > 0) %2 for i in range(self.kM)]
+            ncheck = np.sum(synd_checks)
+            nstall = 0 if(ncheck < ncheck_last) else nstall + 1
+            ncheck_last = ncheck
+            crc_result, decoded_bits174_LE_list = False, []
+            if (ncheck == 0):
+                decoded_bits174_LE_list = (zn > 0).astype(int).tolist() 
+                decoded_bits91_int = self.bitsLE_to_int(decoded_bits174_LE_list[0:91])
+                crc_result = check_crc(decoded_bits91_int)
+            exit_now = (crc_result or it > self.max_iterations or nstall > self.max_nstall or ncheck > self.max_ncheck)
+            return exit_now, decoded_bits174_LE_list, nstall, ncheck_last
+        
         toc = np.zeros((7, self.kM), dtype=np.float32)       # message -> check messages
         tanhtoc = np.zeros((7, self.kM), dtype=np.float64)
         tov = np.zeros((self.kNCW, self.kN), dtype=np.float32)    # check -> message messages
         zn = np.array(llr, dtype=np.float32)            # working copy of llrs
 
         while True:
-            if (self.exit_check(zn)):
-                return self.decoded_bits174_LE_list, self.it
+            exit_now, decoded_bits174_LE_list, nstall, ncheck_last = exit_check(zn, it, nstall, ncheck_last)
+            if exit_now:
+                return decoded_bits174_LE_list, it
 
             toc = zn[self.VN]                 
             tov_gather = tov[:, self.VN]     
@@ -111,5 +111,5 @@ class LDPC174_91:
                     tov[kk, variable_node] = np.atanh(-Tmn)
             zn += np.sum(tov, axis = 0)
 
-            self.it +=1
+            it +=1
 

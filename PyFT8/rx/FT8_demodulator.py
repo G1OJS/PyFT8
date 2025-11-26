@@ -36,10 +36,11 @@ Log to PyFT8.log: 12:19:29.74 (+0.94) Start to Show candidates
 import math
 import numpy as np
 from PyFT8.signaldefs import FT8
-from PyFT8.rx.decode174_91_v5_1 import LDPC174_91
+from PyFT8.rx.decode174_91_v5_2 import LDPC174_91
 import PyFT8.FT8_crc as crc
 import PyFT8.timers as timers
 from PyFT8.comms_hub import config, send_to_ui_ws
+import threading
 
 eps = 1e-12
 
@@ -65,6 +66,7 @@ class Spectrum:
         self.hops_percycle = int(demodspec.sample_rate * self.sigspec.cycle_seconds / demodspec.samples_perhop)
         self.fine_grid_complex = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.complex64)
         self.FFT_start_sample_idx = 0
+        self.grid_lock = threading.Lock()
         self.searched = False
         self.candidate_size = (self.sigspec.num_symbols * demodspec.hops_persymb,
                                self.sigspec.tones_persymb * demodspec.fbins_pertone)
@@ -101,8 +103,9 @@ class Candidate:
 
     @property
     def fine_grid_complex(self):
-        c = self
-        return self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]].copy()
+        with self.spectrum.grid_lock:
+            c = self
+            return self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]].copy()
 
 class FT8Demodulator:
     def __init__(self, max_iters, max_stall, max_ncheck, min_sd, sync_score_thresh):
@@ -131,7 +134,8 @@ class FT8Demodulator:
             c.fine_grid_pwr = c.fine_grid_pwr / c.max_pwr
             best = (0, -1e30)
             for h0 in self.sync_range:
-                test = (h0, np.sum(c.fine_grid_pwr[h0 + spectrum.hop_idxs_Costas] * spectrum._csync)) 
+              #  test = (h0, np.sum(c.fine_grid_pwr[h0 + spectrum.hop_idxs_Costas] * spectrum._csync))
+                test = (h0, float(np.dot( c.fine_grid_pwr[h0 + spectrum.hop_idxs_Costas].ravel(), spectrum._csync.ravel())))
                 if test[1] > best[1]:
                     best = test
             c.score = best[1]
@@ -144,6 +148,7 @@ class FT8Demodulator:
                 onCandidate_found(c)
      
     def demodulate_candidate(self, candidate, onResult):
+        
         c = candidate
         t_start_decode = timers.tnow()
         tmp = c.fine_grid_complex.reshape(self.sigspec.num_symbols, self.hops_persymb, self.sigspec.tones_persymb, self.fbins_pertone)
@@ -168,11 +173,12 @@ class FT8Demodulator:
         for i in range(len(llr_all)):
             if(int(i/3) in FT8.payload_symb_idxs):
                 c.llr.extend([llr_all[i]])
-
+        import hashlib
         c.llr = c.llr - np.mean(c.llr)
         c.llr_sd = np.std(c.llr)
         if(c.llr_sd > self.min_sd):
             c.llr = 3 * c.llr / (c.llr_sd+.001)
+            c.llr_hash = hashlib.md5(c.llr.tobytes()).hexdigest()
             c.payload_bits, c.n_its = self.ldpc.decode(c.llr)
             if(c.payload_bits):
                 decode = FT8_unpack(c)

@@ -66,9 +66,10 @@ class Cycle_manager():
         self.live = False
         while sample_idx < len(audio_in) - self.spectrum.FFT_len:
             timers.sleep(0.01)
-            self.spectrum.audio_in.extend(audio_in[sample_idx:sample_idx + self.spectrum.FFT_len])
-            self.do_FFT(self.spectrum)
-            sample_idx += self.demod.samples_perhop
+            with self.spectrum.grid_lock:
+                self.spectrum.audio_in.extend(audio_in[sample_idx:sample_idx + self.spectrum.FFT_len])
+                self.do_FFT(self.spectrum)
+                sample_idx += self.demod.samples_perhop
         self.audio_loaded_at = timers.tnow()
         timers.timedLog(f"[bulk_load_audio] Loaded {self.spectrum.nHops_loaded} hops ({self.spectrum.nHops_loaded/(self.demod.sigspec.symbols_persec * self.demod.hops_persymb):.2f}s)", logfile = 'decodes.log', )
 
@@ -97,8 +98,9 @@ class Cycle_manager():
             self.last_cycle_time = cycle_time
             # send audio for FFT
             audio_samples = np.frombuffer(self.audio_queue.get(), dtype=np.int16)
-            self.spectrum.audio_in.extend(audio_samples)
-            self.do_FFT(self.spectrum)
+            with self.spectrum.grid_lock:
+                self.spectrum.audio_in.extend(audio_samples)
+                self.do_FFT(self.spectrum)
 
     def do_FFT(self, spectrum):
         FFT_start_sample_idx = int(len(self.spectrum.audio_in) - self.spectrum.FFT_len)
