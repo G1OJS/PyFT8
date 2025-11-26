@@ -96,13 +96,15 @@ class Candidate:
         self.payload_bits = []
         self.decode_dict = None
         self.sent_for_decode = False
+        self.grid_is_full = False
+        self.grid_filled_at = 1e9
         self.decoded = False
         self.time_in_decode = None
         self.decode_dict = False
         self.n_its = -1
 
-    @property
-    def fine_grid_complex(self):
+    @property # note this is not cached and is called twice, however the .copy()
+    def fine_grid_complex(self): # ensures that the data persists once the spectrum is deleted
         with self.spectrum.grid_lock:
             c = self
             return self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]].copy()
@@ -134,7 +136,6 @@ class FT8Demodulator:
             c.fine_grid_pwr = c.fine_grid_pwr / c.max_pwr
             best = (0, -1e30)
             for h0 in self.sync_range:
-              #  test = (h0, np.sum(c.fine_grid_pwr[h0 + spectrum.hop_idxs_Costas] * spectrum._csync))
                 test = (h0, float(np.dot( c.fine_grid_pwr[h0 + spectrum.hop_idxs_Costas].ravel(), spectrum._csync.ravel())))
                 if test[1] > best[1]:
                     best = test
@@ -151,7 +152,7 @@ class FT8Demodulator:
         
         c = candidate
         t_start_decode = timers.tnow()
-        tmp = c.fine_grid_complex.reshape(self.sigspec.num_symbols, self.hops_persymb, self.sigspec.tones_persymb, self.fbins_pertone)
+        tmp = c.fine_grid_complex_full.reshape(self.sigspec.num_symbols, self.hops_persymb, self.sigspec.tones_persymb, self.fbins_pertone)
         tmp = tmp[:,0,:,:] 
         tmp = np.abs(tmp)**2
         c.synced_pwr = np.max(tmp)

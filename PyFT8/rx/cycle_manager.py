@@ -11,7 +11,7 @@ class Cycle_manager():
     def __init__(self, onDecode, onOccupancy, audio_in = [], verbose = True,
                  max_iters = 90, max_stall = 8, max_ncheck = 30,
                  sync_score_thresh = 3, min_sd = 2,
-                 max_parallel_decodes = 20, max_candidate_lifetime = 10):
+                 max_parallel_decodes = 20, max_candidate_lifetime = 5):
         self.max_parallel_decodes = max_parallel_decodes
         self.verbose = verbose
         self.live = True
@@ -120,12 +120,11 @@ class Cycle_manager():
                     if (self.onOccupancy):
                         self._make_occupancy_array(self.spectrum)
                     
-            if (self.spectrum.nHops_loaded > self.spectrum.start_decoding_after_hop):  # should this run continuously? 
-
+            if (True or self.spectrum.nHops_loaded > self.spectrum.start_decoding_after_hop):  # should this run continuously? 
                 t = timers.tnow()
                 with self.cand_lock:
                     stale = [c for c in self.cands_to_decode
-                             if (not c.sent_for_decode and (t - c.created_at) > self.max_candidate_lifetime)]
+                             if (not c.sent_for_decode and (t - c.grid_filled_at) < self.max_candidate_lifetime)]
                     stale.sort(key=lambda c: c.score + 100*(np.abs(c.origin_physical[1]-config.rxfreq)<2))
                     max_sync_score_pruned = np.max([c.score for c in stale]) if stale else 0
                     for c in stale:
@@ -133,22 +132,31 @@ class Cycle_manager():
                 if stale:
                     if(self.verbose):
                         timers.timedLog(f"[prune] removed {len(stale)} stale candidates with max sync score {max_sync_score_pruned:5.1f}")
-
                 with self.cand_lock:  
                     self.cands_to_decode.sort(key=lambda c: -c.score - 100*(np.abs(c.origin_physical[1]-config.rxfreq)<2))
                     send_for_decode = [c for c in self.cands_to_decode 
-                                       if (not c.sent_for_decode and self.spectrum.nHops_loaded > c.last_data_hop)] 
+                                       if (not c.sent_for_decode
+                                           and (self.spectrum.nHops_loaded > c.last_data_hop or c.grid_is_full) )]
+
+                with self.cand_lock:
                     for c in send_for_decode:
-                        if self.decode_load >= self.max_parallel_decodes:
-                            break
-                        self.decode_load +=1
+                        if(not c.grid_is_full):
+                            c.fine_grid_complex_full = c.fine_grid_complex
+                            c.grid_is_full = True
+                            c.grid_filled_at = timers.tnow()
+
+                for c in send_for_decode:
+                    if self.decode_load >= self.max_parallel_decodes:
+                        break
+                    self.decode_load +=1
+                    with self.cand_lock:
                         c.sent_for_decode = True
-                        self.decode_queue.put(c)
+                    self.decode_queue.put(c)
 
             n_cands = len(self.cands_to_decode)
             loading_info = {'n_candidates':n_cands, 'parallel_decodes':self.decode_load}
             send_to_ui_ws("decode_queue", loading_info)    
-            timers.sleep(0.25)
+            timers.sleep(0.1)
 
     def onCandidate_found(self, c):
         with self.cand_lock:  

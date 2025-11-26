@@ -82,7 +82,7 @@
 			let cs = dd.cyclestart_str;
 			if (cs.charAt(cs.length-1) == '5'){row.classList.add('odd')} else {row.classList.add('even')}
 			const snr_fmt = (parseInt(dd.snr)<0? "":"+") + dd.snr
-			const fields = [dd.cyclestart_str.split('_')[1], dd.cyc_sec, snr_fmt, dd.freq, dd.dt, dd.call_a, dd.call_b, dd.grid_rpt,''];
+			const fields = [dd.cyclestart_str.split('_')[1], dd.decode_delay, snr_fmt, dd.freq, dd.dt, dd.call_a, dd.call_b, dd.grid_rpt,''];
 			fields.forEach((field, idx) => {
 				const cell_div = document.createElement("div");
 				cell_div.textContent = field;
@@ -114,11 +114,14 @@
 				document.getElementById('n_candidates').innerText = dd.n_candidates
 			}
 			if(dd.topic == 'decode_dict')		{
-				const t = new Date / 1000;
-				let cyc_sec = (t %15); 
-				if(cyc_sec>7) {cyc_sec -=15}
-				cyc_sec = cyc_sec.toFixed(2);
-				dd.cyc_sec = cyc_sec;
+				const mn = new Date;
+				mn.setHours(0, 0, 0, 0)
+				const tnow = new Date;
+				const t = (tnow - mn)
+				let hms = dd.cyclestart_str.split('_')[1]
+				let t_cycle = parseInt(hms.slice(0,2))*60*60 + parseInt(hms.slice(2,4))*60 + parseInt(hms.slice(4,6))
+				let decode_delay = t - 1000*t_cycle - 15000
+				dd.decode_delay = Math.round(decode_delay/10)/100 ;
 				if (dd.source == 'WSJTX') {
 					new_row = add_decode_row(dd, 'wsjtx_decodes');
 					n_wsjtx_decodes.innerText = 1+parseInt(n_wsjtx_decodes.innerText)
