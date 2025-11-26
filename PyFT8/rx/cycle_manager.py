@@ -10,11 +10,12 @@ import queue
 class Cycle_manager():
     def __init__(self, onDecode, onOccupancy, audio_in = [], verbose = True,
                  max_iters = 90, max_stall = 8, max_ncheck = 40,
-                 sync_score_thresh = 3, min_sd = 2):
-        self.max_parallel_decodes = 20
+                 sync_score_thresh = 3, min_sd = 2,
+                 max_parallel_decodes = 20, max_candidate_lifetime = 10):
+        self.max_parallel_decodes = max_parallel_decodes
         self.verbose = verbose
         self.cand_lock = threading.Lock()
-        self.max_lifetime = 10
+        self.max_candidate_lifetime = max_candidate_lifetime
         self.last_cycle_time = 16
         self.peak_cands = 0
         self.demod = FT8Demodulator(max_iters, max_stall, max_ncheck, min_sd, sync_score_thresh)
@@ -120,14 +121,13 @@ class Cycle_manager():
                 t = timers.tnow()
                 with self.cand_lock:
                     stale = [c for c in self.cands_to_decode
-                             if (not c.sent_for_decode and (t - c.created_at) > self.max_lifetime)]
+                             if (not c.sent_for_decode and (t - c.created_at) > self.max_candidate_lifetime)]
                     stale.sort(key=lambda c: c.score + 100*(np.abs(c.origin_physical[1]-config.rxfreq)<2))
+                    max_sync_score_pruned = np.max([c.score for c in stale]) if stale else 0
                     for c in stale:
-                        if(c.sent_for_decode):
-                            self.decode_load -=1
                         self.cands_to_decode.remove(c)
                 if stale:
-                    if(self.verbose): timers.timedLog(f"[prune] removed {len(stale)} stale candidates")
+                    if(self.verbose): timers.timedLog(f"[prune] removed {len(stale)} stale candidates with max sync score {max_sync_score_pruned:5.1f}")
 
                 with self.cand_lock:  
                     self.cands_to_decode.sort(key=lambda c: -c.score - 100*(np.abs(c.origin_physical[1]-config.rxfreq)<2))
