@@ -78,7 +78,10 @@ class Spectrum:
         self.start_decoding_after_hop = (self.sigspec.num_symbols - self.sigspec.costas_len) * demodspec.hops_persymb 
 
 class Candidate:
+    next_id = 0
     def __init__(self, spectrum, sigspec):
+        self.id = Candidate.next_id
+        Candidate.next_id +=1
         self.size = spectrum.candidate_size
         self.spectrum = spectrum
         self.cycle_epoch = spectrum.cycle_epoch

@@ -48,8 +48,8 @@ def add_band_buttons():
 def run():
     start_wsjtx_tailer(on_wsjtx_decode)
     cycle_manager = Cycle_manager(None if config.decoder == 'wsjtx' else onDecode,
-                              onOccupancy = None, prioritise_rxfreq = False,
-                              verbose = True, sync_score_thresh = 4, min_sd = 2.5)
+                              onOccupancy = None, verbose = True,
+                              sync_score_thresh = 1.5, min_sd = 1)
     start_UI("PyFT8_live_compare.html", process_UI_event)
     add_band_buttons()
 

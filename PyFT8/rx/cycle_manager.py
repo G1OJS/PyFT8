@@ -11,6 +11,7 @@ class Cycle_manager():
     def __init__(self, onDecode, onOccupancy, audio_in = [], verbose = True,
                  max_iters = 90, max_stall = 8, max_ncheck = 40,
                  sync_score_thresh = 3, min_sd = 2):
+        self.max_parallel_decodes = 20
         self.verbose = verbose
         self.cand_lock = threading.Lock()
         self.max_lifetime = 10
@@ -44,7 +45,7 @@ class Cycle_manager():
             t.start()
             self.decode_workers.append(t)
         with open('success_fail_metrics.log', 'w') as f:
-            f.write("timestamp peak_cands decoded score llr_sd snr n_its time_in_decode\n")
+            f.write("timestamp   id   decoded   score   llr_sd   snr   n_its   time_in_decode\n")
 
     def decode_worker(self):
         """Worker thread: pull candidates off the queue and decode them."""
@@ -115,24 +116,29 @@ class Cycle_manager():
                         self._make_occupancy_array(self.spectrum)
                     
             if (self.spectrum.nHops_loaded > self.spectrum.start_decoding_after_hop):   
-                self.cands_to_decode.sort(key=lambda c: -c.score - 100*(np.abs(c.origin_physical[1]-config.rxfreq)<2))
 
                 t = timers.tnow()
                 with self.cand_lock:
                     stale = [c for c in self.cands_to_decode
                              if (not c.sent_for_decode and (t - c.created_at) > self.max_lifetime)]
+                    stale.sort(key=lambda c: c.score + 100*(np.abs(c.origin_physical[1]-config.rxfreq)<2))
                     for c in stale:
+                        if(c.sent_for_decode):
+                            self.decode_load -=1
                         self.cands_to_decode.remove(c)
                 if stale:
                     if(self.verbose): timers.timedLog(f"[prune] removed {len(stale)} stale candidates")
 
                 with self.cand_lock:  
+                    self.cands_to_decode.sort(key=lambda c: -c.score - 100*(np.abs(c.origin_physical[1]-config.rxfreq)<2))
                     send_for_decode = [c for c in self.cands_to_decode
                                        if (not c.sent_for_decode and self.spectrum.nHops_loaded > c.last_data_hop)]
-                for c in send_for_decode:
-                    c.sent_for_decode = True
-                    self.decode_load +=1
-                    self.decode_queue.put(c)
+                    for c in send_for_decode:
+                        if self.decode_load >= self.max_parallel_decodes:
+                            break
+                        self.decode_load +=1
+                        c.sent_for_decode = True
+                        self.decode_queue.put(c)
 
             n_cands = len(self.cands_to_decode)
             if(n_cands > self.peak_cands): self.peak_cands = n_cands
@@ -145,7 +151,7 @@ class Cycle_manager():
         
     def onResult(self,c):
         if(self.verbose): 
-            metrics = f"{self.peak_cands} {c.decoded:>7} {c.score:7.2f} {c.llr_sd:7.2f} {c.snr:7.1f} {c.n_its:7.1f} {c.time_in_decode:7.3f}"
+            metrics = f"{c.id} {c.decoded:>7} {c.score:7.2f} {c.llr_sd:7.2f} {c.snr:7.1f} {c.n_its:7.1f} {c.time_in_decode:7.3f}"
             timers.timedLog(metrics, logfile='success_fail_metrics.log', silent = True)
         c_decoded = c if(c.decode_dict) else None
         self.cands_to_decode.remove(c)
