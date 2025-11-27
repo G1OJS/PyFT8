@@ -95,10 +95,13 @@ class Candidate:
         self.llr_std = None
         self.payload_bits = []
         self.decode_dict = None
+        self.good_llr_sd = False
         self.sent_for_decode = False
         self.grid_is_full = False
         self.grid_filled_at = 1e9
+        self.demapped = False
         self.decoded = False
+        self.timedout = False
         self.time_in_decode = None
         self.decode_dict = False
         self.n_its = -1
@@ -110,7 +113,7 @@ class Candidate:
             return self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]].copy()
 
 class FT8Demodulator:
-    def __init__(self, max_iters, max_stall, max_ncheck, min_sd, sync_score_thresh):
+    def __init__(self, max_iters, max_stall, max_ncheck, sync_score_thresh, min_sd):
         self.sigspec = FT8
         self.sample_rate=12000
         self.fbins_pertone=3
@@ -148,10 +151,9 @@ class FT8Demodulator:
                 c.info = f"{c.cyclestart_str} {c.origin} {c.score:5.2f}"
                 onCandidate_found(c)
      
-    def demodulate_candidate(self, candidate, onResult):
-        
+    def demap_candidate(self, candidate):
         c = candidate
-        t_start_decode = timers.tnow()
+        t_start_demap = timers.tnow()
         tmp = c.fine_grid_complex_full.reshape(self.sigspec.num_symbols, self.hops_persymb, self.sigspec.tones_persymb, self.fbins_pertone)
         tmp = tmp[:,0,:,:] 
         tmp = np.abs(tmp)**2
@@ -177,26 +179,32 @@ class FT8Demodulator:
         import hashlib
         c.llr = c.llr - np.mean(c.llr)
         c.llr_sd = np.std(c.llr)
+        c.llr_hash = hashlib.md5(c.llr.tobytes()).hexdigest()
+        c.time_in_demap = timers.tnow() - t_start_demap
         if(c.llr_sd > self.min_sd):
-            c.llr = 3 * c.llr / (c.llr_sd+.001)
-            c.llr_hash = hashlib.md5(c.llr.tobytes()).hexdigest()
-            c.payload_bits, c.n_its = self.ldpc.decode(c.llr)
-            if(c.payload_bits):
-                decode = FT8_unpack(c)
-                if(decode):
-                    decode_dict = decode['decode_dict']
-                    key = f"{decode_dict['call_a']} {decode_dict['call_b']} {decode_dict['grid_rpt']}"
-                    if(not key in c.spectrum.duplicate_filter):
-                        c.spectrum.duplicate_filter.add(key)
-                        dt = c.origin_physical[0] + c.spectrum.audio_start - 0.3 -0.5
-                        if(dt>self.sigspec.cycle_seconds//2): dt -=self.sigspec.cycle_seconds
-                        dt = f"{dt:4.1f}"
-                        decode_dict.update({'dt': dt})
-                        c.message = key
-                        c.decoded = True
-                        c.decode_dict = decode_dict
+            c.good_llr_sd = True
+
+    def demodulate_candidate(self, candidate, onDecodeResult):
+        c = candidate
+        t_start_decode = timers.tnow()
+        c.llr = 3 * c.llr / (c.llr_sd+.001)
+        c.payload_bits, c.n_its, c.nstall, c.ncheck_last, c.timedout = self.ldpc.decode(c.llr, c.expiry_time)
+        if(c.payload_bits):
+            decode = FT8_unpack(c)
+            if(decode):
+                decode_dict = decode['decode_dict']
+                key = f"{decode_dict['call_a']} {decode_dict['call_b']} {decode_dict['grid_rpt']}"
+                if(not key in c.spectrum.duplicate_filter):
+                    c.spectrum.duplicate_filter.add(key)
+                    dt = c.origin_physical[0] + c.spectrum.audio_start - 0.3 -0.5
+                    if(dt>self.sigspec.cycle_seconds//2): dt -=self.sigspec.cycle_seconds
+                    dt = f"{dt:4.1f}"
+                    decode_dict.update({'dt': dt})
+                    c.message = key
+                    c.decoded = True
+                    c.decode_dict = decode_dict
         c.time_in_decode = timers.tnow() - t_start_decode
-        onResult(c)
+        onDecodeResult(c)
     
 # ======================================================
 # FT8 Unpacking functions

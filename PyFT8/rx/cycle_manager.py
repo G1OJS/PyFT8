@@ -10,14 +10,15 @@ import queue
 class Cycle_manager():
     def __init__(self, onDecode, onOccupancy, audio_in = [], verbose = True,
                  max_iters = 90, max_stall = 8, max_ncheck = 30,
-                 sync_score_thresh = 3, min_sd = 2,
+                 sync_score_thresh = 3, min_sd = 2, max_delay = 3,
                  max_parallel_decodes = 20):
         self.max_parallel_decodes = max_parallel_decodes
         self.verbose = verbose
+        self.max_delay = max_delay
         self.live = True
         self.cand_lock = threading.Lock()
         self.last_cycle_time = 1e9
-        self.demod = FT8Demodulator(max_iters, max_stall, max_ncheck, min_sd, sync_score_thresh)
+        self.demod = FT8Demodulator(max_iters, max_stall, max_ncheck, sync_score_thresh, min_sd)
         self.running = True
         self.spectrum = Spectrum(self.demod)
         self.spectrum.nHops_loaded = 0
@@ -25,7 +26,8 @@ class Cycle_manager():
         self.time_window = np.kaiser(self.spectrum.FFT_len, 20)
         self.onDecode = onDecode
         self.onOccupancy = onOccupancy
-        self.cands_to_decode = []
+        self.candidate_list = []
+        self.n_decodes = 0
         self.input_device_idx = audio._find_device(config.soundcards['input_device'])   
         self.audio_queue = queue.Queue(maxsize=50)
         # audio_in is e.g. from wav file for testing, otherwise start monitoring sound card
@@ -53,7 +55,7 @@ class Cycle_manager():
         while self.running:
             c = self.decode_queue.get()   # waits for a job
             try:
-                self.demod.demodulate_candidate(c, self.onResult)
+                self.demod.demodulate_candidate(c, self.onDecodeResult)
             except Exception as e:
                 print("Decode worker error:", e)
             finally:
@@ -110,55 +112,65 @@ class Cycle_manager():
         self.spectrum.nHops_loaded +=1
 
     def threaded_decoding_manager(self):
+        
         while self.running:
+            ready_for_demap = []
             
             if (self.spectrum.nHops_loaded > self.spectrum.candidate_search_after_hop and not self.spectrum.searched):
                 self.spectrum.searched = True
                 self.demod.find_candidates(self.spectrum, self.onCandidate_found)
                 if (self.onOccupancy):
                     self._make_occupancy_array(self.spectrum)
+
+            if (self.spectrum.nHops_loaded > self.spectrum.start_decoding_after_hop):
+                with self.cand_lock:
+                    ready_for_demap = [c for c in self.candidate_list
+                                if self.spectrum.nHops_loaded > c.last_data_hop and not c.demapped]
                     
-            with self.cand_lock:  
-                self.cands_to_decode.sort(key=lambda c: -c.score - 100*(np.abs(c.origin_physical[1]-config.rxfreq)<2))
-                send_for_decode = [c for c in self.cands_to_decode 
-                                   if (not c.sent_for_decode
-                                       and (self.spectrum.nHops_loaded > c.last_data_hop or c.grid_is_full) )]
+            for c in ready_for_demap:
+                c.frozen_at_hop = self.spectrum.nHops_loaded            
+                c.fine_grid_complex_full = c.fine_grid_complex # ensure c has a copy of spectrum
+                self.demod.demap_candidate(c)
+                c.demapped = True
 
             with self.cand_lock:
-                for c in send_for_decode:
-                    if(not c.grid_is_full):
-                        c.fine_grid_complex_full = c.fine_grid_complex
-                        c.grid_is_full = True
-                        c.grid_filled_at = timers.tnow()
+                self.candidate_list =   [c for c in self.candidate_list
+                                            if (c.good_llr_sd or not c.demapped)]
+                ready_for_decode =      [c for c in self.candidate_list
+                                            if timers.tnow() < c.expiry_time
+                                            and c.good_llr_sd
+                                            and not c.sent_for_decode]
+                
+                ready_for_decode.sort(key=lambda c: -c.llr_sd - 100*(np.abs(c.origin_physical[1]-config.rxfreq)<2))
+                for c in ready_for_decode:
+                    if(self.decode_load < self.max_parallel_decodes):
+                        self.decode_load +=1
+                        c.sent_for_decode = True
+                        self.decode_queue.put(c)
 
-            for c in send_for_decode:
-                if self.decode_load >= self.max_parallel_decodes:
-                    break
-                self.decode_load +=1
-                with self.cand_lock:
-                    c.sent_for_decode = True
-                self.decode_queue.put(c)
-
-            n_cands = len(self.cands_to_decode)
-            loading_info = {'n_candidates':n_cands, 'parallel_decodes':self.decode_load}
-            send_to_ui_ws("decode_queue", loading_info)    
-            timers.sleep(0.1)
+            loading_info = {'n_candidates':len(self.candidate_list),
+                            'parallel_decodes':self.decode_load}
+            send_to_ui_ws("decode_queue", loading_info)             
+            timers.sleep(0.25)
 
     def onCandidate_found(self, c):
         with self.cand_lock:  
             c.created_at = timers.tnow()
-            c.frozen_at_hop = self.spectrum.nHops_loaded
-            _ = c.fine_grid_complex # ensure c has a copy of spectrum
-            self.cands_to_decode.append(c)
-        
-    def onResult(self,c):
+            c.expiry_time = 15*int(c.created_at/15) + 15 + self.max_delay
+            self.candidate_list.append(c)
+            
+    def onDecodeResult(self,c):
         with self.cand_lock: 
             if(self.verbose): 
                 metrics = f"{c.id} {c.decoded:>7} {c.score:7.2f} {c.llr_sd:7.2f} {c.snr:7.1f} {c.n_its:7.1f} {c.time_in_decode:7.3f}"
                 timers.timedLog(metrics, logfile='success_fail_metrics.log', silent = True)
-            self.cands_to_decode.remove(c)
+            if c in self.candidate_list:
+                self.candidate_list.remove(c)
             self.decode_load -=1
+            if(timers.tnow() > c.expiry_time):
+                timers.timedLog(f"Expired candidate {c.id} returned by ldpc ({timers.tnow()} > {c.expiry_time})" , logfile='success_fail_metrics.log', silent = True)                
         if(c.decoded):
+            self.n_decodes +=1
             self.onDecode(c)
  
     def _make_occupancy_array(self, spectrum, f0=0, f1=3500, bin_hz=10):
