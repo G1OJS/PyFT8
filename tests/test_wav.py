@@ -48,6 +48,7 @@ def non_threaded_decode(audio_in):
     demod.find_candidates(demod.spectrum, onCandidate_found)
     for c in cands_to_decode:
         c.fine_grid_complex_full = c.fine_grid_complex
+        demod.demap_candidate(c)
         demod.demodulate_candidate(c, onResult)
 
 #============================================
@@ -55,26 +56,17 @@ def non_threaded_decode(audio_in):
 #============================================
 
 
-def threaded_decode():
+def threaded_decode(audio_in):
     from PyFT8.rx.cycle_manager import Cycle_manager
     global audio_loaded_at
     cycle_manager = Cycle_manager(onDecode, onOccupancy = None, verbose = True, audio_in = audio_in, 
                               sync_score_thresh = 1.5, min_sd = .5,
-                              max_iters = 30, max_stall = 8, max_ncheck = 30,
+                              max_iters = 30, max_stall = 8, max_ncheck = 30, max_delay = 3,
                               max_parallel_decodes = 10)
-    pending = 0
-    while pending == 0:
-        with cycle_manager.cand_lock:
-            pending = len(cycle_manager.cands_to_decode)
+
+    while len(cycle_manager.candidate_list) == 0:
         timers.sleep(0.1)
-    audio_loaded_at = cycle_manager.audio_loaded_at
-    while True:
-        with cycle_manager.cand_lock:
-            pending = len(cycle_manager.cands_to_decode)
-            running = cycle_manager.decode_load
-        queued = cycle_manager.decode_queue.qsize()
-        if pending == 0 and running == 0 and queued == 0:
-            break
+    while len(cycle_manager.candidate_list) > 0:
         timers.sleep(0.1)
     cycle_manager.running = False
 
@@ -90,12 +82,13 @@ wav_file = "210703_133430.wav"
 
 timers.timedLog(f"Loading audio from {wav_file}")
 audio_in = audio.read_wav_file(wav_file)
+audio_loaded_at = timers.tnow()
 heads = ['Tload+', 'Rx call', 'Tx call', 'GrRp', 'Frozen at hop', 'SyncScr', 'LLR_sd', 'snr', 't0', 'f0', 'iters', 'llr_hash']
 print(''.join([f"{t:>8} " for t in heads]))
 
 #non_threaded_decode(audio_in)
 
-threaded_decode()
+threaded_decode(audio_in)
 
 print(f"DONE. Unique decodes = {len(decoded_candidates)}")
 

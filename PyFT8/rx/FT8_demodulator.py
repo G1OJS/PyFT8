@@ -99,6 +99,7 @@ class Candidate:
         self.sent_for_decode = False
         self.grid_is_full = False
         self.grid_filled_at = 1e9
+        self.expiry_time = 1e40
         self.demapped = False
         self.decoded = False
         self.timedout = False
