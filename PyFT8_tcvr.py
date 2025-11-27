@@ -214,7 +214,9 @@ def add_band_buttons():
 
 def run():        
     cycle_manager = Cycle_manager(None if config.decoder == 'wsjtx' else onDecode, onOccupancy, 
-                                  sync_score_thresh = 3, min_sd = 2)
+                              max_iters = 60, max_stall = 8, max_ncheck = 35,
+                              sync_score_thresh = 2.0, min_sd = 1.7, max_delay = 2,
+                              max_parallel_decodes = 100)
     if(config.decoder == 'wsjtx') : start_wsjtx_tailer(onDecode)
     start_UI("PyFT8_tcvr_UI.html", process_UI_event)
     add_band_buttons()
