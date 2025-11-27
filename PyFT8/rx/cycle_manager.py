@@ -47,8 +47,10 @@ class Cycle_manager():
             t = threading.Thread(target=self.decode_worker, daemon=True)
             t.start()
             self.decode_workers.append(t)
-        with open('success_fail_metrics.log', 'w') as f:
+        with open('success_fail_metrics.csv', 'w') as f:
             f.write("timestamp   id   decoded   score   llr_sd   snr   n_its   time_in_decode\n")
+        with open('success_fail_counts.csv', 'w') as f:
+            f.write("timestamp,   	  n_cands, to_demap, low_sd, too_late, to_dc,  in_dc, dc_t/o,  dc_fail, dc_succ\n")
 
     def decode_worker(self):
         """Worker thread: pull candidates off the queue and decode them."""
@@ -133,21 +135,44 @@ class Cycle_manager():
                 self.demod.demap_candidate(c)
                 c.demapped = True
 
+            t = timers.tnow()
             with self.cand_lock:
                 self.candidate_list =   [c for c in self.candidate_list
                                             if (c.good_llr_sd or not c.demapped)]
+                too_late_for_decode  = [c for c in self.candidate_list
+                                            if t > c.expiry_time]
                 ready_for_decode =      [c for c in self.candidate_list
-                                            if timers.tnow() < c.expiry_time
+                                            if t <= c.expiry_time
                                             and c.good_llr_sd
                                             and not c.sent_for_decode]
+                self.candidate_list =   [c for c in self.candidate_list
+                                            if not c.sent_for_decode and not (t > c.expiry_time)]
                 
-                ready_for_decode.sort(key=lambda c: -c.llr_sd - 100*(np.abs(c.origin_physical[1]-config.rxfreq)<2))
-                for c in ready_for_decode:
-                    if(self.decode_load < self.max_parallel_decodes):
-                        self.decode_load +=1
-                        c.sent_for_decode = True
-                        self.decode_queue.put(c)
+            ready_for_decode.sort(key=lambda c: -c.llr_sd - 100*(np.abs(c.origin_physical[1]-config.rxfreq)<2))
+            for c in ready_for_decode:
+                if(self.decode_load < self.max_parallel_decodes):
+                    self.decode_load +=1
+                    c.sent_for_decode = True
+                    self.decode_queue.put(c)
 
+            stats = False
+            with self.cand_lock:
+                for c in self.candidate_list:
+                    stats = True
+                    n_cands = len(self.candidate_list)
+                    pending_demap = [c for c in self.candidate_list if not c.demapped]
+                    rejected_low_sd =[c for c in self.candidate_list if c.demapped and not c.good_llr_sd]
+                    pending_decode = [c for c in self.candidate_list if c.demapped and c.good_llr_sd and not c.sent_for_decode]
+                    decoding =[c for c in self.candidate_list if c.sent_for_decode and not c.decode_tried]
+                    decode_tried_failed_timeout = [c for c in self.candidate_list if c.timedout]
+                    decode_tried_failed_not_timeout =[c for c in self.candidate_list if c.sent_for_decode and not c.decoded and not c.timedout]
+                    decode_tried_succeded = [c for c in self.candidate_list if c.decoded]
+
+            if(stats):
+                counts = [n_cands, len(pending_demap), len(rejected_low_sd), len(too_late_for_decode), len(pending_decode), len(decoding),
+                            len(decode_tried_failed_timeout), len(decode_tried_failed_not_timeout), len(decode_tried_succeded)]
+                timers.timedLog(', ' + ', '.join([f"{v:>6}" for v in counts]), logfile='success_fail_counts.csv', silent = True)
+                    
             loading_info = {'n_candidates':len(self.candidate_list),
                             'parallel_decodes':self.decode_load}
             send_to_ui_ws("decode_queue", loading_info)             
@@ -160,15 +185,12 @@ class Cycle_manager():
             self.candidate_list.append(c)
             
     def onDecodeResult(self,c):
-        with self.cand_lock: 
+        self.decode_load -=1
+        with self.cand_lock:
+            c.decode_tried = True
             if(self.verbose): 
                 metrics = f"{c.id} {c.decoded:>7} {c.score:7.2f} {c.llr_sd:7.2f} {c.snr:7.1f} {c.n_its:7.1f} {c.time_in_decode:7.3f}"
-                timers.timedLog(metrics, logfile='success_fail_metrics.log', silent = True)
-            if c in self.candidate_list:
-                self.candidate_list.remove(c)
-            self.decode_load -=1
-            if(timers.tnow() > c.expiry_time):
-                timers.timedLog(f"Expired candidate {c.id} returned by ldpc ({timers.tnow()} > {c.expiry_time})" , logfile='success_fail_metrics.log', silent = True)                
+                timers.timedLog(metrics, logfile='success_fail_metrics.csv', silent = True)
         if(c.decoded):
             self.n_decodes +=1
             self.onDecode(c)

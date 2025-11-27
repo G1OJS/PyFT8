@@ -103,6 +103,7 @@ class Candidate:
         self.demapped = False
         self.decoded = False
         self.timedout = False
+        self.decode_tried = False
         self.time_in_decode = None
         self.decode_dict = False
         self.n_its = -1

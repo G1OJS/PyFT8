@@ -5,7 +5,9 @@ import pandas as pd
 # --------------------------------------------------
 # LOAD DATA
 # --------------------------------------------------
-df = pd.read_csv('../success_fail_metrics.log', sep=r"\s+", header=0)
+
+
+df = pd.read_csv('../success_fail_metrics_long_1.csv', sep=r"\s+", header=0)
 
 df['decoded'] = df['decoded'].astype(int)
 df['score']   = df['score'].astype(float)
