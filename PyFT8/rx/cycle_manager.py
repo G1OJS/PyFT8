@@ -28,16 +28,15 @@ class Cycle_manager():
         self.onOccupancy = onOccupancy
         self.cands_list = []
         self.input_device_idx = audio._find_device(config.soundcards['input_device'])   
-        self.audio_queue = queue.Queue(maxsize=50)
+        self.audio_queue = queue.Queue(maxsize=200)
+        
         # audio_in is e.g. from wav file for testing, otherwise start monitoring sound card
         if(any(audio_in)):
+            self.live = False
             self.find_candidates_from_audio_in(audio_in)
         else:
-            cs = self.demod.sigspec.cycle_seconds 
-            while int(timers.tnow()) % cs < (cs-1):
-                timers.sleep(0.05)
             threading.Thread(target=self.threaded_audio_reader, daemon=True).start()
-           # threading.Thread(target=self.threaded_spectrum_filler, daemon=True).start()
+            threading.Thread(target=self.threaded_spectrum_filler, daemon=True).start()
         threading.Thread(target=self.threaded_decoding_manager, daemon=True).start()
         self.decode_queue = queue.Queue()
         self.decode_workers = []
@@ -57,7 +56,7 @@ class Cycle_manager():
         self.live = False
         while sample_idx < len(audio_in) - self.spectrum.FFT_len:
             timers.sleep(0.01)
-            with self.spectrum.grid_lock:
+            with self.spectrum_lock:
                 self.spectrum.audio_in.extend(audio_in[sample_idx:sample_idx + self.spectrum.FFT_len])
                 self.do_FFT(self.spectrum)
                 sample_idx += self.demod.samples_perhop
@@ -73,38 +72,44 @@ class Cycle_manager():
                          input_device_index = self.input_device_idx,
                          frames_per_buffer=self.demod.samples_perhop,
                          stream_callback=None)
-        
         while self.running:
             data = stream.read(self.demod.samples_perhop, exception_on_overflow=False)
-            audio_samples = np.frombuffer(data, dtype=np.int16)
-            with self.spectrum.grid_lock:
-                self.spectrum.audio_in.extend(audio_samples)
+            self.audio_queue.put(data)
+        
+    def threaded_spectrum_filler(self):
+        self.spectrum = Spectrum(self.demod)
+        while self.running:
+            cycle_time = timers.tnow() % self.demod.sigspec.cycle_seconds 
+            if (self.live and cycle_time < self.last_cycle_time):
+                timers.timedLog(f"Cycle rollover {cycle_time:.2f}")
+                self.spectrum.reset()
+            self.last_cycle_time = cycle_time
+            audio_samples = np.frombuffer(self.audio_queue.get(), dtype=np.int16)
+            with self.spectrum_lock:
+                self.spectrum.audio_in.extend(audio_samples)    
                 self.do_FFT(self.spectrum)
 
     def do_FFT(self, spectrum):
-        l_aud = len(self.spectrum.audio_in)
-        if(l_aud > self.spectrum.FFT_len):
-            FFT_start_sample_idx = l_aud - self.spectrum.FFT_len
+        FFT_start_sample_idx = int(len(self.spectrum.audio_in) - self.spectrum.FFT_len)
+        if(FFT_start_sample_idx >0 and self.spectrum.nHops_loaded < self.spectrum.hops_percycle):
             aud = self.spectrum.audio_in[FFT_start_sample_idx:FFT_start_sample_idx + self.spectrum.FFT_len]
             aud *= self.time_window
             self.spectrum.fine_grid_complex[self.spectrum.nHops_loaded,:] = np.fft.rfft(aud)[:self.spectrum.nFreqs]
         self.spectrum.nHops_loaded +=1
-        
+
+    def fill_candidate(self, candidate):
+        c = candidate
+        origin = c.sync_result['origin']
+        with self.spectrum_lock:
+            c.synced_grid_complex = self.spectrum.fine_grid_complex[origin[0]:origin[0]+c.size[0], origin[1]:origin[1]+c.size[1]].copy()
 
     def threaded_decoding_manager(self):
         while self.running:
-            
-            cycle_time = timers.tnow() % self.demod.sigspec.cycle_seconds 
-            # cycle rollover
-            if (self.live and cycle_time < self.last_cycle_time):
-                timers.timedLog(f"Cycle rollover {cycle_time:.2f}")
-                with self.spectrum_lock:
-                    self.spectrum.searched = False
-                    self.spectrum.nHops_loaded = 0
-                    self.spectrum.audio_in = []
-                self.last_cycle_time = cycle_time
-                
+
             if (self.spectrum.nHops_loaded > self.spectrum.candidate_search_after_hop and not self.spectrum.searched):
+                timers.timedLog("Search spectrum ...")
+                with self.spectrum_lock:
+                    self.spectrum.sync_search_band = self.spectrum.fine_grid_complex[:self.spectrum.candidate_search_after_hop,:].copy()
                 self.demod.find_syncs(self.spectrum, self.sync_score_thresh, self.onFindSync)
                 timers.timedLog("Spectrum searched")
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy)
@@ -114,15 +119,13 @@ class Cycle_manager():
             if(self.spectrum.searched):
                 with self.cands_list_lock:
                     cands_synced = [c for c in self.cands_list if c.sync_result]
-                    
                 cands_to_demap = [c for c in cands_synced
                                   if self.spectrum.nHops_loaded > c.sync_result['last_data_hop']
-                                  and not c.demap_result]
+                                  and not c.demap_requested]
             
             for c in cands_to_demap:
-                self.demod.fill_candidate(self.spectrum, c)
-
-            for c in cands_to_demap:
+                c.demap_requested = True
+                self.fill_candidate(c)
                 self.demod.demap_candidate(self.spectrum, c)
                 if(c.demap_result['llr_sd'] < self.llr_sd_thresh):
                     with self.cands_list_lock:
@@ -133,9 +136,10 @@ class Cycle_manager():
                 
             cands_for_ldpc = [c for c in demapped
                               if c.demap_result['llr_sd'] > self.llr_sd_thresh
-                              and not c.ldpc_result]
+                              and not c.ldpc_requested]
             cands_for_ldpc.sort(key=lambda c: -c.demap_result['llr_sd'] - 100*(np.abs(c.sync_result['origin'][3]-config.rxfreq)<2))
             for c in cands_for_ldpc:
+                c.ldpc_requested = True
                 self.decode_queue.put(c)
 
             stats = {
@@ -161,20 +165,28 @@ class Cycle_manager():
         while self.running:
             c = self.decode_queue.get()
             try:
-                self.demod.decode_candidate(self.spectrum, c, self.onDecode)
+                self.demod.decode_candidate(c, self.onDecode)
             except Exception as e:
                 print("Decode worker error:", e)
             finally:
                 self.decode_queue.task_done()
             
     def onDecode(self, c):
+        with self.cands_list_lock:
+            self.cands_list.remove(c)
         decoded = not (c.decode_result == None)
         if(self.verbose):
             metrics = f"{c.id} {decoded:>7} {c.sync_result['sync_score']:7.2f} {c.demap_result['snr']:7.1f} {c.demap_result['llr_sd']:7.2f} {c.ldpc_result['n_its']:7.1f}"
             timers.timedLog(metrics, logfile='success_fail_metrics.csv', silent = True)
         if(decoded):
-            self.onSuccessfulDecode(c)
-       # else:
-           # with self.cands_list_lock:
-           #     self.cands_list.remove(c)
+            origin = c.sync_result['origin']
+            dt = origin[2] + self.spectrum.audio_start_offset - 0.3 -0.5
+            if(dt>self.sigspec.cycle_seconds//2): dt -=self.sigspec.cycle_seconds
+            dt = f"{dt:4.1f}"
+            c.decode_result.update({'dt': dt})
+            key = f"{c.decode_result['call_a']} {c.decode_result['call_b']} {c.decode_result['grid_rpt']}"
+            if(not key in self.spectrum.duplicate_filter):
+                self.spectrum.duplicate_filter.add(key)
+                self.onSuccessfulDecode(c)
+
  
