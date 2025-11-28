@@ -168,9 +168,23 @@ def onDecode(candidate):
     if (decode_dict['call_a'] == config.myCall and decode_dict['call_b'] == QSO.their_call):
         QSO.progress(decode_dict)
 
-def onOccupancy(occupancy, clear_freq):
+def onOccupancy(spectrum_occupancy):
     from PyFT8.comms_hub import config, send_to_ui_ws
     import PyFT8.timers as timers
+
+    f0=0, f1=3500, bin_hz=10
+    occupancy_fine = spectrum_occupancy/np.max(spectrum_occupancy)
+    n_out = int((f1-f0)/bin_hz)
+    occupancy = np.zeros(n_out)
+    for i in range(n_out):
+        occupancy[i] = occupancy_fine[int((f0+bin_hz*i)/spectrum.df)]
+    fs0, fs1 = 1000,1500
+    bin0 = int((fs0-f0)/bin_hz)
+    bin1 = int((fs1-f0)/bin_hz)
+    clear_freq = fs0 + bin_hz*np.argmin(occupancy[bin0:bin1])
+    occupancy = 10*np.log10(occupancy + 1e-12)
+    occupancy = 1 + np.clip(occupancy, -40, 0) / 40
+    
     config.update_clearest_txfreq(clear_freq)
     timers.timedLog(f"[onOccupancy] occupancy data received, set Tx to {config.txfreq}")
     send_to_ui_ws("freq_occ_array", {'histogram':occupancy.tolist()})
@@ -213,7 +227,7 @@ def add_band_buttons():
         send_to_ui_ws("add_band_button", {'band_name':band['band_name'], 'band_freq':band['band_freq']})
 
 def run():        
-    cycle_manager = Cycle_manager(None if config.decoder == 'wsjtx' else onDecode, onOccupancy, 
+    cycle_manager = Cycle_manager(None if config.decoder == 'wsjtx' else onDecode, onOccupany = onOccupancy,
                               max_iters = 60, max_stall = 8, max_ncheck = 35,
                               sync_score_thresh = 2.0, min_sd = 1.7, max_delay = 2,
                               max_parallel_decodes = 100)

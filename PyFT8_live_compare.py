@@ -8,6 +8,7 @@ import PyFT8.audio as audio
 import PyFT8.timers as timers
 import threading
 from PyFT8.rig.IcomCIV import IcomCIV
+from PyFT8.signaldefs import FT8
 
 rig = IcomCIV()
 
@@ -19,16 +20,16 @@ if(os.path.exists('decodes.log')):
     
 def on_wsjtx_decode(decode):
     if(not PyFT8_has_decodes): return
-    decode_dict = decode['decode_dict']
-    decode_dict.update({'source':'WSJTX'})
-    send_to_ui_ws("decode_dict", decode_dict)
+    decode_result = decode['decode_dict']
+    decode_result.update({'source':'WSJTX'})
+    send_to_ui_ws("decode_dict", decode_result)
 
 def onDecode(candidate):
     global PyFT8_has_decodes
     PyFT8_has_decodes = True
-    decode_dict = candidate.decode_dict
-    decode_dict.update({'source':'PyFT8'})
-    send_to_ui_ws("decode_dict", decode_dict)
+    decode_result = candidate.decode_result
+    decode_result.update({'source':'PyFT8'})
+    send_to_ui_ws("decode_dict", decode_result)
 
 def process_UI_event(event):
     topic = event['topic']
@@ -47,11 +48,10 @@ def add_band_buttons():
 
 def run():
     start_wsjtx_tailer(on_wsjtx_decode)
-    cycle_manager = Cycle_manager(None if config.decoder == 'wsjtx' else onDecode,
+    cycle_manager = Cycle_manager(FT8, None if config.decoder == 'wsjtx' else onDecode,
                               onOccupancy = None, verbose = True,
                               max_iters = 60, max_stall = 8, max_ncheck = 35,
-                              sync_score_thresh = 2.0, min_sd = 1.7, max_delay = 2,
-                              max_parallel_decodes = 100)
+                              sync_score_thresh = 2.0, llr_sd_thresh = 1.7)
     start_UI("PyFT8_live_compare.html", process_UI_event)
     add_band_buttons()
 

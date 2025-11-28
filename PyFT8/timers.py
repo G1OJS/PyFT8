@@ -18,12 +18,12 @@ def sleep(secs):
     if(secs>0):
         time.sleep(secs)
 
-def cyclestart_str(cycle_offset):
-    return time.strftime("%y%m%d_%H%M%S", time.gmtime(CYCLE_LENGTH * cycle_offset + CYCLE_LENGTH * int(time.time() / CYCLE_LENGTH)))
+def cyclestart_str():
+    return time.strftime("%y%m%d_%H%M%S", time.gmtime(CYCLE_LENGTH * int(time.time() / CYCLE_LENGTH)))
 
 def timedLog(msg, silent = False, logfile = None):
     t = time.time()
-    time_str = cyclestart_str(0)
+    time_str = cyclestart_str()
     t_elapsed = t % CYCLE_LENGTH
     time_str = f"{time_str}_{t_elapsed:.1f}"
     lf = f"Log to {logfile}:" if logfile else ''

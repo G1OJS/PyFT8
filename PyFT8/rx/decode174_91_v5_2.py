@@ -64,7 +64,7 @@ class LDPC174_91:
             n = (n << 1) | (b & 1)
         return n
             
-    def decode(self, llr, expiry_time):
+    def decode(self, llr, expiry_time = 1e40):
         it = 0
         ncheck_last = 0
         nstall = 0
@@ -94,7 +94,7 @@ class LDPC174_91:
         while True:
             exit_now, decoded_bits174_LE_list, nstall, ncheck_last, timed_out = exit_check(zn, it, nstall, ncheck_last, expiry_time)
             if exit_now:
-                return decoded_bits174_LE_list, it, nstall, ncheck_last, timed_out 
+                return {'payload_bits':decoded_bits174_LE_list, 'n_its':it} 
 
             toc = zn[self.VN]                 
             tov_gather = tov[:, self.VN]     

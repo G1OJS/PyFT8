@@ -35,12 +35,12 @@ Log to PyFT8.log: 12:19:29.74 (+0.94) Start to Show candidates
 
 import math
 import numpy as np
-from PyFT8.signaldefs import FT8
 from PyFT8.rx.decode174_91_v5_2 import LDPC174_91
 import PyFT8.FT8_crc as crc
-import PyFT8.timers as timers
+#import PyFT8.timers as timers
 from PyFT8.comms_hub import config, send_to_ui_ws
 import threading
+import PyFT8.timers as timers
 
 eps = 1e-12
 
@@ -54,8 +54,6 @@ class Spectrum:
         self.audio_in = []
         self.dt = demodspec.samples_perhop / demodspec.sample_rate
         self.duplicate_filter = set()
-        self.cyclestart_str = 'xxxxxx_xxxxxx'
-        self.cycle_epoch = timers.tnow()
         self.FFT_len = int(demodspec.fbins_pertone * demodspec.sample_rate // self.sigspec.symbols_persec)
         FFT_out_len = int(self.FFT_len/2) + 1
         fmax_fft = demodspec.sample_rate/2
@@ -63,12 +61,12 @@ class Spectrum:
         self.occupancy = None
         self.df = self.max_freq / self.nFreqs
         self.nHops_loaded = 0
-        self.hops_percycle = int(demodspec.sample_rate * self.sigspec.cycle_seconds / demodspec.samples_perhop)
-        self.fine_grid_complex = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.complex64)
+        self.hops_percycle = int(self.sigspec.cycle_seconds * self.sigspec.symbols_persec * demodspec.hops_persymb)
+        self.fine_grid_complex = np.zeros((self.hops_percycle+500, self.nFreqs), dtype = np.complex64)
         self.FFT_start_sample_idx = 0
         self.grid_lock = threading.Lock()
         self.searched = False
-        self.candidate_size = (self.sigspec.num_symbols * demodspec.hops_persymb,
+        self.candidate_size = ((self.sigspec.num_symbols - self.sigspec.costas_len) * demodspec.hops_persymb,
                                self.sigspec.tones_persymb * demodspec.fbins_pertone)
         self._csync = np.full((self.sigspec.costas_len, self.candidate_size[1]), -1/(self.sigspec.costas_len-1), np.float32)
         for sym_idx, tone in enumerate(self.sigspec.costas):
@@ -76,137 +74,118 @@ class Spectrum:
             self._csync[sym_idx, fbins] = 1.0
             self._csync[sym_idx, self.sigspec.costas_len*demodspec.fbins_pertone:] = 0
         self.hop_idxs_Costas =  np.arange(self.sigspec.costas_len) * demodspec.hops_persymb
-        self.candidate_search_after_hop  = (np.max(demodspec.sync_range) + np.max(self.hop_idxs_Costas))
-        self.start_decoding_after_hop = (self.sigspec.num_symbols - self.sigspec.costas_len) * demodspec.hops_persymb 
+        self.candidate_search_after_hop  = (np.max(demodspec.sync_range) + np.max(self.hop_idxs_Costas)) +1
+
+        self.__isfrozen = True
 
 class Candidate:
     next_id = 0
-    def __init__(self, spectrum, sigspec):
+    def __init__(self, spectrum):
         self.id = Candidate.next_id
         Candidate.next_id +=1
         self.size = spectrum.candidate_size
-        self.spectrum = spectrum
-        self.cycle_epoch = spectrum.cycle_epoch
-        self.cyclestart_str = spectrum.cyclestart_str
-        self.sigspec = sigspec
-        self.origin = None
-        self.origin_physical = None
-        self.llr = None
-        self.llr_std = None
-        self.payload_bits = []
-        self.decode_dict = None
-        self.good_llr_sd = False
-        self.sent_for_decode = False
-        self.grid_is_full = False
-        self.grid_filled_at = 1e9
-        self.expiry_time = 1e40
-        self.demapped = False
-        self.decoded = False
-        self.timedout = False
-        self.decode_tried = False
-        self.time_in_decode = None
-        self.decode_dict = False
-        self.n_its = -1
+        self.cyclestart_str = timers.cyclestart_str()
+        self.sync_result = None
+        self.demap_result = None
+        self.ldpc_result = None
+        self.decode_result = None
 
-    @property # note this is not cached and is called twice, however the .copy()
-    def fine_grid_complex(self): # ensures that the data persists once the spectrum is deleted
-        with self.spectrum.grid_lock:
-            c = self
-            return self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]].copy()
+        self.__isfrozen = True
 
+       
 class FT8Demodulator:
-    def __init__(self, max_iters, max_stall, max_ncheck, sync_score_thresh, min_sd):
-        self.sigspec = FT8
+    def __init__(self, sigspec, max_iters, max_stall, max_ncheck):
+        self.sigspec = sigspec
         self.sample_rate=12000
         self.fbins_pertone=3
         self.hops_persymb=5
-        self.sync_score_thresh = sync_score_thresh
-        self.min_sd = min_sd
+        self.hops_per_signal = self.sigspec.num_symbols * self.hops_persymb
+        self.fbins_per_signal = self.sigspec.tones_persymb * self.fbins_pertone
+        self.hops_per_costas_block = self.hops_persymb * self.sigspec.costas_len
         self.samples_perhop = int(self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb) )
         self.hops_persec = self.sample_rate / self.samples_perhop 
-        slack_hops =  int(self.hops_persymb * self.sigspec.symbols_persec * (self.sigspec.cycle_seconds - self.sigspec.num_symbols / self.sigspec.symbols_persec) )
+        slack_hops =  int(self.hops_persymb * self.sigspec.symbols_persec * self.sigspec.cycle_seconds - self.sigspec.num_symbols)
         self.sync_range = range(slack_hops)
         self.ldpc = LDPC174_91(max_iters, max_stall, max_ncheck)
 
-    def find_candidates(self, spectrum, onCandidate_found):
-        spectrum.cyclestart_str = timers.cyclestart_str(0)
+    def find_syncs(self, spectrum, sync_score_thresh, onSync):
         spectrum.occupancy = np.zeros(spectrum.nFreqs)
         f0_idxs = range(spectrum.nFreqs - spectrum.candidate_size[1])
+        with spectrum.grid_lock:
+            spectrum_search_band = spectrum.fine_grid_complex[:spectrum.candidate_search_after_hop,:].copy()
         for f0_idx in f0_idxs:
-            c = Candidate(spectrum, self.sigspec)
-            c.origin = (0, f0_idx)
-            c.fine_grid_pwr = np.abs(c.fine_grid_complex)**2
-            c.max_pwr = np.max(c.fine_grid_pwr)
-            spectrum.occupancy[c.origin[1]:c.origin[1]+c.size[1]] += c.max_pwr
-            c.fine_grid_pwr = c.fine_grid_pwr / c.max_pwr
+            fine_grid_complex = spectrum_search_band[:, f0_idx:f0_idx + self.fbins_per_signal]
+            fine_grid_pwr = np.abs(fine_grid_complex)**2
+            max_pwr = np.max(fine_grid_pwr)
+            spectrum.occupancy[f0_idx:f0_idx + self.fbins_per_signal] += max_pwr
+            fine_grid_pwr = fine_grid_pwr / max_pwr
             best = (0, -1e30)
             for h0 in self.sync_range:
-                test = (h0, float(np.dot( c.fine_grid_pwr[h0 + spectrum.hop_idxs_Costas].ravel(), spectrum._csync.ravel())))
+                test = (h0, float(np.dot(fine_grid_pwr[h0 + spectrum.hop_idxs_Costas].ravel(), spectrum._csync.ravel())))
                 if test[1] > best[1]:
                     best = test
-            c.score = best[1]
-            if(c.score > self.sync_score_thresh):
-                c.origin = (best[0], c.origin[1])
-                c.origin_physical = spectrum.dt * c.origin[0], spectrum.df * c.origin[1]
-                c.last_hop = c.origin[0] + c.size[0]
-                c.last_data_hop = c.last_hop - self.sigspec.costas_len * self.hops_persymb
-                c.info = f"{c.cyclestart_str} {c.origin} {c.score:5.2f}"
-                onCandidate_found(c)
-     
-    def demap_candidate(self, candidate):
+            if(best[1] > sync_score_thresh):
+                sync_result = {'sync_score': best[1],
+                                  'origin': (best[0], f0_idx, spectrum.dt * h0, spectrum.df * f0_idx),
+                                  'last_hop': best[0] + self.hops_per_signal,
+                                  'last_data_hop': best[0] + self.hops_per_signal - self.hops_per_costas_block}
+                onSync(sync_result)
+
+    def fill_candidate(self, spectrum, candidate):
         c = candidate
-        t_start_demap = timers.tnow()
-        tmp = c.fine_grid_complex_full.reshape(self.sigspec.num_symbols, self.hops_persymb, self.sigspec.tones_persymb, self.fbins_pertone)
-        tmp = tmp[:,0,:,:] 
-        tmp = np.abs(tmp)**2
-        c.synced_pwr = np.max(tmp)
-        c.synced_grid_pwr = tmp[:,:,1]/c.synced_pwr
-        c.snr = 10*np.log10(c.synced_pwr)-107
-        c.snr = int(np.clip(c.snr, -24,24).item())
-        c.llr = []
-        E0 = c.synced_grid_pwr[0:78:2]   # potential to speed up as we don't need                    
-        E1 = c.synced_grid_pwr[1:79:2]   # to decode costas blocks
+        origin = c.sync_result['origin']
+        with spectrum.grid_lock:
+            c.synced_grid_complex = spectrum.fine_grid_complex[origin[0]:origin[0]+c.size[0], origin[1]:origin[1]+c.size[1]].copy()
+
+    def demap_candidate(self, spectrum, candidate):
+        c = candidate
+        origin = c.sync_result['origin']
+        synced_grid_complex = c.synced_grid_complex.reshape(self.sigspec.num_symbols - self.sigspec.costas_len, self.hops_persymb,
+                                                          self.sigspec.tones_persymb, self.fbins_pertone)
+        synced_grid_complex = synced_grid_complex[:,0,:,:] 
+        synced_grid_pwr = np.abs(synced_grid_complex)**2
+        synced_pwr = np.max(synced_grid_pwr)
+        synced_grid_pwr_central = synced_grid_pwr[:,:,1]/synced_pwr
+        snr = 10*np.log10(synced_pwr)-107
+        snr = int(np.clip(snr, -24,24).item())
+        llr = []
+        E0 = synced_grid_pwr_central[0:78:2]   # potential to speed up as we don't need                    
+        E1 = synced_grid_pwr_central[1:79:2]   # to decode costas blocks
         pair_score = E0[:, :, None] * E1[:, None, :]
         ps = pair_score[:, None, :, :]
-        V = ps * FT8.block_decode_wt2
-        ones  = np.max(V,     where=(FT8.block_decode_wt2 > 0), initial=-np.inf, axis=(2, 3))
-        zeros = np.max(-V,    where=(FT8.block_decode_wt2 < 0), initial=-np.inf, axis=(2, 3))
+        wts = spectrum.sigspec.block_decode_wt2
+        V = ps * wts
+        ones  = np.max(V,     where=(wts > 0), initial=-np.inf, axis=(2, 3))
+        zeros = np.max(-V,    where=(wts < 0), initial=-np.inf, axis=(2, 3))
         ones = np.clip(ones,  0.0001, 1e30)
         zeros = np.clip(zeros, 0.0001, 1e30) 
         llr_block = np.log(ones) - np.log(zeros)  
         llr_all = llr_block.reshape(-1)
         for i in range(len(llr_all)):
-            if(int(i/3) in FT8.payload_symb_idxs):
-                c.llr.extend([llr_all[i]])
-        import hashlib
-        c.llr = c.llr - np.mean(c.llr)
-        c.llr_sd = np.std(c.llr)
-        c.llr_hash = hashlib.md5(c.llr.tobytes()).hexdigest()
-        c.time_in_demap = timers.tnow() - t_start_demap
-        if(c.llr_sd > self.min_sd):
-            c.good_llr_sd = True
+            if(int(i/3) in spectrum.sigspec.payload_symb_idxs):
+                llr.extend([llr_all[i]])
+        llr = llr - np.mean(llr)
+        llr_sd = np.std(llr)
+        c.demap_result = {'llr_sd':llr_sd,
+                          'llr':llr,
+                          'snr':snr}
 
-    def demodulate_candidate(self, candidate, onDecodeResult):
+    def decode_candidate(self, spectrum, candidate, onDecode):
         c = candidate
-        t_start_decode = timers.tnow()
-        c.llr = 3 * c.llr / (c.llr_sd+.001)
-        c.payload_bits, c.n_its, c.nstall, c.ncheck_last, c.timedout = self.ldpc.decode(c.llr, c.expiry_time)
-        if(c.payload_bits):
-            decode = FT8_unpack(c)
-            if(decode):
-                decode_dict = decode['decode_dict']
-                key = f"{decode_dict['call_a']} {decode_dict['call_b']} {decode_dict['grid_rpt']}"
-                if(not key in c.spectrum.duplicate_filter):
-                    c.spectrum.duplicate_filter.add(key)
-                    dt = c.origin_physical[0] + c.spectrum.audio_start - 0.3 -0.5
+        llr = 3 * c.demap_result['llr'] / (c.demap_result['llr_sd']+.001)
+        c.ldpc_result = self.ldpc.decode(llr)
+        if(c.ldpc_result['payload_bits']):
+            c.decode_result = FT8_unpack(c)
+            if(c.decode_result):
+                key = f"{c.decode_result['call_a']} {c.decode_result['call_b']} {c.decode_result['grid_rpt']}"
+                if(not key in spectrum.duplicate_filter):
+                    spectrum.duplicate_filter.add(key)
+                    origin = c.sync_result['origin']
+                    dt = origin[2] + spectrum.audio_start - 0.3 -0.5
                     if(dt>self.sigspec.cycle_seconds//2): dt -=self.sigspec.cycle_seconds
                     dt = f"{dt:4.1f}"
-                    decode_dict.update({'dt': dt})
-                    c.message = key
-                    c.decoded = True
-                    c.decode_dict = decode_dict
-        c.time_in_decode = timers.tnow() - t_start_decode
-        onDecodeResult(c)
+                    c.decode_result.update({'dt': dt})
+        onDecode(c)
     
 # ======================================================
 # FT8 Unpacking functions
@@ -241,25 +220,25 @@ def unpack_ft8_g15(g15, ir):
     return f"{R}{snr:+03d}"
 
 
-def FT8_unpack(signal):
+def FT8_unpack(c):
     # need to add support for /P and R+report (R-05)
-    bits = signal.payload_bits
+    bits = c.ldpc_result['payload_bits']
     i3 = 4*bits[74]+2*bits[75]+bits[76]
     c28_a = int(''.join(str(b) for b in bits[0:28]), 2)
     c28_b = int(''.join(str(b) for b in bits[29:57]), 2)
     ir = int(bits[58])
     g15  = int(''.join(str(b) for b in bits[59:74]), 2)
     if(c28_a + c28_b + g15 == 0):
-        return
+        return None
     call_a = unpack_ft8_c28(c28_a)
     call_b =  unpack_ft8_c28(c28_b)
     grid_rpt = unpack_ft8_g15(g15, ir)
-    freq_str = f"{signal.origin_physical[1]:4.0f}"
-    time_str = f"{signal.origin_physical[0]:4.1f}"
-    message = f"{call_a} {call_b} {grid_rpt}"
-    all_txt_line = f"{signal.cyclestart_str}     0.000 Rx FT8    {signal.snr:+03d} {time_str} {freq_str} {message}"
-    decode_dict = {'cyclestart_str':signal.cyclestart_str , 'freq':freq_str, 'call_a':call_a,
-                 'call_b':call_b, 'grid_rpt':grid_rpt, 't0_idx':signal.origin[0],
-                   'dt':time_str, 'snr':signal.snr, 'priority':False, 'message':message}
-    return {'all_txt_line':all_txt_line, 'decode_dict':decode_dict}
+    origin = c.sync_result['origin']
+    snr = c.demap_result['snr']
+    freq_str = f"{origin[3]:4.0f}"
+    time_str = f"{origin[2]:4.1f}"
+    decode = {'cyclestart_str':c.cyclestart_str , 'freq':freq_str, 'call_a':call_a,
+              'call_b':call_b, 'grid_rpt':grid_rpt, 't0_idx':origin[0],
+              'dt':time_str, 'snr':snr}
+    return decode
 
