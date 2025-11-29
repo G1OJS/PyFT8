@@ -122,37 +122,50 @@ class Cycle_manager():
 
             cands_to_demap = []
             if(self.spectrum.searched):
+                #cands_synced = candidates found with sync_score > sync_score_thresh
                 with self.cands_list_lock:
                     cands_synced = [c for c in self.cands_list if c.sync_result]
+                # cands_to_demap = subset of cands_synced which are 'full' and not yet sent for demap
                 cands_to_demap = [c for c in cands_synced
                                   if self.spectrum.nHops_loaded > c.sync_result['last_data_hop']
                                   and not c.demap_requested]
-                    
+                
+            # for cands_to_demap, fill the candidate's part of the spectrum and demap
             for c in cands_to_demap:                
                 c.demap_requested = True
                 self.fill_candidate(c)
                 self.demod.demap_candidate(self.spectrum, c)
-                if(c.demap_result['llr_sd'] < self.llr_sd_thresh):
-                    with self.cands_list_lock:
-                        self.cands_list.remove(c)
-                    
+                        
+            # demapped = all candidates that have been demapped
             with self.cands_list_lock:
                 demapped = [c for c in self.cands_list if c.demap_result]
+
+            # for demapped candidates with llr_sd below llr_sd_thesh, remove from global list self.cands_list
+            # for the others, build a list to send to ldpc
+            demapped_success = []
+            with self.cands_list_lock:
+                for c in demapped:
+                    if (c.demap_result['llr_sd'] < self.llr_sd_thresh):
+                        self.cands_list.remove(c)
+                    else:
+                        demapped_success.append(c)
                 
-            cands_for_ldpc = [c for c in demapped
-                              if c.demap_result['llr_sd'] > self.llr_sd_thresh
-                              and not c.ldpc_requested]
+            # cands_for_ldpc = cands in demapped_success that have not already been sent for ldpc
+            cands_for_ldpc = [c for c in demapped_success if not c.ldpc_requested]
             cands_for_ldpc.sort(key=lambda c: -c.demap_result['llr_sd'] - 100*(np.abs(c.sync_result['origin'][3]-config.rxfreq)<2))
             for c in cands_for_ldpc:
                 c.ldpc_requested = True
                 self.decode_queue.put(c)
+            # workers handle ldpc from here and they *all* arrive below in onDecode, which then
+            # removes them from self.cands_list and accumulates stats in self.n_ldpcd, self.n_decoded, self.n_unique
 
             # take a snapshot of stats whilst in the loop and send to csv file / UI as needed
             stats = {
                 'n_synced': len(self.cands_list),
                 'n_pending_demap': len(cands_to_demap) - len(demapped),
                 'n_demapped': len(demapped),
-                'n_pending_ldpc': len(cands_for_ldpc) - self.n_ldpcd,
+                'n_demapped_success': len(demapped_success),
+                'n_pending_ldpc': len(cands_for_ldpc),
                 'n_ldpcd': self.n_ldpcd,
                 'n_decoded': self.n_decoded,
                 'n_unique': self.n_unique,
