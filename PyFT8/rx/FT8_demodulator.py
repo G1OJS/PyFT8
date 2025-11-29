@@ -66,20 +66,18 @@ class Spectrum:
             self._csync[sym_idx, self.sigspec.costas_len*demodspec.fbins_pertone:] = 0
         self.hop_idxs_Costas =  np.arange(self.sigspec.costas_len) * demodspec.hops_persymb
         self.candidate_search_after_hop  = (np.max(demodspec.sync_range) + np.max(self.hop_idxs_Costas)) +1
-        self.reset()
+        self.reset(0)
         self.__isfrozen = True
         
-    def reset(self): #(is this really a new class called 'cycle'?)
+    def reset(self, cycle_start_offset): #(is this really a new class called 'cycle'?)
         self.fine_grid_complex = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.complex64)
         self.sync_search_band = self.fine_grid_complex[:self.candidate_search_after_hop,:].copy()
         self.occupancy = np.zeros(self.nFreqs)
-        t = timers.tnow()
-        l = self.sigspec.cycle_seconds
-        self.audio_start_offset = (t+l//2 %l) - l//2
         self.searched = False
         self.nHops_loaded = 0
         self.audio_in = []
         self.duplicate_filter = set()
+        self.cycle_start_offset = cycle_start_offset
 
 class Candidate:
     next_id = 0

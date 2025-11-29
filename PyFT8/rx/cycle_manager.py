@@ -29,12 +29,17 @@ class Cycle_manager():
         self.cands_list = []
         self.input_device_idx = audio._find_device(config.soundcards['input_device'])   
         self.audio_queue = queue.Queue(maxsize=200)
+        self.n_ldpcd = 0
+        self.n_decoded = 0
+        self.n_unique = 0
         
         # audio_in is e.g. from wav file for testing, otherwise start monitoring sound card
         if(any(audio_in)):
             self.live = False
             self.find_candidates_from_audio_in(audio_in)
         else:
+            while (timers.tnow() % self.demod.sigspec.cycle_seconds) < self.demod.sigspec.cycle_seconds -1 :
+                timers.sleep(0.1)
             threading.Thread(target=self.threaded_audio_reader, daemon=True).start()
             threading.Thread(target=self.threaded_spectrum_filler, daemon=True).start()
         threading.Thread(target=self.threaded_decoding_manager, daemon=True).start()
@@ -48,7 +53,7 @@ class Cycle_manager():
         with open('success_fail_metrics.csv', 'w') as f:
             f.write("timestamp,  	       id,   decoded, sync_score,snr,llr_sd, n_its\n")
         with open('success_fail_counts.csv', 'w') as f:
-            f.write("timestamp,   	  n_synced, to_demap, demapped, to_ldpc\n")
+            f.write("timestamp,   	  n_synced, to_demap, demapped, to_ldpc, ldpc'd, decoded, unique, ldpc_%\n")
 
     def find_candidates_from_audio_in(self, audio_in):
         # inject audio e.g. from wav file for testing 
@@ -81,8 +86,12 @@ class Cycle_manager():
         while self.running:
             cycle_time = timers.tnow() % self.demod.sigspec.cycle_seconds 
             if (self.live and cycle_time < self.last_cycle_time):
+                self.spectrum.cycle_start_offset = cycle_time
                 timers.timedLog(f"Cycle rollover {cycle_time:.2f}")
-                self.spectrum.reset()
+                self.spectrum.reset(cycle_time)
+                self.n_ldpcd = 0
+                self.n_decoded = 0
+                self.n_unique = 0
             self.last_cycle_time = cycle_time
             audio_samples = np.frombuffer(self.audio_queue.get(), dtype=np.int16)
             with self.spectrum_lock:
@@ -146,14 +155,18 @@ class Cycle_manager():
                 'n_synced': len(self.cands_list),
                 'n_pending_demap': len(cands_to_demap),
                 'n_demapped': len(demapped),
-                'n_for_ldpc': len(cands_for_ldpc),
+                'n_pending_ldpc': len(cands_for_ldpc),
+                'n_ldpcd': self.n_ldpcd,
+                'n_decoded': self.n_decoded,
+                'n_unique': self.n_unique,
+                'ldpc_success%': self.n_decoded/(self.n_ldpcd+.0001)
             }
             timers.timedLog(', ' + ', '.join([f"{v:>6}" for k, v in stats.items()]), logfile='success_fail_counts.csv', silent = True)
      
             loading_info = {'n_candidates': stats['n_synced'],
-                            'parallel_decodes':0}
-            send_to_ui_ws("decode_queue", loading_info)             
-            timers.sleep(0.25)
+                            'parallel_decodes': self.decode_queue.qsize()}
+            send_to_ui_ws("decode_queue", loading_info)
+            timers.sleep(0.01)
 
     def onFindSync(self, sync_result):
         c = Candidate(self.spectrum)
@@ -174,18 +187,22 @@ class Cycle_manager():
     def onDecode(self, c):
         with self.cands_list_lock:
             self.cands_list.remove(c)
+        self.n_ldpcd +=1
         decoded = not (c.decode_result == None)
         if(self.verbose):
             metrics = f"{c.id} {decoded:>7} {c.sync_result['sync_score']:7.2f} {c.demap_result['snr']:7.1f} {c.demap_result['llr_sd']:7.2f} {c.ldpc_result['n_its']:7.1f}"
             timers.timedLog(metrics, logfile='success_fail_metrics.csv', silent = True)
         if(decoded):
+            self.n_decoded +=1
             origin = c.sync_result['origin']
-            dt = origin[2] + self.spectrum.audio_start_offset - 0.3 -0.5
-            if(dt>self.sigspec.cycle_seconds//2): dt -=self.sigspec.cycle_seconds
+            #dt = origin[2] - self.spectrum.cycle_start_offset - 0.3 -0.5
+            dt = origin[2]
+            if(dt > self.sigspec.cycle_seconds//2): dt -=self.sigspec.cycle_seconds
             dt = f"{dt:4.1f}"
             c.decode_result.update({'dt': dt})
             key = f"{c.decode_result['call_a']} {c.decode_result['call_b']} {c.decode_result['grid_rpt']}"
             if(not key in self.spectrum.duplicate_filter):
+                self.n_unique +=1
                 self.spectrum.duplicate_filter.add(key)
                 self.onSuccessfulDecode(c)
 
