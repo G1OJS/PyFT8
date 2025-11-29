@@ -8,6 +8,7 @@ from PyFT8.comms_hub import config, start_UI, send_to_ui_ws
 import PyFT8.audio as audio
 import threading
 from PyFT8.rig.IcomCIV import IcomCIV
+from PyFT8.signaldefs import FT8
 rig = IcomCIV()
 
 class QSO:
@@ -161,16 +162,30 @@ QSO = QSO()
 def onDecode(candidate):
     import PyFT8.timers as timers
     from PyFT8.comms_hub import config, send_to_ui_ws
-    decode_dict = candidate.decode_dict
+    decode_dict = candidate.decode_result
     if(decode_dict['call_a'] == config.myCall or decode_dict['call_b'] == config.myCall or 'rxfreq' in decode_dict or decode_dict['freq']==config.rxfreq or decode_dict['call_b']==QSO.their_call):
         decode_dict.update({'priority':True})
     send_to_ui_ws("decode_dict", decode_dict)
     if (decode_dict['call_a'] == config.myCall and decode_dict['call_b'] == QSO.their_call):
         QSO.progress(decode_dict)
 
-def onOccupancy(occupancy, clear_freq):
+def onOccupancy(spectrum_occupancy, spectrum_df, f0=0, f1=3500, bin_hz=10):
     from PyFT8.comms_hub import config, send_to_ui_ws
     import PyFT8.timers as timers
+    import numpy as np
+
+    occupancy_fine = spectrum_occupancy/np.max(spectrum_occupancy)
+    n_out = int((f1-f0)/bin_hz)
+    occupancy = np.zeros(n_out)
+    for i in range(n_out):
+        occupancy[i] = occupancy_fine[int((f0+bin_hz*i)/spectrum_df)]
+    fs0, fs1 = 1000,1500
+    bin0 = int((fs0-f0)/bin_hz)
+    bin1 = int((fs1-f0)/bin_hz)
+    clear_freq = fs0 + bin_hz*np.argmin(occupancy[bin0:bin1])
+    occupancy = 10*np.log10(occupancy + 1e-12)
+    occupancy = 1 + np.clip(occupancy, -40, 0) / 40
+    
     config.update_clearest_txfreq(clear_freq)
     timers.timedLog(f"[onOccupancy] occupancy data received, set Tx to {config.txfreq}")
     send_to_ui_ws("freq_occ_array", {'histogram':occupancy.tolist()})
@@ -213,10 +228,10 @@ def add_band_buttons():
         send_to_ui_ws("add_band_button", {'band_name':band['band_name'], 'band_freq':band['band_freq']})
 
 def run():        
-    cycle_manager = Cycle_manager(None if config.decoder == 'wsjtx' else onDecode, onOccupancy, 
-                              max_iters = 60, max_stall = 8, max_ncheck = 35,
-                              sync_score_thresh = 2.0, min_sd = 1.7, max_delay = 2,
-                              max_parallel_decodes = 100)
+    cycle_manager = Cycle_manager(FT8, None if config.decoder == 'wsjtx' else onDecode,
+                              onOccupancy = onOccupancy, verbose = True,
+                              max_iters = 60, max_stall = 8, max_ncheck = 33,
+                              sync_score_thresh = 2.3, llr_sd_thresh = 1.8)
     if(config.decoder == 'wsjtx') : start_wsjtx_tailer(onDecode)
     start_UI("PyFT8_tcvr_UI.html", process_UI_event)
     add_band_buttons()

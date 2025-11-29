@@ -7,6 +7,7 @@ from PyFT8.tx.FT8_encoder import pack_ft8_c28, pack_ft8_g15, encode_bits77
 import PyFT8.timers as timers
 import PyFT8.audio as audio
 from PyFT8.comms_hub import config
+from PyFT8.signaldefs import FT8
 
 c28a = pack_ft8_c28("VK1ABC")
 c28b = pack_ft8_c28("VK3JPK")
@@ -53,28 +54,27 @@ audio_data = audio_data * np.random.rand(len(audio_data))
 decoded_candidates = []
 def onDecode(candidate):
     decoded_candidates.append(candidate)
-    
 
-cycle_manager = Cycle_manager(onDecode, None, audio_in = audio_data, sync_score_thresh = 4, min_sd = 2)
+cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, verbose = True, audio_in = audio_data, 
+                          max_iters = 60, max_stall = 8, max_ncheck = 33,
+                          sync_score_thresh = 4, llr_sd_thresh = 3)
 
 while len(decoded_candidates)<1:
     timers.sleep(0.25)
 cycle_manager.running = False
 
 for c in decoded_candidates:
-    d = c.decode_dict
-    print(d['call_a'], d['call_b'], d['grid_rpt'], c.score )
-    
+    print(f"{c.message} {c.sync_result['sync_score']:5.2f}, {c.demap_result['snr']:5.0f}, {c.sync_result['origin']}, {c.ldpc_result['n_its']:5.0f}")     
 wf = Waterfall(cycle_manager.spectrum)
 wf.update_main(candidates=decoded_candidates)
-#wf.show_zoom(candidates=decoded_candidates, phase = False, llr_overlay=False)
-#wf.show_zoom(candidates=decoded_candidates, phase = True, llr_overlay=False)
+wf.show_zoom(candidates=decoded_candidates, phase = False, llr_overlay=False)
+wf.show_zoom(candidates=decoded_candidates, phase = True, llr_overlay=False)
 
 #print(f"Payload symbols demodulated: {''.join([str(int(s)) for s in candidates[0].payload_symbols])}")
 print("bits expected / bits decoded")
 print("11100001111111000101001101010111000100000011110100001111000111001010001010001")
 if(decoded_candidates):
     for c in decoded_candidates:
-        print(''.join(str(int(b)) for b in c.payload_bits[:77]))
+        print(''.join(str(int(b)) for b in c.ldpc_result['payload_bits'][:77]))
 
 

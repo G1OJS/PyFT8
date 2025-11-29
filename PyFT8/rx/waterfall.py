@@ -43,7 +43,8 @@ class Waterfall:
 
         if candidates:
             for c in candidates:
-                origin_img = (c.origin_physical[1] - self.spectrum.dt/2, c.origin_physical[0])
+                origin = c.sync_result['origin']
+                origin_img = (origin[3] - self.spectrum.dt/2, origin[2])
                 rect = patches.Rectangle(origin_img, c.sigspec.bw_Hz, (c.sigspec.num_symbols-1) / c.sigspec.symbols_persec,
                   linewidth=1.2,edgecolor="lime", facecolor="none"
                 )
@@ -69,7 +70,7 @@ class Waterfall:
 
         for i, c in enumerate(candidates):
             ax = axes[i]
-            cspec = c.fine_grid_complex
+            cspec = c.synced_grid_complex
             vals = np.angle(cspec) if phase else np.abs(cspec)**2
             im = ax.imshow( vals, origin="lower", aspect="auto", extent=[-0.5, vals.shape[1]-0.5, -0.5, vals.shape[0]-0.5],
                             cmap="twilight" if phase else "inferno",
@@ -77,7 +78,8 @@ class Waterfall:
             if(not phase):
                 vmax = np.max(vals)
                 im.norm = LogNorm(vmin=vmax/100000, vmax=vmax)
-            ax.set_title(f"{c.origin_physical[1]:.0f}Hz {c.origin_physical[0]:.2f}s {c.message}")
+            origin = c.sync_result['origin']
+            ax.set_title(f"{origin[3]:.0f}Hz {origin[2]:.2f}s {c.message}")
             ax.set_xlabel("freq bin index")
             ax.set_ylabel("hop index")
 
