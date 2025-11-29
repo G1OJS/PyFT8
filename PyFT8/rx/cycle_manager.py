@@ -131,8 +131,8 @@ class Cycle_manager():
                 cands_to_demap = [c for c in cands_synced
                                   if self.spectrum.nHops_loaded > c.sync_result['last_data_hop']
                                   and not c.demap_requested]
-            
-            for c in cands_to_demap:
+                    
+            for c in cands_to_demap:                
                 c.demap_requested = True
                 self.fill_candidate(c)
                 self.demod.demap_candidate(self.spectrum, c)
