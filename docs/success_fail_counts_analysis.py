@@ -13,13 +13,25 @@ print(df.columns)
 t = df['unix_ts'] 
 t -=t[np.argmin(t %15)]
 
+fig, axs = plt.subplots(2,2)
 
-fig, ax = plt.subplots()
+axs[0,0].plot(t, df['n_synced'], label = 'synced')
+axs[0,0].plot(t, df['n_pending_demap'], label = 'pending demap')
+axs[0,0].plot(t, df['n_demapped'], label = 'demapped')
+axs[0,0].legend()
 
-#ax.stackplot(cyc['unix_ts'], cyc['n_pending_demap'],cyc['n_demapped'],cyc['n_pending_ldpc'],cyc['n_ldpcd'])
-#ax.plot(t, df['n_synced'], label = 'synced')
-ax.plot(t, df['n_pending_demap'], label = 'pending demap')
-ax.plot(t, df['n_demapped'], label = 'demapped')
-#ax.plot(t, df['n_demapped_success'], label = 'demapped good llr_sd')
-plt.legend(loc='upper left')
+axs[1,0].plot(t, df['n_demapped'], label = 'demapped')
+axs[1,0].plot(t, df['n_demapped_success'], label = 'demapped good llr_sd')
+axs[1,0].plot(t, df['n_pending_ldpc'], label = 'pending ldpc')
+axs[1,0].legend()
+
+axs[0,1].plot(t, df['n_ldpcd'], label = 'ldpc done')
+axs[0,1].plot(t, df['n_decoded'], label = 'decodes')
+axs[0,1].plot(t, df['n_unique'], label = 'unique decodes')
+axs[0,1].legend()
+
+pc_decoded = df['n_decoded']/df['n_ldpcd']
+axs[1,1].plot(t, pc_decoded, label = 'ldpc success rate')
+axs[1,1].legend()
+
 plt.show()
