@@ -188,11 +188,10 @@ class Cycle_manager():
         with self.cands_list_lock:
             self.cands_list.remove(c)
         self.n_ldpcd +=1
-        decoded = not (c.decode_result == None)
         if(self.verbose):
-            metrics = f"{c.id} {decoded:>7} {c.sync_result['sync_score']:7.2f} {c.demap_result['snr']:7.1f} {c.demap_result['llr_sd']:7.2f} {c.ldpc_result['n_its']:7.1f}"
+            metrics = c.metrics
             timers.timedLog(metrics, logfile='success_fail_metrics.csv', silent = True)
-        if(decoded):
+        if(c.decode_success):
             self.n_decoded +=1
             origin = c.sync_result['origin']
             #dt = origin[2] - self.spectrum.cycle_start_offset - 0.3 -0.5

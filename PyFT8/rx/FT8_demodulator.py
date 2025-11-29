@@ -92,8 +92,18 @@ class Candidate:
         self.ldpc_requested = False
         self.ldpc_result = None
         self.decode_result = None
-
         self.__isfrozen = True
+
+    @property
+    def decode_success(self):
+        return not (self.decode_result == None)
+
+    @property
+    def metrics(self):
+        c = self
+        m =  f"{c.id} {c.decode_success:>7} {c.sync_result['sync_score']:7.2f} {c.demap_result['snr']:7.1f} {c.demap_result['llr_sd']:7.2f} {c.ldpc_result['n_its']:7.1f}"
+        return m
+
 
        
 class FT8Demodulator:

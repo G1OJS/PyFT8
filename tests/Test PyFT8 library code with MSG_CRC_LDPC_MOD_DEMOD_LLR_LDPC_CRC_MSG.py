@@ -55,8 +55,9 @@ def onDecode(candidate):
     decoded_candidates.append(candidate)
     
 
-cycle_manager = Cycle_manager(onDecode, None, audio_in = audio_data, sync_score_thresh = 4, min_sd = 2)
-
+    cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, verbose = True, audio_in = audio_in, 
+                              max_iters = 60, max_stall = 8, max_ncheck = 33,
+                              sync_score_thresh = 4, llr_sd_thresh = 3)
 while len(decoded_candidates)<1:
     timers.sleep(0.25)
 cycle_manager.running = False
