@@ -162,7 +162,7 @@ class Cycle_manager():
             # take a snapshot of stats whilst in the loop and send to csv file / UI as needed
             stats = {
                 'n_synced': len(self.cands_list),
-                'n_pending_demap': len(cands_to_demap) - len(demapped),
+                'n_pending_demap': len(cands_to_demap),
                 'n_demapped': len(demapped),
                 'n_demapped_success': len(demapped_success),
                 'n_pending_ldpc': len(cands_for_ldpc),

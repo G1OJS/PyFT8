@@ -9,17 +9,17 @@ import pandas as pd
 
 df = pd.read_csv('../success_fail_counts.csv')
 
-print(df)
+print(df.columns)
+t = df['unix_ts'] 
+t -=t[np.argmin(t %15)]
 
-#cyc = df.query("cycle_str == '251129_121200' or cycle_str == '251129_121215'")
-cyc = df
-
-pd.set_option('display.max_columns', None)
-print(cyc)
 
 fig, ax = plt.subplots()
 
 #ax.stackplot(cyc['unix_ts'], cyc['n_pending_demap'],cyc['n_demapped'],cyc['n_pending_ldpc'],cyc['n_ldpcd'])
-ax.stackplot(cyc['unix_ts'], cyc['n_pending_demap'],cyc['n_demapped'])
+#ax.plot(t, df['n_synced'], label = 'synced')
+ax.plot(t, df['n_pending_demap'], label = 'pending demap')
+ax.plot(t, df['n_demapped'], label = 'demapped')
+#ax.plot(t, df['n_demapped_success'], label = 'demapped good llr_sd')
 plt.legend(loc='upper left')
 plt.show()
