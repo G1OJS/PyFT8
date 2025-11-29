@@ -121,7 +121,7 @@ class Cycle_manager():
                     self.spectrum.sync_search_band = self.spectrum.fine_grid_complex[:self.spectrum.candidate_search_after_hop,:].copy()
                 self.demod.find_syncs(self.spectrum, self.sync_score_thresh, self.onFindSync)
                 timers.timedLog("Spectrum searched")
-                if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy)
+                if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
                 self.spectrum.searched = True
 
             cands_to_demap = []
@@ -199,7 +199,7 @@ class Cycle_manager():
             if(dt > self.sigspec.cycle_seconds//2): dt -=self.sigspec.cycle_seconds
             dt = f"{dt:4.1f}"
             c.decode_result.update({'dt': dt})
-            key = f"{c.decode_result['call_a']} {c.decode_result['call_b']} {c.decode_result['grid_rpt']}"
+            key = c.message
             if(not key in self.spectrum.duplicate_filter):
                 self.n_unique +=1
                 self.spectrum.duplicate_filter.add(key)

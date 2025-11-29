@@ -84,9 +84,11 @@ class Candidate:
     def __init__(self, spectrum):
         self.id = Candidate.next_id
         Candidate.next_id +=1
+        self.sigspec = spectrum.sigspec
         self.size = spectrum.candidate_size
         self.cyclestart_str = timers.cyclestart_str()
         self.sync_result = None
+        self.synced_grid_complex = None
         self.demap_requested = False
         self.demap_result = None
         self.ldpc_requested = False
@@ -99,13 +101,16 @@ class Candidate:
         return not (self.decode_result == None)
 
     @property
+    def message(self):
+        c = self
+        return f"{c.decode_result['call_a']} {c.decode_result['call_b']} {c.decode_result['grid_rpt']}"
+
+    @property
     def metrics(self):
         c = self
         m =  f"{c.id} {c.decode_success:>7} {c.sync_result['sync_score']:7.2f} {c.demap_result['snr']:7.1f} {c.demap_result['llr_sd']:7.2f} {c.ldpc_result['n_its']:7.1f}"
         return m
 
-
-       
 class FT8Demodulator:
     def __init__(self, sigspec, max_iters, max_stall, max_ncheck):
         self.sigspec = sigspec
@@ -136,7 +141,7 @@ class FT8Demodulator:
                     best = test
             if(best[1] > sync_score_thresh):
                 sync_result = {'sync_score': best[1],
-                                  'origin': (best[0], f0_idx, spectrum.dt * h0, spectrum.df * f0_idx),
+                                  'origin': (best[0], f0_idx, spectrum.dt * best[0], spectrum.df * f0_idx),
                                   'last_hop': best[0] + self.hops_per_signal,
                                   'last_data_hop': best[0] + self.hops_per_signal - self.hops_per_costas_block}
                 onSync(sync_result)
@@ -213,7 +218,6 @@ def unpack_ft8_g15(g15, ir):
     snr = r-35
     R = '' if (ir == 0) else 'R'
     return f"{R}{snr:+03d}"
-
 
 def FT8_unpack(c):
     # need to add support for /P and R+report (R-05)
