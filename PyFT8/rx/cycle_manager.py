@@ -20,6 +20,7 @@ class Cycle_manager():
         self.spectrum_lock = threading.Lock()
         self.cands_list_lock = threading.Lock()
         self.last_cycle_time = 1e9
+        self.cyclestart_str = None
         self.demod = FT8Demodulator(sigspec, max_iters, max_stall, max_ncheck)
         self.spectrum = Spectrum(self.demod)
         self.running = True
@@ -30,6 +31,7 @@ class Cycle_manager():
         self.input_device_idx = audio._find_device(config.soundcards['input_device'])   
         self.audio_queue = queue.Queue(maxsize=200)
         self.decode_queue = queue.Queue()
+        self.n_spectrum_denied = 0
         self.n_ldpcd = 0
         self.n_decode_success = 0
         self.n_unique = 0
@@ -88,8 +90,13 @@ class Cycle_manager():
             cycle_time = timers.tnow() % self.demod.sigspec.cycle_seconds 
             if (self.live and cycle_time < self.last_cycle_time):
                 self.spectrum.cycle_start_offset = cycle_time
+                self.cycle_end_time = timers.tnow() + self.demod.sigspec.cycle_seconds
+                self.cyclestart_str = timers.cyclestart_str()
+                if(self.n_spectrum_denied > 0):
+                    timers.timedLog(f"Warning, {self.n_spectrum_denied} candidates out of {self.n_cands} requested spectrum after first hop overwritten (denied)")
                 timers.timedLog(f"Cycle rollover {cycle_time:.2f}")
                 self.spectrum.reset(cycle_time)
+                self.n_spectrum_denied = 0
                 self.n_ldpcd = 0
                 self.n_decode_success = 0
                 self.n_unique = 0
@@ -112,9 +119,14 @@ class Cycle_manager():
     def fill_candidate(self, candidate):
         c = candidate
         origin = c.sync_result['origin']
+        if(c.cyclestart_str != self.cyclestart_str):
+            if (self.spectrum.nHops_loaded > c.sync_result['first_data_hop']):
+                self.n_spectrum_denied +=1
+                return False
         with self.spectrum_lock:
             c.synced_grid_complex = self.spectrum.fine_grid_complex[origin[0]:origin[0]+c.size[0], origin[1]:origin[1]+c.size[1]].copy()
             c.timings.update({'fill':timers.tnow()})
+        return True
             
     def threaded_decoding_manager(self):
         while self.running:
@@ -127,6 +139,7 @@ class Cycle_manager():
                 timers.timedLog("Spectrum searched")
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
                 self.spectrum.searched = True
+                self.n_cands = len(self.cands_list)
 
             cands_to_demap = []
             if(self.spectrum.searched):
@@ -142,10 +155,12 @@ class Cycle_manager():
             for c in cands_to_demap:                
                 c.demap_requested = True
                 c.timings.update({'t_requested_demap':timers.tnow()})
-                self.fill_candidate(c)
-                self.demod.demap_candidate(self.spectrum, c)
-                c.timings.update({'t_end_demap':timers.tnow()})
-                self.demap_wait += c.timings['t_end_demap'] - c.timings['t_requested_demap']
+                if(self.fill_candidate(c)):
+                    self.demod.demap_candidate(self.spectrum, c)
+                    c.timings.update({'t_end_demap':timers.tnow()})
+                    self.demap_wait += c.timings['t_end_demap'] - c.timings['t_requested_demap']
+                else:
+                    c.demap_result = {'llr_sd':0,'llr':None,'snr':None}
                         
             # demapped = all candidates that have been demapped
             with self.cands_list_lock:

@@ -150,7 +150,8 @@ class FT8Demodulator:
                 sync_result = {'sync_score': best[1],
                                   'origin': (best[0], f0_idx, spectrum.dt * best[0], spectrum.df * f0_idx),
                                   'last_hop': best[0] + self.hops_per_signal,
-                                  'last_data_hop': best[0] + self.hops_per_signal - self.hops_per_costas_block}
+                                  'last_data_hop': best[0] + self.hops_per_signal - self.hops_per_costas_block,
+                                  'first_data_hop': best[0] + self.hops_per_costas_block}
                 onSync(sync_result)
 
     def demap_candidate(self, spectrum, candidate):
@@ -186,10 +187,10 @@ class FT8Demodulator:
                           'llr':llr,
                           'snr':snr}
 
-    def decode_candidate(self, candidate, onDecode):
+    def decode_candidate(self, candidate, onDecode, expiry_time = 1e40):
         c = candidate
         llr = 3 * c.demap_result['llr'] / (c.demap_result['llr_sd']+.001)
-        c.ldpc_result = self.ldpc.decode(llr)
+        c.ldpc_result = self.ldpc.decode(llr, expiry_time )
         if(c.ldpc_result['payload_bits']):
             c.decode_result = FT8_unpack(c)
         onDecode(c)

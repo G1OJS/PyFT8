@@ -64,7 +64,7 @@ class LDPC174_91:
             n = (n << 1) | (b & 1)
         return n
             
-    def decode(self, llr, expiry_time = 1e40):
+    def decode(self, llr, expiry_time):
         it = 0
         ncheck_last = 0
         nstall = 0
