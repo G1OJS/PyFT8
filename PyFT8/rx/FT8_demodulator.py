@@ -67,12 +67,12 @@ class Spectrum:
         self.hop_idxs_Costas =  np.arange(self.sigspec.costas_len) * demodspec.hops_persymb
         self.candidate_search_after_hop  = (np.max(demodspec.sync_range) + np.max(self.hop_idxs_Costas)) +1
         self.fine_grid_complex = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.complex64)
+        self.sync_search_band = self.fine_grid_complex[:self.candidate_search_after_hop,:] # move to _init_?
+        self.occupancy = np.zeros(self.nFreqs)
         self.reset(0)
         self.__isfrozen = True
         
     def reset(self, cycle_start_offset): #(is this really a new class called 'cycle'?)
-        self.sync_search_band = self.fine_grid_complex[:self.candidate_search_after_hop,:] # move to _init_?
-        self.occupancy = np.zeros(self.nFreqs)
         self.searched = False
         self.nHops_loaded = 0
         self.audio_in = []
@@ -107,9 +107,14 @@ class Candidate:
 
     @property
     def metrics(self):
-        c = self
-        m =  f"{c.id} {c.decode_success:>7} {c.sync_result['sync_score']:7.2f} {c.demap_result['snr']:7.1f} {c.demap_result['llr_sd']:7.2f} {c.ldpc_result['n_its']:7.1f}"
-        return m
+        return {
+            "cand_id": self.id,
+            "decode_success": int(self.decode_success),
+            "sync_score": self.sync_result['sync_score'],
+            "snr": self.demap_result['snr'],
+            "llr_sd": self.demap_result['llr_sd'],
+            "ldpc_iters": self.ldpc_result['n_its']
+        }
 
 class FT8Demodulator:
     def __init__(self, sigspec, max_iters, max_stall, max_ncheck):

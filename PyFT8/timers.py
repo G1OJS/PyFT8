@@ -1,6 +1,7 @@
 import time
 import threading
 from PyFT8.signaldefs import FT8
+import os
 
 CYCLE_LENGTH = FT8.cycle_seconds
 
@@ -21,17 +22,39 @@ def sleep(secs):
 def cyclestart_str():
     return time.strftime("%y%m%d_%H%M%S", time.gmtime(CYCLE_LENGTH * int(time.time() / CYCLE_LENGTH)))
 
-def timedLog(msg, silent = False, logfile = None):
+def timestamp_bundle():
+    """Return all forms of time once so all logs stay consistent."""
     t = time.time()
-    time_str = cyclestart_str()
-    t_elapsed = t % CYCLE_LENGTH
-    time_str = f"{time_str}_{t_elapsed:.1f}"
-    lf = f"Log to {logfile}:" if logfile else ''
-    if (not silent):
-        print(f"{time_str} {lf} {msg}")
-    if(logfile):
-        with open (logfile, 'a') as f:
-            f.write(f"{time_str} {msg}\n")
+    return {
+        "t": t,                               # raw unix timestamp
+        "cycle_str": cyclestart_str(),        # 'HHMMSS_xxxxxx'
+        "t_elapsed": t % CYCLE_LENGTH         # seconds into cycle
+    }
 
+def timedLog(msg, silent=False, logfile=None):
+    ts = timestamp_bundle()
+    if not silent:
+        print(f"{ts['cycle_str']} {ts['t_elapsed']:.1f} {msg}")
+    if logfile:
+        with open(logfile, 'a') as f:
+            f.write(f"{ts['cycle_str']},{ts['t_elapsed']:.3f},{ts['t']:.3f},{msg}\n")
 
+logs_opened=[]
+def timedLogCSV(stats_dict, filename):
+    global logs_opened
+    ts = timestamp_bundle()
+    row_dict = {
+        "cycle_str": ts["cycle_str"],
+        "t_elapsed": round(ts["t_elapsed"], 3),
+        "unix_ts":   round(ts["t"], 3),
+        **stats_dict
+    }
+    
+    if(not filename in logs_opened):
+        with open(filename, 'w') as f:
+            f.write(','.join(row_dict.keys()) + "\n")
+        logs_opened.append(filename)
+        
+    with open(filename, 'a') as f:
+        f.write(','.join(str(v) for v in row_dict.values()) + "\n")
 

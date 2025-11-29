@@ -50,10 +50,6 @@ class Cycle_manager():
             t = threading.Thread(target=self.decode_worker, daemon=True)
             t.start()
             self.decode_workers.append(t)
-        with open('success_fail_metrics.csv', 'w') as f:
-            f.write("timestamp,  	       id,   decoded, sync_score,snr,llr_sd, n_its\n")
-        with open('success_fail_counts.csv', 'w') as f:
-            f.write("timestamp,   	  n_synced, to_demap, demapped, to_ldpc, ldpc'd, decoded, unique, ldpc_%\n")
 
     def find_candidates_from_audio_in(self, audio_in):
         # inject audio e.g. from wav file for testing 
@@ -151,6 +147,7 @@ class Cycle_manager():
                 c.ldpc_requested = True
                 self.decode_queue.put(c)
 
+            # take a snapshot of stats whilst in the loop and send to csv file / UI as needed
             stats = {
                 'n_synced': len(self.cands_list),
                 'n_pending_demap': len(cands_to_demap),
@@ -159,9 +156,10 @@ class Cycle_manager():
                 'n_ldpcd': self.n_ldpcd,
                 'n_decoded': self.n_decoded,
                 'n_unique': self.n_unique,
-                'ldpc_success%': self.n_decoded/(self.n_ldpcd+.0001)
+                'ldpc_success_pc': self.n_decoded/(self.n_ldpcd+.0001)
             }
-            timers.timedLog(', ' + ', '.join([f"{v:>6}" for k, v in stats.items()]), logfile='success_fail_counts.csv', silent = True)
+            if(self.verbose):
+                timers.timedLogCSV(stats, 'success_fail_counts.csv')
      
             loading_info = {'n_candidates': stats['n_synced'],
                             'parallel_decodes': self.decode_queue.qsize()}
@@ -185,17 +183,19 @@ class Cycle_manager():
                 self.decode_queue.task_done()
             
     def onDecode(self, c):
+        # ALL candidates sent for ldpc arrive here, and are no longer needed so remove from cands_list
         with self.cands_list_lock:
             self.cands_list.remove(c)
+        # record arrival and add metrics to log
         self.n_ldpcd +=1
         if(self.verbose):
-            metrics = c.metrics
-            timers.timedLog(metrics, logfile='success_fail_metrics.csv', silent = True)
+            timers.timedLogCSV(c.metrics, 'success_fail_metrics.csv')
+        # now look at decode success and process the decode output,
+        # deduplicating based on message text for the current cycle
         if(c.decode_success):
             self.n_decoded +=1
             origin = c.sync_result['origin']
-            #dt = origin[2] - self.spectrum.cycle_start_offset - 0.3 -0.5
-            dt = origin[2]
+            dt = origin[2] - 0.8 
             if(dt > self.sigspec.cycle_seconds//2): dt -=self.sigspec.cycle_seconds
             dt = f"{dt:4.1f}"
             c.decode_result.update({'dt': dt})
