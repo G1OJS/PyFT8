@@ -35,6 +35,30 @@
 		.grid_row.header {display: contents;position: sticky;top: 0;z-index: 20;}
 		.grid_row.header > .grid_cell {background: var(--table-bg);position: sticky;top: 0;z-index: 21; color:lime; border-right:1px lime dashed;}
 		
+		#pipeline {display: flex;align-items: flex-end;gap: 10px;height: 120px;padding: 10px;}
+
+		.bar-container {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+		}
+
+		.bar {
+			width: 20px;
+			height: 100px;
+			background: linear-gradient(to bottom, red, yellow, green);
+			transform-origin: bottom;
+			transform: scaleY(0.1);
+			transition: transform 0.12s ease-out;
+		}
+
+		.label {
+			margin-top: 5px;
+			font-size: 0.7em;
+		}
+
+		
+		
 	</style>
 	
 	<script>
@@ -42,6 +66,7 @@
 		let txFreq = null;
 		let rxFreq = null;
 		let best_snr = 24;
+		let bar_data_last = [0,0,0,0];
 		
 		function update_spectrum(spectrum_power) {
 			const spectrum = document.getElementById("Spectrum");
@@ -131,7 +156,21 @@
 				}
 				update_percent();
 			}
+			if (dd.topic == 'graphic_bars') {updatePipelineBars(dd)}
 		}
+		
+		function updatePipelineBars(data) {
+			bar_data = [data.n_synced/100, data.demap_wait*2, data.ldpc_wait/2, data.n_decode_success/8]
+			for (const i of[0,1,2,3]){
+				let diff = bar_data[i]-bar_data_last[i];
+				if(diff<0) {diff = 0}
+				if(diff>1) {diff = 1}
+				document.getElementById("bar-"+i).style.transform =
+				`scaleY(${diff})`;
+			}
+			bar_data_last = bar_data
+		}
+
 		
 		function update_percent(){
 			let w = parseInt(n_wsjtx_decodes.innerText)
@@ -195,8 +234,23 @@
 		</div>
 		<div id = 'buttons'>
 		</div>
-		<div id = 'stats'>
-			<span>PyFT8 best snr: </span><span id = 'PyFT8_best_snr'></span>
+		<div id="pipeline">
+			<div class="bar-container">
+				<div id="bar-0" class="bar"></div>
+				<span class="label">SYNC</span>
+			</div>
+			<div class="bar-container">
+				<div id="bar-1" class="bar"></div>
+				<span class="label">DEMAP</span>
+			</div>
+			<div class="bar-container">
+				<div id="bar-2" class="bar"></div>
+				<span class="label">LDPC</span>
+			</div>
+			<div class="bar-container">
+				<div id="bar-3" class="bar"></div>
+				<span class="label">OUTPUT</span>
+			</div>
 		</div>
 	</div>
 	

@@ -29,9 +29,13 @@ class Cycle_manager():
         self.cands_list = []
         self.input_device_idx = audio._find_device(config.soundcards['input_device'])   
         self.audio_queue = queue.Queue(maxsize=200)
+        self.decode_queue = queue.Queue()
         self.n_ldpcd = 0
-        self.n_decoded = 0
+        self.n_decode_success = 0
         self.n_unique = 0
+        self.n_demapped = 0
+        self.demap_wait = 0
+        self.ldpc_wait = 0
         
         # audio_in is e.g. from wav file for testing, otherwise start monitoring sound card
         if(any(audio_in)):
@@ -43,7 +47,8 @@ class Cycle_manager():
             threading.Thread(target=self.threaded_audio_reader, daemon=True).start()
             threading.Thread(target=self.threaded_spectrum_filler, daemon=True).start()
         threading.Thread(target=self.threaded_decoding_manager, daemon=True).start()
-        self.decode_queue = queue.Queue()
+        threading.Thread(target=self.threaded_bargraph_updater, daemon=True).start()
+        
         self.decode_workers = []
         num_workers = 10
         for _ in range(num_workers):
@@ -86,8 +91,10 @@ class Cycle_manager():
                 timers.timedLog(f"Cycle rollover {cycle_time:.2f}")
                 self.spectrum.reset(cycle_time)
                 self.n_ldpcd = 0
-                self.n_decoded = 0
+                self.n_decode_success = 0
                 self.n_unique = 0
+                self.n_demapped = 0
+                self.n_ldpcd = 0
             self.last_cycle_time = cycle_time
             audio_samples = np.frombuffer(self.audio_queue.get(), dtype=np.int16)
             with self.spectrum_lock:
@@ -107,7 +114,8 @@ class Cycle_manager():
         origin = c.sync_result['origin']
         with self.spectrum_lock:
             c.synced_grid_complex = self.spectrum.fine_grid_complex[origin[0]:origin[0]+c.size[0], origin[1]:origin[1]+c.size[1]].copy()
-
+            c.timings.update({'fill':timers.tnow()})
+            
     def threaded_decoding_manager(self):
         while self.running:
 
@@ -133,12 +141,16 @@ class Cycle_manager():
             # for cands_to_demap, fill the candidate's part of the spectrum and demap
             for c in cands_to_demap:                
                 c.demap_requested = True
+                c.timings.update({'t_requested_demap':timers.tnow()})
                 self.fill_candidate(c)
                 self.demod.demap_candidate(self.spectrum, c)
+                c.timings.update({'t_end_demap':timers.tnow()})
+                self.demap_wait += c.timings['t_end_demap'] - c.timings['t_requested_demap']
                         
             # demapped = all candidates that have been demapped
             with self.cands_list_lock:
                 demapped = [c for c in self.cands_list if c.demap_result]
+            self.n_demapped = len(demapped)
 
             # for demapped candidates with llr_sd below llr_sd_thesh, remove from global list self.cands_list
             # for the others, build a list to send to ldpc
@@ -155,26 +167,12 @@ class Cycle_manager():
             cands_for_ldpc.sort(key=lambda c: -c.demap_result['llr_sd'] - 100*(np.abs(c.sync_result['origin'][3]-config.rxfreq)<2))
             for c in cands_for_ldpc:
                 c.ldpc_requested = True
+                c.timings.update({'t_requested_ldpc':timers.tnow()})
                 self.decode_queue.put(c)
             # workers handle ldpc from here and they *all* arrive below in onDecode, which then
-            # removes them from self.cands_list and accumulates stats in self.n_ldpcd, self.n_decoded, self.n_unique
-
-            # take a snapshot of stats whilst in the loop and send to csv file / UI as needed
-            stats = {
-                'n_synced': len(self.cands_list),
-                'n_pending_demap': len(cands_to_demap),
-                'n_demapped': len(demapped),
-                'n_demapped_success': len(demapped_success),
-                'n_pending_ldpc': len(cands_for_ldpc),
-                'n_ldpcd': self.n_ldpcd,
-                'n_decoded': self.n_decoded,
-                'n_unique': self.n_unique,
-                'ldpc_success_pc': self.n_decoded/(self.n_ldpcd+.0001)
-            }
-            if(self.verbose):
-                timers.timedLogCSV(stats, 'success_fail_counts.csv')
+            # removes them from self.cands_list and accumulates stats in self.n_ldpcd, self.n_decode_success, self.n_unique
      
-            loading_info = {'n_candidates': stats['n_synced'],
+            loading_info = {'n_candidates': len(self.cands_list),
                             'parallel_decodes': self.decode_queue.qsize()}
             send_to_ui_ws("decode_queue", loading_info)
             timers.sleep(0.01)
@@ -182,6 +180,7 @@ class Cycle_manager():
     def onFindSync(self, sync_result):
         c = Candidate(self.spectrum)
         c.sync_result = sync_result
+        c.timings.update({'sync':timers.tnow()})
         with self.cands_list_lock:
             self.cands_list.append(c)
 
@@ -198,6 +197,8 @@ class Cycle_manager():
     def onDecode(self, c):
         # ALL candidates sent for ldpc arrive here, and are no longer needed so remove from cands_list
         with self.cands_list_lock:
+            c.timings.update({'t_end_ldpc':timers.tnow()})
+            self.ldpc_wait += c.timings['t_end_ldpc'] - c.timings['t_requested_ldpc']
             self.cands_list.remove(c)
         # record arrival and add metrics to log
         self.n_ldpcd +=1
@@ -206,7 +207,7 @@ class Cycle_manager():
         # now look at decode success and process the decode output,
         # deduplicating based on message text for the current cycle
         if(c.decode_success):
-            self.n_decoded +=1
+            self.n_decode_success +=1
             origin = c.sync_result['origin']
             dt = origin[2] - 0.8 
             if(dt > self.sigspec.cycle_seconds//2): dt -=self.sigspec.cycle_seconds
@@ -217,5 +218,17 @@ class Cycle_manager():
                 self.n_unique +=1
                 self.spectrum.duplicate_filter.add(key)
                 self.onSuccessfulDecode(c)
+
+    def threaded_bargraph_updater(self):
+        while self.running:
+            graphic_bars = {
+              "n_synced":   len(self.cands_list),
+              "demap_wait": self.demap_wait,
+              "ldpc_wait":  self.ldpc_wait,
+              "n_decode_success":  self.n_decode_success
+            }
+            send_to_ui_ws("graphic_bars", graphic_bars)
+            
+            timers.sleep(0.25)
 
  

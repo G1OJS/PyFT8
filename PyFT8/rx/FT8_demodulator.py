@@ -94,6 +94,8 @@ class Candidate:
         self.ldpc_requested = False
         self.ldpc_result = None
         self.decode_result = None
+        self.timings = stats = { 't_requested_demap': None, 't_end_demap': None,
+                                 't_requested_ldpc': None, 't_end_ldpc': None,}
         self.__isfrozen = True
 
     @property
