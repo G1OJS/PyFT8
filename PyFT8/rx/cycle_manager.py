@@ -6,13 +6,15 @@ from PyFT8.comms_hub import config, send_to_ui_ws
 from PyFT8.rx.FT8_demodulator import FT8Demodulator, Spectrum, Candidate
 import pyaudio
 import queue
+import wave
 
 class Cycle_manager():
-    def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in = [], verbose = True,
-                 max_iters = 90, max_stall = 8, max_ncheck = 30,
+    def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None, verbose = True,
+                 max_iters = 90, max_stall = 8, max_ncheck = 30, lifetime = 8,
                  sync_score_thresh = 3, llr_sd_thresh = 2):
         self.verbose = verbose
         self.last_cycle_time = 1e40
+        self.candidate_lifetime = lifetime
         self.live = True
         self.sigspec = sigspec
         self.sync_score_thresh = sync_score_thresh
@@ -32,25 +34,40 @@ class Cycle_manager():
         self.audio_queue = queue.Queue(maxsize=200)
         self.n_spectrum_denied = 0
         self.n_decode_success = 0
-        self.n_decode_success_cumve = 0
         self.demap_wait = 0
         self.ldpc_wait = 0
-        self.n_ldpc_send = 0
-        self.n_ldpc_return =0
+        self.n_ldpc_load = 0
 
-        timers.timedLog("Waiting for first cycle start")
-        while (timers.tnow() % self.demod.sigspec.cycle_seconds) < self.demod.sigspec.cycle_seconds -1 :
-            timers.sleep(0.1)
-        threading.Thread(target=self.threaded_audio_stream, daemon=True).start()
         threading.Thread(target=self.threaded_spectrum_filler, daemon=True).start()
         threading.Thread(target=self.threaded_spectrum_tasks, daemon=True).start()
         threading.Thread(target=self.threaded_demap_manager, daemon=True).start()
         threading.Thread(target=self.threaded_decode_manager, daemon=True).start()
         threading.Thread(target=self.threaded_UI_updater, daemon=True).start()
+        
+        if(audio_in_wav):
+            threading.Thread(target=self.threaded_audio_from_wav, args=(audio_in_wav,), daemon=True).start()
+        else:
+            threading.Thread(target=self.threaded_audio_stream, daemon=True).start()
 
 #============================================
-# Audio in and FFT
+# Audio input
 #============================================
+
+    def threaded_audio_from_wav(self, wav_file):
+        wf = wave.open(wav_file, 'rb')
+        hop = self.demod.samples_perhop
+        hop_time = hop / self.demod.sample_rate
+        while (not self.cyclestart_str):
+            timers.sleep(0.01)
+        timers.sleep(0.01)
+        timers.timedLog(f"Playing wav file {wav_file}")
+        while self.running:
+            frames = wf.readframes(hop)
+            if not frames or (timers.tnow() % self.demod.sigspec.cycle_seconds) > 14.7:
+                self.running = False
+            self.audio_queue.put(frames)
+            timers.sleep(hop_time)   # simulate real-time arrival
+
     def threaded_audio_stream(self):
         pa = pyaudio.PyAudio()
         stream = pa.open(format=pyaudio.paInt16, channels=1, rate=self.demod.sample_rate,
@@ -58,11 +75,13 @@ class Cycle_manager():
                          frames_per_buffer=self.demod.samples_perhop, stream_callback=None)
         while self.running:
             timers.sleep(0.001)
-           # config.pause_ldpc = True
             data = stream.read(self.demod.samples_perhop, exception_on_overflow=False)
             self.audio_queue.put(data)
-           # config.pause_ldpc = False
-            
+
+#============================================
+# 'Spectrum-filler' (FFT the audio as it arrives)
+#============================================
+
     def threaded_spectrum_filler(self):
         self.spectrum = Spectrum(self.demod)
         while self.running:
@@ -72,21 +91,21 @@ class Cycle_manager():
             self.spectrum.audio_in.extend(audio_samples)    
             FFT_start_sample_idx = int(len(self.spectrum.audio_in) - self.spectrum.FFT_len)
             if(FFT_start_sample_idx >0 and self.spectrum.nHops_loaded < self.spectrum.hops_percycle):
-               # config.pause_ldpc = True
                 aud = self.spectrum.audio_in[FFT_start_sample_idx:FFT_start_sample_idx + self.spectrum.FFT_len]
                 aud *= self.time_window
                 #with self.spectrum_lock:
                 self.spectrum.fine_grid_complex[self.spectrum.nHops_loaded,:] = np.fft.rfft(aud)[:self.spectrum.nFreqs]
                 self.spectrum.nHops_loaded +=1
-              #  config.pause_ldpc = False
 
 #============================================
 # Rollover and early candidate search
 #============================================
     def threaded_spectrum_tasks(self):
+        timers.timedLog("Rollover manager waiting for end of partial cycle")
+        while (timers.tnow() % self.demod.sigspec.cycle_seconds) < self.demod.sigspec.cycle_seconds  - 0.1 :
+            timers.sleep(0.01)
         while self.running:
             timers.sleep(0.1)
-            
             cycle_time = timers.tnow() % self.demod.sigspec.cycle_seconds 
             if (self.live and cycle_time < self.last_cycle_time):
                 self.spectrum.cycle_start_offset = cycle_time
@@ -112,7 +131,7 @@ class Cycle_manager():
                 config.pause_ldpc = False
 
     def onFindSync(self, sync_result):
-        c = Candidate(self.spectrum)
+        c = Candidate(self.spectrum, self.candidate_lifetime)
         c.sync_result = sync_result
         c.timings.update({'sync':timers.tnow()})
         with self.cands_list_lock:
@@ -131,7 +150,7 @@ class Cycle_manager():
                 cands_synced = [c for c in self.cands_list if c.sync_result]
             # cands_to_demap = subset of cands_synced which are 'full' and not yet sent for demap
             cands_to_demap = [c for c in cands_synced
-                              if self.spectrum.nHops_loaded > c.sync_result['last_data_hop']
+                              if self.spectrum.nHops_loaded > c.sync_result['last_hop']
                               and not c.demap_requested]
                 
             # for cands_to_demap, fill the candidate's part of the spectrum and demap
@@ -140,7 +159,7 @@ class Cycle_manager():
                 c.timings.update({'t_requested_demap':timers.tnow()})
                 origin = c.sync_result['origin']
                 if(c.cyclestart_str != self.cyclestart_str):
-                    if (self.spectrum.nHops_loaded > c.sync_result['first_data_hop']):
+                    if (self.spectrum.nHops_loaded > c.sync_result['first_hop']):
                         self.n_spectrum_denied +=1
                         c.demap_result = {'llr_sd':0,'llr':None,'snr':None}
                     continue
@@ -179,10 +198,10 @@ class Cycle_manager():
             cands_for_ldpc = [c for c in demapped_success if not c.ldpc_requested]
             cands_for_ldpc.sort(key=lambda c: -c.demap_result['llr_sd'])
             for c in cands_for_ldpc:
-                if(self.n_ldpc_send - self.n_ldpc_return < 500):
+                if(self.n_ldpc_load < 500):
                     c.ldpc_requested = True
                     c.timings.update({'t_requested_ldpc':timers.tnow()})
-                    self.n_ldpc_send +=1
+                    self.n_ldpc_load +=1
                     threading.Thread(target=self.demod.decode_candidate, kwargs={'candidate':c, 'onDecode':self.onDecode}, daemon=True).start()
             
     def onDecode(self, c):
@@ -191,10 +210,9 @@ class Cycle_manager():
             
         c.timings.update({'t_end_ldpc':timers.tnow()})
         self.ldpc_wait += c.timings['t_end_ldpc'] - c.timings['t_requested_ldpc']
-        self.n_ldpc_return +=1
+        self.n_ldpc_load -=1
         if(c.decode_success):
             self.n_decode_success +=1
-            self.n_decode_success_cumve +=1
             origin = c.sync_result['origin']
             dt = origin[2] - 0.8 
             if(dt > self.sigspec.cycle_seconds//2): dt -=self.sigspec.cycle_seconds
@@ -216,10 +234,7 @@ class Cycle_manager():
             timers.sleep(0.25)
             
             loading_info = {'n_candidates': len(self.cands_list),
-                            'in_ldpc': self.n_ldpc_send,
-                            'ldpc_results': self.n_ldpc_return,
-                            'n_decode_success':  self.n_decode_success_cumve}
-            timers.timedLog(loading_info, logfile = 'pipeline.log',silent = True)
+                            'n_ldpc_load': self.n_ldpc_load}
             send_to_ui_ws("decode_queue", loading_info)
             graphic_bars = { "n_synced":   len(self.cands_list),
                              "demap_wait": self.demap_wait,

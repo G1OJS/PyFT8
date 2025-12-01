@@ -94,8 +94,8 @@ class Waterfall:
                 ax.add_patch(rect)
 
             from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-            if llr_overlay and c.llr is not None:
-                llr = np.array(c.llr, dtype=np.float32)
+            if llr_overlay and c.demap_result['llr'] is not None:
+                llr = np.array(c.demap_result['llr'], dtype=np.float32)
                 llr_img = llr.reshape(-1, 1)
                 llr_ax = inset_axes(parent_axes=ax, width="5%", height="100%", borderpad=0)
                 llr_ax.imshow(llr_img, origin="lower", aspect="auto", cmap="bwr")
