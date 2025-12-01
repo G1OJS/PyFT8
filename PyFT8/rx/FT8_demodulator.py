@@ -150,7 +150,7 @@ class FT8Demodulator:
                 sync_result = {'sync_score': best[1],
                                   'origin': (best[0], f0_idx, spectrum.dt * best[0], spectrum.df * f0_idx),
                                   'last_hop': best[0] + spectrum.candidate_size[0],
-                                  'last_data_hop': best[0] + spectrum.candidate_size[0] - self.hops_per_costas_block,
+                                  'last_data_hop': best[0] + spectrum.candidate_size[0],
                                   'first_data_hop': best[0] + self.hops_per_costas_block}
                 onSync(sync_result)
 

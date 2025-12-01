@@ -88,7 +88,7 @@ class LDPC174_91:
                         or it > self.max_iterations
                         or nstall > self.max_nstall
                         or ncheck > self.max_ncheck
-                        or (timers.tnow() > expiry_time))
+                        or timers.tnow() > expiry_time)
             return exit_now, decoded_bits174_LE_list, nstall, ncheck_last, (timers.tnow() > expiry_time)
         
         toc = np.zeros((7, self.kM), dtype=np.float32)       # message -> check messages

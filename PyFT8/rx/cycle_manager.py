@@ -13,16 +13,15 @@ class Cycle_manager():
                  max_iters = 90, max_stall = 8, max_ncheck = 30, lifetime = 8,
                  sync_score_thresh = 3, llr_sd_thresh = 2):
         self.verbose = verbose
+        self.wav_file_start_time = None
         self.last_cycle_time = 1e40
         self.candidate_lifetime = lifetime
-        self.live = True
+        self.cyclestart_str = None
         self.sigspec = sigspec
         self.sync_score_thresh = sync_score_thresh
         self.llr_sd_thresh = llr_sd_thresh
         self.spectrum_lock = threading.Lock()
         self.cands_list_lock = threading.Lock()
-        self.last_cycle_time = 1e9
-        self.cyclestart_str = None
         self.demod = FT8Demodulator(sigspec, max_iters, max_stall, max_ncheck)
         self.spectrum = Spectrum(self.demod)
         self.running = True
@@ -52,21 +51,24 @@ class Cycle_manager():
 #============================================
 # Audio input
 #============================================
-
+        
     def threaded_audio_from_wav(self, wav_file):
         wf = wave.open(wav_file, 'rb')
         hop = self.demod.samples_perhop
-        hop_time = hop / self.demod.sample_rate
+        hop_time = self.demod.samples_perhop / self.demod.sample_rate
         while (not self.cyclestart_str):
             timers.sleep(0.01)
+        self.wav_file_start_time = timers.tnow()
         timers.sleep(0.01)
         timers.timedLog(f"Playing wav file {wav_file}")
         while self.running:
             frames = wf.readframes(hop)
-            if not frames or (timers.tnow() % self.demod.sigspec.cycle_seconds) > 14.7:
-                self.running = False
+            if not frames:
+                break
+            nextHop_time = timers.tnow() + hop_time
             self.audio_queue.put(frames)
-            timers.sleep(hop_time)   # simulate real-time arrival
+            while timers.tnow() < nextHop_time:
+                timers.sleep(0.001)
 
     def threaded_audio_stream(self):
         pa = pyaudio.PyAudio()
@@ -87,15 +89,15 @@ class Cycle_manager():
         while self.running:
             timers.sleep(0.001)
             audio_samples = np.frombuffer(self.audio_queue.get(), dtype=np.int16)
-            #with self.spectrum_lock:
-            self.spectrum.audio_in.extend(audio_samples)    
+            with self.spectrum_lock:
+                self.spectrum.audio_in.extend(audio_samples)    
             FFT_start_sample_idx = int(len(self.spectrum.audio_in) - self.spectrum.FFT_len)
             if(FFT_start_sample_idx >0 and self.spectrum.nHops_loaded < self.spectrum.hops_percycle):
                 aud = self.spectrum.audio_in[FFT_start_sample_idx:FFT_start_sample_idx + self.spectrum.FFT_len]
                 aud *= self.time_window
-                #with self.spectrum_lock:
-                self.spectrum.fine_grid_complex[self.spectrum.nHops_loaded,:] = np.fft.rfft(aud)[:self.spectrum.nFreqs]
-                self.spectrum.nHops_loaded +=1
+                with self.spectrum_lock:
+                    self.spectrum.fine_grid_complex[self.spectrum.nHops_loaded,:] = np.fft.rfft(aud)[:self.spectrum.nFreqs]
+                    self.spectrum.nHops_loaded +=1
 
 #============================================
 # Rollover and early candidate search
@@ -107,7 +109,7 @@ class Cycle_manager():
         while self.running:
             timers.sleep(0.1)
             cycle_time = timers.tnow() % self.demod.sigspec.cycle_seconds 
-            if (self.live and cycle_time < self.last_cycle_time):
+            if (cycle_time < self.last_cycle_time):
                 self.spectrum.cycle_start_offset = cycle_time
                 self.cycle_end_time = timers.tnow() + self.demod.sigspec.cycle_seconds
                 self.cyclestart_str = timers.cyclestart_str()
@@ -123,8 +125,8 @@ class Cycle_manager():
                 self.spectrum.searched = True
                 config.pause_ldpc = True
                 timers.timedLog("Search spectrum ...", logfile = 'pipeline.log')
-              #  with self.spectrum_lock:
-                self.spectrum.sync_search_band = self.spectrum.fine_grid_complex[:self.spectrum.candidate_search_after_hop,:]
+                with self.spectrum_lock:
+                    self.spectrum.sync_search_band = self.spectrum.fine_grid_complex[:self.spectrum.candidate_search_after_hop,:].copy()
                 self.demod.find_syncs(self.spectrum, self.sync_score_thresh, self.onFindSync)
                 timers.timedLog("Spectrum searched", logfile = 'pipeline.log')
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
@@ -161,7 +163,7 @@ class Cycle_manager():
                 if(c.cyclestart_str != self.cyclestart_str):
                     if (self.spectrum.nHops_loaded > c.sync_result['first_data_hop']):
                         self.n_spectrum_denied +=1
-                        c.demap_result = {'llr_sd':0,'llr':None,'snr':None}
+                        c.demap_result = {'llr_sd':-1,'llr':None,'snr':None}
                     continue
                 with self.spectrum_lock:
                     c.synced_grid_complex = self.spectrum.fine_grid_complex[origin[0]:origin[0]+c.size[0],
