@@ -69,15 +69,13 @@ class Spectrum:
         self.fine_grid_complex = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.complex64)
         self.sync_search_band = self.fine_grid_complex[:self.candidate_search_after_hop,:] # move to _init_?
         self.occupancy = np.zeros(self.nFreqs)
-        self.reset(0)
+        self.reset()
         self.__isfrozen = True
         
-    def reset(self, cycle_start_offset): #(is this really a new class called 'cycle'?)
+    def reset(self): #(is this really a new class called 'cycle'?)
         self.searched = False
         self.nHops_loaded = 0
         self.audio_in = []
-        self.duplicate_filter = set()
-        self.cycle_start_offset = cycle_start_offset
 
 class Candidate:
     next_id = 0

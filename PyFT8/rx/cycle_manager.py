@@ -36,6 +36,7 @@ class Cycle_manager():
         self.demap_wait = 0
         self.ldpc_wait = 0
         self.n_ldpc_load = 0
+        self.duplicate_filter = set()
 
         threading.Thread(target=self.threaded_spectrum_filler, daemon=True).start()
         threading.Thread(target=self.threaded_spectrum_tasks, daemon=True).start()
@@ -110,13 +111,12 @@ class Cycle_manager():
             timers.sleep(0.1)
             cycle_time = timers.tnow() % self.demod.sigspec.cycle_seconds 
             if (cycle_time < self.last_cycle_time):
-                self.spectrum.cycle_start_offset = cycle_time
                 self.cycle_end_time = timers.tnow() + self.demod.sigspec.cycle_seconds
                 self.cyclestart_str = timers.cyclestart_str()
                 if(self.n_spectrum_denied > 0):
                     timers.timedLog(f"Warning, {self.n_spectrum_denied} candidates out of {len(self.cands_list)} requested spectrum after first hop overwritten (denied)")
                 timers.timedLog(f"Cycle rollover {cycle_time:.2f}")
-                self.spectrum.reset(cycle_time)
+                self.spectrum.reset()
                 self.n_spectrum_denied = 0
                 self.n_decode_success = 0
             self.last_cycle_time = cycle_time
@@ -220,9 +220,9 @@ class Cycle_manager():
             if(dt > self.sigspec.cycle_seconds//2): dt -=self.sigspec.cycle_seconds
             dt = f"{dt:4.1f}"
             c.decode_result.update({'dt': dt})
-            key = c.message
-            if(not key in self.spectrum.duplicate_filter):
-                self.spectrum.duplicate_filter.add(key)
+            key = c.cyclestart_str+" "+c.message
+            if(not key in self.duplicate_filter):
+                self.duplicate_filter.add(key)
                 self.onSuccessfulDecode(c)
                 
         if(self.verbose):
