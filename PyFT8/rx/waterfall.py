@@ -88,7 +88,7 @@ class Waterfall:
                         for symb_idx, tone in enumerate(c.sigspec.costas)]
             for hop_idx, fbin_idx in costas_pairs:
                 rect = patches.Rectangle(
-                    (fbin_idx -0.5, hop_idx - 0.5 ), self.fbins_pertone, 1,
+                    (fbin_idx, hop_idx - 0.5 ), self.fbins_pertone, 1,
                     edgecolor='lime', facecolor='none'
                 )
                 ax.add_patch(rect)

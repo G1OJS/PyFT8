@@ -147,8 +147,8 @@ class FT8Demodulator:
                 if test[1] > best[1]:
                     best = test
             if(best[1] > sync_score_thresh):
-                sync_result = {'sync_score': best[1],
-                                  'origin': (best[0], f0_idx, spectrum.dt * best[0], spectrum.df * f0_idx),
+                sync_result = {'sync_score': best[1], 
+                                  'origin': (best[0], f0_idx, spectrum.dt * best[0], spectrum.df * (f0_idx + 1)),
                                   'last_hop': best[0] + spectrum.candidate_size[0],
                                   'last_data_hop': best[0] + spectrum.candidate_size[0],
                                   'first_data_hop': best[0] + self.hops_per_costas_block}
@@ -159,11 +159,11 @@ class FT8Demodulator:
         origin = c.sync_result['origin']
         synced_grid_complex = c.synced_grid_complex.reshape(self.sigspec.num_symbols, self.hops_persymb,
                                                           self.sigspec.tones_persymb, self.fbins_pertone)
-        synced_grid_complex = synced_grid_complex[:,0,:,:] 
+        synced_grid_complex = synced_grid_complex[:,0,:,:] # first hop of self.hops_persymb = the one we synced to
         synced_grid_pwr = np.abs(synced_grid_complex)**2
         synced_pwr = np.max(synced_grid_pwr)
         llr = []
-        synced_grid_pwr_central = synced_grid_pwr[:,:,1]/synced_pwr
+        synced_grid_pwr_central = synced_grid_pwr[:,:,1]/synced_pwr # centre frequency bin
         snr = 10*np.log10(synced_pwr)-107
         snr = int(np.clip(snr, -24,24).item())
         E0 = synced_grid_pwr_central[0:78:2]   # potential to speed up as we don't need                    

@@ -65,7 +65,7 @@ def onDecode(c):
     global first
     global cycle_manager
     if(first):
-        heads = ['End_cyc+', 'Rx call', 'Tx call', 'GrRp', 'SyncScr', 'LLR_sd', 'snr', 't0_idx', 'f0_idx',  'iters']
+        heads = ['End_cyc+', 'Rx call', 'Tx call', 'GrRp', 'SyncScr', 'LLR_sd', 'snr', 't0_idx', 'f0_idx', 't0', 'f0',  'iters']
         print(''.join([f"{t:>8} " for t in heads]))
         first = False
     decoded_candidates.add(c)
@@ -73,7 +73,10 @@ def onDecode(c):
     t_decode = timers.tnow()-cycle_manager.wav_file_start_time - 15
     vals = [f"{t_decode:8.2f}", dd['call_a'], dd['call_b'], dd['grid_rpt'],
             f"{c.sync_result['sync_score']:>5.2f}", f"{c.demap_result['llr_sd']:5.2f}", f"{c.demap_result['snr']:5.0f}",
-            c.sync_result['origin'][0], c.sync_result['origin'][1], c.ldpc_result['n_its'] ]
+            c.sync_result['origin'][0], c.sync_result['origin'][1],
+            f"{c.sync_result['origin'][2]:8.2f}s", f"{c.sync_result['origin'][3]:8.2f}Hz",
+            c.ldpc_result['n_its'] ]
+
     print(''.join([f"{t:>8} " for t in vals]))
 
 

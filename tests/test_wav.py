@@ -34,7 +34,7 @@ cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, verbose = True,
                           max_iters = 60, max_stall = 8, max_ncheck = 45, lifetime = 600000,
                           sync_score_thresh = 2, llr_sd_thresh = 1.4)
 
-timers.sleep(45)
+timers.sleep(60)
 cycle_manager.running = False
     
 print(f"DONE. Unique decodes = {len(decoded_candidates)}")
