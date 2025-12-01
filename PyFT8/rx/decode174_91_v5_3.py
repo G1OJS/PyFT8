@@ -1,17 +1,4 @@
 
-"""
-maxiterations = 20, nstall_max = 8, ncheck_max = 30
-snr_dB, success%
-0.0, 0% time = 1.9
-1.0, 4% time = 1.5
-2.0, 18% time = 5.7
-3.0, 64% time = 9.8
-4.0, 84% time = 6.1
-5.0, 100% time = 3.0
-6.0, 100% time = 2.1
-7.0, 100% time = 1.0
-8.0, 100% time = 0.6
-"""
 import sys
 sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 import numpy as np
@@ -67,29 +54,20 @@ class LDPC174_91:
             n = (n << 1) | (b & 1)
         return n
             
-    def decode(self, c):
+    def decode(self, llr, expiry_time):
         it = 0
-        ncheck_last = 0
-        nstall = 0
-        llr = c.demap_result['llr']
-        expiry_time = c.expiry_time
+        nstall, ncheck_last = 0, 0 
+        ncheck_initial = None
 
-        def exit_check(zn, it, nstall, ncheck_last, expiry_time):
+        def get_ncheck(zn):
             synd_checks = [ sum(1 for llr in zn[self.synd_check_idxs[i]] if llr > 0) %2 for i in range(self.kM)]
-            ncheck = np.sum(synd_checks)
-            nstall = 0 if(ncheck < ncheck_last) else nstall + 1
-            ncheck_last = ncheck
-            crc_result, decoded_bits174_LE_list = False, []
-            if (ncheck == 0):
-                decoded_bits174_LE_list = (zn > 0).astype(int).tolist() 
-                decoded_bits91_int = self.bitsLE_to_int(decoded_bits174_LE_list[0:91])
-                crc_result = check_crc(decoded_bits91_int)
-            exit_now = (crc_result
-                        or it > self.max_iterations
-                        or nstall > self.max_nstall
-                        or ncheck > self.max_ncheck
-                        or timers.tnow() > expiry_time)
-            return exit_now, decoded_bits174_LE_list, nstall, ncheck_last, (timers.tnow() > expiry_time)
+            return np.sum(synd_checks)
+
+        def get_payload_bits(zn):
+            decoded_bits174_LE_list = (zn > 0).astype(int).tolist() 
+            decoded_bits91_int = self.bitsLE_to_int(decoded_bits174_LE_list[0:91]) 
+            payload_bits = decoded_bits174_LE_list if check_crc(decoded_bits91_int) else []
+            return payload_bits
         
         toc = np.zeros((7, self.kM), dtype=np.float32)       # message -> check messages
         tanhtoc = np.zeros((7, self.kM), dtype=np.float64)
@@ -97,13 +75,21 @@ class LDPC174_91:
         zn = np.array(llr, dtype=np.float32)            # working copy of llrs
 
         while True:
-            exit_now, decoded_bits174_LE_list, nstall, ncheck_last, timed_out = exit_check(zn, it, nstall, ncheck_last, expiry_time)
-            if exit_now:
-                return {'payload_bits':decoded_bits174_LE_list, 'n_its':it}
+            ncheck = get_ncheck(zn)
+            nstall = 0 if(ncheck < ncheck_last) else nstall + 1
+            ncheck_last = ncheck
+            payload_bits = get_payload_bits(zn) if ncheck == 0 else []
+            if(it == 0): ncheck_initial = ncheck
+            failures = {'max_its':it>self.max_iterations, 'large_ncheck': ncheck_initial > self.max_ncheck,
+                        'stall':nstall > self.max_nstall, 'timeout': timers.tnow() > expiry_time}
+            
+            if ncheck == 0 or any([f for f in failures.values()]):
+                return {'payload_bits':payload_bits, 'n_its':it, 'ncheck_initial':ncheck_initial, 'failures': failures} 
+
             with pause_cond:
                 while config.pause_ldpc:
                     pause_cond.wait()
-            
+                    
             toc = zn[self.VN]                 
             tov_gather = tov[:, self.VN]     
             sum_all = tov_gather.sum(axis=0) 
@@ -115,7 +101,6 @@ class LDPC174_91:
 
             for kk in range(self.kNCW):
                 for variable_node in range(self.kN):
-                    timers.sleep(0.0001)
                     ichk = self.kMN[kk, variable_node] - 1
                     neigh_vars = self.neigh_vars_for_ichk[ichk]
                     mask = (neigh_vars != variable_node)

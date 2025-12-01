@@ -35,7 +35,7 @@ Log to PyFT8.log: 12:19:29.74 (+0.94) Start to Show candidates
 
 import math
 import numpy as np
-from PyFT8.rx.decode174_91_v5_2 import LDPC174_91
+from PyFT8.rx.decode174_91_v5_3 import LDPC174_91
 import PyFT8.FT8_crc as crc
 #import PyFT8.timers as timers
 from PyFT8.comms_hub import config, send_to_ui_ws
@@ -85,7 +85,7 @@ class Candidate:
         self.sigspec = spectrum.sigspec
         self.size = spectrum.candidate_size
         self.cyclestart_str = timers.cyclestart_str()
-        self.expiry_time = timers.tnow() + lifetime
+        self.expiry_time = 15*int(1+timers.tnow()/15) + lifetime
         self.sync_result = None
         self.synced_grid_complex = None
         self.demap_requested = False
@@ -188,7 +188,8 @@ class FT8Demodulator:
     def decode_candidate(self, candidate, onDecode):
         c = candidate
         llr = 3 * c.demap_result['llr'] / (c.demap_result['llr_sd']+.001)
-        c.ldpc_result = self.ldpc.decode(candidate)
+        expiry_time = c.expiry_time
+        c.ldpc_result = self.ldpc.decode(llr, expiry_time)
         if(c.ldpc_result['payload_bits']):
             c.decode_result = FT8_unpack(c)
         onDecode(c)
