@@ -17,6 +17,9 @@ sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 import numpy as np
 from PyFT8.FT8_crc import check_crc
 import PyFT8.timers as timers
+from PyFT8.comms_hub import config
+from threading import Condition
+pause_cond = Condition()
 
 class LDPC174_91:
     def __init__(self, max_it, max_nstall, max_ncheck):
@@ -64,10 +67,12 @@ class LDPC174_91:
             n = (n << 1) | (b & 1)
         return n
             
-    def decode(self, llr, expiry_time):
+    def decode(self, c):
         it = 0
         ncheck_last = 0
         nstall = 0
+        llr = c.demap_result['llr']
+        expiry_time = c.expiry_time
 
         def exit_check(zn, it, nstall, ncheck_last, expiry_time):
             synd_checks = [ sum(1 for llr in zn[self.synd_check_idxs[i]] if llr > 0) %2 for i in range(self.kM)]
@@ -94,8 +99,11 @@ class LDPC174_91:
         while True:
             exit_now, decoded_bits174_LE_list, nstall, ncheck_last, timed_out = exit_check(zn, it, nstall, ncheck_last, expiry_time)
             if exit_now:
-                return {'payload_bits':decoded_bits174_LE_list, 'n_its':it} 
-
+                return {'payload_bits':decoded_bits174_LE_list, 'n_its':it}
+            with pause_cond:
+                while config.pause_ldpc:
+                    pause_cond.wait()
+            
             toc = zn[self.VN]                 
             tov_gather = tov[:, self.VN]     
             sum_all = tov_gather.sum(axis=0) 
@@ -107,6 +115,7 @@ class LDPC174_91:
 
             for kk in range(self.kNCW):
                 for variable_node in range(self.kN):
+                    timers.sleep(0.0001)
                     ichk = self.kMN[kk, variable_node] - 1
                     neigh_vars = self.neigh_vars_for_ichk[ichk]
                     mask = (neigh_vars != variable_node)

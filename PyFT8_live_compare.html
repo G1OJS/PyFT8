@@ -141,7 +141,7 @@
 			if(!dd) return;
 			if(dd.topic == 'add_band_button')   {add_band_button(dd.band_name, dd.band_freq)}
 			if(dd.topic == 'decode_queue') {
-				document.getElementById('parallel_decodes').innerText = dd.parallel_decodes
+				document.getElementById('n_ldpc_load').innerText = dd.n_ldpc_load
 				document.getElementById('n_candidates').innerText = dd.n_candidates
 			}
 			if(dd.topic == 'decode_dict')		{
@@ -221,7 +221,7 @@
 					PyFT8 Decodes <span id = 'n_PyFT8_decodes'>0</span> 
 					(<span id = 'pc_PyFT8_decodes'>0%</span>) 
 					Cands: <span id='n_candidates'>0</span> 
-					Parallel: <span id='parallel_decodes'>0</span>
+					LDPC: <span id='n_ldpc_load'>0</span>
 				</div>
 				<div id="PyFT8_decodes" class = "decodes_grid">
 					<div class = 'grid_row header'>
