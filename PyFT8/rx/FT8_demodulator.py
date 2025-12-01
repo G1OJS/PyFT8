@@ -57,7 +57,7 @@ class Spectrum:
         self.nFreqs = int(FFT_out_len * self.max_freq / fmax_fft)
         self.df = self.max_freq / self.nFreqs
         self.hops_percycle = int(self.sigspec.cycle_seconds * self.sigspec.symbols_persec * demodspec.hops_persymb)
-        self.candidate_size = ((self.sigspec.num_symbols) * demodspec.hops_persymb,
+        self.candidate_size = (self.sigspec.num_symbols * demodspec.hops_persymb,
                                self.sigspec.tones_persymb * demodspec.fbins_pertone)
         self._csync = np.full((self.sigspec.costas_len, self.candidate_size[1]), -1/(self.sigspec.costas_len-1), np.float32)
         for sym_idx, tone in enumerate(self.sigspec.costas):

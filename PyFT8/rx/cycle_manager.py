@@ -150,7 +150,7 @@ class Cycle_manager():
                 cands_synced = [c for c in self.cands_list if c.sync_result]
             # cands_to_demap = subset of cands_synced which are 'full' and not yet sent for demap
             cands_to_demap = [c for c in cands_synced
-                              if self.spectrum.nHops_loaded > c.sync_result['last_hop']
+                              if self.spectrum.nHops_loaded > c.sync_result['last_data_hop']
                               and not c.demap_requested]
                 
             # for cands_to_demap, fill the candidate's part of the spectrum and demap
@@ -159,7 +159,7 @@ class Cycle_manager():
                 c.timings.update({'t_requested_demap':timers.tnow()})
                 origin = c.sync_result['origin']
                 if(c.cyclestart_str != self.cyclestart_str):
-                    if (self.spectrum.nHops_loaded > c.sync_result['first_hop']):
+                    if (self.spectrum.nHops_loaded > c.sync_result['first_data_hop']):
                         self.n_spectrum_denied +=1
                         c.demap_result = {'llr_sd':0,'llr':None,'snr':None}
                     continue

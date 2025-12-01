@@ -51,17 +51,19 @@ print(f"({len(symbols)} symbols)")
 audio_data = audio.create_ft8_wave(symbols_framed, f_base = config.txfreq, amplitude = 0.5)
 audio_data = audio_data * np.random.rand(len(audio_data))
 
+# need to write audio data to file
+
 decoded_candidates = []
 def onDecode(candidate):
     decoded_candidates.append(candidate)
 
-cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, verbose = True, audio_in = audio_data, 
-                          max_iters = 60, max_stall = 8, max_ncheck = 33,
-                          sync_score_thresh = 4, llr_sd_thresh = 3)
+start_load = timers.tnow()
+cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, verbose = True, audio_in_wav = wav_file, 
+                          max_iters = 60, max_stall = 8, max_ncheck = 35,
+                          sync_score_thresh = 0, llr_sd_thresh = 0)
 
-while len(decoded_candidates)<1:
-    timers.sleep(0.25)
-cycle_manager.running = False
+while cycle_manager.running:
+    timers.sleep(0.1)
 
 for c in decoded_candidates:
     print(f"{c.message} {c.sync_result['sync_score']:5.2f}, {c.demap_result['snr']:5.0f}, {c.sync_result['origin']}, {c.ldpc_result['n_its']:5.0f}")     
