@@ -170,7 +170,7 @@
 			if(dd.topic == 'set_rxfreq') 		{rxFreq = parseInt(dd.freq); update_freq_markers();}
 			if(dd.topic == 'set_txfreq') 		{txFreq = parseInt(dd.freq); update_freq_markers();}
 			if(dd.topic == 'decode_queue') {
-				document.getElementById('parallel_decodes').innerText = dd.parallel_decodes
+				document.getElementById('n_ldpc_load').innerText = dd.n_ldpc_load
 				document.getElementById('n_candidates').innerText = dd.n_candidates
 			}
 			if(dd.topic == "freq_occ_array") 	{update_spectrum(dd.histogram)}
@@ -223,7 +223,7 @@
 				<div class='grid_title'>
 					All decodes -  
 					Cands: <span id='n_candidates'>0</span> 
-					Parallel: <span id='parallel_decodes'>0</span>
+					Parallel: <span id='n_ldpc_load'>0</span>
 				</div>
 				<div id="all_decodes" class = "decodes_grid">
 					<div class = 'grid_row header'>
