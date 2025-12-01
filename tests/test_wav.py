@@ -8,7 +8,7 @@ from PyFT8.comms_hub import config
 from PyFT8.signaldefs import FT8
 from PyFT8.rx.cycle_manager import Cycle_manager
 
-decoded_candidates = []
+decoded_candidates = set()
 
 
 first = True
@@ -19,7 +19,7 @@ def onDecode(c):
         heads = ['End_cyc+', 'Rx call', 'Tx call', 'GrRp', 'SyncScr', 'LLR_sd', 'snr', 't0_idx', 'f0_idx',  'iters']
         print(''.join([f"{t:>8} " for t in heads]))
         first = False
-    decoded_candidates.append(c)
+    decoded_candidates.add(c)
     dd = c.decode_result
     t_decode = timers.tnow()-cycle_manager.wav_file_start_time - 15
     vals = [f"{t_decode:8.2f}", dd['call_a'], dd['call_b'], dd['grid_rpt'],
@@ -37,7 +37,7 @@ cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, verbose = True,
 timers.sleep(45)
 cycle_manager.running = False
     
-print(f"DONE. Decodes unique within cycles = {len(decoded_candidates)}")
+print(f"DONE. Unique decodes = {len(decoded_candidates)}")
 
 wf = Waterfall(cycle_manager.spectrum)
 wf.update_main(candidates=decoded_candidates)

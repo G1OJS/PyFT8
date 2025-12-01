@@ -8,6 +8,7 @@ import PyFT8.timers as timers
 import PyFT8.audio as audio
 from PyFT8.comms_hub import config
 from PyFT8.signaldefs import FT8
+import wave
 
 c28a = pack_ft8_c28("VK1ABC")
 c28b = pack_ft8_c28("VK3JPK")
@@ -48,25 +49,45 @@ symbols_framed = [-10]*7
 symbols_framed.extend(symbols)
 symbols_framed.extend([-10]*7)
 print(f"({len(symbols)} symbols)")
-audio_data = audio.create_ft8_wave(symbols_framed, f_base = config.txfreq, amplitude = 0.5)
-audio_data = audio_data * np.random.rand(len(audio_data))
+audio_data = audio.create_ft8_wave(symbols_framed, f_base = 3000, amplitude = 0.1, added_noise = -20)
 
-# need to write audio data to file
+wav_file = "Local_gen_test.wav"
+wavefile = wave.open(wav_file, 'wb')
+wavefile.setframerate(12000)
+wavefile.setnchannels(1)
+wavefile.setsampwidth(2)
+wavefile.writeframes(audio_data.tobytes())
+wavefile.close()
 
-decoded_candidates = []
-def onDecode(candidate):
-    decoded_candidates.append(candidate)
+decoded_candidates = set()
+first = True
+def onDecode(c):
+    global first
+    global cycle_manager
+    if(first):
+        heads = ['End_cyc+', 'Rx call', 'Tx call', 'GrRp', 'SyncScr', 'LLR_sd', 'snr', 't0_idx', 'f0_idx',  'iters']
+        print(''.join([f"{t:>8} " for t in heads]))
+        first = False
+    decoded_candidates.add(c)
+    dd = c.decode_result
+    t_decode = timers.tnow()-cycle_manager.wav_file_start_time - 15
+    vals = [f"{t_decode:8.2f}", dd['call_a'], dd['call_b'], dd['grid_rpt'],
+            f"{c.sync_result['sync_score']:>5.2f}", f"{c.demap_result['llr_sd']:5.2f}", f"{c.demap_result['snr']:5.0f}",
+            c.sync_result['origin'][0], c.sync_result['origin'][1], c.ldpc_result['n_its'] ]
+    print(''.join([f"{t:>8} " for t in vals]))
+
 
 start_load = timers.tnow()
 cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, verbose = True, audio_in_wav = wav_file, 
-                          max_iters = 60, max_stall = 8, max_ncheck = 35,
-                          sync_score_thresh = 0, llr_sd_thresh = 0)
+                          max_iters = 60, max_stall = 8, max_ncheck = 45, lifetime = 600000,
+                          sync_score_thresh = 2, llr_sd_thresh = 1.4)
 
-while cycle_manager.running:
-    timers.sleep(0.1)
+while len(decoded_candidates) <1 :
+    timers.sleep(0.5)
+cycle_manager.running = False
+    
+print(f"DONE. Unique decodes = {len(decoded_candidates)}")
 
-for c in decoded_candidates:
-    print(f"{c.message} {c.sync_result['sync_score']:5.2f}, {c.demap_result['snr']:5.0f}, {c.sync_result['origin']}, {c.ldpc_result['n_its']:5.0f}")     
 wf = Waterfall(cycle_manager.spectrum)
 wf.update_main(candidates=decoded_candidates)
 wf.show_zoom(candidates=decoded_candidates, phase = False, llr_overlay=False)

@@ -25,7 +25,7 @@ class Cycle_manager():
         self.demod = FT8Demodulator(sigspec, max_iters, max_stall, max_ncheck)
         self.spectrum = Spectrum(self.demod)
         self.running = True
-        self.time_window = np.kaiser(self.spectrum.FFT_len, 20)
+        self.time_window = np.kaiser(self.spectrum.FFT_len, 18)
         self.onSuccessfulDecode = onSuccessfulDecode
         self.onOccupancy = onOccupancy
         self.cands_list = []
