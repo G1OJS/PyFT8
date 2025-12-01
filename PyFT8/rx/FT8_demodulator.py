@@ -87,6 +87,7 @@ class Candidate:
         self.sigspec = spectrum.sigspec
         self.size = spectrum.candidate_size
         self.cyclestart_str = timers.cyclestart_str()
+        self.expiry_time = timers.tnow()+15
         self.sync_result = None
         self.synced_grid_complex = None
         self.demap_requested = False
@@ -187,10 +188,10 @@ class FT8Demodulator:
                           'llr':llr,
                           'snr':snr}
 
-    def decode_candidate(self, candidate, onDecode, expiry_time = 1e40):
+    def decode_candidate(self, candidate, onDecode):
         c = candidate
         llr = 3 * c.demap_result['llr'] / (c.demap_result['llr_sd']+.001)
-        c.ldpc_result = self.ldpc.decode(llr, expiry_time )
+        c.ldpc_result = self.ldpc.decode(candidate)
         if(c.ldpc_result['payload_bits']):
             c.decode_result = FT8_unpack(c)
         onDecode(c)
