@@ -80,3 +80,17 @@ header
 <call:5>LY2TS <gridsquare:5>False <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:3>+02 <rst_rcvd:3>-06 <qso_date:8>20251124 <time_on:6>165617 <qso_date_off:8>20251124 <time_off:6>165617 <band:5>False <freq:5>False <comment:5>PyFT8 <eor>
 
 <call:5>F5PIO <gridsquare:4>JN19 <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:3>+12 <rst_rcvd:3>+12 <qso_date:8>20251126 <time_on:6>095657 <qso_date_off:8>20251126 <time_off:6>095700 <band:5>False <freq:5>False <comment:5>PyFT8 <eor>
+
+<call:6>SP6DOL <gridsquare:4>JO81 <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:3>+06 <rst_rcvd:3>-06 <qso_date:8>20251202 <time_on:6>092858 <qso_date_off:8>20251202 <time_off:6>092858 <band:5>False <freq:5>False <comment:5>PyFT8 <eor>
+
+<call:6>SP6DOL <gridsquare:5>False <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:3>+06 <rst_rcvd:3>+00 <qso_date:8>20251202 <time_on:6>092902 <qso_date_off:8>20251202 <time_off:6>092902 <band:5>False <freq:5>False <comment:5>PyFT8 <eor>
+
+<call:6>SP6DOL <gridsquare:5>False <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:3>+06 <rst_rcvd:3>+00 <qso_date:8>20251202 <time_on:6>092923 <qso_date_off:8>20251202 <time_off:6>092923 <band:5>False <freq:5>False <comment:5>PyFT8 <eor>
+
+<call:6>SP6DOL <gridsquare:5>False <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:3>+06 <rst_rcvd:3>+00 <qso_date:8>20251202 <time_on:6>092924 <qso_date_off:8>20251202 <time_off:6>092924 <band:5>False <freq:5>False <comment:5>PyFT8 <eor>
+
+<call:6>SP6DOL <gridsquare:5>False <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:3>+08 <rst_rcvd:3>+00 <qso_date:8>20251202 <time_on:6>092930 <qso_date_off:8>20251202 <time_off:6>092930 <band:5>False <freq:5>False <comment:5>PyFT8 <eor>
+
+<call:6>YO4GIY <gridsquare:4>KN43 <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:3>-05 <rst_rcvd:3>-06 <qso_date:8>20251202 <time_on:6>094828 <qso_date_off:8>20251202 <time_off:6>094829 <band:5>False <freq:5>False <comment:5>PyFT8 <eor>
+
+<call:6>IK4LZH <gridsquare:4>JN54 <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:3>+07 <rst_rcvd:3>-13 <qso_date:8>20251202 <time_on:6>095727 <qso_date_off:8>20251202 <time_off:6>095742 <band:5>False <freq:5>False <comment:5>PyFT8 <eor>

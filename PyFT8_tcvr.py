@@ -119,15 +119,17 @@ class QSO:
         self.tx_msg = tx_msg
         timers.timedLog(f"[QSO.transmit] Send message: ({self.rpt_cnt}) {tx_msg}", logfile = 'QSO.progress.log')
         c1, c2, grid_rpt = tx_msg.split()
+        self.tx_ogm_to_priority_ui(c1, c2, grid_rpt)
         symbols = FT8_encoder.pack_message(c1, c2, grid_rpt)
         audio_data = audio.create_ft8_wave(symbols, f_base = config.txfreq)
+        # doing tx threaded gives time for the tx_ogm to appear on the UI
         threading.Thread(target = self.do_tx, args=(audio_data, )).start()
+       # self.do_tx(audio_data)
             
     def do_tx(self, audio_data):
         import PyFT8.timers as timers
         tx_at_sec =  self.time_to_begin_tx(timers.tnow(), QSO.tx_cycle)
         self.wait_for_sec(tx_at_sec)
-        self.tx_ogm_to_priority_ui(self.tx_msg)
         timers.sleep(0.05)
         timers.timedLog(f"[QSO.transmit] PTT ON", logfile = 'QSO.progress.log')
         rig.setPTTON()
@@ -135,14 +137,13 @@ class QSO:
         rig.setPTTOFF()
         timers.timedLog(f"[QSO.transmit] PTT OFF", logfile = 'QSO.progress.log')
 
-    def tx_ogm_to_priority_ui(self, msg):
+    def tx_ogm_to_priority_ui(self, c1, c2, grid_rpt):
         from PyFT8.comms_hub import config, send_to_ui_ws
         import PyFT8.timers as timers
         t_elapsed = timers.tnow() % 15
-        msg_parts = msg.split()
         tx_ogm_dict = {'cyclestart_str':f"X_{timers.tnow_str()}", 'priority':True,
                     'snr':'+00', 'freq':str(int(config.txfreq)), 'dt':f"{t_elapsed:3.1f}",
-                    'call_a':msg_parts[0], 'call_b':msg_parts[1], 'grid_rpt':msg_parts[2]}
+                    'call_a':c1, 'call_b':c2, 'grid_rpt':grid_rpt}
         send_to_ui_ws("msg", tx_ogm_dict)
 
     def log(self):
@@ -229,8 +230,8 @@ def add_band_buttons():
 
 def run():        
     cycle_manager = Cycle_manager(FT8, None if config.decoder == 'wsjtx' else onDecode,
-                              onOccupancy = onOccupancy, verbose = True,
-                              max_iters = 60, max_stall = 8, max_ncheck = 33,
+                              onOccupancy = onOccupancy,
+                              max_iters = 30, max_stall = 8, max_ncheck = 30,
                               sync_score_thresh = 2.3, llr_sd_thresh = 1.8)
     if(config.decoder == 'wsjtx') : start_wsjtx_tailer(onDecode)
     start_UI("PyFT8_tcvr_UI.html", process_UI_event)
