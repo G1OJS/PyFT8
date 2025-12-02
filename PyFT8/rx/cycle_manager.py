@@ -39,7 +39,6 @@ class Cycle_manager():
 
         threading.Thread(target=self.threaded_spectrum_filler, daemon=True).start()
         threading.Thread(target=self.threaded_spectrum_tasks, daemon=True).start()
-        threading.Thread(target=self.threaded_demap_manager, daemon=True).start()
         threading.Thread(target=self.threaded_decode_manager, daemon=True).start()
         threading.Thread(target=self.threaded_UI_updater, daemon=True).start()
         
@@ -142,9 +141,9 @@ class Cycle_manager():
             self.cands_list.append(c)
 
 #============================================
-# Candidate demap manager
+# Decoding manager
 #============================================
-    def threaded_demap_manager(self):
+    def threaded_decode_manager(self):
         while self.running:
             timers.sleep(0.01)
 
@@ -176,13 +175,6 @@ class Cycle_manager():
                 #config.pause_ldpc = False
                 c.timings.update({'t_end_demap':timers.tnow()})
                 self.demap_wait += c.timings['t_end_demap'] - c.timings['t_requested_demap']
-
-#============================================
-# Candidate decode manager
-#============================================
-    def threaded_decode_manager(self):
-        while self.running:
-            timers.sleep(0.01)
             
             # demapped = all candidates that have been demapped
             with self.cands_list_lock:
