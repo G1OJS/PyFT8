@@ -146,7 +146,7 @@ class Cycle_manager():
 #============================================
     def threaded_demap_manager(self):
         while self.running:
-            timers.sleep(0.05)
+            timers.sleep(0.01)
 
             cands_to_demap = []
             #cands_synced = candidates found with sync_score > sync_score_thresh
@@ -182,7 +182,7 @@ class Cycle_manager():
 #============================================
     def threaded_decode_manager(self):
         while self.running:
-            timers.sleep(0.05)
+            timers.sleep(0.01)
             
             # demapped = all candidates that have been demapped
             with self.cands_list_lock:
