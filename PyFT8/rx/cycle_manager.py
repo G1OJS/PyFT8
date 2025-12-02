@@ -9,13 +9,12 @@ import queue
 import wave
 
 class Cycle_manager():
-    def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None, verbose = True,
-                 max_iters = 90, max_stall = 8, max_ncheck = 30, lifetime = 8,
-                 sync_score_thresh = 3, llr_sd_thresh = 2):
-        self.verbose = verbose
+    def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
+                 max_iters = 90, max_stall = 8, max_ncheck = 30,
+                 sync_score_thresh = 3, llr_sd_thresh = 2, cycles = 1e40):
         self.wav_file_start_time = None
         self.last_cycle_time = 1e40
-        self.candidate_lifetime = lifetime
+        self.cycles = cycles
         self.cyclestart_str = None
         self.sigspec = sigspec
         self.sync_score_thresh = sync_score_thresh
@@ -25,7 +24,7 @@ class Cycle_manager():
         self.demod = FT8Demodulator(sigspec, max_iters, max_stall, max_ncheck)
         self.spectrum = Spectrum(self.demod)
         self.running = True
-        self.time_window = np.kaiser(self.spectrum.FFT_len, 18)
+        self.time_window = np.kaiser(self.spectrum.FFT_len, 20)
         self.onSuccessfulDecode = onSuccessfulDecode
         self.onOccupancy = onOccupancy
         self.cands_list = []
@@ -110,8 +109,11 @@ class Cycle_manager():
         while self.running:
             timers.sleep(0.1)
             cycle_time = timers.tnow() % self.demod.sigspec.cycle_seconds 
-            if (cycle_time < self.last_cycle_time):
-                self.cycle_end_time = timers.tnow() + self.demod.sigspec.cycle_seconds
+            if (cycle_time < self.last_cycle_time): 
+                if not self.cycles:
+                    self.running = False
+                    break
+                self.cycles -=1
                 self.cyclestart_str = timers.cyclestart_str()
                 if(self.n_spectrum_denied > 0):
                     timers.timedLog(f"Warning, {self.n_spectrum_denied} candidates out of {len(self.cands_list)} requested spectrum after first hop overwritten (denied)")
@@ -133,7 +135,7 @@ class Cycle_manager():
                 config.pause_ldpc = False
 
     def onFindSync(self, sync_result):
-        c = Candidate(self.spectrum, self.candidate_lifetime)
+        c = Candidate(self.spectrum)
         c.sync_result = sync_result
         c.timings.update({'sync':timers.tnow()})
         with self.cands_list_lock:
@@ -224,9 +226,6 @@ class Cycle_manager():
             if(not key in self.duplicate_filter):
                 self.duplicate_filter.add(key)
                 self.onSuccessfulDecode(c)
-                
-        if(self.verbose):
-            timers.timedLogCSV(c.metrics, 'success_fail_metrics.csv')
 
 #============================================
 # UI counters update

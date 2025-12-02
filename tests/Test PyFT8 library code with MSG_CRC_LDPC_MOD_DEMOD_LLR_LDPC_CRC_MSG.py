@@ -81,13 +81,12 @@ def onDecode(c):
 
 
 start_load = timers.tnow()
-cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, verbose = True, audio_in_wav = wav_file, 
-                          max_iters = 60, max_stall = 8, max_ncheck = 45, lifetime = 600000,
-                          sync_score_thresh = 2, llr_sd_thresh = 1.4)
+cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = wav_file, 
+                          max_iters = 10, max_stall = 8, max_ncheck = 28, 
+                          sync_score_thresh = 2, llr_sd_thresh = 1.4, cycles = 1)
 
-while len(decoded_candidates) <1 :
+while cycle_manager.running:
     timers.sleep(0.5)
-cycle_manager.running = False
     
 print(f"DONE. Unique decodes = {len(decoded_candidates)}")
 

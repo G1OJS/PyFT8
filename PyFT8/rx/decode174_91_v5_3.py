@@ -54,7 +54,7 @@ class LDPC174_91:
             n = (n << 1) | (b & 1)
         return n
             
-    def decode(self, llr, expiry_time):
+    def decode(self, llr):
         it = 0
         nstall, ncheck_last = 0, 0 
         ncheck_initial = None
@@ -81,7 +81,7 @@ class LDPC174_91:
             payload_bits = get_payload_bits(zn) if ncheck == 0 else []
             if(it == 0): ncheck_initial = ncheck
             failures = {'max_its':it>self.max_iterations, 'large_ncheck': ncheck_initial > self.max_ncheck,
-                        'stall':nstall > self.max_nstall, 'timeout': timers.tnow() > expiry_time}
+                        'stall':nstall > self.max_nstall}
             
             if ncheck == 0 or any([f for f in failures.values()]):
                 return {'payload_bits':payload_bits, 'n_its':it, 'ncheck_initial':ncheck_initial, 'failures': failures} 

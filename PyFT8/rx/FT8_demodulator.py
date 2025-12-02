@@ -79,13 +79,12 @@ class Spectrum:
 
 class Candidate:
     next_id = 0
-    def __init__(self, spectrum, lifetime):
+    def __init__(self, spectrum):
         self.id = Candidate.next_id
         Candidate.next_id +=1
         self.sigspec = spectrum.sigspec
         self.size = spectrum.candidate_size
         self.cyclestart_str = timers.cyclestart_str()
-        self.expiry_time = 15*int(1+timers.tnow()/15) + lifetime
         self.sync_result = None
         self.synced_grid_complex = None
         self.demap_requested = False
@@ -188,8 +187,7 @@ class FT8Demodulator:
     def decode_candidate(self, candidate, onDecode):
         c = candidate
         llr = 3 * c.demap_result['llr'] / (c.demap_result['llr_sd']+.001)
-        expiry_time = c.expiry_time
-        c.ldpc_result = self.ldpc.decode(llr, expiry_time)
+        c.ldpc_result = self.ldpc.decode(llr)
         if(c.ldpc_result['payload_bits']):
             c.decode_result = FT8_unpack(c)
         onDecode(c)
