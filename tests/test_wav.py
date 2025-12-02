@@ -31,8 +31,8 @@ wav_file = "210703_133430.wav"
 #wav_file = "251115_135700.wav"
 start_load = timers.tnow()
 cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = wav_file, 
-                          max_iters = 30, max_stall = 7, max_ncheck = 29,
-                          sync_score_thresh = 2.7, llr_sd_thresh = 1.4, cycles = 1)
+                          max_iters = 60, max_stall = 8, max_ncheck = 40,
+                          sync_score_thresh = 2.3, llr_sd_thresh = 1.5, cycles = 1)
 
 while cycle_manager.running:
     timers.sleep(0.5)

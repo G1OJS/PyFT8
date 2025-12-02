@@ -113,6 +113,7 @@ class Cycle_manager():
                     self.running = False
                     break
                 self.cycles -=1
+                config.pause_ldpc = False
                 self.cyclestart_str = timers.cyclestart_str()
                 if(self.n_spectrum_denied > 0):
                     timers.timedLog(f"Warning, {self.n_spectrum_denied} candidates out of {len(self.cands_list)} requested spectrum after first hop overwritten (denied)")
@@ -194,7 +195,7 @@ class Cycle_manager():
             cands_for_ldpc = [c for c in demapped_success if not c.ldpc_requested]
             cands_for_ldpc.sort(key=lambda c: -c.demap_result['llr_sd'])
             for c in cands_for_ldpc:
-                if(self.n_ldpc_load < 500):
+                if(self.n_ldpc_load < 15):
                     c.ldpc_requested = True
                     c.timings.update({'t_requested_ldpc':timers.tnow()})
                     self.n_ldpc_load +=1

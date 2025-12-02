@@ -1,41 +1,8 @@
-"""
-wave file tests
 
-13-11-2025 12:20
-Log to PyFT8.log: 12:19:26.70 (+0.02) Start to Load audio from 210703_133430.wav
-Log to PyFT8.log: 12:19:27.26 (+0.57) Start to Find candidates
-Log to PyFT8.log: 12:19:27.52 (+0.26) Found 1500 candidates
-Log to PyFT8.log: 12:19:27.55 (+0.03) Start to deduplicate candidate frequencies
-Log to PyFT8.log: 12:19:27.59 (+0.03) Now have 40 candidates
-Log to PyFT8.log: 12:19:27.60 (+0.01) Start to sync and demodulate candidates
-test     0.000 Rx FT8    +12  0.5 2569 W1FC F5BZB -08 17 None 17 1233
-test     0.000 Rx FT8    +15  0.2 2154 WM3PEN EA6VQ -09 7 None 7 1034
-test     0.000 Rx FT8    -12  0.4  721 A92EE F5PSR -14 13 None 13 346
-test     0.000 Rx FT8    -16  0.6  588 K1JT HA0DU KN07 18 None 18 282
-test     0.000 Rx FT8    -22  0.5  640 N1JFU EA6EE R-07 17 None 17 307
-test     0.000 Rx FT8    -22  0.4 1646 K1JT EA3AGB -15 12 None 12 790
-Log to PyFT8.log: 12:19:28.80 (+1.21) Start to Show spectrum
-Log to PyFT8.log: 12:19:29.74 (+0.94) Start to Show candidates
-
-19-11-2025 15:32
-  Tload+  Rx call  Tx call     GrRp  SyncScr      snr       t0      cfg       f0  sch_idx    iters 
-    1.23    N1JFU    EA6EE     R-07    9.431       22       11        0      306        0        9
-    1.32        -        -        -    8.062       16       11        0      307        1        4
-    1.37   WM3PEN    EA6VQ      -09    7.974       15        5        0     1034        2        0
-    1.39        -        -        -    7.552       13        5        0     1035        3        0
-    1.42     W1FC    F5BZB      -08    4.441       -9       11        0     1233        8        0
-    1.50        -        -        -    4.093      -13        5        0     1036        9        4
-    2.12        -        -        -    3.072      -24       11        0     1234       25        0
-    2.55     K1JT   EA3AGB      -15    2.173      -24        8        0      790       76       16
-    4.07     K1JT    HA0DU     KN07    1.465      -24       12        0      282      264        6
-    4.26    A92EE    F5PSR      -14    1.428      -24        9        0      345      281        7
-    4.30 DONE. Unique decodes = 6
-
-"""
 
 import math
 import numpy as np
-from PyFT8.rx.decode174_91_v5_3 import LDPC174_91
+from PyFT8.rx.decode174_91_v5_5 import LDPC174_91
 import PyFT8.FT8_crc as crc
 #import PyFT8.timers as timers
 from PyFT8.comms_hub import config, send_to_ui_ws
