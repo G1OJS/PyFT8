@@ -18,11 +18,10 @@ import os
 if(os.path.exists('decodes.log')):
     os.remove('decodes.log')
     
-def on_wsjtx_decode(decode):
+def on_wsjtx_decode(decode_dict):
     if(not PyFT8_has_decodes): return
-    decode_result = decode['decode_dict']
-    decode_result.update({'source':'WSJTX'})
-    send_to_ui_ws("decode_dict", decode_result)
+    decode_dict.update({'source':'WSJTX'})
+    send_to_ui_ws("decode_dict", decode_dict)
 
 def onDecode(candidate):
     global PyFT8_has_decodes

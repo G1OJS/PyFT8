@@ -5,7 +5,7 @@ import numpy as np
 from PyFT8.rx.waterfall import Waterfall
 import PyFT8.timers as timers
 from PyFT8.comms_hub import config
-from PyFT8.signaldefs import FT8
+from PyFT8.sigspecs import FT8
 from PyFT8.rx.cycle_manager import Cycle_manager
 
 decoded_candidates = set()

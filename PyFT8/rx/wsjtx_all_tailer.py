@@ -24,5 +24,4 @@ def wsjtx_all_tailer(all_txt_path, on_wsjtx_decode):
         except:
             pass
         if(decode_dict):
-            decode = {'decode_dict':decode_dict,'all_txt_line':line}
-            on_wsjtx_decode(decode)
+            on_wsjtx_decode(decode_dict)

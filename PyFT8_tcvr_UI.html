@@ -4,201 +4,7 @@
 <head>
 	<meta charset="utf-8">
 	<title>G1OJS PyFT8 Transceiver</title>
-	
-	<style>
-		:root {
-			--page-bg:#111; 	 --panel-bg:#555;
-			--table-color:black; --table-bg:#666;    --table-hover-bg:#333;
-			--even-bg: #8b91ad;  --odd-bg: #ad8b8b;
-			--cq-bg:#81a383;     --cq-bg-hl:#93bf95;
-			--to-me-bg:#bf3939;  --to-me-bg-hl:#ff4d4d;
-			--by-me-bg:#bfbf3d;  --by-me-bg-hl:#f7f74d;
-		}	
-		body { font-family: sans-serif; background:var(--page-bg); color:#ddf; margin:1em; }
-		
-		#App {display:inline-block;  align-content: start; width:fit-content; background:var(--panel-bg); padding:1em; height:90vh;}
-		#logo {display: block; font-size: 2em; font-weight: bold; color:#fff;}
-		#banner {display: block; font-size: 1.17em; font-weight: bold; color:#ddf;}
-		.grid_title {display: block; font-size: 1.17em; font-weight: bold; color:#fff; margin-left:0.5em}
-		
-		#SpectrumContainer {display: flex; position: relative; justify-content: center;  width: calc(2 * 25em + 2 * 1em); 
-							height: 40px; margin: 1em 0em 1em 0em; border: 1px solid white }
-		#Spectrum {display: flex; position: absolute; margin-top:15px; height: 10px; width: fit-content; border: 1px solid white;  background: #222;}
-		#Spectrum > div {display:inline-block; width:2px; height:10px;}
-		.marker {position: absolute; width: 1px; height: 0.7em; padding-left:3px; color: white; font-size: 0.7em; }
-		.txMarker { border-left: 2px solid red; bottom:30px;}
-		.rxMarker { border-left: 2px solid lime; bottom:3px;}
-		.tickMarker { border-left: 1px solid white; bottom:17px; }
-								
-		#DecodePanelsContainer 
-				{display:grid; grid-template-columns: repeat(2, max-content); 
-				background:var(--panel-bg); width:max-content;}	
-
-		.decodes_grid {display:grid; grid-template-columns: repeat( 6, max-content) auto; grid-auto-rows: min-content; 
-					   background:var(--table-bg); color:#8cf; margin:0.5em; height:25em; min-width:25em; 
-					   align-content: start; overflow-y:scroll;}	
-
-		.grid_row {display:contents; }
-		.grid_row.odd > div {background-color: var(--odd-bg);}
-		.grid_row.even > div{ background-color: var(--even-bg);}	
-		.grid_row:hover > div {background-color: var(--table-hover-bg);}
-		
-		/* disappearing highlights for Tx and Rx with myCall */
-		.grid_row.sentTomyCall > div {background-color: var(--to-me-bg);}
-		.grid_row.sentTomyCall.highlight > div {background-color: var(--to-me-bg-hl);}
-		.grid_row.sentBymyCall > div {background-color: var(--by-me-bg);}	
-		.grid_row.sentBymyCall.highlight > div {background-color: var(--by-me-bg-hl);}	
-
-		/* disappearing highlights for CQ rows */
-		.grid_row.cq > div {background-color: var(--cq-bg-hl);}
-		.grid_row.cq_faded > div {background-color: var(--cq-bg); transition: 1s linear all;}
-		/* disappearing highlights for buttons - sharing the same colour variables as CQ */
-		.cq {background-color: var(--cq-bg-hl);}
-		.cq_faded {background-color: var(--cq-bg); transition: 1s linear all;}
-		
-		/* top rows - headings */
-		.grid_row.header {display: contents;position: sticky;top: 0;z-index: 20;}
-		.grid_row.header > .grid_cell {background: var(--table-bg);position: sticky;top: 0;z-index: 21; color:#ddf; border-right:1px lime dashed;}
-
-		.grid_cell {padding:1px 5px 1px 5px; font-weight:600; color:var(--table-color);}
-
-	</style>
-	
-	<script>
-		let myCall = "";
-		let spectrum_width = 0;
-		let txFreq = null;
-		let rxFreq = null;
-		function update_spectrum(spectrum_power) {
-			const spectrum = document.getElementById("Spectrum");
-			spectrum.innerHTML = "";
-			spectrum_power.forEach(v => {
-				const cell = document.createElement("div");
-				const brightness = Math.round(v * 255);
-				cell.style.background = `rgb(${brightness},${brightness/2},0)`;
-				spectrum.appendChild(cell);
-			});
-			spectrum_width = spectrum.offsetWidth;
-			update_freq_markers();
-		}
-		function update_freq_markers() {
-			const spectrum = document.getElementById("Spectrum");
-			const txMarker = document.querySelector(".txMarker");
-			const rxMarker = document.querySelector(".rxMarker");
-			const left = (document.getElementById("SpectrumContainer").clientWidth-spectrum_width)/2;
-			const toPx = f => left + ((f - 0) / (3500 - 0)) * spectrum_width;
-			if(txFreq) txMarker.style.left = `${toPx(txFreq)}px`;
-			if(rxFreq) rxMarker.style.left = `${toPx(rxFreq)}px`;
-			for (const tick of document.querySelectorAll('.tickMarker')){
-				let f = parseInt(tick.dataset.freq);
-				tick.style.left = `${toPx(f)}px`;
-			}
-		}
-		function update_clock() {
-			const t = new Date;
-			const utc = ("0" + t.getUTCHours()).slice(-2) + ":" + ("0" + t.getUTCMinutes()).slice(-2) + ":" + ("0" + t.getUTCSeconds()).slice(-2);
-			document.getElementById("clock").innerHTML = utc + " UTC";
-			t_cyc = t.getUTCSeconds() %15;
-			if(t_cyc > 12.6) {
-				for (const el of document.querySelectorAll(".transmitting_button")) {el.classList.add("cq"); el.classList.remove("cq_faded"); }
-			}
-			if(t_cyc > 1.5 && t_cyc <11) {
-				for (const el of document.querySelectorAll(".transmitting_button")) {el.classList.remove("cq"); el.classList.add("cq_faded"); }
-				for (const el of document.querySelectorAll(".cq")) {el.classList.remove("cq"); el.classList.add("cq_faded"); }
-				for (const el of document.querySelectorAll(".sentTomyCall")) {el.classList.remove("sentTomyCall"); el.classList.add("sentTomyCall_faded"); }
-			} 
-			for (const el of document.querySelectorAll(".sentBymyCall")) {
-				const t_match_str = ("0" + t.getUTCHours()).slice(-2) + ("0" + t.getUTCMinutes()).slice(-2) + ("0" + 15*Math.round(t.getUTCSeconds()/15)).slice(-2)
-				if(el.firstChild.innerHTML == t_match_str) {el.classList.add("highlight")} else {el.classList.remove("highlight")} 
-			}
-		}
-		function add_decode_row(decode_dict, grid_id) {
-			let dd = decode_dict;
-			let grid = document.getElementById(grid_id)
-			let row = grid.appendChild(document.createElement("div"));
-			row.className='grid_row';
-			let cs = dd.cyclestart_str;
-			if (cs.charAt(cs.length-1) == '5'){row.classList.add('odd')} else {row.classList.add('even')}
-			if(dd.call_a == "CQ" && dd.call_b != myCall) {
-				const t = new Date;
-				t_cyc = t.getUTCSeconds() %15;
-				row.classList.add("cq");
-			}
-			if(dd.call_a == myCall) {
-				row.classList.add('sentTomyCall')
-			}
-			if(dd.call_b == myCall) {
-				row.classList.add('sentBymyCall')
-			}
-			const fields = [dd.cyclestart_str.split('_')[1], dd.snr, dd.freq, dd.call_a, dd.call_b, dd.grid_rpt,''];
-			fields.forEach((field, idx) => {
-				const cell_div = document.createElement("div");
-				cell_div.textContent = field;
-				cell_div.className='grid_cell';
-				row.appendChild(cell_div);
-			}); dd.dt,
-
-			grid.scrollTop = grid.scrollHeight;
-
-			row.addEventListener("click", e => {
-				update_freq_markers(rxFreq = dd.freq);
-				websocket.send(JSON.stringify({	
-					topic: "ui.clicked-message", 
-					cyclestart_str: dd.cyclestart_str,
-					call_a:dd.call_a, call_b: dd.call_b, 
-					grid_rpt: dd.grid_rpt, snr:dd.snr, freq: dd.freq
-				}));
-			}); 
-		}
-		
-		function handle_button_click(action){
-			console.log(action);
-			websocket.send(JSON.stringify({topic: "ui." + action}));
-			if(action.search('set-band')==0) {console.log("Clear grids"); for (const el of document.querySelectorAll('.decodes_grid')) {el.innerHTML=""}}
-		}
-
-		const websocket = new WebSocket("ws://localhost:5678/");
-		websocket.onmessage = (event) => {
-			const dd = JSON.parse(event.data)
-			if(!dd) return;
-			console.log(dd);
-			if(dd.topic == 'add_band_button')   {add_band_button(dd.band_name, dd.band_freq)}
-			if(dd.topic == 'set_myCall') 		{
-				myCall = dd.myCall;
-				document.getElementById('myCall').innerText = myCall;
-			}
-			if(dd.topic == 'set_rxfreq') 		{rxFreq = parseInt(dd.freq); update_freq_markers();}
-			if(dd.topic == 'set_txfreq') 		{txFreq = parseInt(dd.freq); update_freq_markers();}
-			if(dd.topic == 'decode_queue') {
-				document.getElementById('n_ldpc_load').innerText = dd.n_ldpc_load
-				document.getElementById('n_candidates').innerText = dd.n_candidates
-			}
-			if(dd.topic == "freq_occ_array") 	{update_spectrum(dd.histogram)}
-			if(dd.topic == 'decode_dict')		{
-				if (dd.priority) {add_decode_row(dd, 'priority_decodes')}
-				add_decode_row(dd, 'all_decodes')
-			}
-			if(dd.topic == 'msg') {add_decode_row(dd, 'priority_decodes')}
-		}
-		
-		function add_band_button(band_name, band_freq){
-			let parentEl = document.getElementById('buttons');
-			let btn = parentEl.appendChild(document.createElement("button"));
-			btn.className = 'button';
-			btn.innerText = band_name;
-			btn.dataset.action = `set-band-${band_name}-${band_freq}`;
-			btn.addEventListener("click", (event) => { handle_button_click(event.target.dataset.action)});
-		}
-		
-		document.addEventListener("DOMContentLoaded", (event) => { 
-			document.getElementById('buttons').addEventListener("click", (event) => { 
-				handle_button_click(event.target.dataset.action)
-			});
-		});
-		
-		setInterval(update_clock, 250);
-	</script>
-	
+	<link rel="stylesheet" href="./css/PyFT8.css" /> 
 </head>
 
 <body>
@@ -219,7 +25,7 @@
 			</div>
 		</div>
 		<div id = 'DecodePanelsContainer'>
-			<div class = 'DecodePanel'>
+			<div>
 				<div class='grid_title'>
 					All decodes -  
 					Cands: <span id='n_candidates'>0</span> 
@@ -227,15 +33,23 @@
 				</div>
 				<div id="all_decodes" class = "decodes_grid">
 					<div class = 'grid_row header'>
-						<div class='grid_cell'>Cycle</div><div class='grid_cell'>snr</div><div class='grid_cell'>Freq</div><div class='grid_cell'>Call_a</div><div class='grid_cell'>Call_b</div><div class='grid_cell'>Grid_rpt</div><div class='grid_cell'></div>
+						<div class='grid_cell'>Cycle</div><div class='grid_cell'>snr</div><div class='grid_cell'>Freq</div><div class='grid_cell'>Call_a</div><div class='grid_cell'>Call_b</div><div class='grid_cell'>Grid_rpt</div><div class='grid_cell'>Hearing me?</div>
 					</div>
 				</div>
 			</div>
-			<div class = 'DecodePanel'>
+			<div>
 				<div class='grid_title'>Priority decodes -</div>
 				<div id="priority_decodes"  class = "decodes_grid">
 					<div class = 'grid_row header'>
 						<div class='grid_cell'>Cycle</div><div class='grid_cell'>snr</div><div class='grid_cell'>Freq</div><div class='grid_cell'>Call_a</div><div class='grid_cell'>Call_b</div><div class='grid_cell'>Grid_rpt</div><div class='grid_cell'></div>
+					</div>
+				</div>
+			</div>
+			<div>
+				<div class='grid_title'>Hearing me</div>
+				<div id="Hearing_me_list"  class = "list_grid">
+					<div class = 'grid_row header'>
+						<div class='grid_cell'>Callsign</div>
 					</div>
 				</div>
 			</div>
@@ -248,5 +62,5 @@
 	
 </body>
 
-
+<script type='module' src='./js/PyFT8_tcvr_ui_main.js'></script>
 </html>

@@ -218,7 +218,8 @@ class Cycle_manager():
             key = c.cyclestart_str+" "+c.message
             if(not key in self.duplicate_filter):
                 self.duplicate_filter.add(key)
-                self.onSuccessfulDecode(c)
+                if(self.onSuccessfulDecode):
+                    self.onSuccessfulDecode(c)
 
 #============================================
 # UI counters update

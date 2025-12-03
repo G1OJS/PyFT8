@@ -3,7 +3,6 @@ sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 
 from PyFT8.rx.cycle_manager import Cycle_manager
 from PyFT8.rx.wsjtx_all_tailer import start_wsjtx_tailer
-
 from PyFT8.comms_hub import config, start_UI, send_to_ui_ws
 import PyFT8.audio as audio
 import threading
@@ -39,11 +38,6 @@ class QSO:
     def tx_cycle_from_clicked_message(self, selected_message):
         return 'odd' if (selected_message['cyclestart_str'][-2:] in ['00','30']) else 'even'
 
-    def tx_cycle_from_click_time(self, t_click):
-        i = int(((t_click+7.5) % 30)/15)
-        tx_cycle = ['even','odd'][i]
-        return tx_cycle
-
     def time_to_begin_tx(self, tnow, tx_cycle):
         max_immediate = 15 - 12.6
         t = tnow + (15 if tx_cycle == 'odd' else 0)
@@ -74,7 +68,7 @@ class QSO:
         call_a, their_call, grid_rpt = msg_dict['call_a'], msg_dict['call_b'], msg_dict['grid_rpt']
         if(call_a == "CQ" or call_a == config.myCall):
             self.their_call = their_call
-            self.their_snr = msg_dict['snr']
+            self.their_snr = int(msg_dict['snr'])
             self.date, self.time_on = timers.QSO_dnow_tnow()
 
         if("+" not in grid_rpt and "-" not in grid_rpt and "73" not in grid_rpt):
@@ -118,17 +112,17 @@ class QSO:
             return
         self.tx_msg = tx_msg
         timers.timedLog(f"[QSO.transmit] Send message: ({self.rpt_cnt}) {tx_msg}", logfile = 'QSO.progress.log')
+        tx_at_sec =  self.time_to_begin_tx(timers.tnow(), QSO.tx_cycle)
         c1, c2, grid_rpt = tx_msg.split()
-        self.tx_ogm_to_priority_ui(c1, c2, grid_rpt)
         symbols = FT8_encoder.pack_message(c1, c2, grid_rpt)
+        self.tx_ogm_to_priority_ui(c1, c2, grid_rpt, tx_at_sec)
         audio_data = audio.create_ft8_wave(symbols, f_base = config.txfreq)
         # doing tx threaded gives time for the tx_ogm to appear on the UI
-        threading.Thread(target = self.do_tx, args=(audio_data, )).start()
+        threading.Thread(target = self.do_tx, args=(audio_data, tx_at_sec, )).start()
        # self.do_tx(audio_data)
             
-    def do_tx(self, audio_data):
+    def do_tx(self, audio_data, tx_at_sec):
         import PyFT8.timers as timers
-        tx_at_sec =  self.time_to_begin_tx(timers.tnow(), QSO.tx_cycle)
         self.wait_for_sec(tx_at_sec)
         timers.sleep(0.05)
         timers.timedLog(f"[QSO.transmit] PTT ON", logfile = 'QSO.progress.log')
@@ -137,12 +131,12 @@ class QSO:
         rig.setPTTOFF()
         timers.timedLog(f"[QSO.transmit] PTT OFF", logfile = 'QSO.progress.log')
 
-    def tx_ogm_to_priority_ui(self, c1, c2, grid_rpt):
+    def tx_ogm_to_priority_ui(self, c1, c2, grid_rpt, tx_at_sec):
         from PyFT8.comms_hub import config, send_to_ui_ws
         import PyFT8.timers as timers
-        t_elapsed = timers.tnow() % 15
-        tx_ogm_dict = {'cyclestart_str':f"X_{timers.tnow_str()}", 'priority':True,
-                    'snr':'+00', 'freq':str(int(config.txfreq)), 'dt':f"{t_elapsed:3.1f}",
+        cycle_start_str = timers.strftime("%H%M%S", tx_at_sec);
+        tx_ogm_dict = {'cyclestart_str':f"X_{cycle_start_str}", 'priority':True,
+                    'snr':'-', 'freq':str(int(config.txfreq)), 'dt':' ',
                     'call_a':c1, 'call_b':c2, 'grid_rpt':grid_rpt}
         send_to_ui_ws("msg", tx_ogm_dict)
 
@@ -160,10 +154,13 @@ class QSO:
 
 QSO = QSO()
 
-def onDecode(candidate):
+def onDecodePyFT8(candidate):
+    decode_dict = candidate.decode_result
+    onDecode(decode_dict)
+    
+def onDecode(decode_dict):
     import PyFT8.timers as timers
     from PyFT8.comms_hub import config, send_to_ui_ws
-    decode_dict = candidate.decode_result
     if(decode_dict['call_a'] == config.myCall or decode_dict['call_b'] == config.myCall or 'rxfreq' in decode_dict or decode_dict['freq']==config.rxfreq or decode_dict['call_b']==QSO.their_call):
         decode_dict.update({'priority':True})
     send_to_ui_ws("decode_dict", decode_dict)
@@ -212,7 +209,9 @@ def process_UI_event(event):
         QSO.progress({"repeat_tx":True})
     if(topic == "ui.call-cq"):
         QSO.clear()
-        QSO.tx_cycle = QSO.tx_cycle_from_click_time(timers.tnow())
+        t = timers.tnow()
+        i = int(((t-2) % 30)/15) 
+        QSO.tx_cycle = ['odd','even'][i]
         QSO.transmit(f"CQ {config.myCall} {config.myGrid}")
     if("set-band" in topic):
         fields = topic.split("-")
@@ -229,7 +228,7 @@ def add_band_buttons():
         send_to_ui_ws("add_band_button", {'band_name':band['band_name'], 'band_freq':band['band_freq']})
 
 def run():        
-    cycle_manager = Cycle_manager(FT8, None if config.decoder == 'wsjtx' else onDecode,
+    cycle_manager = Cycle_manager(FT8, None if config.decoder == 'wsjtx' else onDecodePyFT8,
                               onOccupancy = onOccupancy,
                               max_iters = 35, max_stall = 8, max_ncheck = 35,
                               sync_score_thresh = 2.3, llr_sd_thresh = 1.5)
@@ -237,5 +236,7 @@ def run():
     start_UI("PyFT8_tcvr_UI.html", process_UI_event)
     add_band_buttons()
     send_to_ui_ws("set_myCall", {'myCall':config.myCall})
+    send_to_ui_ws("connect_pskr_mqtt", {'dummy':'dummy'})
+    
 run()
     

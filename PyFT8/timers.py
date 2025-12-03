@@ -15,8 +15,8 @@ def QSO_dnow_tnow():
     t = time.gmtime(tnow())
     return time.strftime("%Y%m%d",t), time.strftime("%H%M%S", t)
 
-def sleep_until(secs):
-    time.sleep_until(secs)
+def strftime(fmt,t):
+    return time.strftime(fmt, time.gmtime(t))
     
 def sleep(secs):
     if(secs>0):

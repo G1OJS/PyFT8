@@ -104,12 +104,12 @@ class LDPC174_91:
             ncheck = get_ncheck(zn)
             nstall = 0 if(ncheck < ncheck_last) else nstall + 1
             ncheck_last = ncheck
-            payload_bits = get_payload_bits(zn) if ncheck == 0 else []
             if(it == 0): ncheck_initial = ncheck
             failures = {'max_its':it>self.max_iterations, 'large_ncheck': ncheck_initial > self.max_ncheck,
                         'stall':nstall > self.max_nstall}
             
-            if ncheck == 0 or any([f for f in failures.values()]):
+            payload_bits = get_payload_bits(zn) if ncheck == 0 else []
+            if(len(payload_bits) > 0) or any([f for f in failures.values()]):
                 return {'payload_bits':payload_bits, 'n_its':it, 'ncheck_initial':ncheck_initial, 'failures': failures} 
 
             with pause_cond:
