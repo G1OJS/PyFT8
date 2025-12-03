@@ -147,7 +147,16 @@ function add_decode_row(decode_dict, grid_id) {
 function handle_button_click(action){
 	console.log(action);
 	websocket.send(JSON.stringify({topic: "ui." + action}));
-	if(action.search('set-band')==0) {console.log("Clear grids"); for (const el of document.querySelectorAll('.decodes_grid')) {el.innerHTML=""}}
+	if(action.search('set-band')==0) {
+		console.log("Clear grids"); 
+		for (const el of document.querySelectorAll('.grid_row')) {
+			if(!el.classList.contains('header')) {el.remove()}
+		}
+		for (const el of document.querySelectorAll('.grid_row')) {
+			if(!el.classList.contains('header')) {el.remove()}
+		}
+		hearing_me = new Set;
+	}
 }
 
 const websocket = new WebSocket("ws://localhost:5678/");
