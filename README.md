@@ -1,4 +1,4 @@
-# Python FT8 Rx and Tx with Browser-based UI
+# Python FT8 Transceiver with Browser-based UI
 PyFT8 provides useable FT8 transceiving capability in a web browser, with minimal open source Python code.
 
 It's in development (22-Nov 2025) and I hope to make it more useable for those who don't necessarily want to dig into the code.
