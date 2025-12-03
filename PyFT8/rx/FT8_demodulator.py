@@ -1,10 +1,8 @@
 
-
 import math
 import numpy as np
 from PyFT8.rx.decode174_91_v5_5 import LDPC174_91
 import PyFT8.FT8_crc as crc
-#import PyFT8.timers as timers
 from PyFT8.comms_hub import config, send_to_ui_ws
 import threading
 import PyFT8.timers as timers

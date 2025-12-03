@@ -1,6 +1,6 @@
 import time
 import threading
-from PyFT8.signaldefs import FT8
+from PyFT8.sigspecs import FT8
 import os
 
 CYCLE_LENGTH = FT8.cycle_seconds

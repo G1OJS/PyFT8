@@ -1,6 +1,4 @@
 """
-signaldefs.py
--------------
 Defines the signal-specific constants for FT8, FT4, WSPR, etc.
 """
 
@@ -19,17 +17,19 @@ class SignalSpec:
     bw_Hz: float
     costas: list[int] | None = None
     costas_len: int  | None = None
+    gray_seq: list[int]  | None = None
     gray_map: list[int]  | None = None
 
-
 # ---- FT8 ----
+gray_seq = [0,1,3,2,5,6,4,7]
 gray_map = np.array([[0,0,0],[0,0,1],[0,1,1],[0,1,0],[1,1,0],[1,0,0],[1,0,1],[1,1,1]])
 payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
 
 FT8  = SignalSpec("FT8",  frame_secs=15.0,  symbols_persec=6.25, cycle_seconds = 15,
                   num_symbols=79, payload_symb_idxs = payload_symb_idxs,
                   tones_persymb=8, bw_Hz = 8*6.25, costas=[3,1,4,0,6,5,2], costas_len = 7,
-                  gray_map = gray_map)
+                  gray_map = gray_map,
+                  gray_seq = gray_seq)
 
 # ---- FT4 ----
 #FT4  = SignalSpec("FT4",  frame_secs=7.5,   symbols_persec=12.5,  num_symbols=105, payload_symb_idxs = []

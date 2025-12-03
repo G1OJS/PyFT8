@@ -8,7 +8,7 @@ from PyFT8.comms_hub import config, start_UI, send_to_ui_ws
 import PyFT8.audio as audio
 import threading
 from PyFT8.rig.IcomCIV import IcomCIV
-from PyFT8.signaldefs import FT8
+from PyFT8.sigspecs import FT8
 rig = IcomCIV()
 
 class QSO:

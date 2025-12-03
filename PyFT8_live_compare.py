@@ -8,7 +8,7 @@ import PyFT8.audio as audio
 import PyFT8.timers as timers
 import threading
 from PyFT8.rig.IcomCIV import IcomCIV
-from PyFT8.signaldefs import FT8
+from PyFT8.sigspecs import FT8
 
 rig = IcomCIV()
 

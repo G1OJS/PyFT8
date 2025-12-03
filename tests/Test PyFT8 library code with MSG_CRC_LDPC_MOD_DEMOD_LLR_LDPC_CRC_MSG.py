@@ -7,7 +7,7 @@ from PyFT8.tx.FT8_encoder import pack_ft8_c28, pack_ft8_g15, encode_bits77
 import PyFT8.timers as timers
 import PyFT8.audio as audio
 from PyFT8.comms_hub import config
-from PyFT8.signaldefs import FT8
+from PyFT8.sigspecs import FT8
 import wave
 
 c28a = pack_ft8_c28("VK1ABC")
