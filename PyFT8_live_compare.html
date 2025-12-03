@@ -166,7 +166,7 @@
 		}
 		
 		function updatePipelineBars(data) {
-			bar_data = [data.n_synced/200, data.demap_wait*2, data.ldpc_wait/2, data.n_decode_success/8]
+			bar_data = [data.n_synced/20, data.demap_wait*15, data.ldpc_wait*1.5, data.n_decode_success/4]
 			for (const i of[0,1,2,3]){
 				let diff = bar_data[i]-bar_data_last[i];
 				if(diff<0) {diff = 0}

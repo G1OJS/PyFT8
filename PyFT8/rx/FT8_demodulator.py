@@ -88,7 +88,7 @@ class FT8Demodulator:
         self.sigspec = sigspec
         self.sample_rate=12000
         self.fbins_pertone=3
-        self.hops_persymb=5
+        self.hops_persymb=3
         self.fbins_per_signal = self.sigspec.tones_persymb * self.fbins_pertone
         self.hops_per_costas_block = self.hops_persymb * self.sigspec.costas_len
         self.samples_perhop = int(self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb) )
@@ -96,6 +96,8 @@ class FT8Demodulator:
         slack_hops =  int(self.hops_persymb * (self.sigspec.symbols_persec * self.sigspec.cycle_seconds - self.sigspec.num_symbols))
         self.sync_range = range(slack_hops)
         self.ldpc = LDPC174_91(max_iters, max_stall, max_ncheck)
+
+        
 
     def find_syncs(self, spectrum, sync_score_thresh, onSync):
         f0_idxs = range(spectrum.nFreqs - spectrum.candidate_size[1])
@@ -118,6 +120,18 @@ class FT8Demodulator:
                                   'first_data_hop': best[0] + self.hops_per_costas_block}
                 onSync(sync_result)
 
+    def demap_symbols(self, p):
+        tones1 = [np.where(self.sigspec.gray_map[:,b]==1)[0] for b in range(3)]
+        tones0 = [np.where(self.sigspec.gray_map[:,b]==0)[0] for b in range(3)]
+        llr = np.empty((p.shape[0], 3), dtype=np.float32)
+        for b in range(3):
+            t1 = tones1[b]
+            t0 = tones0[b]
+            ones  = np.max(p[:, t1], axis=1)
+            zeros = np.max(p[:, t0], axis=1)
+            llr[:, b] = np.log(ones) - np.log(zeros)
+        return llr.reshape(-1)
+
     def demap_candidate(self, spectrum, candidate):
         c = candidate
         origin = c.sync_result['origin']
@@ -126,30 +140,16 @@ class FT8Demodulator:
         synced_grid_complex = synced_grid_complex[:,0,:,:] # first hop of self.hops_persymb = the one we synced to
         synced_grid_pwr = np.abs(synced_grid_complex)**2
         synced_pwr = np.max(synced_grid_pwr)
-        llr = []
-        synced_grid_pwr_central = synced_grid_pwr[:,:,1]/synced_pwr # centre frequency bin
         snr = 10*np.log10(synced_pwr)-107
         snr = int(np.clip(snr, -24,24).item())
-        E0 = synced_grid_pwr_central[0:78:2]   # potential to speed up as we don't need                    
-        E1 = synced_grid_pwr_central[1:79:2]   # to decode costas blocks
-        pair_score = E0[:, :, None] * E1[:, None, :]
-        ps = pair_score[:, None, :, :]
-        wts = spectrum.sigspec.block_decode_wt2
-        V = ps * wts
-        ones  = np.max(V,     where=(wts > 0), initial=-np.inf, axis=(2, 3))
-        zeros = np.max(-V,    where=(wts < 0), initial=-np.inf, axis=(2, 3))
-        ones = np.clip(ones,  0.0001, 1e30)
-        zeros = np.clip(zeros, 0.0001, 1e30) 
-        llr_block = np.log(ones) - np.log(zeros)  
-        llr_all = llr_block.reshape(-1)
-        for i in range(len(llr_all)):
-            if(int(i/3) in spectrum.sigspec.payload_symb_idxs):
-                llr.extend([llr_all[i]])
+        synced_grid_pwr_central = synced_grid_pwr[:,:,1]/synced_pwr
+
+        pwr_payload = synced_grid_pwr_central[self.sigspec.payload_symb_idxs]   
+        llr = self.demap_symbols(pwr_payload)
+
         llr = llr - np.mean(llr)
         llr_sd = np.std(llr)
-        c.demap_result = {'llr_sd':llr_sd,
-                          'llr':llr,
-                          'snr':snr}
+        c.demap_result = {'llr_sd':llr_sd, 'llr':llr, 'snr':snr}
 
     def decode_candidate(self, candidate, onDecode):
         c = candidate
