@@ -105,7 +105,7 @@ class Cycle_manager():
         cycle_time = timers.tnow() % self.demod.sigspec.cycle_seconds 
         n_cands_remaining = len(self.cands_list)
         n_demapped = len([c for c in self.cands_list if c.demap_result])
-        min_ncheck_res = np.min([c.ncheck_initial for c in self.cands_list]) if n_cands_remaining else None
+        min_ncheck_res = np.min([c.ncheck_initial for c in self.cands_list]) if n_cands_remaining else 5000
         timers.timedLog(f"   Unprocessed candidates: {n_cands_remaining} (demapped {n_demapped} with min_ncheck {min_ncheck_res})")
         timers.timedLog(f"   Total ldpc iterations : {self.n_total_iterations}")
         

@@ -88,7 +88,7 @@ class FT8Demodulator:
         self.sigspec = sigspec
         self.sample_rate=12000
         self.fbins_pertone=3
-        self.hops_persymb=3
+        self.hops_persymb=5
         self.fbins_per_signal = self.sigspec.tones_persymb * self.fbins_pertone
         self.hops_per_costas_block = self.hops_persymb * self.sigspec.costas_len
         self.samples_perhop = int(self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb) )
