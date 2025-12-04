@@ -139,8 +139,7 @@ class FT8Demodulator:
             llr[:, b] = np.log(ones) - np.log(zeros)
         return llr.reshape(-1)
 
-    def demap_candidate(self, spectrum, candidate):
-        c = candidate
+    def demap_candidate(self, c):
         origin = c.sync_result['origin']
         synced_grid_complex = c.synced_grid_complex.reshape(self.sigspec.num_symbols, self.hops_persymb,
                                                           self.sigspec.tones_persymb, self.fbins_pertone)

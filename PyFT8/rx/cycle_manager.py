@@ -29,11 +29,12 @@ class Cycle_manager():
         self.cands_list = []
         self.input_device_idx = audio._find_device(config.soundcards['input_device'])   
         self.audio_queue = queue.Queue(maxsize=200)
-        self.n_spectrum_denied = 0
+        self.spectrum_denied = set()
         self.n_decode_success = 0
         self.demap_wait = 0
         self.ldpc_wait = 0
         self.n_ldpc_load = 0
+        self.n_total_iterations = 0
         self.duplicate_filter = set()
 
         threading.Thread(target=self.threaded_spectrum_filler, daemon=True).start()
@@ -114,12 +115,11 @@ class Cycle_manager():
                 self.cycles -=1
                 config.pause_ldpc = False
                 self.cyclestart_str = timers.cyclestart_str()
-                if(self.n_spectrum_denied > 0):
-                    timers.timedLog(f"Warning, {self.n_spectrum_denied} candidates out of {len(self.cands_list)} requested spectrum after first hop overwritten (denied)")
-                timers.timedLog(f"Cycle rollover {cycle_time:.2f}")
+                timers.timedLog(f"Cycle rollover {cycle_time:.2f} Cands too late: {len(self.spectrum_denied)}, residual: {len(self.cands_list)} total its: {self.n_total_iterations}")
                 self.spectrum.reset()
-                self.n_spectrum_denied = 0
+                self.spectrum_denied = set()
                 self.n_decode_success = 0
+                self.n_total_iterations = 0
             self.last_cycle_time = cycle_time
             
             if (self.spectrum.nHops_loaded > self.spectrum.candidate_search_after_hop and not self.spectrum.searched):
@@ -140,39 +140,37 @@ class Cycle_manager():
         while self.running:
             timers.sleep(0.01)
 
+            # cands_to_demap = subset of cands synced which can be filled and not yet sent for demap
             cands_to_demap = []
-            #cands_synced = candidates found with sync_score > sync_score_thresh
             with self.cands_list_lock:
-                cands_synced = [c for c in self.cands_list if c.sync_result]
-            # cands_to_demap = subset of cands_synced which are 'full' and not yet sent for demap
-            cands_to_demap = [c for c in cands_synced
-                              if self.spectrum.nHops_loaded > c.sync_result['last_data_hop']
+                cands_to_demap = [c for c in self.cands_list if self.spectrum.nHops_loaded > c.sync_result['last_data_hop']
                               and not c.demap_requested]
                 
-            # for cands_to_demap, fill the candidate's part of the spectrum and demap
+            too_late = ([c for c in cands_to_demap if c.cyclestart_str != self.cyclestart_str
+                              and self.spectrum.nHops_loaded > c.sync_result['first_data_hop']])
+            
+            for c in too_late:
+                with self.cands_list_lock:
+                    self.cands_list.remove(c)
+                cands_to_demap.remove(c)
+                self.spectrum_denied.add(c)
+                   
+            # fill candidate's spectrum and demap
             for c in cands_to_demap:                
                 c.demap_requested = True
                 c.timings.update({'t_requested_demap':timers.tnow()})
                 origin = c.sync_result['origin']
-                if(c.cyclestart_str != self.cyclestart_str):
-                    if (self.spectrum.nHops_loaded > c.sync_result['first_data_hop']):
-                        self.n_spectrum_denied +=1
-                        c.demap_result = None
-                    continue
                 with self.spectrum_lock:
                     c.synced_grid_complex = self.spectrum.fine_grid_complex[origin[0]:origin[0]+c.size[0],
                                                                             origin[1]:origin[1]+c.size[1]].copy()
                 c.timings.update({'fill':timers.tnow()})
-                self.demod.demap_candidate(self.spectrum, c)
+                self.demod.demap_candidate(c)
                 c.timings.update({'t_end_demap':timers.tnow()})
                 self.demap_wait += c.timings['t_end_demap'] - c.timings['t_requested_demap']
-            
-            # demapped = all candidates that have been demapped
-            with self.cands_list_lock:
-                demapped = [c for c in self.cands_list if c.demap_result]
 
-            # cands_for_ldpc = cands in demapped that have not already been sent for ldpc
-            cands_for_ldpc = [c for c in demapped if not c.ldpc_requested]
+            # cands_for_ldpc = all candidates that have been demapped and not already been sent for ldpc
+            with self.cands_list_lock:
+                cands_for_ldpc = [c for c in self.cands_list if c.demap_result and not c.ldpc_requested]
             
             #cands_for_ldpc.sort(key=lambda c: -c.demap_result['llr_sd'])  # do this sort on ncheck_initial?
             cands_for_ldpc.sort(key=lambda c: -c.sync_result['sync_score']) 
@@ -190,6 +188,7 @@ class Cycle_manager():
         c.timings.update({'t_end_ldpc':timers.tnow()})
         self.ldpc_wait += c.timings['t_end_ldpc'] - c.timings['t_requested_ldpc']
         self.n_ldpc_load -=1
+        self.n_total_iterations += c.ldpc_result['n_its']
         if(c.decode_success):
             self.n_decode_success +=1
             origin = c.sync_result['origin']
