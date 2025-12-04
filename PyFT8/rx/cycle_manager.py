@@ -101,6 +101,15 @@ class Cycle_manager():
 #============================================
 # Rollover and early candidate search
 #============================================
+    def last_cycle_summary(self):
+        cycle_time = timers.tnow() % self.demod.sigspec.cycle_seconds 
+        n_cands_remaining = len(self.cands_list)
+        n_demapped = len([c for c in self.cands_list if c.demap_result])
+        min_ncheck_res = np.min([c.ncheck_initial for c in self.cands_list]) if n_cands_remaining else None
+        timers.timedLog(f"Cands too late for spectrum fill: {len(self.spectrum_denied)} \n"
+                        +f"   Unprocessed: {n_cands_remaining} (demapped {n_demapped} with min_ncheck {min_ncheck_res}) \n"
+                        +f"   Total its: {self.n_total_iterations}")
+        
     def threaded_spectrum_tasks(self):
         timers.timedLog("Rollover manager waiting for end of partial cycle")
         while (timers.tnow() % self.demod.sigspec.cycle_seconds) < self.demod.sigspec.cycle_seconds  - 0.1 :
@@ -112,15 +121,11 @@ class Cycle_manager():
                 if not self.cycle_countdown:
                     self.running = False
                     break
+                print()
+                timers.timedLog(f"Cycle rollover {cycle_time:.2f}")
                 self.cycle_countdown -=1
                 config.pause_ldpc = False
                 self.cyclestart_str = timers.cyclestart_str()
-                n_cands_remaining = len(self.cands_list)
-                n_demapped = len([c for c in self.cands_list if c.demap_result])
-                min_ncheck_res = np.min([c.ncheck_initial for c in self.cands_list]) if n_cands_remaining else None
-                timers.timedLog(f"\nCycle rollover {cycle_time:.2f} \n   Cands too late: {len(self.spectrum_denied)}, \n"
-                                +f"   Unprocessed: {n_cands_remaining} (demapped {n_demapped} with min_ncheck {min_ncheck_res}), \n"
-                                +f"   Total its: {self.n_total_iterations}")
                 self.spectrum.reset()
                 self.spectrum_denied = set()
                 self.n_decode_success = 0
@@ -129,6 +134,7 @@ class Cycle_manager():
             
             if (self.spectrum.nHops_loaded > self.spectrum.candidate_search_after_hop and not self.spectrum.searched):
                 self.spectrum.searched = True
+                self.last_cycle_summary()
                 timers.timedLog("Search spectrum ...", logfile = 'pipeline.log')
                 with self.spectrum_lock:
                     self.spectrum.sync_search_band = self.spectrum.fine_grid_complex[:self.spectrum.candidate_search_after_hop,:].copy()
@@ -141,6 +147,7 @@ class Cycle_manager():
 #============================================
 # Decoding manager
 #============================================
+
     def threaded_decode_manager(self):
         while self.running:
             timers.sleep(0.01)
