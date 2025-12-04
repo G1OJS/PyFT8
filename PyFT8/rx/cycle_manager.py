@@ -148,9 +148,9 @@ class Cycle_manager():
                 timers.timedLog(f"Spectrum searched: {self.n_cands_synced} candidates", logfile = 'pipeline.log')
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
 
-            if(cycle_time>14):
-                self.pass2()
-                timers.timedLog(f"Completed pass 2")
+           # if(cycle_time>12):
+           #     self.pass2()
+           #     timers.timedLog(f"Completed pass 2")
 
 #============================================
 # Decoding manager
