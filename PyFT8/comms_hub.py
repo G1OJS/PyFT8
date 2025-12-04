@@ -97,7 +97,6 @@ class Config:
         self.txfreq = 1000
         self.rxfreq = 1000
         self.bands = []
-        self.pause_ldpc = False
         self.myBand = False
         self.myFreq = False
         self.soundcards = {"input_device":["Microphone","CODEC"], "output_device":["Speaker", "CODEC"]}
