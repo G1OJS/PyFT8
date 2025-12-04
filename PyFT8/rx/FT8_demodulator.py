@@ -105,7 +105,7 @@ class FT8Demodulator:
             fine_grid_pwr = np.abs(fine_grid_complex)**2
             max_pwr = np.max(fine_grid_pwr)
             spectrum.occupancy[f0_idx:f0_idx + self.fbins_per_signal] += max_pwr
-            fine_grid_pwr = fine_grid_pwr / max_pwr
+            fine_grid_pwr = fine_grid_pwr / (max_pwr + eps)
             best = (0, -1e30)
             for h0 in self.sync_range:
                 test = (h0, float(np.dot(fine_grid_pwr[h0 + spectrum.hop_idxs_Costas].ravel(), spectrum._csync.ravel())))
@@ -165,6 +165,22 @@ class FT8Demodulator:
         if(c.ldpc_result['payload_bits']):
             c.decode_result = FT8_unpack(c)
         onDecode(c)
+
+#===========================================
+# Experimental for pass 2
+#===========================================
+
+    def subtract(self, spectrum, c):
+        import PyFT8.tx.FT8_encoder as FT8_encoder
+        c1, c2, grid_rpt = c.message.split()
+        symbols = FT8_encoder.pack_message(c1, c2, grid_rpt)
+        if(symbols):
+            origin = c.sync_result['origin']
+            for i, s in enumerate(symbols):
+                t0_cand, f0 = i*self.hops_persymb, self.fbins_pertone * s
+                z_ref=c.synced_grid_complex[t0_cand, f0+1]
+                t0 = t0_cand + origin[0]
+                spectrum.fine_grid_complex[t0:t0+self.hops_persymb, f0-1:f0+1] -= z_ref
     
 # ======================================================
 # FT8 Unpacking functions

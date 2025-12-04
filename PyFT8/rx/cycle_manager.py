@@ -37,6 +37,7 @@ class Cycle_manager():
         self.n_ldpc_load = 0
         self.n_total_iterations = 0
         self.duplicate_filter = set()
+        self.to_subtract = []
 
         threading.Thread(target=self.threaded_spectrum_filler, daemon=True).start()
         threading.Thread(target=self.threaded_spectrum_tasks, daemon=True).start()
@@ -131,6 +132,7 @@ class Cycle_manager():
                 self.spectrum.reset()
                 self.spectrum_denied = set()
                 self.n_decode_success = 0
+                self.to_subtract = []
             self.prev_cycle_time = cycle_time
             
             if (self.spectrum.nHops_loaded > self.spectrum.candidate_search_after_hop and not self.spectrum.searched):
@@ -145,6 +147,10 @@ class Cycle_manager():
                     self.n_cands_synced = len(self.cands_list)
                 timers.timedLog(f"Spectrum searched: {self.n_cands_synced} candidates", logfile = 'pipeline.log')
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
+
+            if(cycle_time>14):
+                self.pass2()
+                timers.timedLog(f"Completed pass 2")
 
 #============================================
 # Decoding manager
@@ -200,8 +206,6 @@ class Cycle_manager():
                     threading.Thread(target=self.demod.decode_candidate, kwargs={'candidate':c, 'onDecode':self.onDecode}, daemon=True).start()
             
     def onDecode(self, c):
-
-            
         c.timings.update({'t_end_ldpc':timers.tnow()})
         self.ldpc_wait += c.timings['t_end_ldpc'] - c.timings['t_requested_ldpc']
         self.n_ldpc_load -=1
@@ -213,6 +217,7 @@ class Cycle_manager():
             if(dt > self.sigspec.cycle_seconds//2): dt -=self.sigspec.cycle_seconds
             dt = f"{dt:4.1f}"
             c.decode_result.update({'dt': dt})
+            self.to_subtract.append(c)
             key = c.cyclestart_str+" "+c.message
             if(not key in self.duplicate_filter):
                 self.duplicate_filter.add(key)
@@ -236,5 +241,53 @@ class Cycle_manager():
             send_to_ui_ws("graphic_bars", graphic_bars)
             
             
+#===========================================
+# Experimental pass 2
+#===========================================
 
- 
+    def pass2(self):
+        self.to_subtract.sort(key=lambda c: c.ncheck_initial) 
+        for c in self.to_subtract[:3]:
+            self.demod.subtract(self.spectrum,c)
+        with self.spectrum_lock:
+            self.spectrum.sync_search_band = self.spectrum.fine_grid_complex[:self.spectrum.candidate_search_after_hop,:].copy()
+            cands = self.demod.find_syncs(self.spectrum, self.sync_score_thresh)
+
+        cands = [c for c in cands if c.sync_score]
+
+        if(cands):
+            cands.sort(key=lambda c: -c.sync_score)
+
+            for c in cands:                
+                origin = c.sync_result['origin']
+                with self.spectrum_lock:
+                    c.synced_grid_complex = self.spectrum.fine_grid_complex[origin[0]:origin[0]+c.size[0],
+                                                                            origin[1]:origin[1]+c.size[1]].copy()
+                self.demod.demap_candidate(c)
+
+            for c in cands:
+                self.n_ldpc_load +=1
+                threading.Thread(target=self.demod.decode_candidate, kwargs={'candidate':c, 'onDecode':self.onDecode}, daemon=True).start()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+         
+        
