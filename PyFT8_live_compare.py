@@ -26,9 +26,9 @@ def on_wsjtx_decode(decode_dict):
 def onDecode(candidate):
     global PyFT8_has_decodes
     PyFT8_has_decodes = True
-    decode_result = candidate.decode_result
-    decode_result.update({'source':'PyFT8'})
-    send_to_ui_ws("decode_dict", decode_result)
+    decode_dict = candidate.decode_result
+    decode_dict.update({'source':'PyFT8'})
+    send_to_ui_ws("decode_dict", decode_dict)
 
 def process_UI_event(event):
     topic = event['topic']
@@ -43,14 +43,14 @@ def process_UI_event(event):
         
 def add_band_buttons():
     for band in config.bands:
-        send_to_ui_ws("add_band_button", {'band_name':band['band_name'], 'band_freq':band['band_freq']})
+        send_to_ui_ws("add_band_button", {'band_name':band['band_name'],
+                                          'band_freq':band['band_freq']})
 
 def run():
     start_wsjtx_tailer(on_wsjtx_decode)
-    cycle_manager = Cycle_manager(FT8, None if config.decoder == 'wsjtx' else onDecode,
-                              onOccupancy = None, 
-                              max_iters = 45, max_stall = 8, max_ncheck = 35,
-                              sync_score_thresh = 2.3, llr_sd_thresh = 1.3)
+    cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, 
+                              max_iters = 90, max_stall = 8, max_ncheck = 35,
+                              sync_score_thresh = 1.5, llr_sd_thresh = 1.2)
     start_UI("PyFT8_live_compare.html", process_UI_event)
     add_band_buttons()
 

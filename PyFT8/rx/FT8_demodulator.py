@@ -50,6 +50,7 @@ class Candidate:
         self.sigspec = spectrum.sigspec
         self.size = spectrum.candidate_size
         self.cyclestart_str = timers.cyclestart_str()
+        self.sync_score = None
         self.sync_result = None
         self.synced_grid_complex = None
         self.demap_requested = False
@@ -95,9 +96,8 @@ class FT8Demodulator:
         self.sync_range = range(slack_hops)
         self.ldpc = LDPC174_91(max_iters, max_stall, max_ncheck)
 
-        
-
-    def find_syncs(self, spectrum, sync_score_thresh, onSync):
+    def find_syncs(self, spectrum, sync_score_thresh):
+        candidates = []
         f0_idxs = range(spectrum.nFreqs - spectrum.candidate_size[1])
         for f0_idx in f0_idxs:
             fine_grid_complex = spectrum.sync_search_band[:, f0_idx:f0_idx + self.fbins_per_signal]
@@ -110,13 +110,22 @@ class FT8Demodulator:
                 test = (h0, float(np.dot(fine_grid_pwr[h0 + spectrum.hop_idxs_Costas].ravel(), spectrum._csync.ravel())))
                 if test[1] > best[1]:
                     best = test
+            # could be simplified - maybe use a mini candidate class initially?
             if(best[1] > sync_score_thresh):
+                c = Candidate(spectrum)
                 sync_result = {'sync_score': best[1], 
                                   'origin': (best[0], f0_idx, spectrum.dt * best[0], spectrum.df * (f0_idx + 1)),
                                   'last_hop': best[0] + spectrum.candidate_size[0],
                                   'last_data_hop': best[0] + spectrum.candidate_size[0] - self.hops_per_costas_block,
                                   'first_data_hop': best[0] + self.hops_per_costas_block}
-                onSync(sync_result)
+                c.sync_result = sync_result
+                neighbour_lf = [n for n in candidates if (c.sync_result['origin'][1] - n.sync_result['origin'][1] <=2)]
+                if(neighbour_lf):
+                    if(neighbour_lf[0].sync_result['sync_score'] >= c.sync_result['sync_score']): continue
+                    if(neighbour_lf[0].sync_result['sync_score'] < c.sync_result['sync_score']): candidates.remove(neighbour_lf[0])
+                c.timings.update({'sync':timers.tnow()})
+                candidates.append(c)
+        return candidates
 
     def demap_symbols(self, p):
         tones1 = [np.where(self.sigspec.gray_map[:,b]==1)[0] for b in range(3)]
@@ -206,8 +215,9 @@ def FT8_unpack(c):
     snr = c.demap_result['snr']
     freq_str = f"{origin[3]:4.0f}"
     time_str = f"{origin[2]:4.1f}"
-    decode = {'cyclestart_str':c.cyclestart_str , 'freq':freq_str, 'call_a':call_a,
-              'call_b':call_b, 'grid_rpt':grid_rpt, 't0_idx':origin[0],
-              'dt':time_str, 'snr':snr}
-    return decode
+    decode_result = {'cyclestart_str':c.cyclestart_str , 'freq':freq_str,
+                     'call_a':call_a, 'call_b':call_b, 'grid_rpt':grid_rpt,
+                     't0_idx':origin[0], 'dt':time_str, 'snr':snr,
+                     'n_its':c.ldpc_result['n_its'], 'ncheck_initial':c.ldpc_result['ncheck_initial']}
+    return decode_result
 

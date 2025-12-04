@@ -88,7 +88,7 @@ class LDPC174_91:
 
         def get_ncheck(zn):
             synd_checks = [ sum(1 for llr in zn[self.synd_check_idxs[i]] if llr > 0) %2 for i in range(83)]
-            return np.sum(synd_checks)
+            return int(np.sum(synd_checks))
 
         def get_payload_bits(zn):
             decoded_bits174_LE_list = (zn > 0).astype(int).tolist() 

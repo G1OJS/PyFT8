@@ -54,8 +54,8 @@ def send_to_ui_ws(topic, message, silent = True):
     if not isinstance(message, dict):
         message = {}    # should really raise exception here 
     if loop and loop.is_running():
-      #  timers.timedLog(f"[WebsocketsServer] sending message with topic {topic}", silent = silent)
         full_message = {"topic": topic, **message}
+        timers.timedLog(f"[WebsocketsServer] {full_message}", silent = silent, logfile = 'ws.log')
         asyncio.run_coroutine_threadsafe(message_queue.put(full_message), loop)
 
 async def _handle_client(websocket):

@@ -23,7 +23,7 @@
 				{display:grid; grid-template-columns: repeat(2, max-content); 
 				background:var(--panel-bg); width:max-content;}	
 
-		.decodes_grid {display:grid; grid-template-columns: repeat(8, max-content) auto; grid-auto-rows: min-content; 
+		.decodes_grid {display:grid; grid-template-columns: repeat(10, max-content) auto; grid-auto-rows: min-content; 
 					   background:var(--table-bg); color:#8cf; margin:0.5em; height:25em; min-width:30em; 
 					   align-content: start; overflow-y:scroll; }	
 
@@ -113,7 +113,7 @@
 			let cs = dd.cyclestart_str;
 			if (cs.charAt(cs.length-1) == '5'){row.classList.add('odd')} else {row.classList.add('even')}
 			const snr_fmt = (parseInt(dd.snr)<0? "":"+") + dd.snr
-			const fields = [dd.cyclestart_str.split('_')[1], dd.decode_delay, snr_fmt, dd.freq, dd.dt, dd.call_a, dd.call_b, dd.grid_rpt,''];
+			const fields = [dd.cyclestart_str.split('_')[1], dd.decode_delay, snr_fmt, dd.freq, dd.dt, dd.call_a, dd.call_b, dd.grid_rpt,dd.n_its, dd.ncheck_initial,''];
 			fields.forEach((field, idx) => {
 				const cell_div = document.createElement("div");
 				cell_div.textContent = field;
@@ -145,6 +145,7 @@
 				document.getElementById('n_candidates').innerText = dd.n_candidates
 			}
 			if(dd.topic == 'decode_dict')		{
+				console.log(dd.source);
 				const mn = new Date;
 				mn.setHours(0, 0, 0, 0)
 				const tnow = new Date;
@@ -225,7 +226,7 @@
 				</div>
 				<div id="PyFT8_decodes" class = "decodes_grid">
 					<div class = 'grid_row header'>
-						<div class='grid_cell'>Cycle</div><div class='grid_cell'>t_decode</div><div class='grid_cell'>snr</div><div class='grid_cell'>Freq</div><div class='grid_cell'>dt</div><div class='grid_cell'>Call_a</div><div class='grid_cell'>Call_b</div><div class='grid_cell'>Grid_rpt</div><div class='grid_cell'></div>
+						<div class='grid_cell'>Cycle</div><div class='grid_cell'>t_decode</div><div class='grid_cell'>snr</div><div class='grid_cell'>Freq</div><div class='grid_cell'>dt</div><div class='grid_cell'>Call_a</div><div class='grid_cell'>Call_b</div><div class='grid_cell'>Grid_rpt</div><div class='grid_cell'>n_its</div><div class='grid_cell'>nchk</div><div class='grid_cell'></div>
 					</div>
 				</div>
 			</div>
@@ -233,7 +234,7 @@
 				<div class='grid_title'>WSJT-X Decodes <span id = 'n_wsjtx_decodes'>0</span></div>
 				<div id="wsjtx_decodes"  class = "decodes_grid">
 					<div class = 'grid_row header'>
-						<div class='grid_cell'>Cycle</div><div class='grid_cell'>t_decode</div><div class='grid_cell'>snr</div><div class='grid_cell'>Freq</div><div class='grid_cell'>dt</div><div class='grid_cell'>Call_a</div><div class='grid_cell'>Call_b</div><div class='grid_cell'>Grid_rpt</div><div class='grid_cell'></div>
+						<div class='grid_cell'>Cycle</div><div class='grid_cell'>t_decode</div><div class='grid_cell'>snr</div><div class='grid_cell'>Freq</div><div class='grid_cell'>dt</div><div class='grid_cell'>Call_a</div><div class='grid_cell'>Call_b</div><div class='grid_cell'>Grid_rpt</div><div class='grid_cell'></div><div class='grid_cell'></div><div class='grid_cell'></div>
 					</div>
 				</div>
 			</div>

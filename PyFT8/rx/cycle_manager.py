@@ -129,17 +129,12 @@ class Cycle_manager():
                 timers.timedLog("Search spectrum ...", logfile = 'pipeline.log')
                 with self.spectrum_lock:
                     self.spectrum.sync_search_band = self.spectrum.fine_grid_complex[:self.spectrum.candidate_search_after_hop,:].copy()
-                self.demod.find_syncs(self.spectrum, self.sync_score_thresh, self.onFindSync)
+                cands = self.demod.find_syncs(self.spectrum, self.sync_score_thresh)
+                with self.cands_list_lock:
+                    self.cands_list = cands
                 timers.timedLog("Spectrum searched", logfile = 'pipeline.log')
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
                 config.pause_ldpc = False
-
-    def onFindSync(self, sync_result):
-        c = Candidate(self.spectrum)
-        c.sync_result = sync_result
-        c.timings.update({'sync':timers.tnow()})
-        with self.cands_list_lock:
-            self.cands_list.append(c)
 
 #============================================
 # Decoding manager
