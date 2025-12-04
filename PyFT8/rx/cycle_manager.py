@@ -107,8 +107,8 @@ class Cycle_manager():
         n_cands_remaining = len(self.cands_list)
         n_demapped = len([c for c in self.cands_list if c.demap_result])
         min_ncheck_res = np.min([c.ncheck_initial for c in self.cands_list]) if n_cands_remaining else 5000
-        timers.timedLog(f"   Unprocessed candidates: {n_cands_remaining}/{self.n_cands_synced} (demapped {n_demapped} with min_ncheck {min_ncheck_res})")
-        timers.timedLog(f"   Total ldpc iterations : {self.n_total_iterations}")
+        timers.timedLog(f"   Unprocessed candidates: {n_cands_remaining}/{self.n_cands_synced} (demapped {n_demapped} with min_ncheck {min_ncheck_res})", logfile = 'pipeline.log')
+        timers.timedLog(f"   Total ldpc iterations : {self.n_total_iterations}", logfile = 'pipeline.log')
         self.n_total_iterations = 0
                 
     def threaded_spectrum_tasks(self):
@@ -124,7 +124,7 @@ class Cycle_manager():
                     self.running = False
                     break
                 print()
-                timers.timedLog(f"Cycle rollover {cycle_time:.2f}")
+                timers.timedLog(f"Cycle rollover {cycle_time:.2f}", logfile = 'pipeline.log')
                 self.cycle_countdown -=1
                 config.pause_ldpc = False
                 self.cyclestart_str = timers.cyclestart_str()
@@ -136,14 +136,14 @@ class Cycle_manager():
             if (self.spectrum.nHops_loaded > self.spectrum.candidate_search_after_hop and not self.spectrum.searched):
                 self.spectrum.searched = True
                 self.last_cycle_summary()
-                timers.timedLog("Search spectrum ...", logfile = 'pipeline.log')
+                timers.timedLog(f"Search spectrum ...", logfile = 'pipeline.log')
                 with self.spectrum_lock:
                     self.spectrum.sync_search_band = self.spectrum.fine_grid_complex[:self.spectrum.candidate_search_after_hop,:].copy()
                 cands = self.demod.find_syncs(self.spectrum, self.sync_score_thresh)
                 with self.cands_list_lock:
                     self.cands_list = cands
                     self.n_cands_synced = len(self.cands_list)
-                timers.timedLog("Spectrum searched: {self.n_cands_synced} candidates", logfile = 'pipeline.log')
+                timers.timedLog(f"Spectrum searched: {self.n_cands_synced} candidates", logfile = 'pipeline.log')
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
 
 #============================================
@@ -185,9 +185,10 @@ class Cycle_manager():
 
             # cands_for_ldpc = all candidates that have been demapped and not already been sent for ldpc
             with self.cands_list_lock:
-                cands_for_ldpc = [c for c in self.cands_list if c.demap_result and not c.ldpc_requested]
+                cands_for_ldpc = [c for c in self.cands_list if c.demap_result
+                                  and not c.ldpc_requested and c.cyclestart_str == self.cyclestart_str]
             
-            #cands_for_ldpc.sort(key=lambda c: -c.demap_result['llr_sd'])  # do this sort on ncheck_initial?
+            # sort based on ncheck_initial and send for ldpc
             cands_for_ldpc.sort(key=lambda c: c.ncheck_initial) 
             for c in cands_for_ldpc:
                 if(self.n_ldpc_load < 15):
