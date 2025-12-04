@@ -106,9 +106,8 @@ class Cycle_manager():
         n_cands_remaining = len(self.cands_list)
         n_demapped = len([c for c in self.cands_list if c.demap_result])
         min_ncheck_res = np.min([c.ncheck_initial for c in self.cands_list]) if n_cands_remaining else None
-        timers.timedLog(f"Cands too late for spectrum fill: {len(self.spectrum_denied)} \n"
-                        +f"   Unprocessed: {n_cands_remaining} (demapped {n_demapped} with min_ncheck {min_ncheck_res}) \n"
-                        +f"   Total its: {self.n_total_iterations}")
+        timers.timedLog(f"   Unprocessed candidates: {n_cands_remaining} (demapped {n_demapped} with min_ncheck {min_ncheck_res})")
+        timers.timedLog(f"   Total ldpc iterations : {self.n_total_iterations}")
         
     def threaded_spectrum_tasks(self):
         timers.timedLog("Rollover manager waiting for end of partial cycle")
