@@ -29,6 +29,7 @@ class Cycle_manager():
         self.cands_list = []
         self.input_device_idx = audio._find_device(config.soundcards['input_device'])   
         self.audio_queue = queue.Queue(maxsize=200)
+        self.n_cands_synced = 0
         self.spectrum_denied = set()
         self.n_decode_success = 0
         self.demap_wait = 0
@@ -106,10 +107,11 @@ class Cycle_manager():
         n_cands_remaining = len(self.cands_list)
         n_demapped = len([c for c in self.cands_list if c.demap_result])
         min_ncheck_res = np.min([c.ncheck_initial for c in self.cands_list]) if n_cands_remaining else 5000
-        timers.timedLog(f"   Unprocessed candidates: {n_cands_remaining} (demapped {n_demapped} with min_ncheck {min_ncheck_res})")
+        timers.timedLog(f"   Unprocessed candidates: {n_cands_remaining}/{self.n_cands_synced} (demapped {n_demapped} with min_ncheck {min_ncheck_res})")
         timers.timedLog(f"   Total ldpc iterations : {self.n_total_iterations}")
         
     def threaded_spectrum_tasks(self):
+        
         timers.timedLog("Rollover manager waiting for end of partial cycle")
         while (timers.tnow() % self.demod.sigspec.cycle_seconds) < self.demod.sigspec.cycle_seconds  - 0.1 :
             timers.sleep(0.01)
@@ -140,7 +142,8 @@ class Cycle_manager():
                 cands = self.demod.find_syncs(self.spectrum, self.sync_score_thresh)
                 with self.cands_list_lock:
                     self.cands_list = cands
-                timers.timedLog("Spectrum searched", logfile = 'pipeline.log')
+                    self.n_cands_synced = len(self.cands_list)
+                timers.timedLog("Spectrum searched: {self.n_cands_synced} candidates", logfile = 'pipeline.log')
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
 
 #============================================

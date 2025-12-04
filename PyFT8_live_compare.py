@@ -49,7 +49,7 @@ def add_band_buttons():
 def run():
     start_wsjtx_tailer(on_wsjtx_decode)
     cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, 
-                              max_iters = 60, max_stall = 8, max_ncheck = 41,
+                              max_iters = 33, max_stall = 8, max_ncheck = 33,
                               sync_score_thresh = 1.8)
     start_UI("PyFT8_live_compare.html", process_UI_event)
     add_band_buttons()
