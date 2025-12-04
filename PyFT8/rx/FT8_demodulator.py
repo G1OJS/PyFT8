@@ -57,6 +57,7 @@ class Candidate:
         self.demap_result = None
         self.ldpc_requested = False
         self.ldpc_result = None
+        self.ncheck_initial = 5000
         self.decode_result = None
         self.timings = stats = { 't_requested_demap': None, 't_end_demap': None,
                                  't_requested_ldpc': None, 't_end_ldpc': None,}

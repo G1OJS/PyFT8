@@ -79,14 +79,18 @@ class LDPC174_91:
         for b in bits:
             n = (n << 1) | (b & 1)
         return n
+
+    def fast_ncheck(self, llr):
+        synd_checks = [ sum(1 for llr_bit in llr[self.synd_check_idxs[i]] if llr_bit > 0) %2 for i in range(83)]
+        return int(np.sum(synd_checks))
             
     def decode(self, llr):
         it = 0
         nstall, ncheck_last = 0, 0 
         ncheck_initial = None
 
-        def get_ncheck(zn):
-            synd_checks = [ sum(1 for llr in zn[self.synd_check_idxs[i]] if llr > 0) %2 for i in range(83)]
+        def get_ncheck(llr):
+            synd_checks = [ sum(1 for llr_bit in llr[self.synd_check_idxs[i]] if llr_bit > 0) %2 for i in range(83)]
             return int(np.sum(synd_checks))
 
         def get_payload_bits(zn):

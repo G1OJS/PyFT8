@@ -11,10 +11,10 @@ import wave
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
                  max_iters = 90, max_stall = 8, max_ncheck = 30,
-                 sync_score_thresh = 3, cycles = 1e40):
+                 sync_score_thresh = 3, max_cycles = 1e40):
         self.wav_file_start_time = None
-        self.last_cycle_time = 1e40
-        self.cycles = cycles
+        self.prev_cycle_time = 1e40
+        self.cycle_countdown = max_cycles
         self.cyclestart_str = None
         self.sigspec = sigspec
         self.sync_score_thresh = sync_score_thresh
@@ -108,19 +108,24 @@ class Cycle_manager():
         while self.running:
             timers.sleep(0.1)
             cycle_time = timers.tnow() % self.demod.sigspec.cycle_seconds 
-            if (cycle_time < self.last_cycle_time): 
-                if not self.cycles:
+            if (cycle_time < self.prev_cycle_time): 
+                if not self.cycle_countdown:
                     self.running = False
                     break
-                self.cycles -=1
+                self.cycle_countdown -=1
                 config.pause_ldpc = False
                 self.cyclestart_str = timers.cyclestart_str()
-                timers.timedLog(f"Cycle rollover {cycle_time:.2f} Cands too late: {len(self.spectrum_denied)}, residual: {len(self.cands_list)} total its: {self.n_total_iterations}")
+                n_cands_remaining = len(self.cands_list)
+                n_demapped = len([c for c in self.cands_list if c.demap_result])
+                min_ncheck_res = np.min([c.ncheck_initial for c in self.cands_list]) if n_cands_remaining else None
+                timers.timedLog(f"\nCycle rollover {cycle_time:.2f} \n   Cands too late: {len(self.spectrum_denied)}, \n"
+                                +f"   Unprocessed: {n_cands_remaining} (demapped {n_demapped} with min_ncheck {min_ncheck_res}), \n"
+                                +f"   Total its: {self.n_total_iterations}")
                 self.spectrum.reset()
                 self.spectrum_denied = set()
                 self.n_decode_success = 0
                 self.n_total_iterations = 0
-            self.last_cycle_time = cycle_time
+            self.prev_cycle_time = cycle_time
             
             if (self.spectrum.nHops_loaded > self.spectrum.candidate_search_after_hop and not self.spectrum.searched):
                 self.spectrum.searched = True
@@ -167,23 +172,25 @@ class Cycle_manager():
                 self.demod.demap_candidate(c)
                 c.timings.update({'t_end_demap':timers.tnow()})
                 self.demap_wait += c.timings['t_end_demap'] - c.timings['t_requested_demap']
+                c.ncheck_initial = self.demod.ldpc.fast_ncheck(c.demap_result['llr']) #note - doesn't need all 174 bits so could be done earlier
 
             # cands_for_ldpc = all candidates that have been demapped and not already been sent for ldpc
             with self.cands_list_lock:
                 cands_for_ldpc = [c for c in self.cands_list if c.demap_result and not c.ldpc_requested]
             
             #cands_for_ldpc.sort(key=lambda c: -c.demap_result['llr_sd'])  # do this sort on ncheck_initial?
-            cands_for_ldpc.sort(key=lambda c: -c.sync_result['sync_score']) 
+            cands_for_ldpc.sort(key=lambda c: c.ncheck_initial) 
             for c in cands_for_ldpc:
                 if(self.n_ldpc_load < 15):
+                    with self.cands_list_lock:
+                        self.cands_list.remove(c)
                     c.ldpc_requested = True
                     c.timings.update({'t_requested_ldpc':timers.tnow()})
                     self.n_ldpc_load +=1
                     threading.Thread(target=self.demod.decode_candidate, kwargs={'candidate':c, 'onDecode':self.onDecode}, daemon=True).start()
             
     def onDecode(self, c):
-        with self.cands_list_lock:
-            self.cands_list.remove(c)
+
             
         c.timings.update({'t_end_ldpc':timers.tnow()})
         self.ldpc_wait += c.timings['t_end_ldpc'] - c.timings['t_requested_ldpc']
