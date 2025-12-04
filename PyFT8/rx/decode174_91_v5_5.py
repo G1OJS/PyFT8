@@ -32,7 +32,6 @@ from PyFT8.FT8_crc import check_crc
 import PyFT8.timers as timers
 from threading import Condition
 from PyFT8.comms_hub import config
-pause_cond = Condition()
 
 class LDPC174_91:
     def __init__(self, max_it, max_nstall, max_ncheck):
@@ -112,10 +111,6 @@ class LDPC174_91:
             if(len(payload_bits) > 0) or any([f for f in failures.values()]):
                 return {'payload_bits':payload_bits, 'n_its':it, 'ncheck_initial':ncheck_initial, 'failures': failures} 
 
-            with pause_cond:
-                while config.pause_ldpc:
-                    pause_cond.wait()
-                    
             toc = zn[self.kNM]  # converges faster than np.tanh(-toc / 2)
             tanhtoc = np.tanh(-toc).astype(np.float32)
 

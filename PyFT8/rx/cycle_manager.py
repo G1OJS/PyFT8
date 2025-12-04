@@ -11,14 +11,13 @@ import wave
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
                  max_iters = 90, max_stall = 8, max_ncheck = 30,
-                 sync_score_thresh = 3, llr_sd_thresh = 2, cycles = 1e40):
+                 sync_score_thresh = 3, cycles = 1e40):
         self.wav_file_start_time = None
         self.last_cycle_time = 1e40
         self.cycles = cycles
         self.cyclestart_str = None
         self.sigspec = sigspec
         self.sync_score_thresh = sync_score_thresh
-        self.llr_sd_thresh = llr_sd_thresh
         self.spectrum_lock = threading.Lock()
         self.cands_list_lock = threading.Lock()
         self.demod = FT8Demodulator(sigspec, max_iters, max_stall, max_ncheck)
@@ -125,7 +124,6 @@ class Cycle_manager():
             
             if (self.spectrum.nHops_loaded > self.spectrum.candidate_search_after_hop and not self.spectrum.searched):
                 self.spectrum.searched = True
-                config.pause_ldpc = True
                 timers.timedLog("Search spectrum ...", logfile = 'pipeline.log')
                 with self.spectrum_lock:
                     self.spectrum.sync_search_band = self.spectrum.fine_grid_complex[:self.spectrum.candidate_search_after_hop,:].copy()
@@ -134,7 +132,6 @@ class Cycle_manager():
                     self.cands_list = cands
                 timers.timedLog("Spectrum searched", logfile = 'pipeline.log')
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
-                config.pause_ldpc = False
 
 #============================================
 # Decoding manager
@@ -160,15 +157,13 @@ class Cycle_manager():
                 if(c.cyclestart_str != self.cyclestart_str):
                     if (self.spectrum.nHops_loaded > c.sync_result['first_data_hop']):
                         self.n_spectrum_denied +=1
-                        c.demap_result = {'llr_sd':-1,'llr':None,'snr':None}
+                        c.demap_result = None
                     continue
                 with self.spectrum_lock:
                     c.synced_grid_complex = self.spectrum.fine_grid_complex[origin[0]:origin[0]+c.size[0],
                                                                             origin[1]:origin[1]+c.size[1]].copy()
                 c.timings.update({'fill':timers.tnow()})
-                #config.pause_ldpc = True
                 self.demod.demap_candidate(self.spectrum, c)
-                #config.pause_ldpc = False
                 c.timings.update({'t_end_demap':timers.tnow()})
                 self.demap_wait += c.timings['t_end_demap'] - c.timings['t_requested_demap']
             
@@ -176,19 +171,11 @@ class Cycle_manager():
             with self.cands_list_lock:
                 demapped = [c for c in self.cands_list if c.demap_result]
 
-            # for demapped candidates with llr_sd below llr_sd_thesh, remove from global list self.cands_list
-            # for the others, build a list to send to ldpc
-            demapped_success = []
-            with self.cands_list_lock:
-                for c in demapped:
-                    if (c.demap_result['llr_sd'] < self.llr_sd_thresh):
-                        self.cands_list.remove(c)
-                    else:
-                        demapped_success.append(c)
-                
-            # cands_for_ldpc = cands in demapped_success that have not already been sent for ldpc
-            cands_for_ldpc = [c for c in demapped_success if not c.ldpc_requested]
-            cands_for_ldpc.sort(key=lambda c: -c.demap_result['llr_sd'])
+            # cands_for_ldpc = cands in demapped that have not already been sent for ldpc
+            cands_for_ldpc = [c for c in demapped if not c.ldpc_requested]
+            
+            #cands_for_ldpc.sort(key=lambda c: -c.demap_result['llr_sd'])  # do this sort on ncheck_initial?
+            cands_for_ldpc.sort(key=lambda c: -c.sync_result['sync_score']) 
             for c in cands_for_ldpc:
                 if(self.n_ldpc_load < 15):
                     c.ldpc_requested = True

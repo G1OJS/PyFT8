@@ -231,7 +231,7 @@ def run():
     cycle_manager = Cycle_manager(FT8, None if config.decoder == 'wsjtx' else onDecodePyFT8,
                               onOccupancy = onOccupancy,
                               max_iters = 35, max_stall = 8, max_ncheck = 35,
-                              sync_score_thresh = 2.3, llr_sd_thresh = 1.5)
+                              sync_score_thresh = 2.3)
     if(config.decoder == 'wsjtx') : start_wsjtx_tailer(onDecode)
     start_UI("PyFT8_tcvr_UI.html", process_UI_event)
     add_band_buttons()
