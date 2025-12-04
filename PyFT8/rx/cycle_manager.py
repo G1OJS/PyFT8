@@ -109,7 +109,8 @@ class Cycle_manager():
         min_ncheck_res = np.min([c.ncheck_initial for c in self.cands_list]) if n_cands_remaining else 5000
         timers.timedLog(f"   Unprocessed candidates: {n_cands_remaining}/{self.n_cands_synced} (demapped {n_demapped} with min_ncheck {min_ncheck_res})")
         timers.timedLog(f"   Total ldpc iterations : {self.n_total_iterations}")
-        
+        self.n_total_iterations = 0
+                
     def threaded_spectrum_tasks(self):
         
         timers.timedLog("Rollover manager waiting for end of partial cycle")
@@ -130,7 +131,6 @@ class Cycle_manager():
                 self.spectrum.reset()
                 self.spectrum_denied = set()
                 self.n_decode_success = 0
-                self.n_total_iterations = 0
             self.prev_cycle_time = cycle_time
             
             if (self.spectrum.nHops_loaded > self.spectrum.candidate_search_after_hop and not self.spectrum.searched):
