@@ -114,6 +114,8 @@ class Config:
         
         self.wsjtx_all_file = parser.get("paths","wsjtx_all_file")
 
+        self.pause_ldpc = False
+
         self.decoder = parser.get("options","decoder")
 
         self.COM_port = parser.get("radio","com_port")

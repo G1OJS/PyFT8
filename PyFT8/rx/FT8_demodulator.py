@@ -9,8 +9,6 @@ import PyFT8.timers as timers
 
 eps = 1e-12
 
-
-    
 class Candidate:
     next_id = 0
     def __init__(self, spectrum):
@@ -19,19 +17,15 @@ class Candidate:
         self.sigspec = spectrum.sigspec
         self.size = spectrum.candidate_size
         self.cyclestart_str = timers.cyclestart_str()
-        self.sync_score = None
         self.sync_result = None
         self.synced_grid_complex = None
         self.demap_requested = False
         self.demap_result = None
         self.ldpc_requested = False
         self.ldpc_result = None
-        self.ncheck_initial = 5000
+        self.remove_requested = True
         self.decode_result = None
-        self.timings = stats = { 't_requested_demap': None, 't_end_demap': None,
-                                 't_requested_ldpc': None, 't_end_ldpc': None,}
-        self.__isfrozen = True
-
+        
     @property
     def decode_success(self):
         return not (self.decode_result == None)
@@ -40,18 +34,7 @@ class Candidate:
     def message(self):
         c = self
         return f"{c.decode_result['call_a']} {c.decode_result['call_b']} {c.decode_result['grid_rpt']}"
-
-    @property
-    def metrics(self):
-        return {
-            "cand_id": self.id,
-            "decode_success": int(self.decode_success),
-            "sync_score": self.sync_result['sync_score'],
-            "snr": self.demap_result['snr'],
-            "llr_sd": self.demap_result['llr_sd'],
-            "ldpc_iters": self.ldpc_result['n_its']
-        }
-
+    
 class FT8Demodulator:
     def __init__(self, sigspec, max_iters, max_stall, max_ncheck):
         self.sigspec = sigspec
@@ -93,7 +76,6 @@ class FT8Demodulator:
                 if(neighbour_lf):
                     if(neighbour_lf[0].sync_result['sync_score'] >= c.sync_result['sync_score']): continue
                     if(neighbour_lf[0].sync_result['sync_score'] < c.sync_result['sync_score']): candidates.remove(neighbour_lf[0])
-                c.timings.update({'sync':timers.tnow()})
                 candidates.append(c)
         return candidates
 
@@ -135,22 +117,6 @@ class FT8Demodulator:
             c.decode_result = FT8_unpack(c)
         onDecode(c)
 
-#===========================================
-# Experimental for pass 2
-#===========================================
-
-    def subtract(self, spectrum, c):
-        import PyFT8.tx.FT8_encoder as FT8_encoder
-        c1, c2, grid_rpt = c.message.split()
-        symbols = FT8_encoder.pack_message(c1, c2, grid_rpt)
-        if(symbols):
-            origin = c.sync_result['origin']
-            for i, s in enumerate(symbols):
-                t0_cand, f0 = i*self.hops_persymb, self.fbins_pertone * s
-                z_ref=c.synced_grid_complex[t0_cand, f0+1]
-                t0 = t0_cand + origin[0]
-                spectrum.fine_grid_complex[t0:t0+self.hops_persymb, f0-1:f0+1] -= z_ref
-    
 # ======================================================
 # FT8 Unpacking functions
 # ======================================================
