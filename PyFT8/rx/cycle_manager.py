@@ -42,6 +42,7 @@ class Cycle_manager():
                  sync_score_thresh = 3, max_cycles = 1e40):
         self.running = True
         self.sigspec = sigspec
+        self.max_ncheck = max_ncheck
         self.demod = FT8Demodulator(sigspec, max_iters, max_stall, max_ncheck)
         self.spectrum = Spectrum(self.demod)
         self.spectrum_lock = threading.Lock()
@@ -50,7 +51,6 @@ class Cycle_manager():
         self.audio_in_wav = audio_in_wav
         self.cycle_countdown = max_cycles
         self.cyclestart_str = None
-        self.cyclestart_pointer = None
         self.prev_cycle_time = 1e40
         n_hops_sync_band  = self.demod.slack_hops + np.max(self.spectrum.hop_idxs_Costas)
         self.t_search = n_hops_sync_band * self.spectrum.dt
@@ -59,6 +59,10 @@ class Cycle_manager():
         self.cands_list_lock = threading.Lock()
         self.sync_score_thresh = sync_score_thresh
         self.n_cands_synced = 0
+        self.n_demapped =0
+        self.n_bad_ncheck =0
+        self.n_sent_for_ldpc =0
+        self.n_total_iterations = 0
         self.spectrum_denied = set()
         self.n_decode_success = 0
         self.demap_duration = 0
@@ -81,10 +85,14 @@ class Cycle_manager():
     def last_cycle_summary(self):
         cycle_time = timers.tnow() % self.demod.sigspec.cycle_seconds 
         n_cands_remaining = len(self.cands_list)
-        n_demapped = len([c for c in self.cands_list if c.demap_result])
-        min_ncheck_res = np.min([c.ncheck_initial for c in self.cands_list]) if n_cands_remaining else 5000
-        timers.timedLog(f"Unprocessed candidates: {n_cands_remaining}/{self.n_cands_synced} (demapped {n_demapped} with min_ncheck {min_ncheck_res})", logfile = 'pipeline.log')
+   #     timers.timedLog(f"Synced: {self.n_cands_synced} demapped: {self.n_demapped} removed: {self.n_bad_ncheck} balance: {self.n_demapped-self.n_bad_ncheck}")
+        timers.timedLog(f"Sent for ldpc: {self.n_sent_for_ldpc}", logfile = 'pipeline.log')
+        timers.timedLog(f"Waiting for {n_cands_remaining}")
         timers.timedLog(f"Total ldpc iterations : {self.n_total_iterations}", logfile = 'pipeline.log')
+        self.n_cands_synced = 0
+        self.n_demapped =0
+        self.n_bad_ncheck =0
+        self.n_sent_for_ldpc =0
         self.n_total_iterations = 0
                 
     def threaded_spectrum_tasks(self):
@@ -101,9 +109,9 @@ class Cycle_manager():
                 if not self.cycle_countdown:
                     self.running = False
                     break
-                self.cyclestart_pointer = self.spectrum.fine_grid_pointer
+                self.spectrum.fine_grid_pointer = 0
                 print()
-                timers.timedLog(f"Cycle rollover {cycle_time:.2f} index {self.cyclestart_pointer}", logfile = 'pipeline.log')
+                timers.timedLog(f"Cycle rollover {cycle_time:.2f}", logfile = 'pipeline.log')
                 self.cycle_countdown -=1
                 self.cyclestart_str = timers.cyclestart_str()
                 self.n_decode_success = 0
@@ -119,7 +127,7 @@ class Cycle_manager():
                 idx_0 = idx_n - self.demod.slack_hops - self.sigspec.costas_len * self.demod.hops_persymb
                 with self.spectrum_lock:
                     self.spectrum.sync_search_band = self.spectrum.fine_grid_complex[idx_0:idx_n,:].copy()
-                cands = self.demod.find_syncs(self.spectrum, self.cyclestart_pointer, self.sync_score_thresh)
+                cands = self.demod.find_syncs(self.spectrum, self.sync_score_thresh)
                 with self.cands_list_lock:
                     self.cands_list = cands
                     self.n_cands_synced = len(self.cands_list)
@@ -136,13 +144,15 @@ class Cycle_manager():
 
     def threaded_decode_manager(self):
         while self.running:
-            timers.sleep(0.05)
+            timers.sleep(0.01)
 
             # find candidates that can have spectrum filled, fill and demap
             cands_to_demap = []
             with self.cands_list_lock:
-                cands_to_demap = [c for c in self.cands_list if self.spectrum.fine_grid_pointer > c.sync_result['last_data_hop']
-                              and not c.demap_requested]
+                cands_to_demap = [c for c in self.cands_list if not c.demap_requested and
+                                  (self.spectrum.fine_grid_pointer > c.sync_result['last_data_hop']
+                              or (self.cyclestart_str != c.cyclestart_str and self.spectrum.fine_grid_pointer +  self.spectrum.hops_percycle > c.sync_result['last_data_hop']))]
+            to_remove = []
             for c in cands_to_demap:                
                 c.demap_requested = True
                 c.timings.update({'t_requested_demap':timers.tnow()})
@@ -155,28 +165,35 @@ class Cycle_manager():
                 c.timings.update({'t_end_demap':timers.tnow()})
                 self.demap_duration += c.timings['t_end_demap'] - c.timings['t_requested_demap']
                 c.ncheck_initial = self.demod.ldpc.fast_ncheck(c.demap_result['llr']) #note - doesn't need all 174 bits so could be done earlier
-
-            # cands_for_ldpc = all candidates that have been demapped and not already been sent for ldpc
+                self.n_demapped +=1
+                if(c.ncheck_initial > self.max_ncheck):
+                    to_remove.append(c)
             with self.cands_list_lock:
-                cands_for_ldpc = [c for c in self.cands_list if c.demap_result
-                                  and not c.ldpc_requested and c.cyclestart_str == self.cyclestart_str]
+                for c in to_remove:
+                    self.cands_list.remove(c)
+                    self.n_bad_ncheck +=1
+
+            # cands_for_ldpc = all candidates that have been demapped (implies met ncheck < max_ncheck) , and not already been sent for ldpc
+            with self.cands_list_lock:
+                cands_for_ldpc = [c for c in self.cands_list if c.demap_result 
+                                  and not c.ldpc_requested]
             
             # sort based on ncheck_initial and send for ldpc
             cands_for_ldpc.sort(key=lambda c: c.ncheck_initial) 
             for c in cands_for_ldpc:
-                if(self.n_ldpc_load < 15):
-                    with self.cands_list_lock:
-                        self.cands_list.remove(c)
-                    c.ldpc_requested = True
-                    c.timings.update({'t_requested_ldpc':timers.tnow()})
-                    self.n_ldpc_load +=1
-                    threading.Thread(target=self.demod.decode_candidate, kwargs={'candidate':c, 'onDecode':self.onDecode}, daemon=True).start()
+                c.ldpc_requested = True
+                c.timings.update({'t_requested_ldpc':timers.tnow()})
+                self.n_sent_for_ldpc +=1
+                self.n_ldpc_load +=1
+                threading.Thread(target=self.demod.decode_candidate, kwargs={'candidate':c, 'onDecode':self.onDecode}, daemon=True).start()
             
     def onDecode(self, c):
         c.timings.update({'t_end_ldpc':timers.tnow()})
         self.ldpc_duration += c.timings['t_end_ldpc'] - c.timings['t_requested_ldpc']
         self.n_ldpc_load -=1
         self.n_total_iterations += c.ldpc_result['n_its']
+        with self.cands_list_lock:
+            self.cands_list.remove(c)
         if(c.decode_success):
             self.n_decode_success +=1
             origin = c.sync_result['origin']

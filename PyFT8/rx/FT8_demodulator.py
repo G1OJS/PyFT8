@@ -65,13 +65,13 @@ class FT8Demodulator:
         self.slack_hops =  int(self.hops_persymb * (self.sigspec.symbols_persec * self.sigspec.cycle_seconds - self.sigspec.num_symbols))
         self.ldpc = LDPC174_91(max_iters, max_stall, max_ncheck)
 
-    def find_syncs(self, spectrum, cyclestart_pointer, sync_score_thresh):
+    def find_syncs(self, spectrum, sync_score_thresh):
         candidates = []
         n_hops_costas = np.max(spectrum.hop_idxs_Costas)
         f0_idxs = range(spectrum.nFreqs - spectrum.candidate_size[1])
         zgrid = spectrum.fine_grid_complex
         for f0_idx in f0_idxs:
-            c_zgrid = zgrid[cyclestart_pointer: cyclestart_pointer + n_hops_costas + self.slack_hops, f0_idx:f0_idx + self.fbins_per_signal]
+            c_zgrid = zgrid[: n_hops_costas + self.slack_hops, f0_idx:f0_idx + self.fbins_per_signal]
             c_pgrid = np.abs(c_zgrid)**2
             max_pwr = np.max(c_pgrid)
             spectrum.occupancy[f0_idx:f0_idx + self.fbins_per_signal] += max_pwr
@@ -83,7 +83,7 @@ class FT8Demodulator:
                     best = test
             if(best[1] > sync_score_thresh):
                 c = Candidate(spectrum)
-                t0_idx = best[0] + cyclestart_pointer
+                t0_idx = best[0]
                 c.sync_result = {'sync_score': best[1], 
                                 'origin': (t0_idx, f0_idx, spectrum.dt * t0_idx, spectrum.df * (f0_idx + 1)),
                                 'last_hop': t0_idx + spectrum.candidate_size[0],

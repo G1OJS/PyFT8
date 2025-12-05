@@ -104,6 +104,7 @@ class LDPC174_91:
         alpha = 1.05
 
         while True:
+            timers.sleep(0.01)
             ncheck = get_ncheck(zn)
             nstall = 0 if(ncheck < ncheck_last) else nstall + 1
             ncheck_last = ncheck
