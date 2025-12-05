@@ -9,39 +9,8 @@ import PyFT8.timers as timers
 
 eps = 1e-12
 
-class Spectrum:
-    def __init__(self, demodspec):
-        self.sigspec = demodspec.sigspec
-        self.hops_persymb = demodspec.hops_persymb
-        self.fbins_pertone = demodspec.fbins_pertone
-        self.max_freq = 3500 
-        self.dt = demodspec.samples_perhop / demodspec.sample_rate
-        self.FFT_len = int(demodspec.fbins_pertone * demodspec.sample_rate // self.sigspec.symbols_persec)
-        FFT_out_len = int(self.FFT_len/2) + 1
-        fmax_fft = demodspec.sample_rate/2
-        self.nFreqs = int(FFT_out_len * self.max_freq / fmax_fft)
-        self.df = self.max_freq / self.nFreqs
-        self.hops_percycle = int(self.sigspec.cycle_seconds * self.sigspec.symbols_persec * demodspec.hops_persymb)
-        self.candidate_size = (self.sigspec.num_symbols * demodspec.hops_persymb,
-                               self.sigspec.tones_persymb * demodspec.fbins_pertone)
-        self._csync = np.full((self.sigspec.costas_len, self.candidate_size[1]), -1/(self.sigspec.costas_len-1), np.float32)
-        for sym_idx, tone in enumerate(self.sigspec.costas):
-            fbins = range(tone* demodspec.fbins_pertone, (tone+1) * demodspec.fbins_pertone)
-            self._csync[sym_idx, fbins] = 1.0
-            self._csync[sym_idx, self.sigspec.costas_len*demodspec.fbins_pertone:] = 0
-        self.hop_idxs_Costas =  np.arange(self.sigspec.costas_len) * demodspec.hops_persymb
-        self.candidate_search_after_hop  = (np.max(demodspec.sync_range) + np.max(self.hop_idxs_Costas)) +1
-        self.fine_grid_complex = np.zeros((2 * self.hops_percycle, self.nFreqs), dtype = np.complex64)
-        self.sync_search_band = self.fine_grid_complex[:self.candidate_search_after_hop,:] # move to _init_?
-        self.occupancy = np.zeros(self.nFreqs)
-        self.reset()
-        self.__isfrozen = True
-        
-    def reset(self): #(is this really a new class called 'cycle'?)
-        self.searched = False
-        self.nHops_loaded = 0
-        self.audio_in = []
 
+    
 class Candidate:
     next_id = 0
     def __init__(self, spectrum):
@@ -93,33 +62,33 @@ class FT8Demodulator:
         self.hops_per_costas_block = self.hops_persymb * self.sigspec.costas_len
         self.samples_perhop = int(self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb) )
         self.hops_persec = self.sample_rate / self.samples_perhop 
-        slack_hops =  int(self.hops_persymb * (self.sigspec.symbols_persec * self.sigspec.cycle_seconds - self.sigspec.num_symbols))
-        self.sync_range = range(slack_hops)
+        self.slack_hops =  int(self.hops_persymb * (self.sigspec.symbols_persec * self.sigspec.cycle_seconds - self.sigspec.num_symbols))
         self.ldpc = LDPC174_91(max_iters, max_stall, max_ncheck)
 
-    def find_syncs(self, spectrum, sync_score_thresh):
+    def find_syncs(self, spectrum, cyclestart_pointer, sync_score_thresh):
         candidates = []
+        n_hops_costas = np.max(spectrum.hop_idxs_Costas)
         f0_idxs = range(spectrum.nFreqs - spectrum.candidate_size[1])
+        zgrid = spectrum.fine_grid_complex
         for f0_idx in f0_idxs:
-            fine_grid_complex = spectrum.sync_search_band[:, f0_idx:f0_idx + self.fbins_per_signal]
-            fine_grid_pwr = np.abs(fine_grid_complex)**2
-            max_pwr = np.max(fine_grid_pwr)
+            c_zgrid = zgrid[cyclestart_pointer: cyclestart_pointer + n_hops_costas + self.slack_hops, f0_idx:f0_idx + self.fbins_per_signal]
+            c_pgrid = np.abs(c_zgrid)**2
+            max_pwr = np.max(c_pgrid)
             spectrum.occupancy[f0_idx:f0_idx + self.fbins_per_signal] += max_pwr
-            fine_grid_pwr = fine_grid_pwr / (max_pwr + eps)
+            c_pgrid = c_pgrid / (max_pwr + eps)
             best = (0, -1e30)
-            for h0 in self.sync_range:
-                test = (h0, float(np.dot(fine_grid_pwr[h0 + spectrum.hop_idxs_Costas].ravel(), spectrum._csync.ravel())))
+            for t0_idx in range(c_zgrid.shape[0] - n_hops_costas):
+                test = (t0_idx, float(np.dot(c_pgrid[t0_idx + spectrum.hop_idxs_Costas ,  :].ravel(), spectrum._csync.ravel())))
                 if test[1] > best[1]:
                     best = test
-            # could be simplified - maybe use a mini candidate class initially?
             if(best[1] > sync_score_thresh):
                 c = Candidate(spectrum)
-                sync_result = {'sync_score': best[1], 
-                                  'origin': (best[0], f0_idx, spectrum.dt * best[0], spectrum.df * (f0_idx + 1)),
-                                  'last_hop': best[0] + spectrum.candidate_size[0],
-                                  'last_data_hop': best[0] + spectrum.candidate_size[0] - self.hops_per_costas_block,
-                                  'first_data_hop': best[0] + self.hops_per_costas_block}
-                c.sync_result = sync_result
+                t0_idx = best[0] + cyclestart_pointer
+                c.sync_result = {'sync_score': best[1], 
+                                'origin': (t0_idx, f0_idx, spectrum.dt * t0_idx, spectrum.df * (f0_idx + 1)),
+                                'last_hop': t0_idx + spectrum.candidate_size[0],
+                                'last_data_hop': t0_idx + spectrum.candidate_size[0] - n_hops_costas,
+                                'first_data_hop': t0_idx + n_hops_costas}
                 neighbour_lf = [n for n in candidates if (c.sync_result['origin'][1] - n.sync_result['origin'][1] <=2)]
                 if(neighbour_lf):
                     if(neighbour_lf[0].sync_result['sync_score'] >= c.sync_result['sync_score']): continue
