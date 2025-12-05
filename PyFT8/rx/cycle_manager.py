@@ -12,23 +12,21 @@ class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
                  max_iters = 90, max_stall = 8, max_ncheck = 30,
                  sync_score_thresh = 3, max_cycles = 1e40):
-        self.wav_file_start_time = None
-        self.prev_cycle_time = 1e40
-        self.cycle_countdown = max_cycles
-        self.cyclestart_str = None
+        self.running = True
         self.sigspec = sigspec
-        self.sync_score_thresh = sync_score_thresh
-        self.spectrum_lock = threading.Lock()
-        self.cands_list_lock = threading.Lock()
         self.demod = FT8Demodulator(sigspec, max_iters, max_stall, max_ncheck)
         self.spectrum = Spectrum(self.demod)
-        self.running = True
-        self.time_window = np.kaiser(self.spectrum.FFT_len, 20)
-        self.onSuccessfulDecode = onSuccessfulDecode
-        self.onOccupancy = onOccupancy
+        self.spectrum_lock = threading.Lock()
+        self.audio_in = audio.AudioIn(self, np.kaiser(self.spectrum.FFT_len, 20))
+
+        self.audio_in_wav = audio_in_wav
+        self.cycle_countdown = max_cycles
+        self.cyclestart_str = None
+        self.prev_cycle_time = 1e40
+
         self.cands_list = []
-        self.input_device_idx = audio._find_device(config.soundcards['input_device'])   
-        self.audio_queue = queue.Queue(maxsize=200)
+        self.cands_list_lock = threading.Lock()
+        self.sync_score_thresh = sync_score_thresh
         self.n_cands_synced = 0
         self.spectrum_denied = set()
         self.n_decode_success = 0
@@ -39,66 +37,12 @@ class Cycle_manager():
         self.duplicate_filter = set()
         self.to_subtract = []
 
-        threading.Thread(target=self.threaded_spectrum_filler, daemon=True).start()
+        self.onSuccessfulDecode = onSuccessfulDecode
+        self.onOccupancy = onOccupancy
+
         threading.Thread(target=self.threaded_spectrum_tasks, daemon=True).start()
         threading.Thread(target=self.threaded_decode_manager, daemon=True).start()
         threading.Thread(target=self.threaded_UI_updater, daemon=True).start()
-        
-        if(audio_in_wav):
-            threading.Thread(target=self.threaded_audio_from_wav, args=(audio_in_wav,), daemon=True).start()
-        else:
-            threading.Thread(target=self.threaded_audio_stream, daemon=True).start()
-
-#============================================
-# Audio input
-#============================================
-        
-    def threaded_audio_from_wav(self, wav_file):
-        wf = wave.open(wav_file, 'rb')
-        hop = self.demod.samples_perhop
-        hop_time = self.demod.samples_perhop / self.demod.sample_rate
-        while (not self.cyclestart_str):
-            timers.sleep(0.01)
-        self.wav_file_start_time = timers.tnow()
-        timers.sleep(0.01)
-        timers.timedLog(f"Playing wav file {wav_file}")
-        while self.running:
-            frames = wf.readframes(hop)
-            if not frames:
-                break
-            nextHop_time = timers.tnow() + hop_time
-            self.audio_queue.put(frames)
-            while timers.tnow() < nextHop_time:
-                timers.sleep(0.001)
-
-    def threaded_audio_stream(self):
-        pa = pyaudio.PyAudio()
-        stream = pa.open(format=pyaudio.paInt16, channels=1, rate=self.demod.sample_rate,
-                         input=True, input_device_index = self.input_device_idx,
-                         frames_per_buffer=self.demod.samples_perhop, stream_callback=None)
-        while self.running:
-            timers.sleep(0.001)
-            data = stream.read(self.demod.samples_perhop, exception_on_overflow=False)
-            self.audio_queue.put(data)
-
-#============================================
-# 'Spectrum-filler' (FFT the audio as it arrives)
-#============================================
-
-    def threaded_spectrum_filler(self):
-        self.spectrum = Spectrum(self.demod)
-        while self.running:
-            timers.sleep(0.001)
-            audio_samples = np.frombuffer(self.audio_queue.get(), dtype=np.int16)
-            with self.spectrum_lock:
-                self.spectrum.audio_in.extend(audio_samples)    
-            FFT_start_sample_idx = int(len(self.spectrum.audio_in) - self.spectrum.FFT_len)
-            if(FFT_start_sample_idx >0 and self.spectrum.nHops_loaded < self.spectrum.hops_percycle):
-                aud = self.spectrum.audio_in[FFT_start_sample_idx:FFT_start_sample_idx + self.spectrum.FFT_len]
-                aud *= self.time_window
-                with self.spectrum_lock:
-                    self.spectrum.fine_grid_complex[self.spectrum.nHops_loaded,:] = np.fft.rfft(aud)[:self.spectrum.nFreqs]
-                    self.spectrum.nHops_loaded +=1
 
 #============================================
 # Rollover and early candidate search
@@ -117,6 +61,7 @@ class Cycle_manager():
         timers.timedLog("Rollover manager waiting for end of partial cycle")
         while (timers.tnow() % self.demod.sigspec.cycle_seconds) < self.demod.sigspec.cycle_seconds  - 0.1 :
             timers.sleep(0.01)
+        threading.Thread(target = self.audio_in.stream, args=(self.audio_in_wav,), daemon=True).start()
         while self.running:
             timers.sleep(0.1)
             cycle_time = timers.tnow() % self.demod.sigspec.cycle_seconds 

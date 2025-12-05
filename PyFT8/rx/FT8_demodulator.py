@@ -31,7 +31,7 @@ class Spectrum:
             self._csync[sym_idx, self.sigspec.costas_len*demodspec.fbins_pertone:] = 0
         self.hop_idxs_Costas =  np.arange(self.sigspec.costas_len) * demodspec.hops_persymb
         self.candidate_search_after_hop  = (np.max(demodspec.sync_range) + np.max(self.hop_idxs_Costas)) +1
-        self.fine_grid_complex = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.complex64)
+        self.fine_grid_complex = np.zeros((2 * self.hops_percycle, self.nFreqs), dtype = np.complex64)
         self.sync_search_band = self.fine_grid_complex[:self.candidate_search_after_hop,:] # move to _init_?
         self.occupancy = np.zeros(self.nFreqs)
         self.reset()
