@@ -65,6 +65,7 @@ class Cycle_manager():
         self.onOccupancy = onOccupancy
 
         threading.Thread(target=self.threaded_spectrum_tasks, daemon=True).start()
+        threading.Thread(target=self.threaded_demap_manager, daemon=True).start()
         threading.Thread(target=self.threaded_decode_manager, daemon=True).start()
         threading.Thread(target=self.threaded_UI_updater, daemon=True).start()
 
@@ -113,11 +114,11 @@ class Cycle_manager():
 # Decoding manager
 #============================================
 
-    def threaded_decode_manager(self):
+    def threaded_demap_manager(self):
+        # find candidates that can have spectrum filled, fill and demap
         while self.running:
             timers.sleep(0.01)
 
-            # find candidates that can have spectrum filled, fill and demap
             with self.cands_list_lock:
                 tmp_list = [c for c in self.cands_list if (
                                   self.spectrum.fine_grid_pointer > c.sync_result['last_data_hop']
@@ -134,11 +135,14 @@ class Cycle_manager():
                 self.demod.demap_candidate(c)
                 c.ncheck_initial = self.demod.ldpc.fast_ncheck(c.demap_result['llr'])
 
+    def threaded_decode_manager(self):
+        # send all candidates that have been demapped to ldpc
+        while self.running:
+            timers.sleep(0.01)
             if(config.pause_ldpc):
                 timers.sleep(1)
                 continue
             
-            # send all candidates that have been demapped to ldpc
             with self.cands_list_lock:
                 tmp_list = [c for c in self.cands_list if c.demap_result]
 
