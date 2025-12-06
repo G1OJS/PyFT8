@@ -111,8 +111,8 @@ class FT8Demodulator:
 
     def decode_candidate(self, candidate, onDecode):
         c = candidate
-        llr = 3 * c.demap_result['llr'] / (c.demap_result['llr_sd']+.001)
-        c.ldpc_result = self.ldpc.decode(llr)
+        c.demap_result['llr'] = 3 * c.demap_result['llr'] / (c.demap_result['llr_sd']+.001)
+        c.ldpc_result = self.ldpc.decode(c)
         if(c.ldpc_result['payload_bits']):
             c.decode_result = FT8_unpack(c)
         onDecode(c)

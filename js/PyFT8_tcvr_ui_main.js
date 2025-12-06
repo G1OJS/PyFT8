@@ -187,17 +187,26 @@ websocket.onmessage = (event) => {
 		myCall = dd.myCall;
 		document.getElementById('myCall').innerText = myCall;
 	}
-	if(dd.topic == 'decode_queue') {
-		document.getElementById('n_ldpc_load').innerText = dd.n_ldpc_load
-		document.getElementById('n_candidates').innerText = dd.n_candidates
-	}
+
 	if(dd.topic == 'decode_dict') {
 		if (dd.priority) {add_decode_row(dd, 'priority_decodes')}
 		add_decode_row(dd, 'all_decodes')
 	}
 	
+	if (dd.topic == 'loading_metrics') {updateLoadingMetrics(dd)}
 }
 
+function updateLoadingMetrics(data) {
+//	bar_data = [data.n_synced/500, data.n_demapped/500, data.n_decoded/500, data.n_decode_success/75]
+//	for (const i of[0,1,2,3]){
+//		document.getElementById("bar-"+i).style.transform =
+//		`scaleY(${1-bar_data[i]})`;
+//	}
+//	bar_data_last = bar_data;
+	document.getElementById('n_candidates').innerText = data.n_synced;
+	document.getElementById('n_in_ldpc').innerText = data.n_in_ldpc;
+}
+		
 function add_band_button(band_name, band_freq){
 	let parentEl = document.getElementById('buttons');
 	let btn = parentEl.appendChild(document.createElement("button"));

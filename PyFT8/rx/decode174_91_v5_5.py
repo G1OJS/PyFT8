@@ -84,7 +84,8 @@ class LDPC174_91:
         synd_checks = [ sum(1 for llr_bit in llr[self.synd_check_idxs[i]] if llr_bit > 0) %2 for i in range(83)]
         return int(np.sum(synd_checks))
             
-    def decode(self, llr):
+    def decode(self, c):
+        llr = c.demap_result['llr']
         it = 0
         nstall, ncheck_last = 0, 0 
         ncheck_initial = None
@@ -110,7 +111,7 @@ class LDPC174_91:
             ncheck_last = ncheck
             if(it == 0): ncheck_initial = ncheck
             failures = {'max_its':it>self.max_iterations, 'large_ncheck': ncheck_initial > self.max_ncheck,
-                        'stall':nstall > self.max_nstall}
+                        'stall':nstall > self.max_nstall, 'out_of_time': c not in config.cands_list}
             
             payload_bits = get_payload_bits(zn) if ncheck == 0 else []
             if(len(payload_bits) > 0) or any([f for f in failures.values()]):
@@ -141,4 +142,5 @@ class LDPC174_91:
             toc -= (sum_all - excl_vals)
 
             it +=1
+
 

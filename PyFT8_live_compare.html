@@ -159,10 +159,10 @@
 				}
 				update_percent();
 			}
-			if (dd.topic == 'graphic_bars') {updateGraphicBars(dd)}
+			if (dd.topic == 'loading_metrics') {updateLoadingMetrics(dd)}
 		}
 		
-		function updateGraphicBars(data) {
+		function updateLoadingMetrics(data) {
 			bar_data = [data.n_synced/500, data.n_demapped/500, data.n_decoded/500, data.n_decode_success/75]
 			for (const i of[0,1,2,3]){
 				document.getElementById("bar-"+i).style.transform =
@@ -170,6 +170,7 @@
 			}
 			bar_data_last = bar_data;
 			document.getElementById('n_candidates').innerText = data.n_synced;
+			document.getElementById('n_in_ldpc').innerText = data.n_in_ldpc;
 		}
 
 		
@@ -216,6 +217,7 @@
 					PyFT8 Decodes <span id = 'n_PyFT8_decodes'>0</span> 
 					(<span id = 'pc_PyFT8_decodes'>0%</span>) 
 					Cands: <span id='n_candidates'>0</span> 
+					LDPC: <span id='n_in_ldpc'>0</span> 
 				</div>
 				<div id="PyFT8_decodes" class = "decodes_grid">
 					<div class = 'grid_row header'>

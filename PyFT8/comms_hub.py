@@ -115,6 +115,7 @@ class Config:
         self.wsjtx_all_file = parser.get("paths","wsjtx_all_file")
 
         self.pause_ldpc = False
+        self.cands_list = []
 
         self.decoder = parser.get("options","decoder")
 

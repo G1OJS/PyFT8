@@ -55,11 +55,12 @@ class Cycle_manager():
         n_hops_sync_band  = self.demod.slack_hops + np.max(self.spectrum.hop_idxs_Costas)
         self.t_search = n_hops_sync_band * self.spectrum.dt
 
-        self.cands_list = []
+        config.cands_list = []
         self.cands_list_lock = threading.Lock()
         self.sync_score_thresh = sync_score_thresh
         self.n_decode_success = 0
         self.duplicate_filter = set()
+        self.n_in_ldpc = 0
 
         self.onSuccessfulDecode = onSuccessfulDecode
         self.onOccupancy = onOccupancy
@@ -87,7 +88,7 @@ class Cycle_manager():
                     break
                 self.spectrum.fine_grid_pointer = 0
                 print()
-                config.pause_ldpc = True
+                
                 timers.timedLog(f"Cycle rollover {cycle_time:.2f}", logfile = 'pipeline.log')
                 self.cycle_countdown -=1
                 self.cyclestart_str = timers.cyclestart_str()
@@ -97,8 +98,9 @@ class Cycle_manager():
             
             if (cycle_time > self.t_search and not cycle_searched):
                 cycle_searched = True
+
                 with self.cands_list_lock:
-                    self.cands_list = []
+                    config.cands_list = []
                 timers.timedLog(f"Search spectrum ...", logfile = 'pipeline.log')
                 idx_n = self.spectrum.fine_grid_pointer
                 idx_0 = idx_n - self.demod.slack_hops - self.sigspec.costas_len * self.demod.hops_persymb
@@ -107,9 +109,9 @@ class Cycle_manager():
                     self.spectrum.sync_search_band = self.spectrum.fine_grid_complex[idx_0:idx_n,:].copy()
                 cands = self.demod.find_syncs(self.spectrum, self.sync_score_thresh)
                 with self.cands_list_lock:
-                    self.cands_list = cands
-                config.pause_ldpc = False
-                timers.timedLog(f"Spectrum searched -> {len(self.cands_list)} candidates", logfile = 'pipeline.log')
+                    config.cands_list = cands
+
+                timers.timedLog(f"Spectrum searched -> {len(config.cands_list)} candidates", logfile = 'pipeline.log')
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
 
 #============================================
@@ -122,7 +124,7 @@ class Cycle_manager():
             timers.sleep(0.01)
 
             with self.cands_list_lock:
-                tmp_list = [c for c in self.cands_list if (
+                tmp_list = [c for c in config.cands_list if (
                                   self.spectrum.fine_grid_pointer > c.sync_result['last_data_hop']
                               or (self.cyclestart_str != c.cyclestart_str and self.spectrum.fine_grid_pointer +  self.spectrum.hops_percycle > c.sync_result['last_data_hop'])
                                   )]
@@ -141,17 +143,21 @@ class Cycle_manager():
         # send all candidates that have been demapped to ldpc
         while self.running:
             timers.sleep(0.01)
+            if(self.n_in_ldpc >25): #magic number
+                continue
 
             with self.cands_list_lock:
-                tmp_list = [c for c in self.cands_list if c.demap_result]
+                tmp_list = [c for c in config.cands_list if c.demap_result]
 
             tmp_list.sort(key = lambda c: c.ncheck_initial)
             for c in tmp_list:
                 if(not c.ldpc_requested):
                     c.ldpc_requested = timers.tnow()
+                    self.n_in_ldpc +=1
                     threading.Thread(target=self.demod.decode_candidate, kwargs={'candidate':c, 'onDecode':self.onDecode}, daemon=True).start()
                     
     def onDecode(self, c):
+        self.n_in_ldpc -=1
         if(c.decode_success):
             origin = c.sync_result['origin']
             dt = origin[2] - 0.8 
@@ -172,11 +178,12 @@ class Cycle_manager():
         while self.running:
             timers.sleep(0.25)
             
-            graphic_bars = { "n_synced":   len(self.cands_list),
-                             "n_demapped": len([c for c in self.cands_list if c.demap_result]),
-                             "n_decoded": len([c for c in self.cands_list if c.ldpc_result]),
-                             "n_decode_success":  len([c for c in self.cands_list if c.decode_success])}
-            send_to_ui_ws("graphic_bars", graphic_bars)
+            loading_metrics = { "n_synced":   len(config.cands_list),
+                             "n_demapped": len([c for c in config.cands_list if c.demap_result]),
+                             "n_in_ldpc": self.n_in_ldpc,
+                             "n_decoded": len([c for c in config.cands_list if c.ldpc_result]),
+                             "n_decode_success":  len([c for c in config.cands_list if c.decode_success])}
+            send_to_ui_ws("loading_metrics", loading_metrics)
             
             
 
