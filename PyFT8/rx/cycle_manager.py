@@ -79,6 +79,7 @@ class Cycle_manager():
             timers.sleep(0.01)
         threading.Thread(target = self.audio_in.stream, args=(self.audio_in_wav,), daemon=True).start()
         cycle_searched = False
+        minimised_queue = False
         while self.running:
             timers.sleep(0.25)
             cycle_time = timers.tnow() % self.demod.sigspec.cycle_seconds 
@@ -86,6 +87,7 @@ class Cycle_manager():
                 if not self.cycle_countdown:
                     self.running = False
                     break
+                minimised_queue = False
                 self.spectrum.fine_grid_pointer = 0
                 print()
                 
@@ -95,12 +97,17 @@ class Cycle_manager():
                 self.n_decode_success = 0
                 cycle_searched = False
             self.prev_cycle_time = cycle_time
+
+
+            if (cycle_time > self.t_search -1 and not minimised_queue):
+                with self.cands_list_lock:
+                    minimised_queue = True
+                    zero_ns = [c for c in config.cands_list if c.ncheck_initial ==0]
+                    timers.timedLog(f"Abandoning cands with ncheck "+','.join([f"{c.ncheck_initial}" for c in config.cands_list if not c in zero_ns]), logfile = 'pipeline.log')
+                    config.cands_list = zero_ns
             
             if (cycle_time > self.t_search and not cycle_searched):
                 cycle_searched = True
-
-                with self.cands_list_lock:
-                    config.cands_list = []
                 timers.timedLog(f"Search spectrum ...", logfile = 'pipeline.log')
                 idx_n = self.spectrum.fine_grid_pointer
                 idx_0 = idx_n - self.demod.slack_hops - self.sigspec.costas_len * self.demod.hops_persymb
@@ -121,7 +128,7 @@ class Cycle_manager():
     def threaded_demap_manager(self):
         # find candidates that can have spectrum filled, fill and demap
         while self.running:
-            timers.sleep(0.01)
+            timers.sleep(0.1)
 
             with self.cands_list_lock:
                 tmp_list = [c for c in config.cands_list if (
@@ -136,25 +143,28 @@ class Cycle_manager():
                     with self.spectrum_lock:
                         c.synced_grid_complex = self.spectrum.fine_grid_complex[origin[0]:origin[0]+c.size[0],
                                                                                 origin[1]:origin[1]+c.size[1]].copy()
-                self.demod.demap_candidate(c)
+                c.demap_result = self.demod.demap_candidate(c)
                 c.ncheck_initial = self.demod.ldpc.fast_ncheck(c.demap_result['llr'])
+                if(c.ncheck_initial > self.max_ncheck):
+                    with self.cands_list_lock:
+                        config.cands_list.remove(c)
+
 
     def threaded_decode_manager(self):
         # send all candidates that have been demapped to ldpc
+        max_in_ldpc = 25 #magic number
         while self.running:
-            timers.sleep(0.01)
-            if(self.n_in_ldpc >25): #magic number
+            timers.sleep(0.1)
+            spare_slots = max_in_ldpc - self.n_in_ldpc
+            if(spare_slots <= 0): 
                 continue
-
             with self.cands_list_lock:
-                tmp_list = [c for c in config.cands_list if c.demap_result]
-
+                tmp_list = [c for c in config.cands_list if c.demap_result and not c.ldpc_requested]
             tmp_list.sort(key = lambda c: c.ncheck_initial)
-            for c in tmp_list:
-                if(not c.ldpc_requested):
-                    c.ldpc_requested = timers.tnow()
-                    self.n_in_ldpc +=1
-                    threading.Thread(target=self.demod.decode_candidate, kwargs={'candidate':c, 'onDecode':self.onDecode}, daemon=True).start()
+            for c in tmp_list[:spare_slots]:
+                c.ldpc_requested = timers.tnow()
+                self.n_in_ldpc +=1
+                threading.Thread(target=self.demod.decode_candidate, kwargs={'candidate':c, 'onDecode':self.onDecode}, daemon=True).start()
                     
     def onDecode(self, c):
         self.n_in_ldpc -=1

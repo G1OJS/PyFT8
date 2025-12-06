@@ -18,6 +18,7 @@ class Candidate:
         self.size = spectrum.candidate_size
         self.cyclestart_str = timers.cyclestart_str()
         self.sync_result = None
+        self.sync_score = 0
         self.synced_grid_complex = None
         self.demap_requested = False
         self.demap_result = None
@@ -25,6 +26,7 @@ class Candidate:
         self.ldpc_result = None
         self.remove_requested = True
         self.decode_result = None
+        self.ncheck_initial = 5000
         
     @property
     def decode_success(self):
@@ -77,6 +79,7 @@ class FT8Demodulator:
                     if(neighbour_lf[0].sync_result['sync_score'] >= c.sync_result['sync_score']): continue
                     if(neighbour_lf[0].sync_result['sync_score'] < c.sync_result['sync_score']): candidates.remove(neighbour_lf[0])
                 candidates.append(c)
+                c.sync_score = best[1]
         return candidates
 
     def demap_symbols(self, p):
@@ -107,7 +110,7 @@ class FT8Demodulator:
 
         llr = llr - np.mean(llr)
         llr_sd = np.std(llr)
-        c.demap_result = {'llr_sd':llr_sd, 'llr':llr, 'snr':snr}
+        return {'llr_sd':llr_sd, 'llr':llr, 'snr':snr}
 
     def decode_candidate(self, candidate, onDecode):
         c = candidate
