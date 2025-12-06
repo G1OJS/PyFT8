@@ -128,7 +128,7 @@ class Cycle_manager():
     def threaded_demap_manager(self):
         # find candidates that can have spectrum filled, fill and demap
         while self.running:
-            timers.sleep(0.1)
+            timers.sleep(0.01)
 
             with self.cands_list_lock:
                 tmp_list = [c for c in config.cands_list if (
@@ -147,14 +147,15 @@ class Cycle_manager():
                 c.ncheck_initial = self.demod.ldpc.fast_ncheck(c.demap_result['llr'])
                 if(c.ncheck_initial > self.max_ncheck):
                     with self.cands_list_lock:
-                        config.cands_list.remove(c)
+                        if(c in config.cands_list):
+                            config.cands_list.remove(c)
 
 
     def threaded_decode_manager(self):
         # send all candidates that have been demapped to ldpc
-        max_in_ldpc = 25 #magic number
+        max_in_ldpc = 250 #magic number
         while self.running:
-            timers.sleep(0.1)
+            timers.sleep(0.01)
             spare_slots = max_in_ldpc - self.n_in_ldpc
             if(spare_slots <= 0): 
                 continue
