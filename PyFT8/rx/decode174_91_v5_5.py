@@ -88,7 +88,6 @@ class LDPC174_91:
         it = 0
         nstall, ncheck_last = 0, 0 
         ncheck_initial = None
-        from threading import Condition
         pause_cond = Condition()
 
         def get_ncheck(llr):

@@ -97,6 +97,8 @@ class Cycle_manager():
             
             if (cycle_time > self.t_search and not cycle_searched):
                 cycle_searched = True
+                with self.cands_list_lock:
+                    self.cands_list = []
                 timers.timedLog(f"Search spectrum ...", logfile = 'pipeline.log')
                 idx_n = self.spectrum.fine_grid_pointer
                 idx_0 = idx_n - self.demod.slack_hops - self.sigspec.costas_len * self.demod.hops_persymb
@@ -139,10 +141,7 @@ class Cycle_manager():
         # send all candidates that have been demapped to ldpc
         while self.running:
             timers.sleep(0.01)
-            if(config.pause_ldpc):
-                timers.sleep(1)
-                continue
-            
+
             with self.cands_list_lock:
                 tmp_list = [c for c in self.cands_list if c.demap_result]
 
@@ -151,12 +150,6 @@ class Cycle_manager():
                 if(not c.ldpc_requested):
                     c.ldpc_requested = timers.tnow()
                     threading.Thread(target=self.demod.decode_candidate, kwargs={'candidate':c, 'onDecode':self.onDecode}, daemon=True).start()
-
-            for c in self.cands_list:
-                if(c.ldpc_requested):
-                    if (timers.tnow() - c.ldpc_requested > 5):
-                        with self.cands_list_lock:
-                            self.cands_list.remove(c)
                     
     def onDecode(self, c):
         if(c.decode_success):
