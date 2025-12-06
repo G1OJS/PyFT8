@@ -138,7 +138,7 @@ class QSO:
         tx_ogm_dict = {'cyclestart_str':f"X_{cycle_start_str}", 'priority':True,
                     'snr':'-', 'freq':str(int(config.txfreq)), 'dt':' ',
                     'call_a':c1, 'call_b':c2, 'grid_rpt':grid_rpt}
-        send_to_ui_ws("msg", tx_ogm_dict)
+        send_to_ui_ws("decode_dict", tx_ogm_dict)
 
     def log(self):
         import PyFT8.logging as logging
@@ -201,7 +201,7 @@ def process_UI_event(event):
         timers.timedLog(f"[process_UI_event] Set Rx freq to {config.rxfreq}", logfile = 'QSO.progress.log')
         QSO.tx_cycle = QSO.tx_cycle_from_clicked_message(selected_message)
         selected_message.update({'priority':True})
-        send_to_ui_ws("msg", selected_message)
+        send_to_ui_ws("decode_dict", selected_message)
         if(selected_message['call_a'] == "CQ" or selected_message['call_a'] == config.myCall):
             QSO.progress(selected_message)
     if(topic == "ui.repeat-last"):
@@ -221,6 +221,7 @@ def process_UI_event(event):
         rig.setMode(md="USB", dat = True, filIdx = 1)
         with open("PyFT8_MHz.txt","w") as f:
             f.write(str(config.myFreq))
+     #   send_to_ui_ws("set_band", {"band":config.myBand})
         
 def add_band_buttons():
     from PyFT8.comms_hub import config, send_to_ui_ws

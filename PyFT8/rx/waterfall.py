@@ -19,7 +19,8 @@ class Waterfall:
         self.ax_main.set_title("FT8 Waterfall")
         self.ax_main.set_xlabel("Frequency (Hz)")
         self.ax_main.set_ylabel("Time (s)")
-        self.extent_main = [0, spectrum.max_freq, 0,  spectrum.nHops_loaded /(spectrum.sigspec.symbols_persec * spectrum.hops_persymb) ]
+        self.nHops_loaded = spectrum.fine_grid_pointer
+        self.extent_main = [0, spectrum.max_freq, 0,  self.nHops_loaded /(spectrum.sigspec.symbols_persec * spectrum.hops_persymb) ]
         self.ax_main.set_xlim(self.extent_main[0],self.extent_main[1])
         self.ax_main.set_ylim(self.extent_main[2],self.extent_main[3])
 
@@ -32,7 +33,7 @@ class Waterfall:
     # ----------------------------------------------------------
     def update_main(self, candidates=None, cyclestart_str=None):
         """Refresh main waterfall and draw candidate rectangles."""
-        vals = np.abs(self.fine_grid_complex[:self.spectrum.nHops_loaded,:])**2
+        vals = np.abs(self.fine_grid_complex[:self.nHops_loaded,:])**2
         self.im = self.ax_main.imshow(  vals, origin="lower", aspect="auto", extent = self.extent_main, 
                                         cmap="inferno", interpolation="none", norm=LogNorm() )
         self.im.norm.vmin = self.im.norm.vmax/100000
@@ -56,7 +57,7 @@ class Waterfall:
         plt.pause(0.1)
         
     # ----------------------------------------------------------
-    def show_zoom(self, candidates, llr_overlay=True, cols=3, phase = False):
+    def show_zoom(self, candidates, cols=3, phase = False):
         """
         Create per-candidate zoom boxes.
         Optionally overlay LLRs if candidate.llr is present.
@@ -92,16 +93,6 @@ class Waterfall:
                     edgecolor='lime', facecolor='none'
                 )
                 ax.add_patch(rect)
-
-            from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-            if llr_overlay and c.demap_result['llr'] is not None:
-                llr = np.array(c.demap_result['llr'], dtype=np.float32)
-                llr_img = llr.reshape(-1, 1)
-                llr_ax = inset_axes(parent_axes=ax, width="5%", height="100%", borderpad=0)
-                llr_ax.imshow(llr_img, origin="lower", aspect="auto", cmap="bwr")
-                llr_ax.set_xticks([])
-                llr_ax.set_yticks([])
-                llr_ax.set_title("LLR", fontsize=8)
 
         for ax in axes[n:]:
             ax.axis("off")

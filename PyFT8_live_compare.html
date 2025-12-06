@@ -140,10 +140,6 @@
 			const dd = JSON.parse(event.data)
 			if(!dd) return;
 			if(dd.topic == 'add_band_button')   {add_band_button(dd.band_name, dd.band_freq)}
-			if(dd.topic == 'decode_queue') {
-				document.getElementById('n_ldpc_load').innerText = dd.n_ldpc_load
-				document.getElementById('n_candidates').innerText = dd.n_candidates
-			}
 			if(dd.topic == 'decode_dict')		{
 				console.log(dd.source);
 				const mn = new Date;
@@ -163,19 +159,17 @@
 				}
 				update_percent();
 			}
-			if (dd.topic == 'graphic_bars') {updatePipelineBars(dd)}
+			if (dd.topic == 'graphic_bars') {updateGraphicBars(dd)}
 		}
 		
-		function updatePipelineBars(data) {
-			bar_data = [data.n_synced/20, data.demap_wait*15, data.ldpc_wait*1.5, data.n_decode_success/4]
+		function updateGraphicBars(data) {
+			bar_data = [data.n_synced/500, data.n_demapped/500, data.n_decoded/500, data.n_decode_success/75]
 			for (const i of[0,1,2,3]){
-				let diff = bar_data[i]-bar_data_last[i];
-				if(diff<0) {diff = 0}
-				if(diff>1) {diff = 1}
 				document.getElementById("bar-"+i).style.transform =
-				`scaleY(${1-diff})`;
+				`scaleY(${1-bar_data[i]})`;
 			}
-			bar_data_last = bar_data
+			bar_data_last = bar_data;
+			document.getElementById('n_candidates').innerText = data.n_synced;
 		}
 
 		
@@ -222,7 +216,6 @@
 					PyFT8 Decodes <span id = 'n_PyFT8_decodes'>0</span> 
 					(<span id = 'pc_PyFT8_decodes'>0%</span>) 
 					Cands: <span id='n_candidates'>0</span> 
-					LDPC: <span id='n_ldpc_load'>0</span>
 				</div>
 				<div id="PyFT8_decodes" class = "decodes_grid">
 					<div class = 'grid_row header'>

@@ -6,7 +6,10 @@ import PyFT8.timers as timers
 global output_device_idx, input_device_idx
 output_device_idx, input_device_idx = None, None
 pya = pyaudio.PyAudio()
-    
+
+#============================================
+# Audio devices
+#============================================
 def _find_device(device_str_contains):
     timers.timedLog(f"Looking for audio device matching {device_str_contains}")
     for dev_idx in range(pya.get_device_count()):
@@ -25,30 +28,62 @@ def find_audio_devices():
     output_device_idx = _find_device(config.soundcards['output_device'])
 find_audio_devices()
 
-def read_from_soundcard(seconds, sample_rate = 12000):
-    timers.timedLog("Audio module opening stream", silent = True)
-    nFrames = int(seconds * sample_rate)
-    stream = pya.open(format = pyaudio.paInt16, channels = 1, rate = sample_rate,
-                      input=True, input_device_index = input_device_idx,
-                      frames_per_buffer = nFrames)
-    data = np.frombuffer(stream.read(nFrames, exception_on_overflow=False), dtype=np.int16)
-    stream.close()
-    return data
+#============================================
+# Audio input
+#============================================
+class AudioIn:
 
-def read_from_soundcard_chunked(input_device_idx, samples, callback, sample_rate=12000):
-    stream = pya.open(format = pyaudio.paInt16, channels = 1, rate = sample_rate,
-                  input=True, input_device_index = input_device_idx,
-                  frames_per_buffer = samples, stream_callback = callback)
+    def __init__(self, parent_app, fft_window):
+        self.parent_app = parent_app
+        self.spectrum = parent_app.spectrum
+        self.demod = parent_app.demod
+        self.samples_perhop = self.demod.samples_perhop
+        self.hop_time = self.samples_perhop / self.demod.sample_rate
+        self.fft_len = self.spectrum.FFT_len
+        self.nFreqs = self.spectrum.nFreqs
+        self.fft_window = fft_window
+        self.audio_buffer = np.zeros(self.fft_len, dtype=np.float32)
+        self.input_device_idx = _find_device(config.soundcards['input_device'])  
+        
+    def stream(self, wav_file = None):
+        if(wav_file):
+            wf = wave.open(wav_file, 'rb')
+            timers.timedLog(f"Playing wav file {wav_file}")
+            while self.parent_app.running:
+                frames = wf.readframes(self.samples_perhop)
+                if not frames:
+                    break
+                nextHop_time = timers.tnow() + self.hop_time
+                self.buffer_and_FFT(frames)
+                while timers.tnow() < nextHop_time:
+                    timers.sleep(0.001)
+        else:
+            stream = pya.open(format=pyaudio.paInt16, channels=1, rate=self.demod.sample_rate,
+                             input=True, input_device_index = self.input_device_idx,
+                             frames_per_buffer=self.samples_perhop, stream_callback = self.buffer_and_FFT)
+            stream.start_stream()
 
-def read_wav_file(filename = 'audio_in.wav', sample_rate = 12000):
-     import wave
-     import numpy as np
-     with wave.open(filename, 'rb') as wav:
-          assert wav.getframerate() == sample_rate
-          assert wav.getnchannels() == 1
-          assert wav.getsampwidth() == 2
-          audio = np.frombuffer(wav.readframes(wav.getnframes()), dtype=np.int16)
-     return audio
+    def buffer_and_FFT(self, in_data, frame_count = None, time_info = None, status_flags = None):
+        samples = np.frombuffer(in_data, dtype=np.int16)
+        nsamps = len(samples)
+        self.audio_buffer[:-nsamps] = self.audio_buffer[nsamps:]
+        self.audio_buffer[-nsamps:] = samples
+        audio_for_fft = self.audio_buffer * self.fft_window
+        z = np.fft.rfft(audio_for_fft)[:self.nFreqs]
+        copy_ptr = self.spectrum.fine_grid_pointer + self.spectrum.hops_percycle
+        do_copy = copy_ptr < self.spectrum.fine_grid_complex.shape[0]
+        with self.parent_app.spectrum_lock:
+            self.spectrum.fine_grid_complex[self.spectrum.fine_grid_pointer, :] = z
+            if(do_copy):
+                self.spectrum.fine_grid_complex[copy_ptr, :] = z
+        self.spectrum.fine_grid_pointer = (self.spectrum.fine_grid_pointer +1) % self.spectrum.hops_percycle
+        return (None, pyaudio.paContinue)
+
+
+    
+#============================================
+# Audio output
+#============================================
 
 def create_ft8_wave(symbols, fs=12000, f_base=873.0, f_step=6.25, amplitude = 0.5, added_noise = -50):
     symbol_len = int(fs * 0.160)

@@ -88,6 +88,7 @@ class LDPC174_91:
         it = 0
         nstall, ncheck_last = 0, 0 
         ncheck_initial = None
+        pause_cond = Condition()
 
         def get_ncheck(llr):
             synd_checks = [ sum(1 for llr_bit in llr[self.synd_check_idxs[i]] if llr_bit > 0) %2 for i in range(83)]
@@ -114,6 +115,10 @@ class LDPC174_91:
             payload_bits = get_payload_bits(zn) if ncheck == 0 else []
             if(len(payload_bits) > 0) or any([f for f in failures.values()]):
                 return {'payload_bits':payload_bits, 'n_its':it, 'ncheck_initial':ncheck_initial, 'failures': failures} 
+
+            with pause_cond:
+                while config.pause_ldpc:
+                    pause_cond.wait()
 
             toc = zn[self.kNM]  # converges faster than np.tanh(-toc / 2)
             tanhtoc = np.tanh(-toc).astype(np.float32)

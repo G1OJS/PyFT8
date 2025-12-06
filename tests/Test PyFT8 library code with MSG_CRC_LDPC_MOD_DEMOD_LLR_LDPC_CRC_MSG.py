@@ -70,7 +70,7 @@ def onDecode(c):
         first = False
     decoded_candidates.add(c)
     dd = c.decode_result
-    t_decode = timers.tnow()-cycle_manager.wav_file_start_time - 15
+    t_decode = timers.tnow() % 15 - 15
     vals = [f"{t_decode:8.2f}", dd['call_a'], dd['call_b'], dd['grid_rpt'],
             f"{c.sync_result['sync_score']:>5.2f}", f"{c.demap_result['llr_sd']:5.2f}", f"{c.demap_result['snr']:5.0f}",
             c.sync_result['origin'][0], c.sync_result['origin'][1],
@@ -92,8 +92,8 @@ print(f"DONE. Unique decodes = {len(decoded_candidates)}")
 
 wf = Waterfall(cycle_manager.spectrum)
 wf.update_main(candidates=decoded_candidates)
-wf.show_zoom(candidates=decoded_candidates, phase = False, llr_overlay=False)
-wf.show_zoom(candidates=decoded_candidates, phase = True, llr_overlay=False)
+wf.show_zoom(candidates=decoded_candidates, phase = False)
+wf.show_zoom(candidates=decoded_candidates, phase = True)
 
 #print(f"Payload symbols demodulated: {''.join([str(int(s)) for s in candidates[0].payload_symbols])}")
 print("bits expected / bits decoded")

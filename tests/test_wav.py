@@ -21,7 +21,7 @@ def onDecode(c):
         first = False
     decoded_candidates.add(c)
     dd = c.decode_result
-    t_decode = timers.tnow()-cycle_manager.wav_file_start_time - 15
+    t_decode = timers.tnow() % 15 - 15
     vals = [f"{t_decode:8.2f}", dd['call_a'], dd['call_b'], dd['grid_rpt'],
             f"{c.sync_result['sync_score']:>5.2f}", f"{c.demap_result['llr_sd']:5.2f}", f"{c.demap_result['snr']:5.0f}",
             c.sync_result['origin'][0], c.sync_result['origin'][1], c.ldpc_result['n_its'] ]
@@ -32,7 +32,7 @@ wav_file = "210703_133430.wav"
 start_load = timers.tnow()
 cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = wav_file, 
                           max_iters = 60, max_stall = 8, max_ncheck = 40,
-                          sync_score_thresh = 2.3, max_cycles = 2)
+                          sync_score_thresh = 2.3, max_cycles = 1)
 
 while cycle_manager.running:
     timers.sleep(0.5)
