@@ -8,145 +8,6 @@
 	<style>
 		.decodes_grid {grid-template-columns: repeat( 10, max-content) auto;}
 	</style>
-	
-	<script>
-		let spectrum_width = 0;
-		let txFreq = null;
-		let rxFreq = null;
-		let best_snr = 24;
-		let bar_data_last = [0,0,0,0];
-		
-		function update_spectrum(spectrum_power) {
-			const spectrum = document.getElementById("Spectrum");
-			spectrum.innerHTML = "";
-			spectrum_power.forEach(v => {
-				const cell = document.createElement("div");
-				const brightness = Math.round(v * 255);
-				cell.style.background = `rgb(${brightness},${brightness/2},0)`;
-				spectrum.appendChild(cell);
-			});
-			spectrum_width = spectrum.offsetWidth;
-			update_freq_markers();
-		}
-		function update_freq_markers() {
-			const spectrum = document.getElementById("Spectrum");
-			const txMarker = document.querySelector(".txMarker");
-			const rxMarker = document.querySelector(".rxMarker");
-			const left = (document.getElementById("SpectrumContainer").clientWidth-spectrum_width)/2;
-			const toPx = f => left + ((f - 0) / (3500 - 0)) * spectrum_width;
-			if(txFreq) txMarker.style.left = `${toPx(txFreq)}px`;
-			if(rxFreq) rxMarker.style.left = `${toPx(rxFreq)}px`;
-			for (const tick of document.querySelectorAll('.tickMarker')){
-				let f = parseInt(tick.dataset.freq);
-				tick.style.left = `${toPx(f)}px`;
-			}
-		}
-		function update_clock() {
-			const t = new Date;
-			const utc = ("0" + t.getUTCHours()).slice(-2) + ":" + ("0" + t.getUTCMinutes()).slice(-2) + ":" + ("0" + t.getUTCSeconds()).slice(-2);
-			document.getElementById("clock").innerHTML = utc + " UTC";
-		}
-
-		function add_decode_row(decode_dict, grid_id) {
-			let dd = decode_dict;
-			let grid = document.getElementById(grid_id)
-			let row = grid.appendChild(document.createElement("div"));
-			row.className='grid_row';
-			let cs = dd.cyclestart_str;
-			if (cs.charAt(cs.length-1) == '5'){row.classList.add('odd')} else {row.classList.add('even')}
-			const snr_fmt = (parseInt(dd.snr)<0? "":"+") + dd.snr
-			const fields = [dd.cyclestart_str.split('_')[1], dd.decode_delay, snr_fmt, dd.freq, dd.dt, dd.call_a, dd.call_b, dd.grid_rpt,dd.n_its, dd.ncheck_initial,''];
-			fields.forEach((field, idx) => {
-				const cell_div = document.createElement("div");
-				cell_div.textContent = field;
-				cell_div.className='grid_cell';
-				row.appendChild(cell_div);
-			});
-			grid.scrollTop = grid.scrollHeight;
-			return row
-		}
-		
-		function handle_button_click(action){
-			console.log(action);
-			websocket.send(JSON.stringify({topic: "ui." + action}));
-			if(action.search('set-band')==0) {
-				console.log("Clear grids"); 
-				for (const el of document.querySelectorAll('.grid_row:not(.header)')) {el.remove()}}
-				n_PyFT8_decodes.innerText = '0';
-				n_wsjtx_decodes.innerText = '0';
-				update_percent();
-		}
-				
-		const websocket = new WebSocket("ws://localhost:5678/");
-		websocket.onmessage = (event) => {
-			const dd = JSON.parse(event.data)
-			if(!dd) return;
-			if(dd.topic == 'add_band_button')   {add_band_button(dd.band_name, dd.band_freq)}
-			if(dd.topic == 'decode_dict')		{
-				console.log(dd.source);
-				const mn = new Date;
-				mn.setHours(0, 0, 0, 0)
-				const tnow = new Date;
-				const t = (tnow - mn)
-				let hms = dd.cyclestart_str.split('_')[1]
-				let t_cycle = parseInt(hms.slice(0,2))*60*60 + parseInt(hms.slice(2,4))*60 + parseInt(hms.slice(4,6))
-				let decode_delay = t - 1000*t_cycle - 15000
-				dd.decode_delay = Math.round(decode_delay/10)/100 ;
-				if (dd.source == 'WSJTX') {
-					new_row = add_decode_row(dd, 'wsjtx_decodes');
-					n_wsjtx_decodes.innerText = 1+parseInt(n_wsjtx_decodes.innerText)
-				} else {
-					new_row = add_decode_row(dd, 'PyFT8_decodes');
-					n_PyFT8_decodes.innerText = 1+parseInt(n_PyFT8_decodes.innerText);
-				}
-				update_percent();
-			}
-			if (dd.topic == 'loading_metrics') {updateLoadingMetrics(dd)}
-		}
-		
-		function updateLoadingMetrics(data) {
-			bar_data = [data.n_synced/500, data.n_demapped/500, data.n_decoded/500, data.n_decode_success/75]
-			for (const i of[0,1,2,3]){
-				document.getElementById("bar-"+i).style.transform =
-				`scaleY(${1-bar_data[i]})`;
-			}
-			bar_data_last = bar_data;
-			document.getElementById('n_candidates').innerText = data.n_synced;
-			document.getElementById('n_in_ldpc').innerText = data.n_in_ldpc;
-		}
-
-		
-		function update_percent(){
-			let w = parseInt(n_wsjtx_decodes.innerText)
-			let p = parseInt(n_PyFT8_decodes.innerText)
-			if(w>0){
-				let pc = Math.round(100*p/w);
-				pc_PyFT8_decodes.innerText = pc + '%';
-			}
-		}
-		
-		function add_band_button(band_name, band_freq){
-			let parentEl = document.getElementById('buttons');
-			let btn = parentEl.appendChild(document.createElement("button"));
-			btn.className = 'button';
-			btn.innerText = band_name;
-			btn.dataset.action = `set-band-${band_name}-${band_freq}`;
-			btn.addEventListener("click", (event) => { handle_button_click(event.target.dataset.action)});
-		}
-		
-		document.addEventListener("DOMContentLoaded", (event) => { 
-			document.getElementById('buttons').addEventListener("click", (event) => { 
-				handle_button_click(event.target.dataset.action)
-			});
-			n_PyFT8_decodes = document.getElementById('n_PyFT8_decodes');
-			pc_PyFT8_decodes = document.getElementById('pc_PyFT8_decodes');
-			n_wsjtx_decodes = document.getElementById('n_wsjtx_decodes');
-			PyFT8_best_snr = document.getElementById('PyFT8_best_snr');
-		});
-		
-		setInterval(update_clock, 1000);
-	</script>
-	
 </head>
 
 <body>
@@ -156,8 +17,7 @@
 		
 			<div class = 'DecodePanel'>
 				<div class='grid_title'>
-					PyFT8 Decodes <span id = 'n_PyFT8_decodes'>0</span> 
-					(<span id = 'pc_PyFT8_decodes'>0%</span>) 
+					PyFT8 Decodes <span id = 'n_PyFT8_decodes'>0</span> (<span id = 'pc_PyFT8_decodes'>0%</span>) 
 					Cands: <span id='n_candidates'>0</span> 
 					LDPC: <span id='n_in_ldpc'>0</span> 
 				</div>
@@ -208,5 +68,5 @@
 	
 </body>
 
-
+<script type='module' src='./js/PyFT8_UI.js'></script>
 </html>

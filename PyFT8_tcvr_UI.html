@@ -58,9 +58,35 @@
 			<button class = 'button transmitting_button' data-action = 'call-cq'>Call CQ</button>
 			<button class = 'button transmitting_button' data-action = 'repeat-last'>Repeat last</button>
 		</div>
+		<div id="pipeline">
+			<div class="bar-container">
+				<div class="bar-bg">
+					<div id="bar-0" class="bar"></div>
+				</div>
+				<span class="label">SYNC</span>
+			</div>
+			<div class="bar-container">
+				<div class="bar-bg">
+					<div id="bar-1" class="bar"></div>
+				</div>
+				<span class="label">DEMAP</span>
+			</div>
+			<div class="bar-container">
+				<div class="bar-bg">
+					<div id="bar-2" class="bar"></div>
+				</div>
+				<span class="label">LDPC</span>
+			</div>
+			<div class="bar-container">
+				<div class="bar-bg">
+					<div id="bar-3" class="bar"></div>
+				</div>
+				<span class="label">DECODES</span>
+			</div>
+		</div>
 	</div>
 	
 </body>
 
-<script type='module' src='./js/PyFT8_tcvr_ui_main.js'></script>
+<script type='module' src='./js/PyFT8_UI.js'></script>
 </html>
