@@ -1,4 +1,4 @@
-import {connectToFeed, hearing_me} from './hearing_me.js';
+import {connectToFeed, hearing_me, add_row_hearing_me_list} from './hearing_me.js';
 import {update_spectrum, update_freq_marker} from './occ.js';
 
 let myCall = "";

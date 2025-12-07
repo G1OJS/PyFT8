@@ -34,7 +34,7 @@ function onMessage(msg) {
 	hearing_me.add(spot.b + "_" + spot.rc);
 }
 
-function add_row_hearing_me_list(callsign){
+export function add_row_hearing_me_list(callsign){
 	let grid = document.getElementById('Hearing_me_list');
 	let row = grid.appendChild(document.createElement("div"));
 	row.className='grid_row';
