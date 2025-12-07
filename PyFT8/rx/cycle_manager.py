@@ -60,7 +60,7 @@ class Cycle_manager():
         self.sync_score_thresh = sync_score_thresh
         self.n_decode_success = 0
         self.duplicate_filter = set()
-        self.n_in_ldpc = 0
+        self.loading_metrics = {'n_for_ldpc':0, 'n_decoded':0}
 
         self.onSuccessfulDecode = onSuccessfulDecode
         self.onOccupancy = onOccupancy
@@ -99,12 +99,12 @@ class Cycle_manager():
             self.prev_cycle_time = cycle_time
 
 
-            if (cycle_time > self.t_search -1 and not minimised_queue):
-                with self.cands_list_lock:
-                    minimised_queue = True
-                    zero_ns = [c for c in config.cands_list if c.ncheck_initial ==0]
-                    timers.timedLog(f"Abandoning cands with ncheck "+','.join([f"{c.ncheck_initial}" for c in config.cands_list if not c in zero_ns]), logfile = 'pipeline.log')
-                    config.cands_list = zero_ns
+           # if (cycle_time > self.t_search -1 and not minimised_queue):
+           #     with self.cands_list_lock:
+           #         minimised_queue = True
+           #         zero_ns = [c for c in config.cands_list if c.ncheck_initial ==0]
+           #         timers.timedLog(f"Abandoning cands with ncheck "+','.join([f"{c.ncheck_initial}" for c in config.cands_list if not c in zero_ns]), logfile = 'pipeline.log')
+           #         config.cands_list = zero_ns
             
             if (cycle_time > self.t_search and not cycle_searched):
                 cycle_searched = True
@@ -145,30 +145,23 @@ class Cycle_manager():
                                                                                 origin[1]:origin[1]+c.size[1]].copy()
                 c.demap_result = self.demod.demap_candidate(c)
                 c.ncheck_initial = self.demod.ldpc.fast_ncheck(c.demap_result['llr'])
-                if(c.ncheck_initial > self.max_ncheck):
-                    with self.cands_list_lock:
-                        if(c in config.cands_list):
-                            config.cands_list.remove(c)
-
 
     def threaded_decode_manager(self):
         # send all candidates that have been demapped to ldpc
         max_in_ldpc = 250 #magic number
         while self.running:
             timers.sleep(0.01)
-            spare_slots = max_in_ldpc - self.n_in_ldpc
+            spare_slots = max_in_ldpc - (self.loading_metrics['n_for_ldpc'] - self.loading_metrics['n_decoded'])
             if(spare_slots <= 0): 
                 continue
             with self.cands_list_lock:
-                tmp_list = [c for c in config.cands_list if c.demap_result and not c.ldpc_requested]
+                tmp_list = [c for c in config.cands_list if c.ncheck_initial <= self.max_ncheck and not c.ldpc_requested]
             tmp_list.sort(key = lambda c: c.ncheck_initial)
             for c in tmp_list[:spare_slots]:
                 c.ldpc_requested = timers.tnow()
-                self.n_in_ldpc +=1
                 threading.Thread(target=self.demod.decode_candidate, kwargs={'candidate':c, 'onDecode':self.onDecode}, daemon=True).start()
                     
     def onDecode(self, c):
-        self.n_in_ldpc -=1
         if(c.decode_success):
             origin = c.sync_result['origin']
             dt = origin[2] - 0.8 
@@ -189,12 +182,12 @@ class Cycle_manager():
         while self.running:
             timers.sleep(0.25)
             
-            loading_metrics = { "n_synced":   len(config.cands_list),
+            self.loading_metrics = { "n_synced":   len(config.cands_list),
                              "n_demapped": len([c for c in config.cands_list if c.demap_result]),
-                             "n_in_ldpc": self.n_in_ldpc,
-                             "n_decoded": len([c for c in config.cands_list if c.ldpc_result]),
-                             "n_decode_success":  len([c for c in config.cands_list if c.decode_success])}
-            send_to_ui_ws("loading_metrics", loading_metrics)
+                             "n_for_ldpc": len([c for c in config.cands_list if c.ncheck_initial <= self.max_ncheck]),
+                             "n_decoded": len([c for c in config.cands_list if c.ldpc_result])}
+            send_to_ui_ws("loading_metrics", self.loading_metrics)
+            timers.timedLog(self.loading_metrics, logfile= 'pipeline.log', silent = True)
             
             
 

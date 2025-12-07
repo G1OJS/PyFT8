@@ -1,6 +1,5 @@
 import {connectToFeed, hearing_me} from './hearing_me.js';
 import {update_spectrum, update_freq_marker} from './occ.js';
-import {updateLoadingMetrics} from './loading_metrics.js';
 
 let myCall = "";
 let myBand = "";
@@ -134,8 +133,9 @@ websocket.onmessage = (event) => {
 			const pc_PyFT8_decodes = document.getElementById('pc_PyFT8_decodes');
 			const n_wsjtx_decodes = document.getElementById('n_wsjtx_decodes');
 			const t = new Date / 1000;
-			let decode_delay = t - t%15 - 15
-			dd.decode_delay = Math.round(decode_delay/10)/100 ;
+			let decode_delay = t%15
+			decode_delay -= decode_delay > 11 ? 15:0
+			dd.decode_delay = Math.round(100*decode_delay)/100 ;
 			if (dd.source == 'WSJTX') {
 				add_decode_row(dd, 'wsjtx_decodes');
 				n_wsjtx_decodes.innerText = 1+parseInt(n_wsjtx_decodes.innerText);
@@ -168,6 +168,15 @@ document.addEventListener("DOMContentLoaded", (event) => {
 		handle_button_click(event.target.dataset.action)
 	});
 });
+
+function updateLoadingMetrics(data) {
+	let bar_data = [data.n_demapped/(data.n_synced+0.001), data.n_for_ldpc/(data.n_demapped+0.001), data.n_decoded/(data.n_for_ldpc+0.001)]
+	for (const i of[0,1,2]){
+		document.getElementById("bar-"+i).style.transform =
+		`scaleY(${1-bar_data[i]})`;
+	}
+	document.getElementById('n_candidates').innerText = data.n_synced;
+}
 
 setInterval(update_clock, 250);
 if(document.URL.includes("tcvr")) {setInterval(update_hearing_me_list, 1000)}
