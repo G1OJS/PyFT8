@@ -70,3 +70,33 @@ body { font-family: sans-serif; background:var(--page-bg); color:#ddf; margin:1e
     50%  { background-color: var(--panel-bg); }
     100% { background-color: var(--by-me-bg-hl); }
 }
+
+#pipeline {display: flex;align-items: flex-end;gap: 10px;height: 120px;padding: 10px;}
+
+.bar-container {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.bar-bg {
+	width: 20px;
+	height: 100px;
+	background: linear-gradient(to bottom, red, yellow, green);
+}
+
+.bar {
+	width: 20px;
+	height: 100px;
+	background: gray;
+	transform-origin: top;
+	transform: scaleY(0.1);
+	transition: transform 1s cubic-bezier(0.2, 0, 0.5, 1);
+}
+
+.label {
+	margin-top: 5px;
+	font-size: 0.7em;
+}
+
+		

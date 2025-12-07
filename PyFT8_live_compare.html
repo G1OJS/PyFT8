@@ -4,67 +4,9 @@
 <head>
 	<meta charset="utf-8">
 	<title>PyFT8 vs WSJT-x</title>
-	
+	<link rel="stylesheet" href="./css/PyFT8.css" /> 
 	<style>
-		:root {
-			--page-bg:#111; 	 --panel-bg:#555;
-			--table-color:black; --table-bg:#666;    --table-hover-bg:#333;
-			--even-bg: #8b91ad;  --odd-bg: #ad8b8b;
-			--cq-bg-hl:#93bf95;  --cq-bg:#405441;
-			--to-me-bg:#ff4d4d;  --by-me-bg:#e6e600;
-		}
-
-		body { font-family: sans-serif; background:var(--page-bg); color:#eee; margin:1em; }
-		#App {display:inline-block;  align-content: start; width:fit-content; background:var(--panel-bg); padding:1em; height:90vh;}
-		#clock {display: block; font-size: 1.17em; font-weight: bold;}
-		.grid_title {display: block; font-size: 1.17em; font-weight: bold; margin-left:0.5em}
-										
-		#DecodePanelsContainer 
-				{display:grid; grid-template-columns: repeat(2, max-content); 
-				background:var(--panel-bg); width:max-content;}	
-
-		.decodes_grid {display:grid; grid-template-columns: repeat(10, max-content) auto; grid-auto-rows: min-content; 
-					   background:var(--table-bg); color:#8cf; margin:0.5em; height:25em; min-width:30em; 
-					   align-content: start; overflow-y:scroll; }	
-
-		.grid_row {display:contents; }
-		.grid_row.odd > div {background-color: var(--odd-bg);}
-		.grid_row.even > div{ background-color: var(--even-bg);}	
-		.grid_cell {padding:1px 5px 1px 5px; font-weight:600; color:var(--table-color);}
-
-		.grid_row.header {display: contents;position: sticky;top: 0;z-index: 20;}
-		.grid_row.header > .grid_cell {background: var(--table-bg);position: sticky;top: 0;z-index: 21; color:lime; border-right:1px lime dashed;}
-		
-		#pipeline {display: flex;align-items: flex-end;gap: 10px;height: 120px;padding: 10px;}
-
-		.bar-container {
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-		}
-
-		.bar-bg {
-			width: 20px;
-			height: 100px;
-			background: linear-gradient(to bottom, red, yellow, green);
-		}
-
-		.bar {
-			width: 20px;
-			height: 100px;
-			background: gray;
-			transform-origin: top;
-			transform: scaleY(0.1);
-			transition: transform 1s cubic-bezier(0.2, 0, 0.5, 1);
-		}
-
-		.label {
-			margin-top: 5px;
-			font-size: 0.7em;
-		}
-
-		
-		
+		.decodes_grid {grid-template-columns: repeat( 10, max-content) auto;}
 	</style>
 	
 	<script>
