@@ -15,6 +15,7 @@ export function connectToFeed() {
 
 function subscribe() {
 	let topics = new Set;
+	let myCall = document.getElementById('myCall').innerText
 	topics.add('pskr/filter/v2/+/FT8/'+myCall+'/#');
 	Array.from(topics).forEach((t) => {
 		console.log("Subscribe to " + t);
