@@ -39,7 +39,7 @@ class Spectrum:
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
                  max_iters = 90, max_stall = 8, max_ncheck = 30,
-                 sync_score_thresh = 3, max_cycles = 1e40):
+                 sync_score_thresh = 3, max_cycles = 5000):
         self.running = True
         self.sigspec = sigspec
         self.max_ncheck = max_ncheck
@@ -49,6 +49,7 @@ class Cycle_manager():
         self.audio_in = audio.AudioIn(self, np.kaiser(self.spectrum.FFT_len, 20))
 
         self.audio_in_wav = audio_in_wav
+        self.max_cycles = max_cycles
         self.cycle_countdown = max_cycles
         self.cyclestart_str = None
         self.prev_cycle_time = 1e40
@@ -69,6 +70,9 @@ class Cycle_manager():
         threading.Thread(target=self.threaded_demap_manager, daemon=True).start()
         threading.Thread(target=self.threaded_decode_manager, daemon=True).start()
         threading.Thread(target=self.threaded_UI_updater, daemon=True).start()
+
+        with open("timings.log","w") as f:
+            f.write("cycle,tcycle,epoch,id,sync_returned,demap_requested,demap_returned,ncheck_initial,ldpc_requested,ldpc_returned,message_decoded,abandoned\n")
 
 #============================================
 # Rollover and early candidate search
@@ -99,12 +103,26 @@ class Cycle_manager():
             self.prev_cycle_time = cycle_time
 
 
-           # if (cycle_time > self.t_search -1 and not minimised_queue):
-           #     with self.cands_list_lock:
-           #         minimised_queue = True
-           #         zero_ns = [c for c in config.cands_list if c.ncheck_initial ==0]
-           #         timers.timedLog(f"Abandoning cands with ncheck "+','.join([f"{c.ncheck_initial}" for c in config.cands_list if not c in zero_ns]), logfile = 'pipeline.log')
-           #         config.cands_list = zero_ns
+            if (cycle_time > self.t_search -1 and not minimised_queue):
+                def t(et,cb):
+                    return f"{et - cb :6.2f}" if et else None
+                
+                with self.cands_list_lock:
+                    minimised_queue = True
+                    tmp_list = config.cands_list
+                    zero_ns = [c for c in config.cands_list if c.ncheck_initial ==0]
+                #    config.cands_list = zero_ns
+                #for c in tmp_list:
+                  #  if (not c in config.cands_list):
+                 #       c.abandoned = timers.tnow();
+
+                if(self.cycle_countdown > self.max_cycles - 10):
+                    print("Output statistics")
+                    for c in tmp_list:
+                        cb = c.cycle_start
+                        timers.timedLog(f"{c.id},{t(c.sync_returned,cb)},{t(c.demap_requested,cb)},{t(c.demap_returned,cb)},"
+                                       +f"{c.ncheck_initial},{t(c.ldpc_requested,cb)},{t(c.ldpc_returned,cb)},"
+                                       +f"{t(c.message_decoded,cb)},{t(c.abandoned,cb)}", logfile = 'timings.log', silent = True)
             
             if (cycle_time > self.t_search and not cycle_searched):
                 cycle_searched = True
@@ -143,8 +161,9 @@ class Cycle_manager():
                     with self.spectrum_lock:
                         c.synced_grid_complex = self.spectrum.fine_grid_complex[origin[0]:origin[0]+c.size[0],
                                                                                 origin[1]:origin[1]+c.size[1]].copy()
-                c.demap_result = self.demod.demap_candidate(c)
-                c.ncheck_initial = self.demod.ldpc.fast_ncheck(c.demap_result['llr'])
+                    c.demap_result = self.demod.demap_candidate(c)
+                    c.demap_returned = timers.tnow()
+                    c.ncheck_initial = self.demod.ldpc.fast_ncheck(c.demap_result['llr'])
 
     def threaded_decode_manager(self):
         # send all candidates that have been demapped to ldpc
@@ -162,12 +181,14 @@ class Cycle_manager():
                 threading.Thread(target=self.demod.decode_candidate, kwargs={'candidate':c, 'onDecode':self.onDecode}, daemon=True).start()
                     
     def onDecode(self, c):
+        c.ldpc_returned = timers.tnow()
         if(c.decode_success):
             origin = c.sync_result['origin']
             dt = origin[2] - 0.8 
             if(dt > self.sigspec.cycle_seconds//2): dt -=self.sigspec.cycle_seconds
             dt = f"{dt:4.1f}"
             c.decode_result.update({'dt': dt})
+            c.message_decoded = timers.tnow()
             key = c.cyclestart_str+" "+c.message
             if(not key in self.duplicate_filter):
                 self.duplicate_filter.add(key)

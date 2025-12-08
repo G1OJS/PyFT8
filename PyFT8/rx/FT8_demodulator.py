@@ -16,16 +16,21 @@ class Candidate:
         Candidate.next_id +=1
         self.sigspec = spectrum.sigspec
         self.size = spectrum.candidate_size
+        self.cycle_start = 15*int(timers.tnow()/15)
         self.cyclestart_str = timers.cyclestart_str()
         self.sync_result = None
         self.sync_score = 0
         self.synced_grid_complex = None
+        self.sync_returned = None
         self.demap_requested = False
+        self.demap_returned = None
         self.demap_result = None
         self.ldpc_requested = False
         self.ldpc_result = None
-        self.remove_requested = True
+        self.ldpc_returned = None
         self.decode_result = None
+        self.message_decoded = None
+        self.abandoned = None
         self.ncheck_initial = 5000
         
     @property
@@ -79,6 +84,7 @@ class FT8Demodulator:
                     if(neighbour_lf[0].sync_result['sync_score'] >= c.sync_result['sync_score']): continue
                     if(neighbour_lf[0].sync_result['sync_score'] < c.sync_result['sync_score']): candidates.remove(neighbour_lf[0])
                 candidates.append(c)
+                c.sync_returned = timers.tnow()
                 c.sync_score = best[1]
         return candidates
 
@@ -91,7 +97,7 @@ class FT8Demodulator:
             t0 = tones0[b]
             ones  = np.max(p[:, t1], axis=1)
             zeros = np.max(p[:, t0], axis=1)
-            llr[:, b] = np.log(ones) - np.log(zeros)
+            llr[:, b] = np.log(ones+eps) - np.log(zeros+eps)
         return llr.reshape(-1)
 
     def demap_candidate(self, c):
