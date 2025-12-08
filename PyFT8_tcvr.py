@@ -190,6 +190,7 @@ def onOccupancy(spectrum_occupancy, spectrum_df, f0=0, f1=3500, bin_hz=10):
 
 def process_UI_event(event):
     import PyFT8.timers as timers
+    from PyFT8.comms_hub import send_to_ui_ws
     global QSO
     topic = event['topic']
     if(topic == "ui.clicked-message"):
@@ -214,20 +215,25 @@ def process_UI_event(event):
         QSO.tx_cycle = ['odd','even'][i]
         QSO.transmit(f"CQ {config.myCall} {config.myGrid}")
     if("set-band" in topic):
-        fields = topic.split("-")
+        set_band_freq(topic)
+        
+def set_band_freq(action):
+        fields = action.split("-")
         config.myFreq = float(fields[3])
         config.myBand = fields[2]
         rig.setFreqHz(int(config.myFreq * 1000000))
         rig.setMode(md="USB", dat = True, filIdx = 1)
         with open("PyFT8_MHz.txt","w") as f:
             f.write(str(config.myFreq))
-     #   send_to_ui_ws("set_band", {"band":config.myBand})
-        
-def add_band_buttons():
-    from PyFT8.comms_hub import config, send_to_ui_ws
-    for band in config.bands:
-        send_to_ui_ws("add_band_button", {'band_name':band['band_name'], 'band_freq':band['band_freq']})
+        send_to_ui_ws("set_band", {"band":config.myBand})
 
+def add_action_buttons():
+    from PyFT8.comms_hub import config, send_to_ui_ws
+    send_to_ui_ws("add_action_button", {'caption':'Call CQ', 'action':'call-cq', 'class':'button transmitting_button'})
+    send_to_ui_ws("add_action_button", {'caption':'Repeat last', 'action':'repeat-last', 'class':'button transmitting_button'})
+    for band in config.bands:
+        send_to_ui_ws("add_action_button", {'caption':band['band_name'], 'action':f"set-band-{band['band_name']}-{band['band_freq']}", 'class':'button'})
+    
 def run():        
     cycle_manager = Cycle_manager(FT8, None if config.decoder == 'wsjtx' else onDecodePyFT8,
                               onOccupancy = onOccupancy,
@@ -235,9 +241,10 @@ def run():
                               sync_score_thresh = 2.3)
     if(config.decoder == 'wsjtx') : start_wsjtx_tailer(onDecode)
     start_UI("PyFT8_tcvr_UI.html", process_UI_event)
-    add_band_buttons()
+    add_action_buttons()
     send_to_ui_ws("set_myCall", {'myCall':config.myCall})
     send_to_ui_ws("connect_pskr_mqtt", {'dummy':'dummy'})
+    set_band_freq("set-band-20m-14.074")
     
 run()
     

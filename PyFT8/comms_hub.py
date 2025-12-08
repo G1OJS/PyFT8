@@ -97,7 +97,7 @@ class Config:
         self.txfreq = 1000
         self.rxfreq = 1000
         self.bands = []
-        self.myBand = False
+        self.myBand = "20m"
         self.myFreq = False
         self.soundcards = {"input_device":["Microphone","CODEC"], "output_device":["Speaker", "CODEC"]}
         if(not self.check_config()):

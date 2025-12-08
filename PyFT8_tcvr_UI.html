@@ -11,7 +11,7 @@
 	<div id = 'App'>
 		<div id = 'logo'>G1OJS PyFT8 Transceiver</div>
 		<div id = 'banner'>
-			My Callsign: <span id='myCall'></span> Time: <span id='clock'></span>
+			Time: <span id='clock'></span> Band: <span id='currentBand'></span> My Callsign: <span id='myCall'></span> 
 		</div>
 		<div id="SpectrumContainer">
 			<div id="Spectrum"></div>
@@ -40,7 +40,7 @@
 				<div class='grid_title'>Priority decodes -</div>
 				<div id="priority_decodes"  class = "decodes_grid">
 					<div class = 'grid_row header'>
-						<div class='grid_cell'>Cycle</div><div class='grid_cell'>snr</div><div class='grid_cell'>Freq</div><div class='grid_cell'>Call_a</div><div class='grid_cell'>Call_b</div><div class='grid_cell'>Grid_rpt</div><div class='grid_cell'></div>
+						<div class='grid_cell'>Cycle</div><div class='grid_cell'>snr</div><div class='grid_cell'>Freq</div><div class='grid_cell'>Call_a</div><div class='grid_cell'>Call_b</div><div class='grid_cell'>Grid_rpt</div><div class='grid_cell'>Hearing me?</div>
 					</div>
 				</div>
 			</div>
@@ -54,8 +54,6 @@
 			</div>
 		</div>
 		<div id = 'buttons'>
-			<button class = 'button transmitting_button' data-action = 'call-cq'>Call CQ</button>
-			<button class = 'button transmitting_button' data-action = 'repeat-last'>Repeat last</button>
 		</div>
 		<div id="pipeline">
 			<div class="bar-container">

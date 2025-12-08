@@ -1,11 +1,27 @@
-import {connectToFeed, hearing_me, add_row_hearing_me_list} from './hearing_me.js';
+import {connectToFeed, is_hearing_me, update_hearing_me_list} from './hearing_me.js';
 import {update_spectrum, update_freq_marker} from './occ.js';
 
 let myCall = "";
-let myBand = "";
+let currentBand = "20m";
 let txFreq = null;
 let rxFreq = null;
-let current_band = null;
+
+export {myCall, currentBand}
+
+function setMyCall(call){
+	myCall = call;
+	document.getElementById('myCall').innerText = myCall;
+}
+
+function setCurrentBand(band){
+	currentBand = band;
+	for (const el of document.querySelectorAll('.grid_row:not(.header)')) {el.remove()}
+	document.getElementById('currentBand').innerText = currentBand;
+	if(document.URL.includes("compare")){
+		n_wsjtx_decodes.innerText = 0;
+		n_PyFT8_decodes.innerText = 0;
+	}
+}
 
 function update_clock() {
 	const t = new Date;
@@ -31,17 +47,6 @@ function update_clock() {
 	}
 }
 
-function update_hearing_me_list(){
-	let grid = document.getElementById('Hearing_me_list');
-	for (const el of grid.querySelectorAll('.grid_row:not(.header)')) {el.remove()}
-	for (const hm of hearing_me){
-		let b = hm.split('_')[0]
-		let c = hm.split('_')[1]
-		console.log(b, c, current_band);
-		if(b == myBand | myBand == '') {add_row_hearing_me_list(c)}
-	}
-}
-
 function add_decode_row(decode_dict, grid_id) {
 	let dd = decode_dict;
 	console.log(dd);
@@ -50,39 +55,23 @@ function add_decode_row(decode_dict, grid_id) {
 	row.className='grid_row';
 	let cs = dd.cyclestart_str;
 	if (cs.charAt(cs.length-1) == '5'){row.classList.add('odd')} else {row.classList.add('even')}
-	if(dd.call_a == "CQ" && dd.call_b != myCall) {
-		row.classList.add("cq");
-	}
-	
-	if(dd.call_a == myCall) {
-		row.classList.add('sentTomyCall')
-	}
-	if(dd.call_b == myCall) {
-		row.classList.add('sentBymyCall')
-	}
+	if(dd.call_a == "CQ" && dd.call_b != myCall) {row.classList.add("cq");}
+	if(dd.call_a == myCall) {row.classList.add('sentTomyCall')}
+	if(dd.call_b == myCall) {row.classList.add('sentBymyCall')}
 	
 	const snr_fmt = (parseInt(dd.snr)<0? "":"+") + dd.snr
 	let fields = null;
 	if(document.URL.includes("compare")){
 		fields = [dd.cyclestart_str.split('_')[1], dd.decode_delay, snr_fmt, dd.freq, dd.dt, dd.call_a, dd.call_b, dd.grid_rpt,dd.n_its, dd.ncheck_initial,''];
 	} else {
-		fields = [dd.cyclestart_str.split('_')[1], snr_fmt, dd.freq, dd.call_a, dd.call_b, dd.grid_rpt, ''];
+		fields = [dd.cyclestart_str.split('_')[1], snr_fmt, dd.freq, dd.call_a, dd.call_b, dd.grid_rpt, dd.hearing_me];
 	}
 	fields.forEach((field, idx) => {
 		const cell_div = document.createElement("div");
 		cell_div.textContent = field;
-		cell_div.className='grid_cell';
-		if(grid_id == 'all_decodes' && idx == 6){
-			if (hearing_me.has(dd.call_b)){
-				console.log(dd.call_b,"hearing me");
-				cell_div.innerText = "X"
-				cell_div.classList.add('hearing_me');
-			}			
-		}
+		cell_div.className='grid_cell';			
 		row.appendChild(cell_div);
 	});
-
-	grid.scrollTop = grid.scrollHeight;
 
 	row.addEventListener("click", e => {
 		update_freq_marker('.rxMarker', parseInt(dd.freq));
@@ -93,39 +82,28 @@ function add_decode_row(decode_dict, grid_id) {
 			grid_rpt: dd.grid_rpt, snr:dd.snr, freq: dd.freq
 		}));
 	}); 
+	
+	grid.scrollTop = grid.scrollHeight;
 }
 	
-function handle_button_click(action){
-	console.log(action);
-	websocket.send(JSON.stringify({topic: "ui." + action}));
-	if(action.search('set-band')==0) {
-		console.log("Clear grids"); 
-		myBand = action.split("-")[2];
-		for (const el of document.querySelectorAll('.grid_row:not(.header)')) {el.remove()}
-	}
-}
-
 const websocket = new WebSocket("ws://localhost:5678/");
 websocket.onmessage = (event) => {
 	const dd = JSON.parse(event.data)
 	if(!dd) return;
-
+	
+	if(dd.topic == 'set_myCall') 		{setMyCall(dd.myCall)}
+	if(dd.topic == 'set_band') 			{setCurrentBand(dd.band)}
 	if(dd.topic == 'connect_pskr_mqtt')	{connectToFeed();}
 	if(dd.topic == 'loading_metrics') 	{updateLoadingMetrics(dd)}
-	if(dd.topic == 'add_band_button')   {add_band_button(dd.band_name, dd.band_freq)}
-	if(dd.topic == 'set_band') 			{current_band = dd.band}
+	if(dd.topic == 'add_action_button') {add_action_button(dd.caption, dd.action, dd.class)}
 	if(dd.topic == 'set_rxfreq') 		{update_freq_marker('.rxMarker', parseInt(dd.freq));}
 	if(dd.topic == 'set_txfreq') 		{update_freq_marker('.txMarker', parseInt(dd.freq));}
 	if(dd.topic == "freq_occ_array") 	{update_spectrum(dd.histogram)}
 	
-	if(dd.topic == 'set_myCall') {
-		myCall = dd.myCall;
-		document.getElementById('myCall').innerText = myCall;
-	}
-	
 	if(dd.topic == 'decode_dict') {
 		if(document.URL.includes("tcvr")){
 			if (dd.priority) {add_decode_row(dd, 'priority_decodes')}
+			dd.hearing_me = is_hearing_me(dd.call_b)? "X":"";	
 			add_decode_row(dd, 'all_decodes')
 		}
 		if(document.URL.includes("compare")){
@@ -154,20 +132,15 @@ websocket.onmessage = (event) => {
 	
 }
 	
-function add_band_button(band_name, band_freq){
+function add_action_button(caption, action, classname){
+	console.log("Add button "+caption+" "+action);
 	let parentEl = document.getElementById('buttons');
 	let btn = parentEl.appendChild(document.createElement("button"));
-	btn.className = 'button';
-	btn.innerText = band_name;
-	btn.dataset.action = `set-band-${band_name}-${band_freq}`;
-	btn.addEventListener("click", (event) => { handle_button_click(event.target.dataset.action)});
+	btn.className = classname;
+	btn.innerText = caption;
+	btn.dataset.action = action;
+	btn.addEventListener("click", (event) => { websocket.send(JSON.stringify({topic: "ui." + event.target.dataset.action})) });
 }
-
-document.addEventListener("DOMContentLoaded", (event) => { 
-	document.getElementById('buttons').addEventListener("click", (event) => { 
-		handle_button_click(event.target.dataset.action)
-	});
-});
 
 function updateLoadingMetrics(data) {
 	let bar_data = [data.n_demapped/(data.n_synced+0.001), data.n_for_ldpc/(data.n_demapped+0.001), data.n_decoded/(data.n_for_ldpc+0.001)]
