@@ -145,11 +145,13 @@ class Cycle_manager():
         while self.running:
             timers.sleep(0.01)
 
+            # find candidates that can have spectrum filled, demapped and decoded:
             with self.cands_list_lock:
-                tmp_list = [c for c in config.cands_list if (self.spectrum.fine_grid_pointer > c.sync_result['last_data_hop']
+                to_decode = [c for c in config.cands_list if (self.spectrum.fine_grid_pointer > c.sync_result['last_data_hop']
                               or (self.cyclestart_str != c.cyclestart_str and self.spectrum.fine_grid_pointer +  self.spectrum.hops_percycle > c.sync_result['last_data_hop']) )]
 
-            for c in tmp_list:
+            # demap the candidates if not already done, and decode instantly if not already done and ncheck_initial is low
+            for c in to_decode:
                 if not c.demap_requested:
                     c.demap_requested = timers.tnow()
                     origin = c.sync_result['origin']
@@ -159,12 +161,20 @@ class Cycle_manager():
                     c.demap_result = self.demod.demap_candidate(c)
                     c.ncheck_initial = self.demod.ldpc.fast_ncheck(c.demap_result['llr'])
                     c.demap_returned = timers.tnow()
+                    if(c.ncheck_initial < 25):
+                        c.ldpc_requested = timers.tnow()
+                        self.demod.decode_candidate(c, self.onDecode)
 
-                if not c.ldpc_requested:
-                    ncheck_limit = self.max_ncheck
-                    if (timers.tnow()-c.cycle_start <12.5): ncheck_limit = 5
-                    if (timers.tnow()-c.cycle_start <13.0): ncheck_limit = 25
-                    if (c.ncheck_initial < ncheck_limit):     
+            # only if all candidates have been demapped, start decoding more difficult ones up to
+            # ncheck_initial = max_ncheck, in increasing order, until 2 seconds into the next cycle
+            not_demapped_yet = [c for c in config.cands_list if not c.demap_returned]
+            if(len(not_demapped_yet) == 0):
+                to_decode = [c for c in to_decode if not c.ldpc_requested and c.ncheck_initial <= self.max_ncheck]
+                if(to_decode):
+                    to_decode.sort(key = lambda c: c.ncheck_initial)            
+                    this_cycle_start = np.max([c.cycle_start for c in to_decode])
+                    for c in to_decode:
+                        if (timers.tnow() - this_cycle_start > 19): break     
                         c.ldpc_requested = timers.tnow()
                         self.demod.decode_candidate(c, self.onDecode)
 
