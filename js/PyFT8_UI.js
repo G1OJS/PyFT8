@@ -142,14 +142,27 @@ function add_action_button(caption, action, classname){
 	btn.addEventListener("click", (event) => { websocket.send(JSON.stringify({topic: "ui." + event.target.dataset.action})) });
 }
 
-function updateLoadingMetrics(data) {
-	let bar_data = [data.n_demapped/(data.n_synced+0.001), data.n_for_ldpc/(data.n_demapped+0.001), data.n_decoded/(data.n_for_ldpc+0.001)]
-	for (const i of[0,1,2]){
-		document.getElementById("bar-"+i).style.transform =
-		`scaleY(${1-bar_data[i]})`;
+function updateLoadingMetrics(metrics_dict) {
+	let metrics_area = document.getElementById("metrics_area");
+	if (metrics_area.children.length == 0) {
+		console.log("create metrics area")
+		let html = "";
+		
+		for (const [k, v] of Object.entries(metrics_dict)){
+			if(k!='topic'){
+				html = html + "<div class='bar-container'><div class='bar-bg'><div id='"
+				html = html + k + "' class='bar'></div></div><span class='label'>" + k + "</span></div>"
+			}
+		}
+		metrics_area.innerHTML = html;
 	}
-	document.getElementById('n_candidates').innerText = data.n_synced;
+	for (const [k, v] of Object.entries(metrics_dict)){
+		if(k!='topic'){
+			document.getElementById(k).style.transform =`scaleY(${1-v})`;
+		}
+	}
 }
+
 
 setInterval(update_clock, 250);
 if(document.URL.includes("tcvr")) {setInterval(update_hearing_me_list, 1000)}

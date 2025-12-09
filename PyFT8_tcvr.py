@@ -245,6 +245,8 @@ def run():
     send_to_ui_ws("set_myCall", {'myCall':config.myCall})
     send_to_ui_ws("connect_pskr_mqtt", {'dummy':'dummy'})
     set_band_freq("set-band-20m-14.074")
+
+    cycle_manager.decode_manager()
     
 run()
     
