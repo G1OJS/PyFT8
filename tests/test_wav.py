@@ -32,7 +32,9 @@ wav_file = "210703_133430.wav"
 start_load = timers.tnow()
 cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = wav_file, 
                           max_iters = 20, max_stall = 8, max_ncheck = 30,
-                          sync_score_thresh = 2.0, max_cycles = 1)
+                          sync_score_thresh = 2.0, max_cycles = 1, thread_decode_manager = True)
+
+cycle_manager.decode_manager()
 
 while cycle_manager.running:
     timers.sleep(0.5)

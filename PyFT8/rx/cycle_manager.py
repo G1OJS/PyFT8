@@ -39,7 +39,7 @@ class Spectrum:
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
                  max_iters = 90, max_stall = 8, max_ncheck = 30,
-                 sync_score_thresh = 3, max_cycles = 5000):
+                 sync_score_thresh = 3, max_cycles = 5000, thread_decode_manager = False):
         self.running = True
         self.sigspec = sigspec
         self.max_ncheck = max_ncheck
@@ -52,7 +52,6 @@ class Cycle_manager():
         self.max_cycles = max_cycles
         self.cycle_countdown = max_cycles
         self.cyclestart_str = None
-        self.pause_ldpc = False
         self.prev_cycle_time = 1e40
         n_hops_sync_band  = self.demod.slack_hops + np.max(self.spectrum.hop_idxs_Costas)
         self.t_search = n_hops_sync_band * self.spectrum.dt
@@ -70,7 +69,9 @@ class Cycle_manager():
         self.onOccupancy = onOccupancy
 
         threading.Thread(target=self.threaded_spectrum_tasks, daemon=True).start()
-
+        if(thread_decode_manager):
+            threading.Thread(target=self.decode_manager, daemon=True).start()
+            
         with open("timings.log","w") as f:
             f.write("cycle,tcycle,epoch,id,sync_returned,demap_requested,demap_returned,ncheck_initial,ldpc_requested,ldpc_returned,message_decoded,frac_to_ldpc,frac_from_ldpc,frac_decodes\n")
 
@@ -84,7 +85,6 @@ class Cycle_manager():
         minimised_queue = False
         while self.running:
             timers.sleep(0.25)
-            self.pause_ldpc = not self.pause_ldpc
             cycle_time = timers.tnow() % self.demod.sigspec.cycle_seconds 
             if (cycle_time < self.prev_cycle_time): 
                 if not self.cycle_countdown:
@@ -158,12 +158,12 @@ class Cycle_manager():
                 c.demap_returned = timers.tnow()
                 c.ncheck_initial = self.demod.ldpc.fast_ncheck(c.demap_result['llr'])
                 
-                if(c.ncheck_initial <30): # decode immediately if low ncheck_initial
+                if(c.ncheck_initial <30): # decode immediately if low ncheck_initial # magic number
                     c.ldpc_requested = timers.tnow()
                     c.threaded = False
                     self.demod.decode_candidate(c, self.onDecode)
                 else: # send high ncheck_initial for threaded decode
-                    if(self.n_threads < 5):
+                    if(c.ncheck_initial < self.max_ncheck and self.n_threads < 15): # magic number
                         self.n_threads +=1
                         if (self.n_threads > self.peak_threads): self.peak_threads = self.n_threads
                         c.threaded = True
