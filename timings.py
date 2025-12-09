@@ -23,8 +23,8 @@ for _, row in df.iterrows():
 ax.set_title("Candidate Timing with Pipeline Stage Durations")
 ax.set_xlabel("Candidate ID")
 ax.set_ylabel("Time within cycle (s)")
-ax2.set_ylabel("Proportion")
-ax.set_ylim(0,18)
+ax2.set_ylabel("Proportion managed within cycle")
+
 
 from matplotlib.lines import Line2D
 legend_els = [

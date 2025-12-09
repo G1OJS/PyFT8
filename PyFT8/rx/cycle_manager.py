@@ -111,6 +111,7 @@ class Cycle_manager():
 
             if (cycle_time > self.t_search -1 and not dumped_stats):
                 dumped_stats = True
+                print(f"%sent_ldpc = {100*self.loading_metrics['frac_to_ldpc']:.0f}, %returned= {100*self.loading_metrics['frac_from_ldpc']:.0f}")
                 def t(et,cb):
                     return f"{et - cb :6.2f}" if et else None
                 
@@ -122,7 +123,8 @@ class Cycle_manager():
                                        +f"{c.ncheck_initial},{t(c.ldpc_requested,cb)},{t(c.ldpc_returned,cb)},"
                                        +f"{t(c.message_decoded,cb)},{self.loading_metrics['frac_to_ldpc']:.2f},"
                                        +f"{self.loading_metrics['frac_from_ldpc']:.2f}, {self.loading_metrics['frac_decodes']:.2f}", logfile = 'timings.log', silent = True)
-            
+                config.cands_list =[]
+                
             if (cycle_time > self.t_search and not cycle_searched):
                 cycle_searched = True
                 timers.timedLog(f"Search spectrum ...")
@@ -144,37 +146,29 @@ class Cycle_manager():
             timers.sleep(0.01)
 
             with self.cands_list_lock:
-                tmp_list = [c for c in config.cands_list if not c.demap_requested and
-                                 (self.spectrum.fine_grid_pointer > c.sync_result['last_data_hop']
+                tmp_list = [c for c in config.cands_list if (self.spectrum.fine_grid_pointer > c.sync_result['last_data_hop']
                               or (self.cyclestart_str != c.cyclestart_str and self.spectrum.fine_grid_pointer +  self.spectrum.hops_percycle > c.sync_result['last_data_hop']) )]
 
-            for c in tmp_list:                
-                c.demap_requested = timers.tnow()
-                origin = c.sync_result['origin']
-                with self.spectrum_lock:
-                    c.synced_grid_complex = self.spectrum.fine_grid_complex[origin[0]:origin[0]+c.size[0],
+            for c in tmp_list:
+                if not c.demap_requested:
+                    c.demap_requested = timers.tnow()
+                    origin = c.sync_result['origin']
+                    with self.spectrum_lock:
+                        c.synced_grid_complex = self.spectrum.fine_grid_complex[origin[0]:origin[0]+c.size[0],
                                                                             origin[1]:origin[1]+c.size[1]].copy()
-                c.demap_result = self.demod.demap_candidate(c)
-                c.demap_returned = timers.tnow()
-                c.ncheck_initial = self.demod.ldpc.fast_ncheck(c.demap_result['llr'])
-                
-                if(c.ncheck_initial <30): # decode immediately if low ncheck_initial # magic number
-                    c.ldpc_requested = timers.tnow()
-                    c.threaded = False
-                    self.demod.decode_candidate(c, self.onDecode)
-                else: # send high ncheck_initial for threaded decode
-                    if(c.ncheck_initial < self.max_ncheck and self.n_threads < 15): # magic number
-                        self.n_threads +=1
-                        if (self.n_threads > self.peak_threads): self.peak_threads = self.n_threads
-                        c.threaded = True
-                        c.ldpc_requested = timers.tnow()
-                        threading.Thread(target=self.demod.decode_candidate, kwargs={'candidate':c, 'onDecode':self.onDecode}, daemon=True).start()
+                    c.demap_result = self.demod.demap_candidate(c)
+                    c.ncheck_initial = self.demod.ldpc.fast_ncheck(c.demap_result['llr'])
+                    c.demap_returned = timers.tnow()
 
-                
+                if not c.ldpc_requested:
+                    ncheck_limit = self.max_ncheck
+                    if (timers.tnow()-c.cycle_start <13.5): ncheck_limit = 5
+                    if (c.ncheck_initial < ncheck_limit):     
+                        c.ldpc_requested = timers.tnow()
+                        self.demod.decode_candidate(c, self.onDecode)
+
     def onDecode(self, c):
         c.ldpc_returned = timers.tnow()
-        if(c.threaded):
-            self.n_threads -=1
         if(c.decode_success):
             origin = c.sync_result['origin']
             dt = origin[2] - 0.8 

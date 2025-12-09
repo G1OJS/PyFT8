@@ -30,7 +30,6 @@ class Candidate:
         self.ldpc_returned = None
         self.decode_result = None
         self.message_decoded = None
-        self.abandoned = None
         self.ncheck_initial = 5000
         
     @property
