@@ -162,7 +162,8 @@ class Cycle_manager():
 
                 if not c.ldpc_requested:
                     ncheck_limit = self.max_ncheck
-                    if (timers.tnow()-c.cycle_start <13.5): ncheck_limit = 5
+                    if (timers.tnow()-c.cycle_start <12.5): ncheck_limit = 5
+                    if (timers.tnow()-c.cycle_start <13.0): ncheck_limit = 25
                     if (c.ncheck_initial < ncheck_limit):     
                         c.ldpc_requested = timers.tnow()
                         self.demod.decode_candidate(c, self.onDecode)
