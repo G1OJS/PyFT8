@@ -123,7 +123,7 @@ class FT8Demodulator:
         c.ldpc_result = self.ldpc.decode(c)
         if(c.ldpc_result['payload_bits']):
             c.decode_result = FT8_unpack(c)
-        onDecode(c)
+        if(onDecode): onDecode(c)
 
 # ======================================================
 # FT8 Unpacking functions
