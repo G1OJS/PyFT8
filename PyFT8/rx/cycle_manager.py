@@ -52,6 +52,7 @@ class Cycle_manager():
         self.max_cycles = max_cycles
         self.cycle_countdown = max_cycles
         self.cyclestart_str = None
+        self.pause_ldpc = False
         self.prev_cycle_time = 1e40
         n_hops_sync_band  = self.demod.slack_hops + np.max(self.spectrum.hop_idxs_Costas)
         self.t_search = n_hops_sync_band * self.spectrum.dt
@@ -60,6 +61,8 @@ class Cycle_manager():
         self.cands_list_lock = threading.Lock()
         self.sync_score_thresh = sync_score_thresh
         self.n_decode_success = 0
+        self.n_threads =0
+        self.peak_threads = 0
         self.duplicate_filter = set()
         self.loading_metrics = {'n_for_ldpc':0, 'n_decoded':0}
 
@@ -67,16 +70,11 @@ class Cycle_manager():
         self.onOccupancy = onOccupancy
 
         threading.Thread(target=self.threaded_spectrum_tasks, daemon=True).start()
-        threading.Thread(target=self.threaded_demap_manager, daemon=True).start()
-        threading.Thread(target=self.threaded_decode_manager, daemon=True).start()
-        threading.Thread(target=self.threaded_UI_updater, daemon=True).start()
 
         with open("timings.log","w") as f:
-            f.write("cycle,tcycle,epoch,id,sync_returned,demap_requested,demap_returned,ncheck_initial,ldpc_requested,ldpc_returned,message_decoded,abandoned\n")
+            f.write("cycle,tcycle,epoch,id,sync_returned,demap_requested,demap_returned,ncheck_initial,ldpc_requested,ldpc_returned,message_decoded,frac_to_ldpc,frac_from_ldpc,frac_decodes\n")
 
-#============================================
-# Rollover and early candidate search
-#============================================
+
     def threaded_spectrum_tasks(self):
         timers.timedLog("Rollover manager waiting for end of partial cycle")
         while (timers.tnow() % self.demod.sigspec.cycle_seconds) < self.demod.sigspec.cycle_seconds  - 0.1 :
@@ -86,47 +84,48 @@ class Cycle_manager():
         minimised_queue = False
         while self.running:
             timers.sleep(0.25)
+            self.pause_ldpc = not self.pause_ldpc
             cycle_time = timers.tnow() % self.demod.sigspec.cycle_seconds 
             if (cycle_time < self.prev_cycle_time): 
                 if not self.cycle_countdown:
                     self.running = False
                     break
-                minimised_queue = False
+                dumped_stats = False
                 self.spectrum.fine_grid_pointer = 0
                 print()
-                
-                timers.timedLog(f"Cycle rollover {cycle_time:.2f}", logfile = 'pipeline.log')
+                timers.timedLog(f"Cycle rollover {cycle_time:.2f}")
                 self.cycle_countdown -=1
                 self.cyclestart_str = timers.cyclestart_str()
                 self.n_decode_success = 0
                 cycle_searched = False
             self.prev_cycle_time = cycle_time
 
+            self.loading_metrics = { "n_synced":            len(config.cands_list) / 400,
+                                     "n_demapped":          len([c for c in config.cands_list if c.demap_result]) / 400,
+                                     "frac_to_ldpc":        len([c for c in config.cands_list if c.ldpc_requested]) / (.001+len([c for c in config.cands_list if c.demap_result])),
+                                     "frac_from_ldpc":      len([c for c in config.cands_list if c.ldpc_result]) / (.001+len([c for c in config.cands_list if c.demap_result])),
+                                     "n_decoded":           len([c for c in config.cands_list if c.ldpc_result]) / 400,
+                                     "frac_decodes":        len([c for c in config.cands_list if c.decode_success]) / (.001+len(config.cands_list))}
+            
+            send_to_ui_ws("loading_metrics", self.loading_metrics)
 
-            if (cycle_time > self.t_search -1 and not minimised_queue):
+            if (cycle_time > self.t_search -1 and not dumped_stats):
+                dumped_stats = True
                 def t(et,cb):
                     return f"{et - cb :6.2f}" if et else None
                 
-                with self.cands_list_lock:
-                    minimised_queue = True
-                    tmp_list = config.cands_list
-                    zero_ns = [c for c in config.cands_list if c.ncheck_initial ==0]
-                #    config.cands_list = zero_ns
-                #for c in tmp_list:
-                  #  if (not c in config.cands_list):
-                 #       c.abandoned = timers.tnow();
-
                 if(self.cycle_countdown > self.max_cycles - 10):
                     print("Output statistics")
-                    for c in tmp_list:
+                    for c in config.cands_list:
                         cb = c.cycle_start
                         timers.timedLog(f"{c.id},{t(c.sync_returned,cb)},{t(c.demap_requested,cb)},{t(c.demap_returned,cb)},"
                                        +f"{c.ncheck_initial},{t(c.ldpc_requested,cb)},{t(c.ldpc_returned,cb)},"
-                                       +f"{t(c.message_decoded,cb)},{t(c.abandoned,cb)}", logfile = 'timings.log', silent = True)
+                                       +f"{t(c.message_decoded,cb)},{self.loading_metrics['frac_to_ldpc']:.2f},"
+                                       +f"{self.loading_metrics['frac_from_ldpc']:.2f}, {self.loading_metrics['frac_decodes']:.2f}", logfile = 'timings.log', silent = True)
             
             if (cycle_time > self.t_search and not cycle_searched):
                 cycle_searched = True
-                timers.timedLog(f"Search spectrum ...", logfile = 'pipeline.log')
+                timers.timedLog(f"Search spectrum ...")
                 idx_n = self.spectrum.fine_grid_pointer
                 idx_0 = idx_n - self.demod.slack_hops - self.sigspec.costas_len * self.demod.hops_persymb
                 
@@ -136,52 +135,46 @@ class Cycle_manager():
                 with self.cands_list_lock:
                     config.cands_list = cands
 
-                timers.timedLog(f"Spectrum searched -> {len(config.cands_list)} candidates", logfile = 'pipeline.log')
+                timers.timedLog(f"Spectrum searched -> {len(config.cands_list)} candidates")
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
 
-#============================================
-# Decoding manager
-#============================================
 
-    def threaded_demap_manager(self):
-        # find candidates that can have spectrum filled, fill and demap
+    def decode_manager(self):
         while self.running:
             timers.sleep(0.01)
 
             with self.cands_list_lock:
-                tmp_list = [c for c in config.cands_list if (
-                                  self.spectrum.fine_grid_pointer > c.sync_result['last_data_hop']
-                              or (self.cyclestart_str != c.cyclestart_str and self.spectrum.fine_grid_pointer +  self.spectrum.hops_percycle > c.sync_result['last_data_hop'])
-                                  )]
+                tmp_list = [c for c in config.cands_list if not c.demap_requested and
+                                 (self.spectrum.fine_grid_pointer > c.sync_result['last_data_hop']
+                              or (self.cyclestart_str != c.cyclestart_str and self.spectrum.fine_grid_pointer +  self.spectrum.hops_percycle > c.sync_result['last_data_hop']) )]
 
             for c in tmp_list:                
-                if(not c.demap_requested):
-                    c.demap_requested = timers.tnow()
-                    origin = c.sync_result['origin']
-                    with self.spectrum_lock:
-                        c.synced_grid_complex = self.spectrum.fine_grid_complex[origin[0]:origin[0]+c.size[0],
-                                                                                origin[1]:origin[1]+c.size[1]].copy()
-                    c.demap_result = self.demod.demap_candidate(c)
-                    c.demap_returned = timers.tnow()
-                    c.ncheck_initial = self.demod.ldpc.fast_ncheck(c.demap_result['llr'])
+                c.demap_requested = timers.tnow()
+                origin = c.sync_result['origin']
+                with self.spectrum_lock:
+                    c.synced_grid_complex = self.spectrum.fine_grid_complex[origin[0]:origin[0]+c.size[0],
+                                                                            origin[1]:origin[1]+c.size[1]].copy()
+                c.demap_result = self.demod.demap_candidate(c)
+                c.demap_returned = timers.tnow()
+                c.ncheck_initial = self.demod.ldpc.fast_ncheck(c.demap_result['llr'])
+                
+                if(c.ncheck_initial <30): # decode immediately if low ncheck_initial
+                    c.ldpc_requested = timers.tnow()
+                    c.threaded = False
+                    self.demod.decode_candidate(c, self.onDecode)
+                else: # send high ncheck_initial for threaded decode
+                    if(self.n_threads < 5):
+                        self.n_threads +=1
+                        if (self.n_threads > self.peak_threads): self.peak_threads = self.n_threads
+                        c.threaded = True
+                        c.ldpc_requested = timers.tnow()
+                        threading.Thread(target=self.demod.decode_candidate, kwargs={'candidate':c, 'onDecode':self.onDecode}, daemon=True).start()
 
-    def threaded_decode_manager(self):
-        # send all candidates that have been demapped to ldpc
-        max_in_ldpc = 250 #magic number
-        while self.running:
-            timers.sleep(0.01)
-            spare_slots = max_in_ldpc - (self.loading_metrics['n_for_ldpc'] - self.loading_metrics['n_decoded'])
-            if(spare_slots <= 0): 
-                continue
-            with self.cands_list_lock:
-                tmp_list = [c for c in config.cands_list if c.ncheck_initial <= self.max_ncheck and not c.ldpc_requested]
-            tmp_list.sort(key = lambda c: c.ncheck_initial)
-            for c in tmp_list[:spare_slots]:
-                c.ldpc_requested = timers.tnow()
-                threading.Thread(target=self.demod.decode_candidate, kwargs={'candidate':c, 'onDecode':self.onDecode}, daemon=True).start()
-                    
+                
     def onDecode(self, c):
         c.ldpc_returned = timers.tnow()
+        if(c.threaded):
+            self.n_threads -=1
         if(c.decode_success):
             origin = c.sync_result['origin']
             dt = origin[2] - 0.8 
@@ -196,20 +189,5 @@ class Cycle_manager():
                     self.onSuccessfulDecode(c)
 
 
-#============================================
-# UI counters update
-#============================================
-    def threaded_UI_updater(self):
-        while self.running:
-            timers.sleep(0.25)
-            
-            self.loading_metrics = { "n_synced":   len(config.cands_list),
-                             "n_demapped": len([c for c in config.cands_list if c.demap_result]),
-                             "n_for_ldpc": len([c for c in config.cands_list if c.ncheck_initial <= self.max_ncheck]),
-                             "n_decoded": len([c for c in config.cands_list if c.ldpc_result])}
-            send_to_ui_ws("loading_metrics", self.loading_metrics)
-            timers.timedLog(self.loading_metrics, logfile= 'pipeline.log', silent = True)
-            
-            
 
 

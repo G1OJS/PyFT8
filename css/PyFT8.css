@@ -71,7 +71,7 @@ body { font-family: sans-serif; background:var(--page-bg); color:#ddf; margin:1e
     100% { background-color: var(--by-me-bg-hl); }
 }
 
-#pipeline {display: flex;align-items: flex-end;gap: 10px;height: 120px;padding: 10px;}
+#metrics_area {display: flex;align-items: flex-end;gap: 10px;height: 120px;padding: 10px;}
 
 .bar-container {
 	display: flex;

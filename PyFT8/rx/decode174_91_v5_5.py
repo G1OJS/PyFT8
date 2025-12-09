@@ -118,7 +118,7 @@ class LDPC174_91:
                 return {'payload_bits':payload_bits, 'n_its':it, 'ncheck_initial':ncheck_initial, 'failures': failures} 
 
             with pause_cond:
-                while config.pause_ldpc:
+                while c.threaded and config.pause_ldpc:
                     pause_cond.wait()
 
             toc = zn[self.kNM]  # converges faster than np.tanh(-toc / 2)

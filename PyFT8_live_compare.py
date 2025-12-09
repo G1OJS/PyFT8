@@ -53,11 +53,13 @@ def add_action_buttons():
 def run():
     start_wsjtx_tailer(on_wsjtx_decode)
     cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, 
-                              max_iters = 35, max_stall = 8, max_ncheck = 35,
+                              max_iters = 35, max_stall = 8, max_ncheck = 40,
                               sync_score_thresh = 1.6)
     start_UI("PyFT8_live_compare.html", process_UI_event)
     add_action_buttons()
     set_band_freq("set-band-20m-14.074")
+
+    cycle_manager.decode_manager()
 
 run()
     
