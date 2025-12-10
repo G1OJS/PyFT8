@@ -53,7 +53,7 @@ def add_action_buttons():
 def run():
     start_wsjtx_tailer(on_wsjtx_decode)
     cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, 
-                              max_iters = 30, max_stall = 8, max_ncheck = 30,
+                              max_iters = 30, max_stall = 8, max_ncheck = 39, timeout = .1,
                               sync_score_thresh = 1.6)
     start_UI("PyFT8_live_compare.html", process_UI_event)
     add_action_buttons()

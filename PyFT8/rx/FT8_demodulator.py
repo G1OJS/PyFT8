@@ -1,10 +1,5 @@
 
-import math
 import numpy as np
-from PyFT8.rx.decode174_91_v5_5 import LDPC174_91
-import PyFT8.FT8_crc as crc
-from PyFT8.comms_hub import config, send_to_ui_ws
-import threading
 import PyFT8.timers as timers
 
 eps = 1e-12
@@ -42,7 +37,7 @@ class Candidate:
         return f"{c.decode_result['call_a']} {c.decode_result['call_b']} {c.decode_result['grid_rpt']}"
     
 class FT8Demodulator:
-    def __init__(self, sigspec, max_iters, max_stall, max_ncheck):
+    def __init__(self, sigspec):
         self.sigspec = sigspec
         self.sample_rate=12000
         self.fbins_pertone=3
@@ -52,7 +47,6 @@ class FT8Demodulator:
         self.samples_perhop = int(self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb) )
         self.hops_persec = self.sample_rate / self.samples_perhop 
         self.slack_hops =  int(self.hops_persymb * (self.sigspec.symbols_persec * self.sigspec.cycle_seconds - self.sigspec.num_symbols))
-        self.ldpc = LDPC174_91(max_iters, max_stall, max_ncheck)
 
     def find_syncs(self, spectrum, sync_score_thresh):
         candidates = []
@@ -117,66 +111,4 @@ class FT8Demodulator:
         llr_sd = np.std(llr)
         return {'llr_sd':llr_sd, 'llr':llr, 'snr':snr}
 
-    def decode_candidate(self, candidate, onDecode):
-        c = candidate
-        c.demap_result['llr'] = 3 * c.demap_result['llr'] / (c.demap_result['llr_sd']+.001)
-        c.ldpc_result = self.ldpc.decode(c)
-        if(c.ldpc_result['payload_bits']):
-            c.decode_result = FT8_unpack(c)
-        if(onDecode): onDecode(c)
-
-# ======================================================
-# FT8 Unpacking functions
-# ======================================================
-
-def unpack_ft8_c28(c28):
-    from string import ascii_uppercase as ltrs, digits as digs
-    if c28<3: return ["DE", 'QRZ','CQ'][c28]
-    n = c28 - 2_063_592 - 4_194_304 # NTOKENS, MAX22
-    if n >= 0:
-        charmap = [' ' + digs + ltrs, digs + ltrs, digs + ' ' * 17] + [' ' + ltrs] * 3
-        divisors = [36*10*27**3, 10*27**3, 27**3, 27**2, 27, 1]
-        indices = []
-        for d in divisors:
-            i, n = divmod(n, d)
-            indices.append(i)
-        callsign = ''.join(t[i] for t, i in zip(charmap, indices)).lstrip()
-        return callsign.strip()
-    return '<...>'
-
-def unpack_ft8_g15(g15, ir):
-    if g15 < 32400:
-        a, nn = divmod(g15,1800)
-        b, nn = divmod(nn,100)
-        c, d = divmod(nn,10)
-        return f"{chr(65+a)}{chr(65+b)}{c}{d}"
-    r = g15 - 32400
-    txt = ['','','RRR','RR73','73']
-    if 0 <= r <= 4: return txt[r]
-    snr = r-35
-    R = '' if (ir == 0) else 'R'
-    return f"{R}{snr:+03d}"
-
-def FT8_unpack(c):
-    # need to add support for /P and R+report (R-05)
-    bits = c.ldpc_result['payload_bits']
-    i3 = 4*bits[74]+2*bits[75]+bits[76]
-    c28_a = int(''.join(str(b) for b in bits[0:28]), 2)
-    c28_b = int(''.join(str(b) for b in bits[29:57]), 2)
-    ir = int(bits[58])
-    g15  = int(''.join(str(b) for b in bits[59:74]), 2)
-    if(c28_a + c28_b + g15 == 0):
-        return None
-    call_a = unpack_ft8_c28(c28_a)
-    call_b =  unpack_ft8_c28(c28_b)
-    grid_rpt = unpack_ft8_g15(g15, ir)
-    origin = c.sync_result['origin']
-    snr = c.demap_result['snr']
-    freq_str = f"{origin[3]:4.0f}"
-    time_str = f"{origin[2]:4.1f}"
-    decode_result = {'cyclestart_str':c.cyclestart_str , 'freq':freq_str,
-                     'call_a':call_a, 'call_b':call_b, 'grid_rpt':grid_rpt,
-                     't0_idx':origin[0], 'dt':time_str, 'snr':snr,
-                     'n_its':c.ldpc_result['n_its'], 'ncheck_initial':c.ldpc_result['ncheck_initial']}
-    return decode_result
 
