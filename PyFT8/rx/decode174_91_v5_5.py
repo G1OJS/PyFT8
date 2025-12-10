@@ -33,8 +33,6 @@ import PyFT8.timers as timers
 from PyFT8.comms_hub import config
 from threading import Condition
 
-pause_cond = Condition()
-
 class LDPC174_91:
     def __init__(self, max_it, max_nstall, max_ncheck, timeout):
         self.max_iterations = max_it
@@ -106,6 +104,7 @@ class LDPC174_91:
         tovrow = np.zeros(174, dtype=np.float32)
         zn = np.array(llr, dtype=np.float32)
         alpha = 1.05
+        pause_cond = Condition()
 
         while True:
             ncheck = get_ncheck(zn)
@@ -119,9 +118,7 @@ class LDPC174_91:
             if(len(payload_bits) > 0) or any([f for f in failures.values()]):
                 return {'payload_bits':payload_bits, 'n_its':it, 'ncheck_initial':ncheck_initial, 'failures': failures} 
 
-            with pause_cond:
-                while config.pause_ldpc:
-                    pause_cond.wait()
+            timers.sleep(0)
 
             toc = zn[self.kNM]  # converges faster than np.tanh(-toc / 2)
             tanhtoc = np.tanh(-toc).astype(np.float32)

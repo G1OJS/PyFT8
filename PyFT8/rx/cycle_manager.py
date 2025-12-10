@@ -164,30 +164,29 @@ class Cycle_manager():
                     if not c.demap_requested:
                         c.demap_requested = timers.tnow()
                         origin = c.sync_result['origin']
-                        #config.pause_ldpc = True
+                       # config.pause_ldpc = True
                         with self.spectrum_lock:
                             c.synced_grid_complex = self.spectrum.fine_grid_complex[origin[0]:origin[0]+c.size[0],
                                                                                 origin[1]:origin[1]+c.size[1]].copy()
                         c.demap_result = self.demod.demap_candidate(c)
-                        #config.pause_ldpc = False
+                       # config.pause_ldpc = False
                         c.ncheck_initial = self.ldpc.fast_ncheck(c.demap_result['llr'])
                         c.demap_returned = timers.tnow()
                 
 
     def decode_manager(self):
         while self.running:    
-            timers.sleep(0.25)
+            timers.sleep(0.2)
             to_decode = [c for c in config.cands_list if not c.ldpc_requested and c.ncheck_initial <= self.max_ncheck]
             if(to_decode):
                 this_cycle_start = np.max([c.cycle_start for c in to_decode])
                 to_decode.sort(key = lambda c: c.ncheck_initial)            
-                for c in to_decode:
+                for c in to_decode[:3]:
                     timers.sleep(0.01)
                     c.ldpc_requested = timers.tnow()
                     c.demap_result['llr'] = 3 * c.demap_result['llr'] / (c.demap_result['llr_sd']+.001)
                     c.ldpc_result = self.ldpc.decode(c)
                     c.ldpc_returned = timers.tnow()
-                    print(c.ldpc_result['failures'])
                     if(c.ldpc_result['payload_bits']):
                         c.decode_result = FT8_unpack(c)
                         if(c.decode_success):
