@@ -235,7 +235,7 @@ def run():
                               onOccupancy = onOccupancy,
                               max_iters = 30, max_stall = 8, max_ncheck = 33,
                               sync_score_thresh = 1.8, thread_PyFT8_decode_manager = True)
-    start_UI("PyFT8_tcvr_UI.html", process_UI_event)
+    start_UI("PyFT8_UI.html", process_UI_event)
     add_action_buttons()
     send_to_ui_ws("set_myCall", {'myCall':config.myCall})
     send_to_ui_ws("connect_pskr_mqtt", {'dummy':'dummy'})

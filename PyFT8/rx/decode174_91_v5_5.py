@@ -86,10 +86,10 @@ class LDPC174_91:
         return int(np.sum(synd_checks))
             
     def decode(self, c):
-        llr = c.demap_result['llr']
         it = 0
         nstall, ncheck_last = 0, 0 
         ncheck_initial = None
+        c.llr = 3 * c.llr / (c.llr_sd +.01)
 
         def get_ncheck(llr):
             synd_checks = [ sum(1 for llr_bit in llr[self.synd_check_idxs[i]] if llr_bit > 0) %2 for i in range(83)]
@@ -102,7 +102,7 @@ class LDPC174_91:
             return payload_bits
         
         tovrow = np.zeros(174, dtype=np.float32)
-        zn = np.array(llr, dtype=np.float32)
+        zn = np.array(c.llr, dtype=np.float32)
         alpha = 1.05
         pause_cond = Condition()
 

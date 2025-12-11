@@ -59,7 +59,8 @@ wavefile.setsampwidth(2)
 wavefile.writeframes(audio_data.tobytes())
 wavefile.close()
 
-decoded_candidates = set()
+global decoded_candidates
+decoded_candidates = []
 first = True
 def onDecode(c):
     global first
@@ -68,38 +69,32 @@ def onDecode(c):
         heads = ['End_cyc+', 'Rx call', 'Tx call', 'GrRp', 'SyncScr', 'LLR_sd', 'snr', 't0_idx', 'f0_idx', 't0', 'f0',  'iters']
         print(''.join([f"{t:>8} " for t in heads]))
         first = False
-    decoded_candidates.add(c)
-    dd = c.decode_result
+    dd = c.decode_dict
     t_decode = timers.tnow() % 15 - 15
     vals = [f"{t_decode:8.2f}", dd['call_a'], dd['call_b'], dd['grid_rpt'],
-            f"{c.sync_result['sync_score']:>5.2f}", f"{c.demap_result['llr_sd']:5.2f}", f"{c.demap_result['snr']:5.0f}",
-            c.sync_result['origin'][0], c.sync_result['origin'][1],
-            f"{c.sync_result['origin'][2]:8.2f}s", f"{c.sync_result['origin'][3]:8.2f}Hz",
-            c.ldpc_result['n_its'] ]
+            f"{dd['sync_score']:>5.2f}", f"{dd['llr_sd']:5.2f}", f"{dd['snr']:5.0f}",
+            dd['t0_idx'], dd['f0_idx'], f"{dd['dt']:8.2f}s", f"{dd['freq']:8.2f}Hz", dd['n_its']]
 
     print(''.join([f"{t:>8} " for t in vals]))
-
+    decoded_candidates.append(c)
 
 start_load = timers.tnow()
 cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = wav_file, 
                           max_iters = 10, max_stall = 8, max_ncheck = 28, 
-                          sync_score_thresh = 2, max_cycles = 1, thread_decode_manager = True)
+                          sync_score_thresh = 2, max_cycles = 1,
+                            thread_PyFT8_decode_manager = True, return_candidate = True)
 
 while cycle_manager.running:
     timers.sleep(0.5)
     
-print(f"DONE. Unique decodes = {len(decoded_candidates)}")
+print(f"DONE.")
 
-wf = Waterfall(cycle_manager.spectrum)
-wf.update_main(candidates=decoded_candidates)
-wf.show_zoom(candidates=decoded_candidates, phase = False)
-wf.show_zoom(candidates=decoded_candidates, phase = True)
-
-#print(f"Payload symbols demodulated: {''.join([str(int(s)) for s in candidates[0].payload_symbols])}")
 print("bits expected / bits decoded")
 print("11100001111111000101001101010111000100000011110100001111000111001010001010001")
 if(decoded_candidates):
     for c in decoded_candidates:
-        print(''.join(str(int(b)) for b in c.ldpc_result['payload_bits'][:77]))
+        print(''.join(str(int(b)) for b in c.payload_bits[:77]))
 
-
+wf = Waterfall(cycle_manager.spectrum)
+wf.update_main(candidates=decoded_candidates)
+wf.show_zoom(candidates=decoded_candidates)

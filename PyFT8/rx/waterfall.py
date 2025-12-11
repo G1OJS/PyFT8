@@ -44,8 +44,7 @@ class Waterfall:
 
         if candidates:
             for c in candidates:
-                origin = c.sync_result['origin']
-                origin_img = (origin[3] - self.spectrum.dt/2, origin[2])
+                origin_img = (c.origin[3] - self.spectrum.df/2, c.origin[2])
                 rect = patches.Rectangle(origin_img, c.sigspec.bw_Hz, (c.sigspec.num_symbols-1) / c.sigspec.symbols_persec,
                   linewidth=1.2,edgecolor="lime", facecolor="none"
                 )
@@ -79,8 +78,7 @@ class Waterfall:
             if(not phase):
                 vmax = np.max(vals)
                 im.norm = LogNorm(vmin=vmax/100000, vmax=vmax)
-            origin = c.sync_result['origin']
-            ax.set_title(f"{origin[3]:.0f}Hz {origin[2]:.2f}s {c.message}")
+            ax.set_title(f"{c.origin[3]:.0f}Hz {c.origin[2]:.2f}s {c.decode_dict['call_b']}")
             ax.set_xlabel("freq bin index")
             ax.set_ylabel("hop index")
 

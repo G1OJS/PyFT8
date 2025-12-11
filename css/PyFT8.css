@@ -27,8 +27,8 @@ body { font-family: sans-serif; background:var(--page-bg); color:#ddf; margin:1e
 		{display:grid; grid-template-columns: repeat(3, max-content); 
 		background:var(--panel-bg); width:max-content;}	
 
-.decodes_grid {display:grid; grid-template-columns: repeat( 6, max-content) auto; grid-auto-rows: min-content; 
-			   background:var(--table-bg); color:#8cf; margin:0.5em; height:25em; min-width:25em; 
+.decodes_grid {display:grid; grid-template-columns: repeat( 7, max-content) auto; grid-auto-rows: min-content; 
+			   background:var(--table-bg); color:#8cf; margin:0.5em; height:25em; min-width:35em; 
 			   align-content: start; overflow-y:scroll;}	
 			   
 .list_grid {display:grid; grid-template-columns: 1fr; grid-auto-rows: min-content; 
@@ -56,14 +56,9 @@ body { font-family: sans-serif; background:var(--page-bg); color:#ddf; margin:1e
 /* top rows - headings */
 .grid_row.header {display: contents;position: sticky;top: 0;z-index: 20;}
 .grid_row.header > .grid_cell {background: var(--table-bg);position: sticky;top: 0;z-index: 21; color:#ddf; border-right:1px lime dashed;}
-
 .grid_cell {padding:1px 5px 1px 5px; font-weight:600; color:var(--table-color);}
 .grid_cell.hearing_me {color:'green';text-align:center;}
-
-.grid_row.flash > div {
-    animation: flash-bg 1.4s ease-in-out infinite;;
-}
-
+.grid_row.flash > div { animation: flash-bg 1.4s ease-in-out infinite;;}
 
 @keyframes flash-bg {
     0%   { background-color: var(--by-me-bg-hl); }
@@ -71,32 +66,10 @@ body { font-family: sans-serif; background:var(--page-bg); color:#ddf; margin:1e
     100% { background-color: var(--by-me-bg-hl); }
 }
 
-#metrics_area {display: flex;align-items: flex-end;gap: 10px;height: 120px;padding: 10px;}
-
-.bar-container {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-}
-
-.bar-bg {
-	width: 20px;
-	height: 100px;
-	background: linear-gradient(to bottom, red, yellow, green);
-}
-
-.bar {
-	width: 20px;
-	height: 100px;
-	background: gray;
-	transform-origin: top;
-	transform: scaleY(0.1);
-	transition: transform 1s cubic-bezier(0.2, 0, 0.5, 1);
-}
-
-.label {
-	margin-top: 5px;
-	font-size: 0.7em;
-}
+#pipeline {display: flex;align-items: flex-end;gap: 10px;height: 120px;padding: 10px;}
+.bar-container {display: flex;flex-direction: column;align-items: center;}
+.bar-bg {width: 20px;height: 100px;background: linear-gradient(to bottom, red, yellow, green);}
+.bar {width: 20px;height: 100px;background: gray;transform-origin: top;transform: scaleY(0.1);transition: transform 1s cubic-bezier(0.2, 0, 0.5, 1);}
+.label {margin-top: 5px;font-size: 0.7em;}
 
 		

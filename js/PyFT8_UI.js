@@ -5,6 +5,8 @@ let myCall = "";
 let currentBand = "20m";
 let txFreq = null;
 let rxFreq = null;
+let n_PyFT8_decodes = 0;
+let n_wsjtx_decodes = 0;
 
 export {myCall, currentBand}
 
@@ -17,10 +19,8 @@ function setCurrentBand(band){
 	currentBand = band;
 	for (const el of document.querySelectorAll('.grid_row:not(.header)')) {el.remove()}
 	document.getElementById('currentBand').innerText = currentBand;
-	if(document.URL.includes("compare")){
-		n_wsjtx_decodes.innerText = 0;
-		n_PyFT8_decodes.innerText = 0;
-	}
+	n_PyFT8_decodes = 0;
+	n_wsjtx_decodes = 0;
 }
 
 function update_clock() {
@@ -60,12 +60,7 @@ function add_decode_row(decode_dict, grid_id) {
 	if(dd.call_b == myCall) {row.classList.add('sentBymyCall')}
 	
 	const snr_fmt = (parseInt(dd.snr)<0? "":"+") + dd.snr
-	let fields = null;
-	if(document.URL.includes("compare")){
-		fields = [dd.cyclestart_str.split('_')[1], dd.decode_delay, snr_fmt, dd.freq, dd.dt, dd.call_a, dd.call_b, dd.grid_rpt,dd.n_its, dd.ncheck_initial,''];
-	} else {
-		fields = [dd.cyclestart_str.split('_')[1], snr_fmt, dd.freq, dd.call_a, dd.call_b, dd.grid_rpt, dd.hearing_me];
-	}
+	let fields = [dd.cyclestart_str.split('_')[1], snr_fmt, dd.freq, dd.call_a, dd.call_b, dd.grid_rpt, dd.decoder, dd.hearing_me];
 	fields.forEach((field, idx) => {
 		const cell_div = document.createElement("div");
 		cell_div.textContent = field;
@@ -101,33 +96,19 @@ websocket.onmessage = (event) => {
 	if(dd.topic == "freq_occ_array") 	{update_spectrum(dd.histogram)}
 	
 	if(dd.topic == 'decode_dict') {
-		if(document.URL.includes("tcvr")){
-			if (dd.priority) {add_decode_row(dd, 'priority_decodes')}
-			dd.hearing_me = is_hearing_me(dd.call_b)? "X":"";	
-			add_decode_row(dd, 'all_decodes')
-		}
-		if(document.URL.includes("compare")){
-			const n_PyFT8_decodes = document.getElementById('n_PyFT8_decodes');
-			const pc_PyFT8_decodes = document.getElementById('pc_PyFT8_decodes');
-			const n_wsjtx_decodes = document.getElementById('n_wsjtx_decodes');
-			const t = new Date / 1000;
-			let decode_delay = t%15
-			decode_delay -= decode_delay > 11 ? 15:0
-			dd.decode_delay = Math.round(100*decode_delay)/100 ;
-			if (dd.source == 'WSJTX') {
-				add_decode_row(dd, 'wsjtx_decodes');
-				n_wsjtx_decodes.innerText = 1+parseInt(n_wsjtx_decodes.innerText);
-			} else {
-				add_decode_row(dd, 'PyFT8_decodes');
-				n_PyFT8_decodes.innerText = 1+parseInt(n_PyFT8_decodes.innerText);
-			}
-			let w = parseInt(n_wsjtx_decodes.innerText)
-			let p = parseInt(n_PyFT8_decodes.innerText)
-			if(w>0){
-				let pc = Math.round(100*p/w);
-				pc_PyFT8_decodes.innerText = pc + '%';
-			}
-		}
+		console.log(dd.call_a)
+		dd.hearing_me = is_hearing_me(dd.call_b)? "X":"";	
+		n_PyFT8_decodes += (dd.decoder == 'PyFT8')? 1:0
+		n_wsjtx_decodes += (dd.decoder == 'WSJTX')? 1:0
+		let pc_PyFT8_decodes = Math.round(100*n_PyFT8_decodes / (n_wsjtx_decodes+n_PyFT8_decodes));
+		let comp = `PyFT8: ${n_PyFT8_decodes} (${pc_PyFT8_decodes}%) WSJT-X: ${n_wsjtx_decodes}`
+		document.getElementById('stats').innerHTML = comp;
+		const t = new Date / 1000;
+		let decode_delay = t%15
+		decode_delay -= decode_delay > 11 ? 15:0
+		dd.decode_delay = Math.round(100*decode_delay)/100 ;
+		if (dd.priority) {add_decode_row(dd, 'priority_decodes')}
+		add_decode_row(dd, 'all_decodes');
 	}
 	
 }
@@ -143,9 +124,9 @@ function add_action_button(caption, action, classname){
 }
 
 function updateLoadingMetrics(metrics_dict) {
-	let metrics_area = document.getElementById("metrics_area");
-	if (metrics_area.children.length == 0) {
-		console.log("create metrics area")
+	let pipeline_el = document.getElementById("pipeline");
+	if (pipeline_el.children.length == 0) {
+		console.log("create pipeline bars")
 		let html = "";
 		
 		for (const [k, v] of Object.entries(metrics_dict)){
@@ -154,7 +135,7 @@ function updateLoadingMetrics(metrics_dict) {
 				html = html + k + "' class='bar'></div></div><span class='label'>" + k + "</span></div>"
 			}
 		}
-		metrics_area.innerHTML = html;
+		pipeline_el.innerHTML = html;
 	}
 	for (const [k, v] of Object.entries(metrics_dict)){
 		if(k!='topic'){
