@@ -154,10 +154,6 @@ class QSO:
 
 QSO = QSO()
 
-def onDecodePyFT8(candidate):
-    decode_dict = candidate.decode_result
-    onDecode(decode_dict)
-    
 def onDecode(decode_dict):
     import PyFT8.timers as timers
     from PyFT8.comms_hub import config, send_to_ui_ws
@@ -235,18 +231,16 @@ def add_action_buttons():
         send_to_ui_ws("add_action_button", {'caption':band['band_name'], 'action':f"set-band-{band['band_name']}-{band['band_freq']}", 'class':'button'})
     
 def run():        
-    cycle_manager = Cycle_manager(FT8, None if config.decoder == 'wsjtx' else onDecodePyFT8,
+    cycle_manager = Cycle_manager(FT8, onDecode,
                               onOccupancy = onOccupancy,
                               max_iters = 30, max_stall = 8, max_ncheck = 33,
-                              sync_score_thresh = 1.8)
-    if(config.decoder == 'wsjtx') : start_wsjtx_tailer(onDecode)
+                              sync_score_thresh = 1.8, thread_PyFT8_decode_manager = True)
     start_UI("PyFT8_tcvr_UI.html", process_UI_event)
     add_action_buttons()
     send_to_ui_ws("set_myCall", {'myCall':config.myCall})
     send_to_ui_ws("connect_pskr_mqtt", {'dummy':'dummy'})
     set_band_freq("set-band-20m-14.074")
 
-    cycle_manager.decode_manager()
     
 run()
     

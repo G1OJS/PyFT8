@@ -6,6 +6,7 @@ from PyFT8.comms_hub import config, send_to_ui_ws
 from PyFT8.rx.FT8_demodulator import FT8Demodulator
 from PyFT8.rx.decode174_91_v5_5 import LDPC174_91
 from PyFT8.rx.FT8_unpack import FT8_unpack
+from PyFT8.rx.wsjtx_all_tailer import start_wsjtx_tailer
 import pyaudio
 import queue
 import wave
@@ -41,7 +42,7 @@ class Spectrum:
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
                  max_iters = 90, max_stall = 8, max_ncheck = 30, timeout = 1,
-                 sync_score_thresh = 3, max_cycles = 5000, thread_decode_manager = False):
+                 sync_score_thresh = 3, max_cycles = 5000, thread_PyFT8_decode_manager = False):
         self.running = True
         self.sigspec = sigspec
         self.max_ncheck = max_ncheck
@@ -62,19 +63,19 @@ class Cycle_manager():
         config.cands_list = []
         self.cands_list_lock = threading.Lock()
         self.sync_score_thresh = sync_score_thresh
-        self.n_decode_success = 0
         self.started_ldpc = False
         self.old_cands_list = []
         self.cands_removed = None
         self.min_ncheck_removed = None
         self.duplicate_filter = set()
         self.total_ldpc_time = 0
+        start_wsjtx_tailer(self.on_wsjtx_decode)
 
         self.onSuccessfulDecode = onSuccessfulDecode
         self.onOccupancy = onOccupancy
 
         threading.Thread(target=self.threaded_spectrum_tasks, daemon=True).start()
-        if(thread_decode_manager): threading.Thread(target=self.decode_manager, daemon=True).start()
+        if(thread_PyFT8_decode_manager): threading.Thread(target=self.PyFT8_decode_manager, daemon=True).start()
 
         with open("timings.log","w") as f:
             f.write("cycle,tcycle,epoch,id,sync_returned,demap_requested,demap_returned,"
@@ -118,7 +119,6 @@ class Cycle_manager():
                 timers.timedLog(f"Cycle rollover {cycle_time:.2f}", logfile='waitlist.log' )
                 self.cycle_countdown -=1
                 self.cyclestart_str = timers.cyclestart_str()
-                self.n_decode_success = 0
                 cycle_searched = False
                 self.started_ldpc = False
             self.prev_cycle_time = cycle_time
@@ -167,40 +167,47 @@ class Cycle_manager():
                                                                                 origin[1]:origin[1]+c.size[1]].copy()
                         c.demap_result = self.demod.demap_candidate(c)
                         c.ncheck_initial = self.ldpc.fast_ncheck(c.demap_result['llr'])
-                        c.demap_returned = timers.tnow()
-                
+                        c.demap_returned = timers.tnow()  
 
-    def decode_manager(self):
+    def PyFT8_decode_manager(self):
         self.decoder_start_time = timers.tnow()
         while self.running:    
-            timers.sleep(0.2)
+            timers.sleep(0.1)
             to_decode = [c for c in config.cands_list if not c.ldpc_requested and c.ncheck_initial <= self.max_ncheck]
             if(to_decode):
                 this_cycle_start = np.max([c.cycle_start for c in to_decode])
                 to_decode.sort(key = lambda c: c.ncheck_initial)            
-                for c in to_decode[:3]:
-                    timers.sleep(0.01)
+                for c in to_decode[:10]:
                     c.ldpc_requested = timers.tnow()
                     c.demap_result['llr'] = 3 * c.demap_result['llr'] / (c.demap_result['llr_sd']+.001)
-                    c.ldpc_result = self.ldpc.decode(c)
+                    c.ldpc_result = self.ldpc.decode(c) # get rid of ldpc_result and put the other bits in c.
                     c.ldpc_returned = timers.tnow()
                     self.total_ldpc_time +=c.ldpc_returned - c.ldpc_requested
-                    if(c.ldpc_result['payload_bits']):
-                        c.decode_result = FT8_unpack(c)
-                        if(c.decode_success):
+                    message_parts = FT8_unpack(c.ldpc_result['payload_bits'])
+                    if(message_parts):
+                        key = c.cyclestart_str+" "+' '.join(message_parts)
+                        if(not key in self.duplicate_filter):
+                            self.duplicate_filter.add(key)
                             origin = c.sync_result['origin']
-                            dt = origin[2] - 0.8 
-                            if(dt > self.sigspec.cycle_seconds//2): dt -=self.sigspec.cycle_seconds
-                            dt = f"{dt:4.1f}"
-                            c.decode_result.update({'dt': dt})
+                            snr = c.demap_result['snr']
+                            freq_str = f"{origin[3]:4.0f}"
+                            time_str = f"{origin[2]:4.1f}"
+                            c.decode_dict =   {'cyclestart_str':c.cyclestart_str , 'freq':freq_str,
+                                             'call_a':message_parts[0], 'call_b':message_parts[1], 'grid_rpt':message_parts[2],
+                                             't0_idx':origin[0], 'dt':time_str, 'snr':snr,
+                                             'n_its':c.ldpc_result['n_its'], 'ncheck_initial':c.ldpc_result['ncheck_initial']}
+                            c.decode_dict.update({'decoder':'PyFT8'})
                             c.message_decoded = timers.tnow()
-                            key = c.cyclestart_str+" "+c.message
-                            if(not key in self.duplicate_filter):
-                                self.duplicate_filter.add(key)
-                                if(self.onSuccessfulDecode):
-                                    self.onSuccessfulDecode(c)                              
+                            self.onSuccessfulDecode(c.decode_dict)  
+                           
+    def on_wsjtx_decode(self, decode_dict):
+        key = decode_dict['cyclestart_str']+" "+decode_dict['call_a']+" "+decode_dict['call_b']+" "+decode_dict['grid_rpt']
+        if(not key in self.duplicate_filter):
+            self.duplicate_filter.add(key)
+            self.onSuccessfulDecode(decode_dict) 
 
 
 
 
 
+                 

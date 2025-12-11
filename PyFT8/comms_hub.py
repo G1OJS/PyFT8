@@ -117,8 +117,6 @@ class Config:
         self.pause_ldpc = False
         self.cands_list = []
 
-        self.decoder = parser.get("options","decoder")
-
         self.COM_port = parser.get("radio","com_port")
         self.baudrate = parser.get("radio","baudrate")
         self.PTT_on = bytes.fromhex(parser.get("radio","ptt_on"))

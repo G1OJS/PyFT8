@@ -27,15 +27,6 @@ class Candidate:
         self.message_decoded = None
         self.ncheck_initial = 5000
         
-    @property
-    def decode_success(self):
-        return not (self.decode_result == None)
-
-    @property
-    def message(self):
-        c = self
-        return f"{c.decode_result['call_a']} {c.decode_result['call_b']} {c.decode_result['grid_rpt']}"
-    
 class FT8Demodulator:
     def __init__(self, sigspec):
         self.sigspec = sigspec
