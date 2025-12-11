@@ -233,8 +233,8 @@ def add_action_buttons():
 def run():        
     cycle_manager = Cycle_manager(FT8, onDecode,
                               onOccupancy = onOccupancy,
-                              max_iters = 30, max_stall = 8, max_ncheck = 33,
-                              sync_score_thresh = 1.8, thread_PyFT8_decode_manager = True)
+                              max_iters = 30, max_stall = 8, max_ncheck = 30, timeout = 0.2, 
+                              sync_score_thresh = 2, thread_PyFT8_decode_manager = True)
     start_UI("PyFT8_UI.html", process_UI_event)
     add_action_buttons()
     send_to_ui_ws("set_myCall", {'myCall':config.myCall})
