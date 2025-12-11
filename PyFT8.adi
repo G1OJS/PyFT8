@@ -110,3 +110,5 @@ header
 <call:5>OZ7DR <gridsquare:4>JO55 <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:3>-04 <rst_rcvd:3>+00 <qso_date:8>20251205 <time_on:6>125127 <qso_date_off:8>20251205 <time_off:6>125127 <band:5>False <freq:5>False <comment:5>PyFT8 <eor>
 
 <call:6>HB9EFK <gridsquare:4>JN46 <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:3>+06 <rst_rcvd:3>+03 <qso_date:8>20251207 <time_on:6>100927 <qso_date_off:8>20251207 <time_off:6>100928 <band:5>False <freq:5>False <comment:5>PyFT8 <eor>
+
+<call:5>YO2MD <gridsquare:4>KN06 <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:3>-15 <rst_rcvd:3>-15 <qso_date:8>20251211 <time_on:6>230759 <qso_date_off:8>20251211 <time_off:6>230759 <band:3>40m <freq:5>7.074 <comment:5>PyFT8 <eor>

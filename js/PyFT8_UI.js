@@ -146,7 +146,7 @@ function updateLoadingMetrics(metrics_dict) {
 
 
 setInterval(update_clock, 250);
-if(document.URL.includes("tcvr")) {setInterval(update_hearing_me_list, 1000)}
+setInterval(update_hearing_me_list, 1000);
 
 
 
