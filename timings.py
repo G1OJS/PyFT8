@@ -46,9 +46,10 @@ legend_els = [
 ax.legend(legend_els,['await rx','demap','ldpc fail','ldpc success'], loc = 'upper left')
 
 ax2 = ax.twinx()
-ax2.set_ylabel("Proportion of demapped sent/received ldpc")
+ax2.set_ylabel("Proportions")
 ax2.plot(df['id'],pc_to_ldpc, c='tab:blue', label = '% to ldpc')
 ax2.plot(df['id'],pc_from_ldpc, c='tab:orange', label = '% from ldpc')
+ax2.plot(df['id'],100*df['ldpc_frac_time'], c='tab:purple', label = 'ldpc_time')
 ax2.legend(loc = 'upper right')
 ax2.set_ylim(0,100)
 
