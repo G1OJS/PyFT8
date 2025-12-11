@@ -19,23 +19,12 @@ class Candidate:
         self.sync_returned = None
         self.demap_requested = False
         self.demap_returned = None
-        self.demap_result = None
         self.ldpc_requested = False
         self.ldpc_result = None
         self.ldpc_returned = None
-        self.decode_result = None
         self.message_decoded = None
         self.ncheck_initial = 5000
         
-    @property
-    def decode_success(self):
-        return not (self.decode_result == None)
-
-    @property
-    def message(self):
-        c = self
-        return f"{c.decode_result['call_a']} {c.decode_result['call_b']} {c.decode_result['grid_rpt']}"
-    
 class FT8Demodulator:
     def __init__(self, sigspec):
         self.sigspec = sigspec
@@ -66,19 +55,19 @@ class FT8Demodulator:
                     best = test
             if(best[1] > sync_score_thresh):
                 c = Candidate(spectrum)
-                t0_idx = best[0]
-                c.sync_result = {'sync_score': best[1], 
-                                'origin': (t0_idx, f0_idx, spectrum.dt * t0_idx, spectrum.df * (f0_idx + 1)),
-                                'last_hop': t0_idx + spectrum.candidate_size[0],
-                                'last_data_hop': t0_idx + spectrum.candidate_size[0] - n_hops_costas,
-                                'first_data_hop': t0_idx + n_hops_costas}
-                neighbour_lf = [n for n in candidates if (c.sync_result['origin'][1] - n.sync_result['origin'][1] <=2)]
-                if(neighbour_lf):
-                    if(neighbour_lf[0].sync_result['sync_score'] >= c.sync_result['sync_score']): continue
-                    if(neighbour_lf[0].sync_result['sync_score'] < c.sync_result['sync_score']): candidates.remove(neighbour_lf[0])
-                candidates.append(c)
-                c.sync_returned = timers.tnow()
                 c.sync_score = best[1]
+                c.origin = (best[0], f0_idx, spectrum.dt * best[0], spectrum.df * (f0_idx + 1))
+                neighbour_lf = [n for n in candidates if (c.origin[1] - n.origin[1] <=2)]
+                if(neighbour_lf):
+                    if(neighbour_lf[0].sync_score >= c.sync_score):
+                        continue
+                    if(neighbour_lf[0].sync_score < c.sync_score):
+                        candidates.remove(neighbour_lf[0])
+                candidates.append(c)
+                c.last_hop = t0_idx + spectrum.candidate_size[0]
+                c.last_data_hop = t0_idx + spectrum.candidate_size[0] - n_hops_costas
+                c.first_data_hop = t0_idx + n_hops_costas
+                c.sync_returned = timers.tnow()
         return candidates
 
     def demap_symbols(self, p):
@@ -94,7 +83,7 @@ class FT8Demodulator:
         return llr.reshape(-1)
 
     def demap_candidate(self, c):
-        origin = c.sync_result['origin']
+        origin = c.origin
         synced_grid_complex = c.synced_grid_complex.reshape(self.sigspec.num_symbols, self.hops_persymb,
                                                           self.sigspec.tones_persymb, self.fbins_pertone)
         synced_grid_complex = synced_grid_complex[:,0,:,:] # first hop of self.hops_persymb = the one we synced to
@@ -109,6 +98,6 @@ class FT8Demodulator:
 
         llr = llr - np.mean(llr)
         llr_sd = np.std(llr)
-        return {'llr_sd':llr_sd, 'llr':llr, 'snr':snr}
+        return llr, llr_sd, snr
 
 

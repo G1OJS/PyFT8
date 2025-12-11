@@ -28,9 +28,10 @@ def unpack_ft8_g15(g15, ir):
     R = '' if (ir == 0) else 'R'
     return f"{R}{snr:+03d}"
 
-def FT8_unpack(c):
+def FT8_unpack(bits):
     # need to add support for /P and R+report (R-05)
-    bits = c.ldpc_result['payload_bits']
+    if not bits:
+        return None
     i3 = 4*bits[74]+2*bits[75]+bits[76]
     c28_a = int(''.join(str(b) for b in bits[0:28]), 2)
     c28_b = int(''.join(str(b) for b in bits[29:57]), 2)
@@ -41,12 +42,4 @@ def FT8_unpack(c):
     call_a = unpack_ft8_c28(c28_a)
     call_b =  unpack_ft8_c28(c28_b)
     grid_rpt = unpack_ft8_g15(g15, ir)
-    origin = c.sync_result['origin']
-    snr = c.demap_result['snr']
-    freq_str = f"{origin[3]:4.0f}"
-    time_str = f"{origin[2]:4.1f}"
-    decode_result = {'cyclestart_str':c.cyclestart_str , 'freq':freq_str,
-                     'call_a':call_a, 'call_b':call_b, 'grid_rpt':grid_rpt,
-                     't0_idx':origin[0], 'dt':time_str, 'snr':snr,
-                     'n_its':c.ldpc_result['n_its'], 'ncheck_initial':c.ldpc_result['ncheck_initial']}
-    return decode_result
+    return (call_a, call_b, grid_rpt)
