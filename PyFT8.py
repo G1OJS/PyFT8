@@ -6,8 +6,10 @@ from PyFT8.rx.wsjtx_all_tailer import start_wsjtx_tailer
 from PyFT8.comms_hub import config, start_UI, send_to_ui_ws
 import PyFT8.audio as audio
 import threading
-from PyFT8.rig.IcomCIV import IcomCIV
 from PyFT8.sigspecs import FT8
+from PyFT8.rig.IcomCIV import IcomCIV
+from PyFT8.ant.antennas import AntennaControl
+antenna_control = AntennaControl()
 rig = IcomCIV()
 
 class QSO:
@@ -214,14 +216,23 @@ def process_UI_event(event):
         set_band_freq(topic)
         
 def set_band_freq(action):
-        fields = action.split("-")
+    # action = set-band-name-freq or set-band-name
+    fields = action.split("-")
+    config.myBand = fields[2]
+    if(len(fields)==4):
         config.myFreq = float(fields[3])
-        config.myBand = fields[2]
-        rig.setFreqHz(int(config.myFreq * 1000000))
-        rig.setMode(md="USB", dat = True, filIdx = 1)
-        with open("PyFT8_MHz.txt","w") as f:
-            f.write(str(config.myFreq))
-        send_to_ui_ws("set_band", {"band":config.myBand})
+    if(len(fields)==3):
+        config.myFreq = float(list(filter(lambda b: b['band_name'] == config.myBand, config.bands))[0]['band_freq'])
+    rig.setFreqHz(int(config.myFreq * 1000000))
+    rig.setMode(md="USB", dat = True, filIdx = 1)
+    bandconfig = list(filter(lambda b: b['band_name'] == config.myBand, config.bands))[0]
+    rx_ant, tx_ant = bandconfig['rx_ant'].lower(), bandconfig['tx_ant'].lower()
+    for ant in config.antennas:
+        if(ant['ant_name'] == rx_ant): antenna_control.send_command(ant['serCmd'])
+        if(ant['ant_name'] == tx_ant): antenna_control.send_command(ant['serCmd'])
+    with open("PyFT8_MHz.txt","w") as f:
+        f.write(str(config.myFreq))
+    send_to_ui_ws("set_band", {"band":config.myBand})
 
 def add_action_buttons():
     from PyFT8.comms_hub import config, send_to_ui_ws
@@ -240,7 +251,7 @@ def run():
     send_to_ui_ws("set_myCall", {'myCall':config.myCall})
     send_to_ui_ws("set_mySquare", {'mySquare':config.mySquare})
     send_to_ui_ws("connect_pskr_mqtt", {'dummy':'dummy'})
-    set_band_freq(f"set-band-{config.myBand}-{config.myFreq}")
+    set_band_freq(f"set-band-{config.myBand}")
 
     
 run()

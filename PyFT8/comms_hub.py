@@ -98,6 +98,7 @@ class Config:
         self.txfreq = 1000
         self.rxfreq = 1000
         self.bands = []
+        self.antennas = []
         self.myBand = "20m"
         self.myFreq = False
         self.soundcards = {"input_device":["Microphone","CODEC"], "output_device":["Speaker", "CODEC"]}
@@ -125,10 +126,14 @@ class Config:
         self.PTT_on = bytes.fromhex(parser.get("radio","ptt_on"))
         self.PTT_off = bytes.fromhex(parser.get("radio","ptt_off"))
 
-        for band_name, band_freq in parser.items("bands"):
-            self.bands.append({"band_name":band_name, "band_freq":band_freq})
-            if (band_name == self.myBand):
-                self.myFreq = band_freq
+        self.AC_port = parser.get("antenna_control","com_port")
+        self.AC_baudrate = parser.get("antenna_control","baudrate")
+        for ant_name, serCmd in parser.items("antennas"):
+            self.antennas.append({"ant_name":ant_name, "serCmd":serCmd})
+
+        for band_name, band_def in parser.items("bands"):
+            band_config = band_def.split("-")
+            self.bands.append({"band_name":band_name, "band_freq":band_config[0], "rx_ant":band_config[1],"tx_ant":band_config[2]})
 
     def check_config(self):
         if(os.path.exists("PyFT8.ini")):
