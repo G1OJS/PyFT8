@@ -64,9 +64,9 @@ class FT8Demodulator:
                     if(neighbour_lf[0].sync_score < c.sync_score):
                         candidates.remove(neighbour_lf[0])
                 candidates.append(c)
-                c.last_hop = t0_idx + spectrum.candidate_size[0]
-                c.last_data_hop = t0_idx + spectrum.candidate_size[0] - n_hops_costas
-                c.first_data_hop = t0_idx + n_hops_costas
+                c.last_hop = best[0] + spectrum.candidate_size[0]
+                c.last_data_hop = best[0] + spectrum.candidate_size[0] - n_hops_costas
+                c.first_data_hop = best[0] + n_hops_costas
                 c.sync_returned = timers.tnow()
         return candidates
 
