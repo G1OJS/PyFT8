@@ -34,12 +34,13 @@ function onMessage(msg) {
 	const spot = {};
 	msg.slice(1, -1).replaceAll('"', '').split(',').forEach( function (v) {let kvp = v.split(":"); spot[kvp[0]] = kvp[1];} );
 	if(spot.sc == myCall) {
-		hearing_me.add(spot.b + "_" + spot.rc);
+		hearing_me.add(spot.b + "_" + spot.rc + "_" + spot.rp);
 	}
 	if(spot.b == currentBand && spot.md == "FT8"){
-		let f = parseInt(spot.f) %10000 // - currentBand=="80m"? 3000:4000 ;
+		let f = parseInt(spot.f) %10000; 
+		f -= (currentBand=="80m")? 3000:4000;
 		let dd = {'cyclestart_str':'000000_000000', 'call_a':spot.rc, 'call_b':spot.sc, 'grid_rpt':spot.rp, 'snr':'', 'freq':f, 'decoder':'PSKR'};
-		add_decode_row(dd, 'all_decodes');
+		//add_decode_row(dd, 'all_decodes');
 	}
 }
 

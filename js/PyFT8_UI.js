@@ -154,7 +154,7 @@ function update_hearing_me_list(){
 			let row = grid.appendChild(document.createElement("div"));
 			row.className='grid_row';
 			const cell_div = document.createElement("div");
-			cell_div.textContent = hm.split('_')[1];
+			cell_div.textContent = hm.split('_')[1] +" "+ hm.split('_')[2];
 			cell_div.className='grid_cell';
 			row.appendChild(cell_div);
 		}

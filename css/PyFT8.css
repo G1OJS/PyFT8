@@ -32,7 +32,7 @@ body { font-family: sans-serif; background:var(--page-bg); color:#ddf; margin:1e
 			   align-content: start; overflow-y:scroll;}	
 			   
 .list_grid {display:grid; grid-template-columns: 1fr; grid-auto-rows: min-content; 
-			   background:var(--table-bg); color:#8cf; margin:0.5em; height:25em; min-width:7em; 
+			   background:var(--table-bg); color:#8cf; margin:0.5em; height:25em; min-width:13em; 
 			   align-content: start; overflow-y:scroll;}
 
 .grid_row {display:contents;}
