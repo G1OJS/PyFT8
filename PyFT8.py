@@ -175,7 +175,9 @@ def onOccupancy(spectrum_occupancy, spectrum_df, f0=0, f1=3500, bin_hz=10):
     occupancy = np.zeros(n_out)
     for i in range(n_out):
         occupancy[i] = occupancy_fine[int((f0+bin_hz*i)/spectrum_df)]
-    fs0, fs1 = 1000,1500
+    fs0, fs1 = 1000,2000
+    if(config.myBand == '60m'):
+        fs0, fs1 = 400,990
     bin0 = int((fs0-f0)/bin_hz)
     bin1 = int((fs1-f0)/bin_hz)
     clear_freq = fs0 + bin_hz*np.argmin(occupancy[bin0:bin1])
