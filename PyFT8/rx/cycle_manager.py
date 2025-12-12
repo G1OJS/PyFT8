@@ -156,7 +156,7 @@ class Cycle_manager():
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
 
             # find new candidates that can have spectrum filled, and demap them:
-            if(cycle_time > 12):
+            if(cycle_time > 10):
                 with self.cands_list_lock:
                     to_decode = [c for c in config.cands_list if (self.spectrum.fine_grid_pointer > c.last_data_hop
                                   or (self.cyclestart_str != c.cyclestart_str and self.spectrum.fine_grid_pointer +  self.spectrum.hops_percycle > c.last_data_hop) )]

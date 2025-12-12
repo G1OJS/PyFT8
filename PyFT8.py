@@ -221,7 +221,12 @@ def process_UI_event(event):
         rig.setPTTON()
         timers.sleep(0.5)
         rig.setPTTOFF()
+        timers.sleep(0.5)
         rig.setMode(md="USB", dat = True, filIdx = 1)
+    if(topic=="ui.magloop-nudge-up"):
+        antenna_control.send_command("<NU>");
+    if(topic=="ui.magloop-nudge-down"):
+        antenna_control.send_command("<ND>");
         
 def set_band_freq(action):
     # action = set-band-name-freq or set-band-name
@@ -247,6 +252,8 @@ def add_action_buttons():
     send_to_ui_ws("add_action_button", {'caption':'Call CQ', 'action':'call-cq', 'class':'button transmitting_button'})
     send_to_ui_ws("add_action_button", {'caption':'Repeat last', 'action':'repeat-last', 'class':'button transmitting_button'})
     send_to_ui_ws("add_action_button", {'caption':'Check SWR', 'action':'check-swr', 'class':'button transmitting_button'})
+    send_to_ui_ws("add_action_button", {'caption':'Loop Up', 'action':'magloop-nudge-up', 'class':'button transmitting_button'})
+    send_to_ui_ws("add_action_button", {'caption':'Loop Down', 'action':'magloop-nudge-down', 'class':'button transmitting_button'})
     for band in config.bands:
         send_to_ui_ws("add_action_button", {'caption':band['band_name'], 'action':f"set-band-{band['band_name']}-{band['band_freq']}", 'class':'button'})
     
