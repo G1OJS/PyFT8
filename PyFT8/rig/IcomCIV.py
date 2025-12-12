@@ -6,42 +6,41 @@ class IcomCIV:
     import serial
 
     def __init__(self):
-        port = config.COM_port
         self.serial_port = False
         try:
-            self.serial_port = self.serial.Serial(port = port, baudrate = config.baudrate, timeout = 0.1)
+            self.serial_port = self.serial.Serial(port = config.COM_port, baudrate = config.baudrate, timeout = 0.1)
             if (self.serial_port):
-                timers.timedLog(f"Connected to {port}")
+                timers.timedLog(f"Connected to {config.COM_port}")
         except IOError:
-            print(f"Couldn't connect to {port} - running without CI-V")    
+            timers.timedLog(f"Couldn't connect to {config.COM_port} - running without CI-V")    
         
     def sendCAT(self, cmd):
         msg = b"".join([b'\xfe\xfe\x88\xe0', cmd, b'\xfd'])
-        timers.timedLog(f"CAT: {msg}")
+        timers.timedLog(f"[CAT] {msg}")
         if(not self.serial_port): return
         self.serial_port.write(msg)
 
     def setFreqHz(self, freqHz):
         s = f"{freqHz:09d}"
-        timers.timedLog(f"CAT command: SET frequency")
-        timers.timedLog(f"CAT: {s}")
+        timers.timedLog(f"[CAT] SET frequency")
+        timers.timedLog(f"[CAT] {s}")
         fBytes = b"".join(bytes([b]) for b in [16*int(s[7])+int(s[8]),16*int(s[5])+int(s[6]),16*int(s[3])+int(s[4]),16*int(s[1])+int(s[2]), int(s[0])])
         if(not self.serial_port): return
         self.sendCAT(b"".join([b'\x00', fBytes]))
 
     def setMode(self, md='USB', dat=False, filIdx = 1 ):
-        timers.timedLog(f"CAT command: SET mode: {md} data:{dat} filter:{filIdx}")
+        timers.timedLog(f"[CAT] SET mode: {md} data:{dat} filter:{filIdx}")
         mdIdx = ['LSB','USB','AM','CW','RTTY','FM','WFM','CW-R','RTTY-R'].index(md)
         datIdx = 1 if dat else 0
         self.sendCAT(b''.join([b'\x26\x00', bytes([mdIdx]), bytes([datIdx]), bytes([filIdx]) ]) )
 
     def setPTTON(self):
-        timers.timedLog(f"CAT command: PTT On")
+        timers.timedLog(f"[CAT] PTT On")
         if(not self.serial_port): return
         self.sendCAT(config.PTT_on)
 
     def setPTTOFF(self):
-        timers.timedLog(f"CAT command: PTT Off")
+        timers.timedLog(f"[CAT] PTT Off")
         if(not self.serial_port): return
         self.sendCAT(config.PTT_off)
 

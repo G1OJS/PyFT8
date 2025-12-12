@@ -110,6 +110,10 @@ websocket.onmessage = (event) => {
 		add_decode_row(dd, 'all_decodes');
 	}
 	
+	if(dd.topic == 'antenna_control'){
+		if(dd.hasOwnProperty('MagloopTuning')) {document.getElementById('magloop').innerHTML = dd.MagloopTuning};
+	}
+	
 }
 	
 function add_action_button(caption, action, classname){

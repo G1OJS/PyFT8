@@ -214,6 +214,12 @@ def process_UI_event(event):
         QSO.transmit(f"CQ {config.myCall} {config.mySquare}")
     if("set-band" in topic):
         set_band_freq(topic)
+    if(topic=="ui.check-swr"):
+        rig.setMode("RTTY")
+        rig.setPTTON()
+        timers.sleep(0.5)
+        rig.setPTTOFF()
+        rig.setMode(md="USB", dat = True, filIdx = 1)
         
 def set_band_freq(action):
     # action = set-band-name-freq or set-band-name
@@ -238,6 +244,7 @@ def add_action_buttons():
     from PyFT8.comms_hub import config, send_to_ui_ws
     send_to_ui_ws("add_action_button", {'caption':'Call CQ', 'action':'call-cq', 'class':'button transmitting_button'})
     send_to_ui_ws("add_action_button", {'caption':'Repeat last', 'action':'repeat-last', 'class':'button transmitting_button'})
+    send_to_ui_ws("add_action_button", {'caption':'Check SWR', 'action':'check-swr', 'class':'button transmitting_button'})
     for band in config.bands:
         send_to_ui_ws("add_action_button", {'caption':band['band_name'], 'action':f"set-band-{band['band_name']}-{band['band_freq']}", 'class':'button'})
     
