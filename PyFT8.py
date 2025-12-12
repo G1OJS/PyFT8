@@ -93,7 +93,7 @@ class QSO:
                 return
 
         if(call_a == "CQ"):
-            self.transmit(f"{self.their_call} {config.myCall} {config.myGrid}")
+            self.transmit(f"{self.their_call} {config.myCall} {config.mySquare}")
             return
 
         if(call_a == config.myCall):
@@ -143,7 +143,7 @@ class QSO:
     def log(self):
         import PyFT8.logging as logging
         log_dict = {'call':self.their_call, 'gridsquare':self.their_grid, 'mode':'FT8',
-        'operator':config.myCall, 'station_callsign':config.myCall, 'my_gridsquare':config.myGrid, 
+        'operator':config.myCall, 'station_callsign':config.myCall, 'my_gridsquare':config.mySquare, 
         'rst_sent':f"{int(self.their_snr):+03d}", 'rst_rcvd':f"{int(self.my_snr):+03d}", 
         'qso_date':self.date, 'time_on':self.time_on,
         'qso_date_off':self.date_off, 'time_off':self.time_off,
@@ -209,7 +209,7 @@ def process_UI_event(event):
         t = timers.tnow()
         i = int(((t-2) % 30)/15) 
         QSO.tx_cycle = ['odd','even'][i]
-        QSO.transmit(f"CQ {config.myCall} {config.myGrid}")
+        QSO.transmit(f"CQ {config.myCall} {config.mySquare}")
     if("set-band" in topic):
         set_band_freq(topic)
         
@@ -238,8 +238,9 @@ def run():
     start_UI("PyFT8_UI.html", process_UI_event)
     add_action_buttons()
     send_to_ui_ws("set_myCall", {'myCall':config.myCall})
+    send_to_ui_ws("set_mySquare", {'mySquare':config.mySquare})
     send_to_ui_ws("connect_pskr_mqtt", {'dummy':'dummy'})
-    set_band_freq("set-band-20m-14.074")
+    set_band_freq(f"set-band-{config.myBand}-{config.myFreq}")
 
     
 run()

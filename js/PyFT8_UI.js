@@ -1,14 +1,15 @@
-import {connectToFeed, is_hearing_me, update_hearing_me_list} from './hearing_me.js';
+import {connectToFeed, hearing_me} from './hearing_me.js';
 import {update_spectrum, update_freq_marker} from './occ.js';
 
 let myCall = "";
+let mySquare = "IO90";
 let currentBand = "20m";
 let txFreq = null;
 let rxFreq = null;
 let n_PyFT8_decodes = 0;
 let n_wsjtx_decodes = 0;
 
-export {myCall, currentBand}
+export {myCall, mySquare, currentBand}
 
 function setMyCall(call){
 	myCall = call;
@@ -47,9 +48,8 @@ function update_clock() {
 	}
 }
 
-function add_decode_row(decode_dict, grid_id) {
+export function add_decode_row(decode_dict, grid_id) {
 	let dd = decode_dict;
-	console.log(dd);
 	let grid = document.getElementById(grid_id)
 	let row = grid.appendChild(document.createElement("div"));
 	row.className='grid_row';
@@ -96,8 +96,7 @@ websocket.onmessage = (event) => {
 	if(dd.topic == "freq_occ_array") 	{update_spectrum(dd.histogram)}
 	
 	if(dd.topic == 'decode_dict') {
-		console.log(dd.call_a)
-		dd.hearing_me = is_hearing_me(dd.call_b)? "X":"";	
+		dd.hearing_me = (hearing_me.has(currentBand+"_"+dd.call_b) || dd.call_a == myCall)? "X":"";	
 		n_PyFT8_decodes += (dd.decoder == 'PyFT8')? 1:0
 		n_wsjtx_decodes += (dd.decoder == 'WSJTX')? 1:0
 		let pc_PyFT8_decodes = Math.round(100*n_PyFT8_decodes / (n_wsjtx_decodes+n_PyFT8_decodes));
@@ -144,6 +143,23 @@ function updateLoadingMetrics(metrics_dict) {
 	}
 }
 
+function update_hearing_me_list(){
+	let hearing_me_list = Array.from(hearing_me).sort();
+	let grid = document.getElementById('Hearing_me_list');
+	for (const el of grid.querySelectorAll('.grid_row:not(.header)')) {
+		el.remove();
+	}
+	for (const hm of hearing_me_list){
+		if(hm.split('_')[0] == currentBand | currentBand == '') {
+			let row = grid.appendChild(document.createElement("div"));
+			row.className='grid_row';
+			const cell_div = document.createElement("div");
+			cell_div.textContent = hm.split('_')[1];
+			cell_div.className='grid_cell';
+			row.appendChild(cell_div);
+		}
+	}
+}
 
 setInterval(update_clock, 250);
 setInterval(update_hearing_me_list, 1000);

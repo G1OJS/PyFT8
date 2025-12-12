@@ -93,9 +93,6 @@ async def _call_callback_on_rx_from_browser(websocket):
 #===================================================================================
 import configparser
 class Config:
-    """
-        modules needing data from here use 'from comms_hub import config'
-    """
     def __init__(self):
         self.clearest_txfreq = 1000
         self.txfreq = 1000
@@ -109,7 +106,9 @@ class Config:
         parser = configparser.ConfigParser()
         parser.read("PyFT8.ini")
         self.myCall = parser.get("myStation","myCall")
-        self.myGrid = parser.get("myStation","myGrid")
+        self.mySquare = parser.get("myStation","mySquare")
+        self.myBand = parser.get("startup","myBand")
+
 
         input_search = parser.get("sound","soundcard_rx").split("_")
         self.soundcards.update({"input_device":input_search})
@@ -128,6 +127,8 @@ class Config:
 
         for band_name, band_freq in parser.items("bands"):
             self.bands.append({"band_name":band_name, "band_freq":band_freq})
+            if (band_name == self.myBand):
+                self.myFreq = band_freq
 
     def check_config(self):
         if(os.path.exists("PyFT8.ini")):
@@ -135,7 +136,7 @@ class Config:
         else:
             print("No PyFT8.ini in current directory.")
             txt = "[myStation]\nmyCall = please edit this e.g. myCall = G1OJS "
-            txt += "\nmyGrid = please edit this e.g. myGrid = IO90"
+            txt += "\nmySquare = please edit this e.g. mySquare = IO90"
             txt += "\n"
             with open("PyFT8.ini","w") as f:
                 f.write(txt)
