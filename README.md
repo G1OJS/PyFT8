@@ -1,29 +1,6 @@
-# Python FT8 Transceiver with Browser-based UI
-PyFT8 provides useable FT8 transceiving capability in a web browser, with minimal open source Python code.
-
-It's in development (22-Nov 2025) and I hope to make it more useable for those who don't necessarily want to dig into the code.
-
-## Key features of V5.0.4:
-* Gets up to 50% of WSJT-x decodes using a very much simpler algorithm
-* Gets decodes around 1 to 2 seconds *before* WSJT-X does
-* Browser-based UI 'transceiver' can be used to make FT8 QSOs (Rx and Tx, just like WSJT-X)
-     - Note: could be developed to run your FT8 station over the web!
-* Option to use WSJT-X as an external decoder instead of the internal PyFT8 one
-* CAT support for Icom IC-7100 (more to follow)
-* No dependence on Hamlib or Omnirig
-* Finds sound devices by *name* so is immune to Windows reordering sound devices
-* Open source Python code includes test code aimed at *illustrating* the entire encode->modulate->demodulate->decode chain
-* Uses only Python and Javascript
-
-This project provides a working demo of the entire FT8 coding and decoding chain, with a working browser-based GUI.
-
-Although the code is light on comments, I've tried to use clear variable names and structure to make the need for comments minimal. 
-I've also tried to keep the code free from 'dead code' that isn't used, and generate my own 'Pythonic' solutions keeping code as 
-tight and minimal as possible rather than copy from other online sources or AI (!). 
-
-I chose to put the GUI in a browser because this allows customisation with css etc, and provides some separation between the tranmit/receive code and the GUI code.
-
-I'm starting a document here to show the results of the end-to-end loop test: [link](https://github.com/G1OJS/PyFT8/blob/main/docs/End-to-end-loop-test.md)
+# FT8 Decoding and Encoding in Python, with examples / loopback tests
+I'm changing the scope of this repo a little, as it's started to grow too wide. The core part needs to remain the Python-based
+FT8 code, and the GUI and station-control aspects need to go in a new repo (probably just for me for the moment).
 
 <img width="891" height="788" alt="Capture" src="https://github.com/user-attachments/assets/23351f0f-5d04-476a-87c3-26c3913a76b4" />
 
