@@ -139,13 +139,13 @@ class Config:
         if(os.path.exists("PyFT8.ini")):
             return True
         else:
-            print("No PyFT8.ini in current directory.")
+            print("[comms hub] No PyFT8.ini in current directory.")
             txt = "[myStation]\nmyCall = please edit this e.g. myCall = G1OJS "
             txt += "\nmySquare = please edit this e.g. mySquare = IO90"
             txt += "\n"
             with open("PyFT8.ini","w") as f:
                 f.write(txt)
-            print("A blank PyFT8.ini file has been created - please edit it and re=run")
+            print("[comms hub] A blank PyFT8.ini file has been created - please edit it and re=run")
 
     def update_clearest_txfreq(self, clear_freq):
         self.clearest_txfreq = clear_freq
