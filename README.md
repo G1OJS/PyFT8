@@ -2,8 +2,6 @@
 I'm changing the scope of this repo a little, as it's started to grow too wide. The core part needs to remain the Python-based
 FT8 code, and the GUI and station-control aspects need to go in a new repo (probably just for me for the moment).
 
-<img width="891" height="788" alt="Capture" src="https://github.com/user-attachments/assets/23351f0f-5d04-476a-87c3-26c3913a76b4" />
-
 Below are some screenshots from test programs that can be used to look at how the protocols actually work, illustrated with a fairly
 ordinary waterfall and some zoomed-in depictions of captured signals with an overlay of the syncrhonisation tones that are used
 to search for the signals (Costas patterns).
