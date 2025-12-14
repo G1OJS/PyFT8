@@ -1,4 +1,4 @@
-# FT8 Decoding and Encoding in Python, with examples / loopback tests
+# FT8 Decoding and Encoding in Python with test/loopback code
 I've changed the scope of this repo from the previous 'codec with integrated GUI' as it started to grow too wide in scope. 
 The last version including the GUI is in [release 6.4.0](https://github.com/G1OJS/PyFT8/releases/tag/6.4.0). This repo is now moving
 towards a packageable FT8 codec.
