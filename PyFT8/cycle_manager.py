@@ -86,9 +86,6 @@ class Cycle_manager():
         print("Output timings")
         def t(et,cb):
             return f"{et - cb :6.2f}" if et else None
-        waiting = [c for c in self.old_cands_list if not c.ldpc_returned]
-        waiting.sort(key = lambda c: c.demap_returned)
-        timedLog(f"{'\n'.join([f"{tnow()-c.demap_returned:5.2f},{c.sync_score:5.2f},{c.ncheck_initial}" for c in waiting])}", logfile='waitlist.log', silent=True)
         ldpc_frac_time = self.total_ldpc_time / (tnow()-self.decoder_start_time)
         for c in self.old_cands_list:
             cb = c.cycle_start
@@ -183,12 +180,11 @@ class Cycle_manager():
                             freq_str = f"{c.origin[3]:4.0f}"
                             time_str = f"{c.origin[2]:4.1f}"
                             c.decode_dict = {
-                                'cyclestart_str':c.cyclestart_str , 'freq':float(freq_str),
-                                't0_idx':c.origin[0],'f0_idx':c.origin[1], 'dt':float(time_str), 
+                                'cyclestart_str':c.cyclestart_str, 'decoder':'PyFT8', 'freq':float(freq_str), 't_decode':tnow(), 
+                                'dt':float(time_str), 't0_idx':c.origin[0],'f0_idx':c.origin[1], 
                                 'call_a':message_parts[0], 'call_b':message_parts[1], 'grid_rpt':message_parts[2],
                                 'sync_score':c.sync_score, 'snr':c.snr, 'llr_sd':c.llr_sd, 'n_its':c.n_its, 'ncheck_initial':c.ncheck_initial
                                 }
-                            c.decode_dict.update({'decoder':'PyFT8'})
                             c.message_decoded = tnow()
                             self.onSuccessfulDecode(c if self.return_candidate else c.decode_dict)  
                            
