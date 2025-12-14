@@ -76,14 +76,16 @@ def update_stats():
                 latest_cycle = list(decodes.keys())[-1][0]
                 latest_cycle_uids = [uid for uid in decodes.keys() if uid[0] == latest_cycle]
                 nP = nW = nB = 0
-                print(f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'t(P)-t(W)':>7}")
+                print(f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'t(P)':>7} {'t(W)':>7} {'t(P)-t(W)':>7}")
                 for uid in latest_cycle_uids:
                     uid_pretty = f"{uid[0]} {uid[1]:>12} {uid[2]:>12} {uid[3]:>8}"
                     d = decodes[uid]
                     decoder = d['decoder']
                     if ('PyFT8_t_decode' in d and 'WSJTX_t_decode' in d):
                         decoder = 'BOTH '
-                        dt = f"{d['PyFT8_t_decode'] - d['WSJTX_t_decode']:7.2f}"
+                        def cyt(t): return (t+7) %15 - 7
+                        tP, tW = d['PyFT8_t_decode'], d['WSJTX_t_decode']
+                        dt = f"{cyt(tP):7.2f} {cyt(tW):7.2f} {tP - tW:7.2f}"
                         nB +=1
                     if ('PyFT8_t_decode' in d and not 'WSJTX_t_decode' in d):
                         dt = ""
