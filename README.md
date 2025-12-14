@@ -1,6 +1,7 @@
 # FT8 Decoding and Encoding in Python, with examples / loopback tests
-I'm changing the scope of this repo a little, as it's started to grow too wide. The core part needs to remain the Python-based
-FT8 code, and the GUI and station-control aspects need to go in a new repo (probably just for me for the moment).
+I've changed the scope of this repo from the previous 'codec with integrated GUI' as it started to grow too wide in scope. 
+The last version including the GUI is in [release 6.4.0](https://github.com/G1OJS/PyFT8/releases/tag/6.4.0). This repo is now moving
+towards a packageable FT8 codec.
 
 Below are some screenshots from test programs that can be used to look at how the protocols actually work, illustrated with a fairly
 ordinary waterfall and some zoomed-in depictions of captured signals with an overlay of the syncrhonisation tones that are used
