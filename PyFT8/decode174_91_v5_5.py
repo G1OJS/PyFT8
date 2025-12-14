@@ -30,7 +30,6 @@ sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 import numpy as np
 from PyFT8.FT8_crc import check_crc
 import PyFT8.timers as timers
-from PyFT8.comms_hub import config
 from threading import Condition
 
 class LDPC174_91:

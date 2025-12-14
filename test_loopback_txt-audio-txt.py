@@ -1,7 +1,6 @@
 import numpy as np
 from PyFT8.waterfall import Waterfall
 import PyFT8.timers as timers
-from PyFT8.comms_hub import config
 from PyFT8.sigspecs import FT8
 from PyFT8.cycle_manager import Cycle_manager
 

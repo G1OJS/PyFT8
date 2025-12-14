@@ -5,6 +5,8 @@ from .timers import timedLog, sleep, tnow
 pya = pyaudio.PyAudio()
 
 def find_device(device_str_contains):
+    if(not device_str_contains): #(this check probably shouldn't be needed - check calling code)
+        return
     timedLog(f"Looking for audio device matching {device_str_contains}")
     for dev_idx in range(pya.get_device_count()):
         name = pya.get_device_info_by_index(dev_idx)['name']
@@ -17,7 +19,7 @@ def find_device(device_str_contains):
     timedLog(f"No audio device found matching {device_str_contains}")
 
 class AudioIn:
-    def __init__(self, parent_app, fft_window):
+    def __init__(self, parent_app, fft_window): # needing parent_app here suggests some code below should move there
         self.parent_app = parent_app
         self.spectrum = parent_app.spectrum
         self.demod = parent_app.demod
@@ -42,7 +44,7 @@ class AudioIn:
                     sleep(0.001)
         else:
             stream = pya.open(format=pyaudio.paInt16, channels=1, rate=self.demod.sample_rate,
-                             input=True, input_device_index = self.input_device_idx,
+                             input=True, input_device_index = self.parent_app.input_device_idx,
                              frames_per_buffer=self.samples_perhop, stream_callback = self.buffer_and_FFT)
             stream.start_stream()
 
@@ -96,7 +98,7 @@ class AudioOut:
     def play_data_to_soundcard(self, audio_data_int16, output_device_idx, fs=12000):
         stream = pya.open(format=pyaudio.paInt16, channels=1, rate=fs,
                           output=True,
-                          output_device_index = self.output_device_idx)
+                          output_device_index = output_device_idx)
         stream.write(audio_data_int16.tobytes())
         stream.stop_stream()
         stream.close()

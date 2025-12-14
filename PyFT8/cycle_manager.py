@@ -1,12 +1,10 @@
 import threading
 import numpy as np
 from .timers import *
-from .audio import AudioIn
-from .comms_hub import config, send_to_ui_ws
+from .audio import find_device, AudioIn
 from .FT8_demodulator import FT8Demodulator
 from .decode174_91_v5_5 import LDPC174_91
 from .FT8_unpack import FT8_unpack
-from .wsjtx_all_tailer import start_wsjtx_tailer
 import pyaudio
 import queue
 import wave
@@ -40,16 +38,18 @@ class Spectrum:
 
 
 class Cycle_manager():
-    def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
+    def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None, input_device_keywords = None,
                  max_iters = 90, max_stall = 8, max_ncheck = 30, timeout = 1,
                  sync_score_thresh = 3, max_cycles = 5000, thread_PyFT8_decode_manager = False, return_candidate = False):
         self.running = True
+        self.cands_list = []
         self.return_candidate = return_candidate
         self.sigspec = sigspec
         self.max_ncheck = max_ncheck
         self.demod = FT8Demodulator(sigspec)
         self.spectrum = Spectrum(self.demod)
         self.spectrum_lock = threading.Lock()
+        self.input_device_idx = find_device(input_device_keywords)
         self.audio_in = AudioIn(self, np.kaiser(self.spectrum.FFT_len, 20))
         self.ldpc = LDPC174_91(max_iters, max_stall, max_ncheck, timeout)
 
@@ -61,7 +61,7 @@ class Cycle_manager():
         n_hops_sync_band  = self.demod.slack_hops + np.max(self.spectrum.hop_idxs_Costas)
         self.t_search = n_hops_sync_band * self.spectrum.dt
 
-        config.cands_list = []
+        self.cands_list = []
         self.cands_list_lock = threading.Lock()
         self.sync_score_thresh = sync_score_thresh
         self.started_ldpc = False
@@ -70,8 +70,6 @@ class Cycle_manager():
         self.min_ncheck_removed = None
         self.duplicate_filter = set()
         self.total_ldpc_time = 0
-        if(not self.return_candidate): # only used when testing PyFT8 alone
-            start_wsjtx_tailer(self.on_wsjtx_decode)
 
         self.onSuccessfulDecode = onSuccessfulDecode
         self.onOccupancy = onOccupancy
@@ -83,8 +81,6 @@ class Cycle_manager():
             f.write("cycle,tcycle,epoch,id,sync_returned,demap_requested,demap_returned,"
                     +"ncheck_initial,ldpc_requested,ldpc_returned,message_decoded,"
                     +"ldpc_frac_time\n")
-        with open("waitlist.log","w") as f:
-            f.write("age(demap),c.sync_score,c.ncheck_initial\n")
 
     def output_timings(self):
         print("Output timings")
@@ -125,17 +121,12 @@ class Cycle_manager():
                 self.started_ldpc = False
             self.prev_cycle_time = cycle_time
 
-            self.loading_metrics = { "n_synced":            len(config.cands_list) / 400,
-                                     "n_demapped":          len([c for c in config.cands_list if c.demap_returned]) / 400,
-                                     "n_decoded":           len([c for c in config.cands_list if c.ldpc_returned]) / 400}
-            send_to_ui_ws("loading_metrics", self.loading_metrics)
-
             # remove old candidates and dump summary stats for cycle (for first 10 cycles)
             if (cycle_time > self.t_search -1 and not dumped_stats):
                 dumped_stats = True                    
-                self.old_cands_list = config.cands_list
-                config.cands_list =[c for c in config.cands_list if c.ldpc_requested and not c.ldpc_returned]
-                self.cands_removed = [c for c in self.old_cands_list if c not in config.cands_list]
+                self.old_cands_list = self.cands_list
+                self.cands_list =[c for c in self.cands_list if c.ldpc_requested and not c.ldpc_returned]
+                self.cands_removed = [c for c in self.old_cands_list if c not in self.cands_list]
                 if(self.cycle_countdown > self.max_cycles - 10):
                     self.output_timings()
 
@@ -150,15 +141,15 @@ class Cycle_manager():
                     self.spectrum.sync_search_band = self.spectrum.fine_grid_complex[idx_0:idx_n,:].copy()
                 cands = self.demod.find_syncs(self.spectrum, self.sync_score_thresh)
                 with self.cands_list_lock:
-                    config.cands_list = config.cands_list + cands
+                    self.cands_list = self.cands_list + cands
 
-                timedLog(f"Spectrum searched -> {len(config.cands_list)} candidates")
+                timedLog(f"Spectrum searched -> {len(self.cands_list)} candidates")
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
 
             # find new candidates that can have spectrum filled, and demap them:
             if(cycle_time > 10):
                 with self.cands_list_lock:
-                    to_decode = [c for c in config.cands_list if (self.spectrum.fine_grid_pointer > c.last_data_hop
+                    to_decode = [c for c in self.cands_list if (self.spectrum.fine_grid_pointer > c.last_data_hop
                                   or (self.cyclestart_str != c.cyclestart_str and self.spectrum.fine_grid_pointer +  self.spectrum.hops_percycle > c.last_data_hop) )]
                 for c in to_decode:
                     if not c.demap_requested:
@@ -174,7 +165,7 @@ class Cycle_manager():
         self.decoder_start_time = tnow()
         while self.running:    
             sleep(0.1)
-            to_decode = [c for c in config.cands_list if not c.ldpc_requested and c.ncheck_initial <= self.max_ncheck]
+            to_decode = [c for c in self.cands_list if not c.ldpc_requested and c.ncheck_initial <= self.max_ncheck]
             if(to_decode):
                 this_cycle_start = np.max([c.cycle_start for c in to_decode])
                 to_decode.sort(key = lambda c: c.ncheck_initial)            
@@ -201,12 +192,6 @@ class Cycle_manager():
                             c.message_decoded = tnow()
                             self.onSuccessfulDecode(c if self.return_candidate else c.decode_dict)  
                            
-    def on_wsjtx_decode(self, decode_dict):
-        key = decode_dict['cyclestart_str']+" "+decode_dict['call_a']+" "+decode_dict['call_b']+" "+decode_dict['grid_rpt']
-        if(not key in self.duplicate_filter):
-            self.duplicate_filter.add(key)
-            self.onSuccessfulDecode(decode_dict) 
-
 
 
 
