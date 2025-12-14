@@ -1,39 +1,25 @@
 import numpy as np
 import wave
 import pyaudio
-from PyFT8.comms_hub import config
-import PyFT8.timers as timers
-global output_device_idx, input_device_idx
-output_device_idx, input_device_idx = None, None
+from .timers import timedLog, sleep, tnow
 pya = pyaudio.PyAudio()
 
-#============================================
-# Audio devices
-#============================================
-def _find_device(device_str_contains):
-    timers.timedLog(f"Looking for audio device matching {device_str_contains}")
+def find_device(device_str_contains):
+    if(not device_str_contains): #(this check probably shouldn't be needed - check calling code)
+        return
+    timedLog(f"Looking for audio device matching {device_str_contains}")
     for dev_idx in range(pya.get_device_count()):
         name = pya.get_device_info_by_index(dev_idx)['name']
         match = True
         for pattern in device_str_contains:
             if (not pattern in name): match = False
         if(match):
-            timers.timedLog(f"Found device {name} index {dev_idx}")
+            timedLog(f"Found device {name} index {dev_idx}")
             return dev_idx
-    timers.timedLog(f"No audio device found matching {device_str_contains}")
+    timedLog(f"No audio device found matching {device_str_contains}")
 
-def find_audio_devices():
-    global output_device_idx, input_device_idx
-    input_device_idx = _find_device(config.soundcards['input_device'])
-    output_device_idx = _find_device(config.soundcards['output_device'])
-find_audio_devices()
-
-#============================================
-# Audio input
-#============================================
 class AudioIn:
-
-    def __init__(self, parent_app, fft_window):
+    def __init__(self, parent_app, fft_window): # needing parent_app here suggests some code below should move there
         self.parent_app = parent_app
         self.spectrum = parent_app.spectrum
         self.demod = parent_app.demod
@@ -43,23 +29,22 @@ class AudioIn:
         self.nFreqs = self.spectrum.nFreqs
         self.fft_window = fft_window
         self.audio_buffer = np.zeros(self.fft_len, dtype=np.float32)
-        self.input_device_idx = _find_device(config.soundcards['input_device'])  
         
     def stream(self, wav_file = None):
         if(wav_file):
             wf = wave.open(wav_file, 'rb')
-            timers.timedLog(f"Playing wav file {wav_file}")
+            timedLog(f"Playing wav file {wav_file}")
             while self.parent_app.running:
                 frames = wf.readframes(self.samples_perhop)
                 if not frames:
                     break
-                nextHop_time = timers.tnow() + self.hop_time
+                nextHop_time = tnow() + self.hop_time
                 self.buffer_and_FFT(frames)
-                while timers.tnow() < nextHop_time:
-                    timers.sleep(0.001)
+                while tnow() < nextHop_time:
+                    sleep(0.001)
         else:
             stream = pya.open(format=pyaudio.paInt16, channels=1, rate=self.demod.sample_rate,
-                             input=True, input_device_index = self.input_device_idx,
+                             input=True, input_device_index = self.parent_app.input_device_idx,
                              frames_per_buffer=self.samples_perhop, stream_callback = self.buffer_and_FFT)
             stream.start_stream()
 
@@ -79,38 +64,45 @@ class AudioIn:
         self.spectrum.fine_grid_pointer = (self.spectrum.fine_grid_pointer +1) % self.spectrum.hops_percycle
         return (None, pyaudio.paContinue)
 
+class AudioOut:
 
-    
-#============================================
-# Audio output
-#============================================
+    def create_ft8_wave(self, symbols, fs=12000, f_base=873.0, f_step=6.25, amplitude = 0.5, added_noise = -50):
+        symbol_len = int(fs * 0.160)
+        t = np.arange(symbol_len) / fs
+        phase = 0
+        waveform = []
+        for s in symbols:
+            f = f_base + s * f_step
+            phase_inc = 2 * np.pi * f / fs
+            w = np.sin(phase + phase_inc * np.arange(symbol_len))
+            waveform.append(w)
+            phase = (phase + phase_inc * symbol_len) % (2 * np.pi)
+        waveform = np.concatenate(waveform).astype(np.float32)
+        waveform = waveform.astype(np.float32)
+        waveform = amplitude * waveform / np.max(np.abs(waveform))
+        if(added_noise > -50):
+            noise = np.random.rand(len(waveform))-0.5
+            noise = noise * np.std(waveform) * 10**(added_noise/20) / np.std(noise)
+            waveform += noise
+        waveform_int16 = np.int16(waveform * 32767)
+        return waveform_int16
 
-def create_ft8_wave(symbols, fs=12000, f_base=873.0, f_step=6.25, amplitude = 0.5, added_noise = -50):
-    symbol_len = int(fs * 0.160)
-    t = np.arange(symbol_len) / fs
-    phase = 0
-    waveform = []
-    for s in symbols:
-        f = f_base + s * f_step
-        phase_inc = 2 * np.pi * f / fs
-        w = np.sin(phase + phase_inc * np.arange(symbol_len))
-        waveform.append(w)
-        phase = (phase + phase_inc * symbol_len) % (2 * np.pi)
+    def write_to_wave_file(self, audio_data, wave_file):
+        wavefile = wave.open(wave_file, 'wb')
+        wavefile.setframerate(12000)
+        wavefile.setnchannels(1)
+        wavefile.setsampwidth(2)
+        wavefile.writeframes(audio_data.tobytes())
+        wavefile.close()
 
-    waveform = np.concatenate(waveform).astype(np.float32)
-    waveform = waveform.astype(np.float32)
-    waveform = amplitude * waveform / np.max(np.abs(waveform))
-    if(added_noise > -50):
-        noise = np.random.rand(len(waveform))-0.5
-        noise = noise * np.std(waveform) * 10**(added_noise/20) / np.std(noise)
-        waveform += noise
-    waveform_int16 = np.int16(waveform * 32767)
-    return waveform_int16
+    def play_data_to_soundcard(self, audio_data_int16, output_device_idx, fs=12000):
+        stream = pya.open(format=pyaudio.paInt16, channels=1, rate=fs,
+                          output=True,
+                          output_device_index = output_device_idx)
+        stream.write(audio_data_int16.tobytes())
+        stream.stop_stream()
+        stream.close()
 
-def play_data_to_soundcard(audio_data_int16, fs=12000):
-    stream = pya.open(format=pyaudio.paInt16, channels=1, rate=fs,
-                      output=True,
-                      output_device_index = output_device_idx)
-    stream.write(audio_data_int16.tobytes())
-    stream.stop_stream()
-    stream.close()
+
+
+
