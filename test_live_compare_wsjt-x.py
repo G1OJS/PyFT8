@@ -13,7 +13,8 @@ decodes = {}
 decodes_lock = threading.Lock()
 
 UID_FIELDS = ('cyclestart_str', 'call_a', 'call_b', 'grid_rpt')
-FIELDS = {'t_decode','snr'}
+COMMON_FIELDS = {'t_decode', 'snr'}
+PyFT8_FIELDS = {'n_its', 'ncheck_initial'}
 
 def make_uid(d):
     return tuple(d[k] for k in UID_FIELDS)
@@ -23,9 +24,12 @@ def update_decodes(uid, decode_dict):
     with decodes_lock:
         if uid not in decodes:
             decodes[uid] = {}
-        for field in FIELDS:
+        for field in COMMON_FIELDS:
             decodes[uid].update({f"{decoder}_{field}": decode_dict[field]})
         decodes[uid].update({'decoder':decoder})
+        if(decoder == 'PyFT8'):
+            for field in PyFT8_FIELDS:
+                decodes[uid].update({f"{decoder}_{field}": decode_dict[field]})            
 
 def on_decode(decode_dict):
     uid = make_uid(decode_dict)
@@ -68,7 +72,6 @@ def update_stats():
                     o = decodes[uid]
                     if(now - o.get('PyFT8_t_decode',1e40) > 30 or now - o.get('WSJTX_t_decode',1e40) > 30):
                         expired.append(uid)
-
                 for uid in expired:
                     del decodes[uid]
 
@@ -76,24 +79,31 @@ def update_stats():
                 latest_cycle = list(decodes.keys())[-1][0]
                 latest_cycle_uids = [uid for uid in decodes.keys() if uid[0] == latest_cycle]
                 nP = nW = nB = 0
-                print(f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'t(P)':>7} {'t(W)':>7} {'t(P)-t(W)':>7}")
+                print(f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'t(P)':>7} {'t(W)':>7} {'t(P)-t(W)':>7} {'n_its':>7} {'ncheck_initial':>7}")
                 for uid in latest_cycle_uids:
                     uid_pretty = f"{uid[0]} {uid[1]:>12} {uid[2]:>12} {uid[3]:>8}"
                     d = decodes[uid]
                     decoder = d['decoder']
+                    def cyt(t): return (t+7) %15 - 7
                     if ('PyFT8_t_decode' in d and 'WSJTX_t_decode' in d):
                         decoder = 'BOTH '
-                        def cyt(t): return (t+7) %15 - 7
                         tP, tW = d['PyFT8_t_decode'], d['WSJTX_t_decode']
-                        dt = f"{cyt(tP):7.2f} {cyt(tW):7.2f} {tP - tW:7.2f}"
+                        info = f"{cyt(tP):7.2f} {cyt(tW):7.2f} {tP - tW:7.2f}"
                         nB +=1
                     if ('PyFT8_t_decode' in d and not 'WSJTX_t_decode' in d):
-                        dt = ""
+                        tP = d['PyFT8_t_decode']
+                        info = f"{cyt(tP):7.2f}                "
                         nP +=1
                     if (not 'PyFT8_t_decode' in d and 'WSJTX_t_decode' in d):
-                        dt = ""
+                        tW = d['WSJTX_t_decode']
+                        info = f"        {cyt(tW):7.2f}        "
                         nW +=1
-                    print(f"{uid_pretty} {decoder:>7} {dt}")
+                    if ('PyFT8_t_decode' in d):
+                        info = info + f" {d['PyFT8_n_its']:>7} {d['PyFT8_ncheck_initial']:>7}"
+
+
+                    if(decoder == 'BOTH '):
+                        print(f"{uid_pretty} {decoder:>7} {info}")
                 pc = int(100*(nP+nB) / (nW+nB))
                 print(f"WSJTX:{nW+nB}, PyFT8: {nP+nB} ({pc}%)")
 

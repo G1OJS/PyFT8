@@ -111,7 +111,7 @@ class Cycle_manager():
                 dumped_stats = False
                 self.spectrum.fine_grid_pointer = 0
                 print()
-                timedLog(f"Cycle rollover {cycle_time:.2f}", logfile='waitlist.log' )
+                timedLog(f"Cycle rollover {cycle_time:.2f}")
                 self.cycle_countdown -=1
                 self.cyclestart_str = cyclestart_str()
                 cycle_searched = False
@@ -156,7 +156,8 @@ class Cycle_manager():
                                                                                     c.origin[1]:c.origin[1]+c.size[1]].copy()
                         c.llr, c.llr_sd, c.snr = self.demod.demap_candidate(c)
                         c.ncheck_initial = self.ldpc.fast_ncheck(c.llr)
-                        c.demap_returned = tnow()  
+                        c.demap_returned = tnow()
+
 
     def PyFT8_decode_manager(self):
         self.decoder_start_time = tnow()
@@ -166,28 +167,31 @@ class Cycle_manager():
             if(to_decode):
                 this_cycle_start = np.max([c.cycle_start for c in to_decode])
                 to_decode.sort(key = lambda c: c.ncheck_initial)            
-                for c in to_decode[:10]:
-                    c.ldpc_requested = tnow()
-                    ldpc_result = self.ldpc.decode(c)
-                    c.payload_bits, c.n_its, c.ncheck_initial = ldpc_result['payload_bits'], ldpc_result['n_its'], ldpc_result['ncheck_initial']
-                    c.ldpc_returned = tnow()
-                    self.total_ldpc_time +=c.ldpc_returned - c.ldpc_requested
-                    message_parts = FT8_unpack(c.payload_bits)
-                    if(message_parts):
-                        key = c.cyclestart_str+" "+' '.join(message_parts)
-                        if(not key in self.duplicate_filter):
-                            self.duplicate_filter.add(key)
-                            freq_str = f"{c.origin[3]:4.0f}"
-                            time_str = f"{c.origin[2]:4.1f}"
-                            c.decode_dict = {
-                                'cyclestart_str':c.cyclestart_str, 'decoder':'PyFT8', 'freq':float(freq_str), 't_decode':tnow(), 
-                                'dt':float(time_str), 't0_idx':c.origin[0],'f0_idx':c.origin[1], 
-                                'call_a':message_parts[0], 'call_b':message_parts[1], 'grid_rpt':message_parts[2],
-                                'sync_score':c.sync_score, 'snr':c.snr, 'llr_sd':c.llr_sd, 'n_its':c.n_its, 'ncheck_initial':c.ncheck_initial
-                                }
-                            c.message_decoded = tnow()
-                            self.onSuccessfulDecode(c if self.return_candidate else c.decode_dict)  
-                           
+                for c in to_decode[:3]:
+                    self.decode_and_callback(c)
+        
+    def decode_and_callback(self, c):
+        c.ldpc_requested = tnow()
+        ldpc_result = self.ldpc.decode(c)
+        c.payload_bits, c.n_its, c.ncheck_initial = ldpc_result['payload_bits'], ldpc_result['n_its'], ldpc_result['ncheck_initial']
+        c.ldpc_returned = tnow()
+        self.total_ldpc_time +=c.ldpc_returned - c.ldpc_requested
+        message_parts = FT8_unpack(c.payload_bits)
+        if(message_parts):
+            key = c.cyclestart_str+" "+' '.join(message_parts)
+            if(not key in self.duplicate_filter):
+                self.duplicate_filter.add(key)
+                freq_str = f"{c.origin[3]:4.0f}"
+                time_str = f"{c.origin[2]:4.1f}"
+                c.decode_dict = {
+                    'cyclestart_str':c.cyclestart_str, 'decoder':'PyFT8', 'freq':float(freq_str), 't_decode':tnow(), 
+                    'dt':float(time_str), 't0_idx':c.origin[0],'f0_idx':c.origin[1], 
+                    'call_a':message_parts[0], 'call_b':message_parts[1], 'grid_rpt':message_parts[2],
+                    'sync_score':c.sync_score, 'snr':c.snr, 'llr_sd':c.llr_sd, 'n_its':c.n_its, 'ncheck_initial':c.ncheck_initial
+                    }
+                c.message_decoded = tnow()
+                self.onSuccessfulDecode(c if self.return_candidate else c.decode_dict)  
+               
 
 
 
