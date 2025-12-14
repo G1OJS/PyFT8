@@ -20,8 +20,8 @@ n_cands = 0
 n_to_ldpc =0
 n_from_ldpc = 0
 for _, row in df.iterrows():
-    vbar(ax, row["id"], row["sync_returned"], row["demap_requested"], color = "tab:blue", lw=1, alpha = 0.2 )
-    vbar(ax, row["id"], row["demap_requested"], row["demap_returned"], color = "tab:orange", lw=2.5, alpha = 0.4 )
+    vbar(ax, row["id"], row["sync_returned"], row["demap1_requested"], color = "tab:blue", lw=1, alpha = 0.2 )
+    vbar(ax, row["id"], row["demap1_requested"], row["demap_returned"], color = "tab:orange", lw=2.5, alpha = 0.4 )
     col, alpha = ('tab:green', 1) if(not pd.isnull(row["message_decoded"])) else ('tab:red',1)
     vbar(ax, row["id"], row["ldpc_requested"], row["ldpc_returned"], color = col, lw=2.5, alpha = alpha)
     if(not pd.isnull(row["demap_returned"])): n_cands +=1
@@ -58,8 +58,8 @@ for _, r in df.iterrows():
     cid = r["id"]
 
     # Demap enqueue/dequeue
-    if not pd.isnull(r["demap_requested"]):
-        events.append((r["demap_requested"], "demap", +1, cid))
+    if not pd.isnull(r["demap1_requested"]):
+        events.append((r["demap1_requested"], "demap", +1, cid))
     if not pd.isnull(r["demap_returned"]):
         events.append((r["demap_returned"],  "demap", -1, cid))
 

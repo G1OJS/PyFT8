@@ -17,7 +17,8 @@ class Candidate:
         self.sync_score = 0
         self.synced_grid_complex = None
         self.sync_returned = None
-        self.demap_requested = False
+        self.demap0_requested = False
+        self.demap1_requested = False
         self.demap_returned = None
         self.ldpc_requested = False
         self.ldpc_result = None
@@ -65,12 +66,13 @@ class FT8Demodulator:
                         candidates.remove(neighbour_lf[0])
                 candidates.append(c)
                 c.last_hop = best[0] + spectrum.candidate_size[0]
+                c.last_crc_hop = best[0] + 45 * self.hops_persymb
                 c.last_data_hop = best[0] + spectrum.candidate_size[0] - n_hops_costas
                 c.first_data_hop = best[0] + n_hops_costas
                 c.sync_returned = tnow()
         return candidates
 
-    def demap_symbols(self, p):
+    def _demap_symbols(self, p):
         tones1 = [np.where(self.sigspec.gray_map[:,b]==1)[0] for b in range(3)]
         tones0 = [np.where(self.sigspec.gray_map[:,b]==0)[0] for b in range(3)]
         llr = np.empty((p.shape[0], 3), dtype=np.float32)
@@ -94,10 +96,28 @@ class FT8Demodulator:
         synced_grid_pwr_central = synced_grid_pwr[:,:,1]/synced_pwr
 
         pwr_payload = synced_grid_pwr_central[self.sigspec.payload_symb_idxs]   
-        llr = self.demap_symbols(pwr_payload)
+        llr = self._demap_symbols(pwr_payload)
 
         llr = llr - np.mean(llr)
         llr_sd = np.std(llr)
         return llr, llr_sd, snr
+
+    def hard_decode_candidate(self, c):
+        from .FT8_crc import bitsLE_to_int, check_crc
+        bits91 = []
+        origin = c.origin
+        synced_grid_complex = c.synced_grid_complex.reshape(45, self.hops_persymb,
+                                                          self.sigspec.tones_persymb, self.fbins_pertone)
+        synced_grid_complex = synced_grid_complex[:,0,:,1] # first hop of self.hops_persymb = the one we synced to
+        synced_grid_pwr_central= np.abs(synced_grid_complex)**2
+        symbols = np.argmax(synced_grid_pwr_central, axis = 1)
+        symbols = list(symbols)
+        symbols = symbols[7:35]+symbols[42:45]
+        bits91 = c.sigspec.gray_map[symbols].flatten()[:91].tolist()
+        int91 = bitsLE_to_int(bits91)
+        if(check_crc(int91)):
+            return bits91[:77]
+        else:
+            return []
 
 

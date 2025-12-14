@@ -72,9 +72,11 @@ def onDecode(c):
     decoded_candidates.append(c)
 
 start_load = timers.tnow()
+print("Bits91:")
+print("1110000111111100010100110101011100010000001111010000111100011100101000101000100111100110010")
 cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = wav_file, 
                           max_iters = 10, max_stall = 8, max_ncheck = 28, 
-                          sync_score_thresh = 2, max_cycles = 1,
+                          sync_score_thresh = 8, max_cycles = 1,
                             thread_PyFT8_decode_manager = True, return_candidate = True)
 
 while cycle_manager.running:
