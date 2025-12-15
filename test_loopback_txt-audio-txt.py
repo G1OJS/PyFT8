@@ -59,14 +59,14 @@ def onDecode(c):
     global first
     global cycle_manager
     if(first):
-        heads = ['End_cyc+', 'Rx call', 'Tx call', 'GrRp', 'SyncScr', 'LLR_sd', 'snr', 't0_idx', 'f0_idx', 't0', 'f0',  'iters']
+        heads = ['End_cyc+', 'Rx call', 'Tx call', 'GrRp', 'SyncScr', 'LLR_sd', 'snr', 't0_idx', 'f0_idx', 't0', 'f0']
         print(''.join([f"{t:>8} " for t in heads]))
         first = False
     dd = c.decode_dict
     t_decode = timers.tnow() % 15 - 15
     vals = [f"{t_decode:8.2f}", dd['call_a'], dd['call_b'], dd['grid_rpt'],
             f"{dd['sync_score']:>5.2f}", f"{dd['llr_sd']:5.2f}", f"{dd['snr']:5.0f}",
-            dd['t0_idx'], dd['f0_idx'], f"{dd['dt']:8.2f}s", f"{dd['freq']:8.2f}Hz", dd['n_its']]
+            dd['t0_idx'], dd['f0_idx'], f"{dd['dt']:8.2f}s", f"{dd['freq']:8.2f}Hz"]
 
     print(''.join([f"{t:>8} " for t in vals]))
     decoded_candidates.append(c)
@@ -75,9 +75,8 @@ start_load = timers.tnow()
 print("Bits91:")
 print("1110000111111100010100110101011100010000001111010000111100011100101000101000100111100110010")
 cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = wav_file, 
-                          max_iters = 10, max_stall = 8, max_ncheck = 28, 
-                          sync_score_thresh = 8, max_cycles = 1,
-                            thread_PyFT8_decode_manager = True, return_candidate = True)
+                          max_iters = 10,  max_ncheck = 28, 
+                          sync_score_thresh = 8, max_cycles = 1, return_candidate = True)
 
 while cycle_manager.running:
     timers.sleep(0.5)

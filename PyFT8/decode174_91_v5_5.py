@@ -33,11 +33,8 @@ import PyFT8.timers as timers
 from threading import Condition
 
 class LDPC174_91:
-    def __init__(self, max_it, max_nstall, max_ncheck, timeout):
-        self.max_iterations = max_it
-        self.max_nstall = max_nstall
-        self.max_ncheck = max_ncheck
-        self.timeout = timeout
+    def __init__(self, max_iters):
+        self.max_iters = max_iters
 
         self.kNRW = [7,6,6,6,7,6,7,6,6,7,6,6,7,7,6,6,6,7,6,7,6,7,6,6,6,7,6,6,6,7,6,6,6,6,7,6,6,6,7,7,6,6,6,6,7,7,6,6,6,6,7,6,6,6,7,6,6,6,6,7,6,6,6,7,6,6,6,7,7,6,6,7,6,6,6,6,6,6,6,7,6,6,6]
         self.kMN = np.array([
@@ -110,14 +107,9 @@ class LDPC174_91:
             nstall = 0 if(ncheck < ncheck_last) else nstall + 1
             ncheck_last = ncheck
             if(it == 0): ncheck_initial = ncheck
-            failures = {'max_its':it>self.max_iterations, 'large_ncheck': ncheck_initial > self.max_ncheck,
-                        'stall':nstall > self.max_nstall, 'timeout': timers.tnow()-c.ldpc_requested > self.timeout}
-            
             payload_bits = get_payload_bits(zn) if ncheck == 0 else []
-            if(len(payload_bits) > 0) or any([f for f in failures.values()]):
-                return {'payload_bits':payload_bits, 'n_its':it, 'ncheck_initial':ncheck_initial, 'failures': failures} 
-
-            timers.sleep(0)
+            if(len(payload_bits) > 0 or it>= self.max_iters):
+                return payload_bits 
 
             toc = zn[self.kNM]  # converges faster than np.tanh(-toc / 2)
             tanhtoc = np.tanh(-toc).astype(np.float32)

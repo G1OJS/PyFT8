@@ -17,11 +17,9 @@ class Candidate:
         self.sync_score = 0
         self.synced_grid_complex = None
         self.sync_returned = None
-        self.demap0_requested = False
-        self.demap1_requested = False
+        self.demap_requested = False
         self.demap_returned = None
         self.ldpc_requested = False
-        self.ldpc_result = None
         self.ldpc_returned = None
         self.message_decoded = None
         self.ncheck_initial = 5000
@@ -102,22 +100,6 @@ class FT8Demodulator:
         llr_sd = np.std(llr)
         return llr, llr_sd, snr
 
-    def hard_decode_candidate(self, c):
-        from .FT8_crc import bitsLE_to_int, check_crc
-        bits91 = []
-        origin = c.origin
-        synced_grid_complex = c.synced_grid_complex.reshape(45, self.hops_persymb,
-                                                          self.sigspec.tones_persymb, self.fbins_pertone)
-        synced_grid_complex = synced_grid_complex[:,0,:,1] # first hop of self.hops_persymb = the one we synced to
-        synced_grid_pwr_central= np.abs(synced_grid_complex)**2
-        symbols = np.argmax(synced_grid_pwr_central, axis = 1)
-        symbols = list(symbols)
-        symbols = symbols[7:35]+symbols[42:45]
-        bits91 = c.sigspec.gray_map[symbols].flatten()[:91].tolist()
-        int91 = bitsLE_to_int(bits91)
-        if(check_crc(int91)):
-            return bits91[:77]
-        else:
-            return []
+
 
 

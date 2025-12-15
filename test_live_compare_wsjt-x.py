@@ -14,7 +14,7 @@ decodes_lock = threading.Lock()
 
 UID_FIELDS = ('cyclestart_str', 'call_a', 'call_b', 'grid_rpt')
 COMMON_FIELDS = {'t_decode', 'snr'}
-PyFT8_FIELDS = {'n_its', 'ncheck_initial', 'ldpc_time'}
+PyFT8_FIELDS = {'ncheck_initial', 'ldpc_time'}
 
 def make_uid(d):
     return tuple(d[k] for k in UID_FIELDS)
@@ -79,12 +79,12 @@ def update_stats():
                 latest_cycle = list(decodes.keys())[-1][0]
                 latest_cycle_uids = [uid for uid in decodes.keys() if uid[0] == latest_cycle]
                 nP = nW = nB = 0
-                print(f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'t(P)':>7} {'t(W)':>7} {'t(P)-t(W)':>7} {'n_its':>7} {'nchk':>7} {'t_ldpc':>7}")
+                print(f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'t(P)':>7} {'t(W)':>7} {'t(P)-t(W)':>7} {'nchk':>7} {'t_ldpc':>7}")
                 for uid in latest_cycle_uids:
                     uid_pretty = f"{uid[0]} {uid[1]:>12} {uid[2]:>12} {uid[3]:>8}"
                     d = decodes[uid]
                     decoder = d['decoder']
-                    def cyt(t): return (t+7) %15 - 7
+                    def cyt(t): return t %15
                     if ('PyFT8_t_decode' in d and 'WSJTX_t_decode' in d):
                         decoder = 'BOTH '
                         tP, tW = d['PyFT8_t_decode'], d['WSJTX_t_decode']
@@ -99,25 +99,25 @@ def update_stats():
                         info = f"        {cyt(tW):7.2f}        "
                         nW +=1
                     if ('PyFT8_t_decode' in d):
-                        info = info + f" {d['PyFT8_n_its']:>7} {d['PyFT8_ncheck_initial']:>7} {float(d['PyFT8_ldpc_time'])*1000:7.0f}ms"
+                        info = info + f" {d['PyFT8_ncheck_initial']:>7} {float(d['PyFT8_ldpc_time'])*1000:7.0f}ms"
 
 
                     if(decoder == 'BOTH '):
                         print(f"{uid_pretty} {decoder:>7} {info}")
-                pc = int(100*(nP+nB) / (nW+nB))
+                pc = int(100*(nP+nB) / (nW+nB+0.001))
                 print(f"WSJTX:{nW+nB}, PyFT8: {nP+nB} ({pc}%)")
 
         last_ct = ct
 
-            
-
-cycle_manager = Cycle_manager(FT8, on_decode, onOccupancy = None, input_device_keywords = ['Microphone', 'CODEC'],
-                              max_iters = 10, max_stall = 10, max_ncheck = 35, timeout = 0.05, 
-                              sync_score_thresh = 2.2, thread_PyFT8_decode_manager = True) 
 
 threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path, on_decode,)).start()
 
-threading.Thread(target=update_stats).start()
+threading.Thread(target=update_stats).start()    
+
+cycle_manager = Cycle_manager(FT8, on_decode, onOccupancy = None, input_device_keywords = ['Microphone', 'CODEC'],
+                              sync_score_thresh = 1.8, max_ncheck = 35, max_iters = 30) 
+
+
 
     
 
