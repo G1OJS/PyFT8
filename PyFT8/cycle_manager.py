@@ -148,7 +148,7 @@ class Cycle_manager():
                             with self.spectrum_lock:
                                 c.synced_grid_complex = self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0],
                                                                                         c.origin[1]:c.origin[1]+c.size[1]].copy()
-                            c.llr, c.llr_sd, c.snr = self.demod.demap_candidate(c)
+                            c.llr, c.snr = self.demod.demap_candidate(c)
                             c.ncheck_initial = self.ldpc.fast_ncheck(c.llr)
                             c.demap_returned = tnow()
                             if (c.ncheck_initial <= self.max_ncheck and not c.ldpc_requested):
@@ -173,7 +173,7 @@ class Cycle_manager():
                             'cyclestart_str':c.cyclestart_str, 'decoder':'PyFT8', 'freq':float(freq_str), 't_decode':tnow(), 
                             'dt':float(time_str), 't0_idx':c.origin[0],'f0_idx':c.origin[1],
                             'call_a':message_parts[0], 'call_b':message_parts[1], 'grid_rpt':message_parts[2],
-                            'sync_score':c.sync_score, 'snr':c.snr, 'llr_sd':c.llr_sd,
+                            'sync_score':c.sync_score, 'snr':c.snr, 
                             'ncheck_initial':c.ncheck_initial, 'ldpc_time':c.ldpc_returned - c.ldpc_requested
                             }
                     c.message_decoded = tnow()

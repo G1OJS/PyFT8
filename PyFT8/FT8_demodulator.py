@@ -71,16 +71,10 @@ class FT8Demodulator:
         return candidates
 
     def _demap_symbols(self, p):
-        tones1 = [np.where(self.sigspec.gray_map[:,b]==1)[0] for b in range(3)]
-        tones0 = [np.where(self.sigspec.gray_map[:,b]==0)[0] for b in range(3)]
-        llr = np.empty((p.shape[0], 3), dtype=np.float32)
-        for b in range(3):
-            t1 = tones1[b]
-            t0 = tones0[b]
-            ones  = np.max(p[:, t1], axis=1)
-            zeros = np.max(p[:, t0], axis=1)
-            llr[:, b] = np.log(ones+eps) - np.log(zeros+eps)
-        return llr.reshape(-1)
+        llr0 = np.log(np.max(p[:,[4,5,6,7]], axis=1)) - np.log(np.max(p[:,[0,1,2,3]], axis=1))
+        llr1 = np.log(np.max(p[:,[2,3,4,7]], axis=1)) - np.log(np.max(p[:,[0,1,5,6]], axis=1))
+        llr2 = np.log(np.max(p[:,[1,2,6,7]], axis=1)) - np.log(np.max(p[:,[0,3,4,5]], axis=1))
+        return np.column_stack((llr0, llr1, llr2)).ravel()
 
     def demap_candidate(self, c):
         origin = c.origin
@@ -92,14 +86,8 @@ class FT8Demodulator:
         snr = 10*np.log10(synced_pwr)-107
         snr = int(np.clip(snr, -24,24).item())
         synced_grid_pwr_central = synced_grid_pwr[:,:,1]/synced_pwr
-
-        pwr_payload = synced_grid_pwr_central[self.sigspec.payload_symb_idxs]   
+        pwr_payload = synced_grid_pwr_central[self.sigspec.payload_symb_idxs]
         llr = self._demap_symbols(pwr_payload)
-
-        llr = llr - np.mean(llr)
-        llr_sd = np.std(llr)
-        return llr, llr_sd, snr
-
-
+        return llr, snr
 
 

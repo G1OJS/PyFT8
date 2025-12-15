@@ -85,7 +85,6 @@ class LDPC174_91:
         it = 0
         nstall, ncheck_last = 0, 0 
         ncheck_initial = None
-        c.llr = 3 * c.llr / (c.llr_sd +.01)
 
         def get_ncheck(llr):
             synd_checks = [ sum(1 for llr_bit in llr[self.synd_check_idxs[i]] if llr_bit > 0) %2 for i in range(83)]

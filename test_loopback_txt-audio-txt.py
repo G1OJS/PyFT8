@@ -59,13 +59,13 @@ def onDecode(c):
     global first
     global cycle_manager
     if(first):
-        heads = ['End_cyc+', 'Rx call', 'Tx call', 'GrRp', 'SyncScr', 'LLR_sd', 'snr', 't0_idx', 'f0_idx', 't0', 'f0']
+        heads = ['End_cyc+', 'Rx call', 'Tx call', 'GrRp', 'SyncScr', 'snr', 't0_idx', 'f0_idx', 't0', 'f0']
         print(''.join([f"{t:>8} " for t in heads]))
         first = False
     dd = c.decode_dict
     t_decode = timers.tnow() % 15 - 15
     vals = [f"{t_decode:8.2f}", dd['call_a'], dd['call_b'], dd['grid_rpt'],
-            f"{dd['sync_score']:>5.2f}", f"{dd['llr_sd']:5.2f}", f"{dd['snr']:5.0f}",
+            f"{dd['sync_score']:>5.2f}", f"{dd['snr']:5.0f}",
             dd['t0_idx'], dd['f0_idx'], f"{dd['dt']:8.2f}s", f"{dd['freq']:8.2f}Hz"]
 
     print(''.join([f"{t:>8} " for t in vals]))

@@ -115,7 +115,7 @@ threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path, on_decode,)).sta
 threading.Thread(target=update_stats).start()    
 
 cycle_manager = Cycle_manager(FT8, on_decode, onOccupancy = None, input_device_keywords = ['Microphone', 'CODEC'],
-                              sync_score_thresh = 1.8, max_ncheck = 35, max_iters = 30) 
+                              sync_score_thresh = 3, max_ncheck = 35, max_iters = 30) 
 
 
 
