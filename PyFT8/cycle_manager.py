@@ -156,9 +156,8 @@ class Cycle_manager():
                                 threading.Thread(target=self.decode, args = (c,), daemon=True).start()
                     
     def decode(self, c):
-        payload_bits = self.ldpc.decode(c)
+        self.ldpc.decode(c)
         with self.cands_lock:
-            c.payload_bits = payload_bits
             c.ldpc_returned = tnow()
         self.total_ldpc_time +=c.ldpc_returned - c.ldpc_requested
         message_parts = FT8_unpack(c.payload_bits)
@@ -176,7 +175,6 @@ class Cycle_manager():
                             'sync_score':c.sync_score, 'snr':c.snr, 
                             'ncheck_initial':c.ncheck_initial, 'ldpc_time':c.ldpc_returned - c.ldpc_requested
                             }
-                    c.message_decoded = tnow()
                 self.onSuccessfulDecode(c if self.return_candidate else c.decode_dict)  
                        
 

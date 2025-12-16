@@ -101,9 +101,10 @@ class LDPC174_91:
         it = 0
         while True:
             ncheck = get_ncheck(zn)
-            payload_bits = get_payload_bits(zn) if ncheck == 0 else []
-            if(len(payload_bits) > 0 or it>= self.max_iters or ncheck > self.max_ncheck):
-                return payload_bits 
+            if(it == 0): c.ncheck_initial = ncheck
+            c.payload_bits = get_payload_bits(zn) if ncheck == 0 else []
+            if(len(c.payload_bits) > 0 or it>= self.max_iters or ncheck > self.max_ncheck):
+                return
 
             toc = zn[self.kNM]  # converges faster than np.tanh(-toc / 2)
             tanhtoc = np.tanh(-toc).astype(np.float32)

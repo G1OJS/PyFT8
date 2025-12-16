@@ -80,8 +80,10 @@ cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = 
 
 while cycle_manager.running:
     timers.sleep(0.5)
-    
-print(f"DONE.")
+
+timers.sleep(2)
+unique_decoded_candidates = list(set(decoded_candidates))
+print(f"DONE. {len(unique_decoded_candidates)} unique decodes.")    
 
 print("bits expected / bits decoded")
 print("11100001111111000101001101010111000100000011110100001111000111001010001010001")

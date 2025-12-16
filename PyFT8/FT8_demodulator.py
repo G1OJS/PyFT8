@@ -13,15 +13,12 @@ class Candidate:
         self.size = spectrum.candidate_size
         self.cycle_start = 15*int(tnow()/15)
         self.cyclestart_str = cyclestart_str()
-        self.sync_result = None
         self.sync_score = 0
-        self.synced_grid_complex = None
-        self.sync_returned = None
+        self.synced_grid_complex = False
         self.demap_requested = False
-        self.demap_returned = None
+        self.demap_returned = False
         self.ldpc_requested = False
-        self.ldpc_returned = None
-        self.message_decoded = None
+        self.ldpc_returned = False
         self.ncheck_initial = 5000
         
 class FT8Demodulator:
@@ -67,7 +64,6 @@ class FT8Demodulator:
                 c.last_crc_hop = best[0] + 45 * self.hops_persymb
                 c.last_data_hop = best[0] + spectrum.candidate_size[0] - n_hops_costas
                 c.first_data_hop = best[0] + n_hops_costas
-                c.sync_returned = tnow()
         return candidates
 
     def _demap_symbols(self, p):
