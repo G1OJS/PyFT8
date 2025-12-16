@@ -6,7 +6,7 @@ from PyFT8.sigspecs import FT8
 from PyFT8.cycle_manager import Cycle_manager
 
 global decoded_candidates
-decoded_candidates = []
+decoded_candidates = set()
 first = True
 def onDecode(c):
     global first
@@ -21,7 +21,7 @@ def onDecode(c):
             f"{dd['sync_score']:>5.2f}",  f"{dd['snr']:5.0f}",
             dd['t0_idx'], dd['f0_idx']]
     print(''.join([f"{t:>8} " for t in vals]))
-    decoded_candidates.append(c)
+    decoded_candidates.add(c)
 
 
 
@@ -37,8 +37,9 @@ while cycle_manager.running:
     timers.sleep(0.5)
 
 cycle_manager.output_timings()
-    
-print(f"DONE.")
+decoded_candidates = list(decoded_candidates)
+
+print(f"DONE. {len(decoded_candidates)} unique decodes.")
 
 wf = Waterfall(cycle_manager.spectrum)
 wf.update_main(candidates=decoded_candidates)
