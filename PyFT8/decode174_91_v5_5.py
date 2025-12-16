@@ -106,9 +106,8 @@ class LDPC174_91:
             if(len(c.payload_bits) > 0 or it>= self.max_iters or ncheck > self.max_ncheck):
                 return
 
-            toc = zn[self.kNM]  # converges faster than np.tanh(-toc / 2)
+            toc = zn[self.kNM] 
             tanhtoc = np.tanh(-toc).astype(np.float32)
-
             sum_all = np.zeros((7, 83), dtype=np.float32)
             excl_vals = np.zeros((7,83), dtype=np.float32)
             for kk in range(3):
@@ -119,7 +118,7 @@ class LDPC174_91:
                     for i in range(len(neigh_vars)):
                         if neigh_vars[i] != variable_node:
                             Tmn *= tanhtoc[i, ichk]
-                    tovrow[variable_node] = Tmn/((Tmn-alpha)*(alpha+Tmn)) # close enough to atanh(-Tmn) with alpha = 1.18
+                    tovrow[variable_node] = Tmn/((Tmn-alpha)*(alpha+Tmn))
                 zn += tovrow
                 sum_all += tovrow[self.kNM]
                 excl_vals += tovrow[self.kNM] * self.exclude_masks[kk]

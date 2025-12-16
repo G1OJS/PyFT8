@@ -80,29 +80,24 @@ class Cycle_manager():
         
         while self.running:
             sleep(0.05)
-            cycle_time = tnow() % self.demod.sigspec.cycle_seconds
-            if (cycle_time < self.prev_cycle_time): 
+            self.cycle_time = tnow() % self.demod.sigspec.cycle_seconds
+            if (self.cycle_time < self.prev_cycle_time): 
                 self.cycle_countdown -=1
                 if not self.cycle_countdown: self.running = False
-                timedLog(f"[Cycle manager] rollover detected at {cycle_time:.2f}")
+                timedLog(f"[Cycle manager] rollover detected at {self.cycle_time:.2f}")
                 self.output_timings()
                 dumped_stats = False
                 cycle_searched = False
                 self.spectrum.fine_grid_pointer = 0
                 self.cyclestart_str = cyclestart_str()
-                still_live = [c for c in self.cands_list if not c.ldpc_returned]
-                with self.cands_lock:
-                    self.cands_list = [c for c in still_live if tnow() - c.cycle_start < 15
-                                       and not c.demap_returned]
-                    timedLog(f"[Cycle manager] {len(self.cands_list)} candidates carried over")
+                self.cands_list = []
             else:
-                if (cycle_time > self.t_search and not cycle_searched):
+                if (self.cycle_time > self.t_search and not cycle_searched):
                     cycle_searched = True
                     self.search_spectrum()
                 if(self.spectrum.fine_grid_pointer > self.i_demap):
                     self.process_candidates()
-                    
-            self.prev_cycle_time = cycle_time
+            self.prev_cycle_time = self.cycle_time
 
     def output_timings(self):
         def t(et,cb):
@@ -114,9 +109,10 @@ class Cycle_manager():
             returned = [c for c in sent_for_decode if c.ldpc_returned]
             latest_decode = np.max([c.ldpc_returned - c.cycle_start for c in returned]) if len(returned) else 0
             success = [c for c in returned if len(c.payload_bits)]
-            timedLog(f"[Cycle manager] {len(self.cands_list)} candidates, {len(demapped)} demapped (latest {latest_demap:5.2f})")
-            timedLog(f"[Cycle manager] {len(sent_for_decode)} sent for decode, {len(returned)} returned (latest {latest_decode:5.2f})")
-            timedLog(f"[Cycle manager] {len(success)} successful decodes")
+            timedLog(f"[Cycle manager] previous cycle:")
+            timedLog(f"  {len(self.cands_list)} candidates, {len(demapped)} demapped (latest {latest_demap:5.2f})")
+            timedLog(f"  {len(sent_for_decode)} sent for decode, {len(returned)} returned (latest {latest_decode:5.2f})")
+            timedLog(f"  {len(success)} successful decodes")
 
     def search_spectrum(self):
         timedLog(f"[Cycle manager] Search spectrum ...")
@@ -132,16 +128,15 @@ class Cycle_manager():
 
     def process_candidates(self):
         with self.cands_lock:
-            to_decode = [c for c in self.cands_list if (self.spectrum.fine_grid_pointer > c.last_data_hop and not c.demap_requested)]
-        for c in to_decode:
+            to_demap = [c for c in self.cands_list if (self.spectrum.fine_grid_pointer > c.last_data_hop and not c.demap_requested)]
+        for c in to_demap:
             c.demap_requested = tnow()
             with self.spectrum_lock:
                 c.synced_grid_complex = self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]].copy()
             c.llr, c.snr = self.demod.demap_candidate(c)
             c.demap_returned = tnow()
-            if (not c.ldpc_requested):
-                c.ldpc_requested = tnow()
-                threading.Thread(target=self.decode, args = (c,), daemon=True).start()
+            c.ldpc_requested = tnow()
+            self.decode(c)
                     
     def decode(self, c):
         self.ldpc.decode(c)
