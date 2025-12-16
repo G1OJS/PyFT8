@@ -4,11 +4,6 @@ __pycache__/
 *$py.class
 
 
-audio.wav
-wsjtx.txt
-pyft8.txt
-
-*.wav
 *.npz
 *.json
 *.csv
