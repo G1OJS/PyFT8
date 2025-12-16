@@ -32,20 +32,22 @@ class AudioIn:
         
     def stream(self, wav_file = None):
         if(wav_file):
+            prev_cycle_time = 0
+            wf = None
             while self.parent_app.running:
-                wf = wave.open(wav_file, 'rb')
-                timedLog(f"[Audio] Waiting for rollover")
-                while (tnow() % self.parent_app.demod.sigspec.cycle_seconds) < self.demod.sigspec.cycle_seconds  - 0.1 :
-                    sleep(0.01)
-                timedLog(f"[Audio] Playing wav file {wav_file}")
-                while True:    
+                cycle_time = tnow() % self.demod.sigspec.cycle_seconds
+                rollover = (cycle_time < prev_cycle_time)
+                prev_cycle_time = cycle_time
+                if(rollover):
+                    timedLog(f"[Audio] Playing wav file {wav_file}")
+                    wf = wave.open(wav_file, 'rb')
+                nextHop_time = tnow() + self.hop_time
+                while tnow() < nextHop_time:
+                    sleep(0.001)
+                if(wf):
                     frames = wf.readframes(self.samples_perhop)
-                    if not frames:
-                        break
-                    nextHop_time = tnow() + self.hop_time
-                    self.buffer_and_FFT(frames)
-                    while tnow() < nextHop_time:
-                        sleep(0.001)
+                    if frames:
+                        self.buffer_and_FFT(frames)
         else:
             stream = pya.open(format=pyaudio.paInt16, channels=1, rate=self.demod.sample_rate,
                              input=True, input_device_index = self.parent_app.input_device_idx,

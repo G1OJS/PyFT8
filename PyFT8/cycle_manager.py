@@ -70,23 +70,20 @@ class Cycle_manager():
         self.onSuccessfulDecode = onSuccessfulDecode
         self.onOccupancy = onOccupancy
 
+        threading.Thread(target = self.audio_in.stream, args=(self.audio_in_wav,), daemon=True).start()
         threading.Thread(target=self.manage_cycle, daemon=True).start()
 
     def manage_cycle(self):
-        timedLog("[Cycle manager] waiting for end of partial cycle")
-        while (tnow() % self.demod.sigspec.cycle_seconds) < self.demod.sigspec.cycle_seconds  - 0.1 :
-            sleep(0.01)
-        threading.Thread(target = self.audio_in.stream, args=(self.audio_in_wav,), daemon=True).start()
         
         while self.running:
-            sleep(0.05)
+            sleep(0.1)
             self.cycle_time = tnow() % self.demod.sigspec.cycle_seconds
             rollover = (self.cycle_time < self.prev_cycle_time)
             self.prev_cycle_time = self.cycle_time
 
             if(rollover):
-                self.cycle_countdown -=1
                 if not self.cycle_countdown: self.running = False
+                self.cycle_countdown -=1
                 timedLog(f"[Cycle manager] rollover detected at {self.cycle_time:.2f}")
                 self.output_timings()
                 dumped_stats = False
@@ -101,7 +98,7 @@ class Cycle_manager():
                 if(self.spectrum.fine_grid_pointer > self.i_demap):
                     self.process_candidates()
             
-
+            
     def output_timings(self):
         def t(et,cb):
             return f"{et - cb :6.2f}" if et else None
