@@ -70,7 +70,39 @@ class Cycle_manager():
         self.onSuccessfulDecode = onSuccessfulDecode
         self.onOccupancy = onOccupancy
 
-        threading.Thread(target=self.threaded_spectrum_tasks, daemon=True).start()
+        threading.Thread(target=self.manage_cycle, daemon=True).start()
+
+    def manage_cycle(self):
+        timedLog("[Cycle manager] waiting for end of partial cycle")
+        while (tnow() % self.demod.sigspec.cycle_seconds) < self.demod.sigspec.cycle_seconds  - 0.1 :
+            sleep(0.01)
+        threading.Thread(target = self.audio_in.stream, args=(self.audio_in_wav,), daemon=True).start()
+        
+        while self.running:
+            sleep(0.05)
+            cycle_time = tnow() % self.demod.sigspec.cycle_seconds
+            if (cycle_time < self.prev_cycle_time): 
+                self.cycle_countdown -=1
+                if not self.cycle_countdown: self.running = False
+                timedLog(f"[Cycle manager] rollover detected at {cycle_time:.2f}")
+                self.output_timings()
+                dumped_stats = False
+                cycle_searched = False
+                self.spectrum.fine_grid_pointer = 0
+                self.cyclestart_str = cyclestart_str()
+                still_live = [c for c in self.cands_list if not c.ldpc_returned]
+                with self.cands_lock:
+                    self.cands_list = [c for c in still_live if tnow() - c.cycle_start < 15
+                                       and not c.demap_returned]
+                    timedLog(f"[Cycle manager] {len(self.cands_list)} candidates carried over")
+            else:
+                if (cycle_time > self.t_search and not cycle_searched):
+                    cycle_searched = True
+                    self.search_spectrum()
+                if(self.spectrum.fine_grid_pointer > self.i_demap):
+                    self.process_candidates()
+                    
+            self.prev_cycle_time = cycle_time
 
     def output_timings(self):
         def t(et,cb):
@@ -82,78 +114,34 @@ class Cycle_manager():
             returned = [c for c in sent_for_decode if c.ldpc_returned]
             latest_decode = np.max([c.ldpc_returned - c.cycle_start for c in returned]) if len(returned) else 0
             success = [c for c in returned if len(c.payload_bits)]
-            timedLog(f"{len(self.cands_list)} candidates, {len(demapped)} demapped (latest {latest_demap:5.2f})")
-            timedLog(f"{len(sent_for_decode)} sent for decode, {len(returned)} returned (latest {latest_decode:5.2f})")
-            timedLog(f"{len(success)} successful decodes")
+            timedLog(f"[Cycle manager] {len(self.cands_list)} candidates, {len(demapped)} demapped (latest {latest_demap:5.2f})")
+            timedLog(f"[Cycle manager] {len(sent_for_decode)} sent for decode, {len(returned)} returned (latest {latest_decode:5.2f})")
+            timedLog(f"[Cycle manager] {len(success)} successful decodes")
 
-    def threaded_spectrum_tasks(self):
-        timedLog("Rollover manager waiting for end of partial cycle")
-        while (tnow() % self.demod.sigspec.cycle_seconds) < self.demod.sigspec.cycle_seconds  - 0.1 :
-            sleep(0.01)
-        threading.Thread(target = self.audio_in.stream, args=(self.audio_in_wav,), daemon=True).start()
-        
-        while self.running:
-            sleep(0.25)
-            cycle_time = tnow() % self.demod.sigspec.cycle_seconds
+    def search_spectrum(self):
+        timedLog(f"[Cycle manager] Search spectrum ...")
+        idx_n = self.spectrum.fine_grid_pointer
+        idx_0 = idx_n - self.demod.slack_hops - self.sigspec.costas_len * self.demod.hops_persymb
+        with self.spectrum_lock:
+            self.spectrum.sync_search_band = self.spectrum.fine_grid_complex[idx_0:idx_n,:].copy()
+        cands = self.demod.find_syncs(self.spectrum, self.sync_score_thresh)
+        with self.cands_lock:
+            self.cands_list = self.cands_list + cands
+        timedLog(f"[Cycle manager] Spectrum searched -> {len(self.cands_list)} candidates")
+        if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
 
-            # detect rollover
-            if (cycle_time < self.prev_cycle_time): 
-                if not self.cycle_countdown:
-                    self.running = False
-                    break
-                dumped_stats = False
-                self.spectrum.fine_grid_pointer = 0
-                print()
-                timedLog(f"Cycle rollover {cycle_time:.2f}")
-                self.cycle_countdown -=1
-                self.cyclestart_str = cyclestart_str()
-                cycle_searched = False
-            self.prev_cycle_time = cycle_time
-
-            # remove old candidates and dump summary stats for cycle (for first 10 cycles)
-            if (cycle_time > self.t_search -1 and not dumped_stats):
-                dumped_stats = True                    
-                if(self.cycle_countdown > self.max_cycles - 10):
-                    self.output_timings()
-                still_live = [c for c in self.cands_list if not c.ldpc_returned]
-                with self.cands_lock:
-                    self.cands_list = [c for c in still_live if tnow() - c.cycle_start < 30
-                                       and not c.demap_returned]
-                    timedLog(f"{len(self.cands_list)} candidates carried over")
-
-            # search for candidates (only once per cycle)
-            if (cycle_time > self.t_search and not cycle_searched):
-                cycle_searched = True
-                timedLog(f"Search spectrum ...")
-                idx_n = self.spectrum.fine_grid_pointer
-                idx_0 = idx_n - self.demod.slack_hops - self.sigspec.costas_len * self.demod.hops_persymb
-                
-                with self.spectrum_lock:
-                    self.spectrum.sync_search_band = self.spectrum.fine_grid_complex[idx_0:idx_n,:].copy()
-                cands = self.demod.find_syncs(self.spectrum, self.sync_score_thresh)
-                with self.cands_lock:
-                    self.cands_list = self.cands_list + cands
-
-                timedLog(f"Spectrum searched -> {len(self.cands_list)} candidates")
-                if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
-
-            # find new candidates that can have spectrum filled, and demap them:
-            if(self.spectrum.fine_grid_pointer > self.i_demap):
-                with self.cands_lock:
-                    to_decode = [c for c in self.cands_list if (self.spectrum.fine_grid_pointer > c.last_data_hop
-                                  or (self.cyclestart_str != c.cyclestart_str and self.spectrum.fine_grid_pointer +  self.spectrum.hops_percycle > c.last_data_hop) )]
-                for c in to_decode:
-                    with self.cands_lock:
-                        if not c.demap_requested:
-                            c.demap_requested = tnow()
-                            with self.spectrum_lock:
-                                c.synced_grid_complex = self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0],
-                                                                                        c.origin[1]:c.origin[1]+c.size[1]].copy()
-                            c.llr, c.snr = self.demod.demap_candidate(c)
-                            c.demap_returned = tnow()
-                            if (not c.ldpc_requested):
-                                c.ldpc_requested = tnow()
-                                threading.Thread(target=self.decode, args = (c,), daemon=True).start()
+    def process_candidates(self):
+        with self.cands_lock:
+            to_decode = [c for c in self.cands_list if (self.spectrum.fine_grid_pointer > c.last_data_hop and not c.demap_requested)]
+        for c in to_decode:
+            c.demap_requested = tnow()
+            with self.spectrum_lock:
+                c.synced_grid_complex = self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]].copy()
+            c.llr, c.snr = self.demod.demap_candidate(c)
+            c.demap_returned = tnow()
+            if (not c.ldpc_requested):
+                c.ldpc_requested = tnow()
+                threading.Thread(target=self.decode, args = (c,), daemon=True).start()
                     
     def decode(self, c):
         self.ldpc.decode(c)

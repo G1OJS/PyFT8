@@ -7,16 +7,16 @@ pya = pyaudio.PyAudio()
 def find_device(device_str_contains):
     if(not device_str_contains): #(this check probably shouldn't be needed - check calling code)
         return
-    timedLog(f"Looking for audio device matching {device_str_contains}")
+    timedLog(f"[Audio] Looking for audio device matching {device_str_contains}")
     for dev_idx in range(pya.get_device_count()):
         name = pya.get_device_info_by_index(dev_idx)['name']
         match = True
         for pattern in device_str_contains:
             if (not pattern in name): match = False
         if(match):
-            timedLog(f"Found device {name} index {dev_idx}")
+            timedLog(f"[Audio] Found device {name} index {dev_idx}")
             return dev_idx
-    timedLog(f"No audio device found matching {device_str_contains}")
+    timedLog(f"[Audio] No audio device found matching {device_str_contains}")
 
 class AudioIn:
     def __init__(self, parent_app, fft_window): # needing parent_app here suggests some code below should move there
@@ -32,16 +32,20 @@ class AudioIn:
         
     def stream(self, wav_file = None):
         if(wav_file):
-            wf = wave.open(wav_file, 'rb')
-            timedLog(f"Playing wav file {wav_file}")
             while self.parent_app.running:
-                frames = wf.readframes(self.samples_perhop)
-                if not frames:
-                    break
-                nextHop_time = tnow() + self.hop_time
-                self.buffer_and_FFT(frames)
-                while tnow() < nextHop_time:
-                    sleep(0.001)
+                wf = wave.open(wav_file, 'rb')
+                timedLog(f"[Audio] Waiting for rollover")
+                while (tnow() % self.parent_app.demod.sigspec.cycle_seconds) < self.demod.sigspec.cycle_seconds  - 0.1 :
+                    sleep(0.01)
+                timedLog(f"[Audio] Playing wav file {wav_file}")
+                while True:    
+                    frames = wf.readframes(self.samples_perhop)
+                    if not frames:
+                        break
+                    nextHop_time = tnow() + self.hop_time
+                    self.buffer_and_FFT(frames)
+                    while tnow() < nextHop_time:
+                        sleep(0.001)
         else:
             stream = pya.open(format=pyaudio.paInt16, channels=1, rate=self.demod.sample_rate,
                              input=True, input_device_index = self.parent_app.input_device_idx,
