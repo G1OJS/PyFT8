@@ -145,9 +145,9 @@ class Cycle_manager():
         self.total_ldpc_time +=c.ldpc_returned - c.ldpc_requested
         message_parts = FT8_unpack(c.payload_bits)
         if(message_parts):
-            key = c.cyclestart_str+" "+' '.join(message_parts)
-            if(not key in self.duplicate_filter):
-                self.duplicate_filter.add(key)
+            dedupe_key = c.cyclestart_str+" "+' '.join(message_parts)
+            if(not dedupe_key in self.duplicate_filter):
+                self.duplicate_filter.add(dedupe_key)
                 freq_str = f"{c.origin[3]:4.0f}"
                 time_str = f"{c.origin[2]:4.1f}"
                 with self.cands_lock:
@@ -155,7 +155,7 @@ class Cycle_manager():
                             'cyclestart_str':c.cyclestart_str, 'decoder':'PyFT8', 'freq':float(freq_str), 't_decode':tnow(), 
                             'dt':float(time_str), 't0_idx':c.origin[0],'f0_idx':c.origin[1],
                             'call_a':message_parts[0], 'call_b':message_parts[1], 'grid_rpt':message_parts[2],
-                            'sync_score':c.sync_score, 'snr':c.snr, 
+                            'sync_score':c.sync_score, 'snr':c.snr, 'dedupe_key':dedupe_key,
                             'ncheck_initial':c.ncheck_initial, 'ldpc_time':c.ldpc_returned - c.ldpc_requested
                             }
                 self.onSuccessfulDecode(c if self.return_candidate else c.decode_dict)  
