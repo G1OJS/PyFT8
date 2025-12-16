@@ -74,12 +74,19 @@ class Cycle_manager():
         threading.Thread(target=self.manage_cycle, daemon=True).start()
 
     def manage_cycle(self):
-        
+        proc_finished_message = False
         while self.running:
-            sleep(0.1)
+            sleep(0.01)
             self.cycle_time = tnow() % self.demod.sigspec.cycle_seconds
             rollover = (self.cycle_time < self.prev_cycle_time)
             self.prev_cycle_time = self.cycle_time
+
+            with self.cands_lock:
+                remaining = [c for c in self.cands_list if not c.ldpc_returned]
+            if(not proc_finished_message):
+                if(len(remaining) == 0):
+                    proc_finished_message = True
+                    timedLog(f"[Cycle manager] processing finished for this cycle")
 
             if(rollover):
                 if not self.cycle_countdown: self.running = False
@@ -88,9 +95,10 @@ class Cycle_manager():
                 self.output_timings()
                 dumped_stats = False
                 cycle_searched = False
+                proc_finished_message = False
                 self.spectrum.fine_grid_pointer = 0
                 self.cyclestart_str = cyclestart_str()
-                self.cands_list = []
+                self.cands_list = [c for c in self.cands_list if (c.demap_returned and not c.ldpc_requested)]
             else:
                 if (self.cycle_time > self.t_search and not cycle_searched):
                     cycle_searched = True
@@ -129,10 +137,10 @@ class Cycle_manager():
     def process_candidates(self):
         with self.cands_lock:
             to_demap = [c for c in self.cands_list if (self.spectrum.fine_grid_pointer > c.last_data_hop and not c.demap_requested)]
-        for c in to_demap:
+        for c in to_demap[:1]:
             c.demap_requested = tnow()
             with self.spectrum_lock:
-                c.synced_grid_complex = self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]].copy()
+                c.synced_grid_complex = self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]]
             c.llr, c.snr = self.demod.demap_candidate(c)
             c.demap_returned = tnow()
             c.ldpc_requested = tnow()
