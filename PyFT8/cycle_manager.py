@@ -81,7 +81,10 @@ class Cycle_manager():
         while self.running:
             sleep(0.05)
             self.cycle_time = tnow() % self.demod.sigspec.cycle_seconds
-            if (self.cycle_time < self.prev_cycle_time): 
+            rollover = (self.cycle_time < self.prev_cycle_time)
+            self.prev_cycle_time = self.cycle_time
+
+            if(rollover):
                 self.cycle_countdown -=1
                 if not self.cycle_countdown: self.running = False
                 timedLog(f"[Cycle manager] rollover detected at {self.cycle_time:.2f}")
@@ -97,7 +100,7 @@ class Cycle_manager():
                     self.search_spectrum()
                 if(self.spectrum.fine_grid_pointer > self.i_demap):
                     self.process_candidates()
-            self.prev_cycle_time = self.cycle_time
+            
 
     def output_timings(self):
         def t(et,cb):
