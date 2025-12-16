@@ -81,8 +81,10 @@ class Cycle_manager():
             sent_for_decode = [c for c in self.cands_list if c.ldpc_requested]
             returned = [c for c in sent_for_decode if c.ldpc_returned]
             latest_decode = np.max([c.ldpc_returned - c.cycle_start for c in returned]) if len(returned) else 0
+            success = [c for c in returned if len(c.payload_bits)]
             timedLog(f"{len(self.cands_list)} candidates, {len(demapped)} demapped (latest {latest_demap:5.2f})")
             timedLog(f"{len(sent_for_decode)} sent for decode, {len(returned)} returned (latest {latest_decode:5.2f})")
+            timedLog(f"{len(success)} successful decodes")
 
     def threaded_spectrum_tasks(self):
         timedLog("Rollover manager waiting for end of partial cycle")
