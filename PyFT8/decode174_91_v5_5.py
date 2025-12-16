@@ -33,8 +33,9 @@ import PyFT8.timers as timers
 from threading import Condition
 
 class LDPC174_91:
-    def __init__(self, max_iters):
+    def __init__(self, max_iters, max_ncheck):
         self.max_iters = max_iters
+        self.max_ncheck = max_ncheck
 
         self.kNRW = [7,6,6,6,7,6,7,6,6,7,6,6,7,7,6,6,6,7,6,7,6,7,6,6,6,7,6,6,6,7,6,6,6,6,7,6,6,6,7,7,6,6,6,6,7,7,6,6,6,6,7,6,6,6,7,6,6,6,6,7,6,6,6,7,6,6,6,7,7,6,6,7,6,6,6,6,6,6,6,7,6,6,6]
         self.kMN = np.array([
@@ -82,9 +83,6 @@ class LDPC174_91:
         return int(np.sum(synd_checks))
             
     def decode(self, c):
-        it = 0
-        nstall, ncheck_last = 0, 0 
-        ncheck_initial = None
 
         def get_ncheck(llr):
             synd_checks = [ sum(1 for llr_bit in llr[self.synd_check_idxs[i]] if llr_bit > 0) %2 for i in range(83)]
@@ -98,16 +96,13 @@ class LDPC174_91:
         
         tovrow = np.zeros(174, dtype=np.float32)
         zn = np.array(c.llr, dtype=np.float32)
-        alpha = 1.05
-        pause_cond = Condition()
+        alpha = 1.5
 
+        it = 0
         while True:
             ncheck = get_ncheck(zn)
-            nstall = 0 if(ncheck < ncheck_last) else nstall + 1
-            ncheck_last = ncheck
-            if(it == 0): ncheck_initial = ncheck
             payload_bits = get_payload_bits(zn) if ncheck == 0 else []
-            if(len(payload_bits) > 0 or it>= self.max_iters):
+            if(len(payload_bits) > 0 or it>= self.max_iters or ncheck > self.max_ncheck):
                 return payload_bits 
 
             toc = zn[self.kNM]  # converges faster than np.tanh(-toc / 2)

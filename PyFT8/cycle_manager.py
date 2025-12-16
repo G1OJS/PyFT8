@@ -50,7 +50,7 @@ class Cycle_manager():
         self.spectrum_lock = threading.Lock()
         self.input_device_idx = find_device(input_device_keywords)
         self.audio_in = AudioIn(self, np.kaiser(self.spectrum.FFT_len, 20))
-        self.ldpc = LDPC174_91(max_iters)
+        self.ldpc = LDPC174_91(max_iters = max_iters, max_ncheck = max_ncheck)
 
         self.audio_in_wav = audio_in_wav
         self.max_cycles = max_cycles
@@ -64,7 +64,6 @@ class Cycle_manager():
         self.cands_list = []
         self.cands_lock = threading.Lock()
         self.sync_score_thresh = sync_score_thresh
-        self.min_ncheck_removed = None
         self.duplicate_filter = set()
         self.total_ldpc_time = 0
 
@@ -117,7 +116,7 @@ class Cycle_manager():
                 still_live = [c for c in self.cands_list if not c.ldpc_returned]
                 with self.cands_lock:
                     self.cands_list = [c for c in still_live if tnow() - c.cycle_start < 30
-                                       and (c.ncheck_initial <= self.max_ncheck or not c.demap_returned)]
+                                       and not c.demap_returned]
                     timedLog(f"{len(self.cands_list)} candidates carried over")
 
             # search for candidates (only once per cycle)
@@ -149,9 +148,8 @@ class Cycle_manager():
                                 c.synced_grid_complex = self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0],
                                                                                         c.origin[1]:c.origin[1]+c.size[1]].copy()
                             c.llr, c.snr = self.demod.demap_candidate(c)
-                            c.ncheck_initial = self.ldpc.fast_ncheck(c.llr)
                             c.demap_returned = tnow()
-                            if (c.ncheck_initial <= self.max_ncheck and not c.ldpc_requested):
+                            if (not c.ldpc_requested):
                                 c.ldpc_requested = tnow()
                                 threading.Thread(target=self.decode, args = (c,), daemon=True).start()
                     
