@@ -89,7 +89,9 @@ class Cycle_manager():
                     timedLog(f"[Cycle manager] processing finished for this cycle")
 
             if(rollover):
-                if not self.cycle_countdown: self.running = False
+                if not self.cycle_countdown:
+                    self.running = False
+                    break
                 self.cycle_countdown -=1
                 timedLog(f"[Cycle manager] rollover detected at {self.cycle_time:.2f}")
                 self.output_timings()

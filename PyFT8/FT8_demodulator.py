@@ -45,7 +45,7 @@ class FT8Demodulator:
             spectrum.occupancy[f0_idx:f0_idx + self.fbins_per_signal] += max_pwr
             c_pgrid = c_pgrid / (max_pwr + eps)
             best = (0, -1e30)
-            for t0_idx in range(c_zgrid.shape[0] - n_hops_costas):
+            for t0_idx in range(self.slack_hops - n_hops_costas):
                 test = (t0_idx, float(np.dot(c_pgrid[t0_idx + spectrum.hop_idxs_Costas ,  :].ravel(), spectrum._csync.ravel())))
                 if test[1] > best[1]:
                     best = test
@@ -53,12 +53,6 @@ class FT8Demodulator:
                 c = Candidate(spectrum)
                 c.sync_score = best[1]
                 c.origin = (best[0], f0_idx, spectrum.dt * best[0], spectrum.df * (f0_idx + 1))
-                neighbour_lf = [n for n in candidates if (c.origin[1] - n.origin[1] <=2)]
-                if(neighbour_lf):
-                    if(neighbour_lf[0].sync_score >= c.sync_score):
-                        continue
-                    if(neighbour_lf[0].sync_score < c.sync_score):
-                        candidates.remove(neighbour_lf[0])
                 candidates.append(c)
                 c.last_hop = best[0] + spectrum.candidate_size[0]
                 c.last_crc_hop = best[0] + 45 * self.hops_persymb
