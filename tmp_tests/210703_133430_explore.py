@@ -37,7 +37,31 @@ else:
     with open('210703_133430.pkl', 'rb') as f:
         spectrum = pickle.load(f)
 
-
+"""
+wav_file = "Local_gen_test.wav"
+from PyFT8.FT8_encoder import pack_ft8_c28, pack_ft8_g15, encode_bits77
+import PyFT8.audio as audio
+c28a = pack_ft8_c28("CQ")
+c28b = pack_ft8_c28("EA2BFM")
+g15, ir = pack_ft8_g15("IN83")
+i3 = 1
+n3 = 0
+bits77 = (c28a<<28+1+2+15+3) | (c28b<<2+15+3)|(0<<15+3)|(g15<< 3)|(i3)
+symbols, bits174_int, bits91_int, bits14_int, bits83_int = encode_bits77(bits77)
+symbols_framed = [-10]*7
+symbols_framed.extend(symbols)
+symbols_framed.extend([-10]*7)
+print(f"({len(symbols)} symbols)")
+audio_out = audio.AudioOut()
+audio_data = audio_out.create_ft8_wave(symbols_framed, f_base = 2280, amplitude = 0.1, added_noise = -20)
+audio_out.write_to_wave_file(audio_data, wav_file)
+cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = wav_file, 
+                          max_iters = 35,  max_ncheck = 30,
+                          sync_score_thresh = 3.2, max_cycles = 2, return_candidate = True)
+while cycle_manager.running:
+    timers.sleep(0.5)
+spectrum = cycle_manager.spectrum
+"""
 
 from PyFT8.FT8_demodulator import FT8Demodulator, Candidate
 from PyFT8.decode174_91_v5_5 import LDPC174_91
@@ -50,19 +74,22 @@ candidates = []
 n_hops_costas = np.max(spectrum.hop_idxs_Costas)
 f0_idxs = range(spectrum.nFreqs - spectrum.candidate_size[1])
 
+from scipy.special import logsumexp
 def demap_candidate(c):
     origin = c.origin
     synced_grid_complex = c.synced_grid_complex.reshape(FT8.num_symbols, 3, FT8.tones_persymb, 3)
-    synced_grid_pwr = np.abs(synced_grid_complex[:,0,:,1])**2 
-    p = synced_grid_pwr[FT8.payload_symb_idxs] / np.max(synced_grid_pwr)
-    llr0 = np.log(np.max(p[:,[4,5,6,7]], axis=1)) - np.log(np.max(p[:,[0,1,2,3]], axis=1))
-    llr1 = np.log(np.max(p[:,[2,3,4,7]], axis=1)) - np.log(np.max(p[:,[0,1,5,6]], axis=1))
-    llr2 = np.log(np.max(p[:,[1,2,6,7]], axis=1)) - np.log(np.max(p[:,[0,3,4,5]], axis=1))
+    synced_grid_pwr = np.abs(synced_grid_complex[:,0,:,:])**2
+    p = synced_grid_pwr[FT8.payload_symb_idxs] 
+    p = p[:,:,1]
+    llr0 = np.log(logsumexp(p[:,[4,5,6,7]], axis=1)) - np.log(logsumexp(p[:,[0,1,2,3]], axis=1))
+    llr1 = np.log(logsumexp(p[:,[2,3,4,7]], axis=1)) - np.log(logsumexp(p[:,[0,1,5,6]], axis=1))
+    llr2 = np.log(logsumexp(p[:,[1,2,6,7]], axis=1)) - np.log(logsumexp(p[:,[0,3,4,5]], axis=1))
     llr = np.column_stack((llr0, llr1, llr2)).ravel()
+    llr = np.clip(llr,-3,3)
     return llr, 0
 
-#wf = Waterfall(spectrum)
-#wf.update_main(candidates=candidates)
+wf = Waterfall(spectrum)
+wf.update_main(candidates=candidates)
 
 
 wsjt_freqs = [2571, 2157, 1197, 641, 723, 1648, 2852, 590, 2695 ,400, 2733, 2522, 2546, 2238, 466, 1513, 2039, 472, 2280]
@@ -70,10 +97,9 @@ wsjt_idxs = [int(f/spectrum.df) for f in wsjt_freqs]
 
 zgrid = spectrum.fine_grid_complex
 eps = 1e-12
-# 
-look_at = [1234, 1035, 574, 307, 347, 791, 1368, 282, 1293, 192, 1311, 1210, 1222, 1074, 223, 726, 978, 226, 1094]
-#look_at = [1311]
 
+look_at = [1234, 1035, 574, 307, 347, 791, 1368, 282, 1293, 192, 1311, 1210, 1222, 1074, 223, 726, 978, 226, 1094]
+#look_at = [1094]
 for f0_idx in look_at:
     c_zgrid = zgrid[: n_hops_costas + demod.slack_hops, f0_idx:f0_idx + demod.fbins_per_signal]
     csync = spectrum._csync
@@ -88,7 +114,7 @@ for f0_idx in look_at:
     c = Candidate(spectrum)
     c.sync_score = best[1]
     c.origin = (best[0], f0_idx, spectrum.dt * t0_idx, spectrum.df * (f0_idx + 1))
-    c.synced_grid_complex = spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]]
+    c.synced_grid_complex = spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]].copy()
     c.llr, c.snr = demap_candidate(c)
     ldpc.decode(c)
     c.decode_dict={'call_a':'??','call_b':'??'}
@@ -96,8 +122,24 @@ for f0_idx in look_at:
     if(message_parts):
         c.decode_dict={'call_a':message_parts[0],'call_b':message_parts[1]}
         print(c.origin[0], message_parts, c.sync_score, c.ncheck_initial)
+        candidates.append(c)
 
-#wf.show_zoom(candidates=candidates)
+"""
+import matplotlib.pyplot as plt
+import pickle
+
+fig, ax = plt.subplots()
+
+with open('cand1094_sim.pkl', 'rb') as f:
+    cs = pickle.load(f)
+
+
+ax.plot(c.llr)
+ax.plot(cs.llr)
+
+plt.show()
+"""
+wf.show_zoom(candidates=candidates)
 
 
 

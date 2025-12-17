@@ -1,0 +1,82 @@
+
+import sys
+sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
+import numpy as np
+from PyFT8.FT8_crc import check_crc
+import PyFT8.timers as timers
+from threading import Condition
+
+class LDPC174_91:
+    def __init__(self, max_iters, max_ncheck):
+        self.max_iters = max_iters
+        self.max_ncheck = max_ncheck
+
+        self.kNRW = [7,6,6,6,7,6,7,6,6,7,6,6,7,7,6,6,6,7,6,7,6,7,6,6,6,7,6,6,6,7,6,6,6,6,7,6,6,6,7,7,6,6,6,6,7,7,6,6,6,6,7,6,6,6,7,6,6,6,6,7,6,6,6,7,6,6,6,7,7,6,6,7,6,6,6,6,6,6,6,7,6,6,6]
+        self.kNM = np.array([
+        [4,5,6,7,8,6,5,9,10,11,12,13,8,14,15,1,16,17,11,45,8,18,19,20,2,21,22,16,23,19,20,14,3,19,7,12,13,24,25,20,21,35,14,4,1,26,52,7,23,26,2,27,18,6,28,9,22,3,31,12,5,2,15,10,23,11,29,30,10,22,28,28,1,17,51,21,16,3,9,15,18,25,17],
+        [31,32,24,33,25,32,34,35,36,37,38,39,40,41,42,33,43,37,44,55,46,36,38,47,48,45,47,39,43,35,36,31,44,46,49,50,51,52,53,46,54,82,30,29,4,51,84,50,55,41,27,40,49,33,48,54,53,13,69,43,39,54,56,44,34,49,34,50,53,57,32,29,26,27,57,37,47,24,40,58,42,38,42],
+        [59,60,61,62,63,64,65,66,67,67,68,69,70,71,59,72,73,74,75,64,71,76,77,70,74,78,58,62,79,59,63,79,80,81,58,61,64,76,69,65,77,133,83,68,52,56,110,81,67,77,41,56,55,85,70,63,68,48,133,66,75,86,87,82,71,88,87,60,66,85,72,84,45,89,98,73,76,30,90,60,79,65,75],
+        [91,93,94,95,83,97,78,99,100,87,102,103,82,88,106,106,108,81,110,111,112,89,104,92,113,83,118,112,120,73,94,98,124,117,90,118,114,129,90,80,100,142,113,120,57,91,115,99,95,109,61,124,124,108,85,131,109,78,150,89,102,101,108,91,94,92,97,86,84,93,103,88,80,103,163,138,130,72,106,74,144,99,129],
+        [92,115,122,96,93,126,98,139,107,101,105,149,104,102,123,107,141,109,121,130,119,113,116,138,128,117,127,134,131,110,136,132,127,135,100,119,118,148,101,120,140,171,125,134,86,122,145,132,172,141,62,125,141,116,105,147,121,95,155,97,136,135,119,111,127,142,147,137,112,140,132,117,128,116,165,152,137,104,134,111,146,122,170],
+        [96,146,151,143,96,138,107,146,126,139,155,162,114,123,159,157,160,131,166,161,166,114,163,165,160,121,164,158,145,125,161,164,169,167,105,144,157,149,130,140,171,174,170,173,136,137,168,173,174,148,115,126,167,156,129,155,174,123,169,135,167,164,171,144,153,157,162,142,128,159,166,143,147,153,172,169,154,139,151,150,152,160,172],
+        [153,0,0,0,148,0,154,0,0,158,0,0,145,156,0,0,0,154,0,173,0,143,0,0,0,151,0,0,0,161,0,0,0,0,168,0,0,0,156,170,0,0,0,0,152,168,0,0,0,0,133,0,0,0,158,0,0,0,0,159,0,0,0,149,0,0,0,162,165,0,0,150,0,0,0,0,0,0,0,163,0,0,0],
+        ]) - 1
+
+        self.check_vars = np.full((83, 7), -1, dtype=np.int16)
+        self.check_deg  = np.zeros(83, dtype=np.int8)
+
+        for m in range(83):
+            v = self.kNM[:self.kNRW[m], m]
+            self.check_vars[m, :len(v)] = v
+            self.check_deg[m] = len(v)
+
+        self.synd_check_idxs=[]
+        for i in range(83):
+            ichk = self.kNM[:self.kNRW[i],i]
+            ichk = ichk[(ichk >=0)]
+            self.synd_check_idxs.append(ichk)
+
+    def bitsLE_to_int(self, bits):
+        """bits is MSB-first."""
+        n = 0
+        for b in bits:
+            n = (n << 1) | (b & 1)
+        return n
+
+    def decode(self, c):
+
+        def get_ncheck(llr):
+            synd_checks = [ sum(1 for llr_bit in llr[self.synd_check_idxs[i]] if llr_bit > 0) %2 for i in range(83)]
+            return int(np.sum(synd_checks))
+
+        def get_payload_bits(zn):
+            decoded_bits174_LE_list = (zn > 0).astype(int).tolist() 
+            decoded_bits91_int = self.bitsLE_to_int(decoded_bits174_LE_list[0:91]) 
+            payload_bits = decoded_bits174_LE_list if check_crc(decoded_bits91_int) else []
+            return payload_bits
+          
+        Lmn = np.zeros((83, 7), dtype=np.float32)        
+        alpha = 1.18 
+
+        zn = c.llr.copy()
+        for it in range(self.max_iters):
+            ncheck = get_ncheck(zn)
+            if it == 0: c.ncheck_initial = ncheck
+            c.payload_bits = get_payload_bits(zn) if ncheck == 0 else []
+            if c.payload_bits or it >= self.max_iters or ncheck > self.max_ncheck:
+                return
+
+            delta = np.zeros_like(zn)
+            for m in range(83):
+                deg = self.check_deg[m]
+                v = self.check_vars[m, :deg]
+                Lnm = zn[v] - Lmn[m, :deg]
+                t = np.tanh(-Lnm)         
+                prod = np.prod(t) / t                       
+                new = prod / ((prod - alpha) * (alpha + prod))
+                delta[v] += new - Lmn[m, :deg]
+                Lmn[m, :deg] = new
+            zn += delta    
+
+
+
