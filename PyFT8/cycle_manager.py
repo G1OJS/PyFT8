@@ -144,7 +144,7 @@ class Cycle_manager():
             with self.spectrum_lock:
                 c.synced_grid_complex = self.spectrum.fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]]
             c.llr, c.snr = self.demod.demap_candidate(c)
-            c.llr = 4*c.llr/np.std(c.llr)
+            c.llr = 3.8*c.llr/np.std(c.llr)
             c.demap_returned = tnow()
             c.ldpc_requested = tnow()
             self.decode(c)

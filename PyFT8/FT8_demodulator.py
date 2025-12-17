@@ -55,7 +55,6 @@ class FT8Demodulator:
                 c.origin = (best[0], f0_idx, spectrum.dt * best[0], spectrum.df * (f0_idx + 1))
                 candidates.append(c)
                 c.last_hop = best[0] + spectrum.candidate_size[0]
-                c.last_crc_hop = best[0] + 45 * self.hops_persymb
                 c.last_data_hop = best[0] + spectrum.candidate_size[0] - n_hops_costas
                 c.first_data_hop = best[0] + n_hops_costas
         return candidates
