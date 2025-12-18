@@ -1,6 +1,4 @@
 
-import sys
-sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
 import numpy as np
 from PyFT8.FT8_crc import check_crc
 import PyFT8.timers as timers

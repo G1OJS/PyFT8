@@ -1,0 +1,33 @@
+[project]
+name = "PyFT8"
+version = "0.0.1"
+license = "GPL-3.0-or-later"
+
+authors = [
+  { name="G1OJS", email="g1ojs@yahoo.com" },
+]
+description = "FT8 Decoding and Encoding in Python with test/loopback code"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.24.0",
+    "matplotlib",
+    "pyaudio"
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent"
+]
+
+keywords = ["ham radio", "radio", "FT8"]
+
+[project.urls]
+Homepage = "https://github.com/G1OJS/PyFT8"
+Issues = "https://github.com/G1OJS/PyFT8/issues"
+
+[tool.setuptools]
+packages = ["PyFT8"]
+license-files = ["LICENSE"]
+
+[project.scripts]
+pyft8_cli = "PyFT8.PyFT8_cli:cli"

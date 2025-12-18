@@ -1,0 +1,2 @@
+recursive-include tests *.wav
+recursive-include tests *.py

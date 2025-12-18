@@ -1,5 +1,4 @@
-import sys
-sys.path.append(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8")
+
 import numpy as np
 
 # put this in sigspecs.py and include as part of the FTx spec
