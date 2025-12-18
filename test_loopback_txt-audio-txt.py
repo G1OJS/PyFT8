@@ -4,6 +4,7 @@ import PyFT8.timers as timers
 from PyFT8.sigspecs import FT8
 from PyFT8.cycle_manager import Cycle_manager
 
+
 from PyFT8.FT8_encoder import pack_ft8_c28, pack_ft8_g15, encode_bits77
 import PyFT8.audio as audio
 
@@ -26,6 +27,7 @@ bits77 = (c28a<<28+1+2+15+3) | (c28b<<2+15+3)|(0<<15+3)|(g15<< 3)|(i3)
 print("bits expected / bits encoded")
 print("11100001111111000101001101010111000100000011110100001111000111001010001010001")
 print(f"{bits77:077b}")
+print(bits77)
 
 symbols, bits174_int, bits91_int, bits14_int, bits83_int = encode_bits77(bits77)
 print("CRC expected / produced:")

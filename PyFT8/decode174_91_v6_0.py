@@ -56,14 +56,15 @@ class LDPC174_91:
             return payload_bits
           
         Lmn = np.zeros((83, 7), dtype=np.float32)        
-        alpha = 1.18 
+        alpha = 1.18
 
         zn = c.llr.copy()
-        for it in range(self.max_iters):
+        for itn in range(self.max_iters):
             ncheck = get_ncheck(zn)
-            if it == 0: c.ncheck_initial = ncheck
+            if itn == 0: c.ncheck_initial = ncheck
             c.payload_bits = get_payload_bits(zn) if ncheck == 0 else []
-            if c.payload_bits or it >= self.max_iters or ncheck > self.max_ncheck:
+            c.n_its = itn
+            if c.payload_bits or ncheck > self.max_ncheck:
                 return
 
             delta = np.zeros_like(zn)

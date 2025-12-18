@@ -100,8 +100,8 @@ def update_stats():
                         info = info + f" {d['PyFT8_sync_score']:7.1f}, {d['PyFT8_ncheck_initial']:>7} {float(d['PyFT8_ldpc_time'])*1000:7.0f}ms"
 
 
-                    if(decoder == 'BOTH '):
-                        print(f"{uid_pretty} {decoder:>7} {info}")
+                    #if(decoder == 'BOTH '):
+                    print(f"{uid_pretty} {decoder:>7} {info}")
                 pc = int(100*(nP+nB) / (nW+nB+0.001))
                 print(f"WSJTX:{nW+nB}, PyFT8: {nP+nB} ({pc}%)")
 
