@@ -73,10 +73,10 @@ def onDecode(c):
 
 print("Bits91:")
 print("1110000111111100010100110101011100010000001111010000111100011100101000101000100111100110010")
-print("Waiting for cycle rollover")
+print(f"Waiting for cycle rollover ({15 - time.time() %15:3.1f}s)")
 cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = wav_file, 
                           max_iters = 10,  max_ncheck = 28,
-                          sync_score_thresh = 8, max_cycles = 2, return_candidate = True)
+                          sync_score_thresh = 8, max_cycles = 1, return_candidate = True)
 
 while cycle_manager.running:
     time.sleep(0.1)

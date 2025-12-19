@@ -8,6 +8,7 @@ from PyFT8.cycle_manager import Cycle_manager
 
 global decoded_candidates
 decoded_candidates = []
+unique_decodes = set()
 first = True
 
 def onDecode(c):
@@ -22,18 +23,18 @@ def onDecode(c):
             f"{dd['sync_score']:>5.2f}",  f"{dd['snr']:5.0f}", dd['t0_idx'], dd['f0_idx'], dd['ncheck_initial'], dd['n_its']]
     print(''.join([f"{t:>8} " for t in vals]))
     decoded_candidates.append(c)
+    unique_decodes.add(dd['call_a']+dd['call_b']+dd['grid_rpt'])
 
-print("Waiting for cycle rollover")
+print(f"Waiting for cycle rollover ({15 - time.time() %15:3.1f}s)")
 cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = WAV, 
                           max_iters = 25,  max_ncheck = 38, verbose = True,
-                          sync_score_thresh = 4, max_cycles = 2, return_candidate = True)
+                          sync_score_thresh = 4, max_cycles =2, return_candidate = True)
 
 while cycle_manager.running:
     time.sleep(0.5)
 time.sleep(2)
 
-unique_decoded_candidates = list(set(decoded_candidates))
-print(f"DONE. {len(unique_decoded_candidates)} unique decodes.")
+print(f"DONE. {len(unique_decodes)} unique decodes.")
 
 wf = Waterfall(cycle_manager.spectrum)
 wf.update_main(candidates=decoded_candidates)

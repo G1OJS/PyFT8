@@ -11,8 +11,8 @@ decodes = {}
 decodes_lock = threading.Lock()
 
 UID_FIELDS = ('cyclestart_str', 'call_a', 'call_b', 'grid_rpt')
-COMMON_FIELDS = {'t_decode', 'snr'}
-PyFT8_FIELDS = {'sync_score', 'ncheck_initial', 'n_its', 'dt'}
+COMMON_FIELDS = {'t_decode', 'snr', 'dt'}
+PyFT8_FIELDS = {'sync_score', 'ncheck_initial', 'n_its'}
 
 def make_uid(d):
     return tuple(d[k] for k in UID_FIELDS)
@@ -49,7 +49,7 @@ def wsjtx_all_tailer(all_txt_path, on_decode):
         decode_dict = False
         try:
             decode_dict = {'cyclestart_str':ls[0], 'decoder':'WSJTX', 'freq':ls[6], 't_decode':time.time(),
-                           'dt':ls[5], 'call_a':ls[7], 'call_b':ls[8], 'grid_rpt':ls[9], 'snr':ls[4]}
+                           'dt':float(ls[5]), 'call_a':ls[7], 'call_b':ls[8], 'grid_rpt':ls[9], 'snr':ls[4]}
         except:
             pass
         if(decode_dict):
@@ -77,28 +77,25 @@ def update_stats():
                 latest_cycle = list(decodes.keys())[-1][0]
                 latest_cycle_uids = [uid for uid in decodes.keys() if uid[0] == latest_cycle]
                 nP = nW = nB = 0
-                print(f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'tP':>7} {'tW':>7} {'tP-tW':>7} {'sync':>7} {'nchk':>7} {'n_its':>7} {'t0':>7}")
+                print(f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'tP':>7} {'tW':>7} {'dtP':>7} {'dtW':>7} {'sync':>7} {'nchk':>7} {'n_its':>7}")
                 for uid in latest_cycle_uids:
                     uid_pretty = f"{uid[0]} {uid[1]:>12} {uid[2]:>12} {uid[3]:>8}"
                     d = decodes[uid]
                     decoder = d['decoder']
                     def cyt(t): return t %15
+                    tP = dtP = tW = dtW = f"{'-':>7}"
+                    if('PyFT8_t_decode' in d): tP, dtP = f"{cyt(d['PyFT8_t_decode']):7.2f}", f"{d['PyFT8_dt']:7.2f}"
+                    if('WSJTX_t_decode' in d): tW, dtW = f"{cyt(d['WSJTX_t_decode']):7.2f}", f"{d['WSJTX_dt']:7.2f}"
+                    
+                    if ('PyFT8_t_decode' in d and not 'WSJTX_t_decode' in d): nP +=1
+                    if (not 'PyFT8_t_decode' in d and 'WSJTX_t_decode' in d): nW +=1
                     if ('PyFT8_t_decode' in d and 'WSJTX_t_decode' in d):
                         decoder = 'BOTH '
-                        tP, tW = d['PyFT8_t_decode'], d['WSJTX_t_decode']
-                        info = f"{cyt(tP):7.2f} {cyt(tW):7.2f} {tP - tW:7.2f}"
                         nB +=1
-                    if ('PyFT8_t_decode' in d and not 'WSJTX_t_decode' in d):
-                        tP = d['PyFT8_t_decode']
-                        info = f"{cyt(tP):7.2f}                "
-                        nP +=1
-                    if (not 'PyFT8_t_decode' in d and 'WSJTX_t_decode' in d):
-                        tW = d['WSJTX_t_decode']
-                        info = f"        {cyt(tW):7.2f}        "
-                        nW +=1
-                    if ('PyFT8_t_decode' in d):
-                        info = info + f" {d['PyFT8_sync_score']:7.1f}, {d['PyFT8_ncheck_initial']:>7} {d['PyFT8_n_its']:>7} {d['PyFT8_dt']:>7}"
 
+                    info = f"{tP} {tW} {dtP} {dtW}"
+                    if ('PyFT8_t_decode' in d):
+                        info = info + f" {d['PyFT8_sync_score']:7.1f} {d['PyFT8_ncheck_initial']:>7} {d['PyFT8_n_its']:>7}"
 
                     #if(decoder == 'BOTH '):
                     print(f"{uid_pretty} {decoder:>7} {info}")
@@ -113,7 +110,7 @@ threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path, on_decode,)).sta
 threading.Thread(target=update_stats).start()    
 
 cycle_manager = Cycle_manager(FT8, on_decode, onOccupancy = None, input_device_keywords = ['Microphone', 'CODEC'],
-                              sync_score_thresh = 4, max_ncheck = 35, max_iters = 25, verbose = True) 
+                              sync_score_thresh = 3, max_ncheck = 40, max_iters = 25, verbose = True) 
 
 
 

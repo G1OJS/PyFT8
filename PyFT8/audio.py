@@ -22,9 +22,7 @@ class AudioIn:
     def __init__(self, parent_app, fft_window): # needing parent_app here suggests some code below should move there
         self.parent_app = parent_app
         self.spectrum = parent_app.spectrum
-        self.demod = parent_app.demod
-        self.samples_perhop = self.demod.samples_perhop
-        self.hop_time = self.samples_perhop / self.demod.sample_rate
+        self.samples_perhop = int(self.spectrum.sample_rate / (self.spectrum.sigspec.symbols_persec * self.spectrum.hops_persymb))
         self.fft_len = self.spectrum.FFT_len
         self.nFreqs = self.spectrum.nFreqs
         self.fft_window = fft_window
@@ -34,21 +32,22 @@ class AudioIn:
         if(wav_file):
             prev_cycle_time = 0
             wf = None
+            nextHop_time = 0
             while self.parent_app.running:
-                cycle_time = time.time() % self.demod.sigspec.cycle_seconds
+                cycle_time = time.time() % self.spectrum.sigspec.cycle_seconds
                 rollover = (cycle_time < prev_cycle_time)
                 prev_cycle_time = cycle_time
                 if(rollover):
                     wf = wave.open(wav_file, 'rb')
-                nextHop_time = time.time() + self.hop_time
-                while time.time() < nextHop_time:
-                    time.sleep(0.001)
                 if(wf):
                     frames = wf.readframes(self.samples_perhop)
                     if frames:
+                        while time.time() < nextHop_time:
+                            time.sleep(0.001)
+                        nextHop_time = time.time() + self.spectrum.dt
                         self.buffer_and_FFT(frames)
         else:
-            stream = pya.open(format=pyaudio.paInt16, channels=1, rate=self.demod.sample_rate,
+            stream = pya.open(format=pyaudio.paInt16, channels=1, rate=self.spectrum.sample_rate,
                              input=True, input_device_index = self.parent_app.input_device_idx,
                              frames_per_buffer=self.samples_perhop, stream_callback = self.buffer_and_FFT)
             stream.start_stream()
@@ -60,12 +59,8 @@ class AudioIn:
         self.audio_buffer[-nsamps:] = samples
         audio_for_fft = self.audio_buffer * self.fft_window
         z = np.fft.rfft(audio_for_fft)[:self.nFreqs]
-        copy_ptr = self.spectrum.fine_grid_pointer + self.spectrum.hops_percycle
-        do_copy = copy_ptr < self.spectrum.fine_grid_complex.shape[0]
         with self.parent_app.spectrum_lock:
             self.spectrum.fine_grid_complex[self.spectrum.fine_grid_pointer, :] = z
-            if(do_copy):
-                self.spectrum.fine_grid_complex[copy_ptr, :] = z
         self.spectrum.fine_grid_pointer = (self.spectrum.fine_grid_pointer +1) % self.spectrum.hops_percycle
         return (None, pyaudio.paContinue)
 
