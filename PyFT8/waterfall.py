@@ -17,11 +17,9 @@ class Waterfall:
         # Main figure
         self.fig, (self.ax_main) = plt.subplots(1,1,figsize=(10, 4))
         self.ax_main.set_title("FT8 Waterfall")
-        self.ax_main.set_xlabel("Frequency (Hz)")
-        self.ax_main.set_ylabel("Time (s)")
-        self.extent_main = [0, spectrum.max_freq, 0,  30 ]
-        self.ax_main.set_xlim(self.extent_main[0],self.extent_main[1])
-        self.ax_main.set_ylim(self.extent_main[2],self.extent_main[3])
+        self.ax_main.set_xlabel("Frequency bin")
+        self.ax_main.set_ylabel("Time bin")
+        self.extent_main = [-0.5, spectrum.nFreqs - 1 -0.5, -0.5,  spectrum.hops_percycle -1 -0.5]
 
         self.zoom_axes = []
         self._candidate_patches = []
@@ -32,8 +30,9 @@ class Waterfall:
     # ----------------------------------------------------------
     def update_main(self, candidates=None, cyclestart_str=None):
         """Refresh main waterfall and draw candidate rectangles."""
-        vals = np.abs(self.fine_grid_complex)**2
-        self.im = self.ax_main.imshow(  vals, origin="lower", aspect="auto", extent = self.extent_main, 
+        pwr = np.abs(self.fine_grid_complex)**2
+        
+        self.im = self.ax_main.imshow(pwr, origin="lower", aspect="auto", 
                                         cmap="inferno", interpolation="none", norm=LogNorm() )
         self.im.norm.vmin = self.im.norm.vmax/100000
         if(cyclestart_str):
@@ -43,8 +42,9 @@ class Waterfall:
 
         if candidates:
             for c in candidates:
-                origin_img = (c.origin[3] - self.spectrum.df/2, c.origin[2])
-                rect = patches.Rectangle(origin_img, c.sigspec.bw_Hz, (c.sigspec.num_symbols-1) / c.sigspec.symbols_persec,
+                origin_img = (c.origin[1], c.origin[0])
+                rect = patches.Rectangle(origin_img, c.sigspec.tones_persymb * self.spectrum.fbins_pertone,
+                                         c.sigspec.num_symbols * self.spectrum.hops_persymb,
                   linewidth=1.2,edgecolor="lime", facecolor="none"
                 )
                 self.ax_main.add_patch(rect)

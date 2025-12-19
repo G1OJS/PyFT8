@@ -43,7 +43,3 @@ def bitsLE_to_int(bits):
     for b in bits:
         n = (n << 1) | (b & 1)
     return n
-
-def verify_crc_code():
-    bits77_int = 0b11100001111111000101001101010111000100000011110100001111000111001010001010001
-    print(f"CRC loop test: check_crc(append_crc(bits77_int)) = { check_crc(append_crc(bits77_int))}")

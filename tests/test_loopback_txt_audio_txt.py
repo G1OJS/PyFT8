@@ -1,6 +1,6 @@
 import numpy as np
+import time
 from PyFT8.waterfall import Waterfall
-import PyFT8.timers as timers
 from PyFT8.sigspecs import FT8
 from PyFT8.cycle_manager import Cycle_manager
 
@@ -27,7 +27,6 @@ bits77 = (c28a<<28+1+2+15+3) | (c28b<<2+15+3)|(0<<15+3)|(g15<< 3)|(i3)
 print("bits expected / bits encoded")
 print("11100001111111000101001101010111000100000011110100001111000111001010001010001")
 print(f"{bits77:077b}")
-print(bits77)
 
 symbols, bits174_int, bits91_int, bits14_int, bits83_int = encode_bits77(bits77)
 print("CRC expected / produced:")
@@ -46,12 +45,13 @@ print(f"{bits174_int:0174b}")
 print(f"Payload symbols  expected:   {'7027413236410076024143535324211637464027735642254300025301'}")
 print(f"Channel symbols modulated:   {''.join([str(s) for s in symbols])}")
 
+# full 15 sec cycle allows for 15/0.16 = 93.75 symbols so need to pad with 14
 symbols_framed = [-10]*7
-symbols_framed.extend(symbols)
-symbols_framed.extend([-10]*7)
+symbols_framed.extend(symbols)  #79 symbols
+symbols_framed.extend([-10]*8)
 print(f"({len(symbols)} symbols)")
 audio_out = audio.AudioOut()
-audio_data = audio_out.create_ft8_wave(symbols_framed, f_base = 3000, amplitude = 0.1, added_noise = -20)
+audio_data = audio_out.create_ft8_wave(symbols_framed, f_base = 3000, amplitude = 0.1)
 audio_out.write_to_wave_file(audio_data, wav_file)
 
 global decoded_candidates
@@ -65,7 +65,7 @@ def onDecode(c):
         heads = ['Cycle', 'End_cyc+', 'Rx call', 'Tx call', 'GrRp', 'SyncScr', 'snr', 't0_idx', 'f0_idx', 'ncheck']
         print(''.join([f"{t:>8} " for t in heads]))
     dd = c.decode_dict
-    t_decode = (timers.tnow()+7) % 15 -7
+    t_decode = (time.time() + 7.5) % 15 - 7.5
     vals = [f"{dd['cyclestart_str']} {t_decode:8.2f}", dd['call_a'], dd['call_b'], dd['grid_rpt'],
             f"{dd['sync_score']:>5.2f}",  f"{dd['snr']:5.0f}", dd['t0_idx'], dd['f0_idx'], dd['ncheck_initial']]
     print(''.join([f"{t:>8} " for t in vals]))
@@ -73,12 +73,13 @@ def onDecode(c):
 
 print("Bits91:")
 print("1110000111111100010100110101011100010000001111010000111100011100101000101000100111100110010")
+print("Waiting for cycle rollover")
 cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = wav_file, 
-                          max_iters = 10,  max_ncheck = 28, 
+                          max_iters = 10,  max_ncheck = 28,
                           sync_score_thresh = 8, max_cycles = 2, return_candidate = True)
 
 while cycle_manager.running:
-    timers.sleep(0.1)
+    time.sleep(0.1)
 
 unique_decoded_candidates = list(set(decoded_candidates))
 print(f"DONE. {len(unique_decoded_candidates)} unique decodes.")    

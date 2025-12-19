@@ -1,22 +1,22 @@
 import numpy as np
 import wave
 import pyaudio
-from .timers import timedLog, sleep, tnow
+import time
 pya = pyaudio.PyAudio()
 
 def find_device(device_str_contains):
     if(not device_str_contains): #(this check probably shouldn't be needed - check calling code)
         return
-    timedLog(f"[Audio] Looking for audio device matching {device_str_contains}")
+    print(f"[Audio] Looking for audio device matching {device_str_contains}")
     for dev_idx in range(pya.get_device_count()):
         name = pya.get_device_info_by_index(dev_idx)['name']
         match = True
         for pattern in device_str_contains:
             if (not pattern in name): match = False
         if(match):
-            timedLog(f"[Audio] Found device {name} index {dev_idx}")
+            print(f"[Audio] Found device {name} index {dev_idx}")
             return dev_idx
-    timedLog(f"[Audio] No audio device found matching {device_str_contains}")
+    print(f"[Audio] No audio device found matching {device_str_contains}")
 
 class AudioIn:
     def __init__(self, parent_app, fft_window): # needing parent_app here suggests some code below should move there
@@ -35,15 +35,14 @@ class AudioIn:
             prev_cycle_time = 0
             wf = None
             while self.parent_app.running:
-                cycle_time = tnow() % self.demod.sigspec.cycle_seconds
+                cycle_time = time.time() % self.demod.sigspec.cycle_seconds
                 rollover = (cycle_time < prev_cycle_time)
                 prev_cycle_time = cycle_time
                 if(rollover):
-                    timedLog(f"[Audio] Playing wav file {wav_file}")
                     wf = wave.open(wav_file, 'rb')
-                nextHop_time = tnow() + self.hop_time
-                while tnow() < nextHop_time:
-                    sleep(0.001)
+                nextHop_time = time.time() + self.hop_time
+                while time.time() < nextHop_time:
+                    time.sleep(0.001)
                 if(wf):
                     frames = wf.readframes(self.samples_perhop)
                     if frames:
@@ -72,7 +71,7 @@ class AudioIn:
 
 class AudioOut:
 
-    def create_ft8_wave(self, symbols, fs=12000, f_base=873.0, f_step=6.25, amplitude = 0.5, added_noise = -50):
+    def create_ft8_wave(self, symbols, fs=12000, f_base=873.0, f_step=6.25, amplitude = 0.5):
         symbol_len = int(fs * 0.160)
         t = np.arange(symbol_len) / fs
         phase = 0
@@ -86,10 +85,6 @@ class AudioOut:
         waveform = np.concatenate(waveform).astype(np.float32)
         waveform = waveform.astype(np.float32)
         waveform = amplitude * waveform / np.max(np.abs(waveform))
-        if(added_noise > -50):
-            noise = np.random.rand(len(waveform))-0.5
-            noise = noise * np.std(waveform) * 10**(added_noise/20) / np.std(noise)
-            waveform += noise
         waveform_int16 = np.int16(waveform * 32767)
         return waveform_int16
 

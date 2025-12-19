@@ -1,8 +1,6 @@
 
 import numpy as np
 from PyFT8.FT8_crc import check_crc
-import PyFT8.timers as timers
-from threading import Condition
 
 class LDPC174_91:
     def __init__(self, max_iters, max_ncheck):

@@ -1,7 +1,5 @@
 
 import numpy as np
-from .timers import *
-
 eps = 1e-12
 
 class Candidate:
@@ -11,8 +9,6 @@ class Candidate:
         Candidate.next_id +=1
         self.sigspec = spectrum.sigspec
         self.size = spectrum.candidate_size
-        self.cycle_start = 15*int(tnow()/15)
-        self.cyclestart_str = cyclestart_str()
         self.sync_score = 0
         self.synced_grid_complex = False
         self.demap_requested = False
@@ -20,6 +16,7 @@ class Candidate:
         self.ldpc_requested = False
         self.ldpc_returned = False
         self.ncheck_initial = 5000
+        self.cyclestart_str = None
         
 class FT8Demodulator:
     def __init__(self, sigspec):
@@ -31,7 +28,7 @@ class FT8Demodulator:
         self.hops_per_costas_block = self.hops_persymb * self.sigspec.costas_len
         self.samples_perhop = int(self.sample_rate / (self.sigspec.symbols_persec * self.hops_persymb) )
         self.hops_persec = self.sample_rate / self.samples_perhop 
-        self.slack_hops =  int(self.hops_persymb * (self.sigspec.symbols_persec * self.sigspec.cycle_seconds - self.sigspec.num_symbols))
+        self.slack_hops =  int(self.hops_persymb * (self.sigspec.symbols_persec * self.sigspec.cycle_seconds - (self.sigspec.num_symbols - self.sigspec.costas_len) ) )
 
     def find_syncs(self, spectrum, sync_score_thresh):
         candidates = []
@@ -45,7 +42,7 @@ class FT8Demodulator:
             spectrum.occupancy[f0_idx:f0_idx + self.fbins_per_signal] += max_pwr
             c_pgrid = c_pgrid / (max_pwr + eps)
             best = (0, -1e30)
-            for t0_idx in range(self.slack_hops - n_hops_costas):
+            for t0_idx in range(self.slack_hops):
                 test = (t0_idx, float(np.dot(c_pgrid[t0_idx + spectrum.hop_idxs_Costas ,  :].ravel(), spectrum._csync.ravel())))
                 if test[1] > best[1]:
                     best = test
