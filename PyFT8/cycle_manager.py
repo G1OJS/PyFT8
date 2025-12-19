@@ -60,9 +60,10 @@ class Spectrum:
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None, input_device_keywords = None,
                  sync_score_thresh = 3, max_ncheck = 30, max_iters = 10,  max_cycles = 5000, return_candidate = False,
-                 verbose = False):
+                 verbose = False, concise = False):
         self.running = True
         self.verbose = verbose
+        self.concise = concise
         self.return_candidate = return_candidate
         self.sigspec = sigspec
         self.cycle_length = sigspec.cycle_seconds
@@ -205,12 +206,16 @@ class Cycle_manager():
                 t0_str = f"{c.origin[2]-0.7:6.3f}"
                 with self.cands_lock:
                     c.decode_dict = {
-                            'cyclestart_str':c.cyclestart_str, 'decoder':'PyFT8', 'freq':float(f0_str), 't_decode':time.time(), 
-                            'dt':float(t0_str), 't0_idx':c.origin[0],'f0_idx':c.origin[1],
-                            'call_a':message_parts[0], 'call_b':message_parts[1], 'grid_rpt':message_parts[2],
-                            'sync_score':c.sync_score, 'snr':c.snr, 'dedupe_key':dedupe_key,
+                            'cyclestart_str':c.cyclestart_str, 'freq':int(f0_str), 'dt':float(t0_str),
+                            'call_a':message_parts[0], 'call_b':message_parts[1], 'grid_rpt':message_parts[2], 'snr':c.snr,
+                    }
+                    if(not self.concise):
+                        c.decode_dict.update({
+                            't0_idx':c.origin[0],
+                            'decoder':'PyFT8', 't_decode':time.time(), 'f0_idx':c.origin[1],
+                            'sync_score':c.sync_score,  'dedupe_key':dedupe_key,
                             'ncheck_initial':c.ncheck_initial, 'n_its': c.n_its
-                            }
+                            })
                 self.onSuccessfulDecode(c if self.return_candidate else c.decode_dict)  
                        
 

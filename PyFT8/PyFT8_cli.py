@@ -11,17 +11,18 @@ def on_decode(decode_dict):
 def cli():
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('soundcard_keywords', help = 'Comma-separated keywords to identify the input sound device') 
+    parser.add_argument('-concise','-c', action='store_true', help = 'Concise output') 
 
     args = parser.parse_args()
     input_device_keywords = args.soundcard_keywords.split(",")
 
     cycle_manager = Cycle_manager(FT8, on_decode, onOccupancy = None, input_device_keywords = input_device_keywords,
-                                  sync_score_thresh = 5, max_ncheck = 38, max_iters = 25) 
+                                  sync_score_thresh = 4, max_ncheck = 38, max_iters = 25, concise = args.concise) 
 
-    print("PyFT8 RX running — Ctrl-C to stop")
+    print("PyFT8 Rx running — Ctrl-C to stop")
 
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print("\nStopping PyFT8 RX")
+        print("\nStopping PyFT8 Rx")
