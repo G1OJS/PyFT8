@@ -57,7 +57,12 @@ def wsjtx_all_tailer(all_txt_path, on_decode):
 
 def update_stats():
     last_ct = 0
+    logfile = 'live_compare_rows.csv'
 
+    heads = f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'tP':>7} {'tW':>7} {'dtP':>7} {'dtW':>7} {'sync':>7} {'nchk':>7} {'n_its':>7}"
+    with open(logfile, 'w') as f:
+        f.write(f"{heads}\n")
+        
     while True:
         time.sleep(1)
         ct = time.time() % 15
@@ -77,7 +82,7 @@ def update_stats():
                 latest_cycle = list(decodes.keys())[-1][0]
                 latest_cycle_uids = [uid for uid in decodes.keys() if uid[0] == latest_cycle]
                 nP = nW = nB = 0
-                print(f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'tP':>7} {'tW':>7} {'dtP':>7} {'dtW':>7} {'sync':>7} {'nchk':>7} {'n_its':>7}")
+                print(heads)
                 for uid in latest_cycle_uids:
                     uid_pretty = f"{uid[0]} {uid[1]:>12} {uid[2]:>12} {uid[3]:>8}"
                     d = decodes[uid]
@@ -98,7 +103,10 @@ def update_stats():
                         info = info + f" {d['PyFT8_sync_score']:7.1f} {d['PyFT8_ncheck_initial']:>7} {d['PyFT8_n_its']:>7}"
 
                     #if(decoder == 'BOTH '):
-                    print(f"{uid_pretty} {decoder:>7} {info}")
+                    row = f"{uid_pretty} {decoder:>7} {info}"
+                    print(row)
+                    with open(logfile, 'a') as f:
+                        f.write(f"{row}\n")
                 pc = int(100*(nP+nB) / (nW+nB+0.001))
                 print(f"WSJTX:{nW+nB}, PyFT8: {nP+nB} ({pc}%)")
                 with open('live_compare_cycle_stats.csv', 'a') as f:

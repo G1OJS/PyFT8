@@ -129,7 +129,8 @@ class Cycle_manager():
                 self.spectrum.fine_grid_pointer = 0
                 self.cyclestart_str = time.strftime("%y%m%d_%H%M%S", time.gmtime(self.cycle_length * int(time.time() / self.cycle_length)))
                 with self.cands_lock:
-                    self.cands_list = [c for c in self.cands_list if (not c.ldpc_returned)]
+                    self.cands_list = [c for c in self.cands_list
+                                       if (not c.ldpc_returned and time.time() - c.sync_returned < 15)]
             else:
                 if (self.spectrum.fine_grid_pointer >= self.h_search and not cycle_searched):
                     cycle_searched = True
