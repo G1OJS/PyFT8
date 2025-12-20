@@ -28,7 +28,7 @@ def onDecode(c):
 print(f"Waiting for cycle rollover ({15 - time.time() %15:3.1f}s)")
 cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = WAV, 
                           max_iters = 25,  max_ncheck = 38, verbose = True,
-                          sync_score_thresh = 4, max_cycles =2, return_candidate = True)
+                          sync_score_thresh = 3.8, max_cycles =2, return_candidate = True)
 
 while cycle_manager.running:
     time.sleep(0.5)

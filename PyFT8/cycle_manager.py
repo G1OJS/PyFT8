@@ -79,7 +79,7 @@ class Cycle_manager():
         self.cycle_countdown = max_cycles
         self.cyclestart_str = None
         self.prev_cycle_time = -1e40
-        self.max_start_hop = int(2.5 / self.spectrum.dt)
+        self.max_start_hop = int(1.9 / self.spectrum.dt)
         self.nhops_costas = self.sigspec.costas_len * self.spectrum.hops_persymb
         self.h_search = self.max_start_hop + self.nhops_costas 
         self.h_demap = self.sigspec.payload_symb_idxs[-1] * self.spectrum.hops_persymb
@@ -110,17 +110,19 @@ class Cycle_manager():
                 self.cycle_countdown -=1
                 if(self.verbose):
                     def latest(arr): return f"{np.max(arr)%15 :5.2f}" if arr else ''
-                    synced = [c.sync_returned for c in self.cands_list if c.sync_score]
-                    demapped = [c.demap_returned for c in self.cands_list if c.demap_returned]
-                    decoded = [c.ldpc_returned for c in self.cands_list if c.ldpc_returned]
+                    with self.cands_lock:
+                        synced = [c.sync_returned for c in self.cands_list if c.sync_score]
+                        demapped = [c.demap_returned for c in self.cands_list if c.demap_returned]
+                        decoded = [c.ldpc_returned for c in self.cands_list if c.ldpc_returned]
                     print(f"[Cycle manager] synced:   {len(synced)} (latest at {latest(synced)})")
                     print(f"[Cycle manager] demapped: {len(demapped)} (latest at {latest(demapped)})")
-                    print(f"[Cycle manager] decoded:  {len(synced)} (latest at {latest(decoded)})")
+                    print(f"[Cycle manager] decoded:  {len(decoded)} (latest at {latest(decoded)})")
                     print(f"\n[Cycle manager] rollover detected at {self.cycle_time:.2f}")
                 cycle_searched = False
                 self.spectrum.fine_grid_pointer = 0
                 self.cyclestart_str = time.strftime("%y%m%d_%H%M%S", time.gmtime(self.cycle_length * int(time.time() / self.cycle_length)))
-                self.cands_list = [c for c in self.cands_list if (c.demap_returned and not c.ldpc_returned)]
+                with self.cands_lock:
+                    self.cands_list = [c for c in self.cands_list if (not c.ldpc_returned)]
             else:
                 if (self.spectrum.fine_grid_pointer >= self.h_search and not cycle_searched):
                     cycle_searched = True
@@ -134,9 +136,9 @@ class Cycle_manager():
         f0_idxs = range(self.spectrum.nFreqs - fbins_per_signal)
         with self.spectrum_lock:
             zgrid = self.spectrum.fine_grid_complex[: self.h_search,:].copy()
+        pgrid = np.abs(zgrid)**2
         for f0_idx in f0_idxs:
-            c_zgrid = zgrid[:, f0_idx:f0_idx + fbins_per_signal]
-            c_pgrid = np.abs(c_zgrid)**2
+            c_pgrid = pgrid[:, f0_idx:f0_idx + fbins_per_signal]
             max_pwr = np.max(c_pgrid)
             self.spectrum.occupancy[f0_idx:f0_idx + fbins_per_signal] += max_pwr
             c_pgrid = c_pgrid / (max_pwr + eps)
@@ -160,25 +162,19 @@ class Cycle_manager():
     def process_candidates(self):
         with self.cands_lock:
             to_demap = [c for c in self.cands_list if (self.spectrum.fine_grid_pointer > c.last_data_hop and not c.demap_requested)]
-        for c in to_demap[:1]:
-           # time.sleep(0)
+        for c in to_demap[:5]:
             c.demap_requested = time.time()
             with self.spectrum_lock:
                 c.synced_grid_complex = self.spectrum.fine_grid_complex[c.origin[0]: c.last_data_hop, c.origin[1]:c.origin[1] + c.n_fbins]
             c.llr, c.snr = self.demap_candidate(c)
-            c.llr = 3.8*c.llr/np.std(c.llr)
             c.demap_returned = time.time()
+        with self.cands_lock:
+            to_decode = [c for c in self.cands_list if c.demap_returned and not c.ldpc_requested]
+        for c in to_decode[:1]:
             c.ldpc_requested = time.time()
             self.decode(c)
 
-    def _demap_symbols(self, p):
-        llr0 = np.log(np.max(p[:,[4,5,6,7]], axis=1)) - np.log(np.max(p[:,[0,1,2,3]], axis=1))
-        llr1 = np.log(np.max(p[:,[2,3,4,7]], axis=1)) - np.log(np.max(p[:,[0,1,5,6]], axis=1))
-        llr2 = np.log(np.max(p[:,[1,2,6,7]], axis=1)) - np.log(np.max(p[:,[0,3,4,5]], axis=1))
-        return np.column_stack((llr0, llr1, llr2)).ravel()
-
     def demap_candidate(self, c):
-        origin = c.origin
         synced_grid_complex = c.synced_grid_complex.reshape(c.last_payload_symbol+1, self.spectrum.hops_persymb,
                                                           self.sigspec.tones_persymb, self.spectrum.fbins_pertone).copy()
         synced_grid_complex = synced_grid_complex[:,0,:,:] # first hop of self.hops_persymb = the one we synced to
@@ -187,8 +183,12 @@ class Cycle_manager():
         snr = 10*np.log10(synced_pwr)-107
         snr = int(np.clip(snr, -24,24).item())
         synced_grid_pwr_central = synced_grid_pwr[:,:,1]/synced_pwr
-        pwr_payload = synced_grid_pwr_central[self.sigspec.payload_symb_idxs]
-        llr = self._demap_symbols(pwr_payload)
+        p = synced_grid_pwr_central[self.sigspec.payload_symb_idxs]
+        llr0 = np.log(np.max(p[:,[4,5,6,7]], axis=1)) - np.log(np.max(p[:,[0,1,2,3]], axis=1))
+        llr1 = np.log(np.max(p[:,[2,3,4,7]], axis=1)) - np.log(np.max(p[:,[0,1,5,6]], axis=1))
+        llr2 = np.log(np.max(p[:,[1,2,6,7]], axis=1)) - np.log(np.max(p[:,[0,3,4,5]], axis=1))
+        llr = np.column_stack((llr0, llr1, llr2)).ravel()
+        llr = 3.8*llr/np.std(llr)
         return llr, snr
                     
     def decode(self, c):

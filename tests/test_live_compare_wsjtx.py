@@ -101,6 +101,8 @@ def update_stats():
                     print(f"{uid_pretty} {decoder:>7} {info}")
                 pc = int(100*(nP+nB) / (nW+nB+0.001))
                 print(f"WSJTX:{nW+nB}, PyFT8: {nP+nB} ({pc}%)")
+                with open('live_compare_cycle_stats.csv', 'a') as f:
+                    f.write(f"{nW},{nP},{nB}\n")
 
         last_ct = ct
 
@@ -110,7 +112,10 @@ threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path, on_decode,)).sta
 threading.Thread(target=update_stats).start()    
 
 cycle_manager = Cycle_manager(FT8, on_decode, onOccupancy = None, input_device_keywords = ['Microphone', 'CODEC'],
-                              sync_score_thresh = 3, max_ncheck = 40, max_iters = 25, verbose = True) 
+                              sync_score_thresh = 2.8, max_ncheck = 40, max_iters = 15, verbose = True)
+
+with open('live_compare_cycle_stats.csv', 'w') as f:
+    f.write("nWSJTX,nPyFT8,nBoth\n")
 
 
 
