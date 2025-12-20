@@ -29,7 +29,8 @@ with, optionally, a second line to specify the Tx audio frequency:
 CQ G1OJS IO90
 888
 ```
-PyFT8 will wait for the *next* cycle boundary, and the file will be deleted during the transmit cycle
+PyFT8 will wait for the *next* cycle boundary, and the file will be deleted during the transmit cycle. If you want to transmit via a transceiver,
+you will have to organise your own method of controlling the PTT (e.g. [DATA]VOX, or sending your own CAT commands).
 
 ### Test scripts
 Below are some screenshots from test programs that can be used to look at how the protocols actually work, illustrated with a fairly
