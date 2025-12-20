@@ -1,10 +1,10 @@
-# FT8 Decoding and Encoding in Python with test/loopback code
+# FT8 Decoding and Encoding in Python with CLI and test/loopback code
 This repository contains Python code to decode and encode FT8, plus a minimal command line interface for reception.
 
 Its primary purpose is as a personal project, but should also be useful if you want to browse the code or use the CLI.
 
 ### CLI
-As of version 0.0.3, PyFT8 can be installed using 
+PyFT8 can be installed using 
 ```
 pip install PyFT8
 ```
@@ -12,12 +12,30 @@ and you can use
 ```
 PyFT8_cli "Keyword1, Keyword2" [-c]
 ```
-to run the CLI where Keywords specify the input sound device (e.g. "Mic, CODEC") and -c means 'concise' output.
+to run the CLI where Keywords specify the input sound device (e.g. "Mic, CODEC") and -c means 'concise' output. Output will appear
+in the command window when audio is received via the specified sound device.
+
+You can also transmit FT8 using PyFT8 as follows. When launching the program, use
+```
+PyFT8_cli "Keyword1, Keyword2" [-c] -o "Keyword3, Keyword4"
+```
+where "Keyword3, Keyword4" specify the output sound device. Then, when you want to transmit a message, dump a file called
+'PyFT8_tx_msg.txt' in the directory you launched from. The contents of this file should be for example:
+```
+CQ G1OJS IO90
+```
+with, optionally, a second line to specify the Tx audio frequency:
+```
+CQ G1OJS IO90
+888
+```
+PyFT8 will wait for the *next* cycle boundary, and the file will be deleted during the transmit cycle
 
 ### Test scripts
 Below are some screenshots from test programs that can be used to look at how the protocols actually work, illustrated with a fairly
 ordinary waterfall and some zoomed-in depictions of captured signals with an overlay of the syncrhonisation tones that are used
-to search for the signals (Costas patterns).
+to search for the signals (Costas patterns). To try these scripts, download the Python from this repository (clone, download raw etc)
+and run in your chosen environment.
 
 <img width="987" height="262" alt="waterfall" src="https://github.com/user-attachments/assets/bb97c336-3150-466d-b102-1885fff971b4" />
 
