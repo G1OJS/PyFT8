@@ -7,6 +7,7 @@ from .FT8_unpack import FT8_unpack
 import pyaudio
 import queue
 import wave
+import os
 eps = 1e-12
 
 class Candidate:
@@ -58,9 +59,9 @@ class Spectrum:
 
 
 class Cycle_manager():
-    def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None, input_device_keywords = None,
+    def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
                  sync_score_thresh = 3, max_ncheck = 30, max_iters = 10,  max_cycles = 5000, return_candidate = False,
-                 verbose = False, concise = False):
+                 input_device_keywords = None, output_device_keywords = None, verbose = False, concise = False):
         self.running = True
         self.verbose = verbose
         self.concise = concise
@@ -71,6 +72,7 @@ class Cycle_manager():
         self.spectrum = Spectrum(self.sigspec)
         self.spectrum_lock = threading.Lock()
         self.input_device_idx = find_device(input_device_keywords)
+        self.output_device_idx = find_device(output_device_keywords)
         self.audio_in = AudioIn(self, np.kaiser(self.spectrum.FFT_len, 20))
         self.ldpc = LDPC174_91(max_iters = max_iters, max_ncheck = max_ncheck)
 
@@ -91,7 +93,11 @@ class Cycle_manager():
 
         self.onSuccessfulDecode = onSuccessfulDecode
         self.onOccupancy = onOccupancy
-        
+
+        if(self.output_device_idx):
+            from .audio import AudioOut
+            self.audio_out = AudioOut
+            
         threading.Thread(target = self.audio_in.stream, args=(self.audio_in_wav,), daemon=True).start()
         threading.Thread(target=self.manage_cycle, daemon=True).start()
 
@@ -107,6 +113,7 @@ class Cycle_manager():
                 if not self.cycle_countdown:
                     self.running = False
                     break
+                self.check_for_tx()
                 self.cycle_countdown -=1
                 if(self.verbose):
                     def latest(arr): return f"{np.max(arr)%15 :5.2f}" if arr else ''
@@ -216,7 +223,28 @@ class Cycle_manager():
                             'sync_score':c.sync_score,  'dedupe_key':dedupe_key,
                             'ncheck_initial':c.ncheck_initial, 'n_its': c.n_its
                             })
-                self.onSuccessfulDecode(c if self.return_candidate else c.decode_dict)  
+                self.onSuccessfulDecode(c if self.return_candidate else c.decode_dict)
+
+    def check_for_tx(self):
+        from .FT8_encoder import pack_message
+        tx_msg_file = 'PyFT8_tx_msg.txt'
+        if os.path.exists(tx_msg_file):
+            if(not self.output_device_idx):
+                print("[Tx] Tx message file found but no output device specified")
+                return
+            with open(tx_msg_file, 'r') as f:
+                tx_msg = f.readline().strip()
+                tx_freq = f.readline().strip()
+            tx_freq = int(tx_freq) if tx_freq else 1000    
+            print(f"[TX] transmitting {tx_msg} on {tx_freq} Hz")
+            os.remove(tx_msg_file)
+            c1, c2, grid_rpt = tx_msg.split()
+            symbols = pack_message(c1, c2, grid_rpt)
+            audio_data = self.audio_out.create_ft8_wave(self, symbols, f_base = tx_freq)
+            self.audio_out.play_data_to_soundcard(self, audio_data, self.output_device_idx)
+            print("[Tx] done transmitting")
+            
+
                        
 
 
