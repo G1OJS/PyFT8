@@ -1,8 +1,20 @@
 # FT8 Decoding and Encoding in Python with test/loopback code
-I've changed the scope of this repo from the previous 'codec with integrated GUI' as it started to grow too wide in scope. 
-The last version including the GUI is in [release 6.4.0](https://github.com/G1OJS/PyFT8/releases/tag/6.4.0). This repo is now moving
-towards a packageable FT8 codec.
+This repository contains Python code to decode and encode FT8, plus a minimal command line interface for reception.
 
+Its primary purpose is as a personal project, but should also be useful if you want to browse the code or use the CLI.
+
+### CLI
+As of version 0.0.3, PyFT8 can be installed using 
+```
+pip install PyFT8
+```
+and you can use 
+```
+PyFT8_cli "Keyword1, Keyword2" [-c]
+```
+to run the CLI where Keywords specify the input sound device (e.g. "Mic, CODEC") and -c means 'concise' output.
+
+### Test scripts
 Below are some screenshots from test programs that can be used to look at how the protocols actually work, illustrated with a fairly
 ordinary waterfall and some zoomed-in depictions of captured signals with an overlay of the syncrhonisation tones that are used
 to search for the signals (Costas patterns).
