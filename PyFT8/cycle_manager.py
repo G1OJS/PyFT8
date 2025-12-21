@@ -32,18 +32,12 @@ class Candidate:
         self.last_hop = best[0] + self.sigspec.num_symbols * spectrum.hops_persymb
         self.last_data_hop = best[0] + (self.last_payload_symbol+1) * spectrum.hops_persymb
         self.sync_returned = time.time()
-
-    def set_decode_params(self, max_iters = 15, max_ncheck = 30):
-        self.max_iters = max_iters
-        self.max_ncheck = max_ncheck
+        self.hop_idxs = [self.origin[0] + s * self.spectrum.hops_persymb for s in self.sigspec.payload_symb_idxs] 
+        self.f_idxs =   [self.origin[1] + self.spectrum.fbins_pertone //2 + self.spectrum.fbins_pertone * t for t in range(self.sigspec.tones_persymb)]
 
     def demap(self):
         self.demap_requested = time.time()
-        hop_idxs = [self.origin[0] + s * self.spectrum.hops_persymb for s in self.sigspec.payload_symb_idxs] 
-        f_idxs =   [self.origin[1] + self.spectrum.fbins_pertone //2 + self.spectrum.fbins_pertone * t for t in range(self.sigspec.tones_persymb)]
-        pgf = self.spectrum.pgrid_fine
-        self.pgrid_fine = pgf[hop_idxs[0]:hop_idxs[-1], f_idxs[0]:f_idxs[-1]]
-        self.pgrid = pgf[hop_idxs,:][:, f_idxs]
+        self.pgrid = self.spectrum.pgrid_fine[self.hop_idxs,:][:, self.f_idxs]
         llr0 = np.log(np.max(self.pgrid[:,[4,5,6,7]], axis=1)) - np.log(np.max(self.pgrid[:,[0,1,2,3]], axis=1))
         llr1 = np.log(np.max(self.pgrid[:,[2,3,4,7]], axis=1)) - np.log(np.max(self.pgrid[:,[0,1,5,6]], axis=1))
         llr2 = np.log(np.max(self.pgrid[:,[1,2,6,7]], axis=1)) - np.log(np.max(self.pgrid[:,[0,3,4,5]], axis=1))
@@ -51,10 +45,9 @@ class Candidate:
         self.llr = 3.8*llr/np.std(llr)
         self.demap_returned = time.time()
 
-    def get_snr(self):
-        pmax = np.max(self.pgrid)
-        self.snr = 10*np.log10(pmax)-107
-        self.snr = int(np.clip(self.snr, -24,24).item())
+    def set_decode_params(self, max_iters = 15, max_ncheck = 30):
+        self.max_iters = max_iters
+        self.max_ncheck = max_ncheck
 
     def decode(self):
         self.ldpc_requested = time.time()
@@ -64,6 +57,18 @@ class Candidate:
         cyclestart_time = self.sigspec.cycle_seconds * int(self.demap_requested / self.sigspec.cycle_seconds)
         self.cyclestart_str = time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
         self.dedupe_key = self.cyclestart_str+" "+' '.join(self.message_parts) if(self.message_parts) else None
+
+    @property
+    def snr(self):
+        pmax = np.max(self.pgrid)
+        snr = 10*np.log10(pmax)-107
+        return int(np.clip(snr, -24,24).item())
+
+    @property
+    def pgrid_fine_synced(self):
+        return self.spectrum.pgrid_fine[self.origin[0]:self.origin[0] + self.spectrum.hops_persymb * self.sigspec.num_symbols ,
+                                        self.origin[1]:self.origin[1] + self.spectrum.fbins_pertone * self.sigspec.tones_persymb]
+
 
 
 class Spectrum:
@@ -212,7 +217,6 @@ class Cycle_manager():
                             self.duplicate_filter.add(c.dedupe_key)
                             f0_str = f"{c.origin[3]:4.0f}"
                             t0_str = f"{c.origin[2]-0.7:6.3f}"
-                            c.get_snr()
                             with self.cands_lock:
                                 c.decode_dict = {
                                         'cyclestart_str':c.cyclestart_str, 'freq':int(f0_str), 'dt':float(t0_str),

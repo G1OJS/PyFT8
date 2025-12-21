@@ -69,7 +69,7 @@ class Waterfall:
 
         for i, c in enumerate(candidates):
             ax = axes[i]
-            vals =c.pgrid_fine
+            vals =c.pgrid_fine_synced
             im = ax.imshow( vals, origin="lower", aspect="auto", extent=[-0.5, vals.shape[1]-0.5, -0.5, vals.shape[0]-0.5],
                             cmap="inferno",  interpolation='none' )
             vmax = np.max(vals)
