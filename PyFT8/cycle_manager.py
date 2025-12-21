@@ -44,16 +44,17 @@ class Candidate:
         pgf = self.spectrum.pgrid_fine
         self.pgrid_fine = pgf[hop_idxs[0]:hop_idxs[-1], f_idxs[0]:f_idxs[-1]]
         self.pgrid = pgf[hop_idxs,:][:, f_idxs]
-        pmax = np.max(self.pgrid)
-        self.snr = 10*np.log10(pmax)-107
-        self.snr = int(np.clip(self.snr, -24,24).item())
-        #self.pgrid /= pmax
         llr0 = np.log(np.max(self.pgrid[:,[4,5,6,7]], axis=1)) - np.log(np.max(self.pgrid[:,[0,1,2,3]], axis=1))
         llr1 = np.log(np.max(self.pgrid[:,[2,3,4,7]], axis=1)) - np.log(np.max(self.pgrid[:,[0,1,5,6]], axis=1))
         llr2 = np.log(np.max(self.pgrid[:,[1,2,6,7]], axis=1)) - np.log(np.max(self.pgrid[:,[0,3,4,5]], axis=1))
         llr = np.column_stack((llr0, llr1, llr2)).ravel()
         self.llr = 3.8*llr/np.std(llr)
         self.demap_returned = time.time()
+
+    def get_snr(self):
+        pmax = np.max(self.pgrid)
+        self.snr = 10*np.log10(pmax)-107
+        self.snr = int(np.clip(self.snr, -24,24).item())
 
     def decode(self):
         self.ldpc_requested = time.time()
@@ -211,6 +212,7 @@ class Cycle_manager():
                             self.duplicate_filter.add(c.dedupe_key)
                             f0_str = f"{c.origin[3]:4.0f}"
                             t0_str = f"{c.origin[2]-0.7:6.3f}"
+                            c.get_snr()
                             with self.cands_lock:
                                 c.decode_dict = {
                                         'cyclestart_str':c.cyclestart_str, 'freq':int(f0_str), 'dt':float(t0_str),
