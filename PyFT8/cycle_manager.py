@@ -68,8 +68,10 @@ class Candidate:
     def pgrid_fine_synced(self):
         return self.spectrum.pgrid_fine[self.origin[0]:self.origin[0] + self.spectrum.hops_persymb * self.sigspec.num_symbols ,
                                         self.origin[1]:self.origin[1] + self.spectrum.fbins_pertone * self.sigspec.tones_persymb]
-
-
+    #def pgrid_fine_synced(self):
+    #    z = self.spectrum.fine_grid_complex[self.origin[0]:self.origin[0] + self.spectrum.hops_persymb * self.sigspec.num_symbols ,
+    #                                        self.origin[1]:self.origin[1] + self.spectrum.fbins_pertone * self.sigspec.tones_persymb]
+        return np.abs(z)**2
 
 class Spectrum:
     def __init__(self, sigspec):
@@ -115,7 +117,7 @@ class Spectrum:
         self.cycle_searched = True
         cands = []
         f0_idxs = range(self.nFreqs - self.fbins_per_signal)
-        pgrid = self.pgrid_fine[:self.h_search,:].copy()
+        pgrid = self.pgrid_fine[:self.h_search,:]
         for f0_idx in f0_idxs:
             p = pgrid[:, f0_idx:f0_idx + self.fbins_per_signal]
             max_pwr = np.max(p)
