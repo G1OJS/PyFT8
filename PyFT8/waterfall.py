@@ -51,11 +51,11 @@ class Waterfall:
                 self._candidate_patches.append(rect)
 
         self.fig.canvas.draw_idle()
-        self.fig.canvas.flush_events()  # <-- forces actual draw
+        self.fig.canvas.flush_events()  
         plt.pause(0.1)
         
-    # ----------------------------------------------------------
-    def show_zoom(self, candidates, cols=3, phase = False):
+
+    def show_zoom(self, candidates, cols=3):
         """
         Create per-candidate zoom boxes.
         Optionally overlay LLRs if candidate.llr is present.
@@ -69,14 +69,11 @@ class Waterfall:
 
         for i, c in enumerate(candidates):
             ax = axes[i]
-            cspec = c.synced_grid_complex
-            vals = np.angle(cspec) if phase else np.abs(cspec)**2
+            vals =c.pgrid_fine
             im = ax.imshow( vals, origin="lower", aspect="auto", extent=[-0.5, vals.shape[1]-0.5, -0.5, vals.shape[0]-0.5],
-                            cmap="twilight" if phase else "inferno",
-                            interpolation='none' )
-            if(not phase):
-                vmax = np.max(vals)
-                im.norm = LogNorm(vmin=vmax/100000, vmax=vmax)
+                            cmap="inferno",  interpolation='none' )
+            vmax = np.max(vals)
+            im.norm = LogNorm(vmin=vmax/100000, vmax=vmax)
             ax.set_title(f"{c.origin[3]:.0f}Hz {c.origin[2]:.2f}s {c.decode_dict['call_b']}")
             ax.set_xlabel("freq bin index")
             ax.set_ylabel("hop index")

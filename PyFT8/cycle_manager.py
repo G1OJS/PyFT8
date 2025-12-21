@@ -25,7 +25,7 @@ class Candidate:
         self.ldpc_returned = False
         self.ncheck_initial = 5000
         self.cyclestart_str = None
-        self.sync_score = best[1]
+        self.sync_score = best[2]
         self.sync_returned = time.time()
         self.origin = (best[0], best[1], self.spectrum.dt * best[0], self.spectrum.df * (best[1] + 1))
         self.last_payload_symbol = self.sigspec.payload_symb_idxs[-1]
@@ -39,18 +39,18 @@ class Candidate:
 
     def demap(self):
         self.demap_requested = time.time()
-        cgrid = self.spectrum.fine_grid_complex
         hop_idxs = [self.origin[0] + s * self.spectrum.hops_persymb for s in self.sigspec.payload_symb_idxs] 
         f_idxs =   [self.origin[1] + self.spectrum.fbins_pertone //2 + self.spectrum.fbins_pertone * t for t in range(self.sigspec.tones_persymb)]
-        c = cgrid[hop_idxs,:][:, f_idxs]
-        p = np.abs(c)**2
-        pmax = np.max(p)
+        pgf = self.spectrum.pgrid_fine
+        self.pgrid_fine = pgf[hop_idxs[0]:hop_idxs[-1], f_idxs[0]:f_idxs[-1]]
+        self.pgrid = pgf[hop_idxs,:][:, f_idxs]
+        pmax = np.max(self.pgrid)
         self.snr = 10*np.log10(pmax)-107
         self.snr = int(np.clip(self.snr, -24,24).item())
-        p /= pmax
-        llr0 = np.log(np.max(p[:,[4,5,6,7]], axis=1)) - np.log(np.max(p[:,[0,1,2,3]], axis=1))
-        llr1 = np.log(np.max(p[:,[2,3,4,7]], axis=1)) - np.log(np.max(p[:,[0,1,5,6]], axis=1))
-        llr2 = np.log(np.max(p[:,[1,2,6,7]], axis=1)) - np.log(np.max(p[:,[0,3,4,5]], axis=1))
+        self.pgrid /= pmax
+        llr0 = np.log(np.max(self.pgrid[:,[4,5,6,7]], axis=1)) - np.log(np.max(self.pgrid[:,[0,1,2,3]], axis=1))
+        llr1 = np.log(np.max(self.pgrid[:,[2,3,4,7]], axis=1)) - np.log(np.max(self.pgrid[:,[0,1,5,6]], axis=1))
+        llr2 = np.log(np.max(self.pgrid[:,[1,2,6,7]], axis=1)) - np.log(np.max(self.pgrid[:,[0,3,4,5]], axis=1))
         llr = np.column_stack((llr0, llr1, llr2)).ravel()
         self.llr = 3.8*llr/np.std(llr)
         self.demap_returned = time.time()
@@ -59,30 +59,11 @@ class Candidate:
         self.ldpc_requested = time.time()
         ldpc.decode(self)
         self.ldpc_returned = time.time()
-        message_parts = FT8_unpack(self.payload_bits)
-        if(message_parts):
-            cyclestart_time = self.cycle_length * int(c.demap_requested / self.cycle_length)
-            c.cyclestart_str = time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
-            dedupe_key = c.cyclestart_str+" "+' '.join(message_parts)
-            if(not dedupe_key in self.duplicate_filter):
-                self.duplicate_filter.add(dedupe_key)
-                f0_str = f"{c.origin[3]:4.0f}"
-                t0_str = f"{c.origin[2]-0.7:6.3f}"
-                with self.cands_lock:
-                    c.decode_dict = {
-                            'cyclestart_str':c.cyclestart_str, 'freq':int(f0_str), 'dt':float(t0_str),
-                            'call_a':message_parts[0], 'call_b':message_parts[1], 'grid_rpt':message_parts[2], 'snr':c.snr,
-                    }
-                    if(not self.concise):
-                        c.decode_dict.update({
-                            't0_idx':c.origin[0],
-                            'decoder':'PyFT8', 't_decode':time.time(), 'f0_idx':c.origin[1],
-                            'sync_score':c.sync_score,  'dedupe_key':dedupe_key,
-                            'ncheck_initial':c.ncheck_initial, 'n_its': c.n_its
-                            })
-                self.onSuccessfulDecode(c if self.return_candidate else c.decode_dict)
+        self.message_parts = FT8_unpack(self.payload_bits)
+        cyclestart_time = self.sigspec.cycle_seconds * int(self.demap_requested / self.sigspec.cycle_seconds)
+        self.cyclestart_str = time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
+        self.dedupe_key = self.cyclestart_str+" "+' '.join(self.message_parts) if(self.message_parts) else None
 
-        
 
 class Spectrum:
     def __init__(self, sigspec):
@@ -117,6 +98,12 @@ class Spectrum:
         self.h_demap = self.sigspec.payload_symb_idxs[-1] * self.hops_persymb
         self.occupancy = np.zeros(self.nFreqs)
         self.lock = threading.Lock()
+
+    @property
+    def pgrid_fine(self):
+        with self.lock:
+            p = np.abs(self.fine_grid_complex)**2 
+        return p
         
     def search(self, sync_score_thresh):
         self.cycle_searched = True
@@ -129,7 +116,7 @@ class Spectrum:
             p = pgrid[:, f0_idx:f0_idx + self.fbins_per_signal]
             max_pwr = np.max(p)
             self.occupancy[f0_idx:f0_idx + self.fbins_per_signal] += max_pwr
-            p /= max_pwr
+            #p /= max_pwr
             best = (0, f0_idx, -1e30)
             for t0_idx in range(self.h_search - self.nhops_costas):
                 test = (t0_idx, f0_idx, float(np.dot(p[t0_idx + self.hop_idxs_Costas ,  :].ravel(), self._csync.ravel())))
@@ -151,7 +138,7 @@ class Cycle_manager():
         self.return_candidate = return_candidate
         
         self.spectrum = Spectrum(sigspec)
-        self.cycle_length = self.spectrum.sigspec.cycle_seconds
+        self.cycle_seconds = self.spectrum.sigspec.cycle_seconds
         self.max_ncheck = max_ncheck
         self.max_iters = max_iters
         self.input_device_idx = find_device(input_device_keywords)
@@ -190,7 +177,7 @@ class Cycle_manager():
                 self.cycle_countdown -=1
                 self.spectrum.cycle_searched = False
                 self.spectrum.fine_grid_pointer = 0
-                self.cyclestart_str = time.strftime("%y%m%d_%H%M%S", time.gmtime(self.cycle_length * int(time.time() / self.cycle_length)))
+                self.cyclestart_str = time.strftime("%y%m%d_%H%M%S", time.gmtime(self.cycle_seconds * int(time.time() / self.cycle_seconds)))
                 if(self.verbose):
                     def latest(arr): return f"{np.max(arr)%15 :5.2f}" if arr else ''
                     with self.cands_lock:
@@ -207,7 +194,7 @@ class Cycle_manager():
             else:
                 if (self.spectrum.fine_grid_pointer >= self.spectrum.h_search and not self.spectrum.cycle_searched):
                     if(self.verbose): print(f"[Cycle manager] Search spectrum ...")
-                    new_cands = self.spectrum.search(0)
+                    new_cands = self.spectrum.search(3)
                     if(self.verbose): print(f"[Cycle manager] Spectrum searched -> {len(new_cands)} candidates")
                     if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
                     with self.cands_lock:
@@ -222,6 +209,25 @@ class Cycle_manager():
                     for c in to_decode[:1]:
                         c.set_decode_params(self.max_iters, self.max_ncheck)
                         c.decode()
+                        if(c.dedupe_key and not c.dedupe_key in self.duplicate_filter):
+                            self.duplicate_filter.add(c.dedupe_key)
+                            f0_str = f"{c.origin[3]:4.0f}"
+                            t0_str = f"{c.origin[2]-0.7:6.3f}"
+                            with self.cands_lock:
+                                c.decode_dict = {
+                                        'cyclestart_str':c.cyclestart_str, 'freq':int(f0_str), 'dt':float(t0_str),
+                                        'call_a':c.message_parts[0], 'call_b':c.message_parts[1], 'grid_rpt':c.message_parts[2],
+                                        'snr':c.snr,
+                                }
+                                if(not self.concise):
+                                    c.decode_dict.update({
+                                        't0_idx':c.origin[0],
+                                        'decoder':'PyFT8', 't_decode':time.time(), 'f0_idx':c.origin[1],
+                                        'sync_score':c.sync_score,  'dedupe_key':c.dedupe_key,
+                                        'ncheck_initial':c.ncheck_initial, 'n_its': c.n_its
+                                        })
+                            self.onSuccessfulDecode(c if self.return_candidate else c.decode_dict)
+
 
     def check_for_tx(self):
         from .FT8_encoder import pack_message
