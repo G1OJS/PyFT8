@@ -59,7 +59,7 @@ class AudioIn:
         self.audio_buffer[-nsamps:] = samples
         audio_for_fft = self.audio_buffer * self.fft_window
         z = np.fft.rfft(audio_for_fft)[:self.nFreqs]
-        with self.parent_app.spectrum_lock:
+        with self.parent_app.spectrum.lock:
             self.spectrum.fine_grid_complex[self.spectrum.fine_grid_pointer, :] = z
         self.spectrum.fine_grid_pointer = (self.spectrum.fine_grid_pointer +1) % self.spectrum.hops_percycle
         return (None, pyaudio.paContinue)
