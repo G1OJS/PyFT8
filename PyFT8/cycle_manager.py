@@ -47,7 +47,7 @@ class Candidate:
         pmax = np.max(self.pgrid)
         self.snr = 10*np.log10(pmax)-107
         self.snr = int(np.clip(self.snr, -24,24).item())
-        self.pgrid /= pmax
+        #self.pgrid /= pmax
         llr0 = np.log(np.max(self.pgrid[:,[4,5,6,7]], axis=1)) - np.log(np.max(self.pgrid[:,[0,1,2,3]], axis=1))
         llr1 = np.log(np.max(self.pgrid[:,[2,3,4,7]], axis=1)) - np.log(np.max(self.pgrid[:,[0,1,5,6]], axis=1))
         llr2 = np.log(np.max(self.pgrid[:,[1,2,6,7]], axis=1)) - np.log(np.max(self.pgrid[:,[0,3,4,5]], axis=1))
@@ -113,15 +113,11 @@ class Spectrum:
         for f0_idx in f0_idxs:
             p = pgrid[:, f0_idx:f0_idx + self.fbins_per_signal]
             max_pwr = np.max(p)
+            pnorm = p / max_pwr
             self.occupancy[f0_idx:f0_idx + self.fbins_per_signal] += max_pwr
-            p /= max_pwr
             best = (0, f0_idx, -1e30)
             for t0_idx in range(self.h_search - self.nhops_costas):
-                test = (t0_idx, f0_idx, float(np.dot(p[t0_idx + self.hop_idxs_Costas ,  :].ravel(), self._csync.ravel())))
-                print(p[t0_idx + self.hop_idxs_Costas ,  :].ravel())
-                print(self._csync.ravel())
-                print(test)
-                stop
+                test = (t0_idx, f0_idx, float(np.dot(pnorm[t0_idx + self.hop_idxs_Costas ,  :].ravel(), self._csync.ravel())))
                 if test[2] > best[2]:
                     best = test
             if(best[2] > sync_score_thresh):
@@ -196,7 +192,7 @@ class Cycle_manager():
             else:
                 if (self.spectrum.fine_grid_pointer >= self.spectrum.h_search and not self.spectrum.cycle_searched):
                     if(self.verbose): print(f"[Cycle manager] Search spectrum ...")
-                    new_cands = self.spectrum.search(1e-22)
+                    new_cands = self.spectrum.search(self.sync_score_thresh)
                     if(self.verbose): print(f"[Cycle manager] Spectrum searched -> {len(new_cands)} candidates")
                     if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
                     with self.cands_lock:
