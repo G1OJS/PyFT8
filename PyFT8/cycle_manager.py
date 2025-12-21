@@ -109,17 +109,19 @@ class Spectrum:
         self.cycle_searched = True
         cands = []
         f0_idxs = range(self.nFreqs - self.fbins_per_signal)
-        with self.lock:
-            cgrid = self.fine_grid_complex.copy()
-        pgrid = np.abs(cgrid)**2
+        pgrid = self.pgrid_fine[:self.h_search,:].copy()
         for f0_idx in f0_idxs:
             p = pgrid[:, f0_idx:f0_idx + self.fbins_per_signal]
             max_pwr = np.max(p)
             self.occupancy[f0_idx:f0_idx + self.fbins_per_signal] += max_pwr
-            #p /= max_pwr
+            p /= max_pwr
             best = (0, f0_idx, -1e30)
             for t0_idx in range(self.h_search - self.nhops_costas):
                 test = (t0_idx, f0_idx, float(np.dot(p[t0_idx + self.hop_idxs_Costas ,  :].ravel(), self._csync.ravel())))
+                print(p[t0_idx + self.hop_idxs_Costas ,  :].ravel())
+                print(self._csync.ravel())
+                print(test)
+                stop
                 if test[2] > best[2]:
                     best = test
             if(best[2] > sync_score_thresh):
@@ -194,7 +196,7 @@ class Cycle_manager():
             else:
                 if (self.spectrum.fine_grid_pointer >= self.spectrum.h_search and not self.spectrum.cycle_searched):
                     if(self.verbose): print(f"[Cycle manager] Search spectrum ...")
-                    new_cands = self.spectrum.search(3)
+                    new_cands = self.spectrum.search(1e-22)
                     if(self.verbose): print(f"[Cycle manager] Spectrum searched -> {len(new_cands)} candidates")
                     if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
                     with self.cands_lock:
