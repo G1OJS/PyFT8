@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 
-with open('live_compare_rows_2_vs FAST.csv','r') as f:
+with open('live_compare_cycle_stats.csv','r') as f:
     lines = f.readlines()
 
 tW, tP = [],[]

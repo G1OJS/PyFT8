@@ -3,9 +3,7 @@ import numpy as np
 from PyFT8.FT8_crc import check_crc
 
 class LDPC174_91:
-    def __init__(self, max_iters, max_ncheck):
-        self.max_iters = max_iters
-        self.max_ncheck = max_ncheck
+    def __init__(self):
 
         self.kNRW = [7,6,6,6,7,6,7,6,6,7,6,6,7,7,6,6,6,7,6,7,6,7,6,6,6,7,6,6,6,7,6,6,6,6,7,6,6,6,7,7,6,6,6,6,7,7,6,6,6,6,7,6,6,6,7,6,6,6,6,7,6,6,6,7,6,6,6,7,7,6,6,7,6,6,6,6,6,6,6,7,6,6,6]
         self.kNM = np.array([
@@ -55,12 +53,12 @@ class LDPC174_91:
         alpha = 1.18
 
         zn = c.llr.copy()
-        for itn in range(self.max_iters):
+        for itn in range(c.max_iters):
             ncheck = get_ncheck(zn)
             if itn == 0: c.ncheck_initial = ncheck
             c.payload_bits = get_payload_bits(zn) if ncheck == 0 else []
             c.n_its = itn
-            if c.payload_bits or ncheck > self.max_ncheck:
+            if c.payload_bits or ncheck > c.max_ncheck:
                 return
 
             delta = np.zeros_like(zn)
