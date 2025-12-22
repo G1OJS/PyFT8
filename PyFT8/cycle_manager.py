@@ -184,60 +184,63 @@ class Cycle_manager():
             self.tlog(f"\n[Cycle manager] rollover detected at {self.spectrum.cycle_time():.2f}")
 
     def manage_cycle(self):
-        last_searched_cycle = 0
+        cycle_searched = True
         cycle_counter = 0
-        cycle_time_prev = 1
-        while self.running and cycle_counter < self.max_cycles:
+        cycle_time_prev = 0
+        while self.running:
             time.sleep(0.001)
             rollover = self.spectrum.cycle_time() < cycle_time_prev 
             cycle_time_prev = self.spectrum.cycle_time()
 
             if(rollover):
                 cycle_counter +=1
+                if(cycle_counter > self.max_cycles):
+                    self.running = False
+                    break
+                cycle_searched = False
                 self.check_for_tx()
                 self.spectrum.pgrid_fine_ptr = 0
                 self.print_stats()
                 with self.cands_lock:
-                    self.cands_list = [c for c in self.cands_list
-                                       if (not c.ldpc_returned and time.time() - c.sync_returned < 15)]
-            else:
-                if (self.spectrum.pgrid_fine_ptr > self.spectrum.h_search and last_searched_cycle != cycle_counter):
-                    last_searched_cycle = cycle_counter
+                    self.cands_list = [c for c in self.cands_list if (not c.ldpc_returned and time.time() - c.sync_returned < 15)]
+
+            if (self.spectrum.pgrid_fine_ptr > self.spectrum.h_search and not cycle_searched):
+                    cycle_searched = True
                     if(self.verbose): self.tlog(f"[Cycle manager] Search spectrum ...")
                     new_cands = self.spectrum.search(self.sync_score_thresh)
                     if(self.verbose): self.tlog(f"[Cycle manager] Spectrum searched -> {len(new_cands)} candidates")
                     if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
                     with self.cands_lock:
                         self.cands_list = self.cands_list + new_cands
-                if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap):
-                    with self.cands_lock:
-                        to_demap = [c for c in self.cands_list if (self.spectrum.pgrid_fine_ptr > c.last_data_hop and not c.demap_requested)]
-                    for c in to_demap[:5]:
-                        c.demap()
-                    with self.cands_lock:
-                        to_decode = [c for c in self.cands_list if c.demap_returned and not c.ldpc_requested]
-                    for c in to_decode[:1]:
-                        c.set_decode_params(self.max_iters, self.max_ncheck)
-                        c.decode()
-                        if(c.dedupe_key and not c.dedupe_key in self.duplicate_filter):
-                            self.duplicate_filter.add(c.dedupe_key)
-                            f0_str = f"{c.origin[3]:4.0f}"
-                            t0_str = f"{c.origin[2]-0.7:6.3f}"
-                            with self.cands_lock:
-                                c.decode_dict = {
-                                        'cyclestart_str':c.cyclestart_str, 'freq':int(f0_str), 'dt':float(t0_str),
-                                        'call_a':c.message_parts[0], 'call_b':c.message_parts[1], 'grid_rpt':c.message_parts[2],
-                                        'snr':c.snr,
-                                }
-                                if(not self.concise):
-                                    c.decode_dict.update({
-                                        't0_idx':c.origin[0],
-                                        'decoder':'PyFT8', 't_decode':time.time(), 'f0_idx':c.origin[1],
-                                        'sync_score':c.sync_score,  'dedupe_key':c.dedupe_key,
-                                        'ncheck_initial':c.ncheck_initial, 'n_its': c.n_its
-                                        })
-                            self.onSuccessfulDecode(c if self.return_candidate else c.decode_dict)
 
+            if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap):
+                with self.cands_lock:
+                    to_demap = [c for c in self.cands_list if (self.spectrum.pgrid_fine_ptr > c.last_data_hop and not c.demap_requested)]
+                for c in to_demap[:5]:
+                    c.demap()
+                with self.cands_lock:
+                    to_decode = [c for c in self.cands_list if c.demap_returned and not c.ldpc_requested]
+                for c in to_decode[:1]:
+                    c.set_decode_params(self.max_iters, self.max_ncheck)
+                    c.decode()
+                    if(c.dedupe_key and not c.dedupe_key in self.duplicate_filter):
+                        self.duplicate_filter.add(c.dedupe_key)
+                        f0_str = f"{c.origin[3]:4.0f}"
+                        t0_str = f"{c.origin[2]-0.7:6.3f}"
+                        with self.cands_lock:
+                            c.decode_dict = {
+                                    'cyclestart_str':c.cyclestart_str, 'freq':int(f0_str), 'dt':float(t0_str),
+                                    'call_a':c.message_parts[0], 'call_b':c.message_parts[1], 'grid_rpt':c.message_parts[2],
+                                    'snr':c.snr,
+                            }
+                            if(not self.concise):
+                                c.decode_dict.update({
+                                    't0_idx':c.origin[0],
+                                    'decoder':'PyFT8', 't_decode':time.time(), 'f0_idx':c.origin[1],
+                                    'sync_score':c.sync_score,  'dedupe_key':c.dedupe_key,
+                                    'ncheck_initial':c.ncheck_initial, 'n_its': c.n_its
+                                    })
+                        self.onSuccessfulDecode(c if self.return_candidate else c.decode_dict)
 
     def check_for_tx(self):
         from .FT8_encoder import pack_message
