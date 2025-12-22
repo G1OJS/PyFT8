@@ -18,51 +18,70 @@ def find_device(device_str_contains):
             return dev_idx
     print(f"[Audio] No audio device found matching {device_str_contains}")
 
-class AudioIn:
-    def __init__(self, parent_app, fft_window): # needing parent_app here suggests some code below should move there
-        self.parent_app = parent_app
-        self.spectrum = parent_app.spectrum
-        self.samples_perhop = int(self.spectrum.sample_rate / (self.spectrum.sigspec.symbols_persec * self.spectrum.hops_persymb))
-        self.fft_len = self.spectrum.FFT_len
-        self.nFreqs = self.spectrum.nFreqs
-        self.fft_window = fft_window
-        self.audio_buffer = np.zeros(self.fft_len, dtype=np.float32)
-        
-    def stream(self, wav_file = None):
-        if(wav_file):
-            prev_cycle_time = 0
-            wf = None
-            nextHop_time = 0
-            while self.parent_app.running:
-                cycle_time = time.time() % self.spectrum.sigspec.cycle_seconds
-                rollover = (cycle_time < prev_cycle_time)
-                prev_cycle_time = cycle_time
-                if(rollover):
-                    wf = wave.open(wav_file, 'rb')
-                if(wf):
-                    frames = wf.readframes(self.samples_perhop)
-                    if frames:
-                        while time.time() < nextHop_time:
-                            time.sleep(0.001)
-                        nextHop_time = time.time() + self.spectrum.dt
-                        self.buffer_and_FFT(frames)
-        else:
-            stream = pya.open(format=pyaudio.paInt16, channels=1, rate=self.spectrum.sample_rate,
-                             input=True, input_device_index = self.parent_app.input_device_idx,
-                             frames_per_buffer=self.samples_perhop, stream_callback = self.buffer_and_FFT)
-            stream.start_stream()
+import time
+import wave
+import numpy as np
+import pyaudio
 
-    def buffer_and_FFT(self, in_data, frame_count = None, time_info = None, status_flags = None):
-        samples = np.frombuffer(in_data, dtype=np.int16)
-        nsamps = len(samples)
-        self.audio_buffer[:-nsamps] = self.audio_buffer[nsamps:]
-        self.audio_buffer[-nsamps:] = samples
-        audio_for_fft = self.audio_buffer * self.fft_window
-        z = np.fft.rfft(audio_for_fft)[:self.nFreqs]
-        with self.parent_app.spectrum.lock:
-            self.spectrum.fine_grid_complex[self.spectrum.fine_grid_pointer, :] = z
-        self.spectrum.fine_grid_pointer = (self.spectrum.fine_grid_pointer +1) % self.spectrum.hops_percycle
+
+class AudioIn:
+    def __init__(self, sample_rate, samples_perhop, fft_len, fft_window, on_fft):
+
+        self.sample_rate = sample_rate
+        self.samples_perhop = samples_perhop
+        self.fft_len = fft_len
+        self.fft_window = fft_window
+        self.on_fft = on_fft
+        self.audio_buffer = np.zeros(fft_len, dtype=np.float32)
+        self._pa = pyaudio.PyAudio()
+        self._running = False
+
+    def start_live(self, input_device_idx):
+        self._running = True
+        self.stream = self._pa.open(
+            format=pyaudio.paInt16,
+            channels=1,
+            rate=self.sample_rate,
+            input=True,
+            input_device_index=input_device_idx,
+            frames_per_buffer=self.samples_perhop,
+            stream_callback=self._callback,
+        )
+        self.stream.start_stream()
+
+    def start_wav(self, wav_path, hop_dt):
+        self._running = True
+        wf = wave.open(wav_path, "rb")
+        next_hop_time = time.time()
+        while self._running:
+            frames = wf.readframes(self.samples_perhop)
+            if not frames:
+                wf.close()
+                wf = wave.open(wav_path, "rb")
+                frames = wf.readframes(self.samples_perhop)
+            now = time.time()
+            if now < next_hop_time:
+                time.sleep(next_hop_time - now)
+            next_hop_time += hop_dt
+            self._process_frames(frames)
+        wf.close()
+
+    def _callback(self, in_data, frame_count, time_info, status_flags):
+        if not self._running:
+            return (None, pyaudio.paComplete)
+
+        self._process_frames(in_data)
         return (None, pyaudio.paContinue)
+
+    def _process_frames(self, in_data):
+        samples = np.frombuffer(in_data, dtype=np.int16).astype(np.float32)
+        ns = len(samples)
+        self.audio_buffer[:-ns] = self.audio_buffer[ns:]
+        self.audio_buffer[-ns:] = samples
+        x = self.audio_buffer * self.fft_window
+        z = np.fft.rfft(x)
+        self.on_fft(z, time.time())
+
 
 class AudioOut:
 

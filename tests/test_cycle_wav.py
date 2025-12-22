@@ -25,7 +25,6 @@ def onDecode(c):
     decoded_candidates.append(c)
     unique_decodes.add(dd['call_a']+dd['call_b']+dd['grid_rpt'])
 
-print(f"Waiting for cycle rollover ({15 - time.time() %15:3.1f}s)")
 cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = WAV, 
                           max_iters = 25,  max_ncheck = 38, verbose = True,
                           sync_score_thresh = 3.8, max_cycles =2, return_candidate = True)

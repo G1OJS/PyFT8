@@ -27,7 +27,7 @@ class Candidate:
         self.cyclestart_str = None
         self.sync_score = best[2]
         self.sync_returned = time.time()
-        self.origin = (best[0], best[1], self.spectrum.dt * best[0], self.spectrum.df * (best[1] + 1))
+        self.origin = (best[0], best[1], self.spectrum.dt * best[0], self.spectrum.df * (best[1] + self.spectrum.fbins_pertone //2))
         self.last_payload_symbol = self.sigspec.payload_symb_idxs[-1]
         self.last_hop = best[0] + self.sigspec.num_symbols * spectrum.hops_persymb
         self.last_data_hop = best[0] + (self.last_payload_symbol+1) * spectrum.hops_persymb
@@ -64,15 +64,6 @@ class Candidate:
         snr = 10*np.log10(pmax)-107
         return int(np.clip(snr, -24,24).item())
 
-    @property
-    def pgrid_fine_synced(self):
-        return self.spectrum.pgrid_fine[self.origin[0]:self.origin[0] + self.spectrum.hops_persymb * self.sigspec.num_symbols ,
-                                        self.origin[1]:self.origin[1] + self.spectrum.fbins_pertone * self.sigspec.tones_persymb]
-    #def pgrid_fine_synced(self):
-    #    z = self.spectrum.fine_grid_complex[self.origin[0]:self.origin[0] + self.spectrum.hops_persymb * self.sigspec.num_symbols ,
-    #                                        self.origin[1]:self.origin[1] + self.spectrum.fbins_pertone * self.sigspec.tones_persymb]
-        return np.abs(z)**2
-
 class Spectrum:
     def __init__(self, sigspec):
         self.sigspec = sigspec
@@ -85,7 +76,7 @@ class Spectrum:
         FFT_out_len = int(self.FFT_len/2) + 1
         fmax_fft = self.sample_rate/2
         self.nFreqs = int(FFT_out_len * self.max_freq / fmax_fft)
-        self.df = self.max_freq / self.nFreqs
+        self.df = self.max_freq / (self.nFreqs -1)
         self.hops_percycle = int(self.sigspec.cycle_seconds * self.sigspec.symbols_persec * self.hops_persymb)
         self.fbins_per_signal = self.sigspec.tones_persymb * self.fbins_pertone
 
@@ -97,24 +88,28 @@ class Spectrum:
             self._csync[sym_idx, self.sigspec.costas_len*self.fbins_pertone:] = 0
         self.hop_idxs_Costas =  np.arange(self.sigspec.costas_len) * self.hops_persymb
 
-        self.fine_grid_complex = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.complex64)
-        self.fine_grid_pointer = 0
-        self.cycle_searched = True
+        self.pgrid_fine = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)
+        self.pgrid_fine_ptr = 0
+        self.pgrid_fine_ptr_prev = 0
 
         self.max_start_hop = int(1.9 / self.dt)
         self.h_search = self.max_start_hop + self.nhops_costas 
         self.h_demap = self.sigspec.payload_symb_idxs[-1] * self.hops_persymb
         self.occupancy = np.zeros(self.nFreqs)
         self.lock = threading.Lock()
+        self.audio_in = AudioIn(sample_rate=self.sample_rate,
+                                samples_perhop = int(self.sample_rate /(self.sigspec.symbols_persec * self.hops_persymb)),
+                                fft_len=self.FFT_len, fft_window=np.kaiser(self.FFT_len, 20),
+                                on_fft = self.on_fft)
 
-    @property
-    def pgrid_fine(self):
+    def on_fft(self, z, t):
+        p = z.real*z.real + z.imag*z.imag
+        p = p[:self.nFreqs]
         with self.lock:
-            p = np.abs(self.fine_grid_complex)**2 
-        return p
-        
+            self.pgrid_fine[self.pgrid_fine_ptr] = p
+            self.pgrid_fine_ptr = (self.pgrid_fine_ptr + 1) % self.hops_percycle
+
     def search(self, sync_score_thresh):
-        self.cycle_searched = True
         cands = []
         f0_idxs = range(self.nFreqs - self.fbins_per_signal)
         pgrid = self.pgrid_fine[:self.h_search,:]
@@ -142,17 +137,11 @@ class Cycle_manager():
         self.verbose = verbose
         self.concise = concise
         self.return_candidate = return_candidate
-        
-        self.spectrum = Spectrum(sigspec)
-        self.cycle_seconds = self.spectrum.sigspec.cycle_seconds
         self.max_ncheck = max_ncheck
         self.max_iters = max_iters
         self.input_device_idx = find_device(input_device_keywords)
         self.output_device_idx = find_device(output_device_keywords)
-        self.audio_in = AudioIn(self, np.kaiser(self.spectrum.FFT_len, 20))
-        self.audio_in_wav = audio_in_wav
         self.max_cycles = max_cycles
-        self.cycle_countdown = max_cycles
         self.cyclestart_str = None
         self.prev_cycle_time = -1e40
         self.cands_list = []
@@ -160,30 +149,42 @@ class Cycle_manager():
         self.sync_score_thresh = sync_score_thresh
         self.duplicate_filter = set()
         self.onSuccessfulDecode = onSuccessfulDecode
-        self.onOccupancy = onOccupancy
+        self.onOccupancy = onOccupancy 
         if(self.output_device_idx):
             from .audio import AudioOut
             self.audio_out = AudioOut
-            
-        threading.Thread(target = self.audio_in.stream, args=(self.audio_in_wav,), daemon=True).start()
+
+        self.sigspec = sigspec
+        self.spectrum = Spectrum(sigspec)
+        audio_in = self.spectrum.audio_in
+        if(audio_in_wav):
+            now = time.time()
+            delay = self.sigspec.cycle_seconds - (now % self.sigspec.cycle_seconds)
+            print(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)")
+            time.sleep(delay)
+            threading.Thread(target = audio_in.start_wav, args = (audio_in_wav, self.spectrum.dt), daemon=True).start()
+        else:
+            threading.Thread(target = audio_in.start_live, args=(self.input_device_idx,), daemon=True).start()
+     
         threading.Thread(target=self.manage_cycle, daemon=True).start()
 
     def manage_cycle(self):
+        last_searched_cycle = 0
+        cycle_counter = 0
         while self.running:
-            time.sleep(0)
+            time.sleep(0.001)
+            with self.spectrum.lock:
+                rollover = self.spectrum.pgrid_fine_ptr < self.spectrum.pgrid_fine_ptr_prev
+                self.spectrum.pgrid_fine_ptr_prev = self.spectrum.pgrid_fine_ptr
             self.cycle_time = time.time() % self.spectrum.sigspec.cycle_seconds
-            rollover = (self.cycle_time < self.prev_cycle_time)
-            self.prev_cycle_time = self.cycle_time
 
             if(rollover):
-                if not self.cycle_countdown:
+                if cycle_counter == self.max_cycles:
                     self.running = False
                     break
                 self.check_for_tx()
-                self.cycle_countdown -=1
-                self.spectrum.cycle_searched = False
-                self.spectrum.fine_grid_pointer = 0
-                self.cyclestart_str = time.strftime("%y%m%d_%H%M%S", time.gmtime(self.cycle_seconds * int(time.time() / self.cycle_seconds)))
+                cycle_counter +=1
+                self.cyclestart_str = time.strftime("%y%m%d_%H%M%S", time.gmtime(self.sigspec.cycle_seconds * int(time.time() / self.sigspec.cycle_seconds)))
                 if(self.verbose):
                     def latest(arr): return f"{np.max(arr)%15 :5.2f}" if arr else ''
                     with self.cands_lock:
@@ -198,16 +199,19 @@ class Cycle_manager():
                     self.cands_list = [c for c in self.cands_list
                                        if (not c.ldpc_returned and time.time() - c.sync_returned < 15)]
             else:
-                if (self.spectrum.fine_grid_pointer >= self.spectrum.h_search and not self.spectrum.cycle_searched):
+                with self.spectrum.lock:
+                    tick = self.spectrum.pgrid_fine_ptr >= self.spectrum.h_search
+                if (tick and last_searched_cycle != cycle_counter):
+                    last_searched_cycle = cycle_counter
                     if(self.verbose): print(f"[Cycle manager] Search spectrum ...")
                     new_cands = self.spectrum.search(self.sync_score_thresh)
                     if(self.verbose): print(f"[Cycle manager] Spectrum searched -> {len(new_cands)} candidates")
                     if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
                     with self.cands_lock:
                         self.cands_list = self.cands_list + new_cands
-                if(self.spectrum.fine_grid_pointer >= self.spectrum.h_demap):
+                if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap):
                     with self.cands_lock:
-                        to_demap = [c for c in self.cands_list if (self.spectrum.fine_grid_pointer > c.last_data_hop and not c.demap_requested)]
+                        to_demap = [c for c in self.cands_list if (self.spectrum.pgrid_fine_ptr > c.last_data_hop and not c.demap_requested)]
                     for c in to_demap[:5]:
                         c.demap()
                     with self.cands_lock:
