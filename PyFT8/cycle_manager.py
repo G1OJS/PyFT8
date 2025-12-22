@@ -31,7 +31,6 @@ class Candidate:
         self.last_payload_symbol = self.sigspec.payload_symb_idxs[-1]
         self.last_hop = best[0] + self.sigspec.num_symbols * spectrum.hops_persymb
         self.last_data_hop = best[0] + (self.last_payload_symbol+1) * spectrum.hops_persymb
-        self.sync_returned = time.time()
         self.hop_idxs = [self.origin[0] + s * self.spectrum.hops_persymb for s in self.sigspec.payload_symb_idxs] 
         self.f_idxs =   [self.origin[1] + self.spectrum.fbins_pertone //2 + self.spectrum.fbins_pertone * t for t in range(self.sigspec.tones_persymb)]
 
@@ -54,8 +53,7 @@ class Candidate:
         ldpc.decode(self)
         self.ldpc_returned = time.time()
         self.message_parts = FT8_unpack(self.payload_bits)
-        cyclestart_time = self.sigspec.cycle_seconds * int(self.demap_requested / self.sigspec.cycle_seconds)
-        self.cyclestart_str = time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
+        self.cyclestart_str = self.spectrum.cyclestart_str(self.demap_requested)
         self.dedupe_key = self.cyclestart_str+" "+' '.join(self.message_parts) if(self.message_parts) else None
 
     @property
@@ -100,6 +98,12 @@ class Spectrum:
                                 samples_perhop = int(self.sample_rate /(self.sigspec.symbols_persec * self.hops_persymb)),
                                 fft_len=self.FFT_len, fft_window=np.kaiser(self.FFT_len, 20),
                                 on_fft = self.on_fft)
+    def cyclestart_str(self, t):
+        cyclestart_time = self.sigspec.cycle_seconds * int(t / self.sigspec.cycle_seconds)
+        return time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
+
+    def cycle_time(self):
+        return time.time() % self.sigspec.cycle_seconds
 
     def on_fft(self, z, t):
         p = z.real*z.real + z.imag*z.imag
@@ -138,7 +142,6 @@ class Cycle_manager():
         self.return_candidate = return_candidate
         self.max_ncheck = max_ncheck
         self.max_iters = max_iters
-        self.cycle_time = 0
         self.input_device_idx = find_device(input_device_keywords)
         self.output_device_idx = find_device(output_device_keywords)
         self.max_cycles = max_cycles
@@ -155,9 +158,8 @@ class Cycle_manager():
         self.sigspec = sigspec
         self.spectrum = Spectrum(sigspec)
         audio_in = self.spectrum.audio_in
-        now = time.time()
-        delay = self.sigspec.cycle_seconds - (now % self.sigspec.cycle_seconds)
-        print(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)")
+        delay = self.sigspec.cycle_seconds - self.spectrum.cycle_time()
+        self.tlog(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)")
         time.sleep(delay)
         if(audio_in_wav):
             threading.Thread(target = audio_in.start_wav, args = (audio_in_wav, self.spectrum.dt), daemon=True).start()
@@ -166,6 +168,8 @@ class Cycle_manager():
      
         threading.Thread(target=self.manage_cycle, daemon=True).start()
 
+    def tlog(self, txt):
+        print(f"{self.spectrum.cyclestart_str(time.time())} {self.spectrum.cycle_time():5.2f} {txt}")
 
     def print_stats(self):
         if(self.verbose): 
@@ -174,10 +178,10 @@ class Cycle_manager():
                 synced = [c.sync_returned for c in self.cands_list if c.sync_score]
                 demapped = [c.demap_returned for c in self.cands_list if c.demap_returned]
                 decoded = [c.ldpc_returned for c in self.cands_list if c.ldpc_returned]
-            print(f"[Cycle manager] synced:   {len(synced)} ({earliest_and_latest(synced)})")
-            print(f"[Cycle manager] demapped: {len(demapped)} ({earliest_and_latest(demapped)})")
-            print(f"[Cycle manager] decoded:  {len(decoded)} ({earliest_and_latest(decoded)})")
-            print(f"\n[Cycle manager] rollover detected at {self.cycle_time:.2f}")
+            self.tlog(f"[Cycle manager] synced:   {len(synced)} ({earliest_and_latest(synced)})")
+            self.tlog(f"[Cycle manager] demapped: {len(demapped)} ({earliest_and_latest(demapped)})")
+            self.tlog(f"[Cycle manager] decoded:  {len(decoded)} ({earliest_and_latest(decoded)})")
+            self.tlog(f"\n[Cycle manager] rollover detected at {self.spectrum.cycle_time():.2f}")
 
     def manage_cycle(self):
         last_searched_cycle = 0
@@ -185,10 +189,8 @@ class Cycle_manager():
         cycle_time_prev = 1
         while self.running and cycle_counter < self.max_cycles:
             time.sleep(0.001)
-            self.cycle_time = time.time() %15
-            rollover = self.cycle_time < cycle_time_prev 
-            cycle_time_prev = self.cycle_time
-            self.cycle_time = time.time() % self.spectrum.sigspec.cycle_seconds
+            rollover = self.spectrum.cycle_time() < cycle_time_prev 
+            cycle_time_prev = self.spectrum.cycle_time()
 
             if(rollover):
                 cycle_counter +=1
@@ -201,9 +203,9 @@ class Cycle_manager():
             else:
                 if (self.spectrum.pgrid_fine_ptr > self.spectrum.h_search and last_searched_cycle != cycle_counter):
                     last_searched_cycle = cycle_counter
-                    if(self.verbose): print(f"[Cycle manager] Search spectrum ...")
+                    if(self.verbose): self.tlog(f"[Cycle manager] Search spectrum ...")
                     new_cands = self.spectrum.search(self.sync_score_thresh)
-                    if(self.verbose): print(f"[Cycle manager] Spectrum searched -> {len(new_cands)} candidates")
+                    if(self.verbose): self.tlog(f"[Cycle manager] Spectrum searched -> {len(new_cands)} candidates")
                     if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
                     with self.cands_lock:
                         self.cands_list = self.cands_list + new_cands
@@ -242,19 +244,19 @@ class Cycle_manager():
         tx_msg_file = 'PyFT8_tx_msg.txt'
         if os.path.exists(tx_msg_file):
             if(not self.output_device_idx):
-                print("[Tx] Tx message file found but no output device specified")
+                self.tlog("[Tx] Tx message file found but no output device specified")
                 return
             with open(tx_msg_file, 'r') as f:
                 tx_msg = f.readline().strip()
                 tx_freq = f.readline().strip()
             tx_freq = int(tx_freq) if tx_freq else 1000    
-            print(f"[TX] transmitting {tx_msg} on {tx_freq} Hz")
+            self.tlog(f"[TX] transmitting {tx_msg} on {tx_freq} Hz")
             os.remove(tx_msg_file)
             c1, c2, grid_rpt = tx_msg.split()
             symbols = pack_message(c1, c2, grid_rpt)
             audio_data = self.audio_out.create_ft8_wave(self, symbols, f_base = tx_freq)
             self.audio_out.play_data_to_soundcard(self, audio_data, self.output_device_idx)
-            print("[Tx] done transmitting")
+            self.tlog("[Tx] done transmitting")
             
 
                        
