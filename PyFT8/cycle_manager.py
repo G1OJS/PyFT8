@@ -241,7 +241,7 @@ class Cycle_manager():
                     c.set_decode_params(35, 40)
                     c.decode()
                     c.redecoded = time.time()
-                    c.ncheck_initial +=100
+                    c.ncheck_initial +=1000
                     self.pass_two_counter +=1
                     self.process_decode(c)
                     
