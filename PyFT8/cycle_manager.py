@@ -90,7 +90,6 @@ class Spectrum:
 
         self.pgrid_fine = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)
         self.pgrid_fine_ptr = 0
-        self.pgrid_fine_ptr_prev = 0
 
         self.max_start_hop = int(1.9 / self.dt)
         self.h_search = self.max_start_hop + self.nhops_costas 
@@ -139,11 +138,10 @@ class Cycle_manager():
         self.return_candidate = return_candidate
         self.max_ncheck = max_ncheck
         self.max_iters = max_iters
+        self.cycle_time = 0
         self.input_device_idx = find_device(input_device_keywords)
         self.output_device_idx = find_device(output_device_keywords)
         self.max_cycles = max_cycles
-        self.cyclestart_str = None
-        self.prev_cycle_time = -1e40
         self.cands_list = []
         self.cands_lock = threading.Lock()
         self.sync_score_thresh = sync_score_thresh
@@ -157,51 +155,51 @@ class Cycle_manager():
         self.sigspec = sigspec
         self.spectrum = Spectrum(sigspec)
         audio_in = self.spectrum.audio_in
+        now = time.time()
+        delay = self.sigspec.cycle_seconds - (now % self.sigspec.cycle_seconds)
+        print(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)")
+        time.sleep(delay)
         if(audio_in_wav):
-            now = time.time()
-            delay = self.sigspec.cycle_seconds - (now % self.sigspec.cycle_seconds)
-            print(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)")
-            time.sleep(delay)
             threading.Thread(target = audio_in.start_wav, args = (audio_in_wav, self.spectrum.dt), daemon=True).start()
         else:
             threading.Thread(target = audio_in.start_live, args=(self.input_device_idx,), daemon=True).start()
      
         threading.Thread(target=self.manage_cycle, daemon=True).start()
 
+
+    def print_stats(self):
+        if(self.verbose): 
+            def earliest_and_latest(arr): return f"first {np.min(arr)%15 :5.2f}, last {np.max(arr)%15 :5.2f}" if arr else ''
+            with self.cands_lock:
+                synced = [c.sync_returned for c in self.cands_list if c.sync_score]
+                demapped = [c.demap_returned for c in self.cands_list if c.demap_returned]
+                decoded = [c.ldpc_returned for c in self.cands_list if c.ldpc_returned]
+            print(f"[Cycle manager] synced:   {len(synced)} ({earliest_and_latest(synced)})")
+            print(f"[Cycle manager] demapped: {len(demapped)} ({earliest_and_latest(demapped)})")
+            print(f"[Cycle manager] decoded:  {len(decoded)} ({earliest_and_latest(decoded)})")
+            print(f"\n[Cycle manager] rollover detected at {self.cycle_time:.2f}")
+
     def manage_cycle(self):
         last_searched_cycle = 0
         cycle_counter = 0
-        while self.running:
+        cycle_time_prev = 1
+        while self.running and cycle_counter < self.max_cycles:
             time.sleep(0.001)
-            with self.spectrum.lock:
-                rollover = self.spectrum.pgrid_fine_ptr < self.spectrum.pgrid_fine_ptr_prev
-                self.spectrum.pgrid_fine_ptr_prev = self.spectrum.pgrid_fine_ptr
+            self.cycle_time = time.time() %15
+            rollover = self.cycle_time < cycle_time_prev 
+            cycle_time_prev = self.cycle_time
             self.cycle_time = time.time() % self.spectrum.sigspec.cycle_seconds
 
             if(rollover):
-                if cycle_counter == self.max_cycles:
-                    self.running = False
-                    break
-                self.check_for_tx()
                 cycle_counter +=1
-                self.cyclestart_str = time.strftime("%y%m%d_%H%M%S", time.gmtime(self.sigspec.cycle_seconds * int(time.time() / self.sigspec.cycle_seconds)))
-                if(self.verbose):
-                    def latest(arr): return f"{np.max(arr)%15 :5.2f}" if arr else ''
-                    with self.cands_lock:
-                        synced = [c.sync_returned for c in self.cands_list if c.sync_score]
-                        demapped = [c.demap_returned for c in self.cands_list if c.demap_returned]
-                        decoded = [c.ldpc_returned for c in self.cands_list if c.ldpc_returned]
-                    print(f"[Cycle manager] synced:   {len(synced)} (latest at {latest(synced)})")
-                    print(f"[Cycle manager] demapped: {len(demapped)} (latest at {latest(demapped)})")
-                    print(f"[Cycle manager] decoded:  {len(decoded)} (latest at {latest(decoded)})")
-                    print(f"\n[Cycle manager] rollover detected at {self.cycle_time:.2f}")
+                self.check_for_tx()
+                self.pgrid_fine_ptr = 0
+                self.print_stats()
                 with self.cands_lock:
                     self.cands_list = [c for c in self.cands_list
                                        if (not c.ldpc_returned and time.time() - c.sync_returned < 15)]
             else:
-                with self.spectrum.lock:
-                    tick = self.spectrum.pgrid_fine_ptr >= self.spectrum.h_search
-                if (tick and last_searched_cycle != cycle_counter):
+                if (self.spectrum.pgrid_fine_ptr > self.spectrum.h_search and last_searched_cycle != cycle_counter):
                     last_searched_cycle = cycle_counter
                     if(self.verbose): print(f"[Cycle manager] Search spectrum ...")
                     new_cands = self.spectrum.search(self.sync_score_thresh)
