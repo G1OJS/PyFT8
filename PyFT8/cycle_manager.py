@@ -94,10 +94,7 @@ class Spectrum:
         self.h_demap = self.sigspec.payload_symb_idxs[-1] * self.hops_persymb
         self.occupancy = np.zeros(self.nFreqs)
         self.lock = threading.Lock()
-        self.audio_in = AudioIn(sample_rate=self.sample_rate,
-                                samples_perhop = int(self.sample_rate /(self.sigspec.symbols_persec * self.hops_persymb)),
-                                fft_len=self.FFT_len, fft_window=np.kaiser(self.FFT_len, 20),
-                                on_fft = self.on_fft)
+
     def cyclestart_str(self, t):
         cyclestart_time = self.sigspec.cycle_seconds * int(t / self.sigspec.cycle_seconds)
         return time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
@@ -157,7 +154,10 @@ class Cycle_manager():
 
         self.sigspec = sigspec
         self.spectrum = Spectrum(sigspec)
-        audio_in = self.spectrum.audio_in
+        audio_in = AudioIn(sample_rate=self.spectrum.sample_rate,
+                            samples_perhop = int(self.spectrum.sample_rate /(self.sigspec.symbols_persec * self.spectrum.hops_persymb)),
+                            fft_len=self.spectrum.FFT_len, fft_window=np.kaiser(self.spectrum.FFT_len, 20),
+                            on_fft = self.spectrum.on_fft)
         delay = self.sigspec.cycle_seconds - self.spectrum.cycle_time()
         self.tlog(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)")
         time.sleep(delay)
@@ -195,7 +195,7 @@ class Cycle_manager():
             if(rollover):
                 cycle_counter +=1
                 self.check_for_tx()
-                self.pgrid_fine_ptr = 0
+                self.spectrum.pgrid_fine_ptr = 0
                 self.print_stats()
                 with self.cands_lock:
                     self.cands_list = [c for c in self.cands_list

@@ -36,19 +36,6 @@ class AudioIn:
         self._pa = pyaudio.PyAudio()
         self._running = False
 
-    def start_live(self, input_device_idx):
-        self._running = True
-        self.stream = self._pa.open(
-            format=pyaudio.paInt16,
-            channels=1,
-            rate=self.sample_rate,
-            input=True,
-            input_device_index=input_device_idx,
-            frames_per_buffer=self.samples_perhop,
-            stream_callback=self._callback,
-        )
-        self.stream.start_stream()
-
     def start_wav(self, wav_path, hop_dt):
         self._running = True
         wf = wave.open(wav_path, "rb")
@@ -63,24 +50,27 @@ class AudioIn:
             if now < next_hop_time:
                 time.sleep(next_hop_time - now)
             next_hop_time += hop_dt
-            self._process_frames(frames)
+            self._callback(frames, None, None, None)
         wf.close()
 
+    def start_live(self, input_device_idx):
+        self._running = True
+        self.stream = self._pa.open(
+            format=pyaudio.paInt16, channels=1, rate=self.sample_rate,
+            input=True, input_device_index=input_device_idx,
+            frames_per_buffer=self.samples_perhop, stream_callback=self._callback,)
+        self.stream.start_stream()
+
     def _callback(self, in_data, frame_count, time_info, status_flags):
-        if not self._running:
-            return (None, pyaudio.paComplete)
-
-        self._process_frames(in_data)
-        return (None, pyaudio.paContinue)
-
-    def _process_frames(self, in_data):
         samples = np.frombuffer(in_data, dtype=np.int16).astype(np.float32)
         ns = len(samples)
         self.audio_buffer[:-ns] = self.audio_buffer[ns:]
         self.audio_buffer[-ns:] = samples
         x = self.audio_buffer * self.fft_window
         z = np.fft.rfft(x)
+        time.sleep(0.001)
         self.on_fft(z, time.time())
+        return (None, pyaudio.paContinue)
 
 
 class AudioOut:
