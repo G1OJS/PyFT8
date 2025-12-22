@@ -23,6 +23,7 @@ class Candidate:
         self.demap_returned = False
         self.ldpc_requested = False
         self.ldpc_returned = False
+        self.redecoded = False
         self.ncheck_initial = 5000
         self.cyclestart_str = None
         self.sync_score = best[2]
@@ -178,15 +179,22 @@ class Cycle_manager():
                 synced = [c.sync_returned for c in self.cands_list if c.sync_score]
                 demapped = [c.demap_returned for c in self.cands_list if c.demap_returned]
                 decoded = [c.ldpc_returned for c in self.cands_list if c.ldpc_returned]
+                pass2 = [c.redecoded for c in self.cands_list if c.redecoded]
+                pass2added = [c.redecoded for c in self.cands_list if c.redecoded and c.dedupe_key]
             self.tlog(f"[Cycle manager] synced:   {len(synced)} ({earliest_and_latest(synced)})")
             self.tlog(f"[Cycle manager] demapped: {len(demapped)} ({earliest_and_latest(demapped)})")
             self.tlog(f"[Cycle manager] decoded:  {len(decoded)} ({earliest_and_latest(decoded)})")
+            self.tlog(f"[Cycle manager] pass2:  {len(pass2)} ({earliest_and_latest(pass2)})")
+            self.tlog(f"[Cycle manager] pass2added:  {len(pass2added)} ({earliest_and_latest(pass2added)})")
             self.tlog(f"\n[Cycle manager] rollover detected at {self.spectrum.cycle_time():.2f}")
 
     def manage_cycle(self):
         cycle_searched = True
         cycle_counter = 0
         cycle_time_prev = 0
+        to_decode =[]
+        to_demap = []
+        self.pass_two_counter = 0
         while self.running:
             time.sleep(0.001)
             rollover = self.spectrum.cycle_time() < cycle_time_prev 
@@ -201,6 +209,7 @@ class Cycle_manager():
                 self.check_for_tx()
                 self.spectrum.pgrid_fine_ptr = 0
                 self.print_stats()
+                self.pass_two_counter = 0
                 with self.cands_lock:
                     self.cands_list = [c for c in self.cands_list if (not c.ldpc_returned and time.time() - c.sync_returned < 15)]
 
@@ -223,24 +232,38 @@ class Cycle_manager():
                 for c in to_decode[:1]:
                     c.set_decode_params(self.max_iters, self.max_ncheck)
                     c.decode()
-                    if(c.dedupe_key and not c.dedupe_key in self.duplicate_filter):
-                        self.duplicate_filter.add(c.dedupe_key)
-                        f0_str = f"{c.origin[3]:4.0f}"
-                        t0_str = f"{c.origin[2]-0.7:6.3f}"
-                        with self.cands_lock:
-                            c.decode_dict = {
-                                    'cyclestart_str':c.cyclestart_str, 'freq':int(f0_str), 'dt':float(t0_str),
-                                    'call_a':c.message_parts[0], 'call_b':c.message_parts[1], 'grid_rpt':c.message_parts[2],
-                                    'snr':c.snr,
-                            }
-                            if(not self.concise):
-                                c.decode_dict.update({
-                                    't0_idx':c.origin[0],
-                                    'decoder':'PyFT8', 't_decode':time.time(), 'f0_idx':c.origin[1],
-                                    'sync_score':c.sync_score,  'dedupe_key':c.dedupe_key,
-                                    'ncheck_initial':c.ncheck_initial, 'n_its': c.n_its
-                                    })
-                        self.onSuccessfulDecode(c if self.return_candidate else c.decode_dict)
+                    self.process_decode(c)
+
+            if not len(to_decode) and not len(to_demap):
+                to_redecode = [c for c in self.cands_list if c.ldpc_returned and not c.dedupe_key and not c.redecoded]
+                to_redecode.sort(key = lambda c: c.ncheck_initial)
+                for c in to_redecode[:1]:
+                    c.set_decode_params(35, 40)
+                    c.decode()
+                    c.redecoded = time.time()
+                    c.ncheck_initial +=100
+                    self.pass_two_counter +=1
+                    self.process_decode(c)
+                    
+    def process_decode(self, c):
+        if(c.dedupe_key and not c.dedupe_key in self.duplicate_filter):
+            self.duplicate_filter.add(c.dedupe_key)
+            f0_str = f"{c.origin[3]:4.0f}"
+            t0_str = f"{c.origin[2]-0.7:6.3f}"
+            with self.cands_lock:
+                c.decode_dict = {
+                        'cyclestart_str':c.cyclestart_str, 'freq':int(f0_str), 'dt':float(t0_str),
+                        'call_a':c.message_parts[0], 'call_b':c.message_parts[1], 'grid_rpt':c.message_parts[2],
+                        'snr':c.snr,
+                }
+                if(not self.concise):
+                    c.decode_dict.update({
+                        't0_idx':c.origin[0],
+                        'decoder':'PyFT8', 't_decode':time.time(), 'f0_idx':c.origin[1],
+                        'sync_score':c.sync_score,  'dedupe_key':c.dedupe_key,
+                        'ncheck_initial':c.ncheck_initial, 'n_its': c.n_its
+                        })
+            self.onSuccessfulDecode(c if self.return_candidate else c.decode_dict)
 
     def check_for_tx(self):
         from .FT8_encoder import pack_message
