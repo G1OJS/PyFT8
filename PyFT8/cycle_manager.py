@@ -189,12 +189,10 @@ class Spectrum:
                     
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
-                 sync_score_thresh = 3, max_ncheck = 30, max_iters = 10,  max_cycles = 5000, return_candidate = False,
-                 input_device_keywords = None, output_device_keywords = None, verbose = False, concise = False):
+                 sync_score_thresh = 3, max_ncheck = 30, max_iters = 10,  max_cycles = 5000, 
+                 input_device_keywords = None, output_device_keywords = None, verbose = False):
         self.running = True
         self.verbose = verbose
-        self.concise = concise
-        self.return_candidate = return_candidate
         self.max_ncheck = max_ncheck
         self.max_iters = max_iters
         self.input_device_idx = find_device(input_device_keywords)
@@ -304,26 +302,17 @@ class Cycle_manager():
                         self.process_decode(c, c.pipeline.osd.result.payload_bits)
                     
     def process_decode(self, c, payload_bits):
-        c.message_parts = FT8_unpack(payload_bits)
+        msg = FT8_unpack(payload_bits)
+        if not msg: return
+        c.call_a, c.call_b, c.grid_rpt = msg[0], msg[1], msg[2]
         c.cyclestart_str = self.spectrum.cyclestart_str(c.pipeline.demap.started_time)
-        c.dedupe_key = self.cyclestart_str+" "+' '.join(c.message_parts) if(c.message_parts) else None
+        c.dedupe_key = c.cyclestart_str+" "+' '.join(msg)
         self.duplicate_filter.add(c.dedupe_key)
-        f0_str = f"{c.origin[3]:4.0f}"
-        t0_str = f"{c.origin[2]-0.7:6.3f}"
-        with self.cands_lock:
-            c.decode_dict = {
-                    'cyclestart_str':c.cyclestart_str, 'freq':int(f0_str), 'dt':float(t0_str),
-                    'call_a':c.message_parts[0], 'call_b':c.message_parts[1], 'grid_rpt':c.message_parts[2],
-                    'snr':c.snr,
-            }
-            if(not self.concise):
-                c.decode_dict.update({
-                    't0_idx':c.origin[0],
-                    'decoder':'PyFT8', 't_decode':time.time(), 'f0_idx':c.origin[1],
-                    'sync_score':c.sync_score,  'dedupe_key':c.dedupe_key,
-                    'ncheck_initial':c.ncheck_initial, 'n_its': c.n_its
-                    })
-        self.onSuccessfulDecode(c if self.return_candidate else c.decode_dict)
+        c.h0_idx = c.pipeline.sync.result.h0_idx
+        c.f0_idx = c.pipeline.sync.result.f0_idx
+        c.dt = c.h0_idx * self.spectrum.dt-0.7
+        c.fHz = int(c.f0_idx * self.spectrum.df)
+        self.onSuccessfulDecode(c)
 
     def check_for_tx(self):
         from .FT8_encoder import pack_message
