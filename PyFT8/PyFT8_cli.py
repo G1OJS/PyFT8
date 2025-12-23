@@ -12,7 +12,7 @@ def on_decode(c):
                    'call_a':c.call_a, 'call_b':c.call_b, 'grid_rpt':c.grid_rpt}
     if(not concise):
         decode_dict.update({'decoder':'PyFT8',
-                   't_decode':f"{time.time() %15: 5.2f}", 'snr':f"{c.snr:5.0f}",
+                   't_decode':f"{time.time() %15: 5.2f}", 'snr':f"{c.snr:5.0f}", 'freq':c.fHz,
                    'dt':f"{c.dt:5.1f}", 'sync_score':f"{c.pipeline.sync.result.score:5.1f}",
                    'ncheck_initial':c.pipeline.ldpc.metrics.ncheck_initial, 'n_its': c.pipeline.ldpc.metrics.n_its})
 
