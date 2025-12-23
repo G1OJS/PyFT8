@@ -299,17 +299,18 @@ class Cycle_manager():
                         self.process_decode(c, c.pipeline.osd.result.payload_bits)
                     
     def process_decode(self, c, payload_bits):
-        msg = FT8_unpack(payload_bits)
-        if not msg: return
-        c.call_a, c.call_b, c.grid_rpt = msg[0], msg[1], msg[2]
+        c.msg = FT8_unpack(payload_bits)
+        if not c.msg: return
+        c.call_a, c.call_b, c.grid_rpt = c.msg[0], c.msg[1], c.msg[2]
         c.cyclestart_str = self.spectrum.cyclestart_str(c.pipeline.demap.started_time)
-        c.dedupe_key = c.cyclestart_str+" "+' '.join(msg)
-        self.duplicate_filter.add(c.dedupe_key)
-        c.h0_idx = c.pipeline.sync.result.h0_idx
-        c.f0_idx = c.pipeline.sync.result.f0_idx
-        c.dt = c.h0_idx * self.spectrum.dt-0.7
-        c.fHz = int(c.f0_idx * self.spectrum.df)
-        self.onSuccessfulDecode(c)
+        c.dedupe_key = c.cyclestart_str+" "+' '.join(c.msg)
+        if(not c.dedupe_key in self.duplicate_filter):
+            self.duplicate_filter.add(c.dedupe_key)
+            c.h0_idx = c.pipeline.sync.result.h0_idx
+            c.f0_idx = c.pipeline.sync.result.f0_idx
+            c.dt = c.h0_idx * self.spectrum.dt-0.7
+            c.fHz = int(c.f0_idx * self.spectrum.df)
+            self.onSuccessfulDecode(c)
 
     def check_for_tx(self):
         from .FT8_encoder import pack_message
