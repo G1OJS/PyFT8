@@ -301,6 +301,7 @@ class Cycle_manager():
     def process_decode(self, c, payload_bits):
         c.msg = FT8_unpack(payload_bits)
         if not c.msg: return
+        c.payload_bits = payload_bits
         c.call_a, c.call_b, c.grid_rpt = c.msg[0], c.msg[1], c.msg[2]
         c.cyclestart_str = self.spectrum.cyclestart_str(c.pipeline.demap.started_time)
         c.dedupe_key = c.cyclestart_str+" "+' '.join(c.msg)

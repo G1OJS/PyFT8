@@ -17,7 +17,16 @@ PyFT8_FIELDS = {'sync_score', 'ncheck_initial', 'n_its'}
 def make_uid(d):
     return tuple(d[k] for k in UID_FIELDS)
 
-def update_decodes(uid, decode_dict):
+def on_PyFT8_decode(c):
+    decode_dict = {'decoder':'PyFT8', 'cyclestart_str':c.cyclestart_str,
+                   'call_a':c.call_a, 'call_b':c.call_b, 'grid_rpt':c.grid_rpt,
+                   't_decode':time.time(), 'snr':c.snr, 'dt':c.dt, 'sync_score':c.pipeline.sync.result.score,
+                   'ncheck_initial':c.pipeline.ldpc.metrics.ncheck_initial, 'n_its': c.pipeline.ldpc.metrics.n_its}
+    on_decode(decode_dict)
+           
+
+def on_decode(decode_dict):
+    uid = make_uid(decode_dict)
     decoder = decode_dict['decoder']
     with decodes_lock:
         if uid not in decodes:
@@ -27,11 +36,7 @@ def update_decodes(uid, decode_dict):
         decodes[uid].update({'decoder':decoder})
         if(decoder == 'PyFT8'):
             for field in PyFT8_FIELDS:
-                decodes[uid].update({f"{decoder}_{field}": decode_dict[field]})            
-
-def on_decode(decode_dict):
-    uid = make_uid(decode_dict)
-    update_decodes(uid, decode_dict)
+                decodes[uid].update({f"{decoder}_{field}": decode_dict[field]}) 
 
 
 def wsjtx_all_tailer(all_txt_path, on_decode):
@@ -119,7 +124,7 @@ threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path, on_decode,)).sta
 
 threading.Thread(target=update_stats).start()    
 
-cycle_manager = Cycle_manager(FT8, on_decode, onOccupancy = None, input_device_keywords = ['Microphone', 'CODEC'],
+cycle_manager = Cycle_manager(FT8, on_PyFT8_decode, onOccupancy = None, input_device_keywords = ['Microphone', 'CODEC'],
                               sync_score_thresh = 2.8, max_ncheck = 33, max_iters = 15, verbose = True)
 
 with open('live_compare_cycle_stats.csv', 'w') as f:

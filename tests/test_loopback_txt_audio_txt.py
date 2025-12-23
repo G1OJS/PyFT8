@@ -8,7 +8,7 @@ from PyFT8.cycle_manager import Cycle_manager
 from PyFT8.FT8_encoder import pack_ft8_c28, pack_ft8_g15, encode_bits77
 import PyFT8.audio as audio
 
-wav_file = "Local_gen_test.wav"
+WAV = "Local_gen_test.wav"
 
 c28a = pack_ft8_c28("VK1ABC")
 c28b = pack_ft8_c28("VK3JPK")
@@ -52,7 +52,7 @@ symbols_framed.extend([-10]*8)
 print(f"({len(symbols)} symbols)")
 audio_out = audio.AudioOut()
 audio_data = audio_out.create_ft8_wave(symbols_framed, f_base = 3000, amplitude = 0.1)
-audio_out.write_to_wave_file(audio_data, wav_file)
+audio_out.write_to_wave_file(audio_data, WAV)
 
 global decoded_candidates
 decoded_candidates = []
@@ -62,21 +62,21 @@ def onDecode(c):
     global cycle_manager
     if(first):
         first = False
-        heads = ['Cycle', 'End_cyc+', 'Rx call', 'Tx call', 'GrRp', 'SyncScr', 'snr', 't0_idx', 'f0_idx', 'ncheck']
+        heads = ['        Cycle', 't_demap','t_ldpc', 't_osd', 'Rx call', 'Tx call', 'GrRp', 'SyncScr', 'snr', 't0_idx', 'f0_idx', 'ncheck', 'n_its']
         print(''.join([f"{t:>8} " for t in heads]))
-    dd = c.decode_dict
-    t_decode = (time.time() + 7.5) % 15 - 7.5
-    vals = [f"{dd['cyclestart_str']} {t_decode:8.2f}", dd['call_a'], dd['call_b'], dd['grid_rpt'],
-            f"{dd['sync_score']:>5.2f}",  f"{dd['snr']:5.0f}", dd['t0_idx'], dd['f0_idx'], dd['ncheck_initial']]
+    def t_fmt(t):return f"{t %15:8.2f}" if t else f"{'-':>8}"
+    vals = [f"{c.cyclestart_str} {t_fmt(c.pipeline.demap.completed_time)} {t_fmt(c.pipeline.ldpc.completed_time)} {t_fmt(c.pipeline.osd.completed_time)}",
+            c.call_a, c.call_b, c.grid_rpt,
+            f"{c.pipeline.sync.result.score:>5.2f}",  f"{c.snr:5.0f}", c.h0_idx, c.f0_idx, c.pipeline.ldpc.metrics.ncheck_initial, c.pipeline.ldpc.metrics.n_its]
     print(''.join([f"{t:>8} " for t in vals]))
     decoded_candidates.append(c)
 
 print("Bits91:")
 print("1110000111111100010100110101011100010000001111010000111100011100101000101000100111100110010")
 
-cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = wav_file, 
-                          max_iters = 10,  max_ncheck = 28,
-                          sync_score_thresh = 8, max_cycles = 1, return_candidate = True)
+cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = WAV, 
+                          max_iters = 10,  max_ncheck = 28, verbose = True,
+                          sync_score_thresh = 8, max_cycles = 1)
 
 while cycle_manager.running:
     time.sleep(0.1)
@@ -91,5 +91,5 @@ if(decoded_candidates):
         print(''.join(str(int(b)) for b in c.payload_bits[:77]))
 
 wf = Waterfall(cycle_manager.spectrum)
-wf.update_main(candidates=decoded_candidates)
+wf.update_main(candidates = cycle_manager.cands_list)
 wf.show_zoom(candidates=decoded_candidates)
