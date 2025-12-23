@@ -58,8 +58,7 @@ class LDPC174_91:
             if n_its == 0:
                 ncheck_initial = ncheck
             payload_bits = get_payload_bits(zn) if ncheck == 0 else []
-            if payload_bits or ncheck > max_ncheck:
-                return payload_bits, ncheck_initial, n_its
+            if payload_bits or ncheck > max_ncheck: break
 
             delta = np.zeros_like(zn)
             for m in range(83):
@@ -73,5 +72,6 @@ class LDPC174_91:
                 Lmn[m, :deg] = new
             zn += delta    
 
+        return (payload_bits, ncheck_initial, n_its)
 
 

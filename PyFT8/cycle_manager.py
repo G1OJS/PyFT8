@@ -86,13 +86,14 @@ class Candidate:
     def ldpc(self, max_iters, max_ncheck):
         self.pipeline.ldpc.start()
         llr = self.pipeline.demap.result
-        payload_bits, ncheck_initial, n_its = ldpc.decode(llr, max_iters, max_ncheck)
+        ldpc_res = ldpc.decode(llr, max_iters, max_ncheck)
+        payload_bits = ldpc_res[0] if ldpc_res else None
         self.pipeline.ldpc.complete(
-            success=bool(payload_bits),
-            result=SimpleNamespace(payload_bits=payload_bits),
-            metrics=SimpleNamespace(
-                ncheck_initial=ncheck_initial,
-                n_its=n_its
+            success = bool(payload_bits),
+            result = SimpleNamespace(payload_bits = payload_bits),
+            metrics = SimpleNamespace(
+                ncheck_initial = ldpc_res[1] if ldpc_res else None,
+                n_its = ldpc_res[2] if ldpc_res else None
             )
         )
 
@@ -100,15 +101,14 @@ class Candidate:
         self.pipeline.osd.start()
         llr = self.pipeline.demap.result
         # placeholder for true osd = ldpc with different params
-        payload_bits, ncheck_initial, n_its = ldpc.decode(
-            llr, max_iters, max_ncheck
-        )
-        self.pipeline.osd.complete(
-            success=bool(payload_bits),
-            result=SimpleNamespace(payload_bits=payload_bits),
-            metrics=SimpleNamespace(
-                ncheck_initial=ncheck_initial,
-                n_its=n_its
+        ldpc_res = ldpc.decode(llr, max_iters + 10, max_ncheck + 5)
+        payload_bits = ldpc_res[0] if ldpc_res else None
+        self.pipeline.ldpc.complete(
+            success = bool(payload_bits),
+            result = SimpleNamespace(payload_bits = payload_bits),
+            metrics = SimpleNamespace(
+                ncheck_initial = ldpc_res[1] if ldpc_res else None,
+                n_its = ldpc_res[2] if ldpc_res else None
             )
         )
 
@@ -216,7 +216,7 @@ class Cycle_manager():
                             on_fft = self.spectrum.on_fft)
         delay = self.sigspec.cycle_seconds - self.spectrum.cycle_time()
         self.tlog(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)")
-        time.sleep(delay)
+        time.sleep(delay-0.1)
         if(audio_in_wav):
             threading.Thread(target = audio_in.start_wav, args = (audio_in_wav, self.spectrum.dt), daemon=True).start()
         else:
@@ -231,16 +231,16 @@ class Cycle_manager():
         if(self.verbose): 
             def earliest_and_latest(arr): return f"first {np.min(arr)%15 :5.2f}, last {np.max(arr)%15 :5.2f}" if arr else ''
             with self.cands_lock:
-                synced = [c.sync_returned for c in self.cands_list if c.sync_score]
-                demapped = [c.demap_returned for c in self.cands_list if c.demap_returned]
-                decoded = [c.ldpc_returned for c in self.cands_list if c.ldpc_returned]
-                pass2 = [c.redecoded for c in self.cands_list if c.redecoded]
-                pass2added = [c.redecoded for c in self.cands_list if c.redecoded and c.dedupe_key]
-            self.tlog(f"[Cycle manager] synced:   {len(synced)} ({earliest_and_latest(synced)})")
-            self.tlog(f"[Cycle manager] demapped: {len(demapped)} ({earliest_and_latest(demapped)})")
-            self.tlog(f"[Cycle manager] decoded:  {len(decoded)} ({earliest_and_latest(decoded)})")
-            self.tlog(f"[Cycle manager] pass2:  {len(pass2)} ({earliest_and_latest(pass2)})")
-            self.tlog(f"[Cycle manager] pass2added:  {len(pass2added)} ({earliest_and_latest(pass2added)})")
+                sync_completed = [c.pipeline.sync.completed_time for c in self.cands_list if c.pipeline.sync.has_completed]
+                demap_completed = [c.pipeline.demap.completed_time for c in self.cands_list if c.pipeline.demap.has_completed]
+                ldpc_completed = [c.pipeline.ldpc.completed_time for c in self.cands_list if c.pipeline.ldpc.has_completed]
+                osd_completed = [c.pipeline.osd.completed_time for c in self.cands_list if c.pipeline.osd.has_completed]
+                osd_succeeded = [c.pipeline.osd.completed_time for c in self.cands_list if c.pipeline.osd.success]
+            self.tlog(f"[Cycle manager] sync_completed:   {len(sync_completed)} ({earliest_and_latest(sync_completed)})")
+            self.tlog(f"[Cycle manager] demap_completed: {len(demap_completed)} ({earliest_and_latest(demap_completed)})")
+            self.tlog(f"[Cycle manager] ldpc_completed:  {len(ldpc_completed)} ({earliest_and_latest(ldpc_completed)})")
+            self.tlog(f"[Cycle manager] osd_completed:  {len(osd_completed)} ({earliest_and_latest(osd_completed)})")
+            self.tlog(f"[Cycle manager] osd_succeeded:  {len(osd_succeeded)} ({earliest_and_latest(osd_succeeded)})")
             self.tlog(f"\n[Cycle manager] rollover detected at {self.spectrum.cycle_time():.2f}")
 
     def manage_cycle(self):
@@ -249,7 +249,6 @@ class Cycle_manager():
         cycle_time_prev = 0
         to_ldpc =[]
         to_demap = []
-        self.pass_two_counter = 0
         while self.running:
             time.sleep(0.001)
             rollover = self.spectrum.cycle_time() < cycle_time_prev 
@@ -264,7 +263,6 @@ class Cycle_manager():
                 self.check_for_tx()
                 self.spectrum.pgrid_fine_ptr = 0
                 self.print_stats()
-                self.pass_two_counter = 0
                 with self.cands_lock:
                     self.cands_list = [c for c in self.cands_list
                                        if (c.pipeline.ldpc.is_in_progress and time.time() - c.pipeline.sync.started_time < 15)]
@@ -294,11 +292,10 @@ class Cycle_manager():
 
             if not len(to_ldpc) and not len(to_demap):
                 to_osd = [c for c in self.cands_list if c.pipeline.ldpc.has_completed and not c.pipeline.ldpc.success and not c.pipeline.osd.has_started]
-                to_osd.sort(key = lambda c: c.ncheck_initial)
+                to_osd.sort(key = lambda c: c.pipeline.ldpc.metrics.ncheck_initial)
                 for c in to_osd[:1]:
                     c.osd(self.max_iters + 10, self.max_ncheck+5)
-                    self.pass_two_counter +=1
-                    if(c.pipeline.osd.result.success):
+                    if(c.pipeline.osd.success):
                         self.process_decode(c, c.pipeline.osd.result.payload_bits)
                     
     def process_decode(self, c, payload_bits):
