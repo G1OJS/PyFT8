@@ -103,7 +103,7 @@ class Candidate:
         # placeholder for true osd = ldpc with different params
         ldpc_res = ldpc.decode(llr, max_iters + 10, max_ncheck + 5)
         payload_bits = ldpc_res[0] if ldpc_res else None
-        self.pipeline.ldpc.complete(
+        self.pipeline.osd.complete(
             success = bool(payload_bits),
             result = SimpleNamespace(payload_bits = payload_bits),
             metrics = SimpleNamespace(
