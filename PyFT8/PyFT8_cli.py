@@ -5,22 +5,34 @@ import argparse
 import time
 import signal
 
-def on_decode(decode_dict):
+global concise
+concise = False
+def on_decode(c):
+    decode_dict = {'cyclestart_str':c.cyclestart_str,
+                   'call_a':c.call_a, 'call_b':c.call_b, 'grid_rpt':c.grid_rpt}
+    if(not concise):
+        decode_dict.update({'decoder':'PyFT8',
+                   't_decode':f"{time.time() %15: 5.2f}", 'snr':f"{c.snr:5.0f}", 'freq':c.fHz,
+                   'dt':f"{c.dt:5.1f}", 'sync_score':f"{c.pipeline.sync.result.score:5.1f}",
+                   'ncheck_initial':c.pipeline.ldpc.metrics.ncheck_initial, 'n_its': c.pipeline.ldpc.metrics.n_its})
+
     print(decode_dict)
 
 def cli():
+    global concise
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('inputcard_keywords', help = 'Comma-separated keywords to identify the input sound device') 
     parser.add_argument('-concise','-c', action='store_true', help = 'Concise output') 
     parser.add_argument( '-o','--outputcard_keywords', help = 'Comma-separated keywords to identify the output sound device') 
 
     args = parser.parse_args()
+    concise = args.concise
     input_device_keywords = args.inputcard_keywords.replace(' ','').split(',')
     output_device_keywords = args.outputcard_keywords.replace(' ','').split(',') if args.outputcard_keywords is not None else None
 
     cycle_manager = Cycle_manager(FT8, on_decode, onOccupancy = None, input_device_keywords = input_device_keywords,
                                   output_device_keywords = output_device_keywords,
-                                  sync_score_thresh = 4, max_ncheck = 38, max_iters = 25, concise = args.concise) 
+                                  sync_score_thresh = 4, max_ncheck = 38, max_iters = 25) 
 
     print("PyFT8 Rx running — Ctrl-C to stop")
 

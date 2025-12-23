@@ -37,7 +37,7 @@ class LDPC174_91:
             n = (n << 1) | (b & 1)
         return n
 
-    def decode(self, c):
+    def decode(self, llr, max_iters, max_ncheck):
 
         def get_ncheck(llr):
             synd_checks = [ sum(1 for llr_bit in llr[self.synd_check_idxs[i]] if llr_bit > 0) %2 for i in range(83)]
@@ -52,14 +52,13 @@ class LDPC174_91:
         Lmn = np.zeros((83, 7), dtype=np.float32)        
         alpha = 1.18
 
-        zn = c.llr.copy()
-        for itn in range(c.max_iters):
+        zn = llr.copy()
+        for n_its in range(max_iters):
             ncheck = get_ncheck(zn)
-            if itn == 0: c.ncheck_initial = ncheck
-            c.payload_bits = get_payload_bits(zn) if ncheck == 0 else []
-            c.n_its = itn
-            if c.payload_bits or ncheck > c.max_ncheck:
-                return
+            if n_its == 0:
+                ncheck_initial = ncheck
+            payload_bits = get_payload_bits(zn) if ncheck == 0 else []
+            if payload_bits or ncheck > max_ncheck: break
 
             delta = np.zeros_like(zn)
             for m in range(83):
@@ -73,5 +72,6 @@ class LDPC174_91:
                 Lmn[m, :deg] = new
             zn += delta    
 
+        return (payload_bits, ncheck_initial, n_its)
 
 

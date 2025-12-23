@@ -34,10 +34,13 @@ class Waterfall:
 
         if candidates:
             for c in candidates:
-                origin_img = (c.origin[1], c.origin[0])
-                rect = patches.Rectangle(origin_img, c.sigspec.tones_persymb * self.spectrum.fbins_pertone,
-                                         c.sigspec.num_symbols * self.spectrum.hops_persymb,
-                  linewidth=1.2,edgecolor="lime", facecolor="none"
+                origin_img = (c.pipeline.sync.result.f0_idx, c.pipeline.sync.result.h0_idx)
+                cand_color = "lightgrey"
+                if(c.pipeline.ldpc.success): cand_color = "lime"
+                if(c.pipeline.osd.success): cand_color = "blue"
+                rect = patches.Rectangle(origin_img, self.spectrum.sigspec.tones_persymb * self.spectrum.fbins_pertone,
+                                         self.spectrum.sigspec.num_symbols * self.spectrum.hops_persymb,
+                  linewidth=1.2,edgecolor=cand_color, facecolor="none"
                 )
                 self.ax_main.add_patch(rect)
                 self._candidate_patches.append(rect)
@@ -61,19 +64,21 @@ class Waterfall:
 
         for i, c in enumerate(candidates):
             ax = axes[i]
-            vals =c.spectrum.pgrid_fine[c.origin[0]:c.origin[0] + c.sigspec.num_symbols * c.spectrum.hops_persymb,
-                                        c.origin[1]:c.origin[1] + c.sigspec.tones_persymb * c.spectrum.fbins_pertone]
+            f0_idx = c.pipeline.sync.result.f0_idx
+            h0_idx = c.pipeline.sync.result.h0_idx
+            vals =self.spectrum.pgrid_fine[h0_idx:h0_idx + self.spectrum.sigspec.num_symbols * self.spectrum.hops_persymb,
+                                        f0_idx:f0_idx + self.spectrum.sigspec.tones_persymb * self.spectrum.fbins_pertone]
             im = ax.imshow( vals, origin="lower", aspect="auto", extent=[-0.5, vals.shape[1]-0.5, -0.5, vals.shape[0]-0.5],
                             cmap="inferno",  interpolation='none' )
             vmax = np.max(vals)
             im.norm = LogNorm(vmin=vmax/100000, vmax=vmax)
-            ax.set_title(f"{c.origin[3]:.0f}Hz {c.origin[2]:.2f}s {c.decode_dict['call_b']}")
+            ax.set_title(f"{c.fHz:.0f}Hz {c.dt:.2f}s {c.call_b}")
             ax.set_xlabel("freq bin index")
             ax.set_ylabel("hop index")
 
             costas_pairs = [((symb_idx  + offset) * self.spectrum.hops_persymb, tone * self.spectrum.fbins_pertone)
                         for offset in (0, 36, 72) # magic numbers; move to a 'costas object' per mode
-                        for symb_idx, tone in enumerate(c.sigspec.costas)]
+                        for symb_idx, tone in enumerate(self.spectrum.sigspec.costas)]
             for hop_idx, fbin_idx in costas_pairs:
                 rect = patches.Rectangle(
                     (fbin_idx, hop_idx - 0.5 ), self.spectrum.fbins_pertone, 1,
