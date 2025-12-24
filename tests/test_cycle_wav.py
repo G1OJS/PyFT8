@@ -40,7 +40,7 @@ time.sleep(2)
 print(f"DONE. {len(unique_decodes)} unique decodes.")
 
 wf = Waterfall(cycle_manager.spectrum)
-wf.update_main(candidates = cycle_manager.cands_list)
+wf.update_main(candidates = cycle_manager.cands_list + unique_decodes)
 wf.show_zoom(candidates=unique_decodes)
 
 

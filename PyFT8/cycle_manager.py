@@ -185,8 +185,6 @@ class Spectrum:
                 cands.append(c)
         return cands
 
-   
-                    
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
                  sync_score_thresh = 3, max_ncheck = 30, max_iters = 10,  max_cycles = 5000, 
@@ -195,6 +193,7 @@ class Cycle_manager():
         self.verbose = verbose
         self.max_ncheck = max_ncheck
         self.max_iters = max_iters
+        self.audio_in_wav = audio_in_wav
         self.input_device_idx = find_device(input_device_keywords)
         self.output_device_idx = find_device(output_device_keywords)
         self.max_cycles = max_cycles
@@ -203,27 +202,32 @@ class Cycle_manager():
         self.sync_score_thresh = sync_score_thresh
         self.duplicate_filter = set()
         self.onSuccessfulDecode = onSuccessfulDecode
-        self.onOccupancy = onOccupancy 
+        self.onOccupancy = onOccupancy
+        self.stats_printed = False
         if(self.output_device_idx):
             from .audio import AudioOut
             self.audio_out = AudioOut
-
         self.sigspec = sigspec
         self.spectrum = Spectrum(sigspec)
-        audio_in = AudioIn(sample_rate=self.spectrum.sample_rate,
-                            samples_perhop = int(self.spectrum.sample_rate /(self.sigspec.symbols_persec * self.spectrum.hops_persymb)),
-                            fft_len=self.spectrum.FFT_len, fft_window=np.kaiser(self.spectrum.FFT_len, 20),
-                            on_fft = self.spectrum.on_fft)
+        self.audio_started = False
+        self.ldpc_run_event = threading.Event()
+        self.ldpc_run_event.set()
+
+        threading.Thread(target=self.manage_cycle, daemon=True).start()
         delay = self.sigspec.cycle_seconds - self.spectrum.cycle_time()
         self.tlog(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)")
-        time.sleep(delay-0.1)
-        if(audio_in_wav):
-            threading.Thread(target = audio_in.start_wav, args = (audio_in_wav, self.spectrum.dt), daemon=True).start()
+
+    def start_audio(self):
+        self.audio_started = True
+        audio_in = AudioIn(sample_rate=self.spectrum.sample_rate,
+                    samples_perhop = int(self.spectrum.sample_rate /(self.sigspec.symbols_persec * self.spectrum.hops_persymb)),
+                    fft_len=self.spectrum.FFT_len, fft_window=np.kaiser(self.spectrum.FFT_len, 20),
+                    on_fft = self.spectrum.on_fft)
+        if(self.audio_in_wav):
+            threading.Thread(target = audio_in.start_wav, args = (self.audio_in_wav, self.spectrum.dt), daemon=True).start()
         else:
             threading.Thread(target = audio_in.start_live, args=(self.input_device_idx,), daemon=True).start()
      
-        threading.Thread(target=self.manage_cycle, daemon=True).start()
-
     def tlog(self, txt):
         print(f"{self.spectrum.cyclestart_str(time.time())} {self.spectrum.cycle_time():5.2f} {txt}")
 
@@ -241,7 +245,7 @@ class Cycle_manager():
             self.tlog(f"[Cycle manager] ldpc_completed:  {len(ldpc_completed)} ({earliest_and_latest(ldpc_completed)})")
             self.tlog(f"[Cycle manager] osd_completed:  {len(osd_completed)} ({earliest_and_latest(osd_completed)})")
             self.tlog(f"[Cycle manager] osd_succeeded:  {len(osd_succeeded)} ({earliest_and_latest(osd_succeeded)})")
-            self.tlog(f"\n[Cycle manager] rollover detected at {self.spectrum.cycle_time():.2f}")
+            
 
     def manage_cycle(self):
         cycle_searched = True
@@ -251,21 +255,24 @@ class Cycle_manager():
         to_demap = []
         while self.running:
             time.sleep(0.001)
+
             rollover = self.spectrum.cycle_time() < cycle_time_prev 
             cycle_time_prev = self.spectrum.cycle_time()
 
             if(rollover):
                 cycle_counter +=1
+                self.tlog(f"\n[Cycle manager] rollover detected at {self.spectrum.cycle_time():.2f}")
                 if(cycle_counter > self.max_cycles):
                     self.running = False
                     break
                 cycle_searched = False
                 self.check_for_tx()
                 self.spectrum.pgrid_fine_ptr = 0
-                self.print_stats()
+                self.stats_printed = False
                 with self.cands_lock:
                     self.cands_list = [c for c in self.cands_list
                                        if (c.pipeline.ldpc.is_in_progress and time.time() - c.pipeline.sync.started_time < 15)]
+                if not self.audio_started: self.start_audio()
 
             if (self.spectrum.pgrid_fine_ptr > self.spectrum.h_search and not cycle_searched):
                     cycle_searched = True
@@ -290,14 +297,19 @@ class Cycle_manager():
                     if(c.pipeline.ldpc.success):
                         self.process_decode(c, c.pipeline.ldpc.result.payload_bits)
 
-            if not len(to_ldpc) and not len(to_demap):
-                to_osd = [c for c in self.cands_list if c.pipeline.ldpc.has_completed and not c.pipeline.ldpc.success and not c.pipeline.osd.has_started]
-                to_osd.sort(key = lambda c: c.pipeline.ldpc.metrics.ncheck_initial)
-                for c in to_osd[:1]:
-                    c.osd(self.max_iters + 10, self.max_ncheck+5)
-                    if(c.pipeline.osd.success):
-                        self.process_decode(c, c.pipeline.osd.result.payload_bits)
-                    
+            if(self.spectrum.cycle_time() < self.sigspec.cycle_seconds - 0.5):
+                if not len(to_ldpc) and not len(to_demap):
+                    to_osd = [c for c in self.cands_list if c.pipeline.ldpc.has_completed and not c.pipeline.ldpc.success and not c.pipeline.osd.has_started]
+                    to_osd.sort(key = lambda c: c.pipeline.ldpc.metrics.ncheck_initial)
+                    for c in to_osd[:1]:
+                        c.osd(self.max_iters, self.max_ncheck+5)
+                        if(c.pipeline.osd.success):
+                            self.process_decode(c, c.pipeline.osd.result.payload_bits)
+
+            if(self.spectrum.cycle_time() > self.sigspec.cycle_seconds -0.1 and not self.stats_printed):
+                self.stats_printed = True
+                self.print_stats()
+
     def process_decode(self, c, payload_bits):
         c.msg = FT8_unpack(payload_bits)
         if not c.msg: return

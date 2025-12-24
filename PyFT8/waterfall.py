@@ -31,9 +31,15 @@ class Waterfall:
             self.ax_main.set_title(f"FT8 Waterfall for {cyclestart_str}")
         [p.remove() for p in reversed(self._candidate_patches)]
         self._candidate_patches.clear()
-
+        
+        cands_for_plot = candidates.copy()
+        def candsort(c):
+            if(c.pipeline.osd.success): return 2
+            if(c.pipeline.ldpc.success): return 1
+            return 0
+        cands_for_plot.sort(key = lambda c: candsort(c))
         if candidates:
-            for c in candidates:
+            for c in cands_for_plot:
                 origin_img = (c.pipeline.sync.result.f0_idx, c.pipeline.sync.result.h0_idx)
                 cand_color = "lightgrey"
                 if(c.pipeline.ldpc.success): cand_color = "lime"
