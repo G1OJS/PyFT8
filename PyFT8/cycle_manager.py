@@ -90,7 +90,10 @@ class Candidate:
         payload_bits = ldpc_res[0] if ldpc_res else None
         self.pipeline.ldpc.complete(
             success = bool(payload_bits),
-            result = SimpleNamespace(payload_bits = payload_bits),
+            result = SimpleNamespace(
+                payload_bits = payload_bits,
+                llr_from_ldpc = ldpc_res[3] if ldpc_res else None
+            ),
             metrics = SimpleNamespace(
                 ncheck_initial = ldpc_res[1] if ldpc_res else None,
                 n_its = ldpc_res[2] if ldpc_res else None
@@ -99,9 +102,14 @@ class Candidate:
 
     def osd(self, max_iters, max_ncheck):
         self.pipeline.osd.start()
-        llr = self.pipeline.demap.result
-        # placeholder for true osd = ldpc with different params
-        ldpc_res = ldpc.decode(llr, max_iters + 10, max_ncheck + 5)
+        llr = self.pipeline.ldpc.result.llr_from_ldpc
+        K = 0.05   # magic
+        abs_llr = np.abs(llr)
+        thresh = np.percentile(abs_llr, 100*(1-K))
+        freeze = abs_llr >= thresh
+        BIG = 40.0   # magic
+        llr[freeze] = np.sign(llr[freeze]) * BIG
+        ldpc_res = ldpc.decode(llr, max_iters + 10, max_ncheck)
         payload_bits = ldpc_res[0] if ldpc_res else None
         self.pipeline.osd.complete(
             success = bool(payload_bits),

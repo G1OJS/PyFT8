@@ -73,6 +73,6 @@ class LDPC174_91:
                 Lmn[m, :deg] = new
             zn += delta    
 
-        return (payload_bits, ncheck_initial, n_its)
+        return (payload_bits, ncheck_initial, n_its, zn)
 
 

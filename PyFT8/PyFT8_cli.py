@@ -24,14 +24,16 @@ def cli():
     parser.add_argument('inputcard_keywords', help = 'Comma-separated keywords to identify the input sound device') 
     parser.add_argument('-concise','-c', action='store_true', help = 'Concise output') 
     parser.add_argument( '-o','--outputcard_keywords', help = 'Comma-separated keywords to identify the output sound device') 
+    parser.add_argument( '-v','--verbose',  action='store_true',  help = 'Verbose: include debugging output') 
 
     args = parser.parse_args()
     concise = args.concise
+    verbose = args.verbose
     input_device_keywords = args.inputcard_keywords.replace(' ','').split(',')
     output_device_keywords = args.outputcard_keywords.replace(' ','').split(',') if args.outputcard_keywords is not None else None
 
     cycle_manager = Cycle_manager(FT8, on_decode, onOccupancy = None, input_device_keywords = input_device_keywords,
-                                  output_device_keywords = output_device_keywords,
+                                  output_device_keywords = output_device_keywords, verbose = verbose,
                                   sync_score_thresh = 4, max_ncheck = 38, max_iters = 25) 
 
     print("PyFT8 Rx running — Ctrl-C to stop")
