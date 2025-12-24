@@ -1,3 +1,4 @@
+[![PyPI Downloads](https://static.pepy.tech/personalized-badge/pyft8?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/pyft8)
 # FT8 Decoding and Encoding in Python with CLI and test/loopback code
 This repository contains Python code to decode and encode FT8, plus a minimal command line interface for reception.
 
