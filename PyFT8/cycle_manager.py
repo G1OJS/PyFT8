@@ -210,8 +210,6 @@ class Cycle_manager():
         self.sigspec = sigspec
         self.spectrum = Spectrum(sigspec)
         self.audio_started = False
-        self.ldpc_run_event = threading.Event()
-        self.ldpc_run_event.set()
 
         threading.Thread(target=self.manage_cycle, daemon=True).start()
         delay = self.sigspec.cycle_seconds - self.spectrum.cycle_time()
