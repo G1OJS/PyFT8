@@ -14,6 +14,8 @@ UID_FIELDS = ('cyclestart_str', 'call_a', 'call_b', 'grid_rpt')
 COMMON_FIELDS = {'t_decode', 'snr', 'dt'}
 PyFT8_FIELDS = {'sync_score', 'ncheck_initial', 'n_its'}
 
+running = True
+
 def make_uid(d):
     return tuple(d[k] for k in UID_FIELDS)
 
@@ -45,7 +47,7 @@ def wsjtx_all_tailer(all_txt_path, on_decode):
     def follow():
         with open(all_txt_path, "r") as f:
             f.seek(0, 2)
-            while True:
+            while running:
                 line = f.readline()
                 if not line:
                     time.sleep(0.2)
@@ -70,7 +72,7 @@ def update_stats():
     with open(logfile, 'w') as f:
         f.write(f"{heads}\n")
         
-    while True:
+    while running:
         time.sleep(1)
         ct = time.time() % 15
         if ct < last_ct:
@@ -132,6 +134,13 @@ cycle_manager = Cycle_manager(FT8, on_PyFT8_decode, onOccupancy = None, input_de
 with open('live_compare_cycle_stats.csv', 'w') as f:
     f.write("nWSJTX,nPyFT8,nBoth\n")
 
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\nStopping PyFT8 Rx")
+        cycle_manager.running = False
+        running = False
 
 
     

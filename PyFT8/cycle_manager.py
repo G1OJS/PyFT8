@@ -103,13 +103,20 @@ class Candidate:
     def osd(self, max_iters, max_ncheck):
         self.pipeline.osd.start()
         llr = self.pipeline.ldpc.result.llr_from_ldpc
-        K = 0.05   # magic
+        K = 0.85   # magic
         abs_llr = np.abs(llr)
         thresh = np.percentile(abs_llr, 100*(1-K))
         freeze = abs_llr >= thresh
         BIG = 40.0   # magic
-        llr[freeze] = np.sign(llr[freeze]) * BIG
-        ldpc_res = ldpc.decode(llr, max_iters + 10, max_ncheck)
+        llr2 = llr.copy()
+        for i, f in enumerate(freeze):
+            if(not f):
+                tmp = llr2[i] 
+                llr2[i] = -BIG*np.sign(llr2[i])
+                ldpc_res = ldpc.decode(llr2, max_iters, max_ncheck)
+                if(ldpc_res): break
+                llr2[i] = tmp
+            
         payload_bits = ldpc_res[0] if ldpc_res else None
         self.pipeline.osd.complete(
             success = bool(payload_bits),
