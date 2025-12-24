@@ -58,7 +58,7 @@ class Candidate:
         Candidate.next_id += 1
 
         self.pipeline = Pipeline()
-        self.placement = None
+        self.deduped = False
 
     def record_sync(self, spectrum, h0_idx, f0_idx, score):
         hps, bpt = spectrum.hops_persymb, spectrum.fbins_pertone
@@ -246,11 +246,13 @@ class Cycle_manager():
                 ldpc_completed = [c.pipeline.ldpc.completed_time for c in self.cands_list if c.pipeline.ldpc.has_completed]
                 osd_completed = [c.pipeline.osd.completed_time for c in self.cands_list if c.pipeline.osd.has_completed]
                 osd_succeeded = [c.pipeline.osd.completed_time for c in self.cands_list if c.pipeline.osd.success]
+                deduped = [c.deduped for c in self.cands_list if c.deduped]
             self.tlog(f"[Cycle manager] sync_completed:   {len(sync_completed)} ({earliest_and_latest(sync_completed)})")
             self.tlog(f"[Cycle manager] demap_completed: {len(demap_completed)} ({earliest_and_latest(demap_completed)})")
             self.tlog(f"[Cycle manager] ldpc_completed:  {len(ldpc_completed)} ({earliest_and_latest(ldpc_completed)})")
             self.tlog(f"[Cycle manager] osd_completed:  {len(osd_completed)} ({earliest_and_latest(osd_completed)})")
             self.tlog(f"[Cycle manager] osd_succeeded:  {len(osd_succeeded)} ({earliest_and_latest(osd_succeeded)})")
+            self.tlog(f"[Cycle manager] deduped:  {len(deduped)} ({earliest_and_latest(deduped)})")
             
 
     def manage_cycle(self):
@@ -330,6 +332,8 @@ class Cycle_manager():
             c.dt = c.h0_idx * self.spectrum.dt-0.7
             c.fHz = int(c.f0_idx * self.spectrum.df)
             self.onSuccessfulDecode(c)
+        else:
+            c.deduped = time.time()
 
     def check_for_tx(self):
         from .FT8_encoder import pack_message

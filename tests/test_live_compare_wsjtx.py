@@ -22,6 +22,8 @@ def on_PyFT8_decode(c):
                    'call_a':c.call_a, 'call_b':c.call_b, 'grid_rpt':c.grid_rpt,
                    't_decode':time.time(), 'snr':c.snr, 'dt':c.dt, 'sync_score':c.pipeline.sync.result.score,
                    'ncheck_initial':c.pipeline.ldpc.metrics.ncheck_initial, 'n_its': c.pipeline.ldpc.metrics.n_its}
+    if(c.pipeline.osd.success):
+        decode_dict.update({'n_its':f"osd {c.pipeline.ldpc.metrics.n_its}"})
     on_decode(decode_dict)
            
 
