@@ -12,7 +12,7 @@ decodes_lock = threading.Lock()
 
 UID_FIELDS = ('cyclestart_str', 'call_a', 'call_b', 'grid_rpt')
 COMMON_FIELDS = {'t_decode', 'snr', 'dt'}
-PyFT8_FIELDS = {'sync_score', 'ncheck_initial', 'n_its', 'osd'}
+PyFT8_FIELDS = {'sync_score', 'ncheck_initial', 'n_its', 'pass2', 'pass2_mets'}
 
 running = True
 
@@ -24,7 +24,8 @@ def on_PyFT8_decode(c):
                    'call_a':c.call_a, 'call_b':c.call_b, 'grid_rpt':c.grid_rpt,
                    't_decode':time.time(), 'snr':c.snr, 'dt':c.dt, 'sync_score':c.pipeline.sync.result.score,
                    'ncheck_initial':c.pipeline.ldpc.metrics.ncheck_initial, 'n_its': c.pipeline.ldpc.metrics.n_its,
-                   'osd':'osd' if c.pipeline.osd.success else ''}
+                   'pass2':'osd' if c.pipeline.osd.success else '',
+                   'pass2_mets': str([c.pipeline.osd.metrics.ncheck_initial, c.pipeline.osd.metrics.n_its, c.pipeline.osd.metrics.N]) if c.pipeline.osd.success else ''}
     on_decode(decode_dict)
            
 
@@ -67,7 +68,7 @@ def update_stats():
     last_ct = 0
     logfile = 'live_compare_rows.csv'
 
-    heads = f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'tP':>7} {'tW':>7} {'dtP':>7} {'dtW':>7} {'sync':>7} {'nchk':>7} {'n_its':>7} {'osd':>7}"
+    heads = f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'tP':>7} {'tW':>7} {'dtP':>7} {'dtW':>7} {'sync':>7} {'nchk':>7} {'n_its':>7} {'pass2':>7}"
     with open(logfile, 'w') as f:
         f.write(f"{heads}\n")
         
@@ -108,7 +109,7 @@ def update_stats():
 
                     info = f"{tP} {tW} {dtP} {dtW}"
                     if ('PyFT8_t_decode' in d):
-                        info = info + f" {d['PyFT8_sync_score']:7.1f} {d['PyFT8_ncheck_initial']:>7} {d['PyFT8_n_its']:>7} {d['PyFT8_osd']:>7}"
+                        info = info + f" {d['PyFT8_sync_score']:7.1f} {d['PyFT8_ncheck_initial']:>7} {d['PyFT8_n_its']:>7} {d['PyFT8_pass2']:>7} {d['PyFT8_pass2_mets']}"
 
                     #if(decoder == 'BOTH '):
                     row = f"{uid_pretty} {decoder:>7} {info}"

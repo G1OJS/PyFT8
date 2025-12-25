@@ -80,8 +80,8 @@ class Candidate:
         pgrid = spectrum.pgrid_fine[np.ix_(payload_hop_idxs, freq_idxs)]
         llr0 = np.log(np.max(pgrid[:, [4,5,6,7]], axis=1)) - np.log(np.max(pgrid[:, [0,1,2,3]], axis=1))
         llr1 = np.log(np.max(pgrid[:, [2,3,4,7]], axis=1)) - np.log(np.max(pgrid[:, [0,1,5,6]], axis=1))
-        llr2 = np.log(np.max(pgrid[:, [1,2,6,7]], axis=1)) - np.log(np.max(pgrid[:, [0,3,4,5]], axis=1))
-        llr = np.column_stack((llr0, llr1, llr2)).ravel()
+        llr = np.log(np.max(pgrid[:, [1,2,6,7]], axis=1)) - np.log(np.max(pgrid[:, [0,3,4,5]], axis=1))
+        llr = np.column_stack((llr0, llr1, llr)).ravel()
         llr_sd = np.std(llr)
         llr = 3.8 * llr / llr_sd
         self.pipeline.demap.complete(success=True, result=llr, metrics=SimpleNamespace(pmax=np.max(pgrid),llr_sd=llr_sd))
@@ -105,21 +105,25 @@ class Candidate:
 
     def osd(self, max_iters, max_ncheck):
         self.pipeline.osd.start()
-        llr = self.pipeline.ldpc.result.llr_from_ldpc.copy()
+        llr = self.pipeline.ldpc.result.llr_from_ldpc
         K = 15   # magic %
         abs_llr = np.abs(llr)
         thresh = np.percentile(abs_llr, K)
         freeze = abs_llr >= thresh
         BIG = 40.0   # magic
-        llr2 = llr.copy()
-        for i, f in enumerate(freeze):
+        iflip = -1
+        ldpc_res = ldpc.decode(llr, 5, max_ncheck)
+        payload_bits = ldpc_res[0] if ldpc_res else None
+        N = 0
+        for iflip, f in enumerate(freeze):
             if(not f):
-                tmp = llr2[i] 
-                llr2[i] = -BIG*np.sign(llr2[i])
-                ldpc_res = ldpc.decode(llr2, 5, max_ncheck)
+                N +=1
+                tmp = llr[iflip] 
+                llr[iflip] = -BIG*np.sign(llr[iflip])
+                ldpc_res = ldpc.decode(llr, 5, max_ncheck)
                 payload_bits = ldpc_res[0] if ldpc_res else None
                 if(payload_bits): break
-                llr2[i] = tmp
+                llr[iflip] = tmp
             
         payload_bits = ldpc_res[0] if ldpc_res else None
         self.pipeline.osd.complete(
@@ -127,7 +131,8 @@ class Candidate:
             result = SimpleNamespace(payload_bits = payload_bits),
             metrics = SimpleNamespace(
                 ncheck_initial = ldpc_res[1] if ldpc_res else None,
-                n_its = ldpc_res[2] if ldpc_res else None
+                n_its = ldpc_res[2] if ldpc_res else None,
+                N = N
             )
         )
 
@@ -320,7 +325,8 @@ class Cycle_manager():
             if(self.spectrum.cycle_time() > self.sigspec.cycle_seconds - 3.5
                and self.spectrum.cycle_time() < self.sigspec.cycle_seconds - 0.5):
                 if not len(to_ldpc) and not len(to_demap):
-                    to_osd = [c for c in self.cands_list if c.pipeline.ldpc.has_completed and not c.pipeline.ldpc.success and not c.pipeline.osd.has_started]
+                    with self.cands_lock:
+                        to_osd = [c for c in self.cands_list if c.pipeline.ldpc.has_completed and not c.pipeline.ldpc.success and not c.pipeline.osd.has_started]
                     to_osd.sort(key = lambda c: c.pipeline.ldpc.metrics.ncheck_initial)
                     for c in to_osd[:1]:
                         c.osd(self.max_iters, self.max_ncheck+5)
