@@ -320,16 +320,16 @@ class Cycle_manager():
                     if(c.pipeline.ldpc.success):
                         self.process_decode(c, c.pipeline.ldpc.result.payload_bits)
 
-            if(self.spectrum.cycle_time() > self.sigspec.cycle_seconds - 3.5
-               and self.spectrum.cycle_time() < self.sigspec.cycle_seconds - 0.5):
-                if not len(to_ldpc) and not len(to_demap):
-                    with self.cands_lock:
-                        to_osd = [c for c in self.cands_list if c.pipeline.ldpc.has_completed and not c.pipeline.ldpc.success and not c.pipeline.osd.has_started]
-                    to_osd.sort(key = lambda c: c.pipeline.ldpc.metrics.ncheck_initial)
-                    for c in to_osd[:1]:
-                        c.osd(self.max_iters, self.max_ncheck+5)
-                        if(c.pipeline.osd.success):
-                            self.process_decode(c, c.pipeline.osd.result.payload_bits)
+            if(not len(to_demap)):
+                if self.spectrum.cycle_time() < self.sigspec.cycle_seconds - 0.5:
+                    if not len(to_ldpc):
+                        with self.cands_lock:
+                            to_osd = [c for c in self.cands_list if c.pipeline.ldpc.has_completed and not c.pipeline.ldpc.success and not c.pipeline.osd.has_started]
+                        to_osd.sort(key = lambda c: c.pipeline.ldpc.metrics.ncheck_initial)
+                        for c in to_osd[:1]:
+                            c.osd(self.max_iters, self.max_ncheck+5)
+                            if(c.pipeline.osd.success):
+                                self.process_decode(c, c.pipeline.osd.result.payload_bits)
 
             if(self.spectrum.cycle_time() > self.sigspec.cycle_seconds - 0.25 and not self.stats_printed):
                 self.stats_printed = True
