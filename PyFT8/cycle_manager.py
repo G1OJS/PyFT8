@@ -108,7 +108,7 @@ class Candidate:
     def osd(self, max_iters, max_ncheck, onSuccess):
         self.pipeline.osd.start()
         llr = self.pipeline.ldpc.result.llr_from_ldpc
-        K = 15   # magic %
+        K = 10   # magic %
         BIG = 40.0   # magic
         abs_llr = np.abs(llr)
         thresh = np.percentile(abs_llr, K)
