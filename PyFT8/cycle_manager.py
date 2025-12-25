@@ -106,21 +106,19 @@ class Candidate:
     def osd(self, max_iters, max_ncheck):
         self.pipeline.osd.start()
         llr = self.pipeline.ldpc.result.llr_from_ldpc
-        K = 15   # magic %
+        K = 20   # magic %
         abs_llr = np.abs(llr)
         thresh = np.percentile(abs_llr, K)
         freeze = abs_llr >= thresh
         BIG = 40.0   # magic
         iflip = -1
-        ldpc_res = ldpc.decode(llr, 5, max_ncheck)
-        payload_bits = ldpc_res[0] if ldpc_res else None
         N = 0
         for iflip, f in enumerate(freeze):
             if(not f):
                 N +=1
                 tmp = llr[iflip] 
                 llr[iflip] = -BIG*np.sign(llr[iflip])
-                ldpc_res = ldpc.decode(llr, 5, max_ncheck)
+                ldpc_res = ldpc.decode(llr, max_iters, max_ncheck)
                 payload_bits = ldpc_res[0] if ldpc_res else None
                 if(payload_bits): break
                 llr[iflip] = tmp
