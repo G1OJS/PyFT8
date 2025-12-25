@@ -44,35 +44,35 @@ class LDPC174_91:
             synd_checks = [ sum(1 for llr_bit in llr[self.synd_check_idxs[i]] if llr_bit > 0) %2 for i in range(83)]
             return int(np.sum(synd_checks))
 
-        def get_payload_bits(zn):
-            decoded_bits174_LE_list = (zn > 0).astype(int).tolist() 
+        def get_payload_bits(llr):
+            decoded_bits174_LE_list = (llr > 0).astype(int).tolist() 
             decoded_bits91_int = self.bitsLE_to_int(decoded_bits174_LE_list[0:91]) 
             payload_bits = decoded_bits174_LE_list if check_crc(decoded_bits91_int) else []
+            if(not any(payload_bits[:77])): payload_bits = []
             return payload_bits
           
         Lmn = np.zeros((83, 7), dtype=np.float32)        
         alpha = 1.18
 
-        zn = llr.copy()
         for n_its in range(max_iters):
-            ncheck = get_ncheck(zn)
+            ncheck = get_ncheck(llr)
             if n_its == 0:
                 ncheck_initial = ncheck
-            payload_bits = get_payload_bits(zn) if ncheck == 0 else []
+            payload_bits = get_payload_bits(llr) if ncheck == 0 else []
             if payload_bits or ncheck > max_ncheck: break
 
-            delta = np.zeros_like(zn)
+            delta = np.zeros_like(llr)
             for m in range(83):
                 deg = self.check_deg[m]
                 v = self.check_vars[m, :deg]
-                Lnm = zn[v] - Lmn[m, :deg]
+                Lnm = llr[v] - Lmn[m, :deg]
                 t = np.tanh(-Lnm)         
                 prod = np.prod(t) / t                       
                 new = prod / ((prod - alpha) * (alpha + prod))
                 delta[v] += new - Lmn[m, :deg]
                 Lmn[m, :deg] = new
-            zn += delta    
+            llr += delta    
 
-        return (payload_bits, ncheck_initial, n_its, zn)
+        return (payload_bits, ncheck_initial, n_its, llr)
 
 
