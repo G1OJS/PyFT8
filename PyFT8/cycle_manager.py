@@ -120,7 +120,7 @@ class Candidate:
             n_flipped  +=1
             idx = conf_idx[iflip]
             tmp = llr[idx] 
-            llr[idx] = -BIG*np.sign(llr[iflip])
+            llr[idx] = -BIG * np.sign(llr[idx])
             ldpc_res = ldpc.decode(llr, max_iters, max_ncheck)
             payload_bits = ldpc_res[0] if ldpc_res else None
             if(payload_bits): break
