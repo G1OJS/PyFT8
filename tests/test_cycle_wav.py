@@ -30,7 +30,7 @@ def onDecode(c):
         unique_decodes.append(c)
 
 cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = WAV, 
-                          max_iters = 25,  max_ncheck = 38, verbose = True,
+                          max_iters = 10,  max_ncheck = 38, verbose = True,
                           sync_score_thresh = 3.8, max_cycles = 2)
 
 while cycle_manager.running:
