@@ -114,7 +114,6 @@ class Candidate:
         thresh = np.percentile(abs_llr, K)
         conf_idx = np.argsort(abs_llr)
         n_to_flip = len([b for b in abs_llr if b < thresh])
-        print(thresh, n_to_flip)
         llr[conf_idx[n_to_flip:]] = BIG * np.sign(llr[conf_idx[n_to_flip:]])
         n_flipped = 0
         for iflip in range(n_to_flip):
