@@ -13,6 +13,9 @@ eps = 1e-12
 
 ldpc = LDPC174_91()
 
+def safe_pc(x,y):
+    return 100*x/y if y>0 else 0
+
 class StageProps:
     def __init__(self):
         self.started_time   = None
@@ -103,20 +106,17 @@ class Candidate:
     def osd(self, max_iters, max_ncheck):
         self.pipeline.osd.start()
         llr = self.pipeline.ldpc.result.llr_from_ldpc
-        K = 15   # magic %
-        abs_llr = np.abs(llr)
-        thresh = np.percentile(abs_llr, K)
-        freeze = abs_llr >= thresh
+        NWORST = 15 #magic
+        conf_sorted_bits = np.argsort(np.abs(llr))
         BIG = 40.0   # magic
-        llr2 = llr.copy()
-        for i, f in enumerate(freeze):
-            if(not f):
-                tmp = llr2[i] 
-                llr2[i] = -BIG*np.sign(llr2[i])
-                ldpc_res = ldpc.decode(llr2, max_iters, max_ncheck)
+        llr[conf_sorted_bits[NWORST:]] = BIG * np.sign(conf_sorted_bits[NWORST:])
+        for i, b in enumerate(conf_sorted_bits[:NWORST]):
+                tmp = llr[conf_sorted_bits[i]] 
+                llr[i] = -BIG*np.sign(llr[i])
+                ldpc_res = ldpc.decode(llr, 25, max_ncheck)
                 payload_bits = ldpc_res[0] if ldpc_res else None
                 if(payload_bits): break
-                llr2[i] = tmp
+                llr[conf_sorted_bits[i]] = tmp
         self.pipeline.osd.complete(
             success = bool(payload_bits),
             result = SimpleNamespace(payload_bits = payload_bits),
@@ -260,6 +260,7 @@ class Cycle_manager():
             self.tlog(f"[Cycle manager] osd_succeeded:  {len(osd_succeeded)} ({earliest_and_latest(osd_succeeded)})")
             self.tlog(f"[Cycle manager] deduped:  {len(deduped)} ({earliest_and_latest(deduped)})")
             
+            self.tlog(f"[Cycle manager] osd success rate:  {safe_pc(len(osd_succeeded),len(osd_completed)):5.0f}")
 
     def manage_cycle(self):
         cycle_searched = True
@@ -311,7 +312,8 @@ class Cycle_manager():
                     if(c.pipeline.ldpc.success):
                         self.process_decode(c, c.pipeline.ldpc.result.payload_bits)
 
-            if(self.spectrum.cycle_time() < self.sigspec.cycle_seconds - 0.5):
+            if(self.spectrum.cycle_time() > self.sigspec.cycle_seconds - 3.5
+               and self.spectrum.cycle_time() < self.sigspec.cycle_seconds - 0.5):
                 if not len(to_ldpc) and not len(to_demap):
                     to_osd = [c for c in self.cands_list if c.pipeline.ldpc.has_completed and not c.pipeline.ldpc.success and not c.pipeline.osd.has_started]
                     to_osd.sort(key = lambda c: c.pipeline.ldpc.metrics.ncheck_initial)
@@ -320,9 +322,10 @@ class Cycle_manager():
                         if(c.pipeline.osd.success):
                             self.process_decode(c, c.pipeline.osd.result.payload_bits)
 
-            if(self.spectrum.cycle_time() > self.sigspec.cycle_seconds -0.1 and not self.stats_printed):
+            if(self.spectrum.cycle_time() > self.sigspec.cycle_seconds - 0.1 and not self.stats_printed):
                 self.stats_printed = True
                 self.print_stats()
+                
 
     def process_decode(self, c, payload_bits):
         c.msg = FT8_unpack(payload_bits)
