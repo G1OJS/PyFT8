@@ -25,7 +25,8 @@ def on_PyFT8_decode(c):
                    't_decode':time.time(), 'snr':c.snr, 'dt':c.dt, 'sync_score':c.pipeline.sync.result.score,
                    'ncheck_initial':c.pipeline.ldpc.metrics.ncheck_initial, 'n_its': c.pipeline.ldpc.metrics.n_its,
                    'pass2':'osd' if c.pipeline.osd.success else '',
-                   'pass2_mets': str([c.pipeline.osd.metrics.ncheck_initial, c.pipeline.osd.metrics.n_its, c.pipeline.osd.metrics.N]) if c.pipeline.osd.success else ''}
+                   'pass2_mets': str([c.pipeline.osd.metrics.ncheck_initial, c.pipeline.osd.metrics.n_its,
+                                      c.pipeline.osd.metrics.n_to_flip, c.pipeline.osd.metrics.n_flipped ]) if c.pipeline.osd.success else ''}
     on_decode(decode_dict)
            
 

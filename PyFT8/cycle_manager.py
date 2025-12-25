@@ -86,7 +86,7 @@ class Candidate:
         llr = 3.8 * llr / llr_sd
         self.pipeline.demap.complete(success=True, result=llr, metrics=SimpleNamespace(pmax=np.max(pgrid),llr_sd=llr_sd))
 
-    def ldpc(self, max_iters, max_ncheck):
+    def ldpc(self, max_iters, max_ncheck, onSuccess):
         self.pipeline.ldpc.start()
         llr = self.pipeline.demap.result
         ldpc_res = ldpc.decode(llr, max_iters, max_ncheck)
@@ -102,26 +102,30 @@ class Candidate:
                 n_its = ldpc_res[2] if ldpc_res else None
             )
         )
+        if(payload_bits): onSuccess(self, payload_bits)
+            
 
-    def osd(self, max_iters, max_ncheck):
+    def osd(self, max_iters, max_ncheck, onSuccess):
         self.pipeline.osd.start()
         llr = self.pipeline.ldpc.result.llr_from_ldpc
-        K = 20   # magic %
+        K = 15   # magic %
+        BIG = 40.0   # magic
         abs_llr = np.abs(llr)
         thresh = np.percentile(abs_llr, K)
-        freeze = abs_llr >= thresh
-        BIG = 40.0   # magic
-        iflip = -1
-        N = 0
-        for iflip, f in enumerate(freeze):
-            if(not f):
-                N +=1
-                tmp = llr[iflip] 
-                llr[iflip] = -BIG*np.sign(llr[iflip])
-                ldpc_res = ldpc.decode(llr, max_iters, max_ncheck)
-                payload_bits = ldpc_res[0] if ldpc_res else None
-                if(payload_bits): break
-                llr[iflip] = tmp
+        conf_idx = np.argsort(abs_llr)
+        n_to_flip = len([b for b in abs_llr if b < thresh])
+        print(thresh, n_to_flip)
+        llr[conf_idx[n_to_flip:]] = BIG * np.sign(llr[conf_idx[n_to_flip:]])
+        n_flipped = 0
+        for iflip in range(n_to_flip):
+            n_flipped  +=1
+            idx = conf_idx[iflip]
+            tmp = llr[idx] 
+            llr[idx] = -BIG*np.sign(llr[iflip])
+            ldpc_res = ldpc.decode(llr, max_iters, max_ncheck)
+            payload_bits = ldpc_res[0] if ldpc_res else None
+            if(payload_bits): break
+            llr[idx] = tmp
             
         payload_bits = ldpc_res[0] if ldpc_res else None
         self.pipeline.osd.complete(
@@ -130,9 +134,11 @@ class Candidate:
             metrics = SimpleNamespace(
                 ncheck_initial = ldpc_res[1] if ldpc_res else None,
                 n_its = ldpc_res[2] if ldpc_res else None,
-                N = N
+                n_to_flip = n_to_flip, 
+                n_flipped  = n_flipped 
             )
         )
+        if(payload_bits): onSuccess(self, payload_bits)
 
     @property
     def snr(self):
@@ -316,9 +322,7 @@ class Cycle_manager():
                 with self.cands_lock:
                     to_ldpc = [c for c in self.cands_list if c.pipeline.demap.has_completed and not c.pipeline.ldpc.has_started]
                 for c in to_ldpc[:1]:
-                    c.ldpc(self.max_iters, self.max_ncheck)
-                    if(c.pipeline.ldpc.success):
-                        self.process_decode(c, c.pipeline.ldpc.result.payload_bits)
+                    c.ldpc(self.max_iters, self.max_ncheck, self.process_decode)
 
             if(not len(to_demap)):
                 if self.spectrum.cycle_time() < self.sigspec.cycle_seconds - 0.5:
@@ -327,9 +331,7 @@ class Cycle_manager():
                             to_osd = [c for c in self.cands_list if c.pipeline.ldpc.has_completed and not c.pipeline.ldpc.success and not c.pipeline.osd.has_started]
                         to_osd.sort(key = lambda c: c.pipeline.ldpc.metrics.ncheck_initial)
                         for c in to_osd[:1]:
-                            c.osd(self.max_iters, self.max_ncheck+5)
-                            if(c.pipeline.osd.success):
-                                self.process_decode(c, c.pipeline.osd.result.payload_bits)
+                            c.osd(self.max_iters, self.max_ncheck, self.process_decode)
 
             if(self.spectrum.cycle_time() > self.sigspec.cycle_seconds - 0.25 and not self.stats_printed):
                 self.stats_printed = True
