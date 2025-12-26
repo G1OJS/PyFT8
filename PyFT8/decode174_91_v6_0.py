@@ -48,7 +48,8 @@ class LDPC174_91:
             decoded_bits174_LE_list = (llr > 0).astype(int).tolist() 
             decoded_bits91_int = self.bitsLE_to_int(decoded_bits174_LE_list[0:91]) 
             payload_bits = decoded_bits174_LE_list if check_crc(decoded_bits91_int) else []
-            if(not any(payload_bits[:77])): payload_bits = []
+            if(len(payload_bits)):
+                if(np.sum(payload_bits[:77]) ==0): payload_bits = []
             return payload_bits
           
         Lmn = np.zeros((83, 7), dtype=np.float32)        

@@ -78,9 +78,11 @@ class Candidate:
         payload_hop_idxs = self.pipeline.sync.result.payload_hop_idxs
         freq_idxs = self.pipeline.sync.result.freq_idxs
         pgrid = spectrum.pgrid_fine[np.ix_(payload_hop_idxs, freq_idxs)]
-        llr0 = np.log(np.max(pgrid[:, [4,5,6,7]], axis=1)) - np.log(np.max(pgrid[:, [0,1,2,3]], axis=1))
-        llr1 = np.log(np.max(pgrid[:, [2,3,4,7]], axis=1)) - np.log(np.max(pgrid[:, [0,1,5,6]], axis=1))
-        llr = np.log(np.max(pgrid[:, [1,2,6,7]], axis=1)) - np.log(np.max(pgrid[:, [0,3,4,5]], axis=1))
+        pvt = np.mean(pgrid, axis = 1)
+        pgrid_n = pgrid / pvt[:,None]
+        llr0 = np.log(np.max(pgrid_n[:, [4,5,6,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,1,2,3]], axis=1))
+        llr1 = np.log(np.max(pgrid_n[:, [2,3,4,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,1,5,6]], axis=1))
+        llr = np.log(np.max(pgrid_n[:, [1,2,6,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,3,4,5]], axis=1))
         llr = np.column_stack((llr0, llr1, llr)).ravel()
         llr_sd = np.std(llr)
         llr = 3.8 * llr / llr_sd
@@ -108,7 +110,7 @@ class Candidate:
     def osd(self, max_iters, max_ncheck, onSuccess):
         self.pipeline.osd.start()
         llr = self.pipeline.ldpc.result.llr_from_ldpc
-        K = 10   # magic %
+        K = 15   # magic %
         BIG = 40.0   # magic
         abs_llr = np.abs(llr)
         thresh = np.percentile(abs_llr, K)
