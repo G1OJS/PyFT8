@@ -86,7 +86,27 @@ class Candidate:
         llr = np.column_stack((llr0, llr1, llr)).ravel()
         llr_sd = np.std(llr)
         llr = 3.8 * llr / llr_sd
-        self.pipeline.demap.complete(success=True, result=llr, metrics=SimpleNamespace(pmax=np.max(pgrid),llr_sd=llr_sd))
+        self.pipeline.demap.complete(success=True,
+            result=llr,
+            metrics=SimpleNamespace(pgrid = pgrid, pmax=np.max(pgrid),llr_sd=llr_sd))
+
+
+    def demap2(self, spectrum):
+        self.pipeline.demap.start()
+        payload_hop_idxs = self.pipeline.sync.result.payload_hop_idxs
+        freq_idxs = self.pipeline.sync.result.freq_idxs
+        pgrid = spectrum.pgrid_fine[np.ix_(payload_hop_idxs, freq_idxs)]
+        pvt = np.mean(pgrid, axis = 1)
+        pgrid_n = pgrid / pvt[:,None]
+        llr0 = np.log(np.sum(pgrid_n[:, [4,5,6,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,1,2,3]], axis=1))
+        llr1 = np.log(np.sum(pgrid_n[:, [2,3,4,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,1,5,6]], axis=1))
+        llr = np.log(np.sum(pgrid_n[:, [1,2,6,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,3,4,5]], axis=1))
+        llr = np.column_stack((llr0, llr1, llr)).ravel()
+        llr_sd = np.std(llr)
+        llr = 3.8 * llr / llr_sd
+        self.pipeline.demap.complete(success=True,
+            result=llr,
+            metrics=SimpleNamespace(pgrid = pgrid, pmax=np.max(pgrid),llr_sd=llr_sd))
 
     def ldpc(self, max_iters, max_ncheck, onSuccess):
         self.pipeline.ldpc.start()
@@ -107,7 +127,30 @@ class Candidate:
         if(payload_bits): onSuccess(self, payload_bits)
             
 
+
     def osd(self, max_iters, max_ncheck, onSuccess):
+        self.pipeline.osd.start()
+        #llr = self.pipeline.demap.result
+        llr = self.pipeline.ldpc.result.llr_from_ldpc
+        for offset in [0.1,-0.1, 0.4,-0.4, 0.8,-0.8, 1.6,-1.6, 3.2,-3.2]:
+            ldpc_res = ldpc.decode(llr + offset, 5, 40)
+            payload_bits = ldpc_res[0] if ldpc_res else None
+            if(payload_bits): break
+        self.pipeline.osd.complete(
+            success = bool(payload_bits),
+            result = SimpleNamespace(
+                payload_bits = payload_bits,
+            ),
+            metrics = SimpleNamespace(
+                ncheck_initial = ldpc_res[1] if ldpc_res else None,
+                n_its = ldpc_res[2] if ldpc_res else None,
+                n_to_flip = 0, 
+                n_flipped  = offset
+            )
+        )
+        if(payload_bits): onSuccess(self, payload_bits)
+
+    def osd_(self, max_iters, max_ncheck, onSuccess):
         self.pipeline.osd.start()
         llr = self.pipeline.ldpc.result.llr_from_ldpc
         K = 15   # magic %

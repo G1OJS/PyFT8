@@ -51,7 +51,7 @@ symbols_framed.extend(symbols)  #79 symbols
 symbols_framed.extend([-10]*8)
 print(f"({len(symbols)} symbols)")
 audio_out = audio.AudioOut()
-audio_data = audio_out.create_ft8_wave(symbols_framed, f_base = 3000, amplitude = 0.1)
+audio_data = audio_out.create_ft8_wave(symbols_framed, f_base = 3000, amplitude = 0.1, added_noise = -20)
 audio_out.write_to_wave_file(audio_data, WAV)
 
 global decoded_candidates

@@ -74,6 +74,8 @@ class Waterfall:
             h0_idx = c.pipeline.sync.result.h0_idx
             vals =self.spectrum.pgrid_fine[h0_idx:h0_idx + self.spectrum.sigspec.num_symbols * self.spectrum.hops_persymb,
                                         f0_idx:f0_idx + self.spectrum.sigspec.tones_persymb * self.spectrum.fbins_pertone]
+
+       #     vals = c.pipeline.demap.metrics.pgrid
             im = ax.imshow( vals, origin="lower", aspect="auto", extent=[-0.5, vals.shape[1]-0.5, -0.5, vals.shape[0]-0.5],
                             cmap="inferno",  interpolation='none' )
             vmax = np.max(vals)
