@@ -132,13 +132,13 @@ threading.Thread(target=update_stats).start()
 cycle_manager = Cycle_manager(FT8, on_PyFT8_decode, onOccupancy = None, input_device_keywords = ['Microphone', 'CODEC'],
                               sync_score_thresh = 2.8, max_ncheck = 40, max_iters = 15, verbose = True)
 
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("\nStopping PyFT8 Rx")
-        cycle_manager.running = False
-        running = False
+try:
+    while True:
+        time.sleep(1)
+except KeyboardInterrupt:
+    print("\nStopping PyFT8 Rx")
+    cycle_manager.running = False
+    running = False
 
 
     
