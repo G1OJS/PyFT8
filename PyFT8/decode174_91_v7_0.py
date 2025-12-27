@@ -31,7 +31,7 @@ class LDPC174_91:
             n = (n << 1) | (b & 1)
         return n
 
-    def decode(self, llr, max_iters = 25, max_ncheck = 40, ncheck_thresh = 29):
+    def decode(self, llr, max_iters = 15, max_ncheck = 40, ncheck_thresh = 29):
         def ncheck(llrs):
             llr_per_check = llrs[:, self.check_vars]
             valid = self.check_vars != -1
@@ -40,14 +40,14 @@ class LDPC174_91:
 
         Lmn = np.zeros((83, 7), dtype=np.float32)        
         alpha = 1.18
-        offsets = [0.2*1.15**x for x in range(10)]
-        offsets = np.array(offsets + [-o for o in offsets])
         ncheck_hist = [int(ncheck(llr[None, :])[0])]
         offset = 0
         
         if(ncheck_hist[0] != 0):
             
             if(ncheck_hist[0] > ncheck_thresh):
+                offsets = [0.1*1.4**x for x in range(10)]
+                offsets = np.array(offsets + [-o for o in offsets])
                 llrs = llr + offsets[:, None]
                 nchecks = ncheck(llrs)
                 best_idx = np.argmin(nchecks)
