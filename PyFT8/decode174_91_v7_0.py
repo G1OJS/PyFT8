@@ -44,7 +44,7 @@ class LDPC174_91:
         offsets = np.array(offsets + [-o for o in offsets])
         ncheck_hist = []
         while (len(ncheck_hist) < max_iters):
-            ncheck_hist.append(ncheck(llr[None, :])[0])
+            ncheck_hist.append(int(ncheck(llr[None, :])[0]))
             if(ncheck_hist[-1] == 0 or ncheck_hist[0] > max_ncheck):
                 break
             if(ncheck_hist[-1] > ncheck_thresh):
