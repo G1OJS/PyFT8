@@ -123,15 +123,14 @@ def update_stats():
         last_ct = ct
 
 
-threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path, on_decode,)).start()
-
-threading.Thread(target=update_stats).start()    
-
-cycle_manager = Cycle_manager(FT8, on_PyFT8_decode, onOccupancy = None, input_device_keywords = ['Microphone', 'CODEC'],
-                              sync_score_thresh = 2.8, max_ncheck = 40, max_iters = 15, verbose = True)
 
 with open('live_compare_cycle_stats.csv', 'w') as f:
     f.write("nWSJTX,nPyFT8,nBoth\n")
+    
+threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path, on_decode,)).start()
+threading.Thread(target=update_stats).start()    
+cycle_manager = Cycle_manager(FT8, on_PyFT8_decode, onOccupancy = None, input_device_keywords = ['Microphone', 'CODEC'],
+                              sync_score_thresh = 2.8, max_ncheck = 40, max_iters = 15, verbose = True)
 
     try:
         while True:
