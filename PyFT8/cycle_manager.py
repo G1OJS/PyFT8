@@ -196,7 +196,8 @@ class Spectrum:
                 c = Candidate()
                 c.record_sync(self, *best)
                 cands.append(c)
-        return cands
+        cands.sort(key = lambda c: -c.pipeline.sync.result.score)
+        return cands[:135]
 
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,

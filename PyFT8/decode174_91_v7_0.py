@@ -19,17 +19,10 @@ class LDPC174_91:
 
         self.check_vars = np.full((83, 7), -1, dtype=np.int16)
         self.check_deg  = np.zeros(83, dtype=np.int8)
-
         for m in range(83):
             v = self.kNM[:self.kNRW[m], m]
             self.check_vars[m, :len(v)] = v
             self.check_deg[m] = len(v)
-
-        self.synd_check_idxs=[]
-        for i in range(83):
-            ichk = self.kNM[:self.kNRW[i],i]
-            ichk = ichk[(ichk >=0)]
-            self.synd_check_idxs.append(ichk)
 
     def bitsLE_to_int(self, bits):
         """bits is MSB-first."""
@@ -38,23 +31,26 @@ class LDPC174_91:
             n = (n << 1) | (b & 1)
         return n
 
-    def decode(self, llr0, max_iters = 25, max_ncheck = 40, ncheck_thresh = 30):
+    def decode(self, llr, max_iters = 25, max_ncheck = 40, ncheck_thresh = 30):
+        def ncheck(llrs):
+            llr_per_check = llrs[:, self.check_vars]
+            valid = self.check_vars != -1
+            parity = (np.sum((llr_per_check > 0) & valid, axis=2) & 1)
+            return np.sum(parity, axis=1)
+
         Lmn = np.zeros((83, 7), dtype=np.float32)        
         alpha = 1.18
-        offsets = [-0.1, 0.1, -0.25, 0.25, -0.5, 0.5, -1, 1, -2, 2, 0]
-        offset_counter = 0
-        llr = llr0.copy()
-        
+        offsets = [0.1, 0.25, 0.5, 1, 2, 3, 4]
+        offsets = np.array(offsets + [-o for o in offsets])
         ncheck_hist = []
         while (len(ncheck_hist) < max_iters):
-            ncheck = int(np.sum([ sum(1 for llr_bit in llr[self.synd_check_idxs[i]] if llr_bit > 0) %2 for i in range(83)]))
-            ncheck_hist.append(ncheck)
+            ncheck_hist.append(ncheck(llr[None, :])[0])
             if(ncheck_hist[-1] == 0 or ncheck_hist[0] > max_ncheck):
                 break
-            
-            if(ncheck_hist[-1] > ncheck_thresh and offset_counter < len(offsets)):
-                llr = llr0 + offsets[offset_counter]
-                offset_counter +=1
+            if(ncheck_hist[-1] > ncheck_thresh):
+                llrs = llr + offsets[:, None]
+                nchecks = ncheck(llrs)
+                llr += offsets[np.argmin(nchecks)]
             else:
                 delta = np.zeros_like(llr)
                 for m in range(83):
