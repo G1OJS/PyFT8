@@ -19,17 +19,10 @@ class LDPC174_91:
 
         self.check_vars = np.full((83, 7), -1, dtype=np.int16)
         self.check_deg  = np.zeros(83, dtype=np.int8)
-
         for m in range(83):
             v = self.kNM[:self.kNRW[m], m]
             self.check_vars[m, :len(v)] = v
             self.check_deg[m] = len(v)
-
-        self.synd_check_idxs=[]
-        for i in range(83):
-            ichk = self.kNM[:self.kNRW[i],i]
-            ichk = ichk[(ichk >=0)]
-            self.synd_check_idxs.append(ichk)
 
     def bitsLE_to_int(self, bits):
         """bits is MSB-first."""
@@ -38,42 +31,45 @@ class LDPC174_91:
             n = (n << 1) | (b & 1)
         return n
 
-    def decode(self, llr, max_iters, max_ncheck):
+    def decode(self, llr, max_iters = 25, max_ncheck = 40, ncheck_thresh = 30):
+        def ncheck(llrs):
+            llr_per_check = llrs[:, self.check_vars]
+            valid = self.check_vars != -1
+            parity = (np.sum((llr_per_check > 0) & valid, axis=2) & 1)
+            return np.sum(parity, axis=1)
 
-        def get_ncheck(llr):
-            synd_checks = [ sum(1 for llr_bit in llr[self.synd_check_idxs[i]] if llr_bit > 0) %2 for i in range(83)]
-            return int(np.sum(synd_checks))
-
-        def get_payload_bits(llr):
-            decoded_bits174_LE_list = (llr > 0).astype(int).tolist() 
-            decoded_bits91_int = self.bitsLE_to_int(decoded_bits174_LE_list[0:91]) 
-            payload_bits = decoded_bits174_LE_list if check_crc(decoded_bits91_int) else []
-            if(len(payload_bits)):
-                if(np.sum(payload_bits[:77]) ==0): payload_bits = []
-            return payload_bits
-          
         Lmn = np.zeros((83, 7), dtype=np.float32)        
         alpha = 1.18
+        offsets = [0.1, 0.25, 0.5, 1, 2, 3, 4]
+        offsets = np.array(offsets + [-o for o in offsets])
+        ncheck_hist = []
+        while (len(ncheck_hist) < max_iters):
+            ncheck_hist.append(int(ncheck(llr[None, :])[0]))
+            if(ncheck_hist[-1] == 0 or ncheck_hist[0] > max_ncheck):
+                break
+            if(ncheck_hist[-1] > ncheck_thresh):
+                llrs = llr + offsets[:, None]
+                nchecks = ncheck(llrs)
+                llr += offsets[np.argmin(nchecks)]
+            else:
+                delta = np.zeros_like(llr)
+                for m in range(83):
+                    deg = self.check_deg[m]
+                    v = self.check_vars[m, :deg]
+                    Lnm = llr[v] - Lmn[m, :deg]
+                    t = np.tanh(-Lnm)         
+                    prod = np.prod(t) / t                       
+                    new = prod / ((prod - alpha) * (alpha + prod))
+                    delta[v] += new - Lmn[m, :deg]
+                    Lmn[m, :deg] = new
+                llr += delta    
 
-        for n_its in range(max_iters):
-            ncheck = get_ncheck(llr)
-            if n_its == 0:
-                ncheck_initial = ncheck
-            payload_bits = get_payload_bits(llr) if ncheck == 0 else []
-            if payload_bits or ncheck > max_ncheck: break
-
-            delta = np.zeros_like(llr)
-            for m in range(83):
-                deg = self.check_deg[m]
-                v = self.check_vars[m, :deg]
-                Lnm = llr[v] - Lmn[m, :deg]
-                t = np.tanh(-Lnm)         
-                prod = np.prod(t) / t                       
-                new = prod / ((prod - alpha) * (alpha + prod))
-                delta[v] += new - Lmn[m, :deg]
-                Lmn[m, :deg] = new
-            llr += delta    
-
-        return (payload_bits, ncheck_initial, n_its, llr)
+        payload_bits = []
+        if(ncheck_hist[-1] == 0):
+            decoded_bits = (llr > 0).astype(int).tolist()
+            if any(decoded_bits[:77]):
+                if check_crc( self.bitsLE_to_int(decoded_bits[0:91]) ):
+                    payload_bits = decoded_bits[:77]
+        return (payload_bits, ncheck_hist, llr)
 
 

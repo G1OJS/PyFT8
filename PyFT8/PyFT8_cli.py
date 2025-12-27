@@ -14,7 +14,7 @@ def on_decode(c):
         decode_dict.update({'decoder':'PyFT8',
                    't_decode':f"{time.time() %15: 5.2f}", 'snr':f"{c.snr:5.0f}", 'freq':c.fHz,
                    'dt':f"{c.dt:5.1f}", 'sync_score':f"{c.pipeline.sync.result.score:5.1f}",
-                   'ncheck_initial':c.pipeline.ldpc.metrics.ncheck_initial, 'n_its': c.pipeline.ldpc.metrics.n_its})
+                   'ncheck_hist':c.pipeline.ldpc.metrics.ncheck_hist})
 
     print(decode_dict)
 
@@ -33,8 +33,7 @@ def cli():
     output_device_keywords = args.outputcard_keywords.replace(' ','').split(',') if args.outputcard_keywords is not None else None
 
     cycle_manager = Cycle_manager(FT8, on_decode, onOccupancy = None, input_device_keywords = input_device_keywords,
-                                  output_device_keywords = output_device_keywords, verbose = verbose,
-                                  sync_score_thresh = 4, max_ncheck = 38, max_iters = 25) 
+                                  output_device_keywords = output_device_keywords, verbose = verbose) 
 
     print("PyFT8 Rx running — Ctrl-C to stop")
 

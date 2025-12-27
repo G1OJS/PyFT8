@@ -12,7 +12,7 @@ decodes_lock = threading.Lock()
 
 UID_FIELDS = ('cyclestart_str', 'call_a', 'call_b', 'grid_rpt')
 COMMON_FIELDS = {'t_decode', 'snr', 'dt'}
-PyFT8_FIELDS = {'sync_score', 'ncheck_initial', 'n_its', 'pass2', 'pass2_mets'}
+PyFT8_FIELDS = {'sync_score', 'ncheck_hist'}
 
 running = True
 
@@ -23,10 +23,7 @@ def on_PyFT8_decode(c):
     decode_dict = {'decoder':'PyFT8', 'cyclestart_str':c.cyclestart_str,
                    'call_a':c.call_a, 'call_b':c.call_b, 'grid_rpt':c.grid_rpt,
                    't_decode':time.time(), 'snr':c.snr, 'dt':c.dt, 'sync_score':c.pipeline.sync.result.score,
-                   'ncheck_initial':c.pipeline.ldpc.metrics.ncheck_initial, 'n_its': c.pipeline.ldpc.metrics.n_its,
-                   'pass2':'osd' if c.pipeline.osd.success else '',
-                   'pass2_mets': str([c.pipeline.osd.metrics.ncheck_initial, c.pipeline.osd.metrics.n_its,
-                                      c.pipeline.osd.metrics.n_to_flip, c.pipeline.osd.metrics.n_flipped ]) if c.pipeline.osd.success else ''}
+                   'ncheck_hist':c.pipeline.ldpc.metrics.ncheck_hist}
     on_decode(decode_dict)
            
 
@@ -41,8 +38,15 @@ def on_decode(decode_dict):
         decodes[uid].update({'decoder':decoder})
         if(decoder == 'PyFT8'):
             for field in PyFT8_FIELDS:
-                decodes[uid].update({f"{decoder}_{field}": decode_dict[field]}) 
+                decodes[uid].update({f"{decoder}_{field}": decode_dict[field]})
 
+def align_call(call):
+    # whilst PyFT8 not decoding hashed calls and /P etc
+    if("<" in call):
+        call = "<...>"
+    if("/P" in call):
+        call = call.replace("/P","")
+    return call
 
 def wsjtx_all_tailer(all_txt_path, on_decode):
     def follow():
@@ -59,7 +63,7 @@ def wsjtx_all_tailer(all_txt_path, on_decode):
         decode_dict = False
         try:
             decode_dict = {'cyclestart_str':ls[0], 'decoder':'WSJTX', 'freq':ls[6], 't_decode':time.time(),
-                           'dt':float(ls[5]), 'call_a':ls[7], 'call_b':ls[8], 'grid_rpt':ls[9], 'snr':ls[4]}
+                           'dt':float(ls[5]), 'call_a':align_call(ls[7]), 'call_b':align_call(ls[8]), 'grid_rpt':ls[9], 'snr':ls[4]}
         except:
             pass
         if(decode_dict):
@@ -69,7 +73,7 @@ def update_stats():
     last_ct = 0
     logfile = 'live_compare_rows.csv'
 
-    heads = f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'tP':>7} {'tW':>7} {'dtP':>7} {'dtW':>7} {'sync':>7} {'nchk':>7} {'n_its':>7} {'pass2':>7}"
+    heads = f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'tP':>7} {'tW':>7} {'dtP':>7} {'dtW':>7} {'sync':>7} {'ncheck_hist':>7}"
     with open(logfile, 'w') as f:
         f.write(f"{heads}\n")
         
@@ -110,7 +114,7 @@ def update_stats():
 
                     info = f"{tP} {tW} {dtP} {dtW}"
                     if ('PyFT8_t_decode' in d):
-                        info = info + f" {d['PyFT8_sync_score']:7.1f} {d['PyFT8_ncheck_initial']:>7} {d['PyFT8_n_its']:>7} {d['PyFT8_pass2']:>7} {d['PyFT8_pass2_mets']}"
+                        info = info + f" {d['PyFT8_sync_score']:7.1f} {d['PyFT8_ncheck_hist']}"
 
                     #if(decoder == 'BOTH '):
                     row = f"{uid_pretty} {decoder:>7} {info}"
@@ -125,23 +129,22 @@ def update_stats():
         last_ct = ct
 
 
-threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path, on_decode,)).start()
-
-threading.Thread(target=update_stats).start()    
-
-cycle_manager = Cycle_manager(FT8, on_PyFT8_decode, onOccupancy = None, input_device_keywords = ['Microphone', 'CODEC'],
-                              sync_score_thresh = 3.5, max_ncheck = 32, max_iters = 15, verbose = True)
 
 with open('live_compare_cycle_stats.csv', 'w') as f:
     f.write("nWSJTX,nPyFT8,nBoth\n")
+    
+threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path, on_decode,)).start()
+threading.Thread(target=update_stats).start()    
+cycle_manager = Cycle_manager(FT8, on_PyFT8_decode, onOccupancy = None, sync_score_thresh = 2.2,
+                              input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
 
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("\nStopping PyFT8 Rx")
-        cycle_manager.running = False
-        running = False
+try:
+    while True:
+        time.sleep(1)
+except KeyboardInterrupt:
+    print("\nStopping PyFT8 Rx")
+    cycle_manager.running = False
+    running = False
 
 
     
