@@ -38,7 +38,7 @@ class LDPC174_91:
             n = (n << 1) | (b & 1)
         return n
 
-    def decode(self, llr, max_iters, max_ncheck):
+    def decode(self, llr0, max_iters, max_ncheck):
 
         def get_ncheck(llr):
             synd_checks = [ sum(1 for llr_bit in llr[self.synd_check_idxs[i]] if llr_bit > 0) %2 for i in range(83)]
@@ -54,26 +54,35 @@ class LDPC174_91:
           
         Lmn = np.zeros((83, 7), dtype=np.float32)        
         alpha = 1.18
+        offsets = [-0.1, 0.1, -0.25, 0.25, -0.5, 0.5, -1, 1, -2, 2, 0]
+        offset_counter = 0
+        llr = llr0.copy()
+        
+        ncheck_hist = []
+        for n_its in range(max_iters + len(offsets)):
 
-        for n_its in range(max_iters):
             ncheck = get_ncheck(llr)
-            if n_its == 0:
-                ncheck_initial = ncheck
+            if(n_its == 0): ncheck_initial =  ncheck
+            if(ncheck > 30 and offset_counter < len(offsets)-1):
+                llr = llr0 + offsets[offset_counter]
+                offset_counter +=1
             payload_bits = get_payload_bits(llr) if ncheck == 0 else []
+            ncheck_hist.append(ncheck)
             if payload_bits or ncheck > max_ncheck: break
 
-            delta = np.zeros_like(llr)
-            for m in range(83):
-                deg = self.check_deg[m]
-                v = self.check_vars[m, :deg]
-                Lnm = llr[v] - Lmn[m, :deg]
-                t = np.tanh(-Lnm)         
-                prod = np.prod(t) / t                       
-                new = prod / ((prod - alpha) * (alpha + prod))
-                delta[v] += new - Lmn[m, :deg]
-                Lmn[m, :deg] = new
-            llr += delta    
+            if(ncheck <= 30 or offset_counter >= len(offsets)-1):
+                delta = np.zeros_like(llr)
+                for m in range(83):
+                    deg = self.check_deg[m]
+                    v = self.check_vars[m, :deg]
+                    Lnm = llr[v] - Lmn[m, :deg]
+                    t = np.tanh(-Lnm)         
+                    prod = np.prod(t) / t                       
+                    new = prod / ((prod - alpha) * (alpha + prod))
+                    delta[v] += new - Lmn[m, :deg]
+                    Lmn[m, :deg] = new
+                llr += delta    
 
-        return (payload_bits, ncheck_initial, n_its, llr)
+        return (payload_bits, ncheck_initial, n_its, ncheck_hist, llr)
 
 

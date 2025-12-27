@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import numpy as np
 import time
 from .audio import find_device, AudioIn
-from .decode174_91_v6_0 import LDPC174_91
+from .decode174_91_v7_0 import LDPC174_91
 from .FT8_unpack import FT8_unpack
 import pyaudio
 import queue
@@ -117,72 +117,16 @@ class Candidate:
             success = bool(payload_bits),
             result = SimpleNamespace(
                 payload_bits = payload_bits,
-                llr_from_ldpc = ldpc_res[3] if ldpc_res else None
-            ),
-            metrics = SimpleNamespace(
-                ncheck_initial = ldpc_res[1] if ldpc_res else None,
-                n_its = ldpc_res[2] if ldpc_res else None
-            )
-        )
-        if(payload_bits): onSuccess(self, payload_bits)
-            
-
-
-    def osd(self, max_iters, max_ncheck, onSuccess):
-        self.pipeline.osd.start()
-        #llr = self.pipeline.demap.result
-        llr = self.pipeline.ldpc.result.llr_from_ldpc
-        for offset in [0.1,-0.1, 0.4,-0.4, 0.8,-0.8, 1.6,-1.6, 3.2,-3.2]:
-            ldpc_res = ldpc.decode(llr + offset, 5, 40)
-            payload_bits = ldpc_res[0] if ldpc_res else None
-            if(payload_bits): break
-        self.pipeline.osd.complete(
-            success = bool(payload_bits),
-            result = SimpleNamespace(
-                payload_bits = payload_bits,
+                llr_from_ldpc = ldpc_res[4] if ldpc_res else None
             ),
             metrics = SimpleNamespace(
                 ncheck_initial = ldpc_res[1] if ldpc_res else None,
                 n_its = ldpc_res[2] if ldpc_res else None,
-                n_to_flip = 0, 
-                n_flipped  = offset
+                ncheck_hist = ldpc_res[3] if ldpc_res else None
             )
         )
         if(payload_bits): onSuccess(self, payload_bits)
-
-    def osd_(self, max_iters, max_ncheck, onSuccess):
-        self.pipeline.osd.start()
-        llr = self.pipeline.ldpc.result.llr_from_ldpc
-        K = 15   # magic %
-        BIG = 40.0   # magic
-        abs_llr = np.abs(llr)
-        thresh = np.percentile(abs_llr, K)
-        conf_idx = np.argsort(abs_llr)
-        n_to_flip = len([b for b in abs_llr if b < thresh])
-        llr[conf_idx[n_to_flip:]] = BIG * np.sign(llr[conf_idx[n_to_flip:]])
-        n_flipped = 0
-        for iflip in range(n_to_flip):
-            n_flipped  +=1
-            idx = conf_idx[iflip]
-            tmp = llr[idx] 
-            llr[idx] = -BIG * np.sign(llr[idx])
-            ldpc_res = ldpc.decode(llr, max_iters, max_ncheck)
-            payload_bits = ldpc_res[0] if ldpc_res else None
-            if(payload_bits): break
-            llr[idx] = tmp
             
-        payload_bits = ldpc_res[0] if ldpc_res else None
-        self.pipeline.osd.complete(
-            success = bool(payload_bits),
-            result = SimpleNamespace(payload_bits = payload_bits),
-            metrics = SimpleNamespace(
-                ncheck_initial = ldpc_res[1] if ldpc_res else None,
-                n_its = ldpc_res[2] if ldpc_res else None,
-                n_to_flip = n_to_flip, 
-                n_flipped  = n_flipped 
-            )
-        )
-        if(payload_bits): onSuccess(self, payload_bits)
 
     @property
     def snr(self):
@@ -368,14 +312,14 @@ class Cycle_manager():
                 for c in to_ldpc[:1]:
                     c.ldpc(self.max_iters, self.max_ncheck, self.process_decode)
 
-            if(not len(to_demap)):
-                if self.spectrum.cycle_time() < self.sigspec.cycle_seconds - 0.5:
-                    if not len(to_ldpc):
-                        with self.cands_lock:
-                            to_osd = [c for c in self.cands_list if c.pipeline.ldpc.has_completed and not c.pipeline.ldpc.success and not c.pipeline.osd.has_started]
-                        to_osd.sort(key = lambda c: c.pipeline.ldpc.metrics.ncheck_initial)
-                        for c in to_osd[:1]:
-                            c.osd(self.max_iters, self.max_ncheck, self.process_decode)
+         #   if(not len(to_demap)):
+         #       if self.spectrum.cycle_time() < self.sigspec.cycle_seconds - 0.5:
+         #           if not len(to_ldpc):
+         #               with self.cands_lock:
+         #                   to_osd = [c for c in self.cands_list if c.pipeline.ldpc.has_completed and not c.pipeline.ldpc.success and not c.pipeline.osd.has_started]
+         #               to_osd.sort(key = lambda c: c.pipeline.ldpc.metrics.ncheck_initial)
+         #               for c in to_osd[:1]:
+         #                   c.osd(self.max_iters, self.max_ncheck, self.process_decode)
 
             if(self.spectrum.cycle_time() > self.sigspec.cycle_seconds - 0.25 and not self.stats_printed):
                 self.stats_printed = True
