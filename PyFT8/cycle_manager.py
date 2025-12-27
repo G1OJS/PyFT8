@@ -111,21 +111,19 @@ class Candidate:
     def ldpc(self, max_iters, max_ncheck, onSuccess):
         self.pipeline.ldpc.start()
         llr = self.pipeline.demap.result
-        ldpc_res = ldpc.decode(llr, max_iters, max_ncheck)
-        payload_bits = ldpc_res[0] if ldpc_res else None
+        ldpc_res = ldpc.decode(llr)
         self.pipeline.ldpc.complete(
-            success = bool(payload_bits),
+            success = bool(ldpc_res[0]),
             result = SimpleNamespace(
-                payload_bits = payload_bits,
-                llr_from_ldpc = ldpc_res[4] if ldpc_res else None
+                payload_bits = ldpc_res[0],
+                llr_from_ldpc = ldpc_res[2]
             ),
             metrics = SimpleNamespace(
-                ncheck_initial = ldpc_res[1] if ldpc_res else None,
-                n_its = ldpc_res[2] if ldpc_res else None,
-                ncheck_hist = ldpc_res[3] if ldpc_res else None
+                ncheck_hist = ldpc_res[1]
             )
         )
-        if(payload_bits): onSuccess(self, payload_bits)
+        if(self.pipeline.ldpc.success):
+            onSuccess(self, self.pipeline.ldpc.result.payload_bits)
             
 
     @property

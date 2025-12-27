@@ -12,7 +12,7 @@ decodes_lock = threading.Lock()
 
 UID_FIELDS = ('cyclestart_str', 'call_a', 'call_b', 'grid_rpt')
 COMMON_FIELDS = {'t_decode', 'snr', 'dt'}
-PyFT8_FIELDS = {'sync_score', 'ncheck_initial', 'n_its', 'ncheck_hist'}
+PyFT8_FIELDS = {'sync_score', 'ncheck_hist'}
 
 running = True
 
@@ -23,7 +23,6 @@ def on_PyFT8_decode(c):
     decode_dict = {'decoder':'PyFT8', 'cyclestart_str':c.cyclestart_str,
                    'call_a':c.call_a, 'call_b':c.call_b, 'grid_rpt':c.grid_rpt,
                    't_decode':time.time(), 'snr':c.snr, 'dt':c.dt, 'sync_score':c.pipeline.sync.result.score,
-                   'ncheck_initial':c.pipeline.ldpc.metrics.ncheck_initial, 'n_its': c.pipeline.ldpc.metrics.n_its,
                    'ncheck_hist':c.pipeline.ldpc.metrics.ncheck_hist}
     on_decode(decode_dict)
            
@@ -67,7 +66,7 @@ def update_stats():
     last_ct = 0
     logfile = 'live_compare_rows.csv'
 
-    heads = f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'tP':>7} {'tW':>7} {'dtP':>7} {'dtW':>7} {'sync':>7} {'nchk':>7} {'n_its':>7} {'ncheck_hist':>7}"
+    heads = f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'tP':>7} {'tW':>7} {'dtP':>7} {'dtW':>7} {'sync':>7} {'ncheck_hist':>7}"
     with open(logfile, 'w') as f:
         f.write(f"{heads}\n")
         
@@ -108,7 +107,7 @@ def update_stats():
 
                     info = f"{tP} {tW} {dtP} {dtW}"
                     if ('PyFT8_t_decode' in d):
-                        info = info + f" {d['PyFT8_sync_score']:7.1f} {d['PyFT8_ncheck_initial']:>7} {d['PyFT8_n_its']:>7} {d['PyFT8_ncheck_hist']}"
+                        info = info + f" {d['PyFT8_sync_score']:7.1f} {d['PyFT8_ncheck_hist']}"
 
                     #if(decoder == 'BOTH '):
                     row = f"{uid_pretty} {decoder:>7} {info}"
@@ -130,7 +129,7 @@ with open('live_compare_cycle_stats.csv', 'w') as f:
 threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path, on_decode,)).start()
 threading.Thread(target=update_stats).start()    
 cycle_manager = Cycle_manager(FT8, on_PyFT8_decode, onOccupancy = None, input_device_keywords = ['Microphone', 'CODEC'],
-                              sync_score_thresh = 2.8, max_ncheck = 40, max_iters = 15, verbose = True)
+                              sync_score_thresh = 2.8, verbose = True)
 
 try:
     while True:
