@@ -31,7 +31,7 @@ class LDPC174_91:
             n = (n << 1) | (b & 1)
         return n
 
-    def decode(self, llr, max_iters = 25, max_ncheck = 40, ncheck_thresh = 30):
+    def decode(self, llr, max_iters = 25, max_ncheck = 40, ncheck_thresh = 29):
         def ncheck(llrs):
             llr_per_check = llrs[:, self.check_vars]
             valid = self.check_vars != -1
@@ -40,18 +40,25 @@ class LDPC174_91:
 
         Lmn = np.zeros((83, 7), dtype=np.float32)        
         alpha = 1.18
-        offsets = [0.1, 0.25, 0.5, 1, 2, 3, 4]
+        offsets = [0.2*1.15**x for x in range(10)]
         offsets = np.array(offsets + [-o for o in offsets])
-        ncheck_hist = []
-        while (len(ncheck_hist) < max_iters):
-            ncheck_hist.append(int(ncheck(llr[None, :])[0]))
-            if(ncheck_hist[-1] == 0 or ncheck_hist[0] > max_ncheck):
-                break
-            if(ncheck_hist[-1] > ncheck_thresh):
+        ncheck_hist = [int(ncheck(llr[None, :])[0])]
+        offset = 0
+        
+        if(ncheck_hist[0] != 0):
+            
+            if(ncheck_hist[0] > ncheck_thresh):
                 llrs = llr + offsets[:, None]
                 nchecks = ncheck(llrs)
-                llr += offsets[np.argmin(nchecks)]
-            else:
+                best_idx = np.argmin(nchecks)
+                ncheck_hist.append(int(nchecks[best_idx]))
+                offset = offsets[best_idx]
+                llr += offset
+                    
+            while (len(ncheck_hist) < max_iters):
+                ncheck_hist.append(int(ncheck(llr[None, :])[0]))
+                if(ncheck_hist[-1] == 0 or ncheck_hist[0] > max_ncheck):
+                    break
                 delta = np.zeros_like(llr)
                 for m in range(83):
                     deg = self.check_deg[m]
@@ -70,6 +77,6 @@ class LDPC174_91:
             if any(decoded_bits[:77]):
                 if check_crc( self.bitsLE_to_int(decoded_bits[0:91]) ):
                     payload_bits = decoded_bits[:77]
-        return (payload_bits, ncheck_hist, llr)
+        return (payload_bits, ncheck_hist, offset, llr)
 
 

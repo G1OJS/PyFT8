@@ -50,6 +50,7 @@ class Pipeline:
         self.sync = StageProps()
         self.demap = StageProps()
         self.ldpc = StageProps()
+        self.ldpc2 = StageProps()
         self.unpack = StageProps()
 
 class Candidate:
@@ -115,14 +116,36 @@ class Candidate:
             success = bool(ldpc_res[0]),
             result = SimpleNamespace(
                 payload_bits = ldpc_res[0],
-                llr_from_ldpc = ldpc_res[2]
+                llr_from_ldpc = ldpc_res[3]
             ),
             metrics = SimpleNamespace(
-                ncheck_hist = ldpc_res[1]
+                ncheck_hist = ldpc_res[1],
+                offset = ldpc_res[2],
+                info_str = ''
             )
         )
         if(self.pipeline.ldpc.success):
             onSuccess(self, self.pipeline.ldpc.result.payload_bits)
+
+
+    def ldpc2(self, onSuccess):
+        self.pipeline.ldpc2.start()
+        llr = self.pipeline.demap.result
+        ldpc_res = ldpc.decode(llr)
+        self.pipeline.ldpc2.complete(
+            success = bool(ldpc_res[0]),
+            result = SimpleNamespace(
+                payload_bits = ldpc_res[0],
+                llr_from_ldpc = ldpc_res[3]
+            ),
+            metrics = SimpleNamespace(
+                ncheck_hist = ldpc_res[1],
+                offset = ldpc_res[2],
+                info_str = 'pass2'
+            )
+        )
+        if(self.pipeline.ldpc2.success):
+            onSuccess(self, self.pipeline.ldpc2.result.payload_bits)
             
 
     @property
@@ -197,7 +220,7 @@ class Spectrum:
                 c.record_sync(self, *best)
                 cands.append(c)
         cands.sort(key = lambda c: -c.pipeline.sync.result.score)
-        return cands[:135]
+        return cands[:150]
 
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
@@ -248,10 +271,12 @@ class Cycle_manager():
                 sync_completed = [c.pipeline.sync.completed_time for c in self.cands_list if c.pipeline.sync.has_completed]
                 demap_completed = [c.pipeline.demap.completed_time for c in self.cands_list if c.pipeline.demap.has_completed]
                 ldpc_completed = [c.pipeline.ldpc.completed_time for c in self.cands_list if c.pipeline.ldpc.has_completed]
+                ldpc2_completed = [c.pipeline.ldpc2.completed_time for c in self.cands_list if c.pipeline.ldpc2.has_completed]
                 deduped = [c.deduped for c in self.cands_list if c.deduped]
             self.tlog(f"[Cycle manager] sync_completed:   {len(sync_completed)} ({earliest_and_latest(sync_completed)})")
             self.tlog(f"[Cycle manager] demap_completed: {len(demap_completed)} ({earliest_and_latest(demap_completed)})")
             self.tlog(f"[Cycle manager] ldpc_completed:  {len(ldpc_completed)} ({earliest_and_latest(ldpc_completed)})")
+            self.tlog(f"[Cycle manager] ldpc2_completed:  {len(ldpc2_completed)} ({earliest_and_latest(ldpc2_completed)})")
             self.tlog(f"[Cycle manager] deduped:  {len(deduped)} ({earliest_and_latest(deduped)})")            
 
     def manage_cycle(self):
@@ -301,6 +326,17 @@ class Cycle_manager():
                     to_ldpc = [c for c in self.cands_list if c.pipeline.demap.has_completed and not c.pipeline.ldpc.has_started]
                 for c in to_ldpc[:1]:
                     c.ldpc(self.process_decode)
+
+            if(not len(to_demap)):
+                if self.spectrum.cycle_time() < self.sigspec.cycle_seconds - 0.5:
+                    if not len(to_ldpc):
+                        with self.cands_lock:
+                            to_pass2 = [c for c in self.cands_list if c.pipeline.ldpc.has_completed and not c.pipeline.ldpc.success and not c.pipeline.ldpc2.has_started]
+                        to_pass2.sort(key = lambda c: -c.pipeline.sync.result.score)
+                        for c in to_pass2[:1]:
+                            c.demap2(self.spectrum)
+                            c.ldpc2(self.process_decode)
+
 
             if(self.spectrum.cycle_time() > self.sigspec.cycle_seconds - 0.25 and not self.stats_printed):
                 self.stats_printed = True
