@@ -38,8 +38,15 @@ def on_decode(decode_dict):
         decodes[uid].update({'decoder':decoder})
         if(decoder == 'PyFT8'):
             for field in PyFT8_FIELDS:
-                decodes[uid].update({f"{decoder}_{field}": decode_dict[field]}) 
+                decodes[uid].update({f"{decoder}_{field}": decode_dict[field]})
 
+def align_call(call):
+    # whilst PyFT8 not decoding hashed calls and /P etc
+    if("<" in call):
+        call = "<...>"
+    if("/P" in call):
+        call = call.replace("/P","")
+    return call
 
 def wsjtx_all_tailer(all_txt_path, on_decode):
     def follow():
@@ -56,7 +63,7 @@ def wsjtx_all_tailer(all_txt_path, on_decode):
         decode_dict = False
         try:
             decode_dict = {'cyclestart_str':ls[0], 'decoder':'WSJTX', 'freq':ls[6], 't_decode':time.time(),
-                           'dt':float(ls[5]), 'call_a':ls[7], 'call_b':ls[8], 'grid_rpt':ls[9], 'snr':ls[4]}
+                           'dt':float(ls[5]), 'call_a':align_call(ls[7]), 'call_b':align_call(ls[8]), 'grid_rpt':ls[9], 'snr':ls[4]}
         except:
             pass
         if(decode_dict):
@@ -128,8 +135,7 @@ with open('live_compare_cycle_stats.csv', 'w') as f:
     
 threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path, on_decode,)).start()
 threading.Thread(target=update_stats).start()    
-cycle_manager = Cycle_manager(FT8, on_PyFT8_decode, onOccupancy = None, input_device_keywords = ['Microphone', 'CODEC'],
-                              sync_score_thresh = 2.8, verbose = True)
+cycle_manager = Cycle_manager(FT8, on_PyFT8_decode, onOccupancy = None, input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
 
 try:
     while True:

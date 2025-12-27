@@ -50,7 +50,6 @@ class Pipeline:
         self.sync = StageProps()
         self.demap = StageProps()
         self.ldpc = StageProps()
-        self.osd = StageProps()
         self.unpack = StageProps()
 
 class Candidate:
@@ -108,7 +107,7 @@ class Candidate:
             result=llr,
             metrics=SimpleNamespace(pgrid = pgrid, pmax=np.max(pgrid),llr_sd=llr_sd))
 
-    def ldpc(self, max_iters, max_ncheck, onSuccess):
+    def ldpc(self, onSuccess):
         self.pipeline.ldpc.start()
         llr = self.pipeline.demap.result
         ldpc_res = ldpc.decode(llr)
@@ -201,12 +200,10 @@ class Spectrum:
 
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
-                 sync_score_thresh = 3, max_ncheck = 30, max_iters = 10,  max_cycles = 5000, 
+                 sync_score_thresh = 2.8, max_cycles = 5000, 
                  input_device_keywords = None, output_device_keywords = None, verbose = False):
         self.running = True
         self.verbose = verbose
-        self.max_ncheck = max_ncheck
-        self.max_iters = max_iters
         self.audio_in_wav = audio_in_wav
         self.input_device_idx = find_device(input_device_keywords)
         self.output_device_idx = find_device(output_device_keywords)
@@ -250,17 +247,11 @@ class Cycle_manager():
                 sync_completed = [c.pipeline.sync.completed_time for c in self.cands_list if c.pipeline.sync.has_completed]
                 demap_completed = [c.pipeline.demap.completed_time for c in self.cands_list if c.pipeline.demap.has_completed]
                 ldpc_completed = [c.pipeline.ldpc.completed_time for c in self.cands_list if c.pipeline.ldpc.has_completed]
-                osd_completed = [c.pipeline.osd.completed_time for c in self.cands_list if c.pipeline.osd.has_completed]
-                osd_succeeded = [c.pipeline.osd.completed_time for c in self.cands_list if c.pipeline.osd.success]
                 deduped = [c.deduped for c in self.cands_list if c.deduped]
             self.tlog(f"[Cycle manager] sync_completed:   {len(sync_completed)} ({earliest_and_latest(sync_completed)})")
             self.tlog(f"[Cycle manager] demap_completed: {len(demap_completed)} ({earliest_and_latest(demap_completed)})")
             self.tlog(f"[Cycle manager] ldpc_completed:  {len(ldpc_completed)} ({earliest_and_latest(ldpc_completed)})")
-            self.tlog(f"[Cycle manager] osd_completed:  {len(osd_completed)} ({earliest_and_latest(osd_completed)})")
-            self.tlog(f"[Cycle manager] osd_succeeded:  {len(osd_succeeded)} ({earliest_and_latest(osd_succeeded)})")
             self.tlog(f"[Cycle manager] deduped:  {len(deduped)} ({earliest_and_latest(deduped)})")            
-            self.tlog(f"[Cycle manager] osd success rate:  {safe_pc(len(osd_succeeded),len(osd_completed)):5.0f}")
-
 
     def manage_cycle(self):
         cycle_searched = True
@@ -308,16 +299,7 @@ class Cycle_manager():
                 with self.cands_lock:
                     to_ldpc = [c for c in self.cands_list if c.pipeline.demap.has_completed and not c.pipeline.ldpc.has_started]
                 for c in to_ldpc[:1]:
-                    c.ldpc(self.max_iters, self.max_ncheck, self.process_decode)
-
-         #   if(not len(to_demap)):
-         #       if self.spectrum.cycle_time() < self.sigspec.cycle_seconds - 0.5:
-         #           if not len(to_ldpc):
-         #               with self.cands_lock:
-         #                   to_osd = [c for c in self.cands_list if c.pipeline.ldpc.has_completed and not c.pipeline.ldpc.success and not c.pipeline.osd.has_started]
-         #               to_osd.sort(key = lambda c: c.pipeline.ldpc.metrics.ncheck_initial)
-         #               for c in to_osd[:1]:
-         #                   c.osd(self.max_iters, self.max_ncheck, self.process_decode)
+                    c.ldpc(self.process_decode)
 
             if(self.spectrum.cycle_time() > self.sigspec.cycle_seconds - 0.25 and not self.stats_printed):
                 self.stats_printed = True
@@ -328,7 +310,7 @@ class Cycle_manager():
         c.payload_bits = payload_bits
         c.call_a, c.call_b, c.grid_rpt = c.msg[0], c.msg[1], c.msg[2]
         c.cyclestart_str = self.spectrum.cyclestart_str(c.pipeline.demap.started_time)
-        c.dedupe_key = c.cyclestart_str+" "+' '.join(c.msg)+str(c.pipeline.osd.success)
+        c.dedupe_key = c.cyclestart_str+" "+' '.join(c.msg)
         if(not c.dedupe_key in self.duplicate_filter):
             self.duplicate_filter.add(c.dedupe_key)
             c.h0_idx = c.pipeline.sync.result.h0_idx

@@ -39,19 +39,6 @@ class LDPC174_91:
         return n
 
     def decode(self, llr0, max_iters = 25, max_ncheck = 40, ncheck_thresh = 30):
-
-        def get_ncheck(llr):
-            synd_checks = [ sum(1 for llr_bit in llr[self.synd_check_idxs[i]] if llr_bit > 0) %2 for i in range(83)]
-            return int(np.sum(synd_checks))
-
-        def get_payload_bits(llr):
-            decoded_bits174_LE_list = (llr > 0).astype(int).tolist() 
-            decoded_bits91_int = self.bitsLE_to_int(decoded_bits174_LE_list[0:91]) 
-            payload_bits = decoded_bits174_LE_list if check_crc(decoded_bits91_int) else []
-            if(len(payload_bits)):
-                if(np.sum(payload_bits[:77]) ==0): payload_bits = []
-            return payload_bits
-          
         Lmn = np.zeros((83, 7), dtype=np.float32)        
         alpha = 1.18
         offsets = [-0.1, 0.1, -0.25, 0.25, -0.5, 0.5, -1, 1, -2, 2, 0]
@@ -59,23 +46,16 @@ class LDPC174_91:
         llr = llr0.copy()
         
         ncheck_hist = []
-        payload_bits = []
         while (len(ncheck_hist) < max_iters):
-
-            ncheck_hist.append(get_ncheck(llr))
-            
-            if(ncheck_hist[-1] > max_ncheck):
+            ncheck = int(np.sum([ sum(1 for llr_bit in llr[self.synd_check_idxs[i]] if llr_bit > 0) %2 for i in range(83)]))
+            ncheck_hist.append(ncheck)
+            if(ncheck_hist[-1] == 0 or ncheck_hist[0] > max_ncheck):
                 break
             
             if(ncheck_hist[-1] > ncheck_thresh and offset_counter < len(offsets)):
                 llr = llr0 + offsets[offset_counter]
                 offset_counter +=1
-                
-            payload_bits = get_payload_bits(llr) if ncheck_hist[-1] == 0 else []
-            if payload_bits:
-                break
-
-            if(ncheck_hist[-1] <= ncheck_thresh or offset_counter >= len(offsets)-1):
+            else:
                 delta = np.zeros_like(llr)
                 for m in range(83):
                     deg = self.check_deg[m]
@@ -88,6 +68,12 @@ class LDPC174_91:
                     Lmn[m, :deg] = new
                 llr += delta    
 
+        payload_bits = []
+        if(ncheck_hist[-1] == 0):
+            decoded_bits = (llr > 0).astype(int).tolist()
+            if any(decoded_bits[:77]):
+                if check_crc( self.bitsLE_to_int(decoded_bits[0:91]) ):
+                    payload_bits = decoded_bits[:77]
         return (payload_bits, ncheck_hist, llr)
 
 

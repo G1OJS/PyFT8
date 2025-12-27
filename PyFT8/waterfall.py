@@ -34,7 +34,6 @@ class Waterfall:
         
         cands_for_plot = candidates.copy()
         def candsort(c):
-            if(c.pipeline.osd.success): return 2
             if(c.pipeline.ldpc.success): return 1
             return 0
         cands_for_plot.sort(key = lambda c: candsort(c))
@@ -43,7 +42,6 @@ class Waterfall:
                 origin_img = (c.pipeline.sync.result.f0_idx, c.pipeline.sync.result.h0_idx)
                 cand_color = "lightgrey"
                 if(c.pipeline.ldpc.success): cand_color = "lime"
-                if(c.pipeline.osd.success): cand_color = "blue"
                 rect = patches.Rectangle(origin_img, self.spectrum.sigspec.tones_persymb * self.spectrum.fbins_pertone,
                                          self.spectrum.sigspec.num_symbols * self.spectrum.hops_persymb,
                   linewidth=1.2,edgecolor=cand_color, facecolor="none"
