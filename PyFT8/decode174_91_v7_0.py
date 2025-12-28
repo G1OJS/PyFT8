@@ -31,7 +31,7 @@ class LDPC174_91:
             n = (n << 1) | (b & 1)
         return n
 
-    def decode(self, llr, max_iters = 15, max_ncheck = 40, ncheck_thresh = 29):
+    def decode(self, llr, max_iters = 15, max_iters2 = 35, max_ncheck = 90, ncheck_thresh = 28):
         def ncheck(llrs):
             llr_per_check = llrs[:, self.check_vars]
             valid = self.check_vars != -1
@@ -46,7 +46,7 @@ class LDPC174_91:
         if(ncheck_hist[0] != 0):
             
             if(ncheck_hist[0] > ncheck_thresh):
-                offsets = [.1,.2,.3,.4,.5,.6,.7,.8,.9,1,1.1,1.2,1.3,1.4,1.5]
+                offsets = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0,2.1]
                 offsets = np.array(offsets + [-o for o in offsets])
                 llrs = llr + offsets[:, None]
                 nchecks = ncheck(llrs)
@@ -54,22 +54,25 @@ class LDPC174_91:
                 ncheck_hist.append(int(nchecks[best_idx]))
                 offset = offsets[best_idx]
                 llr += offset
-                    
-            while (len(ncheck_hist) < max_iters):
-                ncheck_hist.append(int(ncheck(llr[None, :])[0]))
-                if(ncheck_hist[-1] == 0 or ncheck_hist[0] > max_ncheck):
-                    break
-                delta = np.zeros_like(llr)
-                for m in range(83):
-                    deg = self.check_deg[m]
-                    v = self.check_vars[m, :deg]
-                    Lnm = llr[v] - Lmn[m, :deg]
-                    t = np.tanh(-Lnm)         
-                    prod = np.prod(t) / t                       
-                    new = prod / ((prod - alpha) * (alpha + prod))
-                    delta[v] += new - Lmn[m, :deg]
-                    Lmn[m, :deg] = new
-                llr += delta    
+
+            if(ncheck_hist[-1] <= ncheck_thresh):        
+                while (len(ncheck_hist) < max_iters2):
+                    ncheck_hist.append(int(ncheck(llr[None, :])[0]))
+                    if(ncheck_hist[-1] == 0 or ncheck_hist[0] > max_ncheck):
+                        break
+                    if(ncheck_hist[-1] > 15 and len(ncheck_hist) > max_iters):
+                        break
+                    delta = np.zeros_like(llr)
+                    for m in range(83):
+                        deg = self.check_deg[m]
+                        v = self.check_vars[m, :deg]
+                        Lnm = llr[v] - Lmn[m, :deg]
+                        t = np.tanh(-Lnm)         
+                        prod = np.prod(t) / t                       
+                        new = prod / ((prod - alpha) * (alpha + prod))
+                        delta[v] += new - Lmn[m, :deg]
+                        Lmn[m, :deg] = new
+                    llr += delta    
 
         payload_bits = []
         if(ncheck_hist[-1] == 0):
