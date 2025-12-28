@@ -50,6 +50,7 @@ class Pipeline:
         self.sync = StageProps()
         self.demap = StageProps()
         self.ldpc = StageProps()
+        self.ldpc2 = StageProps()
         self.unpack = StageProps()
 
 class Candidate:
@@ -89,24 +90,6 @@ class Candidate:
             result=llr,
             metrics=SimpleNamespace(pgrid = pgrid, pmax=np.max(pgrid),llr_sd=llr_sd))
 
-
-    def demap2(self, spectrum):
-        self.pipeline.demap.start()
-        payload_hop_idxs = self.pipeline.sync.result.payload_hop_idxs
-        freq_idxs = self.pipeline.sync.result.freq_idxs
-        pgrid = spectrum.pgrid_fine[np.ix_(payload_hop_idxs, freq_idxs)]
-        pvt = np.mean(pgrid, axis = 1)
-        pgrid_n = pgrid / pvt[:,None]
-        llr0 = np.log(np.sum(pgrid_n[:, [4,5,6,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,1,2,3]], axis=1))
-        llr1 = np.log(np.sum(pgrid_n[:, [2,3,4,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,1,5,6]], axis=1))
-        llr = np.log(np.sum(pgrid_n[:, [1,2,6,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,3,4,5]], axis=1))
-        llr = np.column_stack((llr0, llr1, llr)).ravel()
-        llr_sd = np.std(llr)
-        llr = 3.8 * llr / llr_sd
-        self.pipeline.demap.complete(success=True,
-            result=llr,
-            metrics=SimpleNamespace(pgrid = pgrid, pmax=np.max(pgrid),llr_sd=llr_sd))
-
     def ldpc(self, onSuccess):
         self.pipeline.ldpc.start()
         llr = self.pipeline.demap.result
@@ -115,15 +98,16 @@ class Candidate:
             success = bool(ldpc_res[0]),
             result = SimpleNamespace(
                 payload_bits = ldpc_res[0],
-                llr_from_ldpc = ldpc_res[2]
+                llr_from_ldpc = ldpc_res[3]
             ),
             metrics = SimpleNamespace(
-                ncheck_hist = ldpc_res[1]
+                ncheck_hist = ldpc_res[1],
+                offset = ldpc_res[2],
+                info_str = ''
             )
         )
         if(self.pipeline.ldpc.success):
             onSuccess(self, self.pipeline.ldpc.result.payload_bits)
-            
 
     @property
     def snr(self):
@@ -197,11 +181,11 @@ class Spectrum:
                 c.record_sync(self, *best)
                 cands.append(c)
         cands.sort(key = lambda c: -c.pipeline.sync.result.score)
-        return cands[:135]
+        return cands
 
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
-                 sync_score_thresh = 2.8, max_cycles = 5000, 
+                 sync_score_thresh = 2.5, max_for_ldpc = 400, max_cycles = 5000, 
                  input_device_keywords = None, output_device_keywords = None, verbose = False):
         self.running = True
         self.verbose = verbose
@@ -212,6 +196,7 @@ class Cycle_manager():
         self.cands_list = []
         self.cands_lock = threading.Lock()
         self.sync_score_thresh = sync_score_thresh
+        self.max_for_ldpc = max_for_ldpc
         self.duplicate_filter = set()
         self.onSuccessfulDecode = onSuccessfulDecode
         self.onOccupancy = onOccupancy
@@ -288,7 +273,7 @@ class Cycle_manager():
                     if(self.verbose): self.tlog(f"[Cycle manager] Spectrum searched -> {len(new_cands)} candidates")
                     if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
                     with self.cands_lock:
-                        self.cands_list = self.cands_list + new_cands
+                        self.cands_list = self.cands_list + new_cands[:self.max_for_ldpc]
 
             if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap):
                 with self.cands_lock:
