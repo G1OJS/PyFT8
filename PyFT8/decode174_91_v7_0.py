@@ -31,7 +31,7 @@ class LDPC174_91:
             n = (n << 1) | (b & 1)
         return n
 
-    def decode(self, llr, max_iters = 15, ncheck_thresh = 28, double_its_thresh = 7):
+    def decode(self, llr, max_iters = 15, ncheck_thresh = 28, double_its_thresh = 5):
         def ncheck(llrs):
             llr_per_check = llrs[:, self.check_vars]
             valid = self.check_vars != -1

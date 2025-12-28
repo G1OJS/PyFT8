@@ -73,12 +73,8 @@ def wsjtx_all_tailer(all_txt_path, on_decode):
 
 def update_stats():
     last_ct = 0
-    logfile = 'live_compare_rows.csv'
-
     heads = f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'tP':>7} {'tW':>7} {'dtP':>7} {'dtW':>7} {'sync':>7} {'offset':>7} {'info':>7} {'ncheck_hist':>7}"
-    with open(logfile, 'w') as f:
-        f.write(f"{heads}\n")
-        
+
     while running:
         time.sleep(1)
         ct = time.time() % 15
@@ -121,8 +117,6 @@ def update_stats():
                     #if(decoder == 'BOTH '):
                     row = f"{uid_pretty} {decoder:>7} {info}"
                     print(row)
-                    with open(logfile, 'a') as f:
-                        f.write(f"{row}\n")
                 pc = int(100*(nP+nB) / (nW+nB+0.001))
                 print(f"WSJTX:{nW+nB}, PyFT8: {nP+nB} ({pc}%)")
                 with open('live_compare_cycle_stats.csv', 'a') as f:
@@ -139,7 +133,7 @@ threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path, on_decode,)).sta
 threading.Thread(target=update_stats).start()    
 cycle_manager = Cycle_manager(FT8, on_PyFT8_decode, onOccupancy = None,
                               sync_score_thresh = 1.6,
-                              max_for_ldpc = 500,
+                              max_for_ldpc = 5000,
                               input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
 
 try:
