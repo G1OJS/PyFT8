@@ -185,7 +185,7 @@ class Spectrum:
 
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
-                 sync_score_thresh = 2.8, max_for_ldpc = 200, max_cycles = 5000, 
+                 sync_score_thresh = 2.5, max_for_ldpc = 400, max_cycles = 5000, 
                  input_device_keywords = None, output_device_keywords = None, verbose = False):
         self.running = True
         self.verbose = verbose
