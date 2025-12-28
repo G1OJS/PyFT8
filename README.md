@@ -79,6 +79,11 @@ code doesn't (yet) have the full capability of the advanced decoders used in WSJ
 |Further decoding if LDPC fails| None | Ordered Statistics Decoding |
 |Further signal extraction | None | Subtraction of the idealised power of the decoded signals, then rescanning the residual spectrum. Further synchronisation adjustments TBC|
 
+## Performance
+As of 28th Dec 2025, PyFT8 decodes around 50 to 100% of WSJTx decodes when the latter is set to "FAST" decoding, with an average around 65%.
+<img width="640" height="480" alt="Figure_1" src="https://github.com/user-attachments/assets/adbb2536-d63d-42ed-aaa5-8823785d8b04" />
+
+
 ## Acknowledgements
 This project implements a decoder for the FT8 digital mode.
 FT8 was developed by Joe Taylor, K1JT, Steve Franke, K9AN, and others as part of the WSJT-X project.
