@@ -46,7 +46,7 @@ class LDPC174_91:
         if(ncheck_hist[0] != 0):
             
             if(ncheck_hist[0] > ncheck_thresh):
-                offsets = [0.1*1.4**x for x in range(10)]
+                offsets = [.1,.2,.3,.4,.5,.6,.7,.8,.9,1,1.1,1.2,1.3,1.4,1.5]
                 offsets = np.array(offsets + [-o for o in offsets])
                 llrs = llr + offsets[:, None]
                 nchecks = ncheck(llrs)
