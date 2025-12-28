@@ -31,7 +31,7 @@ class LDPC174_91:
             n = (n << 1) | (b & 1)
         return n
 
-    def decode(self, llr, max_iters = 15, max_iters2 = 35, max_ncheck = 90, ncheck_thresh = 28):
+    def decode(self, llr, max_iters = 15, max_ncheck = 90, ncheck_thresh = 28):
         def ncheck(llrs):
             llr_per_check = llrs[:, self.check_vars]
             valid = self.check_vars != -1
@@ -56,11 +56,9 @@ class LDPC174_91:
                 llr += offset
 
             if(ncheck_hist[-1] <= ncheck_thresh):        
-                while (len(ncheck_hist) < max_iters2):
+                while (len(ncheck_hist) < max_iters):
                     ncheck_hist.append(int(ncheck(llr[None, :])[0]))
                     if(ncheck_hist[-1] == 0 or ncheck_hist[0] > max_ncheck):
-                        break
-                    if(ncheck_hist[-1] > 15 and len(ncheck_hist) > max_iters):
                         break
                     delta = np.zeros_like(llr)
                     for m in range(83):
