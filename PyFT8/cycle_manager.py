@@ -181,11 +181,11 @@ class Spectrum:
                 c.record_sync(self, *best)
                 cands.append(c)
         cands.sort(key = lambda c: -c.pipeline.sync.result.score)
-        return cands[:150]
+        return cands
 
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
-                 sync_score_thresh = 2.8, max_cycles = 5000, 
+                 sync_score_thresh = 2.8, max_for_ldpc = 200, max_cycles = 5000, 
                  input_device_keywords = None, output_device_keywords = None, verbose = False):
         self.running = True
         self.verbose = verbose
@@ -196,6 +196,7 @@ class Cycle_manager():
         self.cands_list = []
         self.cands_lock = threading.Lock()
         self.sync_score_thresh = sync_score_thresh
+        self.max_for_ldpc = max_for_ldpc
         self.duplicate_filter = set()
         self.onSuccessfulDecode = onSuccessfulDecode
         self.onOccupancy = onOccupancy
@@ -272,7 +273,7 @@ class Cycle_manager():
                     if(self.verbose): self.tlog(f"[Cycle manager] Spectrum searched -> {len(new_cands)} candidates")
                     if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
                     with self.cands_lock:
-                        self.cands_list = self.cands_list + new_cands
+                        self.cands_list = self.cands_list + new_cands[:self.max_for_ldpc]
 
             if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap):
                 with self.cands_lock:

@@ -56,7 +56,7 @@ class LDPC174_91:
                 llr += offset
 
             if(ncheck_hist[-1] <= ncheck_thresh):        
-                while (len(ncheck_hist) < max_iters):
+                while (len(ncheck_hist) < max_iters or ncheck_hist[-1] < 6 and len(ncheck_hist) < max_iters * 2):
                     ncheck_hist.append(int(ncheck(llr[None, :])[0]))
                     if(ncheck_hist[-1] == 0 or ncheck_hist[0] > max_ncheck):
                         break
