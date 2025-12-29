@@ -73,7 +73,7 @@ def wsjtx_all_tailer(all_txt_path, on_decode):
 
 def update_stats():
     last_ct = 0
-    heads = f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'tP':>7} {'tW':>7} {'dtP':>7} {'dtW':>7} {'sync':>7} {'info':>7}"
+    heads = f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'tP':>7} {'tW':>7} {'dtP':>7} {'dtW':>7} {'info':>7}"
 
     while running:
         time.sleep(1)
@@ -112,7 +112,7 @@ def update_stats():
 
                     info = f"{tP} {tW} {dtP} {dtW}"
                     if ('PyFT8_t_decode' in d):
-                        info = info + f" {d['PyFT8_sync_score']:7.1f} {d['PyFT8_info_str']:>7}"
+                        info = info + f" {d['PyFT8_info_str']:>7}"
 
                     #if(decoder == 'BOTH '):
                     row = f"{uid_pretty} {decoder:>7} {info}"
@@ -132,8 +132,6 @@ with open('live_compare_cycle_stats.csv', 'w') as f:
 threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path, on_decode,)).start()
 threading.Thread(target=update_stats).start()    
 cycle_manager = Cycle_manager(FT8, on_PyFT8_decode, onOccupancy = None,
-                              sync_score_thresh = 1.8,
-                              max_for_ldpc = 500,
                               input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
 
 try:

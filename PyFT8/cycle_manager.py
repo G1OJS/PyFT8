@@ -86,19 +86,20 @@ class Candidate:
         llr = np.column_stack((llr0, llr1, llr)).ravel()
         llr_sd = np.std(llr)
         llr = 3.8 * llr / llr_sd
+        ncheck = ldpc.ncheck_single(llr)
         self.pipeline.demap.complete(success=True,
-            result=llr,
-            metrics=SimpleNamespace(pgrid = pgrid, pmax=np.max(pgrid),llr_sd=llr_sd))
+            result  = SimpleNamespace(llr = llr, ncheck = ncheck),
+            metrics = SimpleNamespace(pgrid = pgrid, pmax=np.max(pgrid),llr_sd=llr_sd))
 
     def ldpc(self, onSuccess):
         info = ''
-        max_iters = [8,12]
+        max_iters = [8,15]
         for rpt in [0,1]:
             self.pipeline.ldpc.start()
             if(rpt == 0):
-                llr = self.pipeline.demap.result.copy()
+                llr = self.pipeline.demap.result.llr
             ldpc_res = ldpc.decode(llr, max_iters = max_iters[rpt])
-            info = info + f"{ldpc_res[2]:5.2f},{ldpc_res[1][0]}->{ldpc_res[1][-1]};"
+            info = info + f"{ldpc_res[2]:5.2f},{','.join([str(h) for h in ldpc_res[1]])};"
             self.pipeline.ldpc.complete(
                 success = bool(ldpc_res[0]),
                 result = SimpleNamespace(
@@ -170,7 +171,7 @@ class Spectrum:
             self.pgrid_fine[self.pgrid_fine_ptr] = p
             self.pgrid_fine_ptr = (self.pgrid_fine_ptr + 1) % self.hops_percycle
 
-    def search(self, sync_score_thresh):
+    def search(self):
         cands = []
         f0_idxs = range(self.nFreqs - self.fbins_per_signal)
         pgrid = self.pgrid_fine[:self.h_search,:]
@@ -184,27 +185,24 @@ class Spectrum:
                 test = (t0_idx, f0_idx, float(np.dot(pnorm[t0_idx + self.hop_idxs_Costas ,  :].ravel(), self._csync.ravel())))
                 if test[2] > best[2]:
                     best = test
-            if(best[2] > sync_score_thresh):
-                c = Candidate()
-                c.record_sync(self, *best)
-                cands.append(c)
-        cands.sort(key = lambda c: -c.pipeline.sync.result.score)
+            c = Candidate()
+            c.record_sync(self, *best)
+            cands.append(c)
         return cands
 
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
-                 sync_score_thresh = 2.5, max_for_ldpc = 400, max_cycles = 5000, 
+                 ncheck_max = 35, max_cycles = 5000, 
                  input_device_keywords = None, output_device_keywords = None, verbose = False):
         self.running = True
         self.verbose = verbose
+        self.ncheck_max = ncheck_max
         self.audio_in_wav = audio_in_wav
         self.input_device_idx = find_device(input_device_keywords)
         self.output_device_idx = find_device(output_device_keywords)
         self.max_cycles = max_cycles
         self.cands_list = []
         self.cands_lock = threading.Lock()
-        self.sync_score_thresh = sync_score_thresh
-        self.max_for_ldpc = max_for_ldpc
         self.duplicate_filter = set()
         self.onSuccessfulDecode = onSuccessfulDecode
         self.onOccupancy = onOccupancy
@@ -239,11 +237,14 @@ class Cycle_manager():
             def earliest_and_latest(arr): return f"first {np.min(arr)%15 :5.2f}, last {np.max(arr)%15 :5.2f}" if arr else ''
             with self.cands_lock:
                 sync_completed = [c.pipeline.sync.completed_time for c in self.cands_list if c.pipeline.sync.has_completed]
-                demap_completed = [c.pipeline.demap.completed_time for c in self.cands_list if c.pipeline.demap.has_completed]
+                demapped = [c for c in self.cands_list if c.pipeline.demap.has_completed]
+                demap_completed = [c.pipeline.demap.completed_time for c in demapped if c.pipeline.demap.has_completed]
+                demap_valid_ncheck = [c.pipeline.demap.completed_time for c in demapped if c.pipeline.demap.result.ncheck <= self.ncheck_max]
                 ldpc_completed = [c.pipeline.ldpc.completed_time for c in self.cands_list if c.pipeline.ldpc.has_completed]
                 deduped = [c.deduped for c in self.cands_list if c.deduped]
             self.tlog(f"[Cycle manager] sync_completed:   {len(sync_completed)} ({earliest_and_latest(sync_completed)})")
             self.tlog(f"[Cycle manager] demap_completed: {len(demap_completed)} ({earliest_and_latest(demap_completed)})")
+            self.tlog(f"[Cycle manager] ncheck_valid: {len(demap_valid_ncheck)} ({earliest_and_latest(demap_valid_ncheck)})")
             self.tlog(f"[Cycle manager] ldpc_completed:  {len(ldpc_completed)} ({earliest_and_latest(ldpc_completed)})")
             self.tlog(f"[Cycle manager] deduped:  {len(deduped)} ({earliest_and_latest(deduped)})")            
 
@@ -277,11 +278,11 @@ class Cycle_manager():
             if (self.spectrum.pgrid_fine_ptr > self.spectrum.h_search and not cycle_searched):
                     cycle_searched = True
                     if(self.verbose): self.tlog(f"[Cycle manager] Search spectrum ...")
-                    new_cands = self.spectrum.search(self.sync_score_thresh)
+                    new_cands = self.spectrum.search()
                     if(self.verbose): self.tlog(f"[Cycle manager] Spectrum searched -> {len(new_cands)} candidates")
                     if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
                     with self.cands_lock:
-                        self.cands_list = self.cands_list + new_cands[:self.max_for_ldpc]
+                        self.cands_list = self.cands_list + new_cands
 
             if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap):
                 with self.cands_lock:
@@ -291,7 +292,12 @@ class Cycle_manager():
                 for c in to_demap[:5]:
                     c.demap(self.spectrum)
                 with self.cands_lock:
-                    to_ldpc = [c for c in self.cands_list if c.pipeline.demap.has_completed and not c.pipeline.ldpc.has_started]
+                    demapped = [c for c in self.cands_list if c.pipeline.demap.has_completed]
+                    to_ldpc =  [c for c in demapped if c.pipeline.demap.result.ncheck <= self.ncheck_max
+                                and not c.pipeline.ldpc.has_started]
+                    if(len(demapped) < len(self.cands_list)):
+                       to_ldpc = [c for c in to_ldpc if c.pipeline.demap.result.ncheck <= 28]
+                        
                 for c in to_ldpc[:1]:
                     c.ldpc(self.process_decode)
 

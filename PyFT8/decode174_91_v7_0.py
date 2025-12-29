@@ -31,6 +31,12 @@ class LDPC174_91:
             n = (n << 1) | (b & 1)
         return n
 
+    def ncheck_single(self, llr):
+        llr_check = llr[self.check_vars]
+        valid = self.check_vars != -1
+        parity = (np.sum((llr_check > 0) & valid, axis=1) & 1) 
+        return np.sum(parity)
+
     def decode(self, llr, max_iters = 15, ncheck_thresh_offset_search = 28, ncheck_max_ldpc = 28, double_its_thresh = 5):
         def ncheck(llrs):
             llr_per_check = llrs[:, self.check_vars]
