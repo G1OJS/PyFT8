@@ -116,19 +116,32 @@ class Candidate:
         return offsets[best_idx], ncheck
 
     def decode(self, onSuccess):
-        llr = self.pipeline.demap.result.llr
         offset = 0
+        threshold = 25
 
         self.pipeline.decode.start()
-        if(self.ncheck_hist[-1] > 0 and self.ncheck_hist[-1] < 25 ):
-            llr, self.ncheck_hist = ldpc.decode(llr, self.ncheck_hist, max_iters = 8)
 
-        if(self.ncheck_hist[-1] > 25):
+        # 1) if > threshold, pick best offset and apply
+        llr = self.pipeline.demap.result.llr.copy()
+        if(self.ncheck_hist[-1] > threshold):
             offset, nchk = self.find_llr_offset(llr)
-            if(nchk < self.ncheck_hist[-1] and nchk <= 25):
+            if(nchk < self.ncheck_hist[-1]):
                 self.ncheck_hist.append(nchk)
                 llr += offset
-                llr, self.ncheck_hist = ldpc.decode(llr, self.ncheck_hist, max_iters = 8)
+                
+        # if < threshold, ldpc1
+        if(self.ncheck_hist[-1] > 0 and self.ncheck_hist[-1] < threshold):
+            llr, self.ncheck_hist = ldpc.decode(llr, self.ncheck_hist, max_iters = 8)
+
+        # 2) if > 0, try more iterations using exit llrs
+        if(self.ncheck_hist[-1] > 0):
+            llr, self.ncheck_hist = ldpc.decode(llr, self.ncheck_hist, max_iters = 8)
+
+        # 3) if > 0 and we had an offset, try again using no offset
+        if(self.ncheck_hist[-1] > 0 and offset != 0):
+            offset = 0
+            llr = self.pipeline.demap.result.llr.copy()
+            llr, self.ncheck_hist = ldpc.decode(llr, self.ncheck_hist, max_iters = 8)
 
         payload_bits = []
         if(self.ncheck_hist[-1] == 0):
