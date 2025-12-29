@@ -132,8 +132,8 @@ with open('live_compare_cycle_stats.csv', 'w') as f:
 threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path, on_decode,)).start()
 threading.Thread(target=update_stats).start()    
 cycle_manager = Cycle_manager(FT8, on_PyFT8_decode, onOccupancy = None,
-                              sync_score_thresh = 2,
-                              max_for_ldpc = 400,
+                              sync_score_thresh = 1.8,
+                              max_for_ldpc = 500,
                               input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
 
 try:

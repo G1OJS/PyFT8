@@ -92,7 +92,7 @@ class Candidate:
 
     def ldpc(self, onSuccess):
         info = ''
-        max_iters = [8,20]
+        max_iters = [8,12]
         for rpt in [0,1]:
             self.pipeline.ldpc.start()
             if(rpt == 0):
