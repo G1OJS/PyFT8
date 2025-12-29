@@ -1,10 +1,12 @@
+
+from PyFT8.sigspecs import FT8
 import threading
 from types import SimpleNamespace
 import numpy as np
 import time
-from .audio import find_device, AudioIn
-from .decode174_91_v7_0 import LDPC174_91
-from .FT8_unpack import FT8_unpack
+from PyFT8.audio import find_device, AudioIn
+from PyFT8.decode174_91_v7_0 import LDPC174_91
+from PyFT8.FT8_unpack import FT8_unpack
 import pyaudio
 import queue
 import wave
@@ -79,7 +81,7 @@ class Candidate:
         freq_idxs = self.pipeline.sync.result.freq_idxs
         pgrid = spectrum.pgrid_fine[np.ix_(payload_hop_idxs, freq_idxs)]
         pvt = np.mean(pgrid, axis = 1)
-        pgrid_n = pgrid / pvt[:,None]
+        pgrid_n = pgrid / pvt[:, None]
         llr0 = np.log(np.max(pgrid_n[:, [4,5,6,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,1,2,3]], axis=1))
         llr1 = np.log(np.max(pgrid_n[:, [2,3,4,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,1,5,6]], axis=1))
         llr = np.log(np.max(pgrid_n[:, [1,2,6,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,3,4,5]], axis=1))
@@ -92,13 +94,15 @@ class Candidate:
 
     def ldpc(self, onSuccess):
         info = ''
+        ncheck_thresh_offset_search = [28,28]
         max_iters = [8,20]
         for rpt in [0,1]:
             self.pipeline.ldpc.start()
             if(rpt == 0):
                 llr = self.pipeline.demap.result.copy()
-            ldpc_res = ldpc.decode(llr, max_iters = max_iters[rpt])
+            ldpc_res = ldpc.decode(llr, ncheck_thresh_offset_search = ncheck_thresh_offset_search[rpt], max_iters = max_iters[rpt])
             info = info + f"{ldpc_res[2]:5.2f},{ldpc_res[1][0]}->{ldpc_res[1][-1]};"
+
             self.pipeline.ldpc.complete(
                 success = bool(ldpc_res[0]),
                 result = SimpleNamespace(
@@ -111,11 +115,13 @@ class Candidate:
                     info_str = info
                 )
             )
+
             if(ldpc_res[1][-1] == 0):
                 break
             llr = ldpc_res[3]
-        if(self.pipeline.ldpc.success):
-            onSuccess(self, self.pipeline.ldpc.result.payload_bits)
+            
+       # if(self.pipeline.ldpc.success):
+        onSuccess(self, self.pipeline.ldpc.result.payload_bits)
 
     @property
     def snr(self):
@@ -266,78 +272,92 @@ class Cycle_manager():
                     self.running = False
                     break
                 cycle_searched = False
-                self.check_for_tx()
                 self.spectrum.pgrid_fine_ptr = 0
                 self.stats_printed = False
                 with self.cands_lock:
                     self.cands_list = [c for c in self.cands_list
                                        if (c.pipeline.ldpc.is_in_progress and time.time() - c.pipeline.sync.started_time < 15)]
-                if not self.audio_started: self.start_audio()
+                if not self.audio_started:
+                    self.start_audio()
+                    threading.Thread(target=self.wsjtx_all_tailer).start()
 
-            if (self.spectrum.pgrid_fine_ptr > self.spectrum.h_search and not cycle_searched):
-                    cycle_searched = True
-                    if(self.verbose): self.tlog(f"[Cycle manager] Search spectrum ...")
-                    new_cands = self.spectrum.search(self.sync_score_thresh)
-                    if(self.verbose): self.tlog(f"[Cycle manager] Spectrum searched -> {len(new_cands)} candidates")
-                    if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
-                    with self.cands_lock:
-                        self.cands_list = self.cands_list + new_cands[:self.max_for_ldpc]
 
-            if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap):
-                with self.cands_lock:
-                    to_demap = [c for c in self.cands_list
-                                if (self.spectrum.pgrid_fine_ptr > c.pipeline.sync.result.payload_hop_idxs[-1]
-                                and not c.pipeline.demap.has_started)]
-                for c in to_demap[:5]:
-                    c.demap(self.spectrum)
-                with self.cands_lock:
-                    to_ldpc = [c for c in self.cands_list if c.pipeline.demap.has_completed and not c.pipeline.ldpc.has_started]
-                for c in to_ldpc[:1]:
-                    c.ldpc(self.process_decode)
+    def wsjtx_all_tailer(self, all_txt_path = "C:/Users/drala/AppData/Local/WSJT-X/ALL.txt"):
+        running = True
+        def follow():
+            with open(all_txt_path, "r") as f:
+                f.seek(0, 2)
+                while running:
+                    line = f.readline()
+                    if not line:
+                        time.sleep(0.2)
+                        continue
+                    yield line.strip()
+        for line in follow():
+            ls = line.split()
+            decode_dict = False
+            try:
+                wsjt_dd = {'cyclestart_str':ls[0], 'time':f"{time.time() % 15:6.2f}", 'freq':ls[6], 'dt':float(ls[5]), 'msg':ls[7]+" "+ls[8]+" "+ls[9], 'snr':ls[4]}
+            except:
+                pass
 
-            if(self.spectrum.cycle_time() > self.sigspec.cycle_seconds - 0.25 and not self.stats_printed):
-                self.stats_printed = True
-                self.print_stats()
+            if(wsjt_dd):
+                f0_idx = 1+int(int(wsjt_dd['freq'])/self.spectrum.df)
+                pgrid = self.spectrum.pgrid_fine
+                p = pgrid[:, f0_idx:f0_idx + self.spectrum.fbins_per_signal]
+                max_pwr = np.max(p)
+                pnorm = p / max_pwr
+                best = (0, f0_idx, -1e30)
+                for t0_idx in range(self.spectrum.h_search - self.spectrum.nhops_costas):
+                    test = (t0_idx, f0_idx, float(np.dot(pnorm[t0_idx + self.spectrum.hop_idxs_Costas ,  :].ravel(), self.spectrum._csync.ravel())))
+                    if test[2] > best[2]:
+                        best = test
+                c = Candidate()
+                c.record_sync(self.spectrum, *best)
+                c.demap(self.spectrum)
+                c.wsjt_dd = wsjt_dd
+                c.ldpc(self.process_decode)
+
 
     def process_decode(self, c, payload_bits):
         c.msg = FT8_unpack(payload_bits)
         c.payload_bits = payload_bits
-        c.call_a, c.call_b, c.grid_rpt = c.msg[0], c.msg[1], c.msg[2]
         c.cyclestart_str = self.spectrum.cyclestart_str(c.pipeline.demap.started_time)
-        c.dedupe_key = c.cyclestart_str+" "+' '.join(c.msg)
-        if(not c.dedupe_key in self.duplicate_filter):
-            self.duplicate_filter.add(c.dedupe_key)
-            c.h0_idx = c.pipeline.sync.result.h0_idx
-            c.f0_idx = c.pipeline.sync.result.f0_idx
-            c.dt = c.h0_idx * self.spectrum.dt-0.7
-            c.fHz = int(c.f0_idx * self.spectrum.df)
-            self.onSuccessfulDecode(c)
-        else:
-            c.deduped = time.time()
-
-    def check_for_tx(self):
-        from .FT8_encoder import pack_message
-        tx_msg_file = 'PyFT8_tx_msg.txt'
-        if os.path.exists(tx_msg_file):
-            if(not self.output_device_idx):
-                self.tlog("[Tx] Tx message file found but no output device specified")
-                return
-            with open(tx_msg_file, 'r') as f:
-                tx_msg = f.readline().strip()
-                tx_freq = f.readline().strip()
-            tx_freq = int(tx_freq) if tx_freq else 1000    
-            self.tlog(f"[TX] transmitting {tx_msg} on {tx_freq} Hz")
-            os.remove(tx_msg_file)
-            c1, c2, grid_rpt = tx_msg.split()
-            symbols = pack_message(c1, c2, grid_rpt)
-            audio_data = self.audio_out.create_ft8_wave(self, symbols, f_base = tx_freq)
-            self.audio_out.play_data_to_soundcard(self, audio_data, self.output_device_idx)
-            self.tlog("[Tx] done transmitting")
-            
-
-                       
+        c.h0_idx = c.pipeline.sync.result.h0_idx
+        c.f0_idx = c.pipeline.sync.result.f0_idx
+        c.dt = c.h0_idx * self.spectrum.dt-0.7
+        c.fHz = int(c.f0_idx * self.spectrum.df)
+        info_str = f"{c.wsjt_dd['time']:<6} {c.wsjt_dd['msg']:<30} {c.pipeline.sync.result.score:7.2f} "
+        info_str += f"{c.pipeline.ldpc.metrics.info_str:<30} {c.msg}"
+        print(info_str)
+        
 
 
 
 
                  
+
+
+running = True
+
+def on_PyFT8_decode(c):
+    pass
+
+cycle_manager = Cycle_manager(FT8, on_PyFT8_decode, onOccupancy = None,
+                              sync_score_thresh = 1.6,
+                              max_for_ldpc = 5000,
+                              input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
+
+try:
+    while True:
+        time.sleep(1)
+except KeyboardInterrupt:
+    print("\nStopping PyFT8 Rx")
+    cycle_manager.running = False
+    running = False
+
+
+    
+
+
+

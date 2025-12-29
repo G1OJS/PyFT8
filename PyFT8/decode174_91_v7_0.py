@@ -31,7 +31,7 @@ class LDPC174_91:
             n = (n << 1) | (b & 1)
         return n
 
-    def decode(self, llr, max_iters = 15, ncheck_thresh = 28, double_its_thresh = 5):
+    def decode(self, llr, max_iters = 15, ncheck_thresh_offset_search = 28, ncheck_max_ldpc = 28, double_its_thresh = 5):
         def ncheck(llrs):
             llr_per_check = llrs[:, self.check_vars]
             valid = self.check_vars != -1
@@ -45,17 +45,18 @@ class LDPC174_91:
         
         if(ncheck_hist[0] != 0):
             
-            if(ncheck_hist[0] > ncheck_thresh):
+            if(ncheck_hist[0] > ncheck_thresh_offset_search):
                 offsets = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0,2.1]
                 offsets = np.array(offsets + [-o for o in offsets])
                 llrs = llr + offsets[:, None]
                 nchecks = ncheck(llrs)
                 best_idx = np.argmin(nchecks)
                 ncheck_hist.append(int(nchecks[best_idx]))
-                offset = offsets[best_idx]
-                llr += offset
+                if(ncheck_hist[-1] < ncheck_hist[0]):
+                    offset = offsets[best_idx]
+                    llr += offset
 
-            if(ncheck_hist[-1] <= ncheck_thresh):        
+            if(ncheck_hist[-1] <= ncheck_max_ldpc):        
                 while (len(ncheck_hist) < max_iters or ncheck_hist[-1] <= double_its_thresh and len(ncheck_hist) < max_iters * 2):
                     ncheck_hist.append(int(ncheck(llr[None, :])[0]))
                     if(ncheck_hist[-1] == 0):
