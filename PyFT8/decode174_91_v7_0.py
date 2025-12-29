@@ -1,7 +1,5 @@
 
 import numpy as np
-import threading
-from PyFT8.FT8_crc import check_crc
 
 class LDPC174_91:
     def __init__(self):
@@ -24,28 +22,15 @@ class LDPC174_91:
             self.check_vars[m, :len(v)] = v
             self.check_deg[m] = len(v)
 
-    def bitsLE_to_int(self, bits):
-        """bits is MSB-first."""
-        n = 0
-        for b in bits:
-            n = (n << 1) | (b & 1)
-        return n
-
     def decode(self, llr, ncheck_hist, max_iters = 15):
-        def ncheck(llr):
+        Lmn = np.zeros((83, 7), dtype=np.float32)        
+        alpha = 1.18
+        while (len(ncheck_hist) < max_iters):
             llr_check = llr[self.check_vars]
             valid = self.check_vars != -1
             parity = (np.sum((llr_check > 0) & valid, axis=1) & 1) 
-            return np.sum(parity)
-        
-        Lmn = np.zeros((83, 7), dtype=np.float32)        
-        alpha = 1.18
-        offset = 0
-              
-        while (len(ncheck_hist) < max_iters):
-            ncheck_hist.append(ncheck(llr))
-            if(ncheck_hist[-1] == 0):
-                break
+            ncheck_hist.append(np.sum(parity))
+            if(ncheck_hist[-1] == 0): break
             delta = np.zeros_like(llr)
             for m in range(83):
                 deg = self.check_deg[m]
@@ -56,14 +41,10 @@ class LDPC174_91:
                 new = prod / ((prod - alpha) * (alpha + prod))
                 delta[v] += new - Lmn[m, :deg]
                 Lmn[m, :deg] = new
-            llr += delta    
+            llr += delta
 
-        payload_bits = []
-        if(ncheck_hist[-1] == 0):
-            decoded_bits = (llr > 0).astype(int).tolist()
-            if any(decoded_bits[:77]):
-                if check_crc( self.bitsLE_to_int(decoded_bits[0:91]) ):
-                    payload_bits = decoded_bits[:77]
-        return (payload_bits, ncheck_hist, offset, llr)
+        return llr, ncheck_hist
+
+
 
 

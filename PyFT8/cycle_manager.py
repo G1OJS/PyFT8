@@ -5,6 +5,7 @@ import time
 from .audio import find_device, AudioIn
 from .decode174_91_v7_0 import LDPC174_91
 from .FT8_unpack import FT8_unpack
+from PyFT8.FT8_crc import check_crc
 import pyaudio
 import queue
 import wave
@@ -15,6 +16,13 @@ ldpc = LDPC174_91()
 
 def safe_pc(x,y):
     return 100*x/y if y>0 else 0
+
+def bitsLE_to_int(bits):
+    """bits is MSB-first."""
+    n = 0
+    for b in bits:
+        n = (n << 1) | (b & 1)
+    return n
 
 class StageProps:
     def __init__(self):
@@ -62,6 +70,8 @@ class Candidate:
         self.pipeline = Pipeline()
         self.deduped = False
 
+
+
     def record_sync(self, spectrum, h0_idx, f0_idx, score):
         hps, bpt = spectrum.hops_persymb, spectrum.fbins_pertone
         payload_hop_idxs  = [h0_idx + hps* s for s in spectrum.sigspec.payload_symb_idxs]   
@@ -106,19 +116,28 @@ class Candidate:
             return offsets[best_idx], ncheck
 
     def decode(self, onSuccess):
-        self.pipeline.decode.start()
         llr = self.pipeline.demap.result.llr
-        ldpc_res = ldpc.decode(llr, self.ncheck_hist, max_iters = 5)
-        self.pipeline.decode.complete(
-            success = bool(ldpc_res[0]),
-            result = SimpleNamespace(
-                payload_bits = ldpc_res[0],
-                llr_from_ldpc = ldpc_res[3]
-            ),
+        offset = 0
+
+        self.pipeline.decode.start()
+        if(self.ncheck_hist[-1] > 0 and self.ncheck_hist[-1] < 25 ):
+            llr, self.ncheck_hist = ldpc.decode(llr, self.ncheck_hist, max_iters = 8)
+
+ #       if(self.ncheck_hist[-1] > 0 and self.ncheck_hist[-1] < 10):
+ #           llr, self.ncheck_hist = ldpc.decode(llr, self.ncheck_hist, max_iters = 15)
+
+        payload_bits = []
+        if(self.ncheck_hist[-1] == 0):
+            decoded_bits = (llr > 0).astype(int).tolist()
+            if any(decoded_bits[:77]):
+                if check_crc(bitsLE_to_int(decoded_bits[0:91]) ):
+                    payload_bits = decoded_bits[:77]
+                    
+        self.pipeline.decode.complete(success = any(payload_bits), result = SimpleNamespace(payload_bits = payload_bits),
             metrics = SimpleNamespace(
-                ncheck_hist = ldpc_res[1],
-                offset = ldpc_res[2],
-                info_str = f"{ldpc_res[2]:5.2f},{','.join([str(h) for h in ldpc_res[1]])};"
+                ncheck_hist = self.ncheck_hist,
+                offset = offset,
+                info_str = f"{offset:5.2f},{','.join([str(h) for h in self.ncheck_hist])};"
             )
         )
         if(self.pipeline.decode.success):
