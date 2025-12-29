@@ -49,8 +49,7 @@ class Pipeline:
     def __init__(self):
         self.sync = StageProps()
         self.demap = StageProps()
-        self.ldpc = StageProps()
-        self.ldpc2 = StageProps()
+        self.decode = StageProps()
         self.unpack = StageProps()
 
 class Candidate:
@@ -86,37 +85,44 @@ class Candidate:
         llr = np.column_stack((llr0, llr1, llr)).ravel()
         llr_sd = np.std(llr)
         llr = 3.8 * llr / llr_sd
-        ncheck = ldpc.ncheck_single(llr)
+        llr_check = llr[ldpc.check_vars]
+        valid = ldpc.check_vars != -1
+        parity = (np.sum((llr_check > 0) & valid, axis=1) & 1) 
+        self.ncheck_hist =  [np.sum(parity)]
         self.pipeline.demap.complete(success=True,
-            result  = SimpleNamespace(llr = llr, ncheck = ncheck),
+            result  = SimpleNamespace(llr = llr, ncheck = self.ncheck_hist[-1]),
             metrics = SimpleNamespace(pgrid = pgrid, pmax=np.max(pgrid),llr_sd=llr_sd))
 
-    def ldpc(self, onSuccess):
-        info = ''
-        max_iters = [8,15]
-        for rpt in [0,1]:
-            self.pipeline.ldpc.start()
-            if(rpt == 0):
-                llr = self.pipeline.demap.result.llr
-            ldpc_res = ldpc.decode(llr, max_iters = max_iters[rpt])
-            info = info + f"{ldpc_res[2]:5.2f},{','.join([str(h) for h in ldpc_res[1]])};"
-            self.pipeline.ldpc.complete(
-                success = bool(ldpc_res[0]),
-                result = SimpleNamespace(
-                    payload_bits = ldpc_res[0],
-                    llr_from_ldpc = ldpc_res[3]
-                ),
-                metrics = SimpleNamespace(
-                    ncheck_hist = ldpc_res[1],
-                    offset = ldpc_res[2],
-                    info_str = info
-                )
+    def find_llr_offset(self):
+        offsets = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0,2.1]
+        offsets = np.array(offsets + [-o for o in offsets])
+        llrs_with_offsets = self.llr[:, ldpc.check_vars] + offsets[:, None]
+        valid = ldpc.check_vars != -1
+        parity = (np.sum((llrs_with_offsets > 0) & valid, axis=2) & 1)
+        nchecks = np.sum(parity, axis=1)
+        best_idx = np.argmin(nchecks)
+        ncheck = nchecks[best_idx]
+        if(ncheck < ncheck_hist[-1]):
+            return offsets[best_idx], ncheck
+
+    def decode(self, onSuccess):
+        self.pipeline.decode.start()
+        llr = self.pipeline.demap.result.llr
+        ldpc_res = ldpc.decode(llr, self.ncheck_hist, max_iters = 5)
+        self.pipeline.decode.complete(
+            success = bool(ldpc_res[0]),
+            result = SimpleNamespace(
+                payload_bits = ldpc_res[0],
+                llr_from_ldpc = ldpc_res[3]
+            ),
+            metrics = SimpleNamespace(
+                ncheck_hist = ldpc_res[1],
+                offset = ldpc_res[2],
+                info_str = f"{ldpc_res[2]:5.2f},{','.join([str(h) for h in ldpc_res[1]])};"
             )
-            if(ldpc_res[1][-1] == 0):
-                break
-            llr = ldpc_res[3]
-        if(self.pipeline.ldpc.success):
-            onSuccess(self, self.pipeline.ldpc.result.payload_bits)
+        )
+        if(self.pipeline.decode.success):
+            onSuccess(self, self.pipeline.decode.result.payload_bits)
 
     @property
     def snr(self):
@@ -240,19 +246,19 @@ class Cycle_manager():
                 demapped = [c for c in self.cands_list if c.pipeline.demap.has_completed]
                 demap_completed = [c.pipeline.demap.completed_time for c in demapped if c.pipeline.demap.has_completed]
                 demap_valid_ncheck = [c.pipeline.demap.completed_time for c in demapped if c.pipeline.demap.result.ncheck <= self.ncheck_max]
-                ldpc_completed = [c.pipeline.ldpc.completed_time for c in self.cands_list if c.pipeline.ldpc.has_completed]
+                decode_completed = [c.pipeline.decode.completed_time for c in self.cands_list if c.pipeline.decode.has_completed]
                 deduped = [c.deduped for c in self.cands_list if c.deduped]
             self.tlog(f"[Cycle manager] sync_completed:   {len(sync_completed)} ({earliest_and_latest(sync_completed)})")
             self.tlog(f"[Cycle manager] demap_completed: {len(demap_completed)} ({earliest_and_latest(demap_completed)})")
             self.tlog(f"[Cycle manager] ncheck_valid: {len(demap_valid_ncheck)} ({earliest_and_latest(demap_valid_ncheck)})")
-            self.tlog(f"[Cycle manager] ldpc_completed:  {len(ldpc_completed)} ({earliest_and_latest(ldpc_completed)})")
+            self.tlog(f"[Cycle manager] decode_completed:  {len(decode_completed)} ({earliest_and_latest(decode_completed)})")
             self.tlog(f"[Cycle manager] deduped:  {len(deduped)} ({earliest_and_latest(deduped)})")            
 
     def manage_cycle(self):
         cycle_searched = True
         cycle_counter = 0
         cycle_time_prev = 0
-        to_ldpc =[]
+        to_decode =[]
         to_demap = []
         while self.running:
             time.sleep(0.001)
@@ -272,7 +278,7 @@ class Cycle_manager():
                 self.stats_printed = False
                 with self.cands_lock:
                     self.cands_list = [c for c in self.cands_list
-                                       if (c.pipeline.ldpc.is_in_progress and time.time() - c.pipeline.sync.started_time < 15)]
+                                       if (c.pipeline.decode.is_in_progress and time.time() - c.pipeline.sync.started_time < 15)]
                 if not self.audio_started: self.start_audio()
 
             if (self.spectrum.pgrid_fine_ptr > self.spectrum.h_search and not cycle_searched):
@@ -293,13 +299,13 @@ class Cycle_manager():
                     c.demap(self.spectrum)
                 with self.cands_lock:
                     demapped = [c for c in self.cands_list if c.pipeline.demap.has_completed]
-                    to_ldpc =  [c for c in demapped if c.pipeline.demap.result.ncheck <= self.ncheck_max
-                                and not c.pipeline.ldpc.has_started]
+                    to_decode =  [c for c in demapped if c.pipeline.demap.result.ncheck <= self.ncheck_max
+                                and not c.pipeline.decode.has_started]
                     if(len(demapped) < len(self.cands_list)):
-                       to_ldpc = [c for c in to_ldpc if c.pipeline.demap.result.ncheck <= 28]
+                       to_decode = [c for c in to_decode if c.pipeline.demap.result.ncheck <= 28]
                         
-                for c in to_ldpc[:1]:
-                    c.ldpc(self.process_decode)
+                for c in to_decode[:1]:
+                    c.decode(self.process_decode)
 
             if(self.spectrum.cycle_time() > self.sigspec.cycle_seconds - 0.25 and not self.stats_printed):
                 self.stats_printed = True
