@@ -103,17 +103,17 @@ class Candidate:
             result  = SimpleNamespace(llr = llr, ncheck = self.ncheck_hist[-1]),
             metrics = SimpleNamespace(pgrid = pgrid, pmax=np.max(pgrid),llr_sd=llr_sd))
 
-    def find_llr_offset(self):
+    def find_llr_offset(self, llr):
         offsets = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0,2.1]
         offsets = np.array(offsets + [-o for o in offsets])
-        llrs_with_offsets = self.llr[:, ldpc.check_vars] + offsets[:, None]
+        llrs_with_offsets = llr + offsets[:, None]
+        llrs_for_check = llrs_with_offsets[:, ldpc.check_vars]
         valid = ldpc.check_vars != -1
-        parity = (np.sum((llrs_with_offsets > 0) & valid, axis=2) & 1)
+        parity = (np.sum((llrs_for_check > 0) & valid, axis=2) & 1)
         nchecks = np.sum(parity, axis=1)
         best_idx = np.argmin(nchecks)
         ncheck = nchecks[best_idx]
-        if(ncheck < ncheck_hist[-1]):
-            return offsets[best_idx], ncheck
+        return offsets[best_idx], ncheck
 
     def decode(self, onSuccess):
         llr = self.pipeline.demap.result.llr
@@ -123,8 +123,12 @@ class Candidate:
         if(self.ncheck_hist[-1] > 0 and self.ncheck_hist[-1] < 25 ):
             llr, self.ncheck_hist = ldpc.decode(llr, self.ncheck_hist, max_iters = 8)
 
- #       if(self.ncheck_hist[-1] > 0 and self.ncheck_hist[-1] < 10):
- #           llr, self.ncheck_hist = ldpc.decode(llr, self.ncheck_hist, max_iters = 15)
+        if(self.ncheck_hist[-1] > 25):
+            offset, nchk = self.find_llr_offset(llr)
+            if(nchk < self.ncheck_hist[-1] and nchk <= 25):
+                self.ncheck_hist.append(nchk)
+                llr += offset
+                llr, self.ncheck_hist = ldpc.decode(llr, self.ncheck_hist, max_iters = 8)
 
         payload_bits = []
         if(self.ncheck_hist[-1] == 0):
