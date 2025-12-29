@@ -117,31 +117,20 @@ class Candidate:
 
     def decode(self, onSuccess):
         offset = 0
-        threshold = 25
-
+        threshold = 26
+        llr = self.pipeline.demap.result.llr.copy()
         self.pipeline.decode.start()
 
-        # 1) if > threshold, pick best offset and apply
-        llr = self.pipeline.demap.result.llr.copy()
         if(self.ncheck_hist[-1] > threshold):
+            llr = self.pipeline.demap.result.llr.copy()
             offset, nchk = self.find_llr_offset(llr)
             if(nchk < self.ncheck_hist[-1]):
+                self.ncheck_hist.append("*")
                 self.ncheck_hist.append(nchk)
                 llr += offset
-                
-        # if < threshold, ldpc1
-        if(self.ncheck_hist[-1] > 0 and self.ncheck_hist[-1] < threshold):
-            llr, self.ncheck_hist = ldpc.decode(llr, self.ncheck_hist, max_iters = 8)
 
-        # 2) if > 0, try more iterations using exit llrs
         if(self.ncheck_hist[-1] > 0):
-            llr, self.ncheck_hist = ldpc.decode(llr, self.ncheck_hist, max_iters = 8)
-
-        # 3) if > 0 and we had an offset, try again using no offset
-        if(self.ncheck_hist[-1] > 0 and offset != 0):
-            offset = 0
-            llr = self.pipeline.demap.result.llr.copy()
-            llr, self.ncheck_hist = ldpc.decode(llr, self.ncheck_hist, max_iters = 8)
+            llr, self.ncheck_hist = ldpc.decode(llr, self.ncheck_hist, max_iters = 6)
 
         payload_bits = []
         if(self.ncheck_hist[-1] == 0):
@@ -234,7 +223,7 @@ class Spectrum:
 
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
-                 ncheck_max = 35, max_cycles = 5000, 
+                 ncheck_max = 32, max_cycles = 5000, 
                  input_device_keywords = None, output_device_keywords = None, verbose = False):
         self.running = True
         self.verbose = verbose

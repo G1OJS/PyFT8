@@ -25,7 +25,8 @@ class LDPC174_91:
     def decode(self, llr, ncheck_hist, max_iters = 15):
         Lmn = np.zeros((83, 7), dtype=np.float32)        
         alpha = 1.18
-        while (len(ncheck_hist) < max_iters):
+        l1 = len(ncheck_hist)
+        while (len(ncheck_hist) < max_iters + l1):
             llr_check = llr[self.check_vars]
             valid = self.check_vars != -1
             parity = (np.sum((llr_check > 0) & valid, axis=1) & 1) 
