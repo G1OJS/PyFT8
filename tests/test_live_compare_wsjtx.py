@@ -74,7 +74,8 @@ def wsjtx_all_tailer(all_txt_path, on_decode):
 def update_stats():
     last_ct = 0
     heads = f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'tP':>7} {'tW':>7} {'dtP':>7} {'dtW':>7} {'info':>7}"
-
+    nPtot, nWtot = 0, 0
+    
     while running:
         time.sleep(1)
         ct = time.time() % 15
@@ -121,6 +122,10 @@ def update_stats():
                 print(f"WSJTX:{nW+nB}, PyFT8: {nP+nB} ({pc}%)")
                 with open('live_compare_cycle_stats.csv', 'a') as f:
                     f.write(f"{nW},{nP},{nB}\n")
+                nPtot += nP+nB
+                nWtot += nW
+                pc = int(100*(nPtot) / (nPtot+nWtot+0.001))
+                print(f"All time: WSJTX:{nWtot}, PyFT8: {nPtot} ({pc}%)")
 
         last_ct = ct
 
