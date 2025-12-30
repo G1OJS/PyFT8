@@ -125,13 +125,7 @@ class Candidate:
 
             if(self.ncheck > 0):
                 self.info_str = self.info_str + f" {offset:5.2f}:"        
-                self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr, max_iters = 6)
-                self.info_str = self.info_str + self.ldpc_info
-
-            if(self.ncheck > 0 and offset !=0):
-                self.llr = llr_orig.copy()
-                self.info_str = self.info_str + f" 0.00:"
-                self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr, max_iters = 6)
+                self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr, max_iters = 8)
                 self.info_str = self.info_str + self.ldpc_info
 
         self.decode_completed = time.time()
@@ -218,7 +212,7 @@ class Spectrum:
 
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
-                 ncheck_max = 38, max_cycles = 5000, 
+                 ncheck_max = 36, max_cycles = 5000, 
                  input_device_keywords = None, output_device_keywords = None, verbose = False):
         self.running = True
         self.verbose = verbose
@@ -259,29 +253,23 @@ class Cycle_manager():
         print(f"{self.spectrum.cyclestart_str(time.time())} {self.spectrum.cycle_time():5.2f} {txt}")
 
     def print_stats(self):
-        """
         if(self.verbose): 
             def earliest_and_latest(arr): return f"first {np.min(arr)%15 :5.2f}, last {np.max(arr)%15 :5.2f}" if arr else ''
             with self.cands_lock:
-                sync_completed = [c.pipeline.sync.completed_time for c in self.cands_list if c.pipeline.sync.has_completed]
-                demapped_cands = [c for c in self.cands_list if c.pipeline.demap.has_completed]
-                demap_completed = [c.pipeline.demap.completed_time for c in demapped_cands if c.pipeline.demap.has_completed]
-                demap_valid_ncheck = [c.pipeline.demap.completed_time for c in demapped_cands if c.pipeline.demap.ncheck <= self.ncheck_max]
-                decode_completed = [c.pipeline.decode.completed_time for c in self.cands_list if c.pipeline.decode.has_completed]
-                deduped = [c.deduped for c in self.cands_list if c.deduped]
+                sync_completed = [c.sync_completed for c in self.cands_list if c.sync_completed]
+                demap_completed = [c.demap_completed for c in self.demapped_cands]
+                demap_valid_ncheck = [c.demap_completed for c in self.demapped_cands if c.ncheck <= self.ncheck_max]
+                decode_completed = [c.decode_completed for c in self.cands_list if c.decode_completed]
             self.tlog(f"[Cycle manager] sync_completed:   {len(sync_completed)} ({earliest_and_latest(sync_completed)})")
             self.tlog(f"[Cycle manager] demap_completed: {len(demap_completed)} ({earliest_and_latest(demap_completed)})")
             self.tlog(f"[Cycle manager] ncheck_valid: {len(demap_valid_ncheck)} ({earliest_and_latest(demap_valid_ncheck)})")
-            self.tlog(f"[Cycle manager] decode_completed:  {len(decode_completed)} ({earliest_and_latest(decode_completed)})")
-            self.tlog(f"[Cycle manager] deduped:  {len(deduped)} ({earliest_and_latest(deduped)})")            
-        """
+            self.tlog(f"[Cycle manager] decode_completed:  {len(decode_completed)} ({earliest_and_latest(decode_completed)})")           
         
     def manage_cycle(self):
         cycle_searched = True
         cycle_counter = 0
         cycle_time_prev = 0
-        to_decode =[]
-        to_demap = []
+        self.demapped_cands = []
         while self.running:
             time.sleep(0.001)
 

@@ -15,11 +15,14 @@ COMMON_FIELDS = {'t_decode', 'snr', 'dt'}
 PyFT8_FIELDS = {'info_str'}
 
 running = True
+pyft8_started = False
 
 def make_uid(d):
     return tuple(d[k] for k in UID_FIELDS)
 
 def on_PyFT8_decode(c):
+    global pyft8_started
+    pyft8_started = True
     decode_dict = {'decoder':'PyFT8', 'cyclestart_str':c.cyclestart_str,
                    'call_a':c.call_a, 'call_b':c.call_b, 'grid_rpt':c.grid_rpt,
                    't_decode':time.time(), 'snr':c.snr, 'dt':c.dt,
@@ -28,6 +31,7 @@ def on_PyFT8_decode(c):
            
 
 def on_decode(decode_dict):
+    if not pyft8_started: return
     uid = make_uid(decode_dict)
     decoder = decode_dict['decoder']
     with decodes_lock:
@@ -113,7 +117,6 @@ def update_stats():
                     if ('PyFT8_t_decode' in d):
                         info = info + f" {d['PyFT8_info_str']}"
 
-                    #if(decoder == 'BOTH '):
                     row = f"{uid_pretty} {decoder:>7} {info}"
                     print(row)
                 pc = int(100*(nP+nB) / (nW+nB+0.001))
