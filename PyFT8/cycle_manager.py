@@ -146,6 +146,7 @@ class Candidate:
                 self.info_str = self.info_str + self.ldpc_info
 
         self.decode_completed = time.time()
+        self.info_str = f"{self.decode_completed - self.decode_started: 5.3f} " + self.info_str
         
         if(self.ncheck > 0):
             with open('failures.csv', 'a') as f:
