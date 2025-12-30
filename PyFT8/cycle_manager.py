@@ -44,6 +44,7 @@ class Candidate:
         self.decode_started, self.decode_completed = None, None
         self.info_str = ""
         self.decoded_stage = -2
+        self.msg = None
 
     def record_sync(self, spectrum, h0_idx, f0_idx, score):
         hps, bpt = spectrum.hops_persymb, spectrum.fbins_pertone
