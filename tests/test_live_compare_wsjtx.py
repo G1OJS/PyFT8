@@ -22,10 +22,10 @@ def make_uid(d):
 def on_PyFT8_decode(c):
     decode_dict = {'decoder':'PyFT8', 'cyclestart_str':c.cyclestart_str,
                    'call_a':c.call_a, 'call_b':c.call_b, 'grid_rpt':c.grid_rpt,
-                   't_decode':time.time(), 'snr':c.snr, 'dt':c.dt, 'sync_score':c.pipeline.sync.result.score,
-                   'offset':c.pipeline.decode.metrics.offset,
-                   'info_str':c.pipeline.decode.metrics.info_str,
-                   'ncheck_hist':c.pipeline.decode.metrics.ncheck_hist}
+                   't_decode':time.time(), 'snr':c.snr, 'dt':c.dt, 'sync_score':c.pipeline.sync.score,
+                   'offset':c.pipeline.decode.offset,
+                   'info_str':c.pipeline.decode.info_str,
+                   'ncheck_hist':c.pipeline.decode.ncheck_hist}
     on_decode(decode_dict)
            
 

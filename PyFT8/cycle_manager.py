@@ -25,23 +25,17 @@ class StageProps:
     def __init__(self):
         self.started_time   = None
         self.completed_time = None
-        self.result         = None      
-        self.metrics        = None
     def start(self):
         self.started_time = time.time()
-    def complete(self, *,  result=None, metrics=None):
+    def complete(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
         self.completed_time = time.time()
-        self.result = result
-        self.metrics = metrics        
     @property
-    def has_started(self):
-        return self.started_time is not None
+    def has_started(self): return self.started_time is not None
     @property
-    def has_completed(self):
-        return self.completed_time is not None
-    @property
-    def is_in_progress(self):
-        return self.has_started and not self.has_completed
+    def has_completed(self): return self.completed_time is not None
+
 
 class Pipeline:
     def __init__(self):
@@ -104,15 +98,13 @@ class Candidate:
         hps, bpt = spectrum.hops_persymb, spectrum.fbins_pertone
         payload_hop_idxs  = [h0_idx + hps* s for s in spectrum.sigspec.payload_symb_idxs]   
         freq_idxs = [f0_idx + bpt // 2 + bpt * t for t in range(spectrum.sigspec.tones_persymb)]
-        self.pipeline.sync.complete(
-            result=SimpleNamespace(score = score, f0_idx = f0_idx, h0_idx = h0_idx,
+        self.pipeline.sync.complete(score = score, f0_idx = f0_idx, h0_idx = h0_idx,
                                    payload_hop_idxs = payload_hop_idxs, freq_idxs = freq_idxs)
-        )
 
     def demap(self, spectrum):
         self.pipeline.demap.start()
-        payload_hop_idxs = self.pipeline.sync.result.payload_hop_idxs
-        freq_idxs = self.pipeline.sync.result.freq_idxs
+        payload_hop_idxs = self.pipeline.sync.payload_hop_idxs
+        freq_idxs = self.pipeline.sync.freq_idxs
         pgrid = spectrum.pgrid_fine[np.ix_(payload_hop_idxs, freq_idxs)]
         pvt = np.mean(pgrid, axis = 1)
         pgrid_n = pgrid / pvt[:,None]
@@ -126,9 +118,8 @@ class Candidate:
         valid = ldpc.check_vars != -1
         parity = (np.sum((llr_check > 0) & valid, axis=1) & 1) 
         self.ncheck_hist =  [np.sum(parity)]
-        self.pipeline.demap.complete(
-            result  = SimpleNamespace(llr = llr, ncheck = self.ncheck_hist[-1]),
-            metrics = SimpleNamespace(pgrid = pgrid, pmax=np.max(pgrid),llr_sd=llr_sd))
+        self.pipeline.demap.complete(llr = llr, ncheck = self.ncheck_hist[-1],
+                                        pgrid = pgrid, pmax=np.max(pgrid),llr_sd=llr_sd)
 
     def find_llr_offset(self, llr):
         offsets = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0,2.1]
@@ -145,11 +136,11 @@ class Candidate:
     def decode(self, onSuccess):
         offset = 0
         threshold = 26
-        llr = self.pipeline.demap.result.llr.copy()
+        llr = self.pipeline.demap.llr.copy()
         self.pipeline.decode.start()
 
         if(self.ncheck_hist[-1] > threshold):
-            llr = self.pipeline.demap.result.llr.copy()
+            llr = self.pipeline.demap.llr.copy()
             offset, nchk = self.find_llr_offset(llr)
             if(nchk < self.ncheck_hist[-1]):
                 self.ncheck_hist.append("*")
@@ -165,20 +156,17 @@ class Candidate:
             if any(decoded_bits[:77]):
                 if check_crc(bitsLE_to_int(decoded_bits[0:91]) ):
                     payload_bits = decoded_bits[:77]
-                    
-        self.pipeline.decode.complete(result = SimpleNamespace(payload_bits = payload_bits),
-            metrics = SimpleNamespace(
-                ncheck_hist = self.ncheck_hist,
-                offset = offset,
-                info_str = f"{offset:5.2f},{','.join([str(h) for h in self.ncheck_hist])};"
-            )
-        )
+
+        info_str = f"{offset:5.2f},{','.join([str(h) for h in self.ncheck_hist])};"
+        self.pipeline.decode.complete(payload_bits = payload_bits,
+                                    ncheck_hist = self.ncheck_hist, offset = offset,
+                                    info_str = info_str)
         if(any(payload_bits)):
             onSuccess(self, payload_bits)
 
     @property
     def snr(self):
-        pmax = self.pipeline.demap.metrics.pmax
+        pmax = self.pipeline.demap.pmax
         snr = 10 * np.log10(pmax) - 107
         return int(np.clip(snr, -24, 24))
 
@@ -297,7 +285,7 @@ class Cycle_manager():
                 sync_completed = [c.pipeline.sync.completed_time for c in self.cands_list if c.pipeline.sync.has_completed]
                 demapped = [c for c in self.cands_list if c.pipeline.demap.has_completed]
                 demap_completed = [c.pipeline.demap.completed_time for c in demapped if c.pipeline.demap.has_completed]
-                demap_valid_ncheck = [c.pipeline.demap.completed_time for c in demapped if c.pipeline.demap.result.ncheck <= self.ncheck_max]
+                demap_valid_ncheck = [c.pipeline.demap.completed_time for c in demapped if c.pipeline.demap.ncheck <= self.ncheck_max]
                 decode_completed = [c.pipeline.decode.completed_time for c in self.cands_list if c.pipeline.decode.has_completed]
                 deduped = [c.deduped for c in self.cands_list if c.deduped]
             self.tlog(f"[Cycle manager] sync_completed:   {len(sync_completed)} ({earliest_and_latest(sync_completed)})")
@@ -328,33 +316,30 @@ class Cycle_manager():
                 self.check_for_tx()
                 self.spectrum.pgrid_fine_ptr = 0
                 self.stats_printed = False
-                with self.cands_lock:
-                    self.cands_list = [c for c in self.cands_list
-                                       if (c.pipeline.decode.is_in_progress and time.time() - c.pipeline.sync.started_time < 15)]
                 if not self.audio_started: self.start_audio()
 
             if (self.spectrum.pgrid_fine_ptr > self.spectrum.h_search and not cycle_searched):
-                    cycle_searched = True
-                    if(self.verbose): self.tlog(f"[Cycle manager] Search spectrum ...")
-                    new_cands = self.spectrum.search()
-                    if(self.verbose): self.tlog(f"[Cycle manager] Spectrum searched -> {len(new_cands)} candidates")
-                    if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
-                    with self.cands_lock:
-                        self.cands_list = self.cands_list + new_cands
+                cycle_searched = True
+                if(self.verbose): self.tlog(f"[Cycle manager] Search spectrum ...")
+                new_cands = self.spectrum.search()
+                if(self.verbose): self.tlog(f"[Cycle manager] Spectrum searched -> {len(new_cands)} candidates")
+                if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
+                with self.cands_lock:
+                    self.cands_list = new_cands
 
             if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap):
                 with self.cands_lock:
                     to_demap = [c for c in self.cands_list
-                                if (self.spectrum.pgrid_fine_ptr > c.pipeline.sync.result.payload_hop_idxs[-1]
+                                if (self.spectrum.pgrid_fine_ptr > c.pipeline.sync.payload_hop_idxs[-1]
                                 and not c.pipeline.demap.has_started)]
                 for c in to_demap[:5]:
                     c.demap(self.spectrum)
                 with self.cands_lock:
                     demapped = [c for c in self.cands_list if c.pipeline.demap.has_completed]
-                    to_decode =  [c for c in demapped if c.pipeline.demap.result.ncheck <= self.ncheck_max
+                    to_decode =  [c for c in demapped if c.pipeline.demap.ncheck <= self.ncheck_max
                                 and not c.pipeline.decode.has_started]
                     if(len(demapped) < len(self.cands_list)):
-                       to_decode = [c for c in to_decode if c.pipeline.demap.result.ncheck <= 28]
+                       to_decode = [c for c in to_decode if c.pipeline.demap.ncheck <= 28]
                         
                 for c in to_decode[:1]:
                     c.decode(self.process_decode)
@@ -371,8 +356,8 @@ class Cycle_manager():
         c.dedupe_key = c.cyclestart_str+" "+' '.join(c.msg)
         if(not c.dedupe_key in self.duplicate_filter):
             self.duplicate_filter.add(c.dedupe_key)
-            c.h0_idx = c.pipeline.sync.result.h0_idx
-            c.f0_idx = c.pipeline.sync.result.f0_idx
+            c.h0_idx = c.pipeline.sync.h0_idx
+            c.f0_idx = c.pipeline.sync.f0_idx
             c.dt = c.h0_idx * self.spectrum.dt-0.7
             c.fHz = int(c.f0_idx * self.spectrum.df)
             self.onSuccessfulDecode(c)
