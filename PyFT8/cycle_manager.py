@@ -43,7 +43,7 @@ class Candidate:
         self.demap_started, self.demap_completed = None, None
         self.decode_started, self.decode_completed = None, None
         self.info_str = ""
-        self.decoded_stage = -2
+        self.decoded_stage = None
         self.msg = None
 
     def record_sync(self, spectrum, h0_idx, f0_idx, score):
@@ -70,19 +70,17 @@ class Candidate:
         llr_sd = np.std(llr)
         self.llr = 3.8 * llr / llr_sd
         llr_check = self.llr[ldpc_check_vars]
-        valid = ldpc_check_vars != -1
-        parity = (np.sum((llr_check > 0) & valid, axis=1) & 1) 
+        parity = (np.sum((llr_check > 0) & (ldpc_check_vars != -1), axis=1) & 1) 
         self.ncheck =  np.sum(parity)
         self.info_str = f"{self.ncheck};"
         self.demap_completed = time.time()
 
     def find_llr_offset(self, llr):
-        offsets = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0,2.1]
+        offsets = [0.1,0.3,0.5,0.7,0.9,1.1,1.5,2.0]
         offsets = np.array(offsets + [-o for o in offsets])
         llrs_with_offsets = llr + offsets[:, None]
         llrs_for_check = llrs_with_offsets[:, ldpc_check_vars]
-        valid = ldpc_check_vars != -1
-        parity = (np.sum((llrs_for_check > 0) & valid, axis=2) & 1)
+        parity = (np.sum((llrs_for_check > 0) & (ldpc_check_vars != -1), axis=2) & 1)
         nchecks = np.sum(parity, axis=1)
         best_idx = np.argmin(nchecks)
         ncheck = nchecks[best_idx]
@@ -93,13 +91,6 @@ class Candidate:
         alpha = 1.18
         info_str = ""
         for it in range(max_iters):
-            llr_check = llr[ldpc_check_vars]
-            valid = ldpc_check_vars != -1
-            parity = (np.sum((llr_check > 0) & valid, axis=1) & 1) 
-            ncheck = np.sum(parity)
-            info_str += f"{ncheck},"
-            if(ncheck == 0): break
-            
             delta = np.zeros_like(llr)
             for m in range(83):
                 deg = ldpc_check_deg[m]
@@ -111,15 +102,19 @@ class Candidate:
                 delta[v] += new - Lmn[m, :deg]
                 Lmn[m, :deg] = new
             llr += delta
-
+            llr_check = llr[ldpc_check_vars]
+            parity = (np.sum((llr_check > 0) & (ldpc_check_vars != -1), axis=1) & 1) 
+            ncheck = np.sum(parity)
+            info_str += f"{ncheck},"
+            if(ncheck == 0): break
         return llr, info_str, ncheck
 
     def decode(self, duplicate_filter, onSuccess):
         self.decode_started = time.time()
         offset = 0
         
-        if(self.ncheck == 0 and self.decoded_stage < 0):
-            self.decoded_stage = 0
+        if(self.ncheck == 0 and not self.decoded_stage):
+            self.decoded_stage = 'I'
 
         if(self.ncheck > 0):
             llr_orig = self.llr.copy()
@@ -127,28 +122,31 @@ class Candidate:
             
             if(self.ncheck > threshold):
                 offset, nchk = self.find_llr_offset(self.llr)
-                if(nchk < self.ncheck - 5):
+                if(nchk < self.ncheck - 1):
                     self.ncheck = nchk
                     self.llr += offset
                 else:
                     offset = 0
             self.info_str = self.info_str + f" {offset:5.2f}:"        
-            self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr, max_iters = 8)
+            self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr, max_iters = 6)
             self.info_str = self.info_str + self.ldpc_info
-            if(self.ncheck == 0 and self.decoded_stage < 0):
-                self.decoded_stage = 1
+            if(self.ncheck == 0 and not self.decoded_stage):
+                self.decoded_stage = 'L1'
 
-            if(self.ncheck > 0 and self.ncheck < 10):
+            if(self.ncheck > 0 and (self.ncheck < 5 or offset != 0)):
+                if(offset !=0):
+                    offset = 0
+                    self.llr = llr_orig.copy()
                 self.info_str = self.info_str + f" {offset:5.2f}:"        
                 self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr, max_iters = 8)
                 self.info_str = self.info_str + self.ldpc_info
-            if(self.ncheck == 0 and self.decoded_stage < 0):
-                self.decoded_stage = 2
+            if(self.ncheck == 0 and not self.decoded_stage):
+                self.decoded_stage = 'L2'
 
         self.decode_completed = time.time()
         
         if(self.ncheck > 0):
-            self.decoded_stage = -1
+            self.decoded_stage = 'F'
             with open('failures.csv', 'a') as f:
                 f.write(f"{self.info_str}\n")
         
@@ -288,7 +286,7 @@ class Cycle_manager():
             self.tlog(f"[Cycle manager] ncheck_valid: {len(demap_valid_ncheck)} ({earliest_and_latest(demap_valid_ncheck)})")
             self.tlog(f"[Cycle manager] decode_completed:  {len(decode_completed)} ({earliest_and_latest(decode_completed)})")
             counts = Counter(c.decoded_stage for c in self.cands_list)
-            items = ", ".join(f"{k}:{v}" for k,v in sorted(counts.items()))
+            items = ", ".join(f"{k}:{v}" for k,v in counts.items())
             self.tlog(f"Decode types = {items}")
         
     def manage_cycle(self):
@@ -336,10 +334,11 @@ class Cycle_manager():
 
             with self.cands_lock:
                 self.demapped_cands = [c for c in self.cands_list if c.demap_completed]
-                to_decode =  [c for c in self.demapped_cands if c.ncheck <= self.ncheck_max and not c.decode_started]
-                if(len(self.demapped_cands) < len(self.cands_list)):
-                   to_decode = [c for c in to_decode if c.ncheck <= self.ncheck_max_fast]                        
-            for c in to_decode[:1]:
+            to_decode =  [c for c in self.demapped_cands if c.ncheck <= self.ncheck_max and not c.decode_started]
+            if(len(self.demapped_cands) < len(self.cands_list)):
+                to_decode = [c for c in to_decode if c.ncheck <= self.ncheck_max_fast]
+            if(to_decode):
+                c = to_decode[np.argmin([c.ncheck for c in to_decode])]
                 c.decode(self.duplicate_filter, self.onSuccessfulDecode)
 
             if(self.spectrum.cycle_time() > self.sigspec.cycle_seconds - 0.25 and not self.stats_printed):
