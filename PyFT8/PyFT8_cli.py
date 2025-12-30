@@ -13,8 +13,8 @@ def on_decode(c):
     if(not concise):
         decode_dict.update({'decoder':'PyFT8',
                    't_decode':f"{time.time() %15: 5.2f}", 'snr':f"{c.snr:5.0f}", 'freq':c.fHz,
-                   'dt':f"{c.dt:5.1f}", 'sync_score':f"{c.pipeline.sync.result.score:5.1f}",
-                   'ncheck_hist':c.pipeline.ldpc.metrics.ncheck_hist})
+                   'dt':f"{c.dt:5.1f}",
+                   'info_str':c.info_str})
 
     print(decode_dict)
 

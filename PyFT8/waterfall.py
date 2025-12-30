@@ -34,14 +34,14 @@ class Waterfall:
         
         cands_for_plot = candidates.copy()
         def candsort(c):
-            if(c.pipeline.ldpc.success): return 1
+            if(c.msg): return 1
             return 0
         cands_for_plot.sort(key = lambda c: candsort(c))
         if candidates:
             for c in cands_for_plot:
-                origin_img = (c.pipeline.sync.result.f0_idx, c.pipeline.sync.result.h0_idx)
+                origin_img = (c.f0_idx, c.h0_idx)
                 cand_color = "lightgrey"
-                if(c.pipeline.ldpc.success): cand_color = "lime"
+                if(c.msg): cand_color = "lime"
                 rect = patches.Rectangle(origin_img, self.spectrum.sigspec.tones_persymb * self.spectrum.fbins_pertone,
                                          self.spectrum.sigspec.num_symbols * self.spectrum.hops_persymb,
                   linewidth=1.2,edgecolor=cand_color, facecolor="none"
@@ -68,12 +68,11 @@ class Waterfall:
 
         for i, c in enumerate(candidates):
             ax = axes[i]
-            f0_idx = c.pipeline.sync.result.f0_idx
-            h0_idx = c.pipeline.sync.result.h0_idx
+            f0_idx = c.f0_idx
+            h0_idx = c.h0_idx
             vals =self.spectrum.pgrid_fine[h0_idx:h0_idx + self.spectrum.sigspec.num_symbols * self.spectrum.hops_persymb,
                                         f0_idx:f0_idx + self.spectrum.sigspec.tones_persymb * self.spectrum.fbins_pertone]
 
-       #     vals = c.pipeline.demap.metrics.pgrid
             im = ax.imshow( vals, origin="lower", aspect="auto", extent=[-0.5, vals.shape[1]-0.5, -0.5, vals.shape[0]-0.5],
                             cmap="inferno",  interpolation='none' )
             vmax = np.max(vals)

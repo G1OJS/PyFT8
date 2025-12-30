@@ -17,20 +17,19 @@ def onDecode(c):
     global cycle_manager
     if(first):
         first = False
-        heads = ['        Cycle', 't_demap','t_ldpc', 'Rx call', 'Tx call', 'GrRp', 'SyncScr', 'snr', 't0_idx', 'f0_idx', 'ncheck']
+        heads = ['        Cycle', 'Rx call', 'Tx call', 'GrRp',  'snr', 't0_idx', 'f0_idx', 'info']
         print(''.join([f"{t:>8} " for t in heads]))
     def t_fmt(t):return f"{t %15:8.2f}" if t else f"{'-':>8}"
-    vals = [f"{c.cyclestart_str} {t_fmt(c.pipeline.demap.completed_time)} {t_fmt(c.pipeline.ldpc.completed_time)}",
-            c.call_a, c.call_b, c.grid_rpt,
-            f"{c.pipeline.sync.result.score:>5.2f}",  f"{c.snr:5.0f}", c.h0_idx, c.f0_idx]
-    print(''.join([f"{t:>8} " for t in vals]), c.pipeline.ldpc.metrics.ncheck_hist)
+    vals = [f"{c.cyclestart_str} ", c.call_a, c.call_b, c.grid_rpt,f"{c.snr:5.0f}", c.h0_idx, c.f0_idx]
+    print(''.join([f"{t:>8} " for t in vals]), c.info_str)
     decoded_candidates.append(c)
     if not c.msg in unique_decode_set:
         unique_decode_set.add(c.msg)
         unique_decodes.append(c)
 
-cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = WAV,  verbose = True,
-                          sync_score_thresh = 3, max_cycles = 1)
+cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None,
+                          audio_in_wav = WAV,  verbose = True,
+                          max_cycles = 1)
 
 while cycle_manager.running:
     time.sleep(0.5)
