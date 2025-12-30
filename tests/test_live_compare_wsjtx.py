@@ -12,7 +12,7 @@ decodes_lock = threading.Lock()
 
 UID_FIELDS = ('cyclestart_str', 'call_a', 'call_b', 'grid_rpt')
 COMMON_FIELDS = {'t_decode', 'snr', 'dt'}
-PyFT8_FIELDS = {'sync_score', 'ncheck_hist', 'offset', 'info_str'}
+PyFT8_FIELDS = {'info_str'}
 
 running = True
 
@@ -22,10 +22,8 @@ def make_uid(d):
 def on_PyFT8_decode(c):
     decode_dict = {'decoder':'PyFT8', 'cyclestart_str':c.cyclestart_str,
                    'call_a':c.call_a, 'call_b':c.call_b, 'grid_rpt':c.grid_rpt,
-                   't_decode':time.time(), 'snr':c.snr, 'dt':c.dt, 'sync_score':c.pipeline.sync.score,
-                   'offset':c.pipeline.decode.offset,
-                   'info_str':c.pipeline.decode.info_str,
-                   'ncheck_hist':c.pipeline.decode.ncheck_hist}
+                   't_decode':time.time(), 'snr':c.snr, 'dt':c.dt,
+                   'info_str':c.info_str}
     on_decode(decode_dict)
            
 
@@ -73,7 +71,7 @@ def wsjtx_all_tailer(all_txt_path, on_decode):
 
 def update_stats():
     last_ct = 0
-    heads = f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'tP':>7} {'tW':>7} {'dtP':>7} {'dtW':>7} {'info':>7}"
+    heads = f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'tP':>7} {'tW':>7} {'dtP':>7} {'dtW':>7} {'info':<7}"
     nPtot, nWtot = 0, 0
     
     while running:
@@ -113,7 +111,7 @@ def update_stats():
 
                     info = f"{tP} {tW} {dtP} {dtW}"
                     if ('PyFT8_t_decode' in d):
-                        info = info + f" {d['PyFT8_info_str']:>7}"
+                        info = info + f" {d['PyFT8_info_str']}"
 
                     #if(decoder == 'BOTH '):
                     row = f"{uid_pretty} {decoder:>7} {info}"
