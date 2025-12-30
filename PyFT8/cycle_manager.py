@@ -46,11 +46,10 @@ class Candidate:
 
     def __init__(self):
         self.deduped = False
-        self.sync_started, self.sync_completed_times = None, None
-        self.demap_started, self.demap_completed_times = None, None
-        self.decode_started, self.decode_completed_times = None, None
+        self.sync_started, self.sync_completed = None, None
+        self.demap_started, self.demap_completed = None, None
+        self.decode_started, self.decode_completed = None, None
         self.info_str = ""
-        self.decoded_stage = None
         self.msg = None
         self.ncheck = 999
 
@@ -63,7 +62,7 @@ class Candidate:
         self.sync_score = score
         self.dt = self.h0_idx * spectrum.dt-0.7
         self.fHz = int((self.f0_idx + bpt // 2) * spectrum.df)
-        self.sync_completed_times = time.time()
+        self.sync_completed = time.time()
                                    
     def demap(self, spectrum):
         self.demap_started = time.time()
@@ -78,8 +77,8 @@ class Candidate:
         llr_sd = np.std(llr)
         self.llr = 3.8 * llr / llr_sd
         self.ncheck =  self.get_ncheck(self.llr)
-        self.info_str = f"{self.ncheck};"
-        self.demap_completed_times = time.time()
+        self.info_str = f"{self.ncheck:02d};"
+        self.demap_completed = time.time()
 
     def find_llr_offset(self, llr):
         off_pos = np.arange(0.1,2.0,0.1)
@@ -115,21 +114,18 @@ class Candidate:
                 Lmn[m, :deg] = new
             llr += delta
             ncheck = self.get_ncheck(llr)
-            info_str += f"{ncheck},"
+            info_str += f"{ncheck:02d},"
             if(ncheck == 0): break
         return llr, info_str, ncheck
 
     def decode(self, duplicate_filter, onSuccess):
+        threshold = 32
+
         self.decode_started = time.time()
         offset = 0
         
-        if(self.ncheck == 0 and not self.decoded_stage):
-            self.decoded_stage = 'I'
-
         if(self.ncheck > 0):
             llr_orig = self.llr.copy()
-            threshold = 28
-            
             if(self.ncheck > threshold):
                 offset, nchk = self.find_llr_offset(self.llr)
                 if(nchk < self.ncheck):
@@ -140,8 +136,6 @@ class Candidate:
             self.info_str = self.info_str + f" {offset:5.2f}:"        
             self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr, max_iters = 6)
             self.info_str = self.info_str + self.ldpc_info
-            if(self.ncheck == 0 and not self.decoded_stage):
-                self.decoded_stage = 'L1'
 
             if(self.ncheck > 0 and self.ncheck < 10):
                 if(offset !=0):
@@ -150,13 +144,10 @@ class Candidate:
                 self.info_str = self.info_str + f" {offset:5.2f}:"
                 self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr, max_iters = 8)
                 self.info_str = self.info_str + self.ldpc_info
-            if(self.ncheck == 0 and not self.decoded_stage):
-                self.decoded_stage = 'L2'
 
-        self.decode_completed_times = time.time()
+        self.decode_completed = time.time()
         
         if(self.ncheck > 0):
-            self.decoded_stage = 'F'
             with open('failures.csv', 'a') as f:
                 f.write(f"{self.info_str}\n")
         
@@ -255,7 +246,6 @@ class Cycle_manager():
         self.cands_lock = threading.Lock()
         self.onSuccessfulDecode = onSuccessfulDecode
         self.onOccupancy = onOccupancy
-        self.stats_printed = False
         self.duplicate_filter = set()
         if(self.output_device_idx):
             from .audio import AudioOut
@@ -263,10 +253,9 @@ class Cycle_manager():
         self.sigspec = sigspec
         self.spectrum = Spectrum(sigspec)
         self.audio_started = False
-        self.sync_completed_times = [0]
-        self.demap_completed_times = [0]
-        self.demap_valid_ncheck_times = [0]
-        self.decode_completed_times = [0]
+        self.sync_completed_times = []
+        self.demap_completed_times = []
+        self.decode_completed_times = []
 
         threading.Thread(target=self.manage_cycle, daemon=True).start()
         delay = self.sigspec.cycle_seconds - self.spectrum.cycle_time()
@@ -292,18 +281,14 @@ class Cycle_manager():
             self.tlog(f"[Cycle manager] sync_completed:   {len(self.sync_completed_times)} ({earliest_and_latest(self.sync_completed_times)})")
             self.tlog(f"[Cycle manager] demap_completed: {len(self.demap_completed_times)} ({earliest_and_latest(self.demap_completed_times)})")
             self.tlog(f"[Cycle manager] decode_completed:  {len(self.decode_completed_times)} ({earliest_and_latest(self.decode_completed_times)})")
-            counts = Counter(c.decoded_stage for c in self.cands_list)
-            items = ", ".join(f"{k}:{v}" for k,v in counts.items())
-            self.tlog(f"Decode types = {items}")
         
     def manage_cycle(self):
-        cycle_searched = False
+        cycle_searched = True
         cycle_counter = 0
         cycle_time_prev = 0
         self.demapped_cands = []
         while self.running:
             time.sleep(0.001)
-
             rollover = self.spectrum.cycle_time() < cycle_time_prev 
             cycle_time_prev = self.spectrum.cycle_time()
 
@@ -319,20 +304,17 @@ class Cycle_manager():
                 self.spectrum.pgrid_fine_ptr = 0
                 if not self.audio_started: self.start_audio()
 
-            if(time.time() %15 > 3 and not self.stats_printed):
-                self.stats_printed = True
-                self.print_stats()
-
             if (self.spectrum.pgrid_fine_ptr > self.spectrum.h_search and not cycle_searched):
                 cycle_searched = True
+                self.print_stats()
                 if(self.verbose): self.tlog(f"[Cycle manager] Search spectrum ...")
                 new_cands = self.spectrum.search()
                 if(self.verbose): self.tlog(f"[Cycle manager] Spectrum searched -> {len(new_cands)} candidates")
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
                 with self.cands_lock:
                     self.cands_list = new_cands + [c for c in self.cands_list
-                                                   if (time.time() - c.sync_completed_times) < 15 and not c.decode_completed_times]
-                    self.sync_completed_times = [c.sync_completed_times for c in self.cands_list if c.sync_completed_times]
+                                                   if (time.time() - c.sync_completed) < 15 and not c.decode_completed]
+                    self.sync_completed_times = [c.sync_completed for c in self.cands_list if c.sync_completed]
             
             if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap):
                 with self.cands_lock:
@@ -346,16 +328,17 @@ class Cycle_manager():
                         c.decode(self.duplicate_filter, self.onSuccessfulDecode)
 
             with self.cands_lock:
-                self.demapped_cands = [c for c in self.cands_list if c.demap_completed_times]
-                self.demap_completed_times = [c.demap_completed_times for c in self.demapped_cands]
+                self.demapped_cands = [c for c in self.cands_list if c.demap_completed]
+                self.demap_completed_times = [c.demap_completed for c in self.demapped_cands]
                 
             to_decode =  [c for c in self.demapped_cands if not c.decode_started]
-            if(len(self.demapped_cands) < len(self.cands_list)):
-                to_decode = [c for c in to_decode if c.ncheck <= self.ncheck_max_fast]
-            if(to_decode):
-                c = to_decode[np.argmin([c.ncheck for c in to_decode])]
+            if(not to_decode):
+                continue
+            c = to_decode[np.argmin([c.ncheck for c in to_decode])]
+            if(len(self.demapped_cands) == len(self.cands_list) or c.ncheck <= self.ncheck_max_fast):
                 c.decode(self.duplicate_filter, self.onSuccessfulDecode)
-                self.decode_completed_times = [c.decode_completed_times for c in self.cands_list if c.decode_completed_times]
+
+            self.decode_completed_times = [c.decode_completed for c in self.cands_list if c.decode_completed]
 
     def check_for_tx(self):
         from .FT8_encoder import pack_message
