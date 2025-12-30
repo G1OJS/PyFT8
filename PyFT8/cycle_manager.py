@@ -130,6 +130,8 @@ class Candidate:
                 if(nchk < self.ncheck - 5):
                     self.ncheck = nchk
                     self.llr += offset
+                else:
+                    offset = 0
             self.info_str = self.info_str + f" {offset:5.2f}:"        
             self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr, max_iters = 8)
             self.info_str = self.info_str + self.ldpc_info
@@ -145,7 +147,7 @@ class Candidate:
 
         self.decode_completed = time.time()
         
-        if(self.ncheck == 0 and self.decoded_stage < 0):
+        if(self.ncheck > 0):
             self.decoded_stage = -1
             with open('failures.csv', 'a') as f:
                 f.write(f"{self.info_str}\n")
@@ -168,7 +170,7 @@ class Spectrum:
     def __init__(self, sigspec):
         self.sigspec = sigspec
         self.sample_rate = 12000
-        self.hops_persymb = 3
+        self.hops_persymb = 5
         self.fbins_pertone = 3
         self.max_freq = 3500
         self.dt = 1.0 / (self.sigspec.symbols_persec * self.hops_persymb) 
