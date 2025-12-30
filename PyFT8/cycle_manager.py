@@ -1,5 +1,5 @@
 import threading
-from types import SimpleNamespace
+from collections import Counter
 import numpy as np
 import time
 from .audio import find_device, AudioIn
@@ -9,6 +9,9 @@ import pyaudio
 import queue
 import wave
 import os
+
+with open('failures.csv', 'w') as f:
+    f.write(f"\n")
 
 eps = 1e-12
 
@@ -40,6 +43,7 @@ class Candidate:
         self.demap_started, self.demap_completed = None, None
         self.decode_started, self.decode_completed = None, None
         self.info_str = ""
+        self.decoded_stage = -2
 
     def record_sync(self, spectrum, h0_idx, f0_idx, score):
         hps, bpt = spectrum.hops_persymb, spectrum.fbins_pertone
@@ -114,21 +118,38 @@ class Candidate:
         offset = 0
         threshold = 26
         llr_orig = self.llr.copy()
+        self.decoded_stage = 0
 
         if(self.ncheck > 0):
             
             if(self.ncheck > threshold):
                 offset, nchk = self.find_llr_offset(self.llr)
-                if(nchk < self.ncheck):
+                if(nchk < self.ncheck - 5):
                     self.ncheck = nchk
                     self.llr += offset
+            if(self.ncheck == 0):
+                self.decoded_stage = 1
 
             if(self.ncheck > 0):
                 self.info_str = self.info_str + f" {offset:5.2f}:"        
                 self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr, max_iters = 8)
                 self.info_str = self.info_str + self.ldpc_info
+            if(self.ncheck == 0):
+                self.decoded_stage = 2
+
+            if(self.ncheck > 0 and self.ncheck < 10):
+                self.info_str = self.info_str + f" {offset:5.2f}:"        
+                self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr, max_iters = 8)
+                self.info_str = self.info_str + self.ldpc_info
+            if(self.ncheck == 0):
+                self.decoded_stage = 3
 
         self.decode_completed = time.time()
+        
+        if(self.ncheck > 0):
+            self.decoded_stage = -1
+            with open('failures.csv', 'a') as f:
+                f.write(f"{self.info_str}\n")
         
         if(self.ncheck == 0):
             self.payload_bits = []
@@ -148,7 +169,7 @@ class Spectrum:
     def __init__(self, sigspec):
         self.sigspec = sigspec
         self.sample_rate = 12000
-        self.hops_persymb = 3
+        self.hops_persymb = 7
         self.fbins_pertone = 3
         self.max_freq = 3500
         self.dt = 1.0 / (self.sigspec.symbols_persec * self.hops_persymb) 
@@ -212,11 +233,12 @@ class Spectrum:
 
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
-                 ncheck_max = 36, max_cycles = 5000, 
+                 ncheck_max = 36, ncheck_max_fast = 28, max_cycles = 5000, 
                  input_device_keywords = None, output_device_keywords = None, verbose = False):
         self.running = True
         self.verbose = verbose
         self.ncheck_max = ncheck_max
+        self.ncheck_max_fast = ncheck_max_fast
         self.audio_in_wav = audio_in_wav
         self.input_device_idx = find_device(input_device_keywords)
         self.output_device_idx = find_device(output_device_keywords)
@@ -263,7 +285,8 @@ class Cycle_manager():
             self.tlog(f"[Cycle manager] sync_completed:   {len(sync_completed)} ({earliest_and_latest(sync_completed)})")
             self.tlog(f"[Cycle manager] demap_completed: {len(demap_completed)} ({earliest_and_latest(demap_completed)})")
             self.tlog(f"[Cycle manager] ncheck_valid: {len(demap_valid_ncheck)} ({earliest_and_latest(demap_valid_ncheck)})")
-            self.tlog(f"[Cycle manager] decode_completed:  {len(decode_completed)} ({earliest_and_latest(decode_completed)})")           
+            self.tlog(f"[Cycle manager] decode_completed:  {len(decode_completed)} ({earliest_and_latest(decode_completed)})")
+            self.tlog(f"Decode types = {Counter(c.decoded_stage for c in self.cands_list)}")
         
     def manage_cycle(self):
         cycle_searched = True
@@ -307,14 +330,14 @@ class Cycle_manager():
                     c.cyclestart_str = self.spectrum.cyclestart_str(time.time())
                     if(c.ncheck == 0):
                         c.decode(self.duplicate_filter, self.onSuccessfulDecode)
-                with self.cands_lock:
-                    self.demapped_cands = [c for c in self.cands_list if c.demap_completed]
-                    to_decode =  [c for c in self.demapped_cands if c.ncheck <= self.ncheck_max and not c.decode_started]
-                    if(len(self.demapped_cands) < len(self.cands_list)):
-                       to_decode = [c for c in to_decode if c.ncheck <= 28]
-                        
-                for c in to_decode[:1]:
-                    c.decode(self.duplicate_filter, self.onSuccessfulDecode)
+
+            with self.cands_lock:
+                self.demapped_cands = [c for c in self.cands_list if c.demap_completed]
+                to_decode =  [c for c in self.demapped_cands if c.ncheck <= self.ncheck_max and not c.decode_started]
+                if(len(self.demapped_cands) < len(self.cands_list)):
+                   to_decode = [c for c in to_decode if c.ncheck <= self.ncheck_max_fast]                        
+            for c in to_decode[:1]:
+                c.decode(self.duplicate_filter, self.onSuccessfulDecode)
 
             if(self.spectrum.cycle_time() > self.sigspec.cycle_seconds - 0.25 and not self.stats_printed):
                 self.stats_printed = True
