@@ -117,37 +117,35 @@ class Candidate:
     def decode(self, duplicate_filter, onSuccess):
         self.decode_started = time.time()
         offset = 0
-        threshold = 26
-        llr_orig = self.llr.copy()
-        self.decoded_stage = 0
+        
+        if(self.ncheck == 0 and self.decoded_stage < 0):
+            self.decoded_stage = 0
 
         if(self.ncheck > 0):
+            llr_orig = self.llr.copy()
+            threshold = 26
             
             if(self.ncheck > threshold):
                 offset, nchk = self.find_llr_offset(self.llr)
                 if(nchk < self.ncheck - 5):
                     self.ncheck = nchk
                     self.llr += offset
-            if(self.ncheck == 0):
+            self.info_str = self.info_str + f" {offset:5.2f}:"        
+            self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr, max_iters = 8)
+            self.info_str = self.info_str + self.ldpc_info
+            if(self.ncheck == 0 and self.decoded_stage < 0):
                 self.decoded_stage = 1
-
-            if(self.ncheck > 0):
-                self.info_str = self.info_str + f" {offset:5.2f}:"        
-                self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr, max_iters = 8)
-                self.info_str = self.info_str + self.ldpc_info
-            if(self.ncheck == 0):
-                self.decoded_stage = 2
 
             if(self.ncheck > 0 and self.ncheck < 10):
                 self.info_str = self.info_str + f" {offset:5.2f}:"        
                 self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr, max_iters = 8)
                 self.info_str = self.info_str + self.ldpc_info
-            if(self.ncheck == 0):
-                self.decoded_stage = 3
+            if(self.ncheck == 0 and self.decoded_stage < 0):
+                self.decoded_stage = 2
 
         self.decode_completed = time.time()
         
-        if(self.ncheck > 0):
+        if(self.ncheck == 0 and self.decoded_stage < 0):
             self.decoded_stage = -1
             with open('failures.csv', 'a') as f:
                 f.write(f"{self.info_str}\n")
@@ -170,7 +168,7 @@ class Spectrum:
     def __init__(self, sigspec):
         self.sigspec = sigspec
         self.sample_rate = 12000
-        self.hops_persymb = 7
+        self.hops_persymb = 3
         self.fbins_pertone = 3
         self.max_freq = 3500
         self.dt = 1.0 / (self.sigspec.symbols_persec * self.hops_persymb) 
@@ -287,7 +285,9 @@ class Cycle_manager():
             self.tlog(f"[Cycle manager] demap_completed: {len(demap_completed)} ({earliest_and_latest(demap_completed)})")
             self.tlog(f"[Cycle manager] ncheck_valid: {len(demap_valid_ncheck)} ({earliest_and_latest(demap_valid_ncheck)})")
             self.tlog(f"[Cycle manager] decode_completed:  {len(decode_completed)} ({earliest_and_latest(decode_completed)})")
-            self.tlog(f"Decode types = {Counter(c.decoded_stage for c in self.cands_list)}")
+            counts = Counter(c.decoded_stage for c in self.cands_list)
+            items = ", ".join(f"{k}:{v}" for k,v in sorted(counts.items()))
+            self.tlog(f"Decode types = {items}")
         
     def manage_cycle(self):
         cycle_searched = True
