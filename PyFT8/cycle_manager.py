@@ -84,7 +84,7 @@ class Candidate:
         self.decode_started = time.time()
         if(self.ncheck > 0):
             Lmn = np.zeros((83, 7), dtype=np.float32)        
-            ncheck_profile = [99,35,20,18,18,18,12,8,6,3,0]
+            ncheck_profile = [99,35,20,18,18,18,12,12,10,10,8,6,6,6,0]
             for ncp in ncheck_profile:
                 delta = np.zeros_like(self.llr)
                 for m in range(83):
@@ -171,7 +171,7 @@ class Spectrum:
 
     def search(self, f0 = 200, fn = 3100):
         cands = []
-        n_close = 3
+        n_close = 2
         f0_idxs = range(int(f0/self.df), min(self.nFreqs - self.fbins_per_signal, int(fn/self.df)))
         pgrid = self.pgrid_fine[:self.h_search,:]
         
