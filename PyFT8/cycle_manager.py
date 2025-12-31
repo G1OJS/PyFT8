@@ -96,7 +96,7 @@ class Candidate:
     def ldpc(self, llr):
         Lmn = np.zeros((83, 7), dtype=np.float32)        
         info_str = ""
-        ncheck_profile = [99,35,20,12,8,6,3,0]
+        ncheck_profile = [99,35,20,18,18,18,12,8,6,3,0]
         for ncp in ncheck_profile:
             delta = np.zeros_like(llr)
             for m in range(83):
