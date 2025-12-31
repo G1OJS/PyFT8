@@ -11,7 +11,7 @@ decodes = {}
 decodes_lock = threading.Lock()
 
 UID_FIELDS = ('cyclestart_str', 'call_a', 'call_b', 'grid_rpt')
-COMMON_FIELDS = {'t_decode', 'snr', 'dt'}
+COMMON_FIELDS = {'t_decode', 'snr', 'dt', 'freq'}
 PyFT8_FIELDS = {'info_str'}
 
 running = True
@@ -25,7 +25,7 @@ def on_PyFT8_decode(c):
     pyft8_started = True
     decode_dict = {'decoder':'PyFT8', 'cyclestart_str':c.cyclestart_str,
                    'call_a':c.call_a, 'call_b':c.call_b, 'grid_rpt':c.grid_rpt,
-                   't_decode':time.time(), 'snr':c.snr, 'dt':c.dt,
+                   't_decode':time.time(), 'snr':c.snr, 'dt':c.dt, 'freq':c.fHz,
                    'info_str':c.info_str}
     on_decode(decode_dict)
            
@@ -74,7 +74,7 @@ def wsjtx_all_tailer(all_txt_path, on_decode):
 
 def update_stats():
     last_ct = 0
-    heads = f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'tP':>7} {'tW':>7} {'dtP':>7} {'dtW':>7} {'info':<7}"
+    heads = f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'fP':>7} {'fW':>7} {'dtP':>7} {'dtW':>7} {'tP':>7} {'tW':>7} {'info':<7}"
     nPtot, nWtot, nBtot = 0, 0, 0
     
     while running:
@@ -116,7 +116,10 @@ def update_stats():
                     if ('PyFT8_t_decode' in d):
                         info = info + f" {d['PyFT8_info_str']}"
 
-                    row = f"{uid_pretty} {decoder:>7} {info}"
+                    def get(key):
+                        return d[key] if key in d else ''
+
+                    row = f"{uid_pretty} {decoder:>7} {get('PyFT8_freq'):>7} {get('WSJTX_freq'):>7} {info}"
                     print(row)
                 pc = int(100*(nP+nB) / (nW+nB+nP+0.001))
                 print(f"WSJTX:{nW+nB}, PyFT8: {nP+nB} ({pc}%)")

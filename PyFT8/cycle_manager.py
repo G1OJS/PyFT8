@@ -150,7 +150,7 @@ class Candidate:
         
         if(self.ncheck > 0):
             with open('failures.csv', 'a') as f:
-                f.write(f"{self.info_str}\n")
+                f.write(f"{time.time()%15:5.2f},{self.info_str}\n")
         
         if(self.ncheck == 0):
             self.payload_bits = []
@@ -213,10 +213,12 @@ class Spectrum:
             self.pgrid_fine[self.pgrid_fine_ptr] = p
             self.pgrid_fine_ptr = (self.pgrid_fine_ptr + 1) % self.hops_percycle
 
-    def search(self):
+    def search(self, f0 = 200, fn = 3300):
         cands = []
-        f0_idxs = range(self.nFreqs - self.fbins_per_signal)
+        n_close = 3
+        f0_idxs = range(int(f0/self.df), min(self.nFreqs - self.fbins_per_signal, int(fn/self.df)))
         pgrid = self.pgrid_fine[:self.h_search,:]
+        
         for f0_idx in f0_idxs:
             p = pgrid[:, f0_idx:f0_idx + self.fbins_per_signal]
             max_pwr = np.max(p)
@@ -229,7 +231,12 @@ class Spectrum:
                     best = test
             c = Candidate()
             c.record_sync(self, *best)
-            cands.append(c)
+            
+            neigbours = [cn for cn in cands[-n_close:] if c.f0_idx - cn.f0_idx < n_close] if len(cands)>n_close else []
+            best_neighbour_score = np.max([0] + [cn.sync_score for cn in neigbours]) 
+            if(c.sync_score > best_neighbour_score):
+                cands.append(c)
+                
         return cands
 
 class Cycle_manager():
@@ -254,9 +261,6 @@ class Cycle_manager():
         self.sigspec = sigspec
         self.spectrum = Spectrum(sigspec)
         self.audio_started = False
-        self.sync_completed_times = []
-        self.demap_completed_times = []
-        self.decode_completed_times = []
 
         threading.Thread(target=self.manage_cycle, daemon=True).start()
         delay = self.sigspec.cycle_seconds - self.spectrum.cycle_time()
@@ -277,17 +281,20 @@ class Cycle_manager():
         print(f"{self.spectrum.cyclestart_str(time.time())} {self.spectrum.cycle_time():5.2f} {txt}")
 
     def print_stats(self):
-        if(self.verbose): 
+        if(self.verbose):
+            sync_completed_times = [c.sync_completed for c in self.cands_list if c.sync_completed]
+            demap_completed_times = [c.demap_completed for c in self.cands_list if c.demap_completed]
+            decode_completed_times = [c.decode_completed for c in self.cands_list if c.decode_completed]
             def earliest_and_latest(arr): return f"first {np.min(arr)%15 :5.2f}, last {np.max(arr)%15 :5.2f}" if arr else ''
-            self.tlog(f"[Cycle manager] sync_completed:   {len(self.sync_completed_times)} ({earliest_and_latest(self.sync_completed_times)})")
-            self.tlog(f"[Cycle manager] demap_completed: {len(self.demap_completed_times)} ({earliest_and_latest(self.demap_completed_times)})")
-            self.tlog(f"[Cycle manager] decode_completed:  {len(self.decode_completed_times)} ({earliest_and_latest(self.decode_completed_times)})")
+            self.tlog(f"[Cycle manager] sync_completed:   {len(sync_completed_times)} ({earliest_and_latest(sync_completed_times)})")
+            self.tlog(f"[Cycle manager] demap_completed: {len(demap_completed_times)} ({earliest_and_latest(demap_completed_times)})")
+            self.tlog(f"[Cycle manager] decode_completed:  {len(decode_completed_times)} ({earliest_and_latest(decode_completed_times)})")
         
     def manage_cycle(self):
         cycle_searched = True
         cycle_counter = 0
         cycle_time_prev = 0
-        self.demapped_cands = []
+        to_demap = []
         while self.running:
             time.sleep(0.001)
             rollover = self.spectrum.cycle_time() < cycle_time_prev 
@@ -313,33 +320,25 @@ class Cycle_manager():
                 if(self.verbose): self.tlog(f"[Cycle manager] Spectrum searched -> {len(new_cands)} candidates")
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
                 with self.cands_lock:
-                    self.cands_list = new_cands + [c for c in self.cands_list
-                                                   if (time.time() - c.sync_completed) < 15 and not c.decode_completed]
-                    self.sync_completed_times = [c.sync_completed for c in self.cands_list if c.sync_completed]
-            
+                    self.cands_list = new_cands
+
             if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap):
                 with self.cands_lock:
                     to_demap = [c for c in self.cands_list
                                 if (self.spectrum.pgrid_fine_ptr > c.payload_hop_idxs[-1]
                                 and not c.demap_started)]
-                for c in to_demap[:5]:
+                for c in to_demap:
                     c.demap(self.spectrum)
                     c.cyclestart_str = self.spectrum.cyclestart_str(time.time())
                     if(c.ncheck == 0):
                         c.decode(self.duplicate_filter, self.onSuccessfulDecode)
 
-            with self.cands_lock:
-                self.demapped_cands = [c for c in self.cands_list if c.demap_completed]
-                self.demap_completed_times = [c.demap_completed for c in self.demapped_cands]
-                
-            to_decode =  [c for c in self.demapped_cands if not c.decode_started]
-            if(not to_decode):
-                continue
-            c = to_decode[np.argmin([c.ncheck for c in to_decode])]
-            if(len(self.demapped_cands) == len(self.cands_list) or c.ncheck <= self.ncheck_max_fast):
-                c.decode(self.duplicate_filter, self.onSuccessfulDecode)
-
-            self.decode_completed_times = [c.decode_completed for c in self.cands_list if c.decode_completed]
+            if len(to_demap) < 10:
+                with self.cands_lock:
+                    to_decode =  [c for c in self.cands_list if c.demap_completed and not c.decode_started]
+                if(to_decode):
+                    c = to_decode[np.argmin([c.ncheck for c in to_decode])]
+                    c.decode(self.duplicate_filter, self.onSuccessfulDecode)
 
     def check_for_tx(self):
         from .FT8_encoder import pack_message
