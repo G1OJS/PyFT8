@@ -96,7 +96,7 @@ class Candidate:
     def ldpc(self, llr):
         Lmn = np.zeros((83, 7), dtype=np.float32)        
         info_str = ""
-        ncheck_profile = [99,35,25,22,18,17,12,8,6,3,0]
+        ncheck_profile = [99,35,20,18,18,18,12,8,6,3,0]
         for ncp in ncheck_profile:
             delta = np.zeros_like(llr)
             for m in range(83):
@@ -190,7 +190,7 @@ class Spectrum:
 
     def search(self, f0 = 200, fn = 3100):
         cands = []
-        idx_close = 3
+        n_close = 2
         f0_idxs = range(int(f0/self.df), min(self.nFreqs - self.fbins_per_signal, int(fn/self.df)))
         pgrid = self.pgrid_fine[:self.h_search,:]
         
@@ -206,13 +206,11 @@ class Spectrum:
                     best = test
             c = Candidate()
             c.record_sync(self, *best)
-
-            neighbour = c[-1] if len(cands) and c.f0_idx - cands[-1].f0_idx < idx_close else None
-            if(neighbour):
-                neighbour_score = neighbour.sync_score if neighbour else 0
-                if(c.sync_score > neighbour.sync_score):
-                    cands[-1] = cands[:-1]
-            cands.append(c)
+            
+            neigbours = [cn for cn in cands[-n_close:] if c.f0_idx - cn.f0_idx < n_close] if len(cands)>n_close else []
+            best_neighbour_score = np.max([0] + [cn.sync_score for cn in neigbours]) 
+            if(c.sync_score > best_neighbour_score):
+                cands.append(c)
                 
         return cands
 
