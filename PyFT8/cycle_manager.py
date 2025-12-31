@@ -75,6 +75,7 @@ class Candidate:
         llr = np.log(np.max(pgrid_n[:, [1,2,6,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,3,4,5]], axis=1))
         llr = np.column_stack((llr0, llr1, llr)).ravel()
         llr_sd = np.std(llr)
+        self.fade = np.std(pvt) / np.mean(pvt)
         self.llr = 3.8 * llr / llr_sd
         self.ncheck =  self.get_ncheck(self.llr)
         self.info_str = f"{self.ncheck:02d};"
@@ -169,7 +170,7 @@ class Spectrum:
     def __init__(self, sigspec):
         self.sigspec = sigspec
         self.sample_rate = 12000
-        self.hops_persymb = 7
+        self.hops_persymb = 4
         self.fbins_pertone = 3
         self.max_freq = 3500
         self.dt = 1.0 / (self.sigspec.symbols_persec * self.hops_persymb) 
@@ -212,9 +213,9 @@ class Spectrum:
             self.pgrid_fine[self.pgrid_fine_ptr] = p
             self.pgrid_fine_ptr = (self.pgrid_fine_ptr + 1) % self.hops_percycle
 
-    def search(self, f0 = 200, fn = 3300):
+    def search(self, f0 = 300, fn = 3300):
         cands = []
-        n_close = 3
+        n_close = 4
         f0_idxs = range(int(f0/self.df), min(self.nFreqs - self.fbins_per_signal, int(fn/self.df)))
         pgrid = self.pgrid_fine[:self.h_search,:]
         
@@ -332,7 +333,7 @@ class Cycle_manager():
                     if(c.ncheck == 0):
                         c.decode(self.duplicate_filter, self.onSuccessfulDecode)
 
-            if len(to_demap) < 10:
+            if not len(to_demap):
                 with self.cands_lock:
                     to_decode =  [c for c in self.cands_list if c.demap_completed and not c.decode_started]
                 if(to_decode):

@@ -26,7 +26,7 @@ def on_PyFT8_decode(c):
     decode_dict = {'decoder':'PyFT8', 'cyclestart_str':c.cyclestart_str,
                    'call_a':c.call_a, 'call_b':c.call_b, 'grid_rpt':c.grid_rpt,
                    't_decode':time.time(), 'snr':c.snr, 'dt':c.dt, 'freq':c.fHz,
-                   'info_str':c.info_str}
+                   'info_str':f"{c.fade:5.2f}; {c.info_str}" }
     on_decode(decode_dict)
            
 def on_decode(decode_dict):
