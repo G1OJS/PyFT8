@@ -71,7 +71,7 @@ class Candidate:
         self.fade = np.std(pvt) / np.mean(pvt)
         self.llr = 3.8 * llr / llr_sd
         self.ncheck =  self.get_ncheck(self.llr)
-        self.info_str = f"{self.ncheck:02d};"
+        self.info_str = f"{self.ncheck:02d}; "
         self.demap_completed = time.time()
 
     def find_llr_offset(self, llr):
@@ -93,11 +93,11 @@ class Candidate:
         parity = (np.sum((llr_check > 0) & valid, axis=1) & 1) 
         return np.sum(parity)
   
-    def ldpc(self, llr, max_iters = 15):
+    def ldpc(self, llr):
         Lmn = np.zeros((83, 7), dtype=np.float32)        
-        alpha = 1.18
         info_str = ""
-        for it in range(max_iters):
+        ncheck_profile = [99,35,20,12,8,6,3,0]
+        for ncp in ncheck_profile:
             delta = np.zeros_like(llr)
             for m in range(83):
                 deg = ldpc_check_deg[m]
@@ -105,61 +105,41 @@ class Candidate:
                 Lnm = llr[v] - Lmn[m, :deg]
                 t = np.tanh(-Lnm)         
                 prod = np.prod(t) / t                       
-                new = prod / ((prod - alpha) * (alpha + prod))
+                new = prod / ((prod - 1.18) * (1.18 + prod))
                 delta[v] += new - Lmn[m, :deg]
                 Lmn[m, :deg] = new
             llr += delta
             ncheck = self.get_ncheck(llr)
             info_str += f"{ncheck:02d},"
-            if(ncheck == 0): break
+            if(ncheck == 0 or ncheck > ncp): break
         return llr, info_str, ncheck
 
     def decode(self, duplicate_filter, onSuccess):
-        threshold = 32
-
         self.decode_started = time.time()
-        offset = 0
-        
         if(self.ncheck > 0):
-            llr_orig = self.llr.copy()
-            if(self.ncheck > threshold):
-                offset, nchk = self.find_llr_offset(self.llr)
-                if(nchk < self.ncheck):
-                    self.ncheck = nchk
-                    self.llr += offset
-                else:
-                    offset = 0
-            self.info_str = self.info_str + f" {offset:5.2f}:"        
-            self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr, max_iters = 8)
+            self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr)
             self.info_str = self.info_str + self.ldpc_info
-
-            if(offset !=0 and self.ncheck > 0):
-                offset = 0
-                self.llr = llr_orig.copy()
-                self.info_str = self.info_str + f" {offset:5.2f}:"
-                self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr, max_iters = 8)
-                self.info_str = self.info_str + self.ldpc_info
-
         self.decode_completed = time.time()
         self.info_str = f"{self.decode_completed - self.decode_started: 5.3f} " + self.info_str
-        
         if(self.ncheck > 0):
             with open('failures.csv', 'a') as f:
                 f.write(f"{time.time()%15:5.2f},{self.info_str}\n")
-        
-        if(self.ncheck == 0):
-            self.payload_bits = []
-            decoded_bits = (self.llr > 0).astype(int).tolist()
-            if any(decoded_bits[:77]):
-                if check_crc(bitsLE_to_int(decoded_bits[0:91]) ):
-                    self.payload_bits = decoded_bits[:77]
-            if(any(self.payload_bits)):
-                self.msg = FT8_unpack(self.payload_bits)
-                self.call_a, self.call_b, self.grid_rpt = self.msg[0], self.msg[1], self.msg[2]
-                self.dedupe_key = self.cyclestart_str+" "+' '.join(self.msg)
-                if(not self.dedupe_key in duplicate_filter):
-                    duplicate_filter.add(self.dedupe_key)
-                    onSuccess(self)
+        if(self.ncheck == 0 ):
+            threading.Thread(target = self.process_decode, args = (duplicate_filter,onSuccess, ) ).start()
+
+    def process_decode(self, duplicate_filter, onSuccess):
+        self.payload_bits = []
+        decoded_bits = (self.llr > 0).astype(int).tolist()
+        if any(decoded_bits[:77]):
+            if check_crc(bitsLE_to_int(decoded_bits[0:91]) ):
+                self.payload_bits = decoded_bits[:77]
+        if(any(self.payload_bits)):
+            self.msg = FT8_unpack(self.payload_bits)
+            self.call_a, self.call_b, self.grid_rpt = self.msg[0], self.msg[1], self.msg[2]
+            self.dedupe_key = self.cyclestart_str+" "+' '.join(self.msg)
+            if(not self.dedupe_key in duplicate_filter):
+                duplicate_filter.add(self.dedupe_key)
+                onSuccess(self)
 
 class Spectrum:
     def __init__(self, sigspec):
@@ -208,9 +188,9 @@ class Spectrum:
             self.pgrid_fine[self.pgrid_fine_ptr] = p
             self.pgrid_fine_ptr = (self.pgrid_fine_ptr + 1) % self.hops_percycle
 
-    def search(self, f0 = 300, fn = 3300):
+    def search(self, f0 = 200, fn = 3100):
         cands = []
-        n_close = 4
+        n_close = 2
         f0_idxs = range(int(f0/self.df), min(self.nFreqs - self.fbins_per_signal, int(fn/self.df)))
         pgrid = self.pgrid_fine[:self.h_search,:]
         
@@ -235,12 +215,10 @@ class Spectrum:
         return cands
 
 class Cycle_manager():
-    def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
-                 ncheck_max_fast = 28, max_cycles = 5000, 
+    def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None, max_cycles = 5000, 
                  input_device_keywords = None, output_device_keywords = None, verbose = False):
         self.running = True
         self.verbose = verbose
-        self.ncheck_max_fast = ncheck_max_fast
         self.audio_in_wav = audio_in_wav
         self.input_device_idx = find_device(input_device_keywords)
         self.output_device_idx = find_device(output_device_keywords)
