@@ -70,62 +70,43 @@ class Candidate:
         llr_sd = np.std(llr)
         self.fade = np.std(pvt) / np.mean(pvt)
         self.llr = 3.8 * llr / llr_sd
-        self.ncheck =  self.get_ncheck(self.llr)
+        self.ncheck =  self.get_ncheck()
         self.info_str = f"{self.ncheck:02d}; "
         self.demap_completed = time.time()
 
-    def find_llr_offset(self, llr):
-        off_pos = np.geomspace(0.01,3,15)
-        offsets = np.concatenate([off_pos, -off_pos])
-        llrs_with_offsets = llr + offsets[:, None]
-        valid_mask = (ldpc_check_vars != -1)[None, :, :]
-        llrs_for_check = llrs_with_offsets[:, ldpc_check_vars]
-        bits = (llrs_for_check > 0)
-        parity = (np.sum(bits * valid_mask, axis=2) & 1)
-        nchecks = np.sum(parity, axis=1)
-        best_idx = np.argmin(nchecks)
-        ncheck = nchecks[best_idx]
-        return offsets[best_idx], ncheck
-
-    def get_ncheck(self, llr):
-        llr_check = llr[ldpc_check_vars]
+    def get_ncheck(self):
+        llr_check = self.llr[ldpc_check_vars]
         valid = ldpc_check_vars != -1
         parity = (np.sum((llr_check > 0) & valid, axis=1) & 1) 
         return np.sum(parity)
-  
-    def ldpc(self, llr):
-        Lmn = np.zeros((83, 7), dtype=np.float32)        
-        info_str = ""
-        ncheck_profile = [99,35,20,18,18,18,12,8,6,3,0]
-        for ncp in ncheck_profile:
-            delta = np.zeros_like(llr)
-            for m in range(83):
-                deg = ldpc_check_deg[m]
-                v = ldpc_check_vars[m, :deg]
-                Lnm = llr[v] - Lmn[m, :deg]
-                t = np.tanh(-Lnm)         
-                prod = np.prod(t) / t                       
-                new = prod / ((prod - 1.18) * (1.18 + prod))
-                delta[v] += new - Lmn[m, :deg]
-                Lmn[m, :deg] = new
-            llr += delta
-            ncheck = self.get_ncheck(llr)
-            info_str += f"{ncheck:02d},"
-            if(ncheck == 0 or ncheck > ncp): break
-        return llr, info_str, ncheck
 
     def decode(self, duplicate_filter, onSuccess):
         self.decode_started = time.time()
         if(self.ncheck > 0):
-            self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr)
-            self.info_str = self.info_str + self.ldpc_info
+            Lmn = np.zeros((83, 7), dtype=np.float32)        
+            ncheck_profile = [99,35,20,18,18,18,12,8,6,3,0]
+            for ncp in ncheck_profile:
+                delta = np.zeros_like(self.llr)
+                for m in range(83):
+                    deg = ldpc_check_deg[m]
+                    v = ldpc_check_vars[m, :deg]
+                    Lnm = self.llr[v] - Lmn[m, :deg]
+                    t = np.tanh(-Lnm)         
+                    prod = np.prod(t) / t                       
+                    new = prod / ((prod - 1.18) * (1.18 + prod))
+                    delta[v] += new - Lmn[m, :deg]
+                    Lmn[m, :deg] = new
+                self.llr += delta
+                self.ncheck = self.get_ncheck()
+                self.info_str += f"{self.ncheck:02d},"
+                if(self.ncheck == 0 or self.ncheck > ncp): break
         self.decode_completed = time.time()
-        self.info_str = f"{self.decode_completed - self.decode_started: 5.3f} " + self.info_str
+        if(self.ncheck == 0 ):
+            threading.Thread(target = self.process_decode, args = (duplicate_filter,onSuccess, ) ).start()
+
         if(self.ncheck > 0):
             with open('failures.csv', 'a') as f:
                 f.write(f"{time.time()%15:5.2f},{self.info_str}\n")
-        if(self.ncheck == 0 ):
-            threading.Thread(target = self.process_decode, args = (duplicate_filter,onSuccess, ) ).start()
 
     def process_decode(self, duplicate_filter, onSuccess):
         self.payload_bits = []
@@ -145,7 +126,7 @@ class Spectrum:
     def __init__(self, sigspec):
         self.sigspec = sigspec
         self.sample_rate = 12000
-        self.hops_persymb = 4
+        self.hops_persymb = 6
         self.fbins_pertone = 3
         self.max_freq = 3500
         self.dt = 1.0 / (self.sigspec.symbols_persec * self.hops_persymb) 
@@ -190,7 +171,7 @@ class Spectrum:
 
     def search(self, f0 = 200, fn = 3100):
         cands = []
-        n_close = 2
+        n_close = 3
         f0_idxs = range(int(f0/self.df), min(self.nFreqs - self.fbins_per_signal, int(fn/self.df)))
         pgrid = self.pgrid_fine[:self.h_search,:]
         
@@ -206,11 +187,13 @@ class Spectrum:
                     best = test
             c = Candidate()
             c.record_sync(self, *best)
-            
-            neigbours = [cn for cn in cands[-n_close:] if c.f0_idx - cn.f0_idx < n_close] if len(cands)>n_close else []
-            best_neighbour_score = np.max([0] + [cn.sync_score for cn in neigbours]) 
+
+            neighbours = [cn for cn in cands[-n_close:] if c.f0_idx - cn.f0_idx < n_close] if len(cands)>n_close else []
+            best_neighbour_score = np.max([cn.sync_score for cn in neighbours]) if len(neighbours) else 1e40
             if(c.sync_score > best_neighbour_score):
-                cands.append(c)
+                for cand in neighbours:
+                    cands.remove(cand)
+            cands.append(c)
                 
         return cands
 
@@ -238,6 +221,7 @@ class Cycle_manager():
         threading.Thread(target=self.manage_cycle, daemon=True).start()
         delay = self.sigspec.cycle_seconds - self.spectrum.cycle_time()
         self.tlog(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)")
+        self.cand_info = np.empty(self.spectrum.nFreqs, dtype= np.dtypes.StringDType())
 
     def start_audio(self):
         self.audio_started = True
@@ -288,6 +272,9 @@ class Cycle_manager():
             if (self.spectrum.pgrid_fine_ptr > self.spectrum.h_search and not cycle_searched):
                 cycle_searched = True
                 self.print_stats()
+                without_message = [c for c in self.cands_list if not c.msg]
+                for c in without_message:
+                    self.cand_info[c.f0_idx] = f" {c.sync_score:5.2f}; {c.info_str}"
                 if(self.verbose): self.tlog(f"[Cycle manager] Search spectrum ...")
                 new_cands = self.spectrum.search()
                 if(self.verbose): self.tlog(f"[Cycle manager] Spectrum searched -> {len(new_cands)} candidates")

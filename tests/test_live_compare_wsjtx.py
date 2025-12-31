@@ -12,7 +12,7 @@ decodes_lock = threading.Lock()
 
 UID_FIELDS = ('cyclestart_str', 'call_a', 'call_b', 'grid_rpt')
 COMMON_FIELDS = {'t_decode', 'snr', 'dt', 'freq'}
-PyFT8_FIELDS = {'info_str'}
+PyFT8_FIELDS = {'sync_score', 'info_str'}
 
 running = True
 pyft8_started = False
@@ -24,9 +24,9 @@ def on_PyFT8_decode(c):
     global pyft8_started
     pyft8_started = True
     decode_dict = {'decoder':'PyFT8', 'cyclestart_str':c.cyclestart_str,
-                   'call_a':c.call_a, 'call_b':c.call_b, 'grid_rpt':c.grid_rpt,
+                   'call_a':c.call_a, 'call_b':c.call_b, 'grid_rpt':c.grid_rpt, 'sync_score':f"{c.sync_score:5.2f}",
                    't_decode':time.time(), 'snr':c.snr, 'dt':c.dt, 'freq':c.fHz,
-                   'info_str':f"{c.fade:5.2f}; {c.info_str}" }
+                   'info_str':f"{c.sync_score:5.2f}; {c.info_str}" }
     on_decode(decode_dict)
            
 def on_decode(decode_dict):
@@ -74,7 +74,7 @@ def wsjtx_all_tailer(all_txt_path, on_decode):
 
 def update_stats():
     last_ct = 0
-    heads = f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'fP':>7} {'fW':>7} {'dtP':>7} {'dtW':>7} {'tP':>7} {'tW':>7}  {'info':<7}"
+    heads = f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'fP':>7} {'fW':>7} {'dtP':>7} {'dtW':>7} {'tP':>7} {'tW':>7} {'Sync':>7}  {'info':<7}"
     nPtot, nWtot, nBtot = 0, 0, 0
     
     while running:
@@ -108,13 +108,19 @@ def update_stats():
                     
                     if ('PyFT8_t_decode' in d and not 'WSJTX_t_decode' in d): nP +=1
                     if (not 'PyFT8_t_decode' in d and 'WSJTX_t_decode' in d): nW +=1
+                    
                     if ('PyFT8_t_decode' in d and 'WSJTX_t_decode' in d):
                         decoder = 'BOTH '
                         nB +=1
 
-                    info = f"{tP} {tW} {dtP} {dtW}"
+                    info = f"{tP} {tW} {dtP} {dtW}  "
                     if ('PyFT8_t_decode' in d):
                         info = info + f" {d['PyFT8_info_str']}"
+
+                    if (not 'PyFT8_t_decode' in d and 'WSJTX_t_decode' in d):
+                        f_idx = int(int(get('WSJTX_freq')) / spec.df)
+                        ci = cycle_manager.cand_info[f_idx]
+                        info = info + ci
 
                     def get(key):
                         return d[key] if key in d else ''
@@ -142,6 +148,8 @@ threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path, on_decode,)).sta
 threading.Thread(target=update_stats).start()    
 cycle_manager = Cycle_manager(FT8, on_PyFT8_decode, onOccupancy = None,
                               input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
+
+spec = cycle_manager.spectrum
 
 try:
     while True:
