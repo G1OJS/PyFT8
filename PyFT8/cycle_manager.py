@@ -25,12 +25,6 @@ for m in range(83):
     ldpc_check_vars[m, :len(v)] = v
     ldpc_check_deg[m] = len(v)
 
-synd_check_idxs=[]
-for m in range(83):
-    ichk = ldpc_NM[:ldpc_NRW[m], m]
-    ichk = ichk[(ichk >=0)]
-    synd_check_idxs.append(ichk)
-
 def safe_pc(x,y):
     return 100*x/y if y>0 else 0
 
@@ -40,7 +34,6 @@ def bitsLE_to_int(bits):
     for b in bits:
         n = (n << 1) | (b & 1)
     return n
-
 
 class Candidate:
 
@@ -82,7 +75,7 @@ class Candidate:
         self.demap_completed = time.time()
 
     def find_llr_offset(self, llr):
-        off_pos = np.arange(0.1,2.0,0.1)
+        off_pos = np.geomspace(0.01,3,15)
         offsets = np.concatenate([off_pos, -off_pos])
         llrs_with_offsets = llr + offsets[:, None]
         valid_mask = (ldpc_check_vars != -1)[None, :, :]
@@ -95,8 +88,10 @@ class Candidate:
         return offsets[best_idx], ncheck
 
     def get_ncheck(self, llr):
-        synd_checks = [ sum(1 for llr_bit in llr[synd_check_idxs[i]] if llr_bit > 0) %2 for i in range(83)]
-        return int(np.sum(synd_checks))
+        llr_check = llr[ldpc_check_vars]
+        valid = ldpc_check_vars != -1
+        parity = (np.sum((llr_check > 0) & valid, axis=1) & 1) 
+        return np.sum(parity)
   
     def ldpc(self, llr, max_iters = 15):
         Lmn = np.zeros((83, 7), dtype=np.float32)        
