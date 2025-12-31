@@ -134,13 +134,12 @@ class Candidate:
                 else:
                     offset = 0
             self.info_str = self.info_str + f" {offset:5.2f}:"        
-            self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr, max_iters = 6)
+            self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr, max_iters = 8)
             self.info_str = self.info_str + self.ldpc_info
 
-            if(self.ncheck > 0 and self.ncheck < 10):
-                if(offset !=0):
-                    offset = 0
-                    self.llr = llr_orig.copy()
+            if(offset !=0 and self.ncheck > 0):
+                offset = 0
+                self.llr = llr_orig.copy()
                 self.info_str = self.info_str + f" {offset:5.2f}:"
                 self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr, max_iters = 8)
                 self.info_str = self.info_str + self.ldpc_info
