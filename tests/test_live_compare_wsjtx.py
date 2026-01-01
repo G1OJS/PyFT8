@@ -10,11 +10,12 @@ cycles = []
 decodes = []
 decodes_lock = threading.Lock()
 nPtot, nBtot, nWtot = 0,0,0
-
+nPyFT8 =0
+    
 running = True
-
 def on_decode(dd):
-    pass
+    global nPyFT8
+    nPyFT8 +=1
 
 def wsjtx_all_tailer(all_txt_path, on_decode):
     def follow():
@@ -38,6 +39,8 @@ def wsjtx_all_tailer(all_txt_path, on_decode):
             pass
 
 def update_stats(cand_info):
+    global nPyFT8
+   
     nP, nW, nB = 0, 0, 0
     nF, nFs = 0,0
     latest_cycle_decodes = [d for d in decodes if d['cyclestart_str'] == cycles[-1]]
@@ -56,7 +59,8 @@ def update_stats(cand_info):
         print(f"{dd['cyclestart_str']} {dd['msg']:<25} {ci}")
 
     pc = int(100*(nP+nB) / (nW+nB+nP+0.001))
-    print(f"WSJTX:{nW}, PyFT8: {nP} ({pc}%) Flip success = {nFs}/{nF}")
+    nPmiss = nPyFT8 - nB
+    print(f"WSJTX:{nW}, PyFT8: {nB} {nPmiss} not above ({pc}%) Flip success = {nFs}/{nF}")
     with open('live_compare_cycle_stats.csv', 'a') as f:
         f.write(f"{nW},{nP},{nB}\n")
     global nPtot, nWtot, nBtot
@@ -65,6 +69,8 @@ def update_stats(cand_info):
     nWtot += nW
     pc = int(100*(nPtot+nBtot) / (nPtot+nWtot+nBtot+0.001))
     print(f"All time: WSJTX:{nWtot+nBtot}, PyFT8: {nPtot+nBtot} ({pc}%)")
+
+    nPyFT8 = 0
 
 with open('live_compare_cycle_stats.csv', 'w') as f:
     f.write("nWSJTX,nPyFT8,nBoth\n")
