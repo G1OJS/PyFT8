@@ -297,7 +297,9 @@ class Cycle_manager():
 
             self.cand_info = np.empty(self.spectrum.nFreqs, dtype= np.dtypes.StringDType())
             for c in self.cands_list:
-                self.cand_info[c.f0_idx + 1] = c.info
+                t = c.decode_completed if c.decode_completed else time.time()
+                t = t %60
+                self.cand_info[c.f0_idx + 1] = f"{t:5.2f} {c.info}"
 
             if(self.update_stats):
                 self.update_stats(self.cand_info)

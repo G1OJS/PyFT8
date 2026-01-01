@@ -48,7 +48,7 @@ def update_stats(cand_info):
         f_idx = int(int(dd['freq']) / cycle_manager.spectrum.df)
         for i in [0,1,2]:
             ci = cand_info[f_idx +i]
-        output.append(f"{dd['cyclestart_str']} {dd['msg']:<22} {ci}")
+        output.append(f"{dd['cyclestart_str']} {dd['msg']:<22} {dd['t_decode'] %60:5.2f} {ci}")
 
     w = output
     p = [r for r in output if "Decoded" in r]
@@ -67,10 +67,10 @@ def update_stats(cand_info):
     pcBitFlip = pc_str(len(pB), len(pB)+len(pBf))
     print(f"WSJTX:{nW}, PyFT8:{nP} ({pc}%) Flip success = {pcBitFlip}%\n")
     with open('live_compare_cycle_stats.csv', 'a') as f:
-        f.write(f"{len(w)},{len(pI)},{len(pB)},{len(pF)},{len(pM)}\n")
+        f.write(f"{len(pI)},{len(pL)},{len(pB)},{len(pF)},{len(pM)}\n")
         
 with open('live_compare_cycle_stats.csv', 'w') as f:
-    f.write("nWSJTX,nPyFT8_Instant,nPyFT8_LDPC,nPyFT8_BitFlipLDPC,nPyFT8_Failed,nPyFT8_missed,PyFT8_pc\n")
+    f.write("Success(Hard),Success(LDPC),Success(BF-LDPC),Failed,No attempt\n")
     
 threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path, on_decode,)).start()   
 cycle_manager = Cycle_manager(FT8, on_decode, onOccupancy = None, update_stats = update_stats,
