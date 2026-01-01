@@ -97,19 +97,27 @@ class Candidate:
         self.decode_started = time.time()
 
         if(self.ncheck > 33):
+            patterns = [
+                (0,), (1,), (2,), (3,), (4,),  
+                (0,1), (0,2), (0,3),
+                (1,2), (1,3),
+                (0,1,2)
+            ]
             self.decode_history += "; F:"
-            max_bits = 2
-            idx = np.argsort(np.abs(self.llr))[:max_bits]
-            best_llr = self.llr.copy()
-            patterns = [[]] + [[idx[0]]] + [[idx[1]]] + [[idx[0],idx[1]]]
+            best_n = self.ncheck
+            ordered_llr_idxs = np.argsort(np.abs(self.llr))
             for pat in patterns:
                 llr2 = self.llr.copy()
-                llr2[pat] *= -1
+                flip_idxs = ordered_llr_idxs[list(pat)]
+                llr2[flip_idxs] *= -1
                 n = self.get_ncheck(llr2)
-                if n < self.ncheck:
-                    self.llr = llr2.copy()
-                    self.ncheck = n
-                self.decode_history += f"{self.ncheck:02d},"
+                if n < best_n:
+                    best_llr = llr2.copy()
+                    best_n = n
+                self.decode_history += f"{n:02d},"
+            if(best_n < self.ncheck):
+                self.ncheck = best_n
+                self.llr = best_llr
 
         if(self.ncheck > 0):
             self.decode_history += "; L:"
@@ -331,7 +339,7 @@ class Cycle_manager():
             if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap):
                 if(not cands_rollover_done):
                     cands_rollover_done = True
-                    self.summarise_cycle()
+                    if(cycle_counter > 1): self.summarise_cycle()
                     with self.cands_lock:
                         self.cands_list = new_cands
                 with self.cands_lock:
