@@ -123,6 +123,7 @@ class Candidate:
             self.decode_history += "; L:"
             self.Lmn = np.zeros((83, 7), dtype=np.float32)        
             ncheck_profile = [99,35,20,18,18,18,12,12,10,10,8,6,6,6,0]
+            #ncheck_profile = [35,30,25,22,20,18,15,8,6,6,6,0]
             for ncp in ncheck_profile:
                 self.do_ldpc_iteration()
                 self.ncheck = self.get_ncheck(self.llr)
@@ -224,7 +225,6 @@ class Spectrum:
                     cand.deduplicated = "sync"
             c.cyclestart_str = cyclestart_str
             cands.append(c)
-                
         return cands
 
 class Cycle_manager():
