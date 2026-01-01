@@ -10,9 +10,6 @@ import queue
 import wave
 import os
 
-with open('failures.csv', 'w') as f:
-    f.write(f"\n")
-
 eps = 1e-12
 
 ldpc_NRW = [7,6,6,6,7,6,7,6,6,7,6,6,7,7,6,6,6,7,6,7,6,7,6,6,6,7,6,6,6,7,6,6,6,6,7,6,6,6,7,7,6,6,6,6,7,7,6,6,6,6,7,6,6,6,7,6,6,6,6,7,6,6,6,7,6,6,6,7,7,6,6,7,6,6,6,6,6,6,6,7,6,6,6]
@@ -46,6 +43,7 @@ class Candidate:
         self.decode_history = ""
         self.msg = None
         self.ncheck = 999
+        self.state = "S"
 
     def record_sync(self, spectrum, h0_idx, f0_idx, score):
         hps, bpt = spectrum.hops_persymb, spectrum.fbins_pertone
@@ -72,6 +70,7 @@ class Candidate:
         self.llr = 3.8 * llr / llr_sd
         self.ncheck =  self.get_ncheck(self.llr)
         self.decode_history = f"I:{self.ncheck:02d}"
+        self.state = "D"
         self.demap_completed = time.time()
 
     def get_ncheck(self, llr):
@@ -118,6 +117,7 @@ class Candidate:
             if(best_n < self.ncheck):
                 self.ncheck = best_n
                 self.llr = best_llr
+                self.state = self.state + "B"
 
         if(self.ncheck > 0):
             self.decode_history += "; L:"
@@ -128,13 +128,14 @@ class Candidate:
                 self.ncheck = self.get_ncheck(self.llr)
                 self.decode_history += f"{self.ncheck:02d},"
                 if(self.ncheck == 0 or self.ncheck > ncp): break
+            self.state = self.state + "L"
         self.decode_completed = time.time()
+        
         if(self.ncheck == 0 ):
+            self.state = "Decoded-"+self.state
             threading.Thread(target = self.process_decode, args = (duplicate_filter,onSuccess, ) ).start()
-
-        if(self.ncheck > 0):
-            with open('failures.csv', 'a') as f:
-                f.write(f"{time.time()%15:5.2f},{self.decode_history}\n")
+        else:
+            self.state = "Failed-"+self.state
 
     def process_decode(self, duplicate_filter, onSuccess):
         self.payload_bits = []
@@ -153,12 +154,8 @@ class Candidate:
 
     @property
     def info(self):
-        state = "Not demapped "
-        if self.msg: state = "Decoded:     "
-        if self.decode_completed and not self.msg : state = "Decode fail: "
-        if self.demap_completed and not self.decode_completed : state = "Not decoded: "
         msgstr = ' '.join(self.msg) if self.msg else ""
-        return f"{self.sync_score:5.2f} {state} {self.cyclestart_str[-2:]} {msgstr:<25} {self.decode_history}" 
+        return f"{self.sync_score:5.2f} {self.state:<12} {self.cyclestart_str[-2:]} {msgstr:<20} {self.decode_history}" 
 
 class Spectrum:
     def __init__(self, sigspec, sample_rate, nFreqs, max_freq, hops_persymb, fbins_pertone):
@@ -300,7 +297,7 @@ class Cycle_manager():
 
             self.cand_info = np.empty(self.spectrum.nFreqs, dtype= np.dtypes.StringDType())
             for c in self.cands_list:
-                self.cand_info[c.f0_idx + 1] = f"{c.info}"
+                self.cand_info[c.f0_idx + 1] = c.info
 
             if(self.update_stats):
                 self.update_stats(self.cand_info)

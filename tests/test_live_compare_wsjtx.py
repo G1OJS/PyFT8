@@ -9,13 +9,10 @@ all_txt_path = "C:/Users/drala/AppData/Local/WSJT-X/ALL.txt"
 cycles = []
 decodes = []
 decodes_lock = threading.Lock()
-nPtot, nBtot, nWtot = 0,0,0
-nPyFT8 =0
     
 running = True
 def on_decode(dd):
-    global nPyFT8
-    nPyFT8 +=1
+    pass
 
 def wsjtx_all_tailer(all_txt_path, on_decode):
     def follow():
@@ -38,42 +35,42 @@ def wsjtx_all_tailer(all_txt_path, on_decode):
         except:
             pass
 
+def pc_str(x,y):
+    return "{}" if y == 0 else int(100*x/y)
+    
 def update_stats(cand_info):
     global nPyFT8
-   
-    nP, nW, nB = 0, 0, 0
-    nF, nFs = 0,0
+    output = []
     latest_cycle_decodes = [d for d in decodes if d['cyclestart_str'] == cycles[-1]]
     print(len(latest_cycle_decodes))
     for dd in latest_cycle_decodes:
-        nW +=1
+
         f_idx = int(int(dd['freq']) / cycle_manager.spectrum.df)
         for i in [0,1,2]:
             ci = cand_info[f_idx +i]
-            if("F:" in ci): nF +=1
-            if("Decoded" in ci):
-                nB +=1
-                nW -=1
-                if("F:" in ci): nFs +=1
-                break
-        print(f"{dd['cyclestart_str']} {dd['msg']:<25} {ci}")
+        output.append(f"{dd['cyclestart_str']} {dd['msg']:<22} {ci}")
 
-    pc = int(100*(nP+nB) / (nW+nB+nP+0.001))
-    nPmiss = nPyFT8 - nB
-    print(f"WSJTX:{nW}, PyFT8: {nB} {nPmiss} not above ({pc}%) Flip success = {nFs}/{nF}")
+    w = output
+    p = [r for r in output if "Decoded" in r]
+    pI = [r for r in output if "Decoded-D" in r]
+    pL =  [r for r in output if "Decoded-DL" in r] 
+    pB =  [r for r in output if "Decoded-DBL" in r]
+    pBf = [r for r in output if "Failed-DBL" in r]
+    pF = [r for r in output if "Failed" in r]
+    pM = [r for r in output if not "Failed" in r and not "Decoded" in r]
+    
+    for row in output:
+        print(row)
+
+    nP, nW = len(p), len(w)
+    pc = pc_str(nP, nW)
+    pcBitFlip = pc_str(len(pB), len(pB)+len(pBf))
+    print(f"WSJTX:{nW}, PyFT8:{nP} ({pc}%) Flip success = {pcBitFlip}%\n")
     with open('live_compare_cycle_stats.csv', 'a') as f:
-        f.write(f"{nW},{nP},{nB}\n")
-    global nPtot, nWtot, nBtot
-    nPtot += nP
-    nBtot += nB
-    nWtot += nW
-    pc = int(100*(nPtot+nBtot) / (nPtot+nWtot+nBtot+0.001))
-    print(f"All time: WSJTX:{nWtot+nBtot}, PyFT8: {nPtot+nBtot} ({pc}%)")
-
-    nPyFT8 = 0
-
+        f.write(f"{len(w)},{len(pI)},{len(pB)},{len(pF)},{len(pM)}\n")
+        
 with open('live_compare_cycle_stats.csv', 'w') as f:
-    f.write("nWSJTX,nPyFT8,nBoth\n")
+    f.write("nWSJTX,nPyFT8_Instant,nPyFT8_LDPC,nPyFT8_BitFlipLDPC,nPyFT8_Failed,nPyFT8_missed,PyFT8_pc\n")
     
 threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path, on_decode,)).start()   
 cycle_manager = Cycle_manager(FT8, on_decode, onOccupancy = None, update_stats = update_stats,
