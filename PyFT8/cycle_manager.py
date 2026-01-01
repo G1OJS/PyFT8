@@ -55,7 +55,6 @@ class Candidate:
         self.sync_score = score
         self.dt = self.h0_idx * spectrum.dt-0.7
         self.fHz = int((self.f0_idx + bpt // 2) * spectrum.df)
-        self.sync_completed = time.time()
                                    
     def demap(self, spectrum):
         self.demap_started = time.time()
@@ -80,23 +79,26 @@ class Candidate:
         parity = (np.sum((llr_check > 0) & valid, axis=1) & 1) 
         return np.sum(parity)
 
+    def do_ldpc_iteration(self):
+        delta = np.zeros_like(self.llr)
+        for m in range(83):
+            deg = ldpc_check_deg[m]
+            v = ldpc_check_vars[m, :deg]
+            self.Lnm = self.llr[v] - self.Lmn[m, :deg]
+            t = np.tanh(-self.Lnm)         
+            prod = np.prod(t) / t                       
+            new = prod / ((prod - 1.18) * (1.18 + prod))
+            delta[v] += new - self.Lmn[m, :deg]
+            self.Lmn[m, :deg] = new
+        self.llr += delta
+
     def decode(self, duplicate_filter, onSuccess):
         self.decode_started = time.time()
         if(self.ncheck > 0):
-            Lmn = np.zeros((83, 7), dtype=np.float32)        
+            self.Lmn = np.zeros((83, 7), dtype=np.float32)        
             ncheck_profile = [99,35,20,18,18,18,12,12,10,10,8,6,6,6,0]
             for ncp in ncheck_profile:
-                delta = np.zeros_like(self.llr)
-                for m in range(83):
-                    deg = ldpc_check_deg[m]
-                    v = ldpc_check_vars[m, :deg]
-                    Lnm = self.llr[v] - Lmn[m, :deg]
-                    t = np.tanh(-Lnm)         
-                    prod = np.prod(t) / t                       
-                    new = prod / ((prod - 1.18) * (1.18 + prod))
-                    delta[v] += new - Lmn[m, :deg]
-                    Lmn[m, :deg] = new
-                self.llr += delta
+                self.do_ldpc_iteration()
                 self.ncheck = self.get_ncheck()
                 self.info_str += f"{self.ncheck:02d},"
                 if(self.ncheck == 0 or self.ncheck > ncp): break
@@ -123,44 +125,36 @@ class Candidate:
                 onSuccess(self)
 
 class Spectrum:
-    def __init__(self, sigspec):
+    def __init__(self, sigspec, sample_rate, nFreqs, max_freq, hops_persymb, fbins_pertone):
         self.sigspec = sigspec
-        self.sample_rate = 12000
-        self.hops_persymb = 6
-        self.fbins_pertone = 3
-        self.max_freq = 3500
+        self.sample_rate = sample_rate
+        self.nFreqs = nFreqs
+        self.max_freq = max_freq
+        self.hops_persymb = hops_persymb
+        self.fbins_pertone = fbins_pertone
         self.dt = 1.0 / (self.sigspec.symbols_persec * self.hops_persymb) 
-        self.FFT_len = int(self.fbins_pertone * self.sample_rate // self.sigspec.symbols_persec)
-        FFT_out_len = int(self.FFT_len/2) + 1
-        fmax_fft = self.sample_rate/2
-        self.nFreqs = int(FFT_out_len * self.max_freq / fmax_fft)
-        self.df = self.max_freq / (self.nFreqs -1)
+        self.df = max_freq / (self.nFreqs -1)
         self.hops_percycle = int(self.sigspec.cycle_seconds * self.sigspec.symbols_persec * self.hops_persymb)
         self.fbins_per_signal = self.sigspec.tones_persymb * self.fbins_pertone
-
-        self.nhops_costas = self.sigspec.costas_len * self.hops_persymb
-        self._csync = np.full((self.sigspec.costas_len, self.fbins_per_signal), -1/(self.sigspec.costas_len-1), np.float32)
-        for sym_idx, tone in enumerate(self.sigspec.costas):
-            fbins = range(tone* self.fbins_pertone, (tone+1) * self.fbins_pertone)
-            self._csync[sym_idx, fbins] = 1.0
-            self._csync[sym_idx, self.sigspec.costas_len*self.fbins_pertone:] = 0
         self.hop_idxs_Costas =  np.arange(self.sigspec.costas_len) * self.hops_persymb
-
         self.pgrid_fine = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)
         self.pgrid_fine_ptr = 0
 
         self.max_start_hop = int(1.9 / self.dt)
+        self.nhops_costas = self.sigspec.costas_len * self.hops_persymb
         self.h_search = self.max_start_hop + self.nhops_costas 
         self.h_demap = self.sigspec.payload_symb_idxs[-1] * self.hops_persymb
         self.occupancy = np.zeros(self.nFreqs)
         self.lock = threading.Lock()
+        self.csync_flat = self.make_csync(sigspec)
 
-    def cyclestart_str(self, t):
-        cyclestart_time = self.sigspec.cycle_seconds * int(t / self.sigspec.cycle_seconds)
-        return time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
-
-    def cycle_time(self):
-        return time.time() % self.sigspec.cycle_seconds
+    def make_csync(self, sigspec):
+        csync = np.full((sigspec.costas_len, self.fbins_per_signal), -1/(sigspec.costas_len-1), np.float32)
+        for sym_idx, tone in enumerate(sigspec.costas):
+            fbins = range(tone* self.fbins_pertone, (tone+1) * self.fbins_pertone)
+            csync[sym_idx, fbins] = 1.0
+            csync[sym_idx, sigspec.costas_len*self.fbins_pertone:] = 0
+        return csync.ravel()
 
     def on_fft(self, z, t):
         p = z.real*z.real + z.imag*z.imag
@@ -181,12 +175,14 @@ class Spectrum:
             pnorm = p / max_pwr
             self.occupancy[f0_idx:f0_idx + self.fbins_per_signal] += max_pwr
             best = (0, f0_idx, -1e30)
+            c = Candidate()
+            c.sync_started = time.time()
             for t0_idx in range(self.h_search - self.nhops_costas):
-                test = (t0_idx, f0_idx, float(np.dot(pnorm[t0_idx + self.hop_idxs_Costas ,  :].ravel(), self._csync.ravel())))
+                test = (t0_idx, f0_idx, float(np.dot(pnorm[t0_idx + self.hop_idxs_Costas ,  :].ravel(), self.csync_flat)))
                 if test[2] > best[2]:
                     best = test
-            c = Candidate()
             c.record_sync(self, *best)
+            c.sync_completed = time.time()
 
             neighbours = [cn for cn in cands[-n_close:] if c.f0_idx - cn.f0_idx < n_close] if len(cands)>n_close else []
             best_neighbour_score = np.max([cn.sync_score for cn in neighbours]) if len(neighbours) else 1e40
@@ -200,6 +196,11 @@ class Spectrum:
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None, max_cycles = 5000, 
                  input_device_keywords = None, output_device_keywords = None, verbose = False):
+        
+        HPS, BPT, MAX_FREQ, SAMPLE_RATE = 6, 3, 3500, 12000
+        self.audio_in = AudioIn(SAMPLE_RATE, sigspec.symbols_persec, MAX_FREQ, HPS, BPT, on_fft = self.update_spectrum)
+        self.spectrum = Spectrum(sigspec, SAMPLE_RATE, self.audio_in.nFreqs, MAX_FREQ, HPS, BPT)
+        
         self.running = True
         self.verbose = verbose
         self.audio_in_wav = audio_in_wav
@@ -214,28 +215,33 @@ class Cycle_manager():
         if(self.output_device_idx):
             from .audio import AudioOut
             self.audio_out = AudioOut
-        self.sigspec = sigspec
-        self.spectrum = Spectrum(sigspec)
         self.audio_started = False
+        self.cycle_seconds = sigspec.cycle_seconds
 
         threading.Thread(target=self.manage_cycle, daemon=True).start()
-        delay = self.sigspec.cycle_seconds - self.spectrum.cycle_time()
+        delay = sigspec.cycle_seconds - self.cycle_time()
         self.tlog(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)")
         self.cand_info = np.empty(self.spectrum.nFreqs, dtype= np.dtypes.StringDType())
 
+    def update_spectrum(self, z, t):
+        self.spectrum.on_fft(z, t)
+
     def start_audio(self):
         self.audio_started = True
-        audio_in = AudioIn(sample_rate=self.spectrum.sample_rate,
-                    samples_perhop = int(self.spectrum.sample_rate /(self.sigspec.symbols_persec * self.spectrum.hops_persymb)),
-                    fft_len=self.spectrum.FFT_len, fft_window=np.kaiser(self.spectrum.FFT_len, 20),
-                    on_fft = self.spectrum.on_fft)
         if(self.audio_in_wav):
-            threading.Thread(target = audio_in.start_wav, args = (self.audio_in_wav, self.spectrum.dt), daemon=True).start()
+            threading.Thread(target = self.audio_in.start_wav, args = (self.audio_in_wav, self.spectrum.dt), daemon=True).start()
         else:
-            threading.Thread(target = audio_in.start_live, args=(self.input_device_idx,), daemon=True).start()
+            threading.Thread(target = self.audio_in.start_live, args=(self.input_device_idx,), daemon=True).start()
      
     def tlog(self, txt):
-        print(f"{self.spectrum.cyclestart_str(time.time())} {self.spectrum.cycle_time():5.2f} {txt}")
+        print(f"{self.cyclestart_str(time.time())} {self.cycle_time():5.2f} {txt}")
+
+    def cyclestart_str(self, t):
+        cyclestart_time = self.cycle_seconds * int(t / self.cycle_seconds)
+        return time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
+
+    def cycle_time(self):
+        return time.time() % self.cycle_seconds
 
     def print_stats(self):
         if(self.verbose):
@@ -254,12 +260,12 @@ class Cycle_manager():
         to_demap = []
         while self.running:
             time.sleep(0.001)
-            rollover = self.spectrum.cycle_time() < cycle_time_prev 
-            cycle_time_prev = self.spectrum.cycle_time()
+            rollover = self.cycle_time() < cycle_time_prev 
+            cycle_time_prev = self.cycle_time()
 
             if(rollover):
                 cycle_counter +=1
-                self.tlog(f"\n[Cycle manager] rollover detected at {self.spectrum.cycle_time():.2f}")
+                self.tlog(f"\n[Cycle manager] rollover detected at {self.cycle_time():.2f}")
                 if(cycle_counter > self.max_cycles):
                     self.running = False
                     break
@@ -289,7 +295,7 @@ class Cycle_manager():
                                 and not c.demap_started)]
                 for c in to_demap:
                     c.demap(self.spectrum)
-                    c.cyclestart_str = self.spectrum.cyclestart_str(time.time())
+                    c.cyclestart_str = self.cyclestart_str(time.time())
                     if(c.ncheck == 0):
                         c.decode(self.duplicate_filter, self.onSuccessfulDecode)
 

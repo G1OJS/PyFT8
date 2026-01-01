@@ -25,14 +25,17 @@ import pyaudio
 
 
 class AudioIn:
-    def __init__(self, sample_rate, samples_perhop, fft_len, fft_window, on_fft):
+    def __init__(self, sample_rate, symbol_rate, max_freq, hops_persymbol, fbins_pertone, on_fft):
 
         self.sample_rate = sample_rate
-        self.samples_perhop = samples_perhop
-        self.fft_len = fft_len
-        self.fft_window = fft_window
+        self.hop_rate = symbol_rate * hops_persymbol
+        fmax_fft = sample_rate/2
+        self.fft_len = int(fbins_pertone * sample_rate // symbol_rate)
+        fft_out_len = int(self.fft_len/2) + 1
+        self.nFreqs = int(fft_out_len * max_freq / fmax_fft)
+        self.fft_window = fft_window=np.kaiser(self.fft_len, 20)
         self.on_fft = on_fft
-        self.audio_buffer = np.zeros(fft_len, dtype=np.float32)
+        self.audio_buffer = np.zeros(self.fft_len, dtype=np.float32)
         self._pa = pyaudio.PyAudio()
         self._running = False
 
@@ -41,11 +44,11 @@ class AudioIn:
         wf = wave.open(wav_path, "rb")
         next_hop_time = time.time()
         while self._running:
-            frames = wf.readframes(self.samples_perhop)
+            frames = wf.readframes(sample_rate // self.hop_rate)
             if not frames:
                 wf.close()
                 wf = wave.open(wav_path, "rb")
-                frames = wf.readframes(self.samples_perhop)
+                frames = wf.readframes(sample_rate // self.hop_rate)
             now = time.time()
             if now < next_hop_time:
                 time.sleep(next_hop_time - now)
@@ -56,9 +59,9 @@ class AudioIn:
     def start_live(self, input_device_idx):
         self._running = True
         self.stream = self._pa.open(
-            format=pyaudio.paInt16, channels=1, rate=self.sample_rate,
-            input=True, input_device_index=input_device_idx,
-            frames_per_buffer=self.samples_perhop, stream_callback=self._callback,)
+            format = pyaudio.paInt16, channels=1, rate = self.sample_rate,
+            input = True, input_device_index = input_device_idx,
+            frames_per_buffer = int(self.sample_rate // self.hop_rate), stream_callback=self._callback,)
         self.stream.start_stream()
 
     def _callback(self, in_data, frame_count, time_info, status_flags):
