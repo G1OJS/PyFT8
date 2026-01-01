@@ -74,7 +74,7 @@ def wsjtx_all_tailer(all_txt_path, on_decode):
 
 def update_stats():
     last_ct = 0
-    heads = f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'fP':>7} {'fW':>7} {'dtP':>7} {'dtW':>7} {'tP':>7} {'tW':>7} {'Sync':>7}  {'info':<7}"
+    heads = f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'fP':>7} {'fW':>7} {'dtP':>7} {'dtW':>7} {'tP':>7} {'tW':>7} {'info':<7}"
     nPtot, nWtot, nBtot = 0, 0, 0
     
     while running:
@@ -120,7 +120,7 @@ def update_stats():
                     if (not 'PyFT8_t_decode' in d and 'WSJTX_t_decode' in d):
                         f_idx = int(int(get('WSJTX_freq')) / spec.df)
                         ci = cycle_manager.cand_info[f_idx]
-                        info = info + ci
+                        info = info + "["+ci+"]"
 
                     def get(key):
                         return d[key] if key in d else ''
