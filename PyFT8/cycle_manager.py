@@ -71,6 +71,18 @@ class Candidate:
         self.ncheck =  self.get_ncheck(self.llr)
         self.decode_history = f"I:{self.ncheck:02d}"
         self.state = "D"
+        if(self.ncheck >25):
+            llr0 = np.log(np.sum(pgrid_n[:, [4,5,6,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,1,2,3]], axis=1))
+            llr1 = np.log(np.sum(pgrid_n[:, [2,3,4,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,1,5,6]], axis=1))
+            llr = np.log(np.sum(pgrid_n[:, [1,2,6,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,3,4,5]], axis=1))
+            llr = np.column_stack((llr0, llr1, llr)).ravel()
+            llr_sd = np.std(llr)
+            llr = 3.8 * llr / llr_sd
+            nc = self.get_ncheck(llr)
+            if(nc < self.ncheck):
+                self.ncheck = nc
+                self.llr = llr
+                self.decode_history = self.decode_history + f",{self.ncheck:02d}"            
         self.demap_completed = time.time()
 
     def get_ncheck(self, llr):
@@ -95,7 +107,7 @@ class Candidate:
     def decode(self, duplicate_filter, onSuccess):
         self.decode_started = time.time()
 
-        if(self.ncheck > 33):
+        if(self.ncheck > 28):
             patterns = [
                 (0,), (1,), (2,), (3,),  
                 (0,1), (0,2), (0,3),
@@ -122,8 +134,8 @@ class Candidate:
         if(self.ncheck > 0):
             self.decode_history += "; L:"
             self.Lmn = np.zeros((83, 7), dtype=np.float32)        
-            ncheck_profile = [99,35,20,18,18,18,12,12,10,10,8,6,6,6,0]
-            #ncheck_profile = [35,30,25,22,20,18,15,8,6,6,6,0]
+            #ncheck_profile = [99,35,20,18,18,18,12,12,10,10,8,6,6,6,0]
+            ncheck_profile = [99,35,30,30,30,18,15,8,6,3,0]
             for ncp in ncheck_profile:
                 self.do_ldpc_iteration()
                 self.ncheck = self.get_ncheck(self.llr)
@@ -220,10 +232,13 @@ class Spectrum:
 
             neighbours = [cn for cn in cands[-n_close:] if c.f0_idx - cn.f0_idx < n_close] if len(cands)>n_close else []
             best_neighbour_score = np.max([cn.sync_score for cn in neighbours]) if len(neighbours) else 1e40
-            if(c.sync_score > 2*best_neighbour_score):
+            if(c.sync_score > 1.2* best_neighbour_score):
                 for cand in neighbours:
                     cand.deduplicated = "sync"
             c.cyclestart_str = cyclestart_str
+
+            if(c.sync_score < 1):
+                c.deduplicated = "sync"
             cands.append(c)
         return cands
 
@@ -242,6 +257,7 @@ class Cycle_manager():
         self.output_device_idx = find_device(output_device_keywords)
         self.max_cycles = max_cycles
         self.cands_list = []
+        self.new_cands = []
         self.cands_lock = threading.Lock()
         self.onSuccessfulDecode = onSuccessfulDecode
         self.onOccupancy = onOccupancy
@@ -304,7 +320,6 @@ class Cycle_manager():
             if(self.update_stats):
                 self.update_stats(self.cand_info)
 
-
     def manage_cycle(self):
         cycle_searched = True
         cands_rollover_done = False
@@ -331,16 +346,17 @@ class Cycle_manager():
             if (self.spectrum.pgrid_fine_ptr > self.spectrum.h_search and not cycle_searched):
                 cycle_searched = True
                 if(self.verbose): self.tlog(f"[Cycle manager] Search spectrum ...")
-                new_cands = self.spectrum.search(self.cyclestart_str(time.time()))
-                if(self.verbose): self.tlog(f"[Cycle manager] Spectrum searched -> {len(new_cands)} candidates")
+                self.new_cands = self.spectrum.search(self.cyclestart_str(time.time()))
+                if(self.verbose): self.tlog(f"[Cycle manager] Spectrum searched -> {len(self.new_cands)} candidates")
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
 
+            if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap-50 and not cands_rollover_done):
+                cands_rollover_done = True
+                if(cycle_counter > 1): self.summarise_cycle()
+                with self.cands_lock:
+                    self.cands_list = self.new_cands
+
             if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap):
-                if(not cands_rollover_done):
-                    cands_rollover_done = True
-                    if(cycle_counter > 1): self.summarise_cycle()
-                    with self.cands_lock:
-                        self.cands_list = new_cands
                 with self.cands_lock:
                     to_demap = [c for c in self.cands_list
                                 if (self.spectrum.pgrid_fine_ptr > c.payload_hop_idxs[-1]
@@ -352,7 +368,9 @@ class Cycle_manager():
 
             if not len(to_demap):
                 with self.cands_lock:
-                    to_decode =  [c for c in self.cands_list if c.demap_completed and not c.decode_started]
+                    to_decode =  [c for c in self.cands_list
+                                  if c.demap_completed and not c.decode_started
+                                  and c.ncheck < 45]
                 if(to_decode):
                     to_decode.sort(key = lambda c: c.ncheck)
                     for c in to_decode[:6]:

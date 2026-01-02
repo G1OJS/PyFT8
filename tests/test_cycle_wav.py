@@ -21,7 +21,7 @@ def onDecode(c):
         print(''.join([f"{t:>8} " for t in heads]))
     def t_fmt(t):return f"{t %15:8.2f}" if t else f"{'-':>8}"
     vals = [f"{c.cyclestart_str} ", c.call_a, c.call_b, c.grid_rpt,f"{c.snr:5.0f}", c.h0_idx, c.f0_idx]
-    print(''.join([f"{t:>8} " for t in vals]), c.info_str)
+    print(''.join([f"{t:>8} " for t in vals]), c.info)
     decoded_candidates.append(c)
     if not c.msg in unique_decode_set:
         unique_decode_set.add(c.msg)

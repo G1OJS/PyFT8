@@ -44,11 +44,11 @@ class AudioIn:
         wf = wave.open(wav_path, "rb")
         next_hop_time = time.time()
         while self._running:
-            frames = wf.readframes(sample_rate // self.hop_rate)
+            frames = wf.readframes(int(self.sample_rate // self.hop_rate))
             if not frames:
                 wf.close()
                 wf = wave.open(wav_path, "rb")
-                frames = wf.readframes(sample_rate // self.hop_rate)
+                frames = wf.readframes(int(self.sample_rate // self.hop_rate))
             now = time.time()
             if now < next_hop_time:
                 time.sleep(next_hop_time - now)
