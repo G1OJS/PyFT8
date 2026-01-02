@@ -105,7 +105,7 @@ class Candidate:
             self.Lmn[m, :deg] = new
         self.llr += delta
 
-    def decode(self, duplicate_filter, onSuccess):
+    def decode(self, duplicate_filter, onSuccess, onFail):
         self.decode_started = time.time()
 
         if(self.ncheck > 28):
@@ -147,11 +147,11 @@ class Candidate:
         
         if(self.ncheck == 0 ):
             self.state = "Decoded-"+self.state
-            threading.Thread(target = self.process_decode, args = (duplicate_filter,onSuccess, ) ).start()
+            threading.Thread(target = self.process_decode, args = (duplicate_filter,onSuccess, onFail) ).start()
         else:
             self.state = "Failed-"+self.state
 
-    def process_decode(self, duplicate_filter, onSuccess):
+    def process_decode(self, duplicate_filter, onSuccess, onFail):
         self.payload_bits = []
         decoded_bits = (self.llr > 0).astype(int).tolist()
         if any(decoded_bits[:77]):
@@ -165,11 +165,11 @@ class Candidate:
                 duplicate_filter.add(self.dedupe_key)
                 self.deduplicated = "msg"
                 if(onSuccess): onSuccess(self)
+        if(onFail): onFail(self)
 
     @property
     def info(self):
-        msgstr = ' '.join(self.msg) if self.msg else ""
-        return f"{self.sync_score:5.2f} {self.state:<12} {self.cyclestart_str[-2:]} {msgstr:<20} {self.decode_history}" 
+        return f"{self.sync_score:5.2f} {self.state:<12} {self.cyclestart_str[-2:]} {self.decode_history}" 
 
 class Spectrum:
     def __init__(self, sigspec, sample_rate, nFreqs, max_freq, hops_persymb, fbins_pertone):
@@ -246,7 +246,7 @@ class Spectrum:
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
                  input_device_keywords = None, output_device_keywords = None, 
-                 max_cycles = 5000, onCandidateRollover = None, verbose = False):
+                 max_cycles = 5000, onCandidateRollover = None, onFailedDecode = None, verbose = False):
         
         HPS, BPT, MAX_FREQ, SAMPLE_RATE = 6, 3, 3500, 12000
         self.audio_in = AudioIn(SAMPLE_RATE, sigspec.symbols_persec, MAX_FREQ, HPS, BPT, on_fft = self.update_spectrum)
@@ -274,6 +274,7 @@ class Cycle_manager():
         delay = sigspec.cycle_seconds - self.cycle_time()
         self.tlog(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)")
         self.onCandidateRollover = onCandidateRollover
+        self.onFailedDecode = onFailedDecode
 
     def update_spectrum(self, z, t):
         self.spectrum.on_fft(z, t)
@@ -358,7 +359,7 @@ class Cycle_manager():
                 for c in to_demap:
                     c.demap(self.spectrum)
                     if(c.ncheck == 0):
-                        c.decode(self.duplicate_filter, self.onSuccessfulDecode)
+                        c.decode(self.duplicate_filter, self.onSuccessfulDecode, self.onFailedDecode)
 
             if not len(to_demap):
                 with self.cands_lock:
@@ -368,7 +369,7 @@ class Cycle_manager():
                 if(to_decode):
                     to_decode.sort(key = lambda c: c.ncheck)
                     for c in to_decode[:6]:
-                        c.decode(self.duplicate_filter, self.onSuccessfulDecode)
+                        c.decode(self.duplicate_filter, self.onSuccessfulDecode, self.onFailedDecode)
                     
     def check_for_tx(self):
         from .FT8_encoder import pack_message
