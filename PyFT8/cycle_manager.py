@@ -44,6 +44,7 @@ class Candidate:
         self.msg = None
         self.ncheck = 999
         self.state = "S"
+        self.snr = -999
 
     def record_sync(self, spectrum, h0_idx, f0_idx, score):
         hps, bpt = spectrum.hops_persymb, spectrum.fbins_pertone
@@ -134,8 +135,8 @@ class Candidate:
         if(self.ncheck > 0):
             self.decode_history += "; L:"
             self.Lmn = np.zeros((83, 7), dtype=np.float32)        
-            #ncheck_profile = [99,35,20,18,18,18,12,12,10,10,8,6,6,6,0]
-            ncheck_profile = [99,35,30,30,30,18,15,8,6,3,0]
+            ncheck_profile = [99,35,20,18,18,18,12,12,10,10,8,6,6,6,0]
+            #ncheck_profile = [99,35,30,30,30,18,15,8,6,3,0]
             for ncp in ncheck_profile:
                 self.do_ldpc_iteration()
                 self.ncheck = self.get_ncheck(self.llr)
@@ -163,7 +164,7 @@ class Candidate:
             if(not self.dedupe_key in duplicate_filter):
                 duplicate_filter.add(self.dedupe_key)
                 self.deduplicated = "msg"
-                onSuccess(self)
+                if(onSuccess): onSuccess(self)
 
     @property
     def info(self):
@@ -243,8 +244,9 @@ class Spectrum:
         return cands
 
 class Cycle_manager():
-    def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None, max_cycles = 5000, update_stats = None,
-                 input_device_keywords = None, output_device_keywords = None, verbose = False):
+    def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
+                 input_device_keywords = None, output_device_keywords = None, 
+                 max_cycles = 5000, onCandidateRollover = None, verbose = False):
         
         HPS, BPT, MAX_FREQ, SAMPLE_RATE = 6, 3, 3500, 12000
         self.audio_in = AudioIn(SAMPLE_RATE, sigspec.symbols_persec, MAX_FREQ, HPS, BPT, on_fft = self.update_spectrum)
@@ -271,7 +273,7 @@ class Cycle_manager():
         threading.Thread(target=self.manage_cycle, daemon=True).start()
         delay = sigspec.cycle_seconds - self.cycle_time()
         self.tlog(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)")
-        self.update_stats = update_stats
+        self.onCandidateRollover = onCandidateRollover
 
     def update_spectrum(self, z, t):
         self.spectrum.on_fft(z, t)
@@ -311,15 +313,6 @@ class Cycle_manager():
             self.tlog(f"[Cycle manager] deduped on sync score:  {len(sync_dedupe_times)}")
             self.tlog(f"[Cycle manager] deduped on message:  {len(msg_dedupe_times)}")
 
-            self.cand_info = np.empty(self.spectrum.nFreqs, dtype= np.dtypes.StringDType())
-            for c in self.cands_list:
-                t = c.decode_completed if c.decode_completed else time.time()
-                t = t %60
-                self.cand_info[c.f0_idx + 1] = f"{t:5.2f} {c.info}"
-
-            if(self.update_stats):
-                self.update_stats(self.cand_info)
-
     def manage_cycle(self):
         cycle_searched = True
         cands_rollover_done = False
@@ -354,6 +347,7 @@ class Cycle_manager():
                 cands_rollover_done = True
                 if(cycle_counter > 1): self.summarise_cycle()
                 with self.cands_lock:
+                    if(self.onCandidateRollover): self.onCandidateRollover(self.cands_list)
                     self.cands_list = self.new_cands
 
             if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap):
@@ -370,7 +364,7 @@ class Cycle_manager():
                 with self.cands_lock:
                     to_decode =  [c for c in self.cands_list
                                   if c.demap_completed and not c.decode_started
-                                  and c.ncheck < 45]
+                                  and c.ncheck < 55]
                 if(to_decode):
                     to_decode.sort(key = lambda c: c.ncheck)
                     for c in to_decode[:6]:

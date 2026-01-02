@@ -6,15 +6,16 @@ from PyFT8.sigspecs import FT8
 
 all_txt_path = "C:/Users/drala/AppData/Local/WSJT-X/ALL.txt"
 
-cycles = []
-decodes = []
-decodes_lock = threading.Lock()
+wsjtx = []
+pyft8 = []
     
 running = True
-def on_decode(dd):
-    pass
-
-def wsjtx_all_tailer(all_txt_path, on_decode):
+def onCandidateRollover(candidates):
+    global pyft8
+    for c in candidates:
+        msg = ' '.join(c.msg) if c.msg else ''
+        pyft8.append({'cs':c.cyclestart_str, 'f':int(c.fHz),'msg':msg, 't':time.time(), 'dt':0, 'snr':c.snr, 'info':c.info})
+def wsjtx_all_tailer(all_txt_path):
     def follow():
         with open(all_txt_path, "r") as f:
             f.seek(0, 2)
@@ -28,58 +29,41 @@ def wsjtx_all_tailer(all_txt_path, on_decode):
         ls = line.split()
         decode_dict = False
         try:
-            if(not ls[0] in cycles): cycles.append(ls[0])
-            dd = {'cyclestart_str':ls[0], 'decoder':'WSJTX', 'freq':ls[6], 't_decode':time.time(),
-                  'dt':float(ls[5]), 'msg':f"{ls[7]} {ls[8]} {ls[9]}", 'snr':ls[4]}
-            decodes.append(dd)
+            cs, freq, dt, snr = ls[0], int(ls[6]), float(ls[5]), int(ls[4])
+            msg = f"{ls[7]} {ls[8]} {ls[9]}"
+            global wsjtx
+            wsjtx.append({'cs':cs,'f':int(freq),'msg':msg, 't':time.time(),'dt':dt,'snr':snr,'info':''})
         except:
             pass
 
 def pc_str(x,y):
-    return "{}" if y == 0 else int(100*x/y)
-    
-def update_stats(cand_info):
-    global nPyFT8
-    output = []
-    latest_cycle_decodes = [d for d in decodes if d['cyclestart_str'] == cycles[-1]]
-    print(len(latest_cycle_decodes))
-    for dd in latest_cycle_decodes:
+    return "{}" if y == 0 else f"{int(100*x/y)}%"
 
-        f_idx = int(int(dd['freq']) / cycle_manager.spectrum.df)
-        for i in [0,1,2]:
-            ci = cand_info[f_idx +i]
-        output.append(f"{dd['cyclestart_str']} {dd['msg']:<22} {dd['t_decode'] %60:5.2f} {ci}")
-
-    w = output
-    p = [r for r in output if "Decoded" in r]
-    pI = [r for r in output if "Decoded-D" in r]
-    pL =  [r for r in output if "Decoded-DL" in r] 
-    pB =  [r for r in output if "Decoded-DBL" in r]
-    pBf = [r for r in output if "Failed-DBL" in r]
-    pF = [r for r in output if "Failed" in r]
-    pM = [r for r in output if not "Failed" in r and not "Decoded" in r]
-    
-    for row in output:
-        print(row)
-
-    nP, nW = len(p), len(w)
-    pc = pc_str(nP, nW)
-    pcBitFlip = pc_str(len(pB), len(pB)+len(pBf))
-    print(f"WSJTX:{nW}, PyFT8:{nP} ({pc}%) Flip success = {pcBitFlip}%\n")
-    with open('live_compare_cycle_stats.csv', 'a') as f:
-        f.write(f"{len(pI)},{len(pL)},{len(pB)},{len(pF)},{len(pM)}\n")
-        
-with open('live_compare_cycle_stats.csv', 'w') as f:
-    f.write("Success(Hard),Success(LDPC),Success(BF-LDPC),Failed,No attempt\n")
-    
-threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path, on_decode,)).start()   
-cycle_manager = Cycle_manager(FT8, on_decode, onOccupancy = None, update_stats = update_stats,
-                              input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
+threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path,)).start()   
+cycle_manager = Cycle_manager(FT8, None, onOccupancy = None, onCandidateRollover = onCandidateRollover,
+                              input_device_keywords = ['Microphone', 'CODEC'], verbose = False)
 
 
 try:
     while True:
         time.sleep(1)
+        matches = [(w, p) for w in wsjtx for p in pyft8 if w['cs'] == p['cs'] and abs(w['f'] - p['f']) < 2]
+
+        succeded_imm = len([1 for w, p in matches if "Decoded-D " in p['info']])
+        succeded_ldpc = len([1 for w, p in matches if "Decoded-DL " in p['info']])
+        succeded_bf_ldpc = len([1 for w, p in matches if "Decoded-DBL " in p['info']])
+        succeded = succeded_imm + succeded_ldpc + succeded_bf_ldpc
+        failed_bf_ldpc = len([1 for w, p in matches if "Failed-DBL " in p['info']])
+        failed  = len([1 for w, p in matches if "Failed" in p['info']])
+        starved  = len([1 for w, p in matches if not "Decoded" in p['info'] and not "Failed" in p['info']])
+        total = succeded + failed + starved
+
+        print(succeded_imm, succeded_ldpc, succeded_bf_ldpc, failed, starved, pc_str(succeded, total), pc_str(succeded_bf_ldpc, succeded_bf_ldpc + failed_bf_ldpc))
+        
+#        for w, p in matches[-50:]:
+#            print(f"{w['cs']} {w['msg']:<25} {p['msg']:<25} {p['info']}")
+
+        
 except KeyboardInterrupt:
     print("\nStopping PyFT8 Rx")
     cycle_manager.running = False
