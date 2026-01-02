@@ -69,7 +69,8 @@ class Candidate:
         llr_sd = np.std(llr)
         self.fade = np.std(pvt) / np.mean(pvt)
         self.llr = 3.8 * llr / llr_sd
-        self.ncheck =  self.get_ncheck(self.llr)
+        self.ncheck = self.get_ncheck(self.llr)
+        self.ncheck_initial = self.ncheck
         self.decode_history = f"I:{self.ncheck:02d}"
         self.state = "D"
         if(self.ncheck >25):
@@ -107,21 +108,16 @@ class Candidate:
 
     def decode(self, duplicate_filter, onSuccess, onFail):
         self.decode_started = time.time()
+        nbits = 4
+        flip_masks = ((np.arange(1 << nbits)[:, None] >> np.arange(nbits)) & 1).astype(bool)
 
         if(self.ncheck > 28):
-            patterns = [
-                (0,), (1,), (2,), (3,),  
-                (0,1), (0,2), (0,3),
-                (1,2), (1,3),
-                (0,1,2), (1,2,3), (0,1,3), (0,2,3)
-            ]
             self.decode_history += "; F:"
             best_n = self.ncheck
-            ordered_llr_idxs = np.argsort(np.abs(self.llr))
-            for pat in patterns:
+            ordered_llr_idxs = np.argsort(np.abs(self.llr))[:nbits]
+            for mask in flip_masks:
                 llr2 = self.llr.copy()
-                flip_idxs = ordered_llr_idxs[list(pat)]
-                llr2[flip_idxs] *= -1
+                llr2[ordered_llr_idxs[mask]] *= -1
                 n = self.get_ncheck(llr2)
                 if n < best_n:
                     best_llr = llr2.copy()
@@ -135,7 +131,7 @@ class Candidate:
         if(self.ncheck > 0):
             self.decode_history += "; L:"
             self.Lmn = np.zeros((83, 7), dtype=np.float32)        
-            ncheck_profile = [99,35,20,18,18,18,12,12,10,10,8,6,6,6,0]
+            ncheck_profile = [99,35,20,18,18,18,15,15,15,15,15,15,15,15,15,6,6,6,0]
             #ncheck_profile = [99,35,30,30,30,18,15,8,6,3,0]
             for ncp in ncheck_profile:
                 self.do_ldpc_iteration()
@@ -210,7 +206,7 @@ class Spectrum:
             self.pgrid_fine[self.pgrid_fine_ptr] = p
             self.pgrid_fine_ptr = (self.pgrid_fine_ptr + 1) % self.hops_percycle
 
-    def search(self, cyclestart_str, f0 = 100, fn = 3100):
+    def search(self, cyclestart_str, f0 = 100, fn = 3000):
         cands = []
         n_close = 2
         f0_idxs = range(int(f0/self.df), min(self.nFreqs - self.fbins_per_signal, int(fn/self.df)))
@@ -231,15 +227,15 @@ class Spectrum:
             c.record_sync(self, *best)
             c.sync_completed = time.time()
 
-            neighbours = [cn for cn in cands[-n_close:] if c.f0_idx - cn.f0_idx < n_close] if len(cands)>n_close else []
-            best_neighbour_score = np.max([cn.sync_score for cn in neighbours]) if len(neighbours) else 1e40
-            if(c.sync_score > 1.2* best_neighbour_score):
-                for cand in neighbours:
-                    cand.deduplicated = "sync"
+         #   neighbours = [cn for cn in cands[-n_close:] if c.f0_idx - cn.f0_idx < n_close] if len(cands)>n_close else []
+         #   best_neighbour_score = np.max([cn.sync_score for cn in neighbours]) if len(neighbours) else 1e40
+         #   if(c.sync_score > 1.2* best_neighbour_score):
+         #       for cand in neighbours:
+         #           cand.deduplicated = "sync"
             c.cyclestart_str = cyclestart_str
 
-            if(c.sync_score < 1):
-                c.deduplicated = "sync"
+        #    if(c.sync_score < 1):
+        #        c.deduplicated = "sync"
             cands.append(c)
         return cands
 

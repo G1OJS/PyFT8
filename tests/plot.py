@@ -1,7 +1,9 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 
-df = pd.read_csv('live_compare_cycle_stats.csv')
+df_all = pd.read_csv('live_compare_stats.csv')
+
+df = df_all[['Sinst','Sldpc','Sflip','Failed','Undecoded']]
 
 # percentage version
 df_pc = df.div(df.sum(axis=1), axis=0)
