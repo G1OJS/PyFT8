@@ -143,7 +143,8 @@ class Candidate:
     
         if(self.ncheck == 0):
             threading.Thread(target = self.process_decode, args = (duplicate_filter,onSuccess) ).start()
-
+        else:
+            self.state = "Failed-"+self.state
             
     def process_decode(self, duplicate_filter, onSuccess):
         self.payload_bits = []
