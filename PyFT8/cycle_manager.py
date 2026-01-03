@@ -131,8 +131,7 @@ class Candidate:
         if(self.ncheck > 0):
             self.decode_history += "; L:"
             self.Lmn = np.zeros((83, 7), dtype=np.float32)        
-            ncheck_profile = [99,35,20,18,18,18,15,15,15,15,15,15,15,15,15,6,6,6,0]
-            #ncheck_profile = [99,35,30,30,30,18,15,8,6,3,0]
+            ncheck_profile = [99,35,30,30,30,18,15,8,6,3,0]
             for ncp in ncheck_profile:
                 self.do_ldpc_iteration()
                 self.ncheck = self.get_ncheck(self.llr)
@@ -227,16 +226,7 @@ class Spectrum:
                     best = test
             c.record_sync(self, *best)
             c.sync_completed = time.time()
-
-         #   neighbours = [cn for cn in cands[-n_close:] if c.f0_idx - cn.f0_idx < n_close] if len(cands)>n_close else []
-         #   best_neighbour_score = np.max([cn.sync_score for cn in neighbours]) if len(neighbours) else 1e40
-         #   if(c.sync_score > 1.2* best_neighbour_score):
-         #       for cand in neighbours:
-         #           cand.deduplicated = "sync"
             c.cyclestart_str = cyclestart_str
-
-        #    if(c.sync_score < 1):
-        #        c.deduplicated = "sync"
             cands.append(c)
         return cands
 
@@ -292,24 +282,6 @@ class Cycle_manager():
     def cycle_time(self):
         return time.time() % self.cycle_seconds
 
-    def summarise_cycle(self):
-        if(self.verbose):
-            sync_completed_times = [c.sync_completed for c in self.cands_list if c.sync_completed]
-            sync_dedupe_times = [c.sync_completed for c in self.cands_list if c.deduplicated == "sync"]
-            sync_selected_times= [c.sync_completed for c in self.cands_list if not c.deduplicated == "sync"]
-            demap_completed_times = [c.demap_completed for c in self.cands_list if c.demap_completed]
-            decode_completed_times = [c.decode_completed for c in self.cands_list if c.decode_completed]
-            msg_dedupe_times = [c.decode_completed for c in self.cands_list if c.deduplicated == "msg"]
-
-            def earliest_and_latest(arr):
-                return f"first {np.min(arr)%60 :5.2f}, last {np.max(arr)%60 :5.2f}" if arr else ''
-            self.tlog(f"[Cycle manager] sync_completed:   {len(sync_completed_times)} ({earliest_and_latest(sync_completed_times)})")
-            self.tlog(f"[Cycle manager] sync_selected:   {len(sync_selected_times)} ({earliest_and_latest(sync_selected_times)})")
-            self.tlog(f"[Cycle manager] demap_completed: {len(demap_completed_times)} ({earliest_and_latest(demap_completed_times)})")
-            self.tlog(f"[Cycle manager] decode_completed:  {len(decode_completed_times)} ({earliest_and_latest(decode_completed_times)})")
-            self.tlog(f"[Cycle manager] deduped on sync score:  {len(sync_dedupe_times)}")
-            self.tlog(f"[Cycle manager] deduped on message:  {len(msg_dedupe_times)}")
-
     def manage_cycle(self):
         cycle_searched = True
         cands_rollover_done = False
@@ -323,7 +295,8 @@ class Cycle_manager():
 
             if(rollover):
                 cycle_counter +=1
-                self.tlog(f"\n[Cycle manager] rollover detected at {self.cycle_time():.2f}")
+                if(self.verbose):
+                    self.tlog(f"\n[Cycle manager] rollover detected at {self.cycle_time():.2f}")
                 if(cycle_counter > self.max_cycles):
                     self.running = False
                     break
@@ -342,7 +315,6 @@ class Cycle_manager():
 
             if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap-50 and not cands_rollover_done):
                 cands_rollover_done = True
-                if(cycle_counter > 1): self.summarise_cycle()
                 with self.cands_lock:
                     if(self.onCandidateRollover): self.onCandidateRollover(self.cands_list)
                     self.cands_list = self.new_cands
@@ -360,8 +332,7 @@ class Cycle_manager():
             if not len(to_demap):
                 with self.cands_lock:
                     to_decode =  [c for c in self.cands_list
-                                  if c.demap_completed and not c.decode_started
-                                  and c.ncheck < 55]
+                                  if c.demap_completed and not c.decode_started]
                 if(to_decode):
                     to_decode.sort(key = lambda c: c.ncheck)
                     for c in to_decode[:6]:

@@ -7,6 +7,7 @@ __pycache__/
 *.npz
 *.json
 *.log
+*.csv
 
 # Distribution / packaging
 .Python
