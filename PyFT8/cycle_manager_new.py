@@ -50,6 +50,7 @@ class Candidate:
         hps, bpt = spectrum.hops_persymb, spectrum.fbins_pertone
         self.payload_hop_idxs  = [h0_idx + hps* s for s in spectrum.sigspec.payload_symb_idxs]   
         self.freq_idxs = [f0_idx + bpt // 2 + bpt * t for t in range(spectrum.sigspec.tones_persymb)]
+        
         self.f0_idx = f0_idx
         self.h0_idx = h0_idx
         self.sync_score = score
@@ -58,33 +59,17 @@ class Candidate:
                                    
     def demap(self, spectrum):
         self.demap_started = time.time()
-        self.pgrid = spectrum.pgrid_fine[np.ix_(self.payload_hop_idxs, self.freq_idxs)]
+        pgrid = spectrum.pgrid_fine[np.ix_(self.payload_hop_idxs, self.freq_idxs)]
+        self.pgrid = pgrid
         self.snr = int(np.clip(10 * np.log10(np.max(self.pgrid)) - 107, -24, 24))
-        pvt = np.mean(self.pgrid, axis = 1)
-        pgrid_n = self.pgrid / pvt[:,None]
-        llr0 = np.log(np.max(pgrid_n[:, [4,5,6,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,1,2,3]], axis=1))
-        llr1 = np.log(np.max(pgrid_n[:, [2,3,4,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,1,5,6]], axis=1))
-        llr = np.log(np.max(pgrid_n[:, [1,2,6,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,3,4,5]], axis=1))
-        llr = np.column_stack((llr0, llr1, llr)).ravel()
-        llr_sd = np.std(llr)
-        self.fade = np.std(pvt) / np.mean(pvt)
-        self.llr = 3.8 * llr / llr_sd
-        self.ncheck = self.get_ncheck(self.llr)
-        self.ncheck_initial = self.ncheck
-        self.decode_history = f"I:{self.ncheck:02d}"
-        self.state = "D"
-        if(self.ncheck >25):
-            llr0 = np.log(np.sum(pgrid_n[:, [4,5,6,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,1,2,3]], axis=1))
-            llr1 = np.log(np.sum(pgrid_n[:, [2,3,4,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,1,5,6]], axis=1))
-            llr = np.log(np.sum(pgrid_n[:, [1,2,6,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,3,4,5]], axis=1))
-            llr = np.column_stack((llr0, llr1, llr)).ravel()
-            llr_sd = np.std(llr)
-            llr = 3.8 * llr / llr_sd
-            nc = self.get_ncheck(llr)
-            if(nc < self.ncheck):
-                self.ncheck = nc
-                self.llr = llr
-                self.decode_history = self.decode_history + f",{self.ncheck:02d}"            
+     
+        llr0 = np.log(np.max(pgrid[:, [4,5,6,7]], axis=1)) - np.log(np.max(pgrid[:, [0,1,2,3]], axis=1))
+        llr1 = np.log(np.max(pgrid[:, [2,3,4,7]], axis=1)) - np.log(np.max(pgrid[:, [0,1,5,6]], axis=1))
+        llr2 = np.log(np.max(pgrid[:, [1,2,6,7]], axis=1)) - np.log(np.max(pgrid[:, [0,3,4,5]], axis=1))
+        llrA = np.column_stack((llr0, llr1, llr2)).ravel()
+        llrA /= np.std(llrA)
+        
+        self.llr = 3.8*llrA
         self.demap_completed = time.time()
 
     def get_ncheck(self, llr):
@@ -106,46 +91,16 @@ class Candidate:
             self.Lmn[m, :deg] = new
         self.llr += delta
 
-    def decode(self, duplicate_filter, onSuccess):
-        self.decode_started = time.time()
-        nbits = 4
-        flip_masks = ((np.arange(1 << nbits)[:, None] >> np.arange(nbits)) & 1).astype(bool)
+    def _do_ldpc_iteration(self):
+        for m in range(83):
+            deg = ldpc_check_deg[m]
+            v = ldpc_check_vars[m, :deg]
+            t = np.tanh(-self.llr[v])         
+            prod = np.prod(t) / t                       
+            self.llr[v] = prod / ((prod - 1.18) * (1.18 + prod))
 
-        if(self.ncheck > 28):
-            self.decode_history += "; F:"
-            best_n = self.ncheck
-            ordered_llr_idxs = np.argsort(np.abs(self.llr))[:nbits]
-            for mask in flip_masks:
-                llr2 = self.llr.copy()
-                llr2[ordered_llr_idxs[mask]] *= -1
-                n = self.get_ncheck(llr2)
-                if n < best_n:
-                    best_llr = llr2.copy()
-                    best_n = n
-                self.decode_history += f"{n:02d},"
-            if(best_n < self.ncheck):
-                self.ncheck = best_n
-                self.llr = best_llr
-                self.state = self.state + "B"
-
-        if(self.ncheck > 0):
-            self.decode_history += "; L:"
-            self.Lmn = np.zeros((83, 7), dtype=np.float32)        
-            ncheck_profile = [99,35,20,18,18,18,15,15,15,15,15,15,15,15,15,6,6,6,0]
-            #ncheck_profile = [99,35,30,30,30,18,15,8,6,3,0]
-            for ncp in ncheck_profile:
-                self.do_ldpc_iteration()
-                self.ncheck = self.get_ncheck(self.llr)
-                self.decode_history += f"{self.ncheck:02d},"
-                if(self.ncheck == 0 or self.ncheck > ncp): break
-            self.state = self.state + "L"
+    def verify_decode(self, duplicate_filter, onSuccess):
         self.decode_completed = time.time()
-    
-        if(self.ncheck == 0):
-            threading.Thread(target = self.process_decode, args = (duplicate_filter,onSuccess) ).start()
-
-            
-    def process_decode(self, duplicate_filter, onSuccess):
         self.payload_bits = []
         decoded_bits = (self.llr > 0).astype(int).tolist()
         if any(decoded_bits[:77]):
@@ -162,7 +117,7 @@ class Candidate:
                 if(onSuccess): onSuccess(self)
         else:
             self.state = "Failed-"+self.state
-
+            
     @property
     def info(self):
         return f"{self.sync_score:5.2f} {self.state:<12} {self.cyclestart_str[-2:]} {self.decode_history}" 
@@ -206,12 +161,10 @@ class Spectrum:
             self.pgrid_fine[self.pgrid_fine_ptr] = p
             self.pgrid_fine_ptr = (self.pgrid_fine_ptr + 1) % self.hops_percycle
 
-    def search(self, cyclestart_str, f0 = 100, fn = 3000):
+    def search(self, cyclestart_str, f0 = 200, fn = 3100):
         cands = []
-        n_close = 2
         f0_idxs = range(int(f0/self.df), min(self.nFreqs - self.fbins_per_signal, int(fn/self.df)))
         pgrid = self.pgrid_fine[:self.h_search,:]
-        
         for f0_idx in f0_idxs:
             p = pgrid[:, f0_idx:f0_idx + self.fbins_per_signal]
             max_pwr = np.max(p)
@@ -226,23 +179,14 @@ class Spectrum:
                     best = test
             c.record_sync(self, *best)
             c.sync_completed = time.time()
-
-         #   neighbours = [cn for cn in cands[-n_close:] if c.f0_idx - cn.f0_idx < n_close] if len(cands)>n_close else []
-         #   best_neighbour_score = np.max([cn.sync_score for cn in neighbours]) if len(neighbours) else 1e40
-         #   if(c.sync_score > 1.2* best_neighbour_score):
-         #       for cand in neighbours:
-         #           cand.deduplicated = "sync"
             c.cyclestart_str = cyclestart_str
-
-        #    if(c.sync_score < 1):
-        #        c.deduplicated = "sync"
             cands.append(c)
         return cands
 
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
                  input_device_keywords = None, output_device_keywords = None, 
-                 max_cycles = 5000, onCandidateRollover = None, verbose = False):
+                 max_cycles = 5000, onCandidateRollover = None, onFailedDecode = None, verbose = False):
         
         HPS, BPT, MAX_FREQ, SAMPLE_RATE = 6, 3, 3500, 12000
         self.audio_in = AudioIn(SAMPLE_RATE, sigspec.symbols_persec, MAX_FREQ, HPS, BPT, on_fft = self.update_spectrum)
@@ -270,6 +214,7 @@ class Cycle_manager():
         delay = sigspec.cycle_seconds - self.cycle_time()
         self.tlog(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)")
         self.onCandidateRollover = onCandidateRollover
+        self.onFailedDecode = onFailedDecode
 
     def update_spectrum(self, z, t):
         self.spectrum.on_fft(z, t)
@@ -291,24 +236,6 @@ class Cycle_manager():
     def cycle_time(self):
         return time.time() % self.cycle_seconds
 
-    def summarise_cycle(self):
-        if(self.verbose):
-            sync_completed_times = [c.sync_completed for c in self.cands_list if c.sync_completed]
-            sync_dedupe_times = [c.sync_completed for c in self.cands_list if c.deduplicated == "sync"]
-            sync_selected_times= [c.sync_completed for c in self.cands_list if not c.deduplicated == "sync"]
-            demap_completed_times = [c.demap_completed for c in self.cands_list if c.demap_completed]
-            decode_completed_times = [c.decode_completed for c in self.cands_list if c.decode_completed]
-            msg_dedupe_times = [c.decode_completed for c in self.cands_list if c.deduplicated == "msg"]
-
-            def earliest_and_latest(arr):
-                return f"first {np.min(arr)%60 :5.2f}, last {np.max(arr)%60 :5.2f}" if arr else ''
-            self.tlog(f"[Cycle manager] sync_completed:   {len(sync_completed_times)} ({earliest_and_latest(sync_completed_times)})")
-            self.tlog(f"[Cycle manager] sync_selected:   {len(sync_selected_times)} ({earliest_and_latest(sync_selected_times)})")
-            self.tlog(f"[Cycle manager] demap_completed: {len(demap_completed_times)} ({earliest_and_latest(demap_completed_times)})")
-            self.tlog(f"[Cycle manager] decode_completed:  {len(decode_completed_times)} ({earliest_and_latest(decode_completed_times)})")
-            self.tlog(f"[Cycle manager] deduped on sync score:  {len(sync_dedupe_times)}")
-            self.tlog(f"[Cycle manager] deduped on message:  {len(msg_dedupe_times)}")
-
     def manage_cycle(self):
         cycle_searched = True
         cands_rollover_done = False
@@ -322,7 +249,8 @@ class Cycle_manager():
 
             if(rollover):
                 cycle_counter +=1
-                self.tlog(f"\n[Cycle manager] rollover detected at {self.cycle_time():.2f}")
+                if(self.verbose):
+                    self.tlog(f"\n[Cycle manager] rollover detected at {self.cycle_time():.2f}")
                 if(cycle_counter > self.max_cycles):
                     self.running = False
                     break
@@ -341,7 +269,6 @@ class Cycle_manager():
 
             if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap-50 and not cands_rollover_done):
                 cands_rollover_done = True
-                if(cycle_counter > 1): self.summarise_cycle()
                 with self.cands_lock:
                     if(self.onCandidateRollover): self.onCandidateRollover(self.cands_list)
                     self.cands_list = self.new_cands
@@ -350,21 +277,33 @@ class Cycle_manager():
                 with self.cands_lock:
                     to_demap = [c for c in self.cands_list
                                 if (self.spectrum.pgrid_fine_ptr > c.payload_hop_idxs[-1]
-                                and not c.demap_started and not c.deduplicated)]
+                                and not c.demap_started)]
                 for c in to_demap:
                     c.demap(self.spectrum)
+                    c.ncheck = c.get_ncheck(c.llr)
+                    c.decode_started = time.time()
+                    c.state = "D"
+                    c.decode_history = f"I:{c.ncheck:02d},"
                     if(c.ncheck == 0):
-                        c.decode(self.duplicate_filter, self.onSuccessfulDecode)
-
-            if not len(to_demap):
-                with self.cands_lock:
-                    to_decode =  [c for c in self.cands_list
-                                  if c.demap_completed and not c.decode_started
-                                  and c.ncheck < 55]
-                if(to_decode):
-                    to_decode.sort(key = lambda c: c.ncheck)
-                    for c in to_decode[:6]:
-                        c.decode(self.duplicate_filter, self.onSuccessfulDecode)
+                        c.verify_decode(self.duplicate_filter, self.onSuccessfulDecode)
+                    else:
+                        c.Lmn = np.zeros((83, 7), dtype=np.float32)  
+                        c.n_its = 0
+                        
+            with self.cands_lock:
+                to_decode =  [c for c in self.cands_list
+                              if c.decode_started and not c.decode_completed and c.n_its < 5]
+                
+            if(to_decode):
+                to_decode.sort(key = lambda c: c.ncheck)
+                for c in to_decode[:1]:
+                    c.do_ldpc_iteration()
+                    c.n_its +=1
+                    c.ncheck = c.get_ncheck(c.llr)
+                    c.decode_history += f"{c.ncheck:02d},"
+                    if(c.ncheck == 0):
+                        c.state = c.state + "L"
+                        c.verify_decode(self.duplicate_filter, self.onSuccessfulDecode)
                     
     def check_for_tx(self):
         from .FT8_encoder import pack_message

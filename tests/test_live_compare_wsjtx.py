@@ -20,12 +20,17 @@ def onCandidateRollover(candidates):
     cycle = candidates[-1].cyclestart_str
     for c in candidates:
         msg = ' '.join(c.msg) if c.msg else ''
-        pyft8.append({'cs':c.cyclestart_str, 'f':int(c.fHz),'msg':msg, 't':time.time(), 'dt':0, 'snr':c.snr, 'info':c.info, 'ncheck_initial':c.ncheck_initial})
+        pyft8.append({'cs':c.cyclestart_str, 'f':int(c.fHz),'msg':msg, 't':time.time(), 'dt':0, 'snr':c.snr, 'info':c.info})
 
     nsynced   = len([c.sync_completed for c in candidates if not c.deduplicated == "sync"])
     ndemapped = len([c.demap_completed for c in candidates if c.demap_completed])
     ndecoded  = len([c.decode_completed for c in candidates if c.decode_completed])
-    cycle_info[cycle] = {'synced':nsynced, 'demapped':ndemapped, 'decoded':ndecoded}
+    t_sync = np.max([c.sync_completed for c in candidates if c.sync_completed]) - np.min([c.sync_started for c in candidates if c.sync_started])
+    t_demap = np.sum([c.demap_completed - c.demap_started for c in candidates if c.demap_completed])
+    t_decode = np.sum([c.decode_completed - c.decode_started for c in candidates if c.decode_completed])
+    
+    t_sync, t_demap, t_decode = float(f"{t_sync:5.2f}"), float(f"{t_demap:5.2f}"), float(f"{t_decode:5.2f}"), 
+    cycle_info[cycle] = {'synced':nsynced, 'demapped':ndemapped, 'decoded':ndecoded, 't_sync':t_sync, 't_demap':t_demap, 't_decode':t_decode}
     
 def wsjtx_all_tailer(all_txt_path):
     def follow():
@@ -53,7 +58,7 @@ def pc_str(x,y):
 
 threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path,)).start()   
 cycle_manager = Cycle_manager(FT8, None, onOccupancy = None, onCandidateRollover = onCandidateRollover,
-                              input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
+                              input_device_keywords = ['Microphone', 'CODEC'], verbose = False)
 
 def analyse():
     global wsjtx, pyft8, cycles
@@ -63,9 +68,11 @@ def analyse():
         cycles = cycles[-5:]
         if(len(cycles)<2):
             return
+
+        display_cycle = cycles[-2]
         
-        _wsjtx = [w for w in wsjtx if w['cs'] == cycles[-2]]
-        _pyft8 = [p for p in pyft8 if p['cs'] == cycles[-2]]
+        _wsjtx = [w for w in wsjtx if w['cs'] == display_cycle]
+        _pyft8 = [p for p in pyft8 if p['cs'] == display_cycle]
         
         matches = [(w, p) for w in _wsjtx for p in _pyft8 if w['cs'] == p['cs'] and abs(w['f'] - p['f']) < 2]
         if(len(matches) == 0):
@@ -91,25 +98,22 @@ def analyse():
         starved  = len([1 for w, p in matches if not "Decoded" in p['info'] and not "Failed" in p['info']])
         total = succeded + failed + starved
 
-        max_ncheck = np.max([p['ncheck_initial'] for w, p in matches])
-
-        if(cycle in cycle_info):
-            ci = cycle_info[cycle]
-        else:
-            ci = {'synced':0, 'demapped':0, 'decoded':0}
-            
+        ci = cycle_info[display_cycle]
         print()
-        print("Cycle,Synced,Demapped,Decoded,Sinst,Sldpc,Sflip,Failed,Undecoded,percent,highest_ncheck")
-        print(cycle, ci['synced'], ci['demapped'], ci['decoded'], succeded_imm, succeded_ldpc, succeded_bf_ldpc, failed, starved, pc_str(succeded, total), max_ncheck)
+        print("Cycle,Synced,Demapped,Decoded,t_sync,t_demap,t_decode,Sinst,Sldpc,Sflip,Failed,Undecoded,percent")
+        print(cycle, ci['synced'], ci['demapped'], ci['decoded'], ci['t_sync'], ci['t_demap'], ci['t_decode'], succeded_imm, succeded_ldpc, succeded_bf_ldpc, failed, starved, pc_str(succeded, total))
         with open('live_compare_stats.csv', 'a') as f:
-            f.write(f"{cycle},{ci['synced']},{ci['demapped']},{ci['decoded']},{succeded_imm},{succeded_ldpc},{succeded_bf_ldpc},{failed},{starved},{pc_str(succeded, total)},{max_ncheck}\n")
+            f.write(f"{cycle},{ci['synced']},{ci['demapped']},{ci['decoded']},{ci['t_sync']},{ci['t_demap']},{ci['t_decode']},{succeded_imm},{succeded_ldpc},{succeded_bf_ldpc},{failed},{starved},{pc_str(succeded, total)}\n")
 
-        for w, p in matches[-50:]:
-            print(f"{w['cs']} {w['msg']:<25} {p['msg']:<25} {p['info']}")
+        with open('live_compare.csv', 'a') as f:
+            for w, p in matches[-50:]:
+                f.write(f"{w['cs']} {w['msg']:<25} {p['msg']:<25} {p['info']}\n")
 
-
+with open('live_compare.csv', 'w') as f:
+    f.write('')
+            
 with open('live_compare_stats.csv', 'w') as f:
-    f.write("Cycle,Synced,Demapped,Decoded,Sinst,Sldpc,Sflip,Failed,Undecoded,percent,highest_ncheck\n")
+    f.write("Cycle,Synced,Demapped,Decoded,t_sync,t_demap,t_decode,Sinst,Sldpc,Sflip,Failed,Undecoded,percent\n")
 stats_flag = False
 try:
     while True:

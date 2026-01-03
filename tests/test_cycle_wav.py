@@ -30,9 +30,10 @@ def onDecode(c):
     vals = [f"{c.cyclestart_str} ", getattr(c, 'call_a',''), getattr(c, 'call_b',''), getattr(c, 'grid_rpt',''),f"{c.snr:5.0f}", c.fHz]
     print(''.join([f"{t:>8} " for t in vals]), c.info)
     decoded_candidates.append(c)
-    if not c.msg in unique_decodes_set:
-        unique_decodes_set.add(c.msg)
-        unique_decodes.append(c)
+    if(c.msg):
+        if not c.msg in unique_decodes_set:
+            unique_decodes_set.add(c.msg)
+            unique_decodes.append(c)
 
 cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, onCandidateRollover = onRollover,
                           audio_in_wav = WAV,  verbose = False, max_cycles = 2)
