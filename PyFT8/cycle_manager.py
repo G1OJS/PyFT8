@@ -165,7 +165,7 @@ class Candidate:
         if(self.ncheck > 35 and self.sync_score <4): reject = True
         if(self.ncheck > 40 and self.sync_score <8): reject = True
         if(reject):
-            c.ncheck, c.ncheck_initial = 999, 999
+            self.ncheck, self.ncheck_initial = 999, 999
 
     def do_ldpc_iteration(self):
         delta = np.zeros_like(self.llr)
