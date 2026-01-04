@@ -104,7 +104,6 @@ class Candidate:
     def flip_bits(self):
         nbits = 4
         flip_masks = ((np.arange(1 << nbits)[:, None] >> np.arange(nbits)) & 1).astype(bool)
-        self.decode_history += "; F:"
         best_n = self.ncheck
         ordered_llr_idxs = np.argsort(np.abs(self.llr))[:nbits]
         for mask in flip_masks:
@@ -117,8 +116,6 @@ class Candidate:
         if(best_n < self.ncheck):
             self.ncheck = best_n
             self.llr = best_llr
-            self.state = self.state + "B"
-            self.decode_history += f"{n:02d},"
             
     def verify_decode(self, duplicate_filter, onSuccess):
         self.payload_bits = []
@@ -325,13 +322,14 @@ class Cycle_manager():
                 for c in to_decode[:1]:
                     if(c.ncheck > 28): # should this be managed? Once only? threshold depends on n_its?
                         c.flip_bits()
+                        if not "B" in c.state: c.state = c.state + "B" # get rid of state - make plotter look at outputs and flags
                         c.decode_history += f"B{c.ncheck:02d},"
                     c.do_ldpc_iteration()
                     c.n_its +=1
                     c.ncheck = c.get_ncheck(c.llr)
                     c.decode_history += f"L{c.ncheck:02d},"
                     if(c.ncheck == 0):
-                        c.state = c.state + "L"
+                        if not "L" in c.state: c.state = c.state + "L"
                         c.decode_completed = time.time()
                         c.verify_decode(self.duplicate_filter, self.onSuccessfulDecode)
                     

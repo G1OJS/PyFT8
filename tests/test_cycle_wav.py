@@ -42,15 +42,13 @@ while cycle_manager.running:
     time.sleep(0.5)
 time.sleep(2)
 
-cycle_manager.summarise_cycle()
-
 print(f"DONE. {len(list(unique_decodes_set))} unique decodes.")
 for d in list(unique_decodes_set):
     print(d)
 
-#wf = Waterfall(cycle_manager.spectrum)
-#wf.update_main(candidates = cycle_manager.cands_list + unique_decodes)
-#wf.show_zoom(candidates=unique_decodes)
+wf = Waterfall(cycle_manager.spectrum)
+wf.update_main(candidates = cycle_manager.cands_list + unique_decodes)
+wf.show_zoom(candidates=unique_decodes)
 
 
 
