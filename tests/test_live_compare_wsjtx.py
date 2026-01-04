@@ -88,7 +88,7 @@ def display(cycle):
     starved  = len([1 for w, c in matches if not c.decode_completed and not c.msg])
 
     UNCs  = [c.ncheck_initial for w, c in matches if not c.msg]
-    MUNC = np.min(UNCs)
+    MUNC = np.min(UNCs) if UNCs else 999
 
     print()
     print("Cycle,Synced,Demapped,Decoded,MUNC,t_sync,t_demap,t_decode_s,t_decode_f,Sinst,Sldpc,Sflip,Failed,Undecoded,percent")
