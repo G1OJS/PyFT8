@@ -1,57 +1,22 @@
 
 import threading
+import numpy as np
 import time
 from PyFT8.cycle_manager import Cycle_manager
 from PyFT8.sigspecs import FT8
 
 all_txt_path = "C:/Users/drala/AppData/Local/WSJT-X/ALL.txt"
-global pyftx_decodes, wsjtx_decodes
-
-decodes = {}
-decodes_lock = threading.Lock()
-
-UID_FIELDS = ('cyclestart_str', 'call_a', 'call_b', 'grid_rpt')
-COMMON_FIELDS = {'t_decode', 'snr', 'dt', 'freq'}
-PyFT8_FIELDS = {'info_str'}
+wsjtx_dicts = []
+pyft8_cands = []
+cyclestarts = []
+freq_range = [200,3100]
 
 running = True
-pyft8_started = False
 
-def make_uid(d):
-    return tuple(d[k] for k in UID_FIELDS)
+def pc_str(x,y):
+    return "{}" if y == 0 else f"{int(100*x/y)}%"
 
-def on_PyFT8_decode(c):
-    global pyft8_started
-    pyft8_started = True
-    decode_dict = {'decoder':'PyFT8', 'cyclestart_str':c.cyclestart_str,
-                   'call_a':c.call_a, 'call_b':c.call_b, 'grid_rpt':c.grid_rpt,
-                   't_decode':time.time(), 'snr':c.snr, 'dt':c.dt, 'freq':c.fHz,
-                   'info_str':f"{c.fade:5.2f}; {c.info_str}" }
-    on_decode(decode_dict)
-           
-def on_decode(decode_dict):
-    if not pyft8_started: return
-    uid = make_uid(decode_dict)
-    decoder = decode_dict['decoder']
-    with decodes_lock:
-        if uid not in decodes:
-            decodes[uid] = {}
-        for field in COMMON_FIELDS:
-            decodes[uid].update({f"{decoder}_{field}": decode_dict[field]})
-        decodes[uid].update({'decoder':decoder})
-        if(decoder == 'PyFT8'):
-            for field in PyFT8_FIELDS:
-                decodes[uid].update({f"{decoder}_{field}": decode_dict[field]})
-
-def align_call(call):
-    # whilst PyFT8 not decoding hashed calls and /P etc
-    if("<" in call):
-        call = "<...>"
-    if("/P" in call):
-        call = call.replace("/P","")
-    return call
-
-def wsjtx_all_tailer(all_txt_path, on_decode):
+def wsjtx_all_tailer(all_txt_path):
     def follow():
         with open(all_txt_path, "r") as f:
             f.seek(0, 2)
@@ -65,89 +30,96 @@ def wsjtx_all_tailer(all_txt_path, on_decode):
         ls = line.split()
         decode_dict = False
         try:
-            decode_dict = {'cyclestart_str':ls[0], 'decoder':'WSJTX', 'freq':ls[6], 't_decode':time.time(),
-                           'dt':float(ls[5]), 'call_a':align_call(ls[7]), 'call_b':align_call(ls[8]), 'grid_rpt':ls[9], 'snr':ls[4]}
+            cs, freq, dt, snr = ls[0], int(ls[6]), float(ls[5]), int(ls[4])
+            msg = f"{ls[7]} {ls[8]} {ls[9]}"
+            global wsjtx_dicts
+            wsjtx_dicts.append({'cs':cs,'f':int(freq),'msg':msg, 't':time.time(),'dt':dt,'snr':snr,'info':''})
         except:
             pass
-        if(decode_dict):
-            on_decode(decode_dict)
 
-def update_stats():
-    last_ct = 0
-    heads = f"{'Cycle':>13} {'Call_a':>12} {'Call_b':>12} {'Grid_rpt':>8} {'Decoder':>7} {'fP':>7} {'fW':>7} {'dtP':>7} {'dtW':>7} {'tP':>7} {'tW':>7}  {'info':<7}"
-    nPtot, nWtot, nBtot = 0, 0, 0
+def onCandidateRollover(candidates):
+    global wsjtx_dicts, pyft8_cands, cyclestarts
+    if(not len(candidates)>2 ):
+        return
+    cycle = candidates[-1].cyclestart_str
+    cyclestarts.append(cycle)
+    pyft8_cands = pyft8_cands + candidates.copy()
+
+    if(len(cyclestarts) > 1):
+        display_cycle = cyclestarts[-2]
+        threading.Thread(target = display, args=(display_cycle,)).start()
     
-    while running:
-        time.sleep(1)
-        ct = (time.time()-3) % 15
-        if ct < last_ct:
-            now = time.time()
-
-            with decodes_lock:
-                expired = []
-                for uid in decodes:
-                    o = decodes[uid]
-                    if(now - o.get('PyFT8_t_decode',1e40) > 30 or now - o.get('WSJTX_t_decode',1e40) > 30):
-                        expired.append(uid)
-                for uid in expired:
-                    del decodes[uid]
-
-            if(len(decodes)):
-                latest_cycle = list(decodes.keys())[-1][0]
-                latest_cycle_uids = [uid for uid in decodes.keys() if uid[0] == latest_cycle]
-                nP = nW = nB = 0
-                print(heads)
-                for uid in latest_cycle_uids:
-                    uid_pretty = f"{uid[0]} {uid[1]:>12} {uid[2]:>12} {uid[3]:>8}"
-                    d = decodes[uid]
-                    decoder = d['decoder']
-                    def cyt(t): return t %15
-                    tP = dtP = tW = dtW = f"{'-':>7}"
-                    if('PyFT8_t_decode' in d): tP, dtP = f"{cyt(d['PyFT8_t_decode']):7.2f}", f"{d['PyFT8_dt']:7.2f}"
-                    if('WSJTX_t_decode' in d): tW, dtW = f"{cyt(d['WSJTX_t_decode']):7.2f}", f"{d['WSJTX_dt']:7.2f}"
-                    
-                    if ('PyFT8_t_decode' in d and not 'WSJTX_t_decode' in d): nP +=1
-                    if (not 'PyFT8_t_decode' in d and 'WSJTX_t_decode' in d): nW +=1
-                    if ('PyFT8_t_decode' in d and 'WSJTX_t_decode' in d):
-                        decoder = 'BOTH '
-                        nB +=1
-
-                    info = f"{tP} {tW} {dtP} {dtW}"
-                    if ('PyFT8_t_decode' in d):
-                        info = info + f" {d['PyFT8_info_str']}"
-
-                    def get(key):
-                        return d[key] if key in d else ''
-
-                    row = f"{uid_pretty} {decoder:>7} {get('PyFT8_freq'):>7} {get('WSJTX_freq'):>7} {info}"
-                    print(row)
-                pc = int(100*(nP+nB) / (nW+nB+nP+0.001))
-                print(f"WSJTX:{nW+nB}, PyFT8: {nP+nB} ({pc}%)")
-                with open('live_compare_cycle_stats.csv', 'a') as f:
-                    f.write(f"{nW},{nP},{nB}\n")
-                nPtot += nP
-                nBtot += nB
-                nWtot += nW
-                pc = int(100*(nPtot+nBtot) / (nPtot+nWtot+nBtot+0.001))
-                print(f"All time: WSJTX:{nWtot+nBtot}, PyFT8: {nPtot+nBtot} ({pc}%)")
-
-        last_ct = ct
-
-
-
-with open('live_compare_cycle_stats.csv', 'w') as f:
-    f.write("nWSJTX,nPyFT8,nBoth\n")
+def display(cycle):
+       
+    _wsjtx_dicts = [w for w in wsjtx_dicts if w['cs'] == cycle and w['f'] >= freq_range[0] and w['f'] <= freq_range[1] ]
+    _pyft8_cands = [c for c in pyft8_cands if c.cyclestart_str == cycle]
     
-threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path, on_decode,)).start()
-threading.Thread(target=update_stats).start()    
-cycle_manager = Cycle_manager(FT8, on_PyFT8_decode, onOccupancy = None,
-                              input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
+    matches = [(w, c) for w in _wsjtx_dicts for c in _pyft8_cands if abs(w['f'] - c.fHz) < 2]
+    if(len(matches) == 0):
+        return
+
+    best = {}
+    for w, c in matches:
+        key = (w['cs'], w['msg'])
+        decoded = True if c.msg else False
+        score = (decoded, -c.snr, abs(w['f'] - c.fHz))
+        if key not in best or score > best[key][0]:
+            best[key] = (score, w, c)
+    matches = [(w, c) for (_, w, c) in best.values()]
+
+    total = len(matches)
+
+    nsynced   = len(_pyft8_cands)
+    ndemapped = len([c for c in _pyft8_cands if c.demap_completed])
+    ndecoded  = len([c for c in _pyft8_cands if c.decode_completed])
+    t_sync = np.max([c.sync_completed for c in _pyft8_cands if c.sync_completed]) - np.min([c.sync_started for c in _pyft8_cands if c.sync_started])
+    t_demap = np.sum([c.demap_completed - c.demap_started for c in _pyft8_cands if c.demap_completed])
+    t_decode_successes = np.sum([c.decode_completed - c.decode_started for c in _pyft8_cands if c.decode_completed and c.msg])
+    t_decode_failures = np.sum([c.decode_completed - c.decode_started for c in _pyft8_cands if c.decode_completed and not c.msg])
+    
+    succeeded = [c for w, c in matches if c.msg]
+    succeded = len(succeeded)
+    succeded_imm = len([1 for c in succeeded if "I00" in c.info])
+    succeded_ldpc = len([1 for c in succeeded if "L00" in c.info])
+    succeded_bf_ldpc = len([1 for c in succeeded if "B" in c.info and "00" in c.info])
+
+
+    failed  = len([1 for w, c in matches if c.decode_completed and not c.msg])
+    starved  = len([1 for w, c in matches if not c.decode_completed and not c.msg])
+
+    UNCs  = [c.ncheck_initial for w, c in matches if not c.msg]
+    MUNC = np.min(UNCs)
+
+    print()
+    print("Cycle,Synced,Demapped,Decoded,MUNC,t_sync,t_demap,t_decode_s,t_decode_f,Sinst,Sldpc,Sflip,Failed,Undecoded,percent")
+    print(cycle, "Counts: ",nsynced,ndemapped,ndecoded,MUNC, "Times: ", f"{t_sync:5.2f}",f"{t_demap:5.2f}",f"{t_decode_successes:5.2f}",f"{t_decode_failures:5.2f}",
+          "Success: ", succeded_imm, succeded_ldpc, succeded_bf_ldpc, "Failed:", failed, starved, pc_str(succeded, total))
+    with open('live_compare_stats.csv', 'a') as f:
+        f.write(f"{cycle},{nsynced},{ndemapped},{ndecoded},{MUNC},{t_sync},{t_demap},"
+                +f"{t_decode_successes},{t_decode_failures},{succeded_imm},{succeded_ldpc},{succeded_bf_ldpc},{failed},{starved},{pc_str(succeded, total)}\n")
+
+    with open('live_compare.csv', 'a') as f:
+        for w, c in matches[-50:]:
+            msg = ' '.join(c.msg) if c.msg else ''
+            f.write(f"{w['cs']} {w['msg']:<25} {msg:<25} {c.info}\n")
+
+
+
+with open('live_compare.csv', 'w') as f:
+    f.write('')
+            
+with open('live_compare_stats.csv', 'w') as f:
+    f.write("Cycle,Synced,Demapped,Decoded,MUNC,t_sync,t_demap,t_decode_s,t_decode_f,Sinst,Sldpc,Sflip,Failed,Undecoded,percent\n")
+
+threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path,)).start()   
+cycle_manager = Cycle_manager(FT8, None, onOccupancy = None, onCandidateRollover = onCandidateRollover, freq_range = freq_range,
+                              input_device_keywords = ['Microphone', 'CODEC'], verbose = False)
 
 try:
     while True:
         time.sleep(1)
 except KeyboardInterrupt:
-    print("\nStopping PyFT8 Rx")
+    print("\nStopping")
     cycle_manager.running = False
     running = False
 

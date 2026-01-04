@@ -10,9 +10,6 @@ import queue
 import wave
 import os
 
-with open('failures.csv', 'w') as f:
-    f.write(f"\n")
-
 eps = 1e-12
 
 ldpc_NRW = [7,6,6,6,7,6,7,6,6,7,6,6,7,7,6,6,6,7,6,7,6,7,6,6,6,7,6,6,6,7,6,6,6,6,7,6,6,6,7,7,6,6,6,6,7,7,6,6,6,6,7,6,6,6,7,6,6,6,6,7,6,6,6,7,6,6,6,7,7,6,6,7,6,6,6,6,6,6,6,7,6,6,6]
@@ -25,6 +22,9 @@ for m in range(83):
     ldpc_check_vars[m, :len(v)] = v
     ldpc_check_deg[m] = len(v)
 
+ldpc_valid_check = ldpc_check_vars != -1
+
+
 def safe_pc(x,y):
     return 100*x/y if y>0 else 0
 
@@ -35,16 +35,90 @@ def bitsLE_to_int(bits):
         n = (n << 1) | (b & 1)
     return n
 
+class Spectrum:
+    def __init__(self, sigspec, sample_rate, nFreqs, max_freq, hops_persymb, fbins_pertone):
+        self.sigspec = sigspec
+        self.sample_rate = sample_rate
+        self.nFreqs = nFreqs
+        self.max_freq = max_freq
+        self.hops_persymb = hops_persymb
+        self.fbins_pertone = fbins_pertone
+        self.dt = 1.0 / (self.sigspec.symbols_persec * self.hops_persymb) 
+        self.df = max_freq / (self.nFreqs -1)
+        self.hops_percycle = int(self.sigspec.cycle_seconds * self.sigspec.symbols_persec * self.hops_persymb)
+        self.fbins_per_signal = self.sigspec.tones_persymb * self.fbins_pertone
+        self.hop_idxs_Costas =  np.arange(self.sigspec.costas_len) * self.hops_persymb
+        self.pgrid_fine = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)
+        self.pgrid_fine_ptr = 0
+
+        self.max_start_hop = int(1.9 / self.dt)
+        self.nhops_costas = self.sigspec.costas_len * self.hops_persymb
+        self.h_search = self.max_start_hop + self.nhops_costas 
+        self.h_demap = self.sigspec.payload_symb_idxs[-1] * self.hops_persymb
+        self.occupancy = np.zeros(self.nFreqs)
+        self.lock = threading.Lock()
+        self.csync_flat = self.make_csync(sigspec)
+
+    def make_csync(self, sigspec):
+        csync = np.full((sigspec.costas_len, self.fbins_per_signal), -1/(sigspec.costas_len-1), np.float32)
+        for sym_idx, tone in enumerate(sigspec.costas):
+            fbins = range(tone* self.fbins_pertone, (tone+1) * self.fbins_pertone)
+            csync[sym_idx, fbins] = 1.0
+            csync[sym_idx, sigspec.costas_len*self.fbins_pertone:] = 0
+        return csync.ravel()
+
+    def on_fft(self, z, t):
+        p = z.real*z.real + z.imag*z.imag
+        p = p[:self.nFreqs]
+        with self.lock:
+            self.pgrid_fine[self.pgrid_fine_ptr] = p
+            self.pgrid_fine_ptr = (self.pgrid_fine_ptr + 1) % self.hops_percycle
+
+    def search(self, freq_range, cyclestart_str):
+        cands = []
+        n_close = 2
+        f0_idxs = range(int(freq_range[0]/self.df),
+                        min(self.nFreqs - self.fbins_per_signal, int(freq_range[1]/self.df)))
+        pgrid = self.pgrid_fine[:self.h_search,:]
+        
+        for f0_idx in f0_idxs:
+            p = pgrid[:, f0_idx:f0_idx + self.fbins_per_signal]
+            max_pwr = np.max(p)
+            pnorm = p / max_pwr
+            self.occupancy[f0_idx:f0_idx + self.fbins_per_signal] += max_pwr
+            best = (0, f0_idx, -1e30)
+            c = Candidate()
+            c.sync_started = time.time()
+            for t0_idx in range(self.h_search - self.nhops_costas):
+                test = (t0_idx, f0_idx, float(np.dot(pnorm[t0_idx + self.hop_idxs_Costas ,  :].ravel(), self.csync_flat)))
+                if test[2] > best[2]:
+                    best = test
+            c.record_sync(self, *best)
+            c.sync_completed = time.time()
+            c.cyclestart_str = cyclestart_str
+            cands.append(c)
+        return cands
+
 class Candidate:
 
     def __init__(self):
-        self.deduped = False
+        self.dedupe_key = ""
         self.sync_started, self.sync_completed = None, None
         self.demap_started, self.demap_completed = None, None
         self.decode_started, self.decode_completed = None, None
-        self.info_str = ""
-        self.msg = None
+        self.decode_verified = False
         self.ncheck = 999
+        self.ncheck_initial = 999
+        self.ldpc_hist = []
+        self.decode_history = ""
+        self.msg = None
+        self.snr = -999
+        self.Lmn = np.zeros((83, 7), dtype=np.float32)
+
+    def calc_ncheck(self):
+        llr_check = self.llr[ldpc_check_vars]
+        parity = (np.sum((llr_check > 0) & ldpc_valid_check, axis=1) & 1) 
+        self.ncheck = np.sum(parity)
 
     def record_sync(self, spectrum, h0_idx, f0_idx, score):
         hps, bpt = spectrum.hops_persymb, spectrum.fbins_pertone
@@ -55,286 +129,215 @@ class Candidate:
         self.sync_score = score
         self.dt = self.h0_idx * spectrum.dt-0.7
         self.fHz = int((self.f0_idx + bpt // 2) * spectrum.df)
-        self.sync_completed = time.time()
                                    
     def demap(self, spectrum):
         self.demap_started = time.time()
         self.pgrid = spectrum.pgrid_fine[np.ix_(self.payload_hop_idxs, self.freq_idxs)]
         self.snr = int(np.clip(10 * np.log10(np.max(self.pgrid)) - 107, -24, 24))
         pvt = np.mean(self.pgrid, axis = 1)
+        self.fade = np.std(pvt) / np.mean(pvt)
         pgrid_n = self.pgrid / pvt[:,None]
         llr0 = np.log(np.max(pgrid_n[:, [4,5,6,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,1,2,3]], axis=1))
         llr1 = np.log(np.max(pgrid_n[:, [2,3,4,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,1,5,6]], axis=1))
-        llr = np.log(np.max(pgrid_n[:, [1,2,6,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,3,4,5]], axis=1))
-        llr = np.column_stack((llr0, llr1, llr)).ravel()
-        llr_sd = np.std(llr)
-        self.fade = np.std(pvt) / np.mean(pvt)
-        self.llr = 3.8 * llr / llr_sd
-        self.ncheck =  self.get_ncheck(self.llr)
-        self.info_str = f"{self.ncheck:02d};"
+        llr2 = np.log(np.max(pgrid_n[:, [1,2,6,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,3,4,5]], axis=1))
+        self.llr = np.column_stack((llr0, llr1, llr2)).ravel()
+        self.llr = 3.8 * self.llr / np.std(self.llr)
+
+        """
+        llr0 = np.log(np.sum(pgrid_n[:, [4,5,6,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,1,2,3]], axis=1))
+        llr1 = np.log(np.sum(pgrid_n[:, [2,3,4,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,1,5,6]], axis=1))
+        llr2 = np.log(np.sum(pgrid_n[:, [1,2,6,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,3,4,5]], axis=1))
+        llrB = np.column_stack((llr0, llr1, llr2)).ravel()
+        llrB = 3.8 * llrB / np.std(llrB)
+
+        idx = np.abs(self.llr) < np.abs(llrB)
+        self.llr[idx] = llrB[idx]
+        """
+
+        self.calc_ncheck()
+        self.ncheck_initial = self.ncheck
+        self.decode_history = f"I{self.ncheck:02d},"
         self.demap_completed = time.time()
 
-    def find_llr_offset(self, llr):
-        off_pos = np.geomspace(0.01,3,15)
-        offsets = np.concatenate([off_pos, -off_pos])
-        llrs_with_offsets = llr + offsets[:, None]
-        valid_mask = (ldpc_check_vars != -1)[None, :, :]
-        llrs_for_check = llrs_with_offsets[:, ldpc_check_vars]
-        bits = (llrs_for_check > 0)
-        parity = (np.sum(bits * valid_mask, axis=2) & 1)
-        nchecks = np.sum(parity, axis=1)
-        best_idx = np.argmin(nchecks)
-        ncheck = nchecks[best_idx]
-        return offsets[best_idx], ncheck
+    def do_ldpc_iteration(self):
+        delta = np.zeros_like(self.llr)
+        for m in range(83):
+            deg = ldpc_check_deg[m]
+            v = ldpc_check_vars[m, :deg]
+            self.Lnm = self.llr[v] - self.Lmn[m, :deg]
+            t = np.tanh(-self.Lnm)         
+            prod = np.prod(t) / t                       
+            new = prod / ((prod - 1.18) * (1.18 + prod))
+            delta[v] += new - self.Lmn[m, :deg]
+            self.Lmn[m, :deg] = new
+        self.llr += delta
 
-    def get_ncheck(self, llr):
-        llr_check = llr[ldpc_check_vars]
-        valid = ldpc_check_vars != -1
-        parity = (np.sum((llr_check > 0) & valid, axis=1) & 1) 
-        return np.sum(parity)
-  
-    def ldpc(self, llr, max_iters = 15):
-        Lmn = np.zeros((83, 7), dtype=np.float32)        
-        alpha = 1.18
-        info_str = ""
-        for it in range(max_iters):
-            delta = np.zeros_like(llr)
-            for m in range(83):
-                deg = ldpc_check_deg[m]
-                v = ldpc_check_vars[m, :deg]
-                Lnm = llr[v] - Lmn[m, :deg]
-                t = np.tanh(-Lnm)         
-                prod = np.prod(t) / t                       
-                new = prod / ((prod - alpha) * (alpha + prod))
-                delta[v] += new - Lmn[m, :deg]
-                Lmn[m, :deg] = new
-            llr += delta
-            ncheck = self.get_ncheck(llr)
-            info_str += f"{ncheck:02d},"
-            if(ncheck == 0): break
-        return llr, info_str, ncheck
+    def flip_bits(self):
+        nbits = 5
+        flip_masks = ((np.arange(1 << nbits)[:, None] >> np.arange(nbits)) & 1).astype(bool)
+        best_n = self.ncheck
+        best_llr = self.llr.copy()
+        ordered_llr_idxs = np.argsort(np.abs(self.llr))[:nbits]
+        for mask in flip_masks:
+            self.llr[ordered_llr_idxs[mask]] *= -1
+            self.calc_ncheck()
+            if self.ncheck < best_n:
+                best_llr = self.llr.copy()
+            else:
+                self.llr[ordered_llr_idxs[mask]] *= -1
+        self.llr = best_llr
 
-    def decode(self, duplicate_filter, onSuccess):
-        threshold = 32
-
+    def progress_decode(self):
         self.decode_started = time.time()
-        offset = 0
-        
-        if(self.ncheck > 0):
-            llr_orig = self.llr.copy()
-            if(self.ncheck > threshold):
-                offset, nchk = self.find_llr_offset(self.llr)
-                if(nchk < self.ncheck):
-                    self.ncheck = nchk
-                    self.llr += offset
-                else:
-                    offset = 0
-            self.info_str = self.info_str + f" {offset:5.2f}:"        
-            self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr, max_iters = 8)
-            self.info_str = self.info_str + self.ldpc_info
 
-            if(offset !=0 and self.ncheck > 0):
-                offset = 0
-                self.llr = llr_orig.copy()
-                self.info_str = self.info_str + f" {offset:5.2f}:"
-                self.llr, self.ldpc_info, self.ncheck = self.ldpc(self.llr, max_iters = 8)
-                self.info_str = self.info_str + self.ldpc_info
+        if(self.ncheck > 28):
+            if(not "B" in self.decode_history):
+                self.flip_bits()
+                self.calc_ncheck()
+                self.decode_history += f"B{self.ncheck:02d},"
 
-        self.decode_completed = time.time()
-        self.info_str = f"{self.decode_completed - self.decode_started: 5.3f} " + self.info_str
-        
+        if(self.ncheck > 38):
+            self.decode_completed = time.time()
+
         if(self.ncheck > 0):
-            with open('failures.csv', 'a') as f:
-                f.write(f"{time.time()%15:5.2f},{self.info_str}\n")
-        
+            self.ldpc_hist.append(self.ncheck)
+            self.do_ldpc_iteration()
+            self.calc_ncheck()
+            if(len(self.ldpc_hist) > 7):
+                self.decode_completed = time.time()
+            if(len(self.ldpc_hist) > 3):
+                if(self.ncheck > self.ldpc_hist[-3]):
+                    self.decode_completed = time.time()
+            self.decode_history += f"L{self.ncheck:02d},"
+
         if(self.ncheck == 0):
-            self.payload_bits = []
-            decoded_bits = (self.llr > 0).astype(int).tolist()
-            if any(decoded_bits[:77]):
-                if check_crc(bitsLE_to_int(decoded_bits[0:91]) ):
-                    self.payload_bits = decoded_bits[:77]
-            if(any(self.payload_bits)):
-                self.msg = FT8_unpack(self.payload_bits)
-                self.call_a, self.call_b, self.grid_rpt = self.msg[0], self.msg[1], self.msg[2]
-                self.dedupe_key = self.cyclestart_str+" "+' '.join(self.msg)
-                if(not self.dedupe_key in duplicate_filter):
-                    duplicate_filter.add(self.dedupe_key)
-                    onSuccess(self)
-
-class Spectrum:
-    def __init__(self, sigspec):
-        self.sigspec = sigspec
-        self.sample_rate = 12000
-        self.hops_persymb = 4
-        self.fbins_pertone = 3
-        self.max_freq = 3500
-        self.dt = 1.0 / (self.sigspec.symbols_persec * self.hops_persymb) 
-        self.FFT_len = int(self.fbins_pertone * self.sample_rate // self.sigspec.symbols_persec)
-        FFT_out_len = int(self.FFT_len/2) + 1
-        fmax_fft = self.sample_rate/2
-        self.nFreqs = int(FFT_out_len * self.max_freq / fmax_fft)
-        self.df = self.max_freq / (self.nFreqs -1)
-        self.hops_percycle = int(self.sigspec.cycle_seconds * self.sigspec.symbols_persec * self.hops_persymb)
-        self.fbins_per_signal = self.sigspec.tones_persymb * self.fbins_pertone
-
-        self.nhops_costas = self.sigspec.costas_len * self.hops_persymb
-        self._csync = np.full((self.sigspec.costas_len, self.fbins_per_signal), -1/(self.sigspec.costas_len-1), np.float32)
-        for sym_idx, tone in enumerate(self.sigspec.costas):
-            fbins = range(tone* self.fbins_pertone, (tone+1) * self.fbins_pertone)
-            self._csync[sym_idx, fbins] = 1.0
-            self._csync[sym_idx, self.sigspec.costas_len*self.fbins_pertone:] = 0
-        self.hop_idxs_Costas =  np.arange(self.sigspec.costas_len) * self.hops_persymb
-
-        self.pgrid_fine = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)
-        self.pgrid_fine_ptr = 0
-
-        self.max_start_hop = int(1.9 / self.dt)
-        self.h_search = self.max_start_hop + self.nhops_costas 
-        self.h_demap = self.sigspec.payload_symb_idxs[-1] * self.hops_persymb
-        self.occupancy = np.zeros(self.nFreqs)
-        self.lock = threading.Lock()
-
-    def cyclestart_str(self, t):
-        cyclestart_time = self.sigspec.cycle_seconds * int(t / self.sigspec.cycle_seconds)
-        return time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
-
-    def cycle_time(self):
-        return time.time() % self.sigspec.cycle_seconds
-
-    def on_fft(self, z, t):
-        p = z.real*z.real + z.imag*z.imag
-        p = p[:self.nFreqs]
-        with self.lock:
-            self.pgrid_fine[self.pgrid_fine_ptr] = p
-            self.pgrid_fine_ptr = (self.pgrid_fine_ptr + 1) % self.hops_percycle
-
-    def search(self, f0 = 300, fn = 3300):
-        cands = []
-        n_close = 4
-        f0_idxs = range(int(f0/self.df), min(self.nFreqs - self.fbins_per_signal, int(fn/self.df)))
-        pgrid = self.pgrid_fine[:self.h_search,:]
-        
-        for f0_idx in f0_idxs:
-            p = pgrid[:, f0_idx:f0_idx + self.fbins_per_signal]
-            max_pwr = np.max(p)
-            pnorm = p / max_pwr
-            self.occupancy[f0_idx:f0_idx + self.fbins_per_signal] += max_pwr
-            best = (0, f0_idx, -1e30)
-            for t0_idx in range(self.h_search - self.nhops_costas):
-                test = (t0_idx, f0_idx, float(np.dot(pnorm[t0_idx + self.hop_idxs_Costas ,  :].ravel(), self._csync.ravel())))
-                if test[2] > best[2]:
-                    best = test
-            c = Candidate()
-            c.record_sync(self, *best)
+            self.decode_completed = time.time()
             
-            neigbours = [cn for cn in cands[-n_close:] if c.f0_idx - cn.f0_idx < n_close] if len(cands)>n_close else []
-            best_neighbour_score = np.max([0] + [cn.sync_score for cn in neigbours]) 
-            if(c.sync_score > best_neighbour_score):
-                cands.append(c)
-                
-        return cands
+    def verify_decode(self, duplicate_filter, onSuccess):
+        self.payload_bits = []
+        decoded_bits = (self.llr > 0).astype(int).tolist()
+        if any(decoded_bits[:77]):
+            if check_crc(bitsLE_to_int(decoded_bits[0:91]) ):
+                self.payload_bits = decoded_bits[:77]
+        if(any(self.payload_bits)):
+            self.msg = FT8_unpack(self.payload_bits)
+            self.call_a, self.call_b, self.grid_rpt = self.msg[0], self.msg[1], self.msg[2]
+            self.dedupe_key = self.cyclestart_str+" "+' '.join(self.msg)
+            if(not self.dedupe_key in duplicate_filter):
+                duplicate_filter.add(self.dedupe_key)
+                if(onSuccess): onSuccess(self)
+        self.decode_verified = True
+
+    @property
+    def info(self):
+        return f"{self.sync_score:5.2f} {self.cyclestart_str[-2:]} {self.decode_history}" 
 
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
-                 ncheck_max_fast = 28, max_cycles = 5000, 
-                 input_device_keywords = None, output_device_keywords = None, verbose = False):
+                 input_device_keywords = None, output_device_keywords = None,
+                 freq_range = [200,3300], max_cycles = 5000, onCandidateRollover = None, verbose = False):
+        
+        HPS, BPT, MAX_FREQ, SAMPLE_RATE = 6, 3, 3500, 12000
+        self.audio_in = AudioIn(SAMPLE_RATE, sigspec.symbols_persec, MAX_FREQ, HPS, BPT, on_fft = self.update_spectrum)
+        self.spectrum = Spectrum(sigspec, SAMPLE_RATE, self.audio_in.nFreqs, MAX_FREQ, HPS, BPT)
+        
         self.running = True
         self.verbose = verbose
-        self.ncheck_max_fast = ncheck_max_fast
+        self.freq_range = freq_range
         self.audio_in_wav = audio_in_wav
         self.input_device_idx = find_device(input_device_keywords)
         self.output_device_idx = find_device(output_device_keywords)
         self.max_cycles = max_cycles
         self.cands_list = []
-        self.cands_lock = threading.Lock()
+        self.new_cands = []
         self.onSuccessfulDecode = onSuccessfulDecode
         self.onOccupancy = onOccupancy
         self.duplicate_filter = set()
         if(self.output_device_idx):
             from .audio import AudioOut
             self.audio_out = AudioOut
-        self.sigspec = sigspec
-        self.spectrum = Spectrum(sigspec)
         self.audio_started = False
+        self.cycle_seconds = sigspec.cycle_seconds
 
         threading.Thread(target=self.manage_cycle, daemon=True).start()
-        delay = self.sigspec.cycle_seconds - self.spectrum.cycle_time()
+        delay = sigspec.cycle_seconds - self.cycle_time()
         self.tlog(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)")
+        self.onCandidateRollover = onCandidateRollover
+
+    def update_spectrum(self, z, t):
+        self.spectrum.on_fft(z, t)
 
     def start_audio(self):
         self.audio_started = True
-        audio_in = AudioIn(sample_rate=self.spectrum.sample_rate,
-                    samples_perhop = int(self.spectrum.sample_rate /(self.sigspec.symbols_persec * self.spectrum.hops_persymb)),
-                    fft_len=self.spectrum.FFT_len, fft_window=np.kaiser(self.spectrum.FFT_len, 20),
-                    on_fft = self.spectrum.on_fft)
         if(self.audio_in_wav):
-            threading.Thread(target = audio_in.start_wav, args = (self.audio_in_wav, self.spectrum.dt), daemon=True).start()
+            threading.Thread(target = self.audio_in.start_wav, args = (self.audio_in_wav, self.spectrum.dt), daemon=True).start()
         else:
-            threading.Thread(target = audio_in.start_live, args=(self.input_device_idx,), daemon=True).start()
+            threading.Thread(target = self.audio_in.start_live, args=(self.input_device_idx,), daemon=True).start()
      
     def tlog(self, txt):
-        print(f"{self.spectrum.cyclestart_str(time.time())} {self.spectrum.cycle_time():5.2f} {txt}")
+        print(f"{self.cyclestart_str(time.time())} {self.cycle_time():5.2f} {txt}")
 
-    def print_stats(self):
-        if(self.verbose):
-            sync_completed_times = [c.sync_completed for c in self.cands_list if c.sync_completed]
-            demap_completed_times = [c.demap_completed for c in self.cands_list if c.demap_completed]
-            decode_completed_times = [c.decode_completed for c in self.cands_list if c.decode_completed]
-            def earliest_and_latest(arr): return f"first {np.min(arr)%15 :5.2f}, last {np.max(arr)%15 :5.2f}" if arr else ''
-            self.tlog(f"[Cycle manager] sync_completed:   {len(sync_completed_times)} ({earliest_and_latest(sync_completed_times)})")
-            self.tlog(f"[Cycle manager] demap_completed: {len(demap_completed_times)} ({earliest_and_latest(demap_completed_times)})")
-            self.tlog(f"[Cycle manager] decode_completed:  {len(decode_completed_times)} ({earliest_and_latest(decode_completed_times)})")
-        
+    def cyclestart_str(self, t):
+        cyclestart_time = self.cycle_seconds * int(t / self.cycle_seconds)
+        return time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
+
+    def cycle_time(self):
+        return time.time() % self.cycle_seconds
+
     def manage_cycle(self):
         cycle_searched = True
+        cands_rollover_done = False
         cycle_counter = 0
         cycle_time_prev = 0
         to_demap = []
         while self.running:
             time.sleep(0.001)
-            rollover = self.spectrum.cycle_time() < cycle_time_prev 
-            cycle_time_prev = self.spectrum.cycle_time()
+            rollover = self.cycle_time() < cycle_time_prev 
+            cycle_time_prev = self.cycle_time()
 
             if(rollover):
                 cycle_counter +=1
-                self.tlog(f"\n[Cycle manager] rollover detected at {self.spectrum.cycle_time():.2f}")
+                if(self.verbose):
+                    self.tlog(f"\n[Cycle manager] rollover detected at {self.cycle_time():.2f}")
                 if(cycle_counter > self.max_cycles):
                     self.running = False
                     break
-                self.stats_printed = False
                 cycle_searched = False
+                cands_rollover_done = False
                 self.check_for_tx()
                 self.spectrum.pgrid_fine_ptr = 0
                 if not self.audio_started: self.start_audio()
 
             if (self.spectrum.pgrid_fine_ptr > self.spectrum.h_search and not cycle_searched):
                 cycle_searched = True
-                self.print_stats()
                 if(self.verbose): self.tlog(f"[Cycle manager] Search spectrum ...")
-                new_cands = self.spectrum.search()
-                if(self.verbose): self.tlog(f"[Cycle manager] Spectrum searched -> {len(new_cands)} candidates")
+                self.new_cands = self.spectrum.search(self.freq_range, self.cyclestart_str(time.time()))
+                if(self.verbose): self.tlog(f"[Cycle manager] Spectrum searched -> {len(self.new_cands)} candidates")
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
-                with self.cands_lock:
-                    self.cands_list = new_cands
+
+            if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap-50 and not cands_rollover_done):
+                cands_rollover_done = True
+                if(self.onCandidateRollover): self.onCandidateRollover(self.cands_list)
+                self.cands_list = self.new_cands
 
             if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap):
-                with self.cands_lock:
-                    to_demap = [c for c in self.cands_list
+                to_demap = [c for c in self.cands_list
                                 if (self.spectrum.pgrid_fine_ptr > c.payload_hop_idxs[-1]
                                 and not c.demap_started)]
                 for c in to_demap:
                     c.demap(self.spectrum)
-                    c.cyclestart_str = self.spectrum.cyclestart_str(time.time())
-                    if(c.ncheck == 0):
-                        c.decode(self.duplicate_filter, self.onSuccessfulDecode)
+               
+            to_decode =  [c for c in self.cands_list if c.demap_completed and not c.decode_completed]
+            if(to_decode):
+                to_decode.sort(key = lambda c: c.ncheck)
+                for c in to_decode[:50]:
+                    c.progress_decode()
 
-            if not len(to_demap):
-                with self.cands_lock:
-                    to_decode =  [c for c in self.cands_list if c.demap_completed and not c.decode_started]
-                if(to_decode):
-                    c = to_decode[np.argmin([c.ncheck for c in to_decode])]
-                    c.decode(self.duplicate_filter, self.onSuccessfulDecode)
+            to_verify = [c for c in self.cands_list if c.decode_completed and not c.decode_verified]
+            for c in to_verify:
+                c.verify_decode(self.duplicate_filter, self.onSuccessfulDecode)
 
+                    
     def check_for_tx(self):
         from .FT8_encoder import pack_message
         tx_msg_file = 'PyFT8_tx_msg.txt'
