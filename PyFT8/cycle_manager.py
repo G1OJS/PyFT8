@@ -314,7 +314,7 @@ class Cycle_manager():
                                             
             with self.cands_lock:
                 for c in self.cands_list:
-                    if(c.n_its > 4 and not c.decode_completed):
+                    if(c.n_its > 6 and not c.decode_completed):
                         c.state = "Failed-" + c.state
                         c.decode_completed = time.time()
                 to_decode =  [c for c in self.cands_list
@@ -323,12 +323,13 @@ class Cycle_manager():
             if(to_decode):
                 to_decode.sort(key = lambda c: c.ncheck)
                 for c in to_decode[:1]:
-                   # if(c.ncheck > 28):
-                   #     c.flip_bits()
+                    if(c.ncheck > 28): # should this be managed? Once only? threshold depends on n_its?
+                        c.flip_bits()
+                        c.decode_history += f"B{c.ncheck:02d},"
                     c.do_ldpc_iteration()
                     c.n_its +=1
                     c.ncheck = c.get_ncheck(c.llr)
-                    c.decode_history += f"{c.ncheck:02d},"
+                    c.decode_history += f"L{c.ncheck:02d},"
                     if(c.ncheck == 0):
                         c.state = c.state + "L"
                         c.decode_completed = time.time()
