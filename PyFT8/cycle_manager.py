@@ -159,6 +159,14 @@ class Candidate:
         self.decode_history = f"I{self.ncheck:02d},"
         self.demap_completed = time.time()
 
+        reject = False
+        if(self.ncheck > 25 and self.sync_score <1): reject = True
+        if(self.ncheck > 30 and self.sync_score <2): reject = True
+        if(self.ncheck > 35 and self.sync_score <4): reject = True
+        if(self.ncheck > 40 and self.sync_score <8): reject = True
+        if(reject):
+            c.ncheck, c.ncheck_initial = 999, 999
+
     def do_ldpc_iteration(self):
         delta = np.zeros_like(self.llr)
         for m in range(83):
@@ -203,11 +211,8 @@ class Candidate:
             self.ldpc_hist.append(self.ncheck)
             self.do_ldpc_iteration()
             self.calc_ncheck()
-            if(len(self.ldpc_hist) > 7):
+            if(len(self.ldpc_hist) > 10):
                 self.decode_completed = time.time()
-            if(len(self.ldpc_hist) > 3):
-                if(self.ncheck > self.ldpc_hist[-3]):
-                    self.decode_completed = time.time()
             self.decode_history += f"L{self.ncheck:02d},"
 
         if(self.ncheck == 0):
@@ -330,7 +335,7 @@ class Cycle_manager():
             to_decode =  [c for c in self.cands_list if c.demap_completed and not c.decode_completed]
             if(to_decode):
                 to_decode.sort(key = lambda c: c.ncheck)
-                for c in to_decode[:50]:
+                for c in to_decode[:5]:
                     c.progress_decode()
 
             to_verify = [c for c in self.cands_list if c.decode_completed and not c.decode_verified]

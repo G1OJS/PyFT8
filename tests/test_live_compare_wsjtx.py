@@ -45,8 +45,8 @@ def onCandidateRollover(candidates):
     cyclestarts.append(cycle)
     pyft8_cands = pyft8_cands + candidates.copy()
 
-    if(len(cyclestarts) > 1):
-        display_cycle = cyclestarts[-2]
+    if(len(cyclestarts) > 0):
+        display_cycle = cyclestarts[-1]
         threading.Thread(target = display, args=(display_cycle,)).start()
     
 def display(cycle):
@@ -113,7 +113,7 @@ with open('live_compare_stats.csv', 'w') as f:
 
 threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path,)).start()   
 cycle_manager = Cycle_manager(FT8, None, onOccupancy = None, onCandidateRollover = onCandidateRollover, freq_range = freq_range,
-                              input_device_keywords = ['Microphone', 'CODEC'], verbose = False)
+                              input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
 
 try:
     while True:
