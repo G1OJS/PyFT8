@@ -128,7 +128,6 @@ class Candidate:
         self.llr = np.column_stack((llr0, llr1, llr2)).ravel()
         self.llr = 3.8 * self.llr / np.std(self.llr)
 
-        """
         llr0 = np.log(np.sum(pgrid_n[:, [4,5,6,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,1,2,3]], axis=1))
         llr1 = np.log(np.sum(pgrid_n[:, [2,3,4,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,1,5,6]], axis=1))
         llr2 = np.log(np.sum(pgrid_n[:, [1,2,6,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,3,4,5]], axis=1))
@@ -137,7 +136,6 @@ class Candidate:
 
         idx = np.abs(self.llr) < np.abs(llrB)
         self.llr[idx] = llrB[idx]
-        """
 
         self.calc_ncheck()
         self.ncheck_initial = self.ncheck
@@ -145,10 +143,10 @@ class Candidate:
         self.demap_completed = time.time()
 
         reject = False
-        if(self.ncheck > 25 and self.sync_score <1): reject = True
-        if(self.ncheck > 30 and self.sync_score <2): reject = True
-        if(self.ncheck > 35 and self.sync_score <4): reject = True
-        if(self.ncheck > 40 and self.sync_score <8): reject = True
+      #  if(self.ncheck > 25 and self.sync_score <1): reject = True
+      #  if(self.ncheck > 30 and self.sync_score <2): reject = True
+      #  if(self.ncheck > 35 and self.sync_score <4): reject = True
+      #  if(self.ncheck > 40 and self.sync_score <8): reject = True
         if(reject):
             self.ncheck, self.ncheck_initial = 999, 999
 
@@ -206,7 +204,7 @@ class Candidate:
             self.ldpc_hist.append(self.ncheck)
             self.do_ldpc_iteration()
             self.calc_ncheck()
-            if(len(self.ldpc_hist) > 10):
+            if(len(self.ldpc_hist) > 15):
                 self.decode_completed = time.time()
             self.decode_history += f"L{self.ncheck:02d},"
 
@@ -330,7 +328,7 @@ class Cycle_manager():
             to_decode =  [c for c in self.cands_list if c.demap_completed and not c.decode_completed]
             if(to_decode):
                 to_decode.sort(key = lambda c: c.ncheck)
-                for c in to_decode[:5]:
+                for c in to_decode[:10]:
                     c.progress_decode()
 
             to_verify = [c for c in self.cands_list if c.decode_completed and not c.decode_verified]
