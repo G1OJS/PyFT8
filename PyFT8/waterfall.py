@@ -32,7 +32,7 @@ class Waterfall:
         [p.remove() for p in reversed(self._candidate_patches)]
         self._candidate_patches.clear()
         
-        cands_for_plot = candidates.copy()
+        cands_for_plot = [c for c in candidates if c.decode_completed]
         def candsort(c):
             if(c.msg): return 1
             return 0

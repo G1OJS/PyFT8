@@ -66,14 +66,13 @@ def onDecode(c):
         print(''.join([f"{t:>8} " for t in heads]))
     def t_fmt(t):return f"{t %15:8.2f}" if t else f"{'-':>8}"
     vals = [f"{c.cyclestart_str} ", c.call_a, c.call_b, c.grid_rpt,f"{c.snr:5.0f}", c.h0_idx, c.f0_idx]
-    print(''.join([f"{t:>8} " for t in vals]), c.info_str)
+    print(''.join([f"{t:>8} " for t in vals]), c.info)
     decoded_candidates.append(c)
 
 print("Bits91:")
 print("1110000111111100010100110101011100010000001111010000111100011100101000101000100111100110010")
 
-cycle_manager = Cycle_manager(FT8, onDecode, ncheck_max = 8, onOccupancy = None, audio_in_wav = WAV, verbose = True,
-                           max_cycles = 1)
+cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = WAV, verbose = True, max_cycles = 1)
 
 while cycle_manager.running:
     time.sleep(0.1)
