@@ -80,9 +80,8 @@ code doesn't (yet) have the full capability of the advanced decoders used in WSJ
 |Further signal extraction | None | Subtraction of the idealised power of the decoded signals, then rescanning the residual spectrum. Further synchronisation adjustments TBC|
 
 ## Performance
-As of 31st Dec 2025, PyFT8 decodes around 70% of WSJTx decodes when the latter is set to "FAST" decoding.
-<img width="640" height="480" alt="Figure_1" src="https://github.com/user-attachments/assets/279f2373-d116-47a9-acba-6ad008b7d792" />
-
+As of 5th Jan 2026, PyFT8 decodes around 65% of WSJTx decodes when the latter is set to "NORM" decoding.
+<img width="800" height="1000" alt="20m morning vs WSJTX NORM" src="https://github.com/user-attachments/assets/516d49bf-9efe-47a4-81f1-56300be6cfa1" />
 
 ## Acknowledgements
 This project implements a decoder for the FT8 digital mode.
