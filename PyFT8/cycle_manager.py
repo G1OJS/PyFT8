@@ -142,14 +142,6 @@ class Candidate:
         self.decode_history = f"I{self.ncheck:02d},"
         self.demap_completed = time.time()
 
-        reject = False
-      #  if(self.ncheck > 25 and self.sync_score <1): reject = True
-      #  if(self.ncheck > 30 and self.sync_score <2): reject = True
-      #  if(self.ncheck > 35 and self.sync_score <4): reject = True
-      #  if(self.ncheck > 40 and self.sync_score <8): reject = True
-        if(reject):
-            self.ncheck, self.ncheck_initial = 999, 999
-
     def calc_ncheck(self):
         bits6 = self.llr[CHECK_VARS_6] > 0
         parity6 = np.sum(bits6, axis=1) & 1
