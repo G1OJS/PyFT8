@@ -66,7 +66,6 @@ class Spectrum:
 
     def search(self, freq_range, cyclestart_str):
         cands = []
-        n_close = 2
         f0_idxs = range(int(freq_range[0]/self.df),
                         min(self.nFreqs - self.fbins_per_signal, int(freq_range[1]/self.df)))
         pgrid = self.pgrid_fine[:self.h_search,:]
@@ -118,10 +117,10 @@ class Candidate:
     def demap(self, spectrum):
         self.demap_started = time.time()
         self.pgrid = spectrum.pgrid_fine[np.ix_(self.payload_hop_idxs, self.freq_idxs)]
-        self.snr = int(np.clip(10 * np.log10(np.max(self.pgrid)) - 107, -24, 24))
-        pvt = np.mean(self.pgrid, axis = 1)
-        self.fade = np.std(pvt) / np.mean(pvt)
-        pgrid_n = self.pgrid / pvt[:,None]
+        pmax = np.max(self.pgrid)
+        self.snr = int(np.clip(10 * np.log10(pmax) - 107, -24, 24))
+        pgrid_n = self.pgrid / pmax
+        
         llr0 = np.log(np.max(pgrid_n[:, [4,5,6,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,1,2,3]], axis=1))
         llr1 = np.log(np.max(pgrid_n[:, [2,3,4,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,1,5,6]], axis=1))
         llr2 = np.log(np.max(pgrid_n[:, [1,2,6,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,3,4,5]], axis=1))
@@ -165,8 +164,8 @@ class Candidate:
         self.edges7 = self._check_update(CHECK_VARS_7, self.edges7, delta)
         self.llr += delta
 
-    def flip_bits(self):
-        nbits = 5
+    def flip_bits(self, nbits = 4):
+        t0 = time.time()
         flip_masks = ((np.arange(1 << nbits)[:, None] >> np.arange(nbits)) & 1).astype(bool)
         best_n = self.ncheck
         best_llr = self.llr.copy()
@@ -176,32 +175,42 @@ class Candidate:
             self.calc_ncheck()
             if self.ncheck < best_n:
                 best_llr = self.llr.copy()
-            else:
-                self.llr[ordered_llr_idxs[mask]] *= -1
+                best_n = self.ncheck
+            self.llr[ordered_llr_idxs[mask]] *= -1
         self.llr = best_llr
+        self.ncheck = best_n
+        t = (time.time()-t0)
+        self.decode_history += f"B{self.ncheck:02d} {t*1000:2.0f}ms,"
 
     def progress_decode(self):
-        self.decode_started = time.time()
-
-        if(self.ncheck > 28):
-            if(not "B" in self.decode_history):
-                self.flip_bits()
-                self.calc_ncheck()
-                self.decode_history += f"B{self.ncheck:02d},"
-
-        if(self.ncheck > 38):
+        
+        if(len(self.ldpc_hist) == 0 and self.ncheck > 45):
+            self.decode_history += f"REASON: Initial NC too high "
             self.decode_completed = time.time()
             return
-
+        
+        if(len(self.ldpc_hist) == 0 and self.ncheck > 28):
+            self.flip_bits(nbits = 5)
+            if(self.ncheck > 40):
+                self.decode_history += f"REASON: Initial NC too high after bit flip "
+                self.decode_completed = time.time()
+                return
+            
         if(self.ncheck > 0):
             self.ldpc_hist.append(self.ncheck)
             self.do_ldpc_iteration()
             self.calc_ncheck()
-            if(len(self.ldpc_hist) > 15):
-                self.decode_completed = time.time()
-                return
             self.decode_history += f"L{self.ncheck:02d},"
-
+            if(self.ncheck >0):
+                if(len(self.ldpc_hist) > 7 and self.ncheck > 10):
+                    self.decode_history += f"REASON: NITS8 "
+                    self.decode_completed = time.time()
+                    return
+                if(len(self.ldpc_hist) > 17):
+                    self.decode_history += f"REASON: NITS16 "
+                    self.decode_completed = time.time()
+                    return
+                
         if(self.ncheck == 0):
             self.decode_completed = time.time()
             
@@ -211,6 +220,8 @@ class Candidate:
         if any(decoded_bits[:77]):
             if check_crc(bitsLE_to_int(decoded_bits[0:91]) ):
                 self.payload_bits = decoded_bits[:77]
+        else:
+            self.decode_history += f"REASON: Failed CRC "
         if(any(self.payload_bits)):
             self.msg = FT8_unpack(self.payload_bits)
             self.call_a, self.call_b, self.grid_rpt = self.msg[0], self.msg[1], self.msg[2]
@@ -218,6 +229,8 @@ class Candidate:
             if(not self.dedupe_key in duplicate_filter):
                 duplicate_filter.add(self.dedupe_key)
                 if(onSuccess): onSuccess(self)
+            else:
+                self.decode_history += f"REASON: Duplicate decode "
         self.decode_verified = True
 
     @property
@@ -229,7 +242,7 @@ class Cycle_manager():
                  input_device_keywords = None, output_device_keywords = None,
                  freq_range = [200,3300], max_cycles = 5000, onCandidateRollover = None, verbose = False):
         
-        HPS, BPT, MAX_FREQ, SAMPLE_RATE = 6, 3, 3500, 12000
+        HPS, BPT, MAX_FREQ, SAMPLE_RATE = 3, 3, 3500, 12000
         self.audio_in = AudioIn(SAMPLE_RATE, sigspec.symbols_persec, MAX_FREQ, HPS, BPT, on_fft = self.update_spectrum)
         self.spectrum = Spectrum(sigspec, SAMPLE_RATE, self.audio_in.nFreqs, MAX_FREQ, HPS, BPT)
         
@@ -322,7 +335,8 @@ class Cycle_manager():
             to_decode =  [c for c in self.cands_list if c.demap_completed and not c.decode_completed]
             if(to_decode):
                 to_decode.sort(key = lambda c: c.ncheck)
-                for c in to_decode[:5]:
+                for c in to_decode[:10]:
+                    c.decode_started = time.time()
                     c.progress_decode()
 
             to_verify = [c for c in self.cands_list if c.decode_completed and not c.decode_verified]
