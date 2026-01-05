@@ -191,6 +191,7 @@ class Candidate:
 
         if(self.ncheck > 38):
             self.decode_completed = time.time()
+            return
 
         if(self.ncheck > 0):
             self.ldpc_hist.append(self.ncheck)
@@ -198,6 +199,7 @@ class Candidate:
             self.calc_ncheck()
             if(len(self.ldpc_hist) > 15):
                 self.decode_completed = time.time()
+                return
             self.decode_history += f"L{self.ncheck:02d},"
 
         if(self.ncheck == 0):
@@ -320,7 +322,7 @@ class Cycle_manager():
             to_decode =  [c for c in self.cands_list if c.demap_completed and not c.decode_completed]
             if(to_decode):
                 to_decode.sort(key = lambda c: c.ncheck)
-                for c in to_decode[:10]:
+                for c in to_decode[:5]:
                     c.progress_decode()
 
             to_verify = [c for c in self.cands_list if c.decode_completed and not c.decode_verified]
