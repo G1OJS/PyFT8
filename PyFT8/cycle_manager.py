@@ -164,55 +164,26 @@ class Candidate:
         self.edges7 = self._check_update(CHECK_VARS_7, self.edges7, delta)
         self.llr += delta
 
-    def flip_bits(self, nbits = 4):
-        t0 = time.time()
-        flip_masks = ((np.arange(1 << nbits)[:, None] >> np.arange(nbits)) & 1).astype(bool)
-        best_n = self.ncheck
-        best_llr = self.llr.copy()
-        ordered_llr_idxs = np.argsort(np.abs(self.llr))[:nbits]
-        for mask in flip_masks:
-            self.llr[ordered_llr_idxs[mask]] *= -1
-            self.calc_ncheck()
-            if self.ncheck < best_n:
-                best_llr = self.llr.copy()
-                best_n = self.ncheck
-            self.llr[ordered_llr_idxs[mask]] *= -1
-        self.llr = best_llr
-        self.ncheck = best_n
-        t = (time.time()-t0)
-        self.decode_history += f"B{self.ncheck:02d} {t*1000:2.0f}ms,"
-
     def progress_decode(self):
         
-        if(len(self.ldpc_hist) == 0 and self.ncheck > 45):
+        if(len(self.ldpc_hist) == 0 and self.ncheck > 37):
             self.decode_history += f"REASON: Initial NC too high "
             self.decode_completed = time.time()
             return
-        
-        if(len(self.ldpc_hist) == 0 and self.ncheck > 28):
-            self.flip_bits(nbits = 5)
-            if(self.ncheck > 40):
-                self.decode_history += f"REASON: Initial NC too high after bit flip "
-                self.decode_completed = time.time()
-                return
             
         if(self.ncheck > 0):
             self.ldpc_hist.append(self.ncheck)
             self.do_ldpc_iteration()
             self.calc_ncheck()
             self.decode_history += f"L{self.ncheck:02d},"
-            if(self.ncheck >0):
-                if(len(self.ldpc_hist) > 7 and self.ncheck > 10):
-                    self.decode_history += f"REASON: NITS8 "
-                    self.decode_completed = time.time()
-                    return
-                if(len(self.ldpc_hist) > 17):
-                    self.decode_history += f"REASON: NITS16 "
-                    self.decode_completed = time.time()
-                    return
-                
+
         if(self.ncheck == 0):
             self.decode_completed = time.time()
+
+        if(len(self.ldpc_hist) > 14):
+            self.decode_history += f"REASON: NITS "
+            self.decode_completed = time.time()
+            return
             
     def verify_decode(self, duplicate_filter, onSuccess):
         self.payload_bits = []
