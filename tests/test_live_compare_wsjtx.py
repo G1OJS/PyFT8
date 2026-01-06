@@ -69,34 +69,23 @@ def display(cycle):
 
     total = len(matches)
 
-    nsynced   = len(_pyft8_cands)
-    ndemapped = len([c for c in _pyft8_cands if c.demap_completed])
-    ndecoded  = len([c for c in _pyft8_cands if c.decode_completed])
-    t_sync = np.max([c.sync_completed for c in _pyft8_cands if c.sync_completed]) - np.min([c.sync_started for c in _pyft8_cands if c.sync_started])
-    t_demap = np.sum([c.demap_completed - c.demap_started for c in _pyft8_cands if c.demap_completed])
-    t_decode_successes = np.sum([c.decode_completed - c.decode_started for c in _pyft8_cands if c.decode_completed and c.msg])
-    t_decode_failures = np.sum([c.decode_completed - c.decode_started for c in _pyft8_cands if c.decode_completed and not c.msg])
-    
     succeeded = [c for w, c in matches if c.msg]
     succeded = len(succeeded)
     succeded_imm = len([1 for c in succeeded if "I00" in c.info])
     succeded_ldpc = len([1 for c in succeeded if "L00" in c.info])
     succeded_bf_ldpc = len([1 for c in succeeded if "B" in c.info and "00" in c.info])
 
-
     failed  = len([1 for w, c in matches if c.decode_completed and not c.msg])
-    starved  = len([1 for w, c in matches if not c.decode_completed and not c.msg])
-
-    UNCs  = [c.ncheck_initial for w, c in matches if not c.msg]
-    MUNC = np.min(UNCs) if UNCs else 999
+    failed_init  = len([1 for w, c in matches if "Initial NC" in c.info])
+    failed_stall  = len([1 for w, c in matches if "STALL" in c.info])
+    failed_timeout  = len([1 for w, c in matches if not c.decode_completed])
 
     print()
-    print("Cycle,Synced,Demapped,Decoded,MUNC,t_sync,t_demap,t_decode_s,t_decode_f,Sinst,Sldpc,Sflip,Failed,Undecoded,percent")
-    print(cycle, "Counts: ",nsynced,ndemapped,ndecoded,MUNC, "Times: ", f"{t_sync:5.2f}",f"{t_demap:5.2f}",f"{t_decode_successes:5.2f}",f"{t_decode_failures:5.2f}",
-          "Success: ", succeded_imm, succeded_ldpc, succeded_bf_ldpc, "Failed:", failed, starved, pc_str(succeded, total))
+    print("Si,Sl,Sb,Fi,Fs,Ft,%")
+    op = f"{succeded_imm},{succeded_ldpc},{succeded_bf_ldpc},{failed_init},{failed_stall},{failed_timeout},{pc_str(succeded, total)}"
+    print(op)
     with open('live_compare_stats.csv', 'a') as f:
-        f.write(f"{cycle},{nsynced},{ndemapped},{ndecoded},{MUNC},{t_sync},{t_demap},"
-                +f"{t_decode_successes},{t_decode_failures},{succeded_imm},{succeded_ldpc},{succeded_bf_ldpc},{failed},{starved},{pc_str(succeded, total)}\n")
+        f.write(f"{op}\n")
 
     with open('live_compare.csv', 'a') as f:
         for w, c in matches[-50:]:
@@ -109,11 +98,11 @@ with open('live_compare.csv', 'w') as f:
     f.write('')
             
 with open('live_compare_stats.csv', 'w') as f:
-    f.write("Cycle,Synced,Demapped,Decoded,MUNC,t_sync,t_demap,t_decode_s,t_decode_f,Sinst,Sldpc,Sflip,Failed,Undecoded,percent\n")
+    f.write("succeded_imm,succeded_ldpc,succeded_bf_ldpc,failed_init,failed_stall,failed_timeout,percent\n")
 
 threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path,)).start()   
 cycle_manager = Cycle_manager(FT8, None, onOccupancy = None, onCandidateRollover = onCandidateRollover, freq_range = freq_range,
-                              input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
+                              input_device_keywords = ['Microphone', 'CODEC'], verbose = False)
 
 try:
     while True:

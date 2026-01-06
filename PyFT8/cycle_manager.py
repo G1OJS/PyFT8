@@ -127,15 +127,6 @@ class Candidate:
         self.llr = np.column_stack((llr0, llr1, llr2)).ravel()
         self.llr = 3.8 * self.llr / np.std(self.llr)
 
-        llr0 = np.log(np.sum(pgrid_n[:, [4,5,6,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,1,2,3]], axis=1))
-        llr1 = np.log(np.sum(pgrid_n[:, [2,3,4,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,1,5,6]], axis=1))
-        llr2 = np.log(np.sum(pgrid_n[:, [1,2,6,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,3,4,5]], axis=1))
-        llrB = np.column_stack((llr0, llr1, llr2)).ravel()
-        llrB = 3.8 * llrB / np.std(llrB)
-
-        idx = np.abs(self.llr) < np.abs(llrB)
-        self.llr[idx] = llrB[idx]
-
         self.calc_ncheck()
         self.ncheck_initial = self.ncheck
         self.decode_history = f"I{self.ncheck:02d},"
@@ -166,7 +157,7 @@ class Candidate:
 
     def progress_decode(self):
         
-        if(len(self.ldpc_hist) == 0 and self.ncheck > 37):
+        if(len(self.ldpc_hist) == 0 and self.ncheck > 39):
             self.decode_history += f"REASON: Initial NC too high "
             self.decode_completed = time.time()
             return
@@ -180,10 +171,11 @@ class Candidate:
         if(self.ncheck == 0):
             self.decode_completed = time.time()
 
-        if(len(self.ldpc_hist) > 14):
-            self.decode_history += f"REASON: NITS "
-            self.decode_completed = time.time()
-            return
+        if(len(self.ldpc_hist) > 6):
+            if(self.ncheck>= self.ldpc_hist[-5]):
+                self.decode_history += f"REASON: STALL "
+                self.decode_completed = time.time()
+                return
             
     def verify_decode(self, duplicate_filter, onSuccess):
         self.payload_bits = []
