@@ -2,7 +2,6 @@ WAV =  "210703_133430.wav"
 
 import numpy as np
 import time
-from PyFT8.waterfall import Waterfall
 from PyFT8.sigspecs import FT8
 from PyFT8.cycle_manager import Cycle_manager
 
@@ -24,7 +23,7 @@ def onDecode(c):
     global cycle_manager
     if(first):
         first = False
-        heads = ['        Cycle', 'Rx call', 'Tx call', 'GrRp',  'snr', 'f' 'info']
+        heads = ['        Cycle', 'Rx call', 'Tx call', 'GrRp',  'snr', 'f', 'f_idx']
         print(''.join([f"{t:>8} " for t in heads]))
     def t_fmt(t):return f"{t %15:8.2f}" if t else f"{'-':>8}"
     vals = [f"{c.cyclestart_str} ", getattr(c, 'call_a',''), getattr(c, 'call_b',''), getattr(c, 'grid_rpt',''),f"{c.snr:5.0f}", c.fHz, c.f0_idx]

@@ -50,7 +50,7 @@ class Spectrum:
         self.csync_flat = self.make_csync(sigspec)
 
     def make_csync(self, sigspec):
-        csync = np.full((sigspec.costas_len, self.fbins_per_signal), -1/(sigspec.costas_len-1), np.float32)
+        csync = np.full((sigspec.costas_len, self.fbins_per_signal), -1/(self.fbins_per_signal - self.fbins_pertone), np.float32)
         for sym_idx, tone in enumerate(sigspec.costas):
             fbins = range(tone* self.fbins_pertone, (tone+1) * self.fbins_pertone)
             csync[sym_idx, fbins] = 1.0
@@ -226,7 +226,7 @@ class Cycle_manager():
                  input_device_keywords = None, output_device_keywords = None,
                  freq_range = [200,3100], max_cycles = 5000, onCandidateRollover = None, verbose = False):
         
-        HPS, BPT, MAX_FREQ, SAMPLE_RATE = 5, 3, freq_range[1], 12000
+        HPS, BPT, MAX_FREQ, SAMPLE_RATE = 3, 3, freq_range[1], 12000
         self.audio_in = AudioIn(SAMPLE_RATE, sigspec.symbols_persec, MAX_FREQ, HPS, BPT, on_fft = self.update_spectrum)
         self.spectrum = Spectrum(sigspec, SAMPLE_RATE, self.audio_in.nFreqs, MAX_FREQ, HPS, BPT)
         

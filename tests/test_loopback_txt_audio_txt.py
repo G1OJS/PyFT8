@@ -1,6 +1,5 @@
 import numpy as np
 import time
-from PyFT8.waterfall import Waterfall
 from PyFT8.sigspecs import FT8
 from PyFT8.cycle_manager import Cycle_manager
 
@@ -51,7 +50,7 @@ symbols_framed.extend(symbols)  #79 symbols
 symbols_framed.extend([-10]*8)
 print(f"({len(symbols)} symbols)")
 audio_out = audio.AudioOut()
-audio_data = audio_out.create_ft8_wave(symbols_framed, f_base = 3000, amplitude = 0.1)
+audio_data = audio_out.create_ft8_wave(symbols_framed, f_base = 2500, amplitude = 0.1)
 audio_out.write_to_wave_file(audio_data, WAV)
 
 global decoded_candidates
@@ -72,7 +71,7 @@ def onDecode(c):
 print("Bits91:")
 print("1110000111111100010100110101011100010000001111010000111100011100101000101000100111100110010")
 
-cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = WAV, verbose = True, max_cycles = 1)
+cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = WAV, verbose = True, max_cycles = 2)
 
 while cycle_manager.running:
     time.sleep(0.1)
@@ -86,9 +85,16 @@ if(decoded_candidates):
     for c in decoded_candidates:
         print(''.join(str(int(b)) for b in c.payload_bits[:77]))
 
+f = []
+s = []
+n = []
+for c in cycle_manager.cands_list:
+    f.append(c.fHz)
+    s.append(c.sync_score)
+    n.append(c.decode_history[0]['nc'])
+
 import matplotlib.pyplot as plt
-
 fig,ax = plt.subplots()
-ax.imshow(cycle_manager.spectrum.pgrid_fine)
-
+ax.plot(f,s)
+ax.plot(f,n)
 plt.show()
