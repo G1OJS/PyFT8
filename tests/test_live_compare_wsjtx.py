@@ -81,8 +81,8 @@ def display(cycle):
     failed_timeout  = len([1 for w, c in matches if not c.decode_completed])
 
     print()
-    print("Si,Sl,Sb,Fi,Fs,Ft,%")
-    op = f"{succeded_imm},{succeded_ldpc},{succeded_bf_ldpc},{failed_init},{failed_stall},{failed_timeout},{pc_str(succeded, total)}"
+    print("Si,Sl,Sb,Fs,Fi,Ft,%")
+    op = f"{succeded_imm:2d},{succeded_ldpc:2d},{succeded_bf_ldpc:2d},{failed_stall:2d},{failed_init:2d},{failed_timeout:2d},{pc_str(succeded, total)}"
     print(op)
     with open('live_compare_stats.csv', 'a') as f:
         f.write(f"{op}\n")
@@ -98,7 +98,7 @@ with open('live_compare.csv', 'w') as f:
     f.write('')
             
 with open('live_compare_stats.csv', 'w') as f:
-    f.write("succeded_imm,succeded_ldpc,succeded_bf_ldpc,failed_init,failed_stall,failed_timeout,percent\n")
+    f.write("succeded_imm,succeded_ldpc,succeded_bf_ldpc,failed_stall,failed_init,failed_timeout,percent\n")
 
 threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path,)).start()   
 cycle_manager = Cycle_manager(FT8, None, onOccupancy = None, onCandidateRollover = onCandidateRollover, freq_range = freq_range,

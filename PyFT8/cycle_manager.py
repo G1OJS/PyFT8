@@ -157,7 +157,7 @@ class Candidate:
 
     def progress_decode(self):
         
-        if(len(self.ldpc_hist) == 0 and self.ncheck > 39):
+        if(len(self.ldpc_hist) == 0 and self.ncheck > 42):
             self.decode_history += f"REASON: Initial NC too high "
             self.decode_completed = time.time()
             return
