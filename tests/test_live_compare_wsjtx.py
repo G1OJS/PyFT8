@@ -78,13 +78,14 @@ def display(cycle):
 
     failures = [c for w, c in matches if not "SENTENCER: CRC_passed" in c.decode_history[-1]['step']]
     failed_init = len([c for c in failures if "SENTENCER: NCI" in c.decode_history[-1]['step']])
-    failed_stall = len([c for c in failures if "SENTENCER: STALL" in c.decode_history[-1]['step']])
+    failed_ldpc = len([c for c in failures if "SENTENCER: STALL" in c.decode_history[-1]['step'] and any(["B" in h['step'] for h in c.decode_history])])
+    failed_bf_ldpc = len([c for c in failures if "SENTENCER: STALL" in c.decode_history[-1]['step'] and not any(["B" in h['step'] for h in c.decode_history])])
     failed_timeout = len([c for c in failures if not "SENTENCER" in c.decode_history[-1]['step']])
 
     print()
-    print("Si,Sl,Sb,Fs,Fi,Ft,%")
+    print("Si,Sl,Sb,Fi,Fl,Fb,Ft,%")
     total = len(matches)
-    op = f"{succeded_imm:2d},{succeded_ldpc:2d},{succeded_bf_ldpc:2d},{failed_stall:2d},{failed_init:2d},{failed_timeout:2d},{pc_str(succeded, total)}"
+    op = f"{succeded_imm:2d},{succeded_ldpc:2d},{succeded_bf_ldpc:2d},{failed_init:2d},{failed_ldpc:2d},{failed_bf_ldpc:2d},{failed_timeout:2d},{pc_str(succeded, total)}"
     print(op)
     with open('live_compare_stats.csv', 'a') as f:
         f.write(f"{op}\n")
@@ -101,7 +102,7 @@ with open('live_compare.csv', 'w') as f:
     f.write('')
             
 with open('live_compare_stats.csv', 'w') as f:
-    f.write("succeded_imm,succeded_ldpc,succeded_bf_ldpc,failed_stall,failed_init,failed_timeout,percent\n")
+    f.write("succeded_imm,succeded_ldpc,succeded_bf_ldpc,failed_init,failed_ldpc,failed_bf_ldpc,failed_timeout,percent\n")
 
 threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path,)).start()   
 cycle_manager = Cycle_manager(FT8, None, onOccupancy = None, onCandidateRollover = onCandidateRollover, freq_range = freq_range,

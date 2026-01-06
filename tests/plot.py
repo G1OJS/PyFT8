@@ -9,8 +9,10 @@ df_pc = df.div(df.sum(axis=1), axis=0)
 
 fig, axes = plt.subplots(2, 1, figsize=(8, 7), sharex=True)
 
-cols = ['Teal','Lime','Green','Orange','Purple','Red']
-df.plot.area(stacked=True, ax=axes[0], color = cols)
+cols = ['#06c92e','#857277','#c47fb6','#afffb2','#c4bbb6','#ebd2f3','White']
+
+p = df.plot.area(stacked=True, ax=axes[0], color = cols)
+                
 axes[0].set_title("Absolute counts per cycle")
 
 df_pc.plot.area(stacked=True, ax=axes[1], color = cols)

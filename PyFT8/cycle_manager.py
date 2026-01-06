@@ -117,7 +117,7 @@ class Candidate:
         self.pgrid = spectrum.pgrid_fine[np.ix_(self.payload_hop_idxs, self.freq_idxs)]
         pmax = np.max(self.pgrid)
         self.snr = int(np.clip(10 * np.log10(pmax) - 107, -24, 24))
-        pgrid_n = self.pgrid / pmax
+        pgrid_n = self.pgrid
         
         llr0 = np.log(np.max(pgrid_n[:, [4,5,6,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,1,2,3]], axis=1))
         llr1 = np.log(np.max(pgrid_n[:, [2,3,4,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,1,5,6]], axis=1))
@@ -130,10 +130,10 @@ class Candidate:
 
     def calc_ncheck(self):
         bits6 = self.llr[CHECK_VARS_6] > 0
-        parity6 = np.sum(bits6, axis=1) & 1
+        self.parity6 = np.sum(bits6, axis=1) & 1
         bits7 = self.llr[CHECK_VARS_7] > 0
-        parity7 = np.sum(bits7, axis=1) & 1
-        return int(np.sum(parity7) + np.sum(parity6))
+        self.parity7 = np.sum(bits7, axis=1) & 1
+        return int(np.sum(self.parity7) + np.sum(self.parity6))
 
     def update_history(self, actor_message, ncheck = None):
         if(not ncheck):
@@ -159,44 +159,48 @@ class Candidate:
         self.llr += delta
         self.update_history("L")
         
-    def flip_bits(self, nbits = 4):
+    def flip_bits(self, nbits = 10):
+        t0 = time.time()
         flip_masks = ((np.arange(1 << nbits)[:, None] >> np.arange(nbits)) & 1).astype(bool)
-        best_index = len(self.decode_history) - np.argmin([h['nc'] for h in self.decode_history[::-1]]) - 1
-        ordered_llr_idxs = np.argsort(np.abs(self.llr))[:nbits]
-        best = self.decode_history[best_index]
+        flip_masks = [f for f in flip_masks if len([1 for b in f if b]) < 3]
+     
+        bad6 = CHECK_VARS_6[self.parity6.astype(bool)] 
+        bad7 = CHECK_VARS_7[self.parity7.astype(bool)] 
+        bad_vars = np.concatenate([bad6.ravel(), bad7.ravel()])
+        counts = np.bincount(bad_vars, minlength=len(self.llr))
+        score = counts / (np.abs(self.llr) + 1e-6)
+        cands = np.argsort(score)[::-1]
+        idxs = cands[:nbits]
+        
+        best = self.decode_history[-1]
         for mask in flip_masks:
-            self.llr[ordered_llr_idxs[mask]] *= -1
+            self.llr[idxs[mask]] *= -1
             n = self.calc_ncheck()
             if n < best['nc']:
                 best = {'step':f"B:{n:02d}", 'llr':self.llr, 'nc':n}
             if n == 0:
                 break
-            self.llr[ordered_llr_idxs[mask]] *= -1
-        self.update_history("B", best['nc'])
+            self.llr[idxs[mask]] *= -1
+        self.llr = best['llr']
+        self.update_history(f"B{int(1000*(time.time()-t0))}ms:", best['nc'])
 
     def progress_decode(self):
 
-        if(self.decode_history[-1]['nc'] > 42):
-            self.update_history("SENTENCER: NCI", self.decode_history[-1]['nc'])
+        if(self.decode_history[0]['nc'] > 42):
+            self.update_history("SENTENCER: NCI", self.decode_history[0]['nc'])
             return
-
         if(self.decode_history[-1]['nc'] == 0):
             self.update_history("SENTENCER: to_CRC")
             return
+        if(self.decode_history[0]['nc'] > 28 and len(self.decode_history) == 1):
+            self.flip_bits()
         
-        if(self.decode_history[-1]['nc'] > 0):
-            self.do_ldpc_iteration()
-
-        if(len(self.decode_history) > 5):
-            stall_compare = 3
-            nc_comp = self.decode_history[-stall_compare-1]['nc']
-            if(self.decode_history[-1]['nc'] >= nc_comp):
-                if(nc_comp  > 10 or self.n_bitflip_calls > 1):
-                    self.update_history("SENTENCER: STALL")
-                    return
-                else:
-                    self.flip_bits()
-                    self.n_bitflip_calls +=1
+        self.do_ldpc_iteration()
+        
+        profile = [99,35,30,30,30,25,25,20,20,15,15,15,10,10,10,0,0,0,0,0]
+        if(self.decode_history[-1]['nc'] > profile[len(self.decode_history)]):
+            self.update_history(f"SENTENCER: STALL{len(self.decode_history)}")
+            return
             
     def verify_decode(self, duplicate_filter, onSuccess):
         self.payload_bits = []
@@ -220,9 +224,9 @@ class Candidate:
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
                  input_device_keywords = None, output_device_keywords = None,
-                 freq_range = [200,3300], max_cycles = 5000, onCandidateRollover = None, verbose = False):
+                 freq_range = [200,3100], max_cycles = 5000, onCandidateRollover = None, verbose = False):
         
-        HPS, BPT, MAX_FREQ, SAMPLE_RATE = 3, 3, 3500, 12000
+        HPS, BPT, MAX_FREQ, SAMPLE_RATE = 5, 3, freq_range[1], 12000
         self.audio_in = AudioIn(SAMPLE_RATE, sigspec.symbols_persec, MAX_FREQ, HPS, BPT, on_fft = self.update_spectrum)
         self.spectrum = Spectrum(sigspec, SAMPLE_RATE, self.audio_in.nFreqs, MAX_FREQ, HPS, BPT)
         
