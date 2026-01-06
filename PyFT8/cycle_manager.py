@@ -96,10 +96,8 @@ class Candidate:
         self.demap_started, self.demap_completed = None, None
         self.decode_started, self.decode_completed = None, None
         self.decode_verified = False
-        self.ncheck = 999
-        self.ncheck_initial = 999
-        self.ldpc_hist = []
-        self.decode_history = ""
+        self.decode_history = []
+        self.n_bitflip_calls = 0
         self.msg = None
         self.snr = -999
         self.edges6, self.edges7 = None, None
@@ -127,9 +125,7 @@ class Candidate:
         self.llr = np.column_stack((llr0, llr1, llr2)).ravel()
         self.llr = 3.8 * self.llr / np.std(self.llr)
 
-        self.calc_ncheck()
-        self.ncheck_initial = self.ncheck
-        self.decode_history = f"I{self.ncheck:02d},"
+        self.update_history("I")
         self.demap_completed = time.time()
 
     def calc_ncheck(self):
@@ -137,9 +133,16 @@ class Candidate:
         parity6 = np.sum(bits6, axis=1) & 1
         bits7 = self.llr[CHECK_VARS_7] > 0
         parity7 = np.sum(bits7, axis=1) & 1
-        self.ncheck = int(np.sum(parity7) + np.sum(parity6))
+        return int(np.sum(parity7) + np.sum(parity6))
 
-    def _check_update(self, idx, edges, delta):
+    def update_history(self, actor_message, ncheck = None):
+        if(not ncheck):
+            ncheck = self.calc_ncheck()
+        self.decode_history.append({'step':f"{actor_message}:{ncheck:02d}", 'llr':self.llr, 'nc':ncheck})
+        if("SENTENCER" in actor_message):
+            self.decode_completed = time.time()
+
+    def _pass_messages(self, idx, edges, delta):
         if edges is None:
             edges = np.zeros(idx.shape, dtype=np.float32)
         v2c = self.llr[idx] - edges
@@ -151,31 +154,49 @@ class Candidate:
     
     def do_ldpc_iteration(self):
         delta = np.zeros_like(self.llr)
-        self.edges6 = self._check_update(CHECK_VARS_6, self.edges6, delta)
-        self.edges7 = self._check_update(CHECK_VARS_7, self.edges7, delta)
+        self.edges6 = self._pass_messages(CHECK_VARS_6, self.edges6, delta)
+        self.edges7 = self._pass_messages(CHECK_VARS_7, self.edges7, delta)
         self.llr += delta
+        self.update_history("L")
+        
+    def flip_bits(self, nbits = 4):
+        flip_masks = ((np.arange(1 << nbits)[:, None] >> np.arange(nbits)) & 1).astype(bool)
+        best_index = len(self.decode_history) - np.argmin([h['nc'] for h in self.decode_history[::-1]]) - 1
+        ordered_llr_idxs = np.argsort(np.abs(self.llr))[:nbits]
+        best = self.decode_history[best_index]
+        for mask in flip_masks:
+            self.llr[ordered_llr_idxs[mask]] *= -1
+            n = self.calc_ncheck()
+            if n < best['nc']:
+                best = {'step':f"B:{n:02d}", 'llr':self.llr, 'nc':n}
+            if n == 0:
+                break
+            self.llr[ordered_llr_idxs[mask]] *= -1
+        self.update_history("B", best['nc'])
 
     def progress_decode(self):
-        
-        if(len(self.ldpc_hist) == 0 and self.ncheck > 42):
-            self.decode_history += f"REASON: Initial NC too high "
-            self.decode_completed = time.time()
+
+        if(self.decode_history[-1]['nc'] > 42):
+            self.update_history("SENTENCER: NCI", self.decode_history[-1]['nc'])
             return
-            
-        if(self.ncheck > 0):
-            self.ldpc_hist.append(self.ncheck)
+
+        if(self.decode_history[-1]['nc'] == 0):
+            self.update_history("SENTENCER: to_CRC")
+            return
+        
+        if(self.decode_history[-1]['nc'] > 0):
             self.do_ldpc_iteration()
-            self.calc_ncheck()
-            self.decode_history += f"L{self.ncheck:02d},"
 
-        if(self.ncheck == 0):
-            self.decode_completed = time.time()
-
-        if(len(self.ldpc_hist) > 6):
-            if(self.ncheck>= self.ldpc_hist[-5]):
-                self.decode_history += f"REASON: STALL "
-                self.decode_completed = time.time()
-                return
+        if(len(self.decode_history) > 5):
+            stall_compare = 3
+            nc_comp = self.decode_history[-stall_compare-1]['nc']
+            if(self.decode_history[-1]['nc'] >= nc_comp):
+                if(nc_comp  > 10 or self.n_bitflip_calls > 1):
+                    self.update_history("SENTENCER: STALL")
+                    return
+                else:
+                    self.flip_bits()
+                    self.n_bitflip_calls +=1
             
     def verify_decode(self, duplicate_filter, onSuccess):
         self.payload_bits = []
@@ -183,8 +204,9 @@ class Candidate:
         if any(decoded_bits[:77]):
             if check_crc(bitsLE_to_int(decoded_bits[0:91]) ):
                 self.payload_bits = decoded_bits[:77]
+                self.update_history("SENTENCER: CRC_passed", ncheck = 0)
         else:
-            self.decode_history += f"REASON: Failed CRC "
+            self.update_history("SENTENCER: CRC_failed", ncheck = 0)
         if(any(self.payload_bits)):
             self.msg = FT8_unpack(self.payload_bits)
             self.call_a, self.call_b, self.grid_rpt = self.msg[0], self.msg[1], self.msg[2]
@@ -192,13 +214,8 @@ class Candidate:
             if(not self.dedupe_key in duplicate_filter):
                 duplicate_filter.add(self.dedupe_key)
                 if(onSuccess): onSuccess(self)
-            else:
-                self.decode_history += f"REASON: Duplicate decode "
         self.decode_verified = True
-
-    @property
-    def info(self):
-        return f"{self.sync_score:5.2f} {self.cyclestart_str[-2:]} {self.decode_history}" 
+        
 
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
@@ -297,7 +314,6 @@ class Cycle_manager():
                
             to_decode =  [c for c in self.cands_list if c.demap_completed and not c.decode_completed]
             if(to_decode):
-                to_decode.sort(key = lambda c: c.ncheck)
                 for c in to_decode[:10]:
                     c.decode_started = time.time()
                     c.progress_decode()

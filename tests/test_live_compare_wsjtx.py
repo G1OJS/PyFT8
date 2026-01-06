@@ -67,21 +67,23 @@ def display(cycle):
             best[key] = (score, w, c)
     matches = [(w, c) for (_, w, c) in best.values()]
 
-    total = len(matches)
+    for w, c in matches:
+        print(f"{w['msg']:<25} {c.decode_history[-1]['step']}")
 
-    succeeded = [c for w, c in matches if c.msg]
-    succeded = len(succeeded)
-    succeded_imm = len([1 for c in succeeded if "I00" in c.info])
-    succeded_ldpc = len([1 for c in succeeded if "L00" in c.info])
-    succeded_bf_ldpc = len([1 for c in succeeded if "B" in c.info and "00" in c.info])
+    successes = [c for w, c in matches if "SENTENCER: CRC_passed" in c.decode_history[-1]['step']]
+    succeded = len(successes)
+    succeded_imm = len([c for c in successes if "I:00" in c.decode_history[0]['step']])
+    succeded_bf_ldpc =len([c for c in successes if any(["B" in h['step'] for h in c.decode_history])])
+    succeded_ldpc = succeded - succeded_bf_ldpc - succeded_imm
 
-    failed  = len([1 for w, c in matches if c.decode_completed and not c.msg])
-    failed_init  = len([1 for w, c in matches if "Initial NC" in c.info])
-    failed_stall  = len([1 for w, c in matches if "STALL" in c.info])
-    failed_timeout  = len([1 for w, c in matches if not c.decode_completed])
+    failures = [c for w, c in matches if not "SENTENCER: CRC_passed" in c.decode_history[-1]['step']]
+    failed_init = len([c for c in failures if "SENTENCER: NCI" in c.decode_history[-1]['step']])
+    failed_stall = len([c for c in failures if "SENTENCER: STALL" in c.decode_history[-1]['step']])
+    failed_timeout = len([c for c in failures if not "SENTENCER" in c.decode_history[-1]['step']])
 
     print()
     print("Si,Sl,Sb,Fs,Fi,Ft,%")
+    total = len(matches)
     op = f"{succeded_imm:2d},{succeded_ldpc:2d},{succeded_bf_ldpc:2d},{failed_stall:2d},{failed_init:2d},{failed_timeout:2d},{pc_str(succeded, total)}"
     print(op)
     with open('live_compare_stats.csv', 'a') as f:
@@ -90,7 +92,8 @@ def display(cycle):
     with open('live_compare.csv', 'a') as f:
         for w, c in matches[-50:]:
             msg = ' '.join(c.msg) if c.msg else ''
-            f.write(f"{w['cs']} {w['msg']:<25} {msg:<25} {c.info}\n")
+            steps = ','.join([h['step'] for h in c.decode_history])
+            f.write(f"{w['cs']} {w['msg']:<25} {msg:<25} {steps}\n")
 
 
 
