@@ -66,7 +66,7 @@ def onDecode(c):
         print(''.join([f"{t:>8} " for t in heads]))
     def t_fmt(t):return f"{t %15:8.2f}" if t else f"{'-':>8}"
     vals = [f"{c.cyclestart_str} ", c.call_a, c.call_b, c.grid_rpt,f"{c.snr:5.0f}", c.h0_idx, c.f0_idx]
-    print(''.join([f"{t:>8} " for t in vals]), c.info)
+    print(''.join([f"{t:>8} " for t in vals]), [h['step'] for h in c.decode_history])
     decoded_candidates.append(c)
 
 print("Bits91:")
@@ -86,6 +86,9 @@ if(decoded_candidates):
     for c in decoded_candidates:
         print(''.join(str(int(b)) for b in c.payload_bits[:77]))
 
-wf = Waterfall(cycle_manager.spectrum)
-wf.update_main(candidates = cycle_manager.cands_list)
-wf.show_zoom(candidates=decoded_candidates)
+import matplotlib.pyplot as plt
+
+fig,ax = plt.subplots()
+ax.imshow(cycle_manager.spectrum.pgrid_fine)
+
+plt.show()
