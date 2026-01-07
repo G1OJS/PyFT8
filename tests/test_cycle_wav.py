@@ -24,11 +24,11 @@ def onDecode(c):
     global cycle_manager
     if(first):
         first = False
-        heads = ['        Cycle', 'Rx call', 'Tx call', 'GrRp',  'snr', 'f' 'info']
+        heads = ['        Cycle', 'Rx call', 'Tx call', 'GrRp',  'snr', 'f', 'f_idx']
         print(''.join([f"{t:>8} " for t in heads]))
     def t_fmt(t):return f"{t %15:8.2f}" if t else f"{'-':>8}"
-    vals = [f"{c.cyclestart_str} ", getattr(c, 'call_a',''), getattr(c, 'call_b',''), getattr(c, 'grid_rpt',''),f"{c.snr:5.0f}", c.fHz]
-    print(''.join([f"{t:>8} " for t in vals]), c.info)
+    vals = [f"{c.cyclestart_str} ", getattr(c, 'call_a',''), getattr(c, 'call_b',''), getattr(c, 'grid_rpt',''),f"{c.snr:5.0f}", c.fHz, c.f0_idx]
+    print(''.join([f"{t:>8} " for t in vals]))
     decoded_candidates.append(c)
     if(c.msg):
         if not c.msg in unique_decodes_set:
@@ -49,6 +49,3 @@ for d in list(unique_decodes_set):
 wf = Waterfall(cycle_manager.spectrum)
 wf.update_main(candidates = cycle_manager.cands_list + unique_decodes)
 wf.show_zoom(candidates=unique_decodes)
-
-
-

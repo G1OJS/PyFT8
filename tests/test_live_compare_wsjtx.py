@@ -67,41 +67,34 @@ def display(cycle):
             best[key] = (score, w, c)
     matches = [(w, c) for (_, w, c) in best.values()]
 
-    total = len(matches)
+    for w, c in matches:
+        print(f"{w['msg']:<25} {c.decode_history[-1]['step']}")
 
-    nsynced   = len(_pyft8_cands)
-    ndemapped = len([c for c in _pyft8_cands if c.demap_completed])
-    ndecoded  = len([c for c in _pyft8_cands if c.decode_completed])
-    t_sync = np.max([c.sync_completed for c in _pyft8_cands if c.sync_completed]) - np.min([c.sync_started for c in _pyft8_cands if c.sync_started])
-    t_demap = np.sum([c.demap_completed - c.demap_started for c in _pyft8_cands if c.demap_completed])
-    t_decode_successes = np.sum([c.decode_completed - c.decode_started for c in _pyft8_cands if c.decode_completed and c.msg])
-    t_decode_failures = np.sum([c.decode_completed - c.decode_started for c in _pyft8_cands if c.decode_completed and not c.msg])
-    
-    succeeded = [c for w, c in matches if c.msg]
-    succeded = len(succeeded)
-    succeded_imm = len([1 for c in succeeded if "I00" in c.info])
-    succeded_ldpc = len([1 for c in succeeded if "L00" in c.info])
-    succeded_bf_ldpc = len([1 for c in succeeded if "B" in c.info and "00" in c.info])
+    successes = [c for w, c in matches if "SENTENCER: CRC_passed" in c.decode_history[-1]['step']]
+    succeded = len(successes)
+    succeded_imm = len([c for c in successes if "I:00" in c.decode_history[0]['step']])
+    succeded_bf_ldpc =len([c for c in successes if any(["B" in h['step'] for h in c.decode_history])])
+    succeded_ldpc = succeded - succeded_bf_ldpc - succeded_imm
 
-
-    failed  = len([1 for w, c in matches if c.decode_completed and not c.msg])
-    starved  = len([1 for w, c in matches if not c.decode_completed and not c.msg])
-
-    UNCs  = [c.ncheck_initial for w, c in matches if not c.msg]
-    MUNC = np.min(UNCs) if UNCs else 999
+    failures = [c for w, c in matches if not "SENTENCER: CRC_passed" in c.decode_history[-1]['step']]
+    failed_init = len([c for c in failures if "SENTENCER: NCI" in c.decode_history[-1]['step']])
+    failed_ldpc = len([c for c in failures if "SENTENCER: STALL" in c.decode_history[-1]['step'] and any(["B" in h['step'] for h in c.decode_history])])
+    failed_bf_ldpc = len([c for c in failures if "SENTENCER: STALL" in c.decode_history[-1]['step'] and not any(["B" in h['step'] for h in c.decode_history])])
+    failed_timeout = len([c for c in failures if not "SENTENCER" in c.decode_history[-1]['step']])
 
     print()
-    print("Cycle,Synced,Demapped,Decoded,MUNC,t_sync,t_demap,t_decode_s,t_decode_f,Sinst,Sldpc,Sflip,Failed,Undecoded,percent")
-    print(cycle, "Counts: ",nsynced,ndemapped,ndecoded,MUNC, "Times: ", f"{t_sync:5.2f}",f"{t_demap:5.2f}",f"{t_decode_successes:5.2f}",f"{t_decode_failures:5.2f}",
-          "Success: ", succeded_imm, succeded_ldpc, succeded_bf_ldpc, "Failed:", failed, starved, pc_str(succeded, total))
+    print("Si,Sl,Sb,Fi,Fl,Fb,Ft,%")
+    total = len(matches)
+    op = f"{succeded_imm:2d},{succeded_ldpc:2d},{succeded_bf_ldpc:2d},{failed_init:2d},{failed_ldpc:2d},{failed_bf_ldpc:2d},{failed_timeout:2d},{pc_str(succeded, total)}"
+    print(op)
     with open('live_compare_stats.csv', 'a') as f:
-        f.write(f"{cycle},{nsynced},{ndemapped},{ndecoded},{MUNC},{t_sync},{t_demap},"
-                +f"{t_decode_successes},{t_decode_failures},{succeded_imm},{succeded_ldpc},{succeded_bf_ldpc},{failed},{starved},{pc_str(succeded, total)}\n")
+        f.write(f"{op}\n")
 
     with open('live_compare.csv', 'a') as f:
         for w, c in matches[-50:]:
             msg = ' '.join(c.msg) if c.msg else ''
-            f.write(f"{w['cs']} {w['msg']:<25} {msg:<25} {c.info}\n")
+            steps = ','.join([h['step'] for h in c.decode_history])
+            f.write(f"{w['cs']} {w['msg']:<25} {msg:<25} {steps}\n")
 
 
 
@@ -109,11 +102,11 @@ with open('live_compare.csv', 'w') as f:
     f.write('')
             
 with open('live_compare_stats.csv', 'w') as f:
-    f.write("Cycle,Synced,Demapped,Decoded,MUNC,t_sync,t_demap,t_decode_s,t_decode_f,Sinst,Sldpc,Sflip,Failed,Undecoded,percent\n")
+    f.write("succeded_imm,succeded_ldpc,succeded_bf_ldpc,failed_init,failed_ldpc,failed_bf_ldpc,failed_timeout,percent\n")
 
 threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path,)).start()   
 cycle_manager = Cycle_manager(FT8, None, onOccupancy = None, onCandidateRollover = onCandidateRollover, freq_range = freq_range,
-                              input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
+                              input_device_keywords = ['Microphone', 'CODEC'], verbose = False)
 
 try:
     while True:

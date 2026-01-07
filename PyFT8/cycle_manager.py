@@ -50,7 +50,7 @@ class Spectrum:
         self.csync_flat = self.make_csync(sigspec)
 
     def make_csync(self, sigspec):
-        csync = np.full((sigspec.costas_len, self.fbins_per_signal), -1/(sigspec.costas_len-1), np.float32)
+        csync = np.full((sigspec.costas_len, self.fbins_per_signal), -1/(self.fbins_per_signal - self.fbins_pertone), np.float32)
         for sym_idx, tone in enumerate(sigspec.costas):
             fbins = range(tone* self.fbins_pertone, (tone+1) * self.fbins_pertone)
             csync[sym_idx, fbins] = 1.0
@@ -96,10 +96,8 @@ class Candidate:
         self.demap_started, self.demap_completed = None, None
         self.decode_started, self.decode_completed = None, None
         self.decode_verified = False
-        self.ncheck = 999
-        self.ncheck_initial = 999
-        self.ldpc_hist = []
-        self.decode_history = ""
+        self.decode_history = []
+        self.n_bitflip_calls = 0
         self.msg = None
         self.snr = -999
         self.edges6, self.edges7 = None, None
@@ -119,7 +117,7 @@ class Candidate:
         self.pgrid = spectrum.pgrid_fine[np.ix_(self.payload_hop_idxs, self.freq_idxs)]
         pmax = np.max(self.pgrid)
         self.snr = int(np.clip(10 * np.log10(pmax) - 107, -24, 24))
-        pgrid_n = self.pgrid / pmax
+        pgrid_n = self.pgrid
         
         llr0 = np.log(np.max(pgrid_n[:, [4,5,6,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,1,2,3]], axis=1))
         llr1 = np.log(np.max(pgrid_n[:, [2,3,4,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,1,5,6]], axis=1))
@@ -127,28 +125,24 @@ class Candidate:
         self.llr = np.column_stack((llr0, llr1, llr2)).ravel()
         self.llr = 3.8 * self.llr / np.std(self.llr)
 
-        llr0 = np.log(np.sum(pgrid_n[:, [4,5,6,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,1,2,3]], axis=1))
-        llr1 = np.log(np.sum(pgrid_n[:, [2,3,4,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,1,5,6]], axis=1))
-        llr2 = np.log(np.sum(pgrid_n[:, [1,2,6,7]], axis=1)) - np.log(np.sum(pgrid_n[:, [0,3,4,5]], axis=1))
-        llrB = np.column_stack((llr0, llr1, llr2)).ravel()
-        llrB = 3.8 * llrB / np.std(llrB)
-
-        idx = np.abs(self.llr) < np.abs(llrB)
-        self.llr[idx] = llrB[idx]
-
-        self.calc_ncheck()
-        self.ncheck_initial = self.ncheck
-        self.decode_history = f"I{self.ncheck:02d},"
+        self.update_history("I")
         self.demap_completed = time.time()
 
     def calc_ncheck(self):
         bits6 = self.llr[CHECK_VARS_6] > 0
-        parity6 = np.sum(bits6, axis=1) & 1
+        self.parity6 = np.sum(bits6, axis=1) & 1
         bits7 = self.llr[CHECK_VARS_7] > 0
-        parity7 = np.sum(bits7, axis=1) & 1
-        self.ncheck = int(np.sum(parity7) + np.sum(parity6))
+        self.parity7 = np.sum(bits7, axis=1) & 1
+        return int(np.sum(self.parity7) + np.sum(self.parity6))
 
-    def _check_update(self, idx, edges, delta):
+    def update_history(self, actor_message, ncheck = None):
+        if(not ncheck):
+            ncheck = self.calc_ncheck()
+        self.decode_history.append({'step':f"{actor_message}:{ncheck:02d}", 'llr':self.llr, 'nc':ncheck})
+        if("SENTENCER" in actor_message):
+            self.decode_completed = time.time()
+
+    def _pass_messages(self, idx, edges, delta):
         if edges is None:
             edges = np.zeros(idx.shape, dtype=np.float32)
         v2c = self.llr[idx] - edges
@@ -160,59 +154,53 @@ class Candidate:
     
     def do_ldpc_iteration(self):
         delta = np.zeros_like(self.llr)
-        self.edges6 = self._check_update(CHECK_VARS_6, self.edges6, delta)
-        self.edges7 = self._check_update(CHECK_VARS_7, self.edges7, delta)
+        self.edges6 = self._pass_messages(CHECK_VARS_6, self.edges6, delta)
+        self.edges7 = self._pass_messages(CHECK_VARS_7, self.edges7, delta)
         self.llr += delta
-
-    def flip_bits(self, nbits = 4):
+        self.update_history("L")
+        
+    def flip_bits(self, nbits = 10):
         t0 = time.time()
         flip_masks = ((np.arange(1 << nbits)[:, None] >> np.arange(nbits)) & 1).astype(bool)
-        best_n = self.ncheck
-        best_llr = self.llr.copy()
-        ordered_llr_idxs = np.argsort(np.abs(self.llr))[:nbits]
+        flip_masks = [f for f in flip_masks if len([1 for b in f if b]) < 3]
+     
+        bad6 = CHECK_VARS_6[self.parity6.astype(bool)] 
+        bad7 = CHECK_VARS_7[self.parity7.astype(bool)] 
+        bad_vars = np.concatenate([bad6.ravel(), bad7.ravel()])
+        counts = np.bincount(bad_vars, minlength=len(self.llr))
+        score = counts / (np.abs(self.llr) + 1e-6)
+        cands = np.argsort(score)[::-1]
+        idxs = cands[:nbits]
+        
+        best = self.decode_history[-1]
         for mask in flip_masks:
-            self.llr[ordered_llr_idxs[mask]] *= -1
-            self.calc_ncheck()
-            if self.ncheck < best_n:
-                best_llr = self.llr.copy()
-                best_n = self.ncheck
-            self.llr[ordered_llr_idxs[mask]] *= -1
-        self.llr = best_llr
-        self.ncheck = best_n
-        t = (time.time()-t0)
-        self.decode_history += f"B{self.ncheck:02d} {t*1000:2.0f}ms,"
+            self.llr[idxs[mask]] *= -1
+            n = self.calc_ncheck()
+            if n < best['nc']:
+                best = {'step':f"B:{n:02d}", 'llr':self.llr, 'nc':n}
+            if n == 0:
+                break
+            self.llr[idxs[mask]] *= -1
+        self.llr = best['llr']
+        self.update_history(f"B{int(1000*(time.time()-t0))}ms:", best['nc'])
 
     def progress_decode(self):
-        
-        if(len(self.ldpc_hist) == 0 and self.ncheck > 45):
-            self.decode_history += f"REASON: Initial NC too high "
-            self.decode_completed = time.time()
+
+        if(self.decode_history[0]['nc'] > 42):
+            self.update_history("SENTENCER: NCI", self.decode_history[0]['nc'])
             return
+        if(self.decode_history[-1]['nc'] == 0):
+            self.update_history("SENTENCER: to_CRC")
+            return
+        if(self.decode_history[0]['nc'] > 28 and len(self.decode_history) == 1):
+            self.flip_bits()
         
-        if(len(self.ldpc_hist) == 0 and self.ncheck > 28):
-            self.flip_bits(nbits = 5)
-            if(self.ncheck > 40):
-                self.decode_history += f"REASON: Initial NC too high after bit flip "
-                self.decode_completed = time.time()
-                return
-            
-        if(self.ncheck > 0):
-            self.ldpc_hist.append(self.ncheck)
-            self.do_ldpc_iteration()
-            self.calc_ncheck()
-            self.decode_history += f"L{self.ncheck:02d},"
-            if(self.ncheck >0):
-                if(len(self.ldpc_hist) > 7 and self.ncheck > 10):
-                    self.decode_history += f"REASON: NITS8 "
-                    self.decode_completed = time.time()
-                    return
-                if(len(self.ldpc_hist) > 17):
-                    self.decode_history += f"REASON: NITS16 "
-                    self.decode_completed = time.time()
-                    return
-                
-        if(self.ncheck == 0):
-            self.decode_completed = time.time()
+        self.do_ldpc_iteration()
+        
+        profile = [99,35,30,30,30,25,25,20,20,15,15,15,10,10,10,0,0,0,0,0]
+        if(self.decode_history[-1]['nc'] > profile[len(self.decode_history)]):
+            self.update_history(f"SENTENCER: STALL{len(self.decode_history)}")
+            return
             
     def verify_decode(self, duplicate_filter, onSuccess):
         self.payload_bits = []
@@ -220,8 +208,9 @@ class Candidate:
         if any(decoded_bits[:77]):
             if check_crc(bitsLE_to_int(decoded_bits[0:91]) ):
                 self.payload_bits = decoded_bits[:77]
+                self.update_history("SENTENCER: CRC_passed", ncheck = 0)
         else:
-            self.decode_history += f"REASON: Failed CRC "
+            self.update_history("SENTENCER: CRC_failed", ncheck = 0)
         if(any(self.payload_bits)):
             self.msg = FT8_unpack(self.payload_bits)
             self.call_a, self.call_b, self.grid_rpt = self.msg[0], self.msg[1], self.msg[2]
@@ -229,20 +218,15 @@ class Candidate:
             if(not self.dedupe_key in duplicate_filter):
                 duplicate_filter.add(self.dedupe_key)
                 if(onSuccess): onSuccess(self)
-            else:
-                self.decode_history += f"REASON: Duplicate decode "
         self.decode_verified = True
-
-    @property
-    def info(self):
-        return f"{self.sync_score:5.2f} {self.cyclestart_str[-2:]} {self.decode_history}" 
+        
 
 class Cycle_manager():
     def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
                  input_device_keywords = None, output_device_keywords = None,
-                 freq_range = [200,3300], max_cycles = 5000, onCandidateRollover = None, verbose = False):
+                 freq_range = [200,3100], max_cycles = 5000, onCandidateRollover = None, verbose = False):
         
-        HPS, BPT, MAX_FREQ, SAMPLE_RATE = 3, 3, 3500, 12000
+        HPS, BPT, MAX_FREQ, SAMPLE_RATE = 3, 3, freq_range[1], 12000
         self.audio_in = AudioIn(SAMPLE_RATE, sigspec.symbols_persec, MAX_FREQ, HPS, BPT, on_fft = self.update_spectrum)
         self.spectrum = Spectrum(sigspec, SAMPLE_RATE, self.audio_in.nFreqs, MAX_FREQ, HPS, BPT)
         
@@ -334,7 +318,6 @@ class Cycle_manager():
                
             to_decode =  [c for c in self.cands_list if c.demap_completed and not c.decode_completed]
             if(to_decode):
-                to_decode.sort(key = lambda c: c.ncheck)
                 for c in to_decode[:10]:
                     c.decode_started = time.time()
                     c.progress_decode()

@@ -51,7 +51,7 @@ symbols_framed.extend(symbols)  #79 symbols
 symbols_framed.extend([-10]*8)
 print(f"({len(symbols)} symbols)")
 audio_out = audio.AudioOut()
-audio_data = audio_out.create_ft8_wave(symbols_framed, f_base = 3000, amplitude = 0.1)
+audio_data = audio_out.create_ft8_wave(symbols_framed, f_base = 2500, amplitude = 0.1)
 audio_out.write_to_wave_file(audio_data, WAV)
 
 global decoded_candidates
@@ -66,13 +66,13 @@ def onDecode(c):
         print(''.join([f"{t:>8} " for t in heads]))
     def t_fmt(t):return f"{t %15:8.2f}" if t else f"{'-':>8}"
     vals = [f"{c.cyclestart_str} ", c.call_a, c.call_b, c.grid_rpt,f"{c.snr:5.0f}", c.h0_idx, c.f0_idx]
-    print(''.join([f"{t:>8} " for t in vals]), c.info)
+    print(''.join([f"{t:>8} " for t in vals]), [h['step'] for h in c.decode_history])
     decoded_candidates.append(c)
 
 print("Bits91:")
 print("1110000111111100010100110101011100010000001111010000111100011100101000101000100111100110010")
 
-cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = WAV, verbose = True, max_cycles = 1)
+cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, audio_in_wav = WAV, verbose = True, max_cycles = 2)
 
 while cycle_manager.running:
     time.sleep(0.1)
@@ -87,5 +87,20 @@ if(decoded_candidates):
         print(''.join(str(int(b)) for b in c.payload_bits[:77]))
 
 wf = Waterfall(cycle_manager.spectrum)
-wf.update_main(candidates = cycle_manager.cands_list)
+wf.update_main(candidates =decoded_candidates)
 wf.show_zoom(candidates=decoded_candidates)
+
+
+f = []
+s = []
+n = []
+for c in cycle_manager.cands_list:
+    f.append(c.fHz)
+    s.append(c.sync_score)
+    n.append(c.decode_history[0]['nc'])
+
+import matplotlib.pyplot as plt
+fig,ax = plt.subplots()
+ax.plot(f,s)
+ax.plot(f,n)
+plt.show()
