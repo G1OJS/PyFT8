@@ -1,5 +1,6 @@
 import numpy as np
 import time
+from PyFT8.waterfall import Waterfall
 from PyFT8.sigspecs import FT8
 from PyFT8.cycle_manager import Cycle_manager
 
@@ -84,6 +85,11 @@ print("1110000111111100010100110101011100010000001111010000111100011100101000101
 if(decoded_candidates):
     for c in decoded_candidates:
         print(''.join(str(int(b)) for b in c.payload_bits[:77]))
+
+wf = Waterfall(cycle_manager.spectrum)
+wf.update_main(candidates =decoded_candidates)
+wf.show_zoom(candidates=decoded_candidates)
+
 
 f = []
 s = []

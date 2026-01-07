@@ -2,6 +2,7 @@ WAV =  "210703_133430.wav"
 
 import numpy as np
 import time
+from PyFT8.waterfall import Waterfall
 from PyFT8.sigspecs import FT8
 from PyFT8.cycle_manager import Cycle_manager
 
@@ -45,4 +46,6 @@ print(f"DONE. {len(list(unique_decodes_set))} unique decodes.")
 for d in list(unique_decodes_set):
     print(d)
 
-
+wf = Waterfall(cycle_manager.spectrum)
+wf.update_main(candidates = cycle_manager.cands_list + unique_decodes)
+wf.show_zoom(candidates=unique_decodes)
