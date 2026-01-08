@@ -89,33 +89,43 @@ def display(cycle):
 
     with open('wav_compare.csv', 'a') as f:
         for w, c in matches:
+            basics = f"{c.cyclestart_str} {w['f']:4d} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.dt:4.1f}"
             msg = ' '.join(c.msg) if c.msg else ''
             steps = ','.join([h['step'] for h in c.decode_history])
-            op = f"000000_000000 {w['msg']:<25} {msg:<25} {steps}\n"
-            f.write(op)
+            conf = ','.join([f"{v:3.2f}" for v in c.conf_percentiles])
+            op = f"{basics} {w['msg']:<25} {msg:<25} {conf:<20} {steps}"
+            f.write(f"{op}\n")
             print(op)
 
     with open('decodes.csv', 'a') as f:
         for w, c in matches:
             f.write(f"{c.decode_history[0]['nc']},{'True' if c.msg else 'False'}\n")
 
-with open('live_compare.csv', 'w') as f:
-    f.write('')
-            
-with open('live_compare_stats.csv', 'w') as f:
-    f.write("succeded_imm,succeded_ldpc,succeded_bf_ldpc,failed_init,failed_ldpc,failed_bf_ldpc,failed_timeout,percent\n")
+def initialise_outputs():
+    with open('decodes','w') as f:
+        f.write('')
+    with open('wav_compare.csv', 'w') as f:
+        f.write('')
+    with open('wav_compare_stats.csv', 'w') as f:
+        f.write("succeded_imm,succeded_ldpc,succeded_bf_ldpc,failed_init,failed_ldpc,failed_bf_ldpc,failed_timeout,percent\n")
 
-threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path,)).start()   
-cycle_manager = Cycle_manager(FT8, None, onOccupancy = None, onCandidateRollover = onCandidateRollover, freq_range = freq_range,
+def run_PyFT8():
+    cycle_manager = Cycle_manager(FT8, None, onOccupancy = None, onCandidateRollover = onCandidateRollover, freq_range = freq_range,
                               input_device_keywords = ['Microphone', 'CODEC'], verbose = False)
+    try:
+        while cycle_manager.running:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\nStopping")
+        cycle_manager.running = False
 
-try:
-    while True:
-        time.sleep(1)
-except KeyboardInterrupt:
-    print("\nStopping")
-    cycle_manager.running = False
-    running = False
+def run_wsjtx_tailer():
+    threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path,)).start()   
+
+initialise_outputs()
+run_wsjtx_tailer()
+run_PyFT8()
+
 
 
     

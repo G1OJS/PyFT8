@@ -22,27 +22,10 @@ def pc_str(x,y):
 def onCandidateRollover(candidates):
 
     pyft8_cands = candidates.copy()
-
-   # for c in pyft8_cands:
-   #     print(c.fHz, c.msg)
-    
     wsjtx_dicts = get_wsjtx_decodes()
-  #  for d in wsjtx_dicts:
-  #      print(d)
-    
+
     matches = [(w, c) for w in wsjtx_dicts for c in pyft8_cands if abs(w['f'] - c.fHz) < 3]
 
-    """
-    best = {}
-    for w, c in matches:
-        key = (w['msg'])
-        decoded = True if c.msg else False
-        score = (decoded, -c.snr, abs(w['f'] - c.fHz))
-        if key not in best or score > best[key][0]:
-            best[key] = (score, w, c)
-    matches = [(w, c) for (_, w, c) in best.values()]
-    """
-    
     successes = [c for w, c in matches if "SENTENCER: CRC_passed" in c.decode_history[-1]['step']]
     succeded = len(successes)
     succeded_imm = len([c for c in successes if "I:00" in c.decode_history[0]['step']])
@@ -78,6 +61,8 @@ def onCandidateRollover(candidates):
             f.write(f"{c.decode_history[0]['nc']},{'True' if c.msg else 'False'}\n")
 
 def initialise_outputs():
+    with open('decodes','w') as f:
+        f.write('')
     with open('wav_compare.csv', 'w') as f:
         f.write('')
     with open('wav_compare_stats.csv', 'w') as f:
