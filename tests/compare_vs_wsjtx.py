@@ -28,7 +28,7 @@ def wsjtx_all_tailer(all_file, cycle_manager):
         try:
             cs, freq, dt, snr = ls[0], int(ls[6]), float(ls[5]), int(ls[4])
             msg = f"{ls[7]} {ls[8]} {ls[9]}"
-            wsjtx_dicts.append({'cs':cs,'f':int(freq),'msg':msg, 't':time.time(),'dt':dt,'snr':snr,'info':''})
+            wsjtx_dicts.append({'cs':cs,'f':int(freq),'msg':msg, 't':time.time(),'dt':dt,'snr':snr,'td': f"{time.time() %60:5.2f}"})
         except:
             print(f"Wsjtx_tailer error in line '{line}'")
 
@@ -37,7 +37,7 @@ def get_wsjtx_decodes(decodes_file):
     with open(decodes_file,'r') as f:
         lines = f.readlines()
     for l in lines:
-        wsjtx_dicts.append({'cs':'any', 'f':int(l[16:21]), 'msg':l[24:].strip(), 'snr':int(l[8:11]), 'dt':float(l[12:16])})
+        wsjtx_dicts.append({'cs':'any', 'f':int(l[16:21]), 'msg':l[24:].strip(), 'snr':int(l[8:11]), 'dt':float(l[12:16]), 'td':''})
 
 def pc_str(x,y):
     return "{}" if y == 0 else f"{int(100*x/y)}%"
@@ -46,9 +46,10 @@ def onCandidateRollover(candidates):
     global pyft8_cands
     print("Candidate rollover")
     pyft8_cands = candidates.copy()
-    analyse_dictionaries()
+    threading.Thread(target = analyse_dictionaries).start()
 
 def analyse_dictionaries():
+    time.sleep(2)
   #  print(wsjtx_dicts[-1:])
   #  print([f"{c.cyclestart_str} {c.fHz},{c.msg}" for c in pyft8_cands if c.msg][-1:])
 
@@ -86,7 +87,8 @@ def analyse_dictionaries():
     unique = set()
     with open('compare_screen.csv', 'a') as f:
         for w, c in matches:
-            basics = f"{c.cyclestart_str} {w['f']:4d} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.dt:4.1f}"
+            td = f"{c.decode_completed %60:5.2f}" if c.decode_verified else ''
+            basics = f"{c.cyclestart_str} {w['f']:4d} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.dt:4.1f} {w['td']} {td}"
             msg = ' '.join(c.msg) if c.msg else ''
             if(msg !=''): unique.add(msg)
             steps = ','.join([h['step'] for h in c.decode_history])
