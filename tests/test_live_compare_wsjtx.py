@@ -91,12 +91,14 @@ def display(cycle):
         f.write(f"{op}\n")
 
     with open('live_compare.csv', 'a') as f:
-        for w, c in matches[-50:]:
+        for w, c in matches:
             msg = ' '.join(c.msg) if c.msg else ''
             steps = ','.join([h['step'] for h in c.decode_history])
             f.write(f"{w['cs']} {w['msg']:<25} {msg:<25} {steps}\n")
 
-
+    with open('decodes.csv', 'a') as f:
+        for w, c in matches:
+            f.write(f"{c.decode_history[0]['nc']},{'True' if c.msg else 'False'}\n")
 
 with open('live_compare.csv', 'w') as f:
     f.write('')
