@@ -5,22 +5,18 @@ import time
 from PyFT8.cycle_manager import Cycle_manager
 from PyFT8.sigspecs import FT8
 
-all_txt_path = "C:/Users/drala/AppData/Local/WSJT-X/ALL.txt"
+global wsjtx_dicts, pyft8_cands
 wsjtx_dicts = []
 pyft8_cands = []
-cyclestarts = []
-freq_range = [200,3100]
 
-running = True
-
-def pc_str(x,y):
-    return "{}" if y == 0 else f"{int(100*x/y)}%"
-
-def wsjtx_all_tailer(all_txt_path):
+def wsjtx_all_tailer(all_file, cycle_manager):
+    global wsjtx_dicts
+    print(f"Following {all_file}")
+    
     def follow():
-        with open(all_txt_path, "r") as f:
+        with open(all_file, "r") as f:
             f.seek(0, 2)
-            while running:
+            while cycle_manager.running:
                 line = f.readline()
                 if not line:
                     time.sleep(0.2)
@@ -32,41 +28,41 @@ def wsjtx_all_tailer(all_txt_path):
         try:
             cs, freq, dt, snr = ls[0], int(ls[6]), float(ls[5]), int(ls[4])
             msg = f"{ls[7]} {ls[8]} {ls[9]}"
-            global wsjtx_dicts
             wsjtx_dicts.append({'cs':cs,'f':int(freq),'msg':msg, 't':time.time(),'dt':dt,'snr':snr,'info':''})
         except:
-            pass
+            print(f"Wsjtx_tailer error in line '{line}'")
+
+def get_wsjtx_decodes(decodes_file):
+    global wsjtx_dicts
+    with open(decodes_file,'r') as f:
+        lines = f.readlines()
+    for l in lines:
+        wsjtx_dicts.append({'cs':'any', 'f':int(l[16:21]), 'msg':l[24:].strip(), 'snr':int(l[8:11]), 'dt':float(l[12:16])})
+
+def pc_str(x,y):
+    return "{}" if y == 0 else f"{int(100*x/y)}%"
 
 def onCandidateRollover(candidates):
-    global wsjtx_dicts, pyft8_cands, cyclestarts
-    if(not len(candidates)>2 ):
-        return
-    cycle = candidates[-1].cyclestart_str
-    cyclestarts.append(cycle)
-    pyft8_cands = pyft8_cands + candidates.copy()
+    global pyft8_cands
+    print("Candidate rollover")
+    pyft8_cands = candidates.copy()
+    analyse_dictionaries()
 
-    if(len(cyclestarts) > 0):
-        display_cycle = cyclestarts[-1]
-        threading.Thread(target = display, args=(display_cycle,)).start()
-    
-def display(cycle):
-       
-    _wsjtx_dicts = [w for w in wsjtx_dicts if w['cs'] == cycle and w['f'] >= freq_range[0] and w['f'] <= freq_range[1] ]
-    _pyft8_cands = [c for c in pyft8_cands if c.cyclestart_str == cycle]
-    
-    matches = [(w, c) for w in _wsjtx_dicts for c in _pyft8_cands if abs(w['f'] - c.fHz) < 2]
-    if(len(matches) == 0):
-        return
+def analyse_dictionaries():
+  #  print(wsjtx_dicts[-1:])
+  #  print([f"{c.cyclestart_str} {c.fHz},{c.msg}" for c in pyft8_cands if c.msg][-1:])
+
+    matches = [(w, c) for w in wsjtx_dicts for c in pyft8_cands if abs(w['f'] - c.fHz) < 3 and (w['cs'] == c.cyclestart_str or w['cs']=='any')]
 
     best = {}
     for w, c in matches:
         key = (w['cs'], w['msg'])
         decoded = True if c.msg else False
-        score = (decoded, -c.snr, abs(w['f'] - c.fHz))
+        score = (decoded, c.decode_history[0]['nc'])
         if key not in best or score > best[key][0]:
             best[key] = (score, w, c)
     matches = [(w, c) for (_, w, c) in best.values()]
-
+    
     successes = [c for w, c in matches if "SENTENCER: CRC_passed" in c.decode_history[-1]['step']]
     succeded = len(successes)
     succeded_imm = len([c for c in successes if "I:00" in c.decode_history[0]['step']])
@@ -84,34 +80,56 @@ def display(cycle):
     total = len(matches)
     op = f"{succeded_imm:2d},{succeded_ldpc:2d},{succeded_bf_ldpc:2d},{failed_init:2d},{failed_ldpc:2d},{failed_bf_ldpc:2d},{failed_timeout:2d},{pc_str(succeded, total)}"
     print(op)
-    with open('live_compare_stats.csv', 'a') as f:
+    with open('compare_stats.csv', 'a') as f:
         f.write(f"{op}\n")
 
-    with open('wav_compare.csv', 'a') as f:
+    unique = set()
+    with open('compare_screen.csv', 'a') as f:
         for w, c in matches:
             basics = f"{c.cyclestart_str} {w['f']:4d} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.dt:4.1f}"
             msg = ' '.join(c.msg) if c.msg else ''
+            if(msg !=''): unique.add(msg)
             steps = ','.join([h['step'] for h in c.decode_history])
             conf = ','.join([f"{v:3.2f}" for v in c.conf_percentiles])
             op = f"{basics} {w['msg']:<25} {msg:<25} {conf:<20} {steps}"
             f.write(f"{op}\n")
             print(op)
 
-    with open('decodes.csv', 'a') as f:
+    print(f"{len(unique)} unique decodes")    
+
+    with open('compare_decodes.csv', 'a') as f:
         for w, c in matches:
             f.write(f"{c.decode_history[0]['nc']},{'True' if c.msg else 'False'}\n")
 
+    remaining = ','.join([f"{c.decode_history[-1]['nc']}" for c in failures])
+    print(f"Remaining nchecks: {remaining}")
+
 def initialise_outputs():
-    with open('decodes','w') as f:
+    with open('compare_decodes.csv','w') as f:
         f.write('')
-    with open('wav_compare.csv', 'w') as f:
+    with open('compare_screen.csv', 'w') as f:
         f.write('')
-    with open('wav_compare_stats.csv', 'w') as f:
+    with open('compare_stats.csv', 'w') as f:
         f.write("succeded_imm,succeded_ldpc,succeded_bf_ldpc,failed_init,failed_ldpc,failed_bf_ldpc,failed_timeout,percent\n")
 
-def run_PyFT8():
-    cycle_manager = Cycle_manager(FT8, None, onOccupancy = None, onCandidateRollover = onCandidateRollover, freq_range = freq_range,
-                              input_device_keywords = ['Microphone', 'CODEC'], verbose = False)
+def onDecode(c):
+    if(False):
+        print(c.fHz, c.msg)
+
+def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X/ALL.txt"):
+
+    initialise_outputs()
+    if(dataset):
+        cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None,
+                                      onCandidateRollover = onCandidateRollover, freq_range = freq_range,
+                                      audio_in_wav = dataset+".wav", verbose = True)
+        get_wsjtx_decodes(dataset+".txt")
+    else:
+        cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None,
+                                      onCandidateRollover = onCandidateRollover, freq_range = freq_range,
+                                      input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
+        threading.Thread(target=wsjtx_all_tailer, args = (all_file,cycle_manager,)).start()
+        
     try:
         while cycle_manager.running:
             time.sleep(1)
@@ -119,13 +137,9 @@ def run_PyFT8():
         print("\nStopping")
         cycle_manager.running = False
 
-def run_wsjtx_tailer():
-    threading.Thread(target=wsjtx_all_tailer, args = (all_txt_path,)).start()   
+#compare("210703_133430", [100,3100])
 
-initialise_outputs()
-run_wsjtx_tailer()
-run_PyFT8()
-
+compare(None, [100,3100])
 
 
     

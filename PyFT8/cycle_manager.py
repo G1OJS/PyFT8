@@ -101,11 +101,12 @@ class Candidate:
         self.decode_started, self.decode_completed = None, None
         self.decode_verified = False
         self.decode_history = []
+        self.ldpc_stall = (99,0)
+        self.ldpc_iters = 0
         self.n_bitflip_calls = 0
         self.msg = None
         self.snr = -999
         self.edges6, self.edges7 = None, None
-        self.ldpc_iters = 0
 
     def record_sync(self, spectrum, h0_idx, f0_idx, score):
         hps, bpt = spectrum.hops_persymb, spectrum.fbins_pertone
@@ -195,7 +196,12 @@ class Candidate:
         self.edges7 = self._pass_messages(CHECK_VARS_7, self.edges7, delta)
         self.llr += delta
         self.ldpc_iters += 1
-        self.record_state("L", self.calc_ncheck())
+        ncheck = self.calc_ncheck()
+        if(ncheck < self.ldpc_stall[0]):
+            self.ldpc_stall = (ncheck, 0)
+        else:
+            self.ldpc_stall = (self.ldpc_stall[0], self.ldpc_stall[1]+1)
+        self.record_state("L", ncheck)
         
     def flip_bits(self):
         t0 = time.time()
@@ -216,34 +222,26 @@ class Candidate:
                 break
             self.llr[idxs[mask]] *= -1
         self.llr = best['llr']
+        self.n_bitflip_calls +=1
         self.record_state(f"B{int(1000*(time.time()-t0))}ms:", best['nc'])
 
     def progress_decode(self):
-        if self.decode_history[0]['nc'] > 46:
+        if self.decode_history[0]['nc'] > 44:
             self.record_state("SENTENCER: NCI", self.decode_history[0]['nc'])
-            return
+        if(self.decode_history[-1]['nc'] > 28 and self.ldpc_iters == 1):
+            self.flip_bits()
         if self.decode_history[-1]['nc'] == 0:
             self.record_state("SENTENCER: to_CRC", 0)
-            return
-        if not hasattr(self, "used_flip_pre"):
-            self.used_flip_pre  = False
-            self.used_flip_post = False
-
-        if (not self.used_flip_pre and self.ldpc_iters == 1 and self.decode_history[-1]['nc'] > 27):
-            self.flip_bits()
-            self.used_flip_pre = True
-          #  return
-
-        self.do_ldpc_iteration()
-
-        profile = [99,35,30,25,25,25,0]
-        idx = min(self.ldpc_iters - 1, len(profile) - 1)
-        if self.decode_history[-1]['nc'] > profile[idx]:
-            if not self.used_flip_post:
+        if self.ldpc_iters > 12 or self.ldpc_stall[1] > 3:
+            if(self.decode_history[-1]['nc'] <10 and self.n_bitflip_calls <3):
                 self.flip_bits()
-                self.used_flip_post = True
+                if self.decode_history[-1]['nc'] == 0:
+                    self.record_state("SENTENCER: to_CRC", 0)
             else:
                 self.record_state(f"SENTENCER: STALL{self.ldpc_iters}", self.decode_history[-1]['nc'])
+        if(not self.decode_completed):   
+            self.do_ldpc_iteration()
+
     
     def verify_decode(self, duplicate_filter, onSuccess):
         self.payload_bits = []
