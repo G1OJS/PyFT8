@@ -76,7 +76,7 @@ def analyse_dictionaries():
     failed_bf_ldpc = len([c for c in failures if "SENTENCER: STALL" in c.decode_history[-1]['step'] and not any(["B" in h['step'] for h in c.decode_history])])
     failed_timeout = len([c for c in failures if not "SENTENCER" in c.decode_history[-1]['step']])
 
-    print()
+    print(f"====Analysis at second = {time.time() %60:5.2f} =========" )
     print("Si,Sl,Sb,Fi,Fl,Fb,Ft,%")
     total = len(matches)
     op = f"{succeded_imm:2d},{succeded_ldpc:2d},{succeded_bf_ldpc:2d},{failed_init:2d},{failed_ldpc:2d},{failed_bf_ldpc:2d},{failed_timeout:2d},{pc_str(succeded, total)}"
