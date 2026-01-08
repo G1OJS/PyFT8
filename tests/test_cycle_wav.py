@@ -28,7 +28,10 @@ def onDecode(c):
         print(''.join([f"{t:>8} " for t in heads]))
     def t_fmt(t):return f"{t %15:8.2f}" if t else f"{'-':>8}"
     vals = [f"{c.cyclestart_str} ", getattr(c, 'call_a',''), getattr(c, 'call_b',''), getattr(c, 'grid_rpt',''),f"{c.snr:5.0f}", c.fHz, c.f0_idx]
-    print(''.join([f"{t:>8} " for t in vals]))
+    basics = ''.join([f"{t:>8} " for t in vals])
+    steps = ','.join([h['step'] for h in c.decode_history])
+    conf = ','.join([f"{v:3.2f}" for v in c.conf_percentiles])
+    print(basics, steps, conf )
     decoded_candidates.append(c)
     if(c.msg):
         if not c.msg in unique_decodes_set:
@@ -43,9 +46,7 @@ while cycle_manager.running:
 time.sleep(2)
 
 print(f"DONE. {len(list(unique_decodes_set))} unique decodes.")
-for d in list(unique_decodes_set):
-    print(d)
 
 wf = Waterfall(cycle_manager.spectrum)
-wf.update_main(candidates = cycle_manager.cands_list + unique_decodes)
+wf.update_main(candidates = unique_decodes)
 wf.show_zoom(candidates=unique_decodes)

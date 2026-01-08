@@ -38,17 +38,20 @@ class AudioIn:
         self.audio_buffer = np.zeros(self.fft_len, dtype=np.float32)
         self._pa = pyaudio.PyAudio()
         self._running = False
+        self.wav_finished = False
 
     def start_wav(self, wav_path, hop_dt):
         self._running = True
         wf = wave.open(wav_path, "rb")
         next_hop_time = time.time()
+        dummy_frames = None
         while self._running:
             frames = wf.readframes(int(self.sample_rate // self.hop_rate))
+            if not dummy_frames:
+                dummy_frames = frames
             if not frames:
-                wf.close()
-                wf = wave.open(wav_path, "rb")
-                frames = wf.readframes(int(self.sample_rate // self.hop_rate))
+                frames = dummy_frames
+                self.wav_finished = True
             now = time.time()
             if now < next_hop_time:
                 time.sleep(next_hop_time - now)

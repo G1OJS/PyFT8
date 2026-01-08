@@ -115,23 +115,55 @@ class Candidate:
         self.sync_score = score
         self.dt = self.h0_idx * spectrum.dt-0.7
         self.fHz = int((self.f0_idx + bpt // 2) * spectrum.df)
-                                   
+
+
     def demap(self, spectrum):
+        
+        def margin(P):
+            idx = np.argpartition(P, -2, axis=1)[:, -2:]
+            row = np.arange(P.shape[0])[:, None]
+            top2 = P[row, idx]
+            top = np.max(top2, axis=1)
+            second = np.min(top2, axis=1)
+            return np.log(top + eps) - np.log(second + eps)
+        
         self.demap_started = time.time()
-        self.pgrid = spectrum.pgrid_fine[np.ix_(self.payload_hop_idxs, self.freq_idxs)]
+
+        hops = np.array(self.payload_hop_idxs)
+        freqs = self.freq_idxs
+
+        p0 = spectrum.pgrid_fine[np.ix_(hops, freqs)]
+        pp = spectrum.pgrid_fine[np.ix_(hops + 1, freqs)]
+        pm = spectrum.pgrid_fine[np.ix_(hops - 1, freqs)]
+
+        m0 = margin(p0)
+        mp = margin(pp)
+        mm = margin(pm)
+
+        conf_s = np.median(np.vstack([m0, mp, mm]), axis=0)
+
+        conf_ref = np.median(conf_s)
+        multiplier = np.clip(conf_s / conf_ref, 0.5, 2.0)
+
+        llr0 = np.log(np.max(p0[:, [4,5,6,7]], axis=1)) - np.log(np.max(p0[:, [0,1,2,3]], axis=1))
+        llr1 = np.log(np.max(p0[:, [2,3,4,7]], axis=1)) - np.log(np.max(p0[:, [0,1,5,6]], axis=1))
+        llr2 = np.log(np.max(p0[:, [1,2,6,7]], axis=1)) - np.log(np.max(p0[:, [0,3,4,5]], axis=1))
+
+        llr = np.column_stack((llr0, llr1, llr2))
+        llr *= multiplier[:, None]
+        llr = llr.ravel()
+
+        self.llr = np.clip(3.5 * llr / np.std(llr), -3.9, 3.9)
+
+        self.conf_percentiles = np.percentile(conf_s, [5,25,50,75,95])
+        self.update_history("I")
+
+        self.pgrid = p0
         pmax = np.max(self.pgrid)
         self.snr = int(np.clip(10 * np.log10(pmax) - 107, -24, 24))
-        pgrid_n = self.pgrid
-        
-        llr0 = np.log(np.max(pgrid_n[:, [4,5,6,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,1,2,3]], axis=1))
-        llr1 = np.log(np.max(pgrid_n[:, [2,3,4,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,1,5,6]], axis=1))
-        llr2 = np.log(np.max(pgrid_n[:, [1,2,6,7]], axis=1)) - np.log(np.max(pgrid_n[:, [0,3,4,5]], axis=1))
-        llr = np.column_stack((llr0, llr1, llr2)).ravel()
-        self.llr = np.clip(3.5 * llr / np.std(llr), -3.9, 3.9)
-        
-        self.update_history("I")
-        
+
         self.demap_completed = time.time()
+
 
     def calc_ncheck(self):
         bits6 = self.llr[CHECK_VARS_6] > 0
@@ -309,6 +341,8 @@ class Cycle_manager():
                 cands_rollover_done = True
                 if(self.onCandidateRollover): self.onCandidateRollover(self.cands_list)
                 self.cands_list = self.new_cands
+                if(self.audio_in.wav_finished):
+                    self.running = False
 
             if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap):
                 to_demap = [c for c in self.cands_list

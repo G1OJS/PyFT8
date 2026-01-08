@@ -67,9 +67,6 @@ def display(cycle):
             best[key] = (score, w, c)
     matches = [(w, c) for (_, w, c) in best.values()]
 
-    for w, c in matches:
-        print(f"{w['msg']:<25} {c.decode_history[-1]['step']}")
-
     successes = [c for w, c in matches if "SENTENCER: CRC_passed" in c.decode_history[-1]['step']]
     succeded = len(successes)
     succeded_imm = len([c for c in successes if "I:00" in c.decode_history[0]['step']])
@@ -90,11 +87,13 @@ def display(cycle):
     with open('live_compare_stats.csv', 'a') as f:
         f.write(f"{op}\n")
 
-    with open('live_compare.csv', 'a') as f:
+    with open('wav_compare.csv', 'a') as f:
         for w, c in matches:
             msg = ' '.join(c.msg) if c.msg else ''
             steps = ','.join([h['step'] for h in c.decode_history])
-            f.write(f"{w['cs']} {w['msg']:<25} {msg:<25} {steps}\n")
+            op = f"000000_000000 {w['msg']:<25} {msg:<25} {steps}\n"
+            f.write(op)
+            print(op)
 
     with open('decodes.csv', 'a') as f:
         for w, c in matches:
