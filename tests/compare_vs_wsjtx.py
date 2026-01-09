@@ -71,7 +71,7 @@ def analyse_dictionaries():
     failures = [c for w, c in matches if not c.msg]
     failed_init = len([c for c in failures if "NCI" in c.decode_history[-1]['step']])
     failed_bf_ldpc = len([c for c in failures if "STALL" in c.decode_history[-1]['step'] and any(["B" in h['step'] for h in c.decode_history])])
-    failed_timeout = len([c for c in failures if not "SENTENCER" in c.decode_history[-1]['step']])
+    failed_timeout = len([c for c in failures if c.unsentenced])
     failed_ldpc = len(failures) - failed_bf_ldpc - failed_timeout
 
     print(f"====Analysis at second = {time.time() %60:5.2f} =========" )

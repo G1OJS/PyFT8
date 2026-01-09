@@ -173,11 +173,12 @@ class Candidate:
 
         self.conf_percentiles = np.percentile(conf_s, [5,25,50,75,95])
 
-        self.ncheck0 = self.calc_ncheck()
-        if self.ncheck0 > NCHECK['max_init']:
-            self.record_state("SENTENCER_NCI", self.ncheck0)
+        self.ncheck = self.calc_ncheck()
+        self.ncheck0 = self.ncheck
+        if(self.ncheck > NCHECK['max_init'] ):
+            self.record_state(">", self.ncheck, final = True)
         else:
-            self.record_state("I", self.ncheck0)
+            self.record_state("=", self.ncheck)
 
         self.pgrid = p0
         pmax = np.max(self.pgrid)
@@ -191,7 +192,7 @@ class Candidate:
             for n in c.neighbours:
                 if n.ncheck0 is not None:
                     if n.ncheck0 < c.ncheck0:
-                        c.record_state("SENTENCER: DEDUPLICATED_ON_NCHECK0", c.ncheck0)
+                        c.record_state("D", c.ncheck0, final = True)
                         return
 
     def calc_ncheck(self):
@@ -201,10 +202,10 @@ class Candidate:
         self.parity7 = np.sum(bits7, axis=1) & 1
         return int(np.sum(self.parity7) + np.sum(self.parity6))
 
-    def record_state(self, actor_message, ncheck):
+    def record_state(self, actor_message, ncheck, final = False):
         self.ncheck = ncheck
         self.decode_history.append({'step':f"{actor_message}{ncheck:02d}", 'llr':self.llr, 'nc':ncheck})
-        if("SENTENCER" in actor_message):
+        if(self.ncheck == 0 or final):
             self.unsentenced = False
             self.decode_completed = time.time()
 
@@ -232,7 +233,6 @@ class Candidate:
         self.record_state("L", ncheck)
         
     def flip_bits(self):
-        t0 = time.time()
         bad6 = CHECK_VARS_6[self.parity6.astype(bool)] 
         bad7 = CHECK_VARS_7[self.parity7.astype(bool)] 
         bad_vars = np.concatenate([bad6.ravel(), bad7.ravel()])
@@ -251,34 +251,29 @@ class Candidate:
             self.llr[idxs[mask]] *= -1
         self.llr = best['llr']
         self.n_bitflip_calls +=1
-        self.record_state(f"B{int(1000*(time.time()-t0))}ms:", best['nc'])
+        self.record_state(f"B", best['nc'])
 
     def progress_decode(self):
         if self.decode_completed: return
         if(self.ncheck > NCHECK['flip_thresh_0'] and self.ldpc_iters == 0):
             self.flip_bits()
-        if self.ncheck == 0:
-            self.record_state("SENTENCER_CRC", 0)
         if self.ldpc_iters > STALL_CRITERIA['Max_its'] or self.ldpc_stall[1] > STALL_CRITERIA['Max_no_improvement']:
             if(self.ncheck < NCHECK['flip_thresh_n'] and self.n_bitflip_calls < NCHECK['max_n']):
                 self.flip_bits()
-                if self.ncheck == 0:
-                    self.record_state("SENTENCER_to_CRC", 0)
             else:
-                self.record_state(f"SENTENCER_STALL", self.ncheck)
+                self.record_state(f"S", self.ncheck, final = True)
         if(not self.decode_completed):   
             self.do_ldpc_iteration()
 
-    
     def verify_decode(self, duplicate_filter, onSuccess):
         self.payload_bits = []
         decoded_bits = (self.llr > 0).astype(int).tolist()
         if any(decoded_bits[:77]):
             if check_crc(bitsLE_to_int(decoded_bits[0:91]) ):
                 self.payload_bits = decoded_bits[:77]
-                self.record_state("SENTENCER_CRC_passed", 0)
+                self.record_state("C", 0)
         else:
-            self.record_state("SENTENCER_CRC_failed", 0)
+            self.record_state("X", 0)
         if(any(self.payload_bits)):
             self.msg = FT8_unpack(self.payload_bits)
             self.call_a, self.call_b, self.grid_rpt = self.msg[0], self.msg[1], self.msg[2]
@@ -294,7 +289,7 @@ class Cycle_manager():
                  input_device_keywords = None, output_device_keywords = None,
                  freq_range = [200,3100], max_cycles = 5000, onCandidateRollover = None, verbose = False):
         
-        HPS, BPT, MAX_FREQ, SAMPLE_RATE = 5, 3, freq_range[1], 12000
+        HPS, BPT, MAX_FREQ, SAMPLE_RATE = 7, 3, freq_range[1], 12000
         self.audio_in = AudioIn(SAMPLE_RATE, sigspec.symbols_persec, MAX_FREQ, HPS, BPT, on_fft = self.update_spectrum)
         self.spectrum = Spectrum(sigspec, SAMPLE_RATE, self.audio_in.nFreqs, MAX_FREQ, HPS, BPT)
         
