@@ -43,9 +43,9 @@ with open(decodes_file, "r") as f:
             p.append(int(n))
 
 for i in [0,1]:
-    axes[i].hist(w, bins = range(50), label = "WSJTX",
+    axes[i].hist(w, bins = range(60), label = "WSJTX",
             cumulative = -i, color = '#D32F2F', alpha = 0.8, lw=0.5, edgecolor = "black")
-    axes[i].hist(p, bins = range(50), label = "PyFT8",
+    axes[i].hist(p, bins = range(60), label = "PyFT8",
             cumulative = -i, color = '#388E3C', alpha = 0.8, lw=0.5, edgecolor = "black")
     axes[i].set_xlabel("Initial ncheck")
     axes[i].set_ylabel(f"Number of decodes{' (cumulative)' if i>0 else ''}")

@@ -4,6 +4,7 @@ import numpy as np
 import time
 from PyFT8.cycle_manager import Cycle_manager
 from PyFT8.sigspecs import FT8
+import matplotlib.pyplot as plt
 
 global wsjtx_dicts, pyft8_cands
 wsjtx_dicts = []
@@ -43,6 +44,7 @@ def pc_str(x,y):
     return "{}" if y == 0 else f"{int(100*x/y)}%"
 
 def onCandidateRollover(candidates):
+    
     global pyft8_cands
     pyft8_cands = candidates.copy()
     threading.Thread(target = analyse_dictionaries).start()
@@ -71,7 +73,7 @@ def analyse_dictionaries():
     failures = [c for w, c in matches if not c.msg]
     failed_init = len([c for c in failures if "NCI" in c.decode_history[-1]['step']])
     failed_bf_ldpc = len([c for c in failures if "STALL" in c.decode_history[-1]['step'] and any(["B" in h['step'] for h in c.decode_history])])
-    failed_timeout = len([c for c in failures if not "SENTENCER" in c.decode_history[-1]['step']])
+    failed_timeout = len([c for c in failures if c.unsentenced])
     failed_ldpc = len(failures) - failed_bf_ldpc - failed_timeout
 
     print(f"====Analysis at second = {time.time() %60:5.2f} =========" )
@@ -90,8 +92,7 @@ def analyse_dictionaries():
             msg = ' '.join(c.msg) if c.msg else ''
             if(msg !=''): unique.add(msg)
             steps = ','.join([h['step'] for h in c.decode_history])
-            conf = ','.join([f"{v:3.2f}" for v in c.conf_percentiles])
-            op = f"{basics} {w['msg']:<25} {msg:<25} {conf:<20} {steps}"
+            op = f"{basics} {w['msg']:<25} {msg:<25} {steps}"
             f.write(f"{op}\n")
             print(op)
 
@@ -116,9 +117,28 @@ def onDecode(c):
     if(False):
         print(c.fHz, c.msg)
 
+def update_charts():
+    global fig, ax
+    
+    if any(pyft8_cands):
+        demapper_output = [c.ncheck0 for c in pyft8_cands]
+        ax.hist(demapper_output, bins = range(60), label = "Initial",
+            cumulative = 0, color = '#388E3C', alpha = 0.8, lw=0.5, edgecolor = "black")
+        decoder_output = [c.ncheck for c in pyft8_cands]
+        ax.hist(decoder_output, bins = range(60), label = "Final",
+            cumulative = 0, color = '#6A1B9A', alpha = 0.8, lw=0.5, edgecolor = "black")
+        plt.pause(0.1)
+
+            
+
 def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X/ALL.txt"):
+    global fig, ax
+  #  fig, ax = plt.subplots()
+  #  plt.ion()
+  #  plt.pause(0.5)
 
     initialise_outputs()
+    
     if(dataset):
         cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None,
                                       onCandidateRollover = onCandidateRollover, freq_range = freq_range,
@@ -132,6 +152,7 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
         
     try:
         while cycle_manager.running:
+   #         update_charts()
             time.sleep(1)
     except KeyboardInterrupt:
         print("\nStopping")
