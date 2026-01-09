@@ -44,16 +44,14 @@ def pc_str(x,y):
 
 def onCandidateRollover(candidates):
     global pyft8_cands
-    print("Candidate rollover")
     pyft8_cands = candidates.copy()
     threading.Thread(target = analyse_dictionaries).start()
 
 def analyse_dictionaries():
     time.sleep(2)
-  #  print(wsjtx_dicts[-1:])
-  #  print([f"{c.cyclestart_str} {c.fHz},{c.msg}" for c in pyft8_cands if c.msg][-1:])
 
-    matches = [(w, c) for w in wsjtx_dicts for c in pyft8_cands if abs(w['f'] - c.fHz) < 3 and (w['cs'] == c.cyclestart_str or w['cs']=='any')]
+    matches = [(w, c) for w in wsjtx_dicts for c in pyft8_cands if c.demap_completed
+               and abs(w['f'] - c.fHz) < 3 and (w['cs'] == c.cyclestart_str or w['cs']=='any')]
 
     best = {}
     for w, c in matches:
@@ -64,17 +62,17 @@ def analyse_dictionaries():
             best[key] = (score, w, c)
     matches = [(w, c) for (_, w, c) in best.values()]
     
-    successes = [c for w, c in matches if "SENTENCER: CRC_passed" in c.decode_history[-1]['step']]
+    successes = [c for w, c in matches if c.msg]
     succeded = len(successes)
-    succeded_imm = len([c for c in successes if "I:00" in c.decode_history[0]['step']])
-    succeded_bf_ldpc =len([c for c in successes if any(["B" in h['step'] for h in c.decode_history])])
+    succeded_imm = len([c for c in successes if "I00" in c.decode_history[0]['step']])
+    succeded_bf_ldpc =len([c for c in successes if any(["L" in h['step'] for h in c.decode_history]) and any(["B" in h['step'] for h in c.decode_history])])
     succeded_ldpc = succeded - succeded_bf_ldpc - succeded_imm
 
-    failures = [c for w, c in matches if not "SENTENCER: CRC_passed" in c.decode_history[-1]['step']]
-    failed_init = len([c for c in failures if "SENTENCER: NCI" in c.decode_history[-1]['step']])
-    failed_ldpc = len([c for c in failures if "SENTENCER: STALL" in c.decode_history[-1]['step'] and any(["B" in h['step'] for h in c.decode_history])])
-    failed_bf_ldpc = len([c for c in failures if "SENTENCER: STALL" in c.decode_history[-1]['step'] and not any(["B" in h['step'] for h in c.decode_history])])
+    failures = [c for w, c in matches if not c.msg]
+    failed_init = len([c for c in failures if "NCI" in c.decode_history[-1]['step']])
+    failed_bf_ldpc = len([c for c in failures if "STALL" in c.decode_history[-1]['step'] and any(["B" in h['step'] for h in c.decode_history])])
     failed_timeout = len([c for c in failures if not "SENTENCER" in c.decode_history[-1]['step']])
+    failed_ldpc = len(failures) - failed_bf_ldpc - failed_timeout
 
     print(f"====Analysis at second = {time.time() %60:5.2f} =========" )
     print("Si,Sl,Sb,Fi,Fl,Fb,Ft,%")
@@ -101,7 +99,7 @@ def analyse_dictionaries():
 
     with open('compare_decodes.csv', 'a') as f:
         for w, c in matches:
-            f.write(f"{c.decode_history[0]['nc']},{'True' if c.msg else 'False'}\n")
+            f.write(f"{c.ncheck0},{'True' if c.msg else 'False'}\n")
 
     remaining = ','.join([f"{c.decode_history[-1]['nc']}" for c in failures])
     print(f"Remaining nchecks: {remaining}")

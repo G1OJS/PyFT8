@@ -15,9 +15,17 @@ eps = 1e-12
 CHECK_VARS_6 = np.array([[4,31,59,92,114,145],[5,23,60,93,121,150],[6,32,61,94,95,142],[5,31,63,96,125,137],[8,34,65,98,138,145],[9,35,66,99,106,125],[11,37,67,101,104,154],[12,38,68,102,148,161],[14,41,58,105,122,158],[0,32,71,105,106,156],[15,42,72,107,140,159],[10,43,74,109,120,165],[7,45,70,111,118,165],[18,37,76,103,115,162],[19,46,69,91,137,164],[1,47,73,112,127,159],[21,46,57,117,126,163],[15,38,61,111,133,157],[22,42,78,119,130,144],[19,35,62,93,135,160],[13,30,78,97,131,163],[2,43,79,123,126,168],[18,45,80,116,134,166],[11,49,60,117,118,143],[12,50,63,113,117,156],[23,51,75,128,147,148],[20,53,76,99,139,170],[34,81,132,141,170,173],[13,29,82,112,124,169],[3,28,67,119,133,172],[51,83,109,114,144,167],[6,49,80,98,131,172],[22,54,66,94,171,173],[25,40,76,108,140,147],[26,39,55,123,124,125],[17,48,54,123,140,166],[5,32,84,107,115,155],[8,53,62,130,146,154],[21,52,67,108,120,173],[2,12,47,77,94,122],[30,68,132,149,154,168],[4,38,74,101,135,166],[1,53,85,100,134,163],[14,55,86,107,118,170],[22,33,70,93,126,152],[10,48,87,91,141,156],[28,33,86,96,146,161],[21,56,84,92,139,158],[27,31,71,102,131,165],[0,25,44,79,127,146],[16,26,88,102,115,152],[50,56,97,162,164,171],[20,36,72,137,151,168],[15,46,75,129,136,153],[2,23,29,71,103,138],[8,39,89,105,133,150],[17,41,78,143,145,151],[24,37,64,98,121,159],[16,41,74,128,169,171]], dtype = np.int16)
 CHECK_VARS_7 = np.array([[3,30,58,90,91,95,152],[7,24,62,82,92,95,147],[4,33,64,77,97,106,153],[10,36,66,86,100,138,157],[7,39,69,81,103,113,144],[13,40,70,87,101,122,155],[16,36,73,80,108,130,153],[44,54,63,110,129,160,172],[17,35,75,88,112,113,142],[20,44,77,82,116,120,150],[18,34,58,72,109,124,160],[6,48,57,89,99,104,167],[24,52,68,89,100,129,155],[19,45,64,79,119,139,169],[0,3,51,56,85,135,151],[25,50,55,90,121,136,167],[1,26,40,60,61,114,132],[27,47,69,84,104,128,157],[11,42,65,88,96,134,158],[9,43,81,90,110,143,148],[29,49,59,85,136,141,161],[9,52,65,83,111,127,164],[27,28,83,87,116,142,149],[14,57,59,73,110,149,162]], dtype = np.int16)
 
-FLIP_NBITS = 9
-FLIP_MASKS = ((np.arange(1 << FLIP_NBITS)[:, None] >> np.arange(FLIP_NBITS)) & 1).astype(bool)
-FLIP_MASKS = [f for f in FLIP_MASKS if len([1 for b in f if b]) < 3]
+BITFLIP_BIT_WIDTH = 9
+BITFLIP_UPTO_NBITS = 2
+BITFLIP_MASKS = ((np.arange(1 << BITFLIP_BIT_WIDTH)[:, None] >> np.arange(BITFLIP_BIT_WIDTH)) & 1).astype(bool)
+BITFLIP_MASKS = [f for f in BITFLIP_MASKS if len([1 for b in f if b]) <= BITFLIP_UPTO_NBITS]
+
+NCHECK_MAX_INITIAL = 40
+NCHECK_FIRST_BITFLIP = 25
+NCHECK_LATER_BITFLIPS = 10
+MAX_BITFLIP_CALLS = 2
+STALL_CRITERIA = {'Max_its':24, 'Max_no_improvement':5}
+
 
 def safe_pc(x,y):
     return 100*x/y if y>0 else 0
@@ -88,8 +96,15 @@ class Spectrum:
                     best = test
             c.record_sync(self, *best)
             c.sync_completed = time.time()
-            c.cyclestart_str = cyclestart_str
+            c.cyclestart_str = cyclestart_str            
             cands.append(c)
+
+        for i, c in enumerate(cands[:-2]):
+            left = np.clip(i-2,0,len(cands))
+            right = np.clip(i+3,0,len(cands))
+            potential_neighbours = cands[left:i] + cands[i+1:right]
+            c.neighbours = [n for n in potential_neighbours if np.abs(n.fHz - c.fHz) < 3]
+
         return cands
 
 class Candidate:
@@ -100,6 +115,9 @@ class Candidate:
         self.demap_started, self.demap_completed = None, None
         self.decode_started, self.decode_completed = None, None
         self.decode_verified = False
+        self.neighbours = None
+        self.ncheck = None
+        self.ncheck0 = None
         self.decode_history = []
         self.ldpc_stall = (99,0)
         self.ldpc_iters = 0
@@ -145,7 +163,7 @@ class Candidate:
         conf_s = np.median(np.vstack([m0, mp, mm]), axis=0)
 
         conf_ref = np.median(conf_s)
-        multiplier = np.clip(conf_s / conf_ref, 0.5, 2.0)
+        multiplier = np.clip(conf_s / conf_ref, 0.3, 1.0)
 
         llr0 = np.log(np.max(p0[:, [4,5,6,7]], axis=1)) - np.log(np.max(p0[:, [0,1,2,3]], axis=1))
         llr1 = np.log(np.max(p0[:, [2,3,4,7]], axis=1)) - np.log(np.max(p0[:, [0,1,5,6]], axis=1))
@@ -158,8 +176,12 @@ class Candidate:
         self.llr = np.clip(3.5 * llr / np.std(llr), -3.9, 3.9)
 
         self.conf_percentiles = np.percentile(conf_s, [5,25,50,75,95])
-        
-        self.record_state("I", self.calc_ncheck())
+
+        self.ncheck0 = self.calc_ncheck()
+        if self.ncheck0 > NCHECK_MAX_INITIAL:
+            self.record_state("SENTENCER_NCI", self.ncheck0)
+        else:
+            self.record_state("I", self.ncheck0)
 
         self.pgrid = p0
         pmax = np.max(self.pgrid)
@@ -167,6 +189,13 @@ class Candidate:
 
         self.demap_completed = time.time()
 
+    def filter_vs_neighbours(c):
+        if(c.neighbours is not None):
+            for n in c.neighbours:
+                if n.ncheck0 is not None:
+                    if n.ncheck0 < c.ncheck0:
+                        c.record_state("SENTENCER: DEDUPLICATED_ON_NCHECK0", c.ncheck0)
+                        return
 
     def calc_ncheck(self):
         bits6 = self.llr[CHECK_VARS_6] > 0
@@ -176,7 +205,8 @@ class Candidate:
         return int(np.sum(self.parity7) + np.sum(self.parity6))
 
     def record_state(self, actor_message, ncheck):
-        self.decode_history.append({'step':f"{actor_message}:{ncheck:02d}", 'llr':self.llr, 'nc':ncheck})
+        self.ncheck = ncheck
+        self.decode_history.append({'step':f"{actor_message}{ncheck:02d}", 'llr':self.llr, 'nc':ncheck})
         if("SENTENCER" in actor_message):
             self.decode_completed = time.time()
 
@@ -210,14 +240,14 @@ class Candidate:
         bad_vars = np.concatenate([bad6.ravel(), bad7.ravel()])
         counts = np.bincount(bad_vars, minlength=len(self.llr))
         cands = np.argsort(counts)[::-1]
-        idxs = cands[:FLIP_NBITS]
+        idxs = cands[:BITFLIP_BIT_WIDTH]
         
         best = self.decode_history[-1]
-        for mask in FLIP_MASKS:
+        for mask in BITFLIP_MASKS:
             self.llr[idxs[mask]] *= -1
             n = self.calc_ncheck()
             if n < best['nc']:
-                best = {'step':f"B:{n:02d}", 'llr':self.llr, 'nc':n}
+                best = {'step':f"B", 'llr':self.llr, 'nc':n}
             if n == 0:
                 break
             self.llr[idxs[mask]] *= -1
@@ -226,19 +256,18 @@ class Candidate:
         self.record_state(f"B{int(1000*(time.time()-t0))}ms:", best['nc'])
 
     def progress_decode(self):
-        if self.decode_history[0]['nc'] > 44:
-            self.record_state("SENTENCER: NCI", self.decode_history[0]['nc'])
-        if(self.decode_history[-1]['nc'] > 28 and self.ldpc_iters == 1):
+        if self.decode_completed: return
+        if(self.ncheck > NCHECK_FIRST_BITFLIP and self.ldpc_iters == 0):
             self.flip_bits()
-        if self.decode_history[-1]['nc'] == 0:
-            self.record_state("SENTENCER: to_CRC", 0)
-        if self.ldpc_iters > 12 or self.ldpc_stall[1] > 3:
-            if(self.decode_history[-1]['nc'] <10 and self.n_bitflip_calls <3):
+        if self.ncheck == 0:
+            self.record_state("SENTENCER_CRC", 0)
+        if self.ldpc_iters > STALL_CRITERIA['Max_its'] or self.ldpc_stall[1] > STALL_CRITERIA['Max_no_improvement']:
+            if(self.ncheck < NCHECK_LATER_BITFLIPS and self.n_bitflip_calls < MAX_BITFLIP_CALLS):
                 self.flip_bits()
-                if self.decode_history[-1]['nc'] == 0:
-                    self.record_state("SENTENCER: to_CRC", 0)
+                if self.ncheck == 0:
+                    self.record_state("SENTENCER_to_CRC", 0)
             else:
-                self.record_state(f"SENTENCER: STALL{self.ldpc_iters}", self.decode_history[-1]['nc'])
+                self.record_state(f"SENTENCER_STALL", self.ncheck)
         if(not self.decode_completed):   
             self.do_ldpc_iteration()
 
@@ -249,9 +278,9 @@ class Candidate:
         if any(decoded_bits[:77]):
             if check_crc(bitsLE_to_int(decoded_bits[0:91]) ):
                 self.payload_bits = decoded_bits[:77]
-                self.record_state("SENTENCER: CRC_passed", 0)
+                self.record_state("SENTENCER_CRC_passed", 0)
         else:
-            self.record_state("SENTENCER: CRC_failed", 0)
+            self.record_state("SENTENCER_CRC_failed", 0)
         if(any(self.payload_bits)):
             self.msg = FT8_unpack(self.payload_bits)
             self.call_a, self.call_b, self.grid_rpt = self.msg[0], self.msg[1], self.msg[2]
@@ -346,6 +375,7 @@ class Cycle_manager():
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
 
             if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap-50 and not cands_rollover_done):
+                if(self.verbose): self.tlog(f"[Cycle manager] Candidate rollover")
                 cands_rollover_done = True
                 if(self.onCandidateRollover): self.onCandidateRollover(self.cands_list)
                 self.cands_list = self.new_cands
@@ -358,12 +388,12 @@ class Cycle_manager():
                                 and not c.demap_started)]
                 for c in to_demap:
                     c.demap(self.spectrum)
-               
-            to_decode =  [c for c in self.cands_list if c.demap_completed and not c.decode_completed]
-            if(to_decode):
-                for c in to_decode[:10]:
-                    c.decode_started = time.time()
-                    c.progress_decode()
+                    c.filter_vs_neighbours()
+
+            to_decode = [c for c in self.cands_list if c.demap_completed and not c.decode_completed]
+            for c in to_decode[:10]:
+                c.decode_started = time.time()
+                c.progress_decode()
 
             to_verify = [c for c in self.cands_list if c.decode_completed and not c.decode_verified]
             for c in to_verify:
