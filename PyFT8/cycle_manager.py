@@ -174,6 +174,7 @@ class Candidate:
         self.conf_percentiles = np.percentile(conf_s, [5,25,50,75,95])
 
         self.ncheck = self.calc_ncheck()
+
         self.ncheck0 = self.ncheck
         if(self.ncheck > NCHECK['max_init'] ):
             self.record_state(">", self.ncheck, final = True)
