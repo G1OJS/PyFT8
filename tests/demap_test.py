@@ -47,7 +47,7 @@ for c in candidates:
 print(f"{len(dupes)} decodes")
 p = [c.ncheck for c in candidates]
 axes[1].hist(p, bins = range(60),
-        cumulative = 0, color = cols[i], alpha = 0.8, lw=0.5, edgecolor = "black")
+        cumulative = 0, color = cols[0], alpha = 0.8, lw=0.5, edgecolor = "black")
 axes[1].legend()
 plt.pause(.1)
 
