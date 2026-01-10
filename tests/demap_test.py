@@ -32,23 +32,23 @@ axes[1].set_ylabel(f"Number")
 axes[1].set_title(f"Ncheck after max 5 iterations")
 plt.ion()
 
-for i, param in enumerate([4.2]):
-    dupes=set()
-    candidates = spectrum.search([200,3000],"000000_000000")
-    for c in candidates:
-        c.demap(spectrum, param)
-        for j in range(55):
-            if(not c.decode_completed):
-                c.progress_decode()
-            else:
-                if(not c.decode_verified):
-                    c.verify_decode(dupes, ondecode)
 
-    print(f"{len(dupes)} decodes")
-    p = [c.ncheck for c in candidates]
-    axes[1].hist(p, bins = range(60), label = ['raw','llr freeze'][i],
-            cumulative = 0, color = cols[i], alpha = 0.8, lw=0.5, edgecolor = "black")
-    axes[1].legend()
-    plt.pause(.1)
+dupes=set()
+candidates = spectrum.search([200,3000],"000000_000000")
+for c in candidates:
+    c.demap(spectrum)
+    for j in range(55):
+        if(not c.decode_completed):
+            c.progress_decode()
+        else:
+            if(not c.decode_verified):
+                c.verify_decode(dupes, ondecode)
+
+print(f"{len(dupes)} decodes")
+p = [c.ncheck for c in candidates]
+axes[1].hist(p, bins = range(60),
+        cumulative = 0, color = cols[i], alpha = 0.8, lw=0.5, edgecolor = "black")
+axes[1].legend()
+plt.pause(.1)
 
 
