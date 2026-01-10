@@ -5,19 +5,21 @@ import time
 from .audio import find_device, AudioIn
 from .FT8_unpack import FT8_unpack
 from PyFT8.FT8_crc import check_crc
+from PyFT8.osd import osd_decode_minimal
 import pyaudio
 import queue
 import wave
 import os
 
 eps = 1e-12
-LLR_SHAPING = {'promote':1.0, 'demote':0.3, 'final_sd':3.5, 'clip':3.9}
-BITFLIPS = {'width':9, 'nbits':2}
-NCHECK = {'max_init':45, 'flip_thresh_0':25, 'flip_thresh_n':11, 'max_n':2}
-STALL_CRITERIA = {'Max_its':24, 'Max_no_improvement':5}
+LLR_SHAPING = {'final_sd':3.5, 'clip':3.9}
+BITFLIPS = {'width':6, 'nbits':2}
+NCHECK = {'max_init':45, 'flip_thresh_0':29, 'osd_thresh':4}
+STALL_CRITERIA = {'Max_its':5}
 
 CHECK_VARS_6 = np.array([[4,31,59,92,114,145],[5,23,60,93,121,150],[6,32,61,94,95,142],[5,31,63,96,125,137],[8,34,65,98,138,145],[9,35,66,99,106,125],[11,37,67,101,104,154],[12,38,68,102,148,161],[14,41,58,105,122,158],[0,32,71,105,106,156],[15,42,72,107,140,159],[10,43,74,109,120,165],[7,45,70,111,118,165],[18,37,76,103,115,162],[19,46,69,91,137,164],[1,47,73,112,127,159],[21,46,57,117,126,163],[15,38,61,111,133,157],[22,42,78,119,130,144],[19,35,62,93,135,160],[13,30,78,97,131,163],[2,43,79,123,126,168],[18,45,80,116,134,166],[11,49,60,117,118,143],[12,50,63,113,117,156],[23,51,75,128,147,148],[20,53,76,99,139,170],[34,81,132,141,170,173],[13,29,82,112,124,169],[3,28,67,119,133,172],[51,83,109,114,144,167],[6,49,80,98,131,172],[22,54,66,94,171,173],[25,40,76,108,140,147],[26,39,55,123,124,125],[17,48,54,123,140,166],[5,32,84,107,115,155],[8,53,62,130,146,154],[21,52,67,108,120,173],[2,12,47,77,94,122],[30,68,132,149,154,168],[4,38,74,101,135,166],[1,53,85,100,134,163],[14,55,86,107,118,170],[22,33,70,93,126,152],[10,48,87,91,141,156],[28,33,86,96,146,161],[21,56,84,92,139,158],[27,31,71,102,131,165],[0,25,44,79,127,146],[16,26,88,102,115,152],[50,56,97,162,164,171],[20,36,72,137,151,168],[15,46,75,129,136,153],[2,23,29,71,103,138],[8,39,89,105,133,150],[17,41,78,143,145,151],[24,37,64,98,121,159],[16,41,74,128,169,171]], dtype = np.int16)
 CHECK_VARS_7 = np.array([[3,30,58,90,91,95,152],[7,24,62,82,92,95,147],[4,33,64,77,97,106,153],[10,36,66,86,100,138,157],[7,39,69,81,103,113,144],[13,40,70,87,101,122,155],[16,36,73,80,108,130,153],[44,54,63,110,129,160,172],[17,35,75,88,112,113,142],[20,44,77,82,116,120,150],[18,34,58,72,109,124,160],[6,48,57,89,99,104,167],[24,52,68,89,100,129,155],[19,45,64,79,119,139,169],[0,3,51,56,85,135,151],[25,50,55,90,121,136,167],[1,26,40,60,61,114,132],[27,47,69,84,104,128,157],[11,42,65,88,96,134,158],[9,43,81,90,110,143,148],[29,49,59,85,136,141,161],[9,52,65,83,111,127,164],[27,28,83,87,116,142,149],[14,57,59,73,110,149,162]], dtype = np.int16)
+         
 BITFLIP_MASKS = ((np.arange(1 << BITFLIPS['width'])[:, None] >> np.arange(BITFLIPS['width'])) & 1).astype(bool)
 BITFLIP_MASKS = [f for f in BITFLIP_MASKS if len([1 for b in f if b]) <= BITFLIPS['nbits']]
 
@@ -93,7 +95,7 @@ class Spectrum:
             c.cyclestart_str = cyclestart_str            
             cands.append(c)
 
-        for i, c in enumerate(cands[:-2]):
+        for i, c in enumerate(cands):
             left = np.clip(i-2,0,len(cands))
             right = np.clip(i+3,0,len(cands))
             potential_neighbours = cands[left:i] + cands[i+1:right]
@@ -112,8 +114,8 @@ class Candidate:
         self.neighbours = None
         self.ncheck = None
         self.ncheck0 = None
-        self.decode_history = []
-        self.unsentenced = True
+        self.llr = None
+        self.decode_path = ""
         self.ldpc_stall = (99,0)
         self.ldpc_iters = 0
         self.n_bitflip_calls = 0
@@ -131,70 +133,41 @@ class Candidate:
         self.dt = self.h0_idx * spectrum.dt-0.7
         self.fHz = int((self.f0_idx + bpt // 2) * spectrum.df)
 
-
     def demap(self, spectrum):
-        
-        def margin(P):
-            idx = np.argpartition(P, -2, axis=1)[:, -2:]
-            row = np.arange(P.shape[0])[:, None]
-            top2 = P[row, idx]
-            top = np.max(top2, axis=1)
-            second = np.min(top2, axis=1)
-            return np.log(top + eps) - np.log(second + eps)
-        
         self.demap_started = time.time()
-
         hops = np.array(self.payload_hop_idxs)
         freqs = self.freq_idxs
-
         p0 = spectrum.pgrid_fine[np.ix_(hops, freqs)]
-        pp = spectrum.pgrid_fine[np.ix_(hops + 1, freqs)]
-        pm = spectrum.pgrid_fine[np.ix_(hops - 1, freqs)]
-
-        m0 = margin(p0)
-        mp = margin(pp)
-        mm = margin(pm)
-
-        conf_s = np.median(np.vstack([m0, mp, mm]), axis=0)
-
-        conf_ref = np.median(conf_s)
-        multiplier = np.clip(conf_s / conf_ref, LLR_SHAPING['demote'], LLR_SHAPING['promote'])
 
         llr0 = np.log(np.max(p0[:, [4,5,6,7]], axis=1)) - np.log(np.max(p0[:, [0,1,2,3]], axis=1))
         llr1 = np.log(np.max(p0[:, [2,3,4,7]], axis=1)) - np.log(np.max(p0[:, [0,1,5,6]], axis=1))
         llr2 = np.log(np.max(p0[:, [1,2,6,7]], axis=1)) - np.log(np.max(p0[:, [0,3,4,5]], axis=1))
 
         llr = np.column_stack((llr0, llr1, llr2))
-        llr *= multiplier[:, None]
         llr = llr.ravel()
-
+ 
         llr_clipto = LLR_SHAPING['clip']
         self.llr = np.clip(LLR_SHAPING['final_sd'] * llr / np.std(llr), -llr_clipto, llr_clipto)
-
-        self.conf_percentiles = np.percentile(conf_s, [5,25,50,75,95])
-
+        
         self.ncheck = self.calc_ncheck()
-
         self.ncheck0 = self.ncheck
-        if(self.ncheck > NCHECK['max_init'] ):
-            self.record_state(">", self.ncheck, final = True)
-        else:
-            self.record_state("=", self.ncheck)
-
+        if(self.ncheck > NCHECK['max_init']):
+            self.record_state(f">", self.ncheck, final = True)
+            return
+        
+        s = np.sign(self.llr)
+        self.llr_quality = np.sum(s * self.llr)        
+        if(self.neighbours is not None):
+            for n in self.neighbours:
+                if(n.demap_completed):
+                    if n.llr_quality > self.llr_quality:
+                        self.record_state("D", self.ncheck, final = True)
+                        return
+                
         self.pgrid = p0
         pmax = np.max(self.pgrid)
         self.snr = int(np.clip(10 * np.log10(pmax) - 107, -24, 24))
-
         self.demap_completed = time.time()
-
-    def filter_vs_neighbours(c):
-        if(c.decode_completed): return
-        if(c.neighbours is not None):
-            for n in c.neighbours:
-                if n.ncheck0 is not None:
-                    if n.ncheck0 < c.ncheck0:
-                        c.record_state("D", c.ncheck0, final = True)
-                        return
 
     def calc_ncheck(self):
         bits6 = self.llr[CHECK_VARS_6] > 0
@@ -203,11 +176,10 @@ class Candidate:
         self.parity7 = np.sum(bits7, axis=1) & 1
         return int(np.sum(self.parity7) + np.sum(self.parity6))
 
-    def record_state(self, actor_message, ncheck, final = False):
+    def record_state(self, actor_code, ncheck, final = False):
         self.ncheck = ncheck
-        self.decode_history.append({'step':f"{actor_message}{ncheck:02d}", 'llr':self.llr, 'nc':ncheck})
-        if(self.ncheck == 0 or final):
-            self.unsentenced = False
+        self.decode_path = self.decode_path + f"{actor_code}{ncheck}"
+        if(self.ncheck ==0  or final):
             self.decode_completed = time.time()
 
     def _pass_messages(self, idx, edges, delta):
@@ -241,52 +213,55 @@ class Candidate:
         cands = np.argsort(counts)[::-1]
         idxs = cands[:BITFLIPS['width']]
         
-        best = self.decode_history[-1]
+        best = {'step':f"B", 'llr':self.llr.copy(), 'nc':self.ncheck}
         for mask in BITFLIP_MASKS:
             self.llr[idxs[mask]] *= -1
             n = self.calc_ncheck()
             if n < best['nc']:
-                best = {'step':f"B", 'llr':self.llr, 'nc':n}
+                best = {'step':f"B", 'llr':self.llr.copy(), 'nc':n}
+            else:
+                self.llr[idxs[mask]] *= -1
             if n == 0:
                 break
-            self.llr[idxs[mask]] *= -1
         self.llr = best['llr']
         self.n_bitflip_calls +=1
         self.record_state(f"B", best['nc'])
 
-    def progress_decode(self):
-        if self.decode_completed: return
-        if(self.ncheck > NCHECK['flip_thresh_0'] and self.ldpc_iters == 0):
-            self.flip_bits()
-        if self.ldpc_iters > STALL_CRITERIA['Max_its'] or self.ldpc_stall[1] > STALL_CRITERIA['Max_no_improvement']:
-            if(self.ncheck < NCHECK['flip_thresh_n'] and self.n_bitflip_calls < NCHECK['max_n']):
+    def progress_decode(self, duplicate_filter, onSuccess):
+        if self.ncheck > 0:
+            if(self.ncheck < NCHECK['flip_thresh_0'] and self.ldpc_iters == 0 and self.n_bitflip_calls == 0):
                 self.flip_bits()
+            elif self.ldpc_iters < STALL_CRITERIA['Max_its']:  
+                self.do_ldpc_iteration()
+            elif(self.ncheck < NCHECK['osd_thresh']):
+                codeword_bits, metric = osd_decode_minimal(self.llr, order=2, L=25)
+                self.llr = np.array([1 if(b==1) else -1 for b in codeword_bits])
+                self.calc_ncheck()
+                codeword_bits = (self.llr > 0).astype(int).tolist()
+                if check_crc(bitsLE_to_int(codeword_bits[0:91]) ):
+                    self.record_state(f"Q", self.ncheck, final = True)
+                    self.ncheck = 0
             else:
                 self.record_state(f"S", self.ncheck, final = True)
-        if(not self.decode_completed):   
-            self.do_ldpc_iteration()
-
-    def verify_decode(self, duplicate_filter, onSuccess):
-        self.payload_bits = []
-        decoded_bits = (self.llr > 0).astype(int).tolist()
-        if any(decoded_bits[:77]):
-            if check_crc(bitsLE_to_int(decoded_bits[0:91]) ):
-                self.payload_bits = decoded_bits[:77]
-                self.record_state("C", 0)
-        else:
-            self.record_state("X", 0)
-        if(any(self.payload_bits)):
-            self.msg = FT8_unpack(self.payload_bits)
-            self.call_a, self.call_b, self.grid_rpt = self.msg[0], self.msg[1], self.msg[2]
-            self.dedupe_key = self.cyclestart_str+" "+' '.join(self.msg)
-            if(not self.dedupe_key in duplicate_filter):
-                duplicate_filter.add(self.dedupe_key)
-                if(onSuccess): onSuccess(self)
-        self.decode_verified = True
         
+        if(self.ncheck == 0):
+            codeword_bits = (self.llr > 0).astype(int).tolist()
+            if any(codeword_bits[:77]):
+                if check_crc(bitsLE_to_int(codeword_bits[0:91]) ):
+                    self.payload_bits = codeword_bits[:77]
+                    self.msg = FT8_unpack(self.payload_bits)
+            code = "S" if self.msg else "F"
+            self.record_state(code, 0, final = True)
+            if code == "S":
+                self.call_a, self.call_b, self.grid_rpt = self.msg[0], self.msg[1], self.msg[2]
+                self.dedupe_key = self.cyclestart_str+" "+' '.join(self.msg)
+                if(not self.dedupe_key in duplicate_filter):
+                    duplicate_filter.add(self.dedupe_key)
+                    if(onSuccess): onSuccess(self)
+
 
 class Cycle_manager():
-    def __init__(self, sigspec, onSuccessfulDecode, onOccupancy, audio_in_wav = None,
+    def __init__(self, sigspec, onSuccess, onOccupancy, audio_in_wav = None,
                  input_device_keywords = None, output_device_keywords = None,
                  freq_range = [200,3100], max_cycles = 5000, onCandidateRollover = None, verbose = False):
         
@@ -303,7 +278,7 @@ class Cycle_manager():
         self.max_cycles = max_cycles
         self.cands_list = []
         self.new_cands = []
-        self.onSuccessfulDecode = onSuccessfulDecode
+        self.onSuccess = onSuccess
         self.onOccupancy = onOccupancy
         self.duplicate_filter = set()
         if(self.output_device_idx):
@@ -371,10 +346,11 @@ class Cycle_manager():
             if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap-50 and not cands_rollover_done):
                 if(self.verbose): self.tlog(f"[Cycle manager] Candidate rollover")
                 cands_rollover_done = True
-                unsentenced = len([c for c in self.cands_list if c.unsentenced])
-                if(unsentenced and self.verbose):
-                    self.tlog(f"[Cycle manager] {unsentenced} unsentenced candidates detected")
-                if(self.onCandidateRollover): self.onCandidateRollover(self.cands_list)
+                n_unprocessed = len([c for c in self.cands_list if not c.decode_completed])
+                if(n_unprocessed and self.verbose):
+                    self.tlog(f"[Cycle manager] {n_unprocessed} unprocessed candidates detected")
+                if(self.onCandidateRollover and cycle_counter >1):
+                    self.onCandidateRollover(self.cands_list)
                 self.cands_list = self.new_cands
                 if(self.audio_in.wav_finished):
                     self.running = False
@@ -385,16 +361,11 @@ class Cycle_manager():
                                 and not c.demap_started)]
                 for c in to_demap:
                     c.demap(self.spectrum)
-                    c.filter_vs_neighbours()
 
             to_decode = [c for c in self.cands_list if c.demap_completed and not c.decode_completed]
             for c in to_decode[:10]:
                 c.decode_started = time.time()
-                c.progress_decode()
-
-            to_verify = [c for c in self.cands_list if c.decode_completed and not c.decode_verified]
-            for c in to_verify:
-                c.verify_decode(self.duplicate_filter, self.onSuccessfulDecode)
+                c.progress_decode(self.duplicate_filter, self.onSuccess)
 
                     
     def check_for_tx(self):
@@ -417,9 +388,4 @@ class Cycle_manager():
             self.tlog("[Tx] done transmitting")
             
 
-                       
-
-
-
-
-                 
+                    
