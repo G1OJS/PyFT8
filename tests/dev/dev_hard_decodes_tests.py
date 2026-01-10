@@ -38,31 +38,41 @@ def plot_nchecks():
 easy_candidates_f0_idxs =[]
 def ondecode_easy(c):
     global easy_candidates_f0_idxs
-    print(c.msg)
+    print(c.f0_idx, c.fHz, c.msg)
     easy_candidates_f0_idxs.append(c.f0_idx)
 
 def get_easy_candidate_f0_idxs():
-    global spectrum
-    print("finding easy decodes")
-    candidates = spectrum.search([200,3000],"000000_000000")
-    for c in candidates:
-        c.demap(spectrum)
-        for j in range(55):
-            if(not c.decode_completed):
-                c.progress_decode()
-            else:
-                if(not c.decode_verified):
-                    dupes=set() # re-initialise to stop dedupe
-                    c.verify_decode(dupes, ondecode_easy)
-        
+    global spectrum, easy_candidates_f0_idxs
+    import pickle, os
+    if(os.path.exists("easy_decodes.pkl")):
+        with open ("easy_decodes.pkl","rb") as f:
+            easy_candidates_f0_idxs = pickle.load(f)
+        print("Loaded easy candidates list")
+    else:
+        print("Finding easy candidates for current demapper & decoder")
+        candidates = spectrum.search([200,3000],"000000_000000")
+        for c in candidates:
+            c.demap(spectrum)
+            for j in range(55):
+                if(not c.decode_completed):
+                    c.progress_decode()
+                else:
+                    if(not c.decode_verified):
+                        dupes=set() # re-initialise to stop dedupe
+                        c.verify_decode(dupes, ondecode_easy)
+        with open("easy_decodes.pkl","wb") as f:
+            pickle.dump(easy_candidates_f0_idxs,f)
+        print("Saved easy candidates list")
 
 load_spectrum()
-plot_spectrum()
+#plot_spectrum()
 get_easy_candidate_f0_idxs()
+
 
 def ondecode(c):
     print(c.msg)
 
+print("Looking for further decodes")
 dupes=set()
 candidates = spectrum.search([200,3000],"000000_000000")
 candidates = [c for c in candidates if not c.f0_idx in easy_candidates_f0_idxs]
