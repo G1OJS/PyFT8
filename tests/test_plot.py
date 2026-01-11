@@ -21,7 +21,7 @@ with open(f"compare_wsjtx.csv", "r") as f:
             if("#" in l): fg.append(q)
             if(not "#" in l): ft.append(q)
 
-bins = [350 + 5*b for b in range(50)]
+bins = [335 + 5*b for b in range(50)]
 
 np = len(p)
 nt = len(w)
