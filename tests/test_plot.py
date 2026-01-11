@@ -2,24 +2,24 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 fig, axes = plt.subplots(2,1)
-w,p,pi,pl,po,pb,fg,ft = [],[],[],[],[],[],[],[]
+w,p,pi,pl,po,po2,pb,fg,ft = [],[],[],[],[],[],[],[],[]
 with open(f"compare_wsjtx.csv", "r") as f:
     for lfull in f.readlines():
-        pdec = lfull[76] != " "
-        l = lfull[113:]
-#        n = l[1:3]
-        n = lfull[108:112]
-        n=float(n)
-        w.append(n)
+        pdec = lfull[81] != " "
+        l = lfull[114:]
+        q = l[0:3]
+        q=float(q)
+        w.append(q)
         if(pdec):
-            p.append(n)
-            if(l[0:3]=='I00'): pi.append(n)
-            if("L" in l): pl.append(n)
-            if("Q" in l): po.append(n)
-            if("B" in l): pb.append(n)
+            p.append(q)
+            if(l[4:7]=='I00'): pi.append(q)
+            if("L" in l): pl.append(q)
+            if("Q" in l and not "QQ" in l): po.append(q)
+            if("QQ" in l): po2.append(q)
+            if("B" in l): pb.append(q)
         else:
-            if("#" in l): fg.append(n)
-            if(not "#" in l): ft.append(n)
+            if("#" in l): fg.append(q)
+            if(not "#" in l): ft.append(q)
 
 bins = [300 + 10*b for b in range(30)]
 
@@ -37,7 +37,9 @@ for i in [0,1]:
     axes[i].hist(pb, bins = bins, label = "Incl. bit-flips", rwidth=0.5,
             cumulative = i, color = 'orange', alpha = 0.6, lw=0.5, edgecolor = "black")
     axes[i].hist(po, bins = bins, label = "Incl. OSD", rwidth=0.3,
-            cumulative = i, color = 'yellow', alpha = 0.6, lw=0.5, edgecolor = "black")
+            cumulative = i, color = 'orange', alpha = 0.6, lw=0.5, edgecolor = "black")
+    axes[i].hist(po2, bins = bins, label = "Incl. OSD step 2", rwidth=0.3,
+            cumulative = i, color = 'red', alpha = 0.6, lw=0.5, edgecolor = "black")
     axes[i].hist(ft, bins = bins, label = "Timeouts", rwidth=0.1,
             cumulative = i, color = 'black', alpha = 1.0, lw=0.2, edgecolor = "black")
 

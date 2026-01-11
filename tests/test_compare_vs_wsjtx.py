@@ -54,24 +54,39 @@ def analyse_dictionaries():
 
     matches = [(w, c) for w in wsjtx_dicts for c in pyft8_cands if c.demap_completed
                and abs(w['f'] - c.fHz) < 3 and (w['cs'] == c.cyclestart_str or w['cs']=='any')]
-
+    
     best = {}
     for w, c in matches:
         key = (w['cs'], w['msg'])
-        decoded = True if c.msg else False
-        score = (decoded, c.llr_quality)
+        has_message = True if c.msg else False
+        score = (has_message, -abs(w['f'] - c.fHz))
         if key not in best or score > best[key][0]:
             best[key] = (score, w, c)
     matches = [(w, c) for (_, w, c) in best.values()]
+
+    pyft8 = [c for c in pyft8_cands if c.msg]
+    pyft8_msgs = [c.msg for c in pyft8]
+    pyft8 = [c for c in pyft8 if c.msg not in pyft8_msgs]
+    wsjtx_msgs = [w['msg'] for w in wsjtx_dicts]
+    pyft8_only = [c for c in pyft8 if ' '.join(c.msg) not in wsjtx_msgs]
     
     unique = set()
     with open('compare_wsjtx.csv', 'a') as f:
         for w, c in matches:
-            td = f"{c.decode_completed %60:5.2f}" if c.decode_verified else ''
+            td = f"{c.decode_completed %60:5.2f}" if c.decode_completed else '     '
             basics = f"{c.cyclestart_str} {w['f']:4d} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.dt:4.1f} {w['td']} {td}"
             msg = ' '.join(c.msg) if c.msg else ''
             if(msg !=''): unique.add(msg)
             op = f"{basics} {w['msg']:<25} {msg:<25} {c.sync_score:5.2f} {c.llr_quality:5.0f} {c.decode_path}"
+            f.write(f"{op}\n")
+            print(op)
+
+        for c in pyft8_only:
+            td = f"{c.decode_completed %60:5.2f}"
+            basics = f"{c.cyclestart_str} {0:4d} {c.fHz:4d} {-99:+03d} {c.snr:+03d} {0.0:4.1f} {c.dt:4.1f} {"99.99"} {td}"
+            msg = ' '.join(c.msg) if c.msg else ''
+            if(msg !=''): unique.add(msg)
+            op = f"{basics} {'      ':<25} {msg:<25} {c.sync_score:5.2f} {c.llr_quality:5.0f} {c.decode_path}"
             f.write(f"{op}\n")
             print(op)
 
