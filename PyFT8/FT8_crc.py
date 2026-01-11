@@ -20,12 +20,16 @@ def crc14(bits77_int: int) -> int:
             reg_int ^= poly
     return reg_int
 
-
 def append_crc(bits77_int):
     """Append 14-bit WSJT-X CRC to a 77-bit message, returning a 91-bit list."""
     bits14_int = crc14(bits77_int)
     bits91_int = (bits77_int << 14) | bits14_int
     return bits91_int, bits14_int
+
+def check_crc_codeword_list(bits174):
+    lst = np.array(bits174[:91]).tolist()
+    bits91_int = bitsLE_to_int(lst)
+    return check_crc(bits91_int)
 
 def check_crc(bits91_int):
     """Return True if the 91-bit message (77 data + 14 CRC) passes WSJT-X CRC-14."""
