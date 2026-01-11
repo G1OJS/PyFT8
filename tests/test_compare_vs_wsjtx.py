@@ -59,27 +59,28 @@ def analyse_dictionaries():
     for w, c in matches:
         key = (w['cs'], w['msg'])
         decoded = True if c.msg else False
-        score = (decoded, c.decode_history[0]['nc'])
+        score = (decoded, c.llr_quality)
         if key not in best or score > best[key][0]:
             best[key] = (score, w, c)
     matches = [(w, c) for (_, w, c) in best.values()]
     
     successes = [c for w, c in matches if c.msg]
-    succeded = len(successes)
-    succeded_imm = len([c for c in successes if "I00" in c.decode_history[0]['step']])
-    succeded_bf_ldpc =len([c for c in successes if any(["L" in h['step'] for h in c.decode_history]) and any(["B" in h['step'] for h in c.decode_history])])
-    succeded_ldpc = succeded - succeded_bf_ldpc - succeded_imm
+    n_succeded = len(successes)
+    n_succeded_ldpc =len([c for c in successes if "L" in c.decode_path and not "Q" in c.decode_path])
+    n_succeded_osd =len([c for c in successes if "Q" in c.decode_path])
+    n_succeded_imm = n_succeded - n_succeded_ldpc - n_succeded_osd
 
     failures = [c for w, c in matches if not c.msg]
-    failed_init = len([c for c in failures if "NCI" in c.decode_history[-1]['step']])
-    failed_bf_ldpc = len([c for c in failures if "STALL" in c.decode_history[-1]['step'] and any(["B" in h['step'] for h in c.decode_history])])
-    failed_timeout = len([c for c in failures if c.unsentenced])
-    failed_ldpc = len(failures) - failed_bf_ldpc - failed_timeout
+    n_failures = len(failures)
+    n_failed_timeout = len([c for c in failures if not "#" in c.decode_path])
+    n_failed = n_failures - n_failed_timeout
 
+    pc = pc_str(n_succeded, n_succeded + n_failures)
+    
     print(f"====Analysis at second = {time.time() %60:5.2f} =========" )
-    print("Si,Sl,Sb,Fi,Fl,Fb,Ft,%")
+    print("Si,Sl,So,Fg,Ft,%")
     total = len(matches)
-    op = f"{succeded_imm:2d},{succeded_ldpc:2d},{succeded_bf_ldpc:2d},{failed_init:2d},{failed_ldpc:2d},{failed_bf_ldpc:2d},{failed_timeout:2d},{pc_str(succeded, total)}"
+    op = f"{n_succeded_imm:2d},{n_succeded_ldpc:2d},{n_succeded_osd:2d},{n_failed:2d},{n_failed_timeout:2d},{pc}"
     print(op)
     with open('compare_stats.csv', 'a') as f:
         f.write(f"{op}\n")
@@ -91,8 +92,7 @@ def analyse_dictionaries():
             basics = f"{c.cyclestart_str} {w['f']:4d} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.dt:4.1f} {w['td']} {td}"
             msg = ' '.join(c.msg) if c.msg else ''
             if(msg !=''): unique.add(msg)
-            steps = ','.join([h['step'] for h in c.decode_history])
-            op = f"{basics} {w['msg']:<25} {msg:<25} {steps}"
+            op = f"{basics} {w['msg']:<25} {msg:<25} {c.sync_score:5.2f} {c.llr_quality:5.0f} {c.decode_path}"
             f.write(f"{op}\n")
             print(op)
 
@@ -102,40 +102,35 @@ def analyse_dictionaries():
         for w, c in matches:
             f.write(f"{c.ncheck0},{'True' if c.msg else 'False'}\n")
 
-    remaining = ','.join([f"{c.decode_history[-1]['nc']}" for c in failures])
-    print(f"Remaining nchecks: {remaining}")
-
 def initialise_outputs():
     with open('compare_decodes.csv','w') as f:
         f.write('')
     with open('compare_screen.csv', 'w') as f:
         f.write('')
     with open('compare_stats.csv', 'w') as f:
-        f.write("succeded_imm,succeded_ldpc,succeded_bf_ldpc,failed_init,failed_ldpc,failed_bf_ldpc,failed_timeout,percent\n")
+        f.write("succeded_imm,succeded_ldpc,succeded_osd,failed_gen,failed_timeout,percent\n")
 
 def onDecode(c):
-    if(False):
-        print(c.fHz, c.msg)
+    pass
+    #    if("Q" in c.decode_path):
+    #    print(c.fHz, c.msg)
 
 def update_charts():
     global fig, ax
     
     if any(pyft8_cands):
-        demapper_output = [c.ncheck0 for c in pyft8_cands]
-        ax.hist(demapper_output, bins = range(60), label = "Initial",
+        demapper_output = [c.llr_quality for c in pyft8_cands]
+        ax.hist(demapper_output, label = "Initial",
             cumulative = 0, color = '#388E3C', alpha = 0.8, lw=0.5, edgecolor = "black")
-        decoder_output = [c.ncheck for c in pyft8_cands]
-        ax.hist(decoder_output, bins = range(60), label = "Final",
-            cumulative = 0, color = '#6A1B9A', alpha = 0.8, lw=0.5, edgecolor = "black")
         plt.pause(0.1)
 
             
 
 def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X/ALL.txt"):
     global fig, ax
-  #  fig, ax = plt.subplots()
-  #  plt.ion()
-  #  plt.pause(0.5)
+   # fig, ax = plt.subplots()
+   # plt.ion()
+   # plt.pause(0.5)
 
     initialise_outputs()
     
@@ -152,7 +147,7 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
         
     try:
         while cycle_manager.running:
-   #         update_charts()
+           # update_charts()
             time.sleep(1)
     except KeyboardInterrupt:
         print("\nStopping")
