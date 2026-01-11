@@ -64,29 +64,8 @@ def analyse_dictionaries():
             best[key] = (score, w, c)
     matches = [(w, c) for (_, w, c) in best.values()]
     
-    successes = [c for w, c in matches if c.msg]
-    n_succeded = len(successes)
-    n_succeded_ldpc =len([c for c in successes if "L" in c.decode_path and not "Q" in c.decode_path])
-    n_succeded_osd =len([c for c in successes if "Q" in c.decode_path])
-    n_succeded_imm = n_succeded - n_succeded_ldpc - n_succeded_osd
-
-    failures = [c for w, c in matches if not c.msg]
-    n_failures = len(failures)
-    n_failed_timeout = len([c for c in failures if not "#" in c.decode_path])
-    n_failed = n_failures - n_failed_timeout
-
-    pc = pc_str(n_succeded, n_succeded + n_failures)
-    
-    print(f"====Analysis at second = {time.time() %60:5.2f} =========" )
-    print("Si,Sl,So,Fg,Ft,%")
-    total = len(matches)
-    op = f"{n_succeded_imm:2d},{n_succeded_ldpc:2d},{n_succeded_osd:2d},{n_failed:2d},{n_failed_timeout:2d},{pc}"
-    print(op)
-    with open('compare_stats.csv', 'a') as f:
-        f.write(f"{op}\n")
-
     unique = set()
-    with open('compare_screen.csv', 'a') as f:
+    with open('compare_wsjtx.csv', 'a') as f:
         for w, c in matches:
             td = f"{c.decode_completed %60:5.2f}" if c.decode_verified else ''
             basics = f"{c.cyclestart_str} {w['f']:4d} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.dt:4.1f} {w['td']} {td}"
@@ -98,17 +77,9 @@ def analyse_dictionaries():
 
     print(f"{len(unique)} unique decodes")    
 
-    with open('compare_decodes.csv', 'a') as f:
-        for w, c in matches:
-            f.write(f"{c.ncheck0},{'True' if c.msg else 'False'}\n")
-
 def initialise_outputs():
-    with open('compare_decodes.csv','w') as f:
+    with open('compare_wsjtx.csv', 'w') as f:
         f.write('')
-    with open('compare_screen.csv', 'w') as f:
-        f.write('')
-    with open('compare_stats.csv', 'w') as f:
-        f.write("succeded_imm,succeded_ldpc,succeded_osd,failed_gen,failed_timeout,percent\n")
 
 def onDecode(c):
     pass
