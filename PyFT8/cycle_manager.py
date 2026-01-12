@@ -210,10 +210,17 @@ class Candidate:
         
     def invoke_actor(self):
 
+
         counter = 0
-        if(self.ncheck >= 25 and 420 < self.llr0_quality < 500 and not self.counters[counter] > 0):
+        if 40 > self.ncheck > 0 and not self.counters[counter] > 10:  
+            self.do_ldpc_iteration()
+            self.counters[counter] += 1
+            return "L"
+
+        counter = 1
+        if(420 < self.llr0_quality < 450 and not self.counters[counter] > 0):
             entry_state = (self.llr, self.ncheck)
-            codeword_bits, metric = osd_decode_minimal(self.llr0, self.llr, G, order=1, L=30)
+            codeword_bits, metric = osd_decode_minimal(self.llr0, self.llr0, G, order=1, L=30)
             self.llr = np.array([1 if(b==1) else -1 for b in codeword_bits])
             codeword_bits = (self.llr > 0).astype(int).tolist()
             nc = self.calc_ncheck(self.llr)
@@ -225,17 +232,12 @@ class Candidate:
             self.counters[counter] += 1
             return "O"
 
-        counter = 1
-        if self.ncheck > 0 and not self.counters[counter] > 4:  
+        counter = 2
+        if 10 > self.ncheck > 0 and not self.counters[counter] > 4:  
             self.flip_bits(width = 50, nbits=1, keep_best = True)
             self.counters[counter] += 1
             return "B"
 
-        counter = 2
-        if 30 > self.ncheck > 0 and not self.counters[counter] > 8:  
-            self.do_ldpc_iteration()
-            self.counters[counter] += 1
-            return "L"
 
         return "_"
 
