@@ -14,7 +14,7 @@ import os
 
 eps = 1e-12
 LLR_SHAPING = {'final_sd':3.5, 'clip':3.9}
-LLR_QUALITY = {'abs_min':405, 'bitflip_range':[405,415], 'osd_range':[415, 455, 485]}
+LLR_QUALITY = {'abs_min':405, 'bitflip_range':[405,0], 'osd_range':[405, 455, 485]}
 BITFLIPS = { 'width':12, 'max_flips':2}
 STALL_CRITERIA = {'Max_its':10, "Max_same":2}
 
