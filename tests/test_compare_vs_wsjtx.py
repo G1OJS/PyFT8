@@ -64,6 +64,8 @@ def analyse_dictionaries():
             best[key] = (score, w, c)
     matches = [(w, c) for (_, w, c) in best.values()]
 
+    wsjtx_cofreqs = [w['f'] for w,c in matches for w2,c in matches if 0 < np.abs(w['f'] - w2['f']) <= 2]
+
     pyft8 = [c for c in pyft8_cands if c.msg]
     pyft8_msgs = [c.msg for c in pyft8]
     pyft8 = [c for c in pyft8 if c.msg not in pyft8_msgs]
@@ -74,10 +76,11 @@ def analyse_dictionaries():
     with open('compare_wsjtx.csv', 'a') as f:
         for w, c in matches:
             td = f"{c.decode_completed %60:5.2f}" if c.decode_completed else '     '
-            basics = f"{c.cyclestart_str} {w['f']:4d} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.dt:4.1f} {w['td']} {td}"
+            cofreq = "cofreq" if w['f'] in wsjtx_cofreqs else "  --  "
+            basics = f"{c.cyclestart_str} {w['f']:4d} {cofreq} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.dt:4.1f} {w['td']} {td}"
             msg = ' '.join(c.msg) if c.msg else ''
             if(msg !=''): unique.add(msg)
-            op = f"{basics} {w['msg']:<25} {msg:<25} {c.sync_score:5.2f} {c.llr_quality:5.0f} {c.decode_path}"
+            op = f"{basics} {w['msg']:<25} {msg:<25} {c.sync_score:5.2f} {c.llr0_quality:5.0f} {c.decode_path}"
             f.write(f"{op}\n")
             print(op)
 
@@ -86,7 +89,7 @@ def analyse_dictionaries():
             basics = f"{c.cyclestart_str} {0:4d} {c.fHz:4d} {-99:+03d} {c.snr:+03d} {0.0:4.1f} {c.dt:4.1f} {"99.99"} {td}"
             msg = ' '.join(c.msg) if c.msg else ''
             if(msg !=''): unique.add(msg)
-            op = f"{basics} {'      ':<25} {msg:<25} {c.sync_score:5.2f} {c.llr_quality:5.0f} {c.decode_path}"
+            op = f"{basics} {'      ':<25} {msg:<25} {c.sync_score:5.2f} {c.llr0_quality:5.0f} {c.decode_path}"
             f.write(f"{op}\n")
             print(op)
 
@@ -105,7 +108,7 @@ def update_charts():
     global fig, ax
     
     if any(pyft8_cands):
-        demapper_output = [c.llr_quality for c in pyft8_cands]
+        demapper_output = [c.llr0_quality for c in pyft8_cands]
         ax.hist(demapper_output, label = "Initial",
             cumulative = 0, color = '#388E3C', alpha = 0.8, lw=0.5, edgecolor = "black")
         plt.pause(0.1)

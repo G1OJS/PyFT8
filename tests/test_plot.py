@@ -5,8 +5,8 @@ fig, axes = plt.subplots(2,1)
 w,p,pi,pl,po,po2,pb,fg,ft = [],[],[],[],[],[],[],[],[]
 with open(f"compare_wsjtx.csv", "r") as f:
     for lfull in f.readlines():
-        pdec = lfull[81] != " "
-        l = lfull[114:]
+        pdec = lfull[88] != " "
+        l = lfull[121:]
         q = l[0:3]
         q=float(q)
         w.append(q)
@@ -16,7 +16,7 @@ with open(f"compare_wsjtx.csv", "r") as f:
             if("L" in l): pl.append(q)
             if("Q" in l and not "QQ" in l): po.append(q)
             if("QQ" in l): po2.append(q)
-            if("B" in l): pb.append(q)
+            if("B" in l and "L00" in l): pb.append(q)
         else:
             if("#" in l): fg.append(q)
             if(not "#" in l): ft.append(q)
@@ -39,7 +39,7 @@ for i in [0,1]:
     axes[i].hist(po, bins = bins, label = "Incl. OSD ord 1", rwidth=0.3,
             cumulative = i, color = 'orange', alpha = 0.6, lw=0.5, edgecolor = "black")
     axes[i].hist(po2, bins = bins, label = "Incl. OSD ord 2", rwidth=0.3,
-            cumulative = i, color = 'red', alpha = 0.6, lw=0.5, edgecolor = "black")
+            cumulative = i, color = 'white', alpha = 0.6, lw=0.5, edgecolor = "black")
     axes[i].hist(ft, bins = bins, label = "Timeouts", rwidth=0.1,
             cumulative = i, color = 'black', alpha = 1.0, lw=0.2, edgecolor = "black")
 
