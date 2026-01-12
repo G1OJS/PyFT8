@@ -39,14 +39,18 @@ def weighted_distance_bits(c, r_hard, w):
     diff = c ^ r_hard
     return float(np.sum(w * diff))
 
-def osd_decode_minimal(llr, G, order=1, L=20):
-    llr = np.asarray(llr, dtype=np.float32)
-    n = llr.size
+def osd_decode_minimal(llr_metric, llr_state, G, order=1, L=20):
+
+    llr_metric = np.asarray(llr_metric, dtype=np.float32)
+    llr_state  = np.asarray(llr_state,  dtype=np.float32)
+    n = llr_metric.size
     k = G.shape[0]
     assert G.shape[1] == n
-    r = (llr > 0).astype(np.uint8)
-    w = np.abs(llr).astype(np.float32)
-    reliab_order = np.argsort(w)[::-1]
+    # metric (channel)
+    r = (llr_metric > 0).astype(np.uint8)
+    w = np.abs(llr_metric).astype(np.float32)
+    # ordering (decoder state)
+    reliab_order = np.argsort(np.abs(llr_state))[::-1]
     Gsys, colperm = gf2_systematic_from_reliability(G, reliab_order)
     r_sys = r[colperm]
     w_sys = w[colperm]

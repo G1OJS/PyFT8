@@ -14,10 +14,6 @@ import os
 
 eps = 1e-12
 LLR_GEN =   {'abs_min':410, 'final_sd':3.5, 'clip':3.9}
-OSD1 =      {'range':[0, 550], 'params':[1,30]}
-OSD2 =      {'range':[470, 470], 'params':[2,5]}
-BITFLIPS =  {'range':[0,550], 'width':30, 'max_flips':1}
-LDPC_STALL = {'Max_its':10, "Max_same":2}
 
 CHECK_VARS_6 = np.array([[4,31,59,92,114,145],[5,23,60,93,121,150],[6,32,61,94,95,142],[5,31,63,96,125,137],[8,34,65,98,138,145],[9,35,66,99,106,125],[11,37,67,101,104,154],[12,38,68,102,148,161],[14,41,58,105,122,158],[0,32,71,105,106,156],[15,42,72,107,140,159],[10,43,74,109,120,165],[7,45,70,111,118,165],[18,37,76,103,115,162],[19,46,69,91,137,164],[1,47,73,112,127,159],[21,46,57,117,126,163],[15,38,61,111,133,157],[22,42,78,119,130,144],[19,35,62,93,135,160],[13,30,78,97,131,163],[2,43,79,123,126,168],[18,45,80,116,134,166],[11,49,60,117,118,143],[12,50,63,113,117,156],[23,51,75,128,147,148],[20,53,76,99,139,170],[34,81,132,141,170,173],[13,29,82,112,124,169],[3,28,67,119,133,172],[51,83,109,114,144,167],[6,49,80,98,131,172],[22,54,66,94,171,173],[25,40,76,108,140,147],[26,39,55,123,124,125],[17,48,54,123,140,166],[5,32,84,107,115,155],[8,53,62,130,146,154],[21,52,67,108,120,173],[2,12,47,77,94,122],[30,68,132,149,154,168],[4,38,74,101,135,166],[1,53,85,100,134,163],[14,55,86,107,118,170],[22,33,70,93,126,152],[10,48,87,91,141,156],[28,33,86,96,146,161],[21,56,84,92,139,158],[27,31,71,102,131,165],[0,25,44,79,127,146],[16,26,88,102,115,152],[50,56,97,162,164,171],[20,36,72,137,151,168],[15,46,75,129,136,153],[2,23,29,71,103,138],[8,39,89,105,133,150],[17,41,78,143,145,151],[24,37,64,98,121,159],[16,41,74,128,169,171]], dtype = np.int16)
 CHECK_VARS_7 = np.array([[3,30,58,90,91,95,152],[7,24,62,82,92,95,147],[4,33,64,77,97,106,153],[10,36,66,86,100,138,157],[7,39,69,81,103,113,144],[13,40,70,87,101,122,155],[16,36,73,80,108,130,153],[44,54,63,110,129,160,172],[17,35,75,88,112,113,142],[20,44,77,82,116,120,150],[18,34,58,72,109,124,160],[6,48,57,89,99,104,167],[24,52,68,89,100,129,155],[19,45,64,79,119,139,169],[0,3,51,56,85,135,151],[25,50,55,90,121,136,167],[1,26,40,60,61,114,132],[27,47,69,84,104,128,157],[11,42,65,88,96,134,158],[9,43,81,90,110,143,148],[29,49,59,85,136,141,161],[9,52,65,83,111,127,164],[27,28,83,87,116,142,149],[14,57,59,73,110,149,162]], dtype = np.int16)
@@ -99,13 +95,6 @@ class Spectrum:
             c.record_sync(self, *best)
             c.cyclestart_str = cyclestart_str            
             cands.append(c)
-
-        for i, c in enumerate(cands):
-            left = np.clip(i-2,0,len(cands))
-            right = np.clip(i+3,0,len(cands))
-            potential_neighbours = cands[left:i] + cands[i+1:right]
-            c.neighbours = [n for n in potential_neighbours if np.abs(n.f0_idx - c.f0_idx) == 1]
-
         return cands
 
 class Candidate:
@@ -115,16 +104,13 @@ class Candidate:
         self.demap_started, self.demap_completed = None, None
         self.decode_completed = None
         self.decode_verified = False
-        self.neighbours = None
         self.ncheck = None
         self.ncheck0 = None
         self.llr = None
+        self.invoked_actors = set()
         self.decode_path = ""
-        self.ldpc_stall = (99,0)
-        self.ldpc_iters = 0
-        self.osd_runs = 0
+        self.counters = [0]*10
         self.llr0_quality = 0
-        self.n_bitflip_calls = 0
         self.msg = None
         self.snr = -999
         self.edges6, self.edges7 = None, None
@@ -161,11 +147,8 @@ class Candidate:
         self.ncheck0 = self.ncheck
         self.llr0 = self.llr.copy()
         
-        if(self.llr0_quality < LLR_GEN['abs_min']):
-            self.record_state(f">", self.ncheck, final = True)
-        else:
-            self.record_state("I", self.ncheck)
-
+        final = (self.llr0_quality < LLR_GEN['abs_min'])
+        self.record_state(f"I", self.ncheck, final = final)
         
         self.pgrid = p0
         pmax = np.max(self.pgrid)
@@ -181,8 +164,8 @@ class Candidate:
 
     def record_state(self, actor_code, ncheck, final = False):
         self.ncheck = ncheck
-        finalcode = "#" if final else ""
-        self.decode_path = self.decode_path + f"{finalcode}{actor_code}{ncheck:02d},"
+        finalcode = "#" if final else ","
+        self.decode_path = self.decode_path + f"{actor_code}{ncheck:02d}{finalcode}"
         if(final):
             self.decode_completed = time.time()
 
@@ -225,54 +208,44 @@ class Candidate:
         self.llr   = best['llr']
         self.ncheck = best['nc']
         
-    def attempt_reduce_ncheck(self):
+    def invoke_actor(self):
 
-        if(self.ncheck >0 and self.n_bitflip_calls <1 and self.ldpc_iters > 1):
-            bfrng = BITFLIPS['range']
-            if(self.llr0_quality < bfrng[1] and self.llr0_quality > bfrng[0]):
-                self.flip_bits(BITFLIPS['max_flips'], BITFLIPS['width'], keep_best = False)
-                self.n_bitflip_calls +=1
-                return "B"
+        counter = 0
+        if(self.ncheck >= 25 and 420 < self.llr0_quality < 500 and not self.counters[counter] > 0):
+            entry_state = (self.llr, self.ncheck)
+            codeword_bits, metric = osd_decode_minimal(self.llr0, self.llr, G, order=1, L=30)
+            self.llr = np.array([1 if(b==1) else -1 for b in codeword_bits])
+            codeword_bits = (self.llr > 0).astype(int).tolist()
+            nc = self.calc_ncheck(self.llr)
+            if(nc == 0):
+                if check_crc_codeword_list(codeword_bits):
+                    self.ncheck = 0
+                else:
+                    self.llr, self.ncheck = entry_state
+            self.counters[counter] += 1
+            return "O"
 
-        if self.ncheck >0 and self.ldpc_iters <= LDPC_STALL['Max_its'] and self.ldpc_stall[1] <= LDPC_STALL['Max_same']:  
+        counter = 1
+        if self.ncheck > 0 and not self.counters[counter] > 4:  
+            self.flip_bits(width = 50, nbits=1, keep_best = True)
+            self.counters[counter] += 1
+            return "B"
+
+        counter = 2
+        if 30 > self.ncheck > 0 and not self.counters[counter] > 8:  
             self.do_ldpc_iteration()
-            self.ldpc_iters += 1
-            if(self.ncheck < self.ldpc_stall[0]):
-                self.ldpc_stall = (self.ncheck, 0)
-            else:
-                self.ldpc_stall = (self.ldpc_stall[0], self.ldpc_stall[1]+1)
+            self.counters[counter] += 1
             return "L"
-        
-        if(self.ncheck >0 and self.osd_runs < 1): # need to consider overlap
-            if(OSD1['range'][0] <= self.llr0_quality <= OSD2['range'][1]):
-                if(OSD1['range'][0] <= self.llr0_quality <= OSD1['range'][1]):
-                    o,l = OSD1['params'][0],OSD1['params'][1]
-                    codeword_bits, metric = osd_decode_minimal(self.llr0, G, order=o, L=o)
-                    code = "Q"
-                if(OSD2['range'][0] <= self.llr0_quality <= OSD2['range'][1]):
-                    o,l = OSD2['params'][0],OSD2['params'][1]
-                    codeword_bits, metric = osd_decode_minimal(self.llr0, G, order=o, L=l)
-                    code = "QQ"
-                self.osd_runs +=1
-                self.llr = np.array([1 if(b==1) else -1 for b in codeword_bits])
-                self.ncheck = self.calc_ncheck(self.llr)
-                return code
 
         return "_"
 
     def progress_decode(self):
         final = False
         
-        if(time.time() %15 > 10 and self.neighbours is not None):
-            for n in self.neighbours:
-                if(n.demap_completed):
-                    if n.llr0_quality > self.llr0_quality:
-                        self.record_state("D", self.ncheck, final = True)
-                        return
-
         if(self.ncheck > 0):
-            actor = self.attempt_reduce_ncheck()
-            stalled = (actor == "_" or actor == "Q" or actor == "QQ")
+            actor = self.invoke_actor()
+            self.invoked_actors.add(actor)
+            stalled = (actor == "_")
             self.record_state(actor, self.ncheck, final = stalled)
 
         if(self.ncheck == 0 or final):
@@ -337,7 +310,7 @@ class Cycle_manager():
 
     def cycle_time(self):
         return time.time() % self.cycle_seconds
-
+                
     def manage_cycle(self):
         cycle_searched = True
         cands_rollover_done = False
