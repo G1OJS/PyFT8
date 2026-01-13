@@ -80,16 +80,7 @@ def analyse_dictionaries():
             basics = f"{c.cyclestart_str} {w['f']:4d} {cofreq} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.dt:4.1f} {w['td']} {td}"
             msg = ' '.join(c.msg) if c.msg else ''
             if(msg !=''): unique.add(msg)
-            op = f"{basics} {w['msg']:<25} {msg:<25} {c.sync_score:5.2f} {c.llr0_quality:5.0f} {c.decode_path}"
-            f.write(f"{op}\n")
-            print(op)
-
-        for c in pyft8_only:
-            td = f"{c.decode_completed %60:5.2f}"
-            basics = f"{c.cyclestart_str} {0:4d} {c.fHz:4d} {-99:+03d} {c.snr:+03d} {0.0:4.1f} {c.dt:4.1f} {"99.99"} {td}"
-            msg = ' '.join(c.msg) if c.msg else ''
-            if(msg !=''): unique.add(msg)
-            op = f"{basics} {'      ':<25} {msg:<25} {c.sync_score:5.2f} {c.llr0_quality:5.0f} {c.decode_path}"
+            op = f"{basics} {w['msg']:<23} {msg:<23} {c.llr_0_quality:4.0f} {c.llr_1_quality:4.0f} {c.llr0_quality:5.1f} {c.decode_path}"
             f.write(f"{op}\n")
             print(op)
 
@@ -142,9 +133,9 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
         print("\nStopping")
         cycle_manager.running = False
 
-#compare("210703_133430", [100,3100])
+compare("210703_133430", [100,3100])
 
-compare(None, [100,3100])
+#compare(None, [100,3100])
 
 
     
