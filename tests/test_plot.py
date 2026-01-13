@@ -7,13 +7,13 @@ ws,py,pimm,pl,pba,pbb,po,pp,ft = [],[],[],[],[],[],[],[],[]
 with open(f"compare_wsjtx.csv", "r") as f:
     for lfull in f.readlines():
         pdec = lfull[88] != " "
-        l = lfull[118:]
+        l = lfull[119:]
         q = l[0:5]
         q=float(q)
         ws.append(q)
         if(pdec):
             py.append(q)
-            if(l[4:7]=='I00'): pimm.append(q)
+            if('I00' in l): pimm.append(q)
             if("L" in l): pl.append(q)
             if("A" in l): pba.append(q)
             if("B" in l): pbb.append(q)
@@ -22,7 +22,7 @@ with open(f"compare_wsjtx.csv", "r") as f:
         else:
             if(not "#" in l): ft.append(q)
 
-bins = [400 + 5*b for b in range(50)]
+bins = [350 + 5*b for b in range(40)]
 
 np = len(py)
 nt = len(ws)
