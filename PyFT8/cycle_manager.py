@@ -211,6 +211,12 @@ class Candidate:
     def invoke_actor(self):
 
 
+        counter = 3
+        if self.ncheck > 30 and not self.counters[counter] > 0:  
+            self.flip_bits(width = 50, nbits=1, keep_best = True)
+            self.counters[counter] += 1
+            return "A"
+
         counter = 0
         if 40 > self.ncheck > 0 and not self.counters[counter] > 10:  
             self.do_ldpc_iteration()

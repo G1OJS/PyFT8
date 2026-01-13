@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 fig, axes = plt.subplots( figsize=(10,6))
-ws,py,pimm,pl,pb,po,pp,ft = [],[],[],[],[],[],[],[]
+ws,py,pimm,pl,pba,pbb,po,pp,ft = [],[],[],[],[],[],[],[],[]
 
 with open(f"compare_wsjtx.csv", "r") as f:
     for lfull in f.readlines():
@@ -15,7 +15,8 @@ with open(f"compare_wsjtx.csv", "r") as f:
             py.append(q)
             if(l[4:7]=='I00'): pimm.append(q)
             if("L" in l): pl.append(q)
-            if("B" in l): pb.append(q)
+            if("A" in l): pba.append(q)
+            if("B" in l): pbb.append(q)
             if("O" in l): po.append(q)
             if("P" in l): po.append(q)
         else:
@@ -37,10 +38,12 @@ axes.hist(pimm, bins = bins, label = "Imm", rwidth=1,
 
 axes.hist(pl, bins = bins, label = "LDPC", rwidth=0.8,
         color = 'orange', alpha = 0.8, lw=0.5, edgecolor = "black")
-axes.hist(pb, bins = bins, label = "BitFlip", rwidth=0.6,
+axes.hist(pba, bins = bins, label = "BitFlipA", rwidth=0.6,
         color = 'blue', alpha = 0.8, lw=0.5, edgecolor = "black")
-axes.hist(po, bins = bins, label = "OSD", rwidth=0.4,
+axes.hist(pbb, bins = bins, label = "BitFlipB", rwidth=0.6,
         color = 'purple', alpha = 0.8, lw=0.5, edgecolor = "black")
+axes.hist(po, bins = bins, label = "OSD", rwidth=0.4,
+        color = 'white', alpha = 0.8, lw=0.5, edgecolor = "black")
 
 
 axes.hist(ft, bins = bins, label = "Timeouts", rwidth=0.1,
