@@ -143,8 +143,10 @@ class Candidate:
         llr_0c = np.log(np.max(p0[:, [1,2,6,7]], axis=1)) - np.log(np.max(p0[:, [0,3,4,5]], axis=1))
         llr_0 = np.column_stack((llr_0a, llr_0b, llr_0c))
         llr_0 = llr_0.ravel()
-        llr_0 = np.clip(LLR_GEN['final_sd'] * llr_0 / np.std(llr_0), -llr_clipto, llr_clipto)
-        self.llr_0_quality = np.sum(np.sign(llr_0) * llr_0)
+        s = np.std(llr_0)
+        if (s > 1): llr_0 = LLR_GEN['final_sd'] * llr_0 / s 
+        llr_0 = np.clip(llr_0, -llr_clipto, llr_clipto)
+        self.llr_0_quality = np.sum(np.sign(llr_0) * llr_0) if s > 0 else 0
         
         hops_1 = np.array(self.payload_hop_idxs_1)
         p1 = spectrum.pgrid_fine[np.ix_(hops_1, freqs)]
@@ -153,8 +155,10 @@ class Candidate:
         llr_1c = np.log(np.max(p1[:, [1,2,6,7]], axis=1)) - np.log(np.max(p1[:, [0,3,4,5]], axis=1))
         llr_1 = np.column_stack((llr_1a, llr_1b, llr_1c))
         llr_1 = llr_1.ravel()
-        llr_1 = np.clip(LLR_GEN['final_sd'] * llr_1 / np.std(llr_1), -llr_clipto, llr_clipto)
-        self.llr_1_quality = np.sum(np.sign(llr_1) * llr_1)
+        s = np.std(llr_1)
+        if (s > 1): llr_1 = LLR_GEN['final_sd'] * llr_1 / s 
+        llr_1 = np.clip(llr_1, -llr_clipto, llr_clipto)
+        self.llr_1_quality = np.sum(np.sign(llr_1) * llr_1) if s > 0 else 0
         
         self.llr = llr_0 if self.llr_0_quality > self.llr_1_quality else llr_1  
         self.ncheck = self.calc_ncheck(self.llr)
@@ -279,7 +283,7 @@ class Cycle_manager():
                  input_device_keywords = None, output_device_keywords = None,
                  freq_range = [200,3100], max_cycles = 5000, onCandidateRollover = None, verbose = False):
         
-        HPS, BPT, MAX_FREQ, SAMPLE_RATE = 5, 3, freq_range[1], 12000
+        HPS, BPT, MAX_FREQ, SAMPLE_RATE = 9, 3, freq_range[1], 12000
         self.audio_in = AudioIn(SAMPLE_RATE, sigspec.symbols_persec, MAX_FREQ, HPS, BPT, on_fft = self.update_spectrum)
         self.spectrum = Spectrum(sigspec, SAMPLE_RATE, self.audio_in.nFreqs, MAX_FREQ, HPS, BPT)
         
