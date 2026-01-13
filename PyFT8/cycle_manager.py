@@ -283,7 +283,7 @@ class Cycle_manager():
                  input_device_keywords = None, output_device_keywords = None,
                  freq_range = [200,3100], max_cycles = 5000, onCandidateRollover = None, verbose = False):
         
-        HPS, BPT, MAX_FREQ, SAMPLE_RATE = 9, 3, freq_range[1], 12000
+        HPS, BPT, MAX_FREQ, SAMPLE_RATE = 3, 3, freq_range[1], 12000
         self.audio_in = AudioIn(SAMPLE_RATE, sigspec.symbols_persec, MAX_FREQ, HPS, BPT, on_fft = self.update_spectrum)
         self.spectrum = Spectrum(sigspec, SAMPLE_RATE, self.audio_in.nFreqs, MAX_FREQ, HPS, BPT)
         
@@ -385,7 +385,7 @@ class Cycle_manager():
 
             to_progress_decode = [c for c in self.cands_list if c.demap_completed and not c.decode_completed]
             to_progress_decode.sort(key = lambda c: -c.llr0_quality) # in case of emergency (timeouts) process best first
-            for c in to_progress_decode[:100]:
+            for c in to_progress_decode[:25]:
                 c.progress_decode()
 
             with_message = [c for c in self.cands_list if c.msg]
