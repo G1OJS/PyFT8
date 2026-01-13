@@ -16,13 +16,11 @@ with open(f"compare_wsjtx.csv", "r") as f:
             if('I00' in l): pimm.append(q)
             if("L" in l): pl.append(q)
             if("A" in l): pba.append(q)
-            if("B" in l): pbb.append(q)
             if("O" in l): po.append(q)
-            if("P" in l): po.append(q)
         else:
             if(not "#" in l): ft.append(q)
 
-bins = [350 + 5*b for b in range(40)]
+bins = [350 + 10*b for b in range(20)]
 
 np = len(py)
 nt = len(ws)
@@ -40,8 +38,6 @@ axes.hist(pl, bins = bins, label = "LDPC", rwidth=0.8,
         color = 'orange', alpha = 0.8, lw=0.5, edgecolor = "black")
 axes.hist(pba, bins = bins, label = "BitFlipA", rwidth=0.6,
         color = 'blue', alpha = 0.8, lw=0.5, edgecolor = "black")
-axes.hist(pbb, bins = bins, label = "BitFlipB", rwidth=0.6,
-        color = 'purple', alpha = 0.8, lw=0.5, edgecolor = "black")
 axes.hist(po, bins = bins, label = "OSD", rwidth=0.4,
         color = 'white', alpha = 0.8, lw=0.5, edgecolor = "black")
 

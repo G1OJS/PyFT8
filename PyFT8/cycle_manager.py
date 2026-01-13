@@ -13,7 +13,7 @@ import wave
 import os
 
 eps = 1e-12
-LLR_GEN =   {'abs_min':410, 'final_sd':3.5, 'clip':3.9}
+LLR_GEN =   {'abs_min':415, 'final_sd':3.5, 'clip':3.9}
 
 CHECK_VARS_6 = np.array([[4,31,59,92,114,145],[5,23,60,93,121,150],[6,32,61,94,95,142],[5,31,63,96,125,137],[8,34,65,98,138,145],[9,35,66,99,106,125],[11,37,67,101,104,154],[12,38,68,102,148,161],[14,41,58,105,122,158],[0,32,71,105,106,156],[15,42,72,107,140,159],[10,43,74,109,120,165],[7,45,70,111,118,165],[18,37,76,103,115,162],[19,46,69,91,137,164],[1,47,73,112,127,159],[21,46,57,117,126,163],[15,38,61,111,133,157],[22,42,78,119,130,144],[19,35,62,93,135,160],[13,30,78,97,131,163],[2,43,79,123,126,168],[18,45,80,116,134,166],[11,49,60,117,118,143],[12,50,63,113,117,156],[23,51,75,128,147,148],[20,53,76,99,139,170],[34,81,132,141,170,173],[13,29,82,112,124,169],[3,28,67,119,133,172],[51,83,109,114,144,167],[6,49,80,98,131,172],[22,54,66,94,171,173],[25,40,76,108,140,147],[26,39,55,123,124,125],[17,48,54,123,140,166],[5,32,84,107,115,155],[8,53,62,130,146,154],[21,52,67,108,120,173],[2,12,47,77,94,122],[30,68,132,149,154,168],[4,38,74,101,135,166],[1,53,85,100,134,163],[14,55,86,107,118,170],[22,33,70,93,126,152],[10,48,87,91,141,156],[28,33,86,96,146,161],[21,56,84,92,139,158],[27,31,71,102,131,165],[0,25,44,79,127,146],[16,26,88,102,115,152],[50,56,97,162,164,171],[20,36,72,137,151,168],[15,46,75,129,136,153],[2,23,29,71,103,138],[8,39,89,105,133,150],[17,41,78,143,145,151],[24,37,64,98,121,159],[16,41,74,128,169,171]], dtype = np.int16)
 CHECK_VARS_7 = np.array([[3,30,58,90,91,95,152],[7,24,62,82,92,95,147],[4,33,64,77,97,106,153],[10,36,66,86,100,138,157],[7,39,69,81,103,113,144],[13,40,70,87,101,122,155],[16,36,73,80,108,130,153],[44,54,63,110,129,160,172],[17,35,75,88,112,113,142],[20,44,77,82,116,120,150],[18,34,58,72,109,124,160],[6,48,57,89,99,104,167],[24,52,68,89,100,129,155],[19,45,64,79,119,139,169],[0,3,51,56,85,135,151],[25,50,55,90,121,136,167],[1,26,40,60,61,114,132],[27,47,69,84,104,128,157],[11,42,65,88,96,134,158],[9,43,81,90,110,143,148],[29,49,59,85,136,141,161],[9,52,65,83,111,127,164],[27,28,83,87,116,142,149],[14,57,59,73,110,149,162]], dtype = np.int16)
@@ -225,20 +225,20 @@ class Candidate:
         
     def invoke_actor(self):
         
-        counter = 3
-        if self.ncheck > 30 and not self.counters[counter] > 0:  
+        counter = 0
+        if self.ncheck > 28 and not self.counters[counter] > 0:  
             self.flip_bits(width = 50, nbits=1, keep_best = True)
             self.counters[counter] += 1
             return "A"
 
-        counter = 0
-        if 40 > self.ncheck > 0 and not self.counters[counter] > 7:  
+        counter = 1
+        if 35 > self.ncheck > 0 and not self.counters[counter] > 7:  
             self.do_ldpc_iteration()
             self.counters[counter] += 1
             return "L"
 
-        counter = 1
-        if(400 < self.llr0_quality < 490 and not self.counters[counter] > 0):
+        counter = 2
+        if(400 < self.llr0_quality < 470 and not self.counters[counter] > 0):
             entry_state = (self.llr, self.ncheck)
             codeword_bits, metric = osd_decode_minimal(self.llr0, self.llr0, G, order=1, L=30)
             self.llr = np.array([1 if(b==1) else -1 for b in codeword_bits])
@@ -251,13 +251,6 @@ class Candidate:
                     self.llr, self.ncheck = entry_state
             self.counters[counter] += 1
             return "O"
-
-        counter = 2
-        if 7 > self.ncheck > 0 and not self.counters[counter] > 0:  
-            self.flip_bits(width = 50, nbits=1, keep_best = True)
-            self.counters[counter] += 1
-            return "B"
-
 
         return "_"
 
@@ -286,7 +279,7 @@ class Cycle_manager():
                  input_device_keywords = None, output_device_keywords = None,
                  freq_range = [200,3100], max_cycles = 5000, onCandidateRollover = None, verbose = False):
         
-        HPS, BPT, MAX_FREQ, SAMPLE_RATE = 3, 3, freq_range[1], 12000
+        HPS, BPT, MAX_FREQ, SAMPLE_RATE = 5, 3, freq_range[1], 12000
         self.audio_in = AudioIn(SAMPLE_RATE, sigspec.symbols_persec, MAX_FREQ, HPS, BPT, on_fft = self.update_spectrum)
         self.spectrum = Spectrum(sigspec, SAMPLE_RATE, self.audio_in.nFreqs, MAX_FREQ, HPS, BPT)
         

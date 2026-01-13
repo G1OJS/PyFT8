@@ -64,7 +64,7 @@ def analyse_dictionaries():
             best[key] = (score, w, c)
     matches = [(w, c) for (_, w, c) in best.values()]
 
-    wsjtx_cofreqs = [w['f'] for w,c in matches for w2,c in matches if 0 < np.abs(w['f'] - w2['f']) <= 2]
+    wsjtx_cofreqs = [w['f'] for w,c in matches for w2,c in matches if 0 <= np.abs(w['f'] - w2['f']) <= 2 and ''.join(w['msg']) != ''.join(w2['msg'])]
 
     pyft8 = [c for c in pyft8_cands if c.msg]
     pyft8_msgs = [c.msg for c in pyft8]
@@ -133,9 +133,9 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
         print("\nStopping")
         cycle_manager.running = False
 
-#compare("210703_133430", [100,3100])
+compare("210703_133430", [100,3100])
 
-compare(None, [100,3100])
+#compare(None, [100,3100])
 
 
     
