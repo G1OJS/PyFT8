@@ -52,9 +52,9 @@ class Spectrum:
         self.pgrid_fine = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)
         self.pgrid_fine_ptr = 0
 
-        self.max_start_hop = int(1.9 / self.dt)
+        self.hop_start_lattitude = int(1.9 / self.dt)
         self.nhops_costas = self.sigspec.costas_len * self.hops_persymb
-        self.h_search = self.max_start_hop + self.nhops_costas 
+        self.h_search = self.hop_start_lattitude + self.nhops_costas  + 36 * self.hops_persymb
         self.h_demap = self.sigspec.payload_symb_idxs[-1] * self.hops_persymb
         self.occupancy = np.zeros(self.nFreqs)
         self.lock = threading.Lock()
@@ -80,21 +80,37 @@ class Spectrum:
         f0_idxs = range(int(freq_range[0]/self.df),
                         min(self.nFreqs - self.fbins_per_signal, int(freq_range[1]/self.df)))
         pgrid = self.pgrid_fine[:self.h_search,:]
-        
+        block_off = 36 * self.hops_persymb
         for f0_idx in f0_idxs:
             p = pgrid[:, f0_idx:f0_idx + self.fbins_per_signal]
             max_pwr = np.max(p)
             pnorm = p / max_pwr
             self.occupancy[f0_idx:f0_idx + self.fbins_per_signal] += max_pwr
-            best = (0, f0_idx, -1e30)
             c = Candidate()
+            best = (0, f0_idx, -1e30)
             for t0_idx in range(self.h_search - self.nhops_costas):
                 test = (t0_idx, f0_idx, float(np.dot(pnorm[t0_idx + self.hop_idxs_Costas ,  :].ravel(), self.csync_flat)))
                 if test[2] > best[2]:
                     best = test
+            c.h0_syncs = [best, best]
+            """
+            c.h0_syncs = []
+            for iBlock in [0,1]:
+                best = (0, f0_idx, -1e30)
+                for t0_idx in range(block_off * iBlock, block_off * iBlock + self.hop_start_lattitude):
+                    test = (t0_idx - block_off * iBlock, f0_idx, float(np.dot(pnorm[t0_idx + self.hop_idxs_Costas ,  :].ravel(), self.csync_flat)))
+                    if test[2] > best[2]:
+                        best = test
+                c.h0_syncs.append(best)
+            best = c.h0_syncs[0] if(c.h0_syncs[0][2] > c.h0_syncs[1][2]) else c.h0_syncs[1]
+            """
             c.record_sync(self, *best)
             c.cyclestart_str = cyclestart_str            
             cands.append(c)
+        for c in cands[:10]:
+            print(c.h0_syncs[0])
+            print(c.h0_syncs[1])
+            print("")
         return cands
 
 class Candidate:
@@ -344,13 +360,13 @@ class Cycle_manager():
                 if not self.audio_started: self.start_audio()
 
             if (self.spectrum.pgrid_fine_ptr > self.spectrum.h_search and not cycle_searched):
+
                 cycle_searched = True
                 if(self.verbose): self.tlog(f"[Cycle manager] Search spectrum ...")
                 self.new_cands = self.spectrum.search(self.freq_range, self.cyclestart_str(time.time()))
                 if(self.verbose): self.tlog(f"[Cycle manager] Spectrum searched -> {len(self.new_cands)} candidates")
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
 
-            if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap-50 and not cands_rollover_done):
                 if(self.verbose): self.tlog(f"[Cycle manager] Candidate rollover")
                 cands_rollover_done = True
                 n_unprocessed = len([c for c in self.cands_list if not "#" in c.decode_path])
@@ -361,13 +377,12 @@ class Cycle_manager():
                 self.cands_list = self.new_cands
                 if(self.audio_in.wav_finished):
                     self.running = False
-
-            if(self.spectrum.pgrid_fine_ptr >= self.spectrum.h_demap):
-                to_demap = [c for c in self.cands_list
-                                if (self.spectrum.pgrid_fine_ptr > c.payload_hop_idxs[-1]
-                                and not c.demap_started)]
-                for c in to_demap:
-                    c.demap(self.spectrum)
+                
+            to_demap = [c for c in self.cands_list
+                            if (self.spectrum.pgrid_fine_ptr > c.payload_hop_idxs[-1]
+                            and not c.demap_started)]
+            for c in to_demap:
+                c.demap(self.spectrum)
 
             to_progress_decode = [c for c in self.cands_list if c.demap_completed and not c.decode_completed]
             to_progress_decode.sort(key = lambda c: -c.llr0_quality) # in case of emergency (timeouts) process best first
