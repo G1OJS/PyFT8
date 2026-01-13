@@ -115,7 +115,7 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
     initialise_outputs()
     
     if(dataset):
-        cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, 
+        cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, test_speed_factor = 1, 
                                       onCandidateRollover = onCandidateRollover, freq_range = freq_range,
                                       audio_in_wav = dataset+".wav", verbose = True)
         get_wsjtx_decodes(dataset+".txt")

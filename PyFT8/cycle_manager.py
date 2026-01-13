@@ -224,8 +224,7 @@ class Candidate:
         self.ncheck = best['nc']
         
     def invoke_actor(self):
-
-
+        
         counter = 3
         if self.ncheck > 30 and not self.counters[counter] > 0:  
             self.flip_bits(width = 50, nbits=1, keep_best = True)
@@ -233,7 +232,7 @@ class Candidate:
             return "A"
 
         counter = 0
-        if 40 > self.ncheck > 0 and not self.counters[counter] > 10:  
+        if 40 > self.ncheck > 0 and not self.counters[counter] > 7:  
             self.do_ldpc_iteration()
             self.counters[counter] += 1
             return "L"
@@ -254,7 +253,7 @@ class Candidate:
             return "O"
 
         counter = 2
-        if 7 > self.ncheck > 0 and not self.counters[counter] > 4:  
+        if 7 > self.ncheck > 0 and not self.counters[counter] > 0:  
             self.flip_bits(width = 50, nbits=1, keep_best = True)
             self.counters[counter] += 1
             return "B"
@@ -283,7 +282,7 @@ class Candidate:
                 
 
 class Cycle_manager():
-    def __init__(self, sigspec, onSuccess, onOccupancy, audio_in_wav = None,
+    def __init__(self, sigspec, onSuccess, onOccupancy, audio_in_wav = None, test_speed_factor = 1.0, 
                  input_device_keywords = None, output_device_keywords = None,
                  freq_range = [200,3100], max_cycles = 5000, onCandidateRollover = None, verbose = False):
         
@@ -298,6 +297,8 @@ class Cycle_manager():
         self.input_device_idx = find_device(input_device_keywords)
         self.output_device_idx = find_device(output_device_keywords)
         self.max_cycles = max_cycles
+        self.global_time_offset = 0
+        self.global_time_multiplier = test_speed_factor
         self.cands_list = []
         self.new_cands = []
         self.onSuccess = onSuccess
@@ -308,11 +309,11 @@ class Cycle_manager():
             self.audio_out = AudioOut
         self.audio_started = False
         self.cycle_seconds = sigspec.cycle_seconds
-
         threading.Thread(target=self.manage_cycle, daemon=True).start()
-        delay = sigspec.cycle_seconds - self.cycle_time()
-        self.tlog(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)")
         self.onCandidateRollover = onCandidateRollover
+        if(not self.audio_in_wav):
+            delay = self.spectrum.sigspec.cycle_seconds - self.cycle_time()
+            self.tlog(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)")
 
     def update_spectrum(self, z, t):
         self.spectrum.on_fft(z, t)
@@ -320,7 +321,7 @@ class Cycle_manager():
     def start_audio(self):
         self.audio_started = True
         if(self.audio_in_wav):
-            threading.Thread(target = self.audio_in.start_wav, args = (self.audio_in_wav, self.spectrum.dt), daemon=True).start()
+            threading.Thread(target = self.audio_in.start_wav, args = (self.audio_in_wav, self.spectrum.dt/self.global_time_multiplier), daemon=True).start()
         else:
             threading.Thread(target = self.audio_in.start_live, args=(self.input_device_idx,), daemon=True).start()
      
@@ -332,7 +333,7 @@ class Cycle_manager():
         return time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
 
     def cycle_time(self):
-        return time.time() % self.cycle_seconds
+        return (time.time()*self.global_time_multiplier-self.global_time_offset) % self.cycle_seconds
                 
     def manage_cycle(self):
         cycle_searched = True
@@ -340,6 +341,8 @@ class Cycle_manager():
         cycle_counter = 0
         cycle_time_prev = 0
         to_demap = []
+        if(self.audio_in_wav):
+            self.global_time_offset = self.cycle_time()+0.5
         while self.running:
             time.sleep(0.001)
             rollover = self.cycle_time() < cycle_time_prev 
@@ -385,7 +388,7 @@ class Cycle_manager():
 
             to_progress_decode = [c for c in self.cands_list if c.demap_completed and not c.decode_completed]
             to_progress_decode.sort(key = lambda c: -c.llr0_quality) # in case of emergency (timeouts) process best first
-            for c in to_progress_decode[:10]:
+            for c in to_progress_decode[:100]:
                 c.progress_decode()
 
             with_message = [c for c in self.cands_list if c.msg]
