@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 fig, axes = plt.subplots( figsize=(10,6))
-ws,py,pimm,pl,pba,pbb,po,pp,ft = [],[],[],[],[],[],[],[],[]
+ws,py,pimm,pl,pba,po,ft = [],[],[],[],[],[],[]
 
 with open(f"compare_wsjtx.csv", "r") as f:
     for lfull in f.readlines():

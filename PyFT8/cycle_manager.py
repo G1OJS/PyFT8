@@ -228,7 +228,7 @@ class Candidate:
         self.ncheck = best['nc']
         
     def invoke_actor(self):
-        
+
         counter = 0
         if self.ncheck > 28 and not self.counters[counter] > 0:  
             self.flip_bits(width = 50, nbits=1, keep_best = True)
@@ -244,15 +244,14 @@ class Candidate:
         counter = 2
         if(400 < self.llr0_quality < 470 and not self.counters[counter] > 0):
             entry_state = (self.llr, self.ncheck)
-            codeword_bits, metric = osd_decode_minimal(self.llr0, self.llr0, G, order=1, L=30)
+            reliab_order = np.argsort(np.abs(self.llr))[::-1]
+            codeword_bits = osd_decode_minimal(self.llr0, reliab_order, G, Ls = [30,8,3])
             self.llr = np.array([1 if(b==1) else -1 for b in codeword_bits])
             codeword_bits = (self.llr > 0).astype(int).tolist()
-            nc = self.calc_ncheck(self.llr)
-            if(nc == 0):
-                if check_crc_codeword_list(codeword_bits):
-                    self.ncheck = 0
-                else:
-                    self.llr, self.ncheck = entry_state
+            if check_crc_codeword_list(codeword_bits):
+                self.ncheck = 0
+            else:
+                self.llr, self.ncheck = entry_state
             self.counters[counter] += 1
             return "O"
 

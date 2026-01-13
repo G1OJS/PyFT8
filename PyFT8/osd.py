@@ -39,18 +39,12 @@ def weighted_distance_bits(c, r_hard, w):
     diff = c ^ r_hard
     return float(np.sum(w * diff))
 
-def osd_decode_minimal(llr_metric, llr_state, G, order=1, L=20):
-
-    llr_metric = np.asarray(llr_metric, dtype=np.float32)
-    llr_state  = np.asarray(llr_state,  dtype=np.float32)
-    n = llr_metric.size
+def osd_decode_minimal(llr_channel, reliab_order, G, Ls = [30,8,2]):
+    llr_channel = np.asarray(llr_channel, dtype=np.float32)
+    r = (llr_channel > 0).astype(np.uint8)
+    w = np.abs(llr_channel).astype(np.float32)
     k = G.shape[0]
-    assert G.shape[1] == n
-    # metric (channel)
-    r = (llr_metric > 0).astype(np.uint8)
-    w = np.abs(llr_metric).astype(np.float32)
-    # ordering (decoder state)
-    reliab_order = np.argsort(np.abs(llr_state))[::-1]
+    n = G.shape[1]
     Gsys, colperm = gf2_systematic_from_reliability(G, reliab_order)
     r_sys = r[colperm]
     w_sys = w[colperm]
@@ -59,8 +53,8 @@ def osd_decode_minimal(llr_metric, llr_state, G, order=1, L=20):
     best_c_sys = c0_sys.copy()
     best_m = weighted_distance_bits(best_c_sys, r_sys, w_sys)
     info_reliab = w_sys[:k]
-    flip_pool = np.argsort(info_reliab)[:min(L, k)]
-    for t in range(1, order + 1):
+    for t in range(1, len(Ls) + 1):
+        flip_pool = np.argsort(info_reliab)[:min(Ls[t-1], k)]    
         for comb in combinations(flip_pool, t):
             u = u0.copy()
             u[list(comb)] ^= 1
@@ -72,6 +66,6 @@ def osd_decode_minimal(llr_metric, llr_state, G, order=1, L=20):
     inv = np.empty(n, dtype=np.int64)
     inv[colperm] = np.arange(n)
     best_c_orig = best_c_sys[inv]
-    return best_c_orig.astype(np.uint8), best_m
+    return best_c_orig.astype(np.uint8)
 
 
