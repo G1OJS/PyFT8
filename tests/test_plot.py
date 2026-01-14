@@ -1,8 +1,9 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 
-fig, axes = plt.subplots( figsize=(10,6))
+fig, ax = plt.subplots( figsize=(10,6))
 ws,py,pimm,pl,pba,po,ft = [],[],[],[],[],[],[]
+
 
 with open(f"compare_wsjtx.csv", "r") as f:
     for lfull in f.readlines():
@@ -20,36 +21,33 @@ with open(f"compare_wsjtx.csv", "r") as f:
         else:
             if(not "#" in l): ft.append(q)
 
-bins = [350 + 15*b for b in range(15)]
+bins = [325 + 5*b for b in range(50)]
 
 np = len(py)
 nt = len(ws)
 pc = f"{int(100*np/nt)}"
 
-axes.hist(ws, bins = bins, label = "WSJTX", rwidth = 0.4, 
-        color = 'grey', alpha = 1, lw=0.5, edgecolor = "black")
-axes.hist(py, bins = bins, label = "PyFT8", rwidth = 1, 
-        color = '#388E3C', alpha = 0.7, lw=0.5, edgecolor = "black")
+wsjtx = ax.hist(ws, bins = bins,  rwidth = 1.0, label = 'All',
+        color = 'grey', alpha = 0.4, lw=1, edgecolor = 'grey')
 
-axes.hist(pimm, bins = bins, label = "Immediate", rwidth=1,
-        color = 'lime', alpha = 0.6, lw=0.5, edgecolor = "black")
+pyft8 = ax.hist([pimm,pl,pba,po,ft], bins = bins, rwidth = 0.5, 
+        stacked = True, alpha = 0.7, lw=1, edgecolor = 'grey',
+        color = ['lime','green','orange','yellow','white'])
 
-axes.hist(pl, bins = bins, label = "LDPC", rwidth=0.8,
-        color = 'orange', alpha = 0.6, lw=0.5, edgecolor = "black")
-axes.hist(pba, bins = bins, label = "BitFlip", rwidth=0.4,
-        color = 'blue', alpha = 0.6, lw=0.5, edgecolor = "black")
-axes.hist(po, bins = bins, label = "OSD", rwidth=0.2,
-        color = 'white', alpha = 0.9, lw=0.5, edgecolor = "black")
+legwidth = 0.18
+wsjtx_legend = ax.legend(handles=[wsjtx[2][0]], 
+        loc='upper right', bbox_to_anchor=(1-legwidth,1, legwidth,0), mode='expand',
+        title = 'WSJT-X', title_fontproperties = {'weight':'bold', 'size':8}, alignment='left')
+ax.add_artist(wsjtx_legend)
+ax.legend(handles = pyft8[2],
+        labels = ["Immediate","LDPC","BitFlip","OSD","Timeouts"],
+        loc = 'upper right', bbox_to_anchor=(1-legwidth,0.9, legwidth,0), mode='expand',
+        title = 'PyFT8', title_fontproperties = {'weight':'bold', 'size':8}, alignment='left')
 
 
-axes.hist(ft, bins = bins, label = "Timeouts", rwidth=0.1,
-        color = 'red', alpha = 1.0, lw=0.2, edgecolor = "red")
-
-axes.set_xlabel("LLR Quality")
-axes.set_ylabel(f"Number of decodes")
-
-fig.suptitle(f"PyFT8 detail vs WSJTX. {nt} decodes, {pc}% to PyFT8")
-axes.legend(loc='upper left')
+ax.set_xlabel("Signal quality = sum of absolute values of log likelyhood ratios")
+ax.set_ylabel(f"Number of decodes")
+fig.suptitle(f"PyFT8 vs WSJTX. {nt} decodes, {pc}% to PyFT8")
 
 plt.tight_layout()
 plt.show()
