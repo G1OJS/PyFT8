@@ -173,7 +173,7 @@ class Candidate:
 
     def record_state(self, actor_code, ncheck, final = False):
         self.ncheck = ncheck
-        finalcode = "#" if final else ","
+        finalcode = "#" if final else ";"
         self.decode_path = self.decode_path + f"{actor_code}{ncheck:02d}{finalcode}"
         if(final):
             self.decode_completed = time.time()

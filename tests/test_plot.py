@@ -13,20 +13,20 @@ py = [[],[],[],[],[]]
 ws = []
 pydecs = 0
 for lfull in lines:
-    l = lfull[110:]
-    q = l[0:3]
-    q=float(q)
-    if(lfull[88] != " "):
+    fields = lfull.split(",")
+    q, nc, dpath =float(fields[0]), int(fields[1]), fields[2]
+    if("C00#" in dpath):
         pydecs +=1
-        if('I00' in l):
+        if('I00' in dpath):
             py[0].append(q)
-        elif('O00' in l):
+        elif('O00' in dpath):
             py[3].append(q)
-        elif('A' in l):
+        elif('A' in dpath):
             py[2].append(q)
-        elif('L' in l): py[1].append(q)
+        elif('L' in dpath):
+            py[1].append(q)
             
-    if(not "#" in l): py[4].append(q)
+    if(not "#" in dpath): py[4].append(q)
     ws.append(q)
 
 fig, ax = plt.subplots( figsize=(10,6))
