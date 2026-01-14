@@ -7,8 +7,8 @@ ws,py,pimm,pl,pba,po,ft = [],[],[],[],[],[],[]
 with open(f"compare_wsjtx.csv", "r") as f:
     for lfull in f.readlines():
         pdec = lfull[88] != " "
-        l = lfull[119:]
-        q = l[0:5]
+        l = lfull[110:]
+        q = l[0:3]
         q=float(q)
         ws.append(q)
         if(pdec):
@@ -20,7 +20,7 @@ with open(f"compare_wsjtx.csv", "r") as f:
         else:
             if(not "#" in l): ft.append(q)
 
-bins = [350 + 10*b for b in range(20)]
+bins = [350 + 15*b for b in range(15)]
 
 np = len(py)
 nt = len(ws)
@@ -29,17 +29,17 @@ pc = f"{int(100*np/nt)}"
 axes.hist(ws, bins = bins, label = "WSJTX", rwidth = 0.4, 
         color = 'grey', alpha = 1, lw=0.5, edgecolor = "black")
 axes.hist(py, bins = bins, label = "PyFT8", rwidth = 1, 
-        color = '#388E3C', alpha = 1, lw=0.5, edgecolor = "black")
+        color = '#388E3C', alpha = 0.7, lw=0.5, edgecolor = "black")
 
-axes.hist(pimm, bins = bins, label = "Imm", rwidth=1,
+axes.hist(pimm, bins = bins, label = "Immediate", rwidth=1,
         color = 'lime', alpha = 0.6, lw=0.5, edgecolor = "black")
 
 axes.hist(pl, bins = bins, label = "LDPC", rwidth=0.8,
-        color = 'orange', alpha = 0.8, lw=0.5, edgecolor = "black")
-axes.hist(pba, bins = bins, label = "BitFlipA", rwidth=0.6,
-        color = 'blue', alpha = 0.8, lw=0.5, edgecolor = "black")
-axes.hist(po, bins = bins, label = "OSD", rwidth=0.4,
-        color = 'white', alpha = 0.8, lw=0.5, edgecolor = "black")
+        color = 'orange', alpha = 0.6, lw=0.5, edgecolor = "black")
+axes.hist(pba, bins = bins, label = "BitFlip", rwidth=0.4,
+        color = 'blue', alpha = 0.6, lw=0.5, edgecolor = "black")
+axes.hist(po, bins = bins, label = "OSD", rwidth=0.2,
+        color = 'white', alpha = 0.9, lw=0.5, edgecolor = "black")
 
 
 axes.hist(ft, bins = bins, label = "Timeouts", rwidth=0.1,

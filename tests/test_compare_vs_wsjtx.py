@@ -80,7 +80,7 @@ def analyse_dictionaries():
             basics = f"{c.cyclestart_str} {w['f']:4d} {cofreq} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.dt:4.1f} {w['td']} {td}"
             msg = ' '.join(c.msg) if c.msg else ''
             if(msg !=''): unique.add(msg)
-            op = f"{basics} {w['msg']:<23} {msg:<23} {c.llr_0_quality:4.0f} {c.llr_1_quality:4.0f} {c.llr0_quality:5.1f} {c.decode_path}"
+            op = f"{basics} {w['msg']:<23} {msg:<23} {c.llr0_quality:4.0f} {c.decode_path}"
             f.write(f"{op}\n")
             print(op)
 
@@ -92,8 +92,6 @@ def initialise_outputs():
 
 def onDecode(c):
     pass
-    #    if("Q" in c.decode_path):
-    #    print(c.fHz, c.msg)
 
 def update_charts():
     global fig, ax

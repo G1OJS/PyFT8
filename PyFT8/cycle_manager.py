@@ -133,45 +133,35 @@ class Candidate:
         
     def demap(self, spectrum):
         self.demap_started = time.time()
-        freqs = self.freq_idxs
-        llr_clipto = LLR_GEN['clip']
+        
+        def get_llr(hop_idxs):
+            hops = np.array(hop_idxs)
+            p = spectrum.pgrid_fine[np.ix_(hops, self.freq_idxs)]
+            llra = np.log(np.max(p[:, [4,5,6,7]], axis=1)) - np.log(np.max(p[:, [0,1,2,3]], axis=1))
+            llrb = np.log(np.max(p[:, [2,3,4,7]], axis=1)) - np.log(np.max(p[:, [0,1,5,6]], axis=1))
+            llrc = np.log(np.max(p[:, [1,2,6,7]], axis=1)) - np.log(np.max(p[:, [0,3,4,5]], axis=1))
+            llr = np.column_stack((llra, llrb, llrc))
+            snr = int(np.clip(10 * np.log10(np.max(p)) - 107, -24, 24))
+            llr = llr.ravel()
+            s, llr_quality = np.std(llr), 0
+            if (s > 0.1):
+                llr = LLR_GEN['final_sd'] * llr / s 
+                llr = np.clip(llr, -LLR_GEN['clip'], LLR_GEN['clip'])
+                llr_quality = np.sum(np.sign(llr) * llr)
+            return (llr, llr_quality, p, snr)
+            
+        demap1 = get_llr(np.array(self.payload_hop_idxs_0))
+        demap2 = get_llr(np.array(self.payload_hop_idxs_1))
+        demap = demap1 if demap1[1] > demap2[1] else demap2
+        
+        self.llr0, self.llr0_quality, self.pgrid, self.snr = demap
+        self.ncheck0 = self.calc_ncheck(self.llr0)
+        self.llr = self.llr0.copy()
+        self.ncheck = self.ncheck0
 
-        hops_0 = np.array(self.payload_hop_idxs_0)
-        p0 = spectrum.pgrid_fine[np.ix_(hops_0, freqs)]
-        llr_0a = np.log(np.max(p0[:, [4,5,6,7]], axis=1)) - np.log(np.max(p0[:, [0,1,2,3]], axis=1))
-        llr_0b = np.log(np.max(p0[:, [2,3,4,7]], axis=1)) - np.log(np.max(p0[:, [0,1,5,6]], axis=1))
-        llr_0c = np.log(np.max(p0[:, [1,2,6,7]], axis=1)) - np.log(np.max(p0[:, [0,3,4,5]], axis=1))
-        llr_0 = np.column_stack((llr_0a, llr_0b, llr_0c))
-        llr_0 = llr_0.ravel()
-        s = np.std(llr_0)
-        if (s > 1): llr_0 = LLR_GEN['final_sd'] * llr_0 / s 
-        llr_0 = np.clip(llr_0, -llr_clipto, llr_clipto)
-        self.llr_0_quality = np.sum(np.sign(llr_0) * llr_0) if s > 0 else 0
+        quality_too_low = (self.llr0_quality < LLR_GEN['abs_min'])
+        self.record_state(f"I", self.ncheck, final = quality_too_low)
         
-        hops_1 = np.array(self.payload_hop_idxs_1)
-        p1 = spectrum.pgrid_fine[np.ix_(hops_1, freqs)]
-        llr_1a = np.log(np.max(p1[:, [4,5,6,7]], axis=1)) - np.log(np.max(p1[:, [0,1,2,3]], axis=1))
-        llr_1b = np.log(np.max(p1[:, [2,3,4,7]], axis=1)) - np.log(np.max(p1[:, [0,1,5,6]], axis=1))
-        llr_1c = np.log(np.max(p1[:, [1,2,6,7]], axis=1)) - np.log(np.max(p1[:, [0,3,4,5]], axis=1))
-        llr_1 = np.column_stack((llr_1a, llr_1b, llr_1c))
-        llr_1 = llr_1.ravel()
-        s = np.std(llr_1)
-        if (s > 1): llr_1 = LLR_GEN['final_sd'] * llr_1 / s 
-        llr_1 = np.clip(llr_1, -llr_clipto, llr_clipto)
-        self.llr_1_quality = np.sum(np.sign(llr_1) * llr_1) if s > 0 else 0
-        
-        self.llr = llr_0 if self.llr_0_quality > self.llr_1_quality else llr_1  
-        self.ncheck = self.calc_ncheck(self.llr)
-        self.ncheck0 = self.ncheck
-        self.llr0 = self.llr.copy()
-        self.llr0_quality = np.sum(np.sign(self.llr0) * self.llr0)
-
-        final = (self.llr0_quality < LLR_GEN['abs_min'])
-        self.record_state(f"I", self.ncheck, final = final)
-        
-        self.pgrid = p0
-        pmax = np.max(self.pgrid)
-        self.snr = int(np.clip(10 * np.log10(pmax) - 107, -24, 24))
         self.demap_completed = time.time()
 
     def calc_ncheck(self, llr):
