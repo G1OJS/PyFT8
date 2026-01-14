@@ -1,8 +1,13 @@
 # PyFT8 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/pyft8?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/pyft8)
 # FT8 Decoding and Encoding in Python with CLI and test/loopback code
-This repository contains Python code to decode and encode FT8, plus a minimal command line interface for reception.
+This repository contains Python code to decode and encode FT8, plus a minimal Command Line Interface for reception.
 
-Its primary purpose is as a personal project, but should also be useful if you want to browse the code or use the CLI.
+This started out as me thinking "How hard can it be, really?" and has become a bit of a mission to provide the most direct,
+compact, and fast FT8 decoder that I can without copying code (apart from constants of course). It's light on explanation, 
+but I've avoided anonymous variable names like 'n5_b' as much as possible in favour of varable names that tell the story. Also, 
+whilst I've used AI to introduce me to coding best practice and DSP techniques, I don't let their bloat survive the cut. This has
+been productive - constantly badgering AI has resulted in a very compact and very fast LDPC decoder which has increased in speed
+by about 2 orders of magnitude since I first hand-translated some FORTRAN into Python.
 
 ### CLI
 PyFT8 can be installed using 
@@ -47,7 +52,7 @@ you will have to organise your own method of controlling the PTT (e.g. [DATA]VOX
 Below are some screenshots from test programs that can be used to look at how the protocols actually work, illustrated with a fairly
 ordinary waterfall and some zoomed-in depictions of captured signals with an overlay of the syncrhonisation tones that are used
 to search for the signals (Costas patterns). To try these scripts, download the Python from this repository (clone, download raw etc)
-and run in your chosen environment.
+and run in your chosen environment. These images probably need updating so don't expect exact copies, but they give the idea.
 
 <img width="987" height="262" alt="waterfall" src="https://github.com/user-attachments/assets/bb97c336-3150-466d-b102-1885fff971b4" />
 
@@ -80,8 +85,18 @@ code doesn't (yet) have the full capability of the advanced decoders used in WSJ
 |Further signal extraction | None | Subtraction of the idealised power of the decoded signals, then rescanning the residual spectrum. Further synchronisation adjustments TBC|
 
 ## Performance
-As of 5th Jan 2026, PyFT8 decodes around 65% of WSJTx decodes when the latter is set to "NORM" decoding.
-<img width="800" height="1000" alt="20m morning vs WSJTX NORM" src="https://github.com/user-attachments/assets/516d49bf-9efe-47a4-81f1-56300be6cfa1" />
+As of 14th Jan 2026, PyFT8 decodes around 60% to 90% of WSJTx decodes when the latter is set to "NORM" decoding. Most recently I've found that plotting decode success against
+WSJT-x as a benchmark, with a measure of LLR quality as the X-axis, has enabled me to focus on which kinds of signal are and are not being decoded reliably. The decoder now has
+about four ways that signals can emerge:
+ - Immediately from the demapper (channel tones to bits) as a correct decode
+ - Decoded via LDPC
+ - Kicked along a little by random but informed bit flipping
+ - Ordered Statistics Decoding
+
+The graph below shows a typical result. This is also useful in that it proves that sorting candidates into LLR-quality order before decoding does indeed push any 
+timeouts (where the processes simply run out of time before the next cycle) into places where they probably wouldn't have been decoded anyway.
+
+<img width="1000" height="600" alt="snapshot as commit" src="https://github.com/user-attachments/assets/960b5605-26bf-4d73-9648-0beb9a55f1d0" />
 
 ## Acknowledgements
 This project implements a decoder for the FT8 digital mode.
