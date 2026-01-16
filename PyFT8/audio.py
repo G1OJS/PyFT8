@@ -42,6 +42,9 @@ class AudioIn:
         self.wav_finished = False
 
     def start_wav(self, wav_path, hop_dt):
+        threading.Thread(target = self.play_wav, args = (wav_path, hop_dt), daemon=True).start()
+
+    def play_wav(self, wav_path, hop_dt):
         self._running = True
         wf = wave.open(wav_path, "rb")
         next_hop_time = time.time()
@@ -84,9 +87,10 @@ class AudioIn:
             now = time.time()
             if now < next_hop_time:
                 time.sleep(next_hop_time - now)
+            t = time.time()
             x = self.audio_buffer * self.fft_window
             z = np.fft.rfft(x)
-            self.on_fft(z, time.time())
+            self.on_fft(z, t)
 
 class AudioOut:
 

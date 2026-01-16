@@ -309,16 +309,16 @@ class Cycle_manager():
         if(not self.audio_in_wav):
             delay = self.spectrum.sigspec.cycle_seconds - self.cycle_time()
             self.tlog(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)")
-
+        
     def update_spectrum(self, z, t):
         self.spectrum.on_fft(z, t)
 
     def start_audio(self):
         self.audio_started = True
         if(self.audio_in_wav):
-            threading.Thread(target = self.audio_in.start_wav, args = (self.audio_in_wav, self.spectrum.dt/self.global_time_multiplier), daemon=True).start()
+            self.audio_in.start_wav(self.audio_in_wav, self.spectrum.dt/self.global_time_multiplier)
         else:
-            threading.Thread(target = self.audio_in.start_live, args=(self.input_device_idx, self.spectrum.dt), daemon=True).start()
+            self.audio_in.start_live(self.input_device_idx, self.spectrum.dt)
      
     def tlog(self, txt):
         print(f"{self.cyclestart_str(time.time())} {self.cycle_time():5.2f} {txt}")
