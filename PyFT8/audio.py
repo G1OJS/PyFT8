@@ -41,8 +41,15 @@ class AudioIn:
         self._running = False
         self.wav_finished = False
 
+    def do_fft(self):
+        t = time.time()
+        x = self.audio_buffer * self.fft_window
+        z = np.fft.rfft(x)
+        self.on_fft(z, t)
+
     def start_wav(self, wav_path, hop_dt):
         threading.Thread(target = self.play_wav, args = (wav_path, hop_dt), daemon=True).start()
+        threading.Thread(target = self.do_fft).start()
 
     def play_wav(self, wav_path, hop_dt):
         self.hop_dt = hop_dt
@@ -50,7 +57,6 @@ class AudioIn:
         wf = wave.open(wav_path, "rb")
         next_hop_time = time.time()
         dummy_frames = None
-        threading.Thread(target = self.do_fft).start()
         while self._running:
             frames = wf.readframes(int(self.sample_rate // self.hop_rate))
             if not dummy_frames:
@@ -63,6 +69,7 @@ class AudioIn:
                 time.sleep(next_hop_time - now)
             next_hop_time += hop_dt
             self._callback(frames, None, None, None)
+            self.do_fft()
         wf.close()
 
     def start_live(self, input_device_idx, hop_dt):
@@ -73,7 +80,7 @@ class AudioIn:
             input = True, input_device_index = input_device_idx,
             frames_per_buffer = int(self.sample_rate // self.hop_rate), stream_callback=self._callback,)
         self.stream.start_stream()
-        threading.Thread(target = self.do_fft).start()
+        threading.Thread(target = self.live_consumer).start()
 
     def _callback(self, in_data, frame_count, time_info, status_flags):
         samples = np.frombuffer(in_data, dtype=np.int16).astype(np.float32)
@@ -82,17 +89,15 @@ class AudioIn:
         self.audio_buffer[-ns:] = samples
         return (None, pyaudio.paContinue)
 
-    def do_fft(self):
+    def live_consumer(self):
         next_hop_time = time.time()
         while self._running:
             next_hop_time += self.hop_dt
             now = time.time()
             if now < next_hop_time:
                 time.sleep(next_hop_time - now)
-            t = time.time()
-            x = self.audio_buffer * self.fft_window
-            z = np.fft.rfft(x)
-            self.on_fft(z, t)
+            self.do_fft()
+
 
 class AudioOut:
 
