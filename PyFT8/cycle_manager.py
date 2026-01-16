@@ -164,6 +164,17 @@ class Candidate:
         sync_idx =  0 if demap0[1] > demap1[1] else 1
         self.record_chosen_sync(spectrum, sync_idx)
         demap = [demap0, demap1][sync_idx]
+
+        """
+        code for frequency drift when implemented above
+        sync_idx = 0 if self.syncs[0][2] > self.syncs[1][2] else 1
+        self.record_chosen_sync(spectrum, sync_idx)
+        demaps = []
+        for drift in [-1,0,1]:
+            demaps.append( get_llr(self.syncs[sync_idx][0], drift = drift) )
+        demap_idx = np.argmax([demaps[0][1],demaps[1][1],demaps[2][1]])
+        demap = demaps[demap_idx]
+        """
         
         self.llr0, self.llr0_quality, self.pgrid, self.snr = demap
         self.ncheck0 = self.calc_ncheck(self.llr0)
