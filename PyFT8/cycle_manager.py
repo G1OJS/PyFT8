@@ -75,7 +75,7 @@ class Spectrum:
         p = p[:self.nFreqs]
         self.hoptimes.append(t)
         with self.lock:
-            self.cgrid_main[self.grid_main_ptr] = p
+            self.zgrid_main[self.grid_main_ptr] = p
             self.pgrid_main[self.grid_main_ptr] = p
             self.grid_main_ptr = (self.grid_main_ptr + 1) % self.hops_percycle
 
@@ -207,11 +207,12 @@ class Candidate:
         self.ncheck = self.calc_ncheck(self.llr)
 
     def flip_bits(self, width, nbits, keep_best = False):
-        bad6 = CHECK_VARS_6[self.parity6.astype(bool)] 
-        bad7 = CHECK_VARS_7[self.parity7.astype(bool)] 
-        bad_vars = np.concatenate([bad6.ravel(), bad7.ravel()])
-        counts = np.bincount(bad_vars, minlength=len(self.llr))
-        cands = np.argsort(counts)[::-1]
+#        bad6 = CHECK_VARS_6[self.parity6.astype(bool)] 
+#        bad7 = CHECK_VARS_7[self.parity7.astype(bool)] 
+#        bad_vars = np.concatenate([bad6.ravel(), bad7.ravel()])
+#        counts = np.bincount(bad_vars, minlength=len(self.llr))
+#        cands = np.argsort(counts)[::-1]
+        cands = np.argsort(np.abs(self.llr))
         idxs = cands[:nbits]
         
         best = {'llr':self.llr.copy(), 'nc':self.ncheck}
@@ -339,7 +340,7 @@ class Cycle_manager():
         if(self.verbose):
             m = 1000*np.mean(diffs)
             s = 1000*np.std(diffs)
-            pc = safe_pc(sd, 1/sigspec.symbols_persec) 
+            pc = safe_pc(s, 1000/self.spectrum.sigspec.symbols_persec) 
             self.tlog(f"\n[Cycle manager] Hop timings: mean = {m:.2f}ms, sd = {s:.2f}ms ({pc:5.1f}% symbol)")
         
     def manage_cycle(self):
@@ -362,9 +363,9 @@ class Cycle_manager():
                 if(cycle_counter > self.max_cycles):
                     self.running = False
                     break
-                if(dump_main_grid):
+                if(self.dump_main_grid):
                     import pickle
-                    with open(self.cyclestart_str,"wb") as f:
+                    with open(self.cyclestart_str(time.time()-3)+"_dump.pkl","wb") as f:
                         pickle.dump(self.spectrum.zgrid_main, f)
                 cycle_searched = False
                 cands_rollover_done = False

@@ -9,7 +9,7 @@ global wsjtx_dicts, pyft8_cands, matches, cands_matched, do_analysis
 wsjtx_dicts = []
 pyft8_cands = []
 matches = None
-cands_matched = None
+cands_matched = []
 do_analysis = False
 
 def wsjtx_all_tailer(all_file, cycle_manager):
@@ -79,6 +79,7 @@ def analyse_dictionaries():
     signal_info = []
     with open('compare_wsjtx.csv', 'a') as f:
         for w, c in matches:
+            cands_matched.append(c)
             td = f"{c.decode_completed %60:5.2f}" if c.decode_completed else '     '
             cofreq = "cofreq" if w['f'] in wsjtx_cofreqs else "  --  "
             basics = f"{c.cyclestart_str} {w['f']:4d} {cofreq} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.dt:4.1f} {w['td']} {td}"
@@ -97,7 +98,6 @@ def calibrate_snr():
     fix, ax = plt.subplots()
     x,y = [],[]
     for w, c in matches:
-#        x.append(np.max(c.pgrid))
         x.append(c.snr)
         y.append(float(w['snr']))
     ax.plot(x,y)
@@ -114,7 +114,7 @@ def show_matched_cands(dBrange = 30):
     import matplotlib.pyplot as plt
     import matplotlib.ticker as ticker
     
-    if not any(cands_matched): return
+    if not len(cands_matched): return
 
     n = len(cands_matched)
     fig, axs = plt.subplots(1, n, figsize = (15, 5))
@@ -136,7 +136,7 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
     initialise_outputs()
     
     if(dataset):
-        cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, test_speed_factor = 1, 
+        cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, test_speed_factor = 1, max_cycles = 2, dump_main_grid = True,
                                       onCandidateRollover = onCandidateRollover, freq_range = freq_range,
                                       audio_in_wav = dataset+".wav", verbose = True)
         get_wsjtx_decodes(dataset+".txt")
@@ -157,13 +157,15 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
         print("\nStopping")
         cycle_manager.running = False
 
-    time.sleep(5)
+    time.sleep(1)
+    #calibrate_snr()
+    show_matched_cands()
 
-    calibrate_snr()
+    
+    
+compare("210703_133430", [100,3100])
 
-#compare("210703_133430", [100,3100])
-
-compare(None, [100,3100])
+#compare(None, [100,3100])
 
 
     

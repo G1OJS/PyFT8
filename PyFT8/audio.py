@@ -45,10 +45,12 @@ class AudioIn:
         threading.Thread(target = self.play_wav, args = (wav_path, hop_dt), daemon=True).start()
 
     def play_wav(self, wav_path, hop_dt):
+        self.hop_dt = hop_dt
         self._running = True
         wf = wave.open(wav_path, "rb")
         next_hop_time = time.time()
         dummy_frames = None
+        threading.Thread(target = self.do_fft).start()
         while self._running:
             frames = wf.readframes(int(self.sample_rate // self.hop_rate))
             if not dummy_frames:
