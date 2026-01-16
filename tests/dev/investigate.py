@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.colors import LogNorm
 
-hps=3
+hps=5
 bpt=3
-
+input_pkl = "full_grid.pkl"
 
 def create_mask(msg):
     from PyFT8.FT8_encoder import pack_ft8_c28, pack_ft8_g15, encode_bits77
@@ -91,7 +91,7 @@ def show_sig(zf, signal, dBrange = 10, symbols = [0,79]):
 
 
 signal_info_list = [(1233, 33, 'W1FC F5BZB -08'), (1034, 23, 'WM3PEN EA6VQ -09'), (574, 1, 'CQ F5RXL IN94'), (306, 33, 'N1JFU EA6EE R-07'), (346, 29, 'A92EE F5PSR -14'), (1293, 21, 'K1BZM EA3GP -09'), (191, 33, 'W0RSJ EA3BMU RR73'), (282, 34, 'K1JT HA0DU KN07'), (1311, 37, 'W1DIG SV9CVY -14'), (790, 28, 'K1JT EA3AGB -15'), (1368, 31, 'XE2X HA2NP RR73'), (1209, 56, 'K1BZM EA3CJ JN01'), (1220, 49, 'WA2FZW DL5AXX RR73'), (1073, 33, 'N1API HA6FQ -23'), (222, 33, 'N1PJT HB9CQK -10'), (725, 46, 'N1API F2VX 73'), (977, 27, 'K1JT HA5WA 73'), (225, 39, 'KD2UGC F6GCP R-23'), (1094, 28, 'CQ EA2BFM IN83')]
-with open("260116_165245.pkl","rb") as f:
+with open(input_pkl, "rb") as f:
     zf = pickle.load(f)
 
 for signal_info in signal_info_list:
