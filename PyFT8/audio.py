@@ -26,26 +26,36 @@ import threading
 
 
 class AudioIn:
-    def __init__(self, sample_rate, symbol_rate, max_freq, hops_persymbol, fbins_pertone, on_fft):
+    def __init__(self, spectrum):
 
-        self.sample_rate = sample_rate
-        self.hop_rate = symbol_rate * hops_persymbol
-        fmax_fft = sample_rate/2
-        self.fft_len = int(fbins_pertone * sample_rate // symbol_rate)
+        self.symbol_rate = spectrum.sigspec.symbols_persec
+        self.sample_rate = spectrum.sample_rate
+        self.hop_rate = self.symbol_rate * spectrum.hops_persymb
+        fmax_fft = self.sample_rate/2
+        self.fft_len = int(spectrum.fbins_pertone * self.sample_rate // self.symbol_rate)
         fft_out_len = int(self.fft_len/2) + 1
-        self.nFreqs = int(fft_out_len * max_freq / fmax_fft)
+        self.nFreqs = int(fft_out_len * spectrum.max_freq / fmax_fft)
         self.fft_window = fft_window=np.kaiser(self.fft_len, 20)
-        self.on_fft = on_fft
         self.audio_buffer = np.zeros(self.fft_len, dtype=np.float32)
         self._pa = pyaudio.PyAudio()
         self._running = False
         self.wav_finished = False
+        self.hoptimes = []
+        self.hops_percycle = int(spectrum.sigspec.cycle_seconds * self.hop_rate)
+        self.zgrid_main = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.complex64)
+        self.pgrid_main = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)
+        self.grid_main_ptr = 0
 
     def do_fft(self):
         t = time.time()
         x = self.audio_buffer * self.fft_window
         z = np.fft.rfft(x)
-        self.on_fft(z, t)
+        p = z.real*z.real + z.imag*z.imag
+        p = p[:self.nFreqs]
+        self.hoptimes.append(t)
+        self.zgrid_main[self.grid_main_ptr] = p
+        self.pgrid_main[self.grid_main_ptr] = p
+        self.grid_main_ptr = (self.grid_main_ptr + 1) % self.hops_percycle
 
     def start_wav(self, wav_path, hop_dt):
         threading.Thread(target = self.play_wav, args = (wav_path, hop_dt), daemon=True).start()
@@ -87,6 +97,7 @@ class AudioIn:
         ns = len(samples)
         self.audio_buffer[:-ns] = self.audio_buffer[ns:]
         self.audio_buffer[-ns:] = samples
+        time.sleep(0.001)
         return (None, pyaudio.paContinue)
 
     def live_consumer(self):

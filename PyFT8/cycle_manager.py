@@ -37,29 +37,23 @@ def bitsLE_to_int(bits):
     return n
 
 class Spectrum:
-    def __init__(self, sigspec, sample_rate, nFreqs, max_freq, hops_persymb, fbins_pertone):
+    def __init__(self, sigspec, sample_rate, max_freq, hops_persymb, fbins_pertone):
         self.sigspec = sigspec
         self.sample_rate = sample_rate
-        self.hoptimes = []
-        self.nFreqs = nFreqs
+        self.fbins_pertone = fbins_pertone
         self.max_freq = max_freq
         self.hops_persymb = hops_persymb
-        self.fbins_pertone = fbins_pertone
+        self.audio_in = AudioIn(self)
+        self.nFreqs = self.audio_in.nFreqs
         self.dt = 1.0 / (self.sigspec.symbols_persec * self.hops_persymb) 
         self.df = max_freq / (self.nFreqs -1)
-        self.hops_percycle = int(self.sigspec.cycle_seconds * self.sigspec.symbols_persec * self.hops_persymb)
         self.fbins_per_signal = self.sigspec.tones_persymb * self.fbins_pertone
         self.hop_idxs_Costas =  np.arange(self.sigspec.costas_len) * self.hops_persymb
-        self.zgrid_main = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.complex64)
-        self.pgrid_main = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)
-        self.grid_main_ptr = 0
-
         self.hop_start_lattitude = int(1.9 / self.dt)
         self.nhops_costas = self.sigspec.costas_len * self.hops_persymb
         self.h_search = self.hop_start_lattitude + self.nhops_costas  + 36 * self.hops_persymb
         self.h_demap = self.sigspec.payload_symb_idxs[-1] * self.hops_persymb
         self.occupancy = np.zeros(self.nFreqs)
-        self.lock = threading.Lock()
         self.csync_flat = self.make_csync(sigspec)
 
     def make_csync(self, sigspec):
@@ -70,20 +64,11 @@ class Spectrum:
             csync[sym_idx, sigspec.costas_len*self.fbins_pertone:] = 0
         return csync.ravel()
 
-    def on_fft(self, z, t):
-        p = z.real*z.real + z.imag*z.imag
-        p = p[:self.nFreqs]
-        self.hoptimes.append(t)
-        with self.lock:
-            self.zgrid_main[self.grid_main_ptr] = p
-            self.pgrid_main[self.grid_main_ptr] = p
-            self.grid_main_ptr = (self.grid_main_ptr + 1) % self.hops_percycle
-
     def search(self, freq_range, cyclestart_str):
         cands = []
         f0_idxs = range(int(freq_range[0]/self.df),
                         min(self.nFreqs - self.fbins_per_signal, int(freq_range[1]/self.df)))
-        pgrid = self.pgrid_main[:self.h_search,:]
+        pgrid = self.audio_in.pgrid_main[:self.h_search,:]
         block_off = 36 * self.hops_persymb
         for f0_idx in f0_idxs:
             p = pgrid[:, f0_idx:f0_idx + self.fbins_per_signal]
@@ -141,7 +126,7 @@ class Candidate:
         def get_llr(h0_idx):
             hps, bpt = spectrum.hops_persymb, spectrum.fbins_pertone
             hops = np.array([h0_idx + hps* s for s in spectrum.sigspec.payload_symb_idxs])
-            praw = spectrum.pgrid_main[np.ix_(hops, self.freq_idxs)]
+            praw = spectrum.audio_in.pgrid_main[np.ix_(hops, self.freq_idxs)]
             pclip = np.clip(praw, np.max(praw)/1e8, None)
             p = np.log10(pclip)
             llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
@@ -289,16 +274,13 @@ class Candidate:
             else:
                 self.record_state("X", 0, final = True)
                 
-
 class Cycle_manager():
     def __init__(self, sigspec, onSuccess, onOccupancy, audio_in_wav = None, test_speed_factor = 1.0, 
                  input_device_keywords = None, output_device_keywords = None, dump_main_grid = False,
                  freq_range = [200,3100], max_cycles = 5000, onCandidateRollover = None, verbose = False):
         
         HPS, BPT, MAX_FREQ, SAMPLE_RATE = 3, 3, freq_range[1], 12000
-        self.audio_in = AudioIn(SAMPLE_RATE, sigspec.symbols_persec, MAX_FREQ, HPS, BPT, on_fft = self.update_spectrum)
-        self.spectrum = Spectrum(sigspec, SAMPLE_RATE, self.audio_in.nFreqs, MAX_FREQ, HPS, BPT)
-        
+        self.spectrum = Spectrum(sigspec, SAMPLE_RATE, MAX_FREQ, HPS, BPT)
         self.running = True
         self.verbose = verbose
         self.dump_main_grid = dump_main_grid
@@ -324,16 +306,13 @@ class Cycle_manager():
         if(not self.audio_in_wav):
             delay = self.spectrum.sigspec.cycle_seconds - self.cycle_time()
             self.tlog(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)")
-        
-    def update_spectrum(self, z, t):
-        self.spectrum.on_fft(z, t)
 
     def start_audio(self):
         self.audio_started = True
         if(self.audio_in_wav):
-            self.audio_in.start_wav(self.audio_in_wav, self.spectrum.dt/self.global_time_multiplier)
+            self.spectrum.audio_in.start_wav(self.audio_in_wav, self.spectrum.dt/self.global_time_multiplier)
         else:
-            self.audio_in.start_live(self.input_device_idx, self.spectrum.dt)
+            self.spectrum.audio_in.start_live(self.input_device_idx, self.spectrum.dt)
      
     def tlog(self, txt):
         print(f"{self.cyclestart_str(time.time())} {self.cycle_time():5.2f} {txt}")
@@ -346,8 +325,8 @@ class Cycle_manager():
         return (time.time()*self.global_time_multiplier-self.global_time_offset) % self.cycle_seconds
 
     def analyse_hoptimes(self):
-        if not any(self.spectrum.hoptimes): return
-        diffs = np.ediff1d(self.spectrum.hoptimes)
+        if not any(self.spectrum.audio_in.hoptimes): return
+        diffs = np.ediff1d(self.spectrum.audio_in.hoptimes)
         if(self.verbose):
             m = 1000*np.mean(diffs)
             s = 1000*np.std(diffs)
@@ -377,16 +356,16 @@ class Cycle_manager():
                 if(self.dump_main_grid):
                     import pickle
                     with open(self.cyclestart_str(time.time()-3)+"_dump.pkl","wb") as f:
-                        pickle.dump(self.spectrum.zgrid_main, f)
+                        pickle.dump(self.spectrum.audio_in.zgrid_main, f)
                 cycle_searched = False
                 cands_rollover_done = False
                 self.check_for_tx()
-                self.spectrum.grid_main_ptr = 0
+                self.spectrum.audio_in.grid_main_ptr = 0
                 self.analyse_hoptimes()
-                self.spectrum.hoptimes = []
+                self.spectrum.audio_in.hoptimes = []
                 if not self.audio_started: self.start_audio()
 
-            if (self.spectrum.grid_main_ptr > self.spectrum.h_search and not cycle_searched):
+            if (self.spectrum.audio_in.grid_main_ptr > self.spectrum.h_search and not cycle_searched):
 
                 cycle_searched = True
                 if(self.verbose): self.tlog(f"[Cycle manager] Search spectrum ...")
@@ -402,11 +381,11 @@ class Cycle_manager():
                 if(self.onCandidateRollover and cycle_counter >1):
                     self.onCandidateRollover(self.cands_list)
                 self.cands_list = self.new_cands
-                if(self.audio_in.wav_finished):
+                if(self.spectrum.audio_in.wav_finished):
                     self.running = False
                 
             to_demap = [c for c in self.cands_list
-                            if (self.spectrum.grid_main_ptr > c.last_payload_hop
+                            if (self.spectrum.audio_in.grid_main_ptr > c.last_payload_hop
                             and not c.demap_started)]
             for c in to_demap:
                 c.demap(self.spectrum)
@@ -423,7 +402,6 @@ class Cycle_manager():
                     self.duplicate_filter.add(c.dedupe_key)
                     c.call_a, c.call_b, c.grid_rpt = c.msg[0], c.msg[1], c.msg[2]
                     if(self.onSuccess): self.onSuccess(c)
-
                     
     def check_for_tx(self):
         from .FT8_encoder import pack_message
