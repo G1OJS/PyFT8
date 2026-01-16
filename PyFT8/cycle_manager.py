@@ -13,7 +13,7 @@ import wave
 import os
 
 eps = 1e-12
-LLR_GEN =   {'abs_min':385, 'final_sd':3.3, 'clip':3.7}
+LLR_GEN =   {'abs_min':405, 'final_sd':3.3, 'clip':3.7}
 
 CHECK_VARS_6 = np.array([[4,31,59,92,114,145],[5,23,60,93,121,150],[6,32,61,94,95,142],[5,31,63,96,125,137],[8,34,65,98,138,145],[9,35,66,99,106,125],[11,37,67,101,104,154],[12,38,68,102,148,161],[14,41,58,105,122,158],[0,32,71,105,106,156],[15,42,72,107,140,159],[10,43,74,109,120,165],[7,45,70,111,118,165],[18,37,76,103,115,162],[19,46,69,91,137,164],[1,47,73,112,127,159],[21,46,57,117,126,163],[15,38,61,111,133,157],[22,42,78,119,130,144],[19,35,62,93,135,160],[13,30,78,97,131,163],[2,43,79,123,126,168],[18,45,80,116,134,166],[11,49,60,117,118,143],[12,50,63,113,117,156],[23,51,75,128,147,148],[20,53,76,99,139,170],[34,81,132,141,170,173],[13,29,82,112,124,169],[3,28,67,119,133,172],[51,83,109,114,144,167],[6,49,80,98,131,172],[22,54,66,94,171,173],[25,40,76,108,140,147],[26,39,55,123,124,125],[17,48,54,123,140,166],[5,32,84,107,115,155],[8,53,62,130,146,154],[21,52,67,108,120,173],[2,12,47,77,94,122],[30,68,132,149,154,168],[4,38,74,101,135,166],[1,53,85,100,134,163],[14,55,86,107,118,170],[22,33,70,93,126,152],[10,48,87,91,141,156],[28,33,86,96,146,161],[21,56,84,92,139,158],[27,31,71,102,131,165],[0,25,44,79,127,146],[16,26,88,102,115,152],[50,56,97,162,164,171],[20,36,72,137,151,168],[15,46,75,129,136,153],[2,23,29,71,103,138],[8,39,89,105,133,150],[17,41,78,143,145,151],[24,37,64,98,121,159],[16,41,74,128,169,171]], dtype = np.int16)
 CHECK_VARS_7 = np.array([[3,30,58,90,91,95,152],[7,24,62,82,92,95,147],[4,33,64,77,97,106,153],[10,36,66,86,100,138,157],[7,39,69,81,103,113,144],[13,40,70,87,101,122,155],[16,36,73,80,108,130,153],[44,54,63,110,129,160,172],[17,35,75,88,112,113,142],[20,44,77,82,116,120,150],[18,34,58,72,109,124,160],[6,48,57,89,99,104,167],[24,52,68,89,100,129,155],[19,45,64,79,119,139,169],[0,3,51,56,85,135,151],[25,50,55,90,121,136,167],[1,26,40,60,61,114,132],[27,47,69,84,104,128,157],[11,42,65,88,96,134,158],[9,43,81,90,110,143,148],[29,49,59,85,136,141,161],[9,52,65,83,111,127,164],[27,28,83,87,116,142,149],[14,57,59,73,110,149,162]], dtype = np.int16)
@@ -40,6 +40,7 @@ class Spectrum:
     def __init__(self, sigspec, sample_rate, nFreqs, max_freq, hops_persymb, fbins_pertone):
         self.sigspec = sigspec
         self.sample_rate = sample_rate
+        self.hoptimes = []
         self.nFreqs = nFreqs
         self.max_freq = max_freq
         self.hops_persymb = hops_persymb
@@ -49,8 +50,9 @@ class Spectrum:
         self.hops_percycle = int(self.sigspec.cycle_seconds * self.sigspec.symbols_persec * self.hops_persymb)
         self.fbins_per_signal = self.sigspec.tones_persymb * self.fbins_pertone
         self.hop_idxs_Costas =  np.arange(self.sigspec.costas_len) * self.hops_persymb
-        self.pgrid_fine = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)
-        self.pgrid_fine_ptr = 0
+        self.zgrid_main = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.complex64)
+        self.pgrid_main = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)
+        self.grid_main_ptr = 0
 
         self.hop_start_lattitude = int(1.9 / self.dt)
         self.nhops_costas = self.sigspec.costas_len * self.hops_persymb
@@ -71,15 +73,17 @@ class Spectrum:
     def on_fft(self, z, t):
         p = z.real*z.real + z.imag*z.imag
         p = p[:self.nFreqs]
+        self.hoptimes.append(t)
         with self.lock:
-            self.pgrid_fine[self.pgrid_fine_ptr] = p
-            self.pgrid_fine_ptr = (self.pgrid_fine_ptr + 1) % self.hops_percycle
+            self.zgrid_main[self.grid_main_ptr] = p
+            self.pgrid_main[self.grid_main_ptr] = p
+            self.grid_main_ptr = (self.grid_main_ptr + 1) % self.hops_percycle
 
     def search(self, freq_range, cyclestart_str):
         cands = []
         f0_idxs = range(int(freq_range[0]/self.df),
                         min(self.nFreqs - self.fbins_per_signal, int(freq_range[1]/self.df)))
-        pgrid = self.pgrid_fine[:self.h_search,:]
+        pgrid = self.pgrid_main[:self.h_search,:]
         block_off = 36 * self.hops_persymb
         for f0_idx in f0_idxs:
             p = pgrid[:, f0_idx:f0_idx + self.fbins_per_signal]
@@ -89,14 +93,14 @@ class Spectrum:
             c = Candidate()
             syncs = []
             for iBlock in [0,1]:
-                best = (0, f0_idx, -1e30, 0)
+                best = (0, f0_idx, -1e30)
                 for h0_idx in range(block_off * iBlock, block_off * iBlock + self.hop_start_lattitude):
                     sync_score = float(np.dot(pnorm[h0_idx + self.hop_idxs_Costas ,  :].ravel(), self.csync_flat))
                     test = (h0_idx - block_off * iBlock, f0_idx, sync_score)
                     if test[2] > best[2]:
-                        best = test
+                        best = test 
                 syncs.append(best)
-            c.record_sync(self, syncs)
+            c.record_possible_syncs(self, syncs)
             c.cyclestart_str = cyclestart_str            
             cands.append(c)
         return cands
@@ -107,7 +111,6 @@ class Candidate:
         self.dedupe_key = ""
         self.demap_started, self.demap_completed = None, None
         self.decode_completed = None
-        self.decode_verified = False
         self.ncheck = None
         self.ncheck0 = None
         self.llr = None
@@ -119,29 +122,33 @@ class Candidate:
         self.snr = -999
         self.edges6, self.edges7 = None, None
 
-    def record_sync(self, spectrum, syncs):
+    def record_possible_syncs(self, spectrum, syncs):
         hps, bpt = spectrum.hops_persymb, spectrum.fbins_pertone
+        self.syncs = syncs
         self.f0_idx = syncs[0][1]
         self.freq_idxs = [self.f0_idx + bpt // 2 + bpt * t for t in range(spectrum.sigspec.tones_persymb)]
         self.fHz = int((self.f0_idx + bpt // 2) * spectrum.df)
-        h0a, h0b = syncs[0][0], syncs[1][0]
-        if(h0b == h0a): h0b +=1
-        self.payload_hop_idxs_0  = [h0a + hps* s for s in spectrum.sigspec.payload_symb_idxs]   
-        self.payload_hop_idxs_1  = [h0b + hps* s for s in spectrum.sigspec.payload_symb_idxs]
-        self.last_payload_hop = np.max([self.payload_hop_idxs_0[-1],self.payload_hop_idxs_1[-1]])
-        self.dt = syncs[0][0] * spectrum.dt-0.7
+        self.last_payload_hop = np.max([syncs[0][0], syncs[1][0]]) + hps * spectrum.sigspec.payload_symb_idxs[-1]
+
+    def record_chosen_sync(self, spectrum, sync_idx):
+        self.h0_idx = self.syncs[sync_idx][0]
+        self.sync_score = self.syncs[sync_idx][2]
+        self.dt = self.h0_idx * spectrum.dt-0.7
         
     def demap(self, spectrum):
         self.demap_started = time.time()
         
-        def get_llr(hop_idxs):
-            hops = np.array(hop_idxs)
-            p = spectrum.pgrid_fine[np.ix_(hops, self.freq_idxs)]
-            llra = np.log(np.max(p[:, [4,5,6,7]], axis=1)) - np.log(np.max(p[:, [0,1,2,3]], axis=1))
-            llrb = np.log(np.max(p[:, [2,3,4,7]], axis=1)) - np.log(np.max(p[:, [0,1,5,6]], axis=1))
-            llrc = np.log(np.max(p[:, [1,2,6,7]], axis=1)) - np.log(np.max(p[:, [0,3,4,5]], axis=1))
+        def get_llr(h0_idx):
+            hps, bpt = spectrum.hops_persymb, spectrum.fbins_pertone
+            hops = np.array([h0_idx + hps* s for s in spectrum.sigspec.payload_symb_idxs])
+            praw = spectrum.pgrid_main[np.ix_(hops, self.freq_idxs)]
+            pclip = np.clip(praw, np.max(praw)/1e8, None)
+            p = np.log10(pclip)
+            llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
+            llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
+            llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
             llr = np.column_stack((llra, llrb, llrc))
-            snr = int(np.clip(10 * np.log10(np.max(p)) - 107, -24, 24))
+            snr = int(np.clip(10*np.max(p) - 107, -24, 24))
             llr = llr.ravel()
             s, llr_quality = np.std(llr), 0
             if (s > 0.1):
@@ -149,10 +156,25 @@ class Candidate:
                 llr = np.clip(llr, -LLR_GEN['clip'], LLR_GEN['clip'])
                 llr_quality = np.sum(np.sign(llr) * llr)
             return (llr, llr_quality, p, snr)
-            
-        demap1 = get_llr(np.array(self.payload_hop_idxs_0))
-        demap2 = get_llr(np.array(self.payload_hop_idxs_1))
-        demap = demap1 if demap1[1] > demap2[1] else demap2
+
+        h0, h1 = self.syncs[0][0], self.syncs[1][0]
+        if(h0 == h1): h1 = h0 +1
+        demap0 = get_llr(h0)
+        demap1 = get_llr(h1)
+        sync_idx =  0 if demap0[1] > demap1[1] else 1
+        self.record_chosen_sync(spectrum, sync_idx)
+        demap = [demap0, demap1][sync_idx]
+
+        """
+        code for frequency drift when implemented above
+        sync_idx = 0 if self.syncs[0][2] > self.syncs[1][2] else 1
+        self.record_chosen_sync(spectrum, sync_idx)
+        demaps = []
+        for drift in [-1,0,1]:
+            demaps.append( get_llr(self.syncs[sync_idx][0], drift = drift) )
+        demap_idx = np.argmax([demaps[0][1],demaps[1][1],demaps[2][1]])
+        demap = demaps[demap_idx]
+        """
         
         self.llr0, self.llr0_quality, self.pgrid, self.snr = demap
         self.ncheck0 = self.calc_ncheck(self.llr0)
@@ -196,11 +218,12 @@ class Candidate:
         self.ncheck = self.calc_ncheck(self.llr)
 
     def flip_bits(self, width, nbits, keep_best = False):
-        bad6 = CHECK_VARS_6[self.parity6.astype(bool)] 
-        bad7 = CHECK_VARS_7[self.parity7.astype(bool)] 
-        bad_vars = np.concatenate([bad6.ravel(), bad7.ravel()])
-        counts = np.bincount(bad_vars, minlength=len(self.llr))
-        cands = np.argsort(counts)[::-1]
+#        bad6 = CHECK_VARS_6[self.parity6.astype(bool)] 
+#        bad7 = CHECK_VARS_7[self.parity7.astype(bool)] 
+#        bad_vars = np.concatenate([bad6.ravel(), bad7.ravel()])
+#        counts = np.bincount(bad_vars, minlength=len(self.llr))
+#        cands = np.argsort(counts)[::-1]
+        cands = np.argsort(np.abs(self.llr))
         idxs = cands[:nbits]
         
         best = {'llr':self.llr.copy(), 'nc':self.ncheck}
@@ -269,7 +292,7 @@ class Candidate:
 
 class Cycle_manager():
     def __init__(self, sigspec, onSuccess, onOccupancy, audio_in_wav = None, test_speed_factor = 1.0, 
-                 input_device_keywords = None, output_device_keywords = None,
+                 input_device_keywords = None, output_device_keywords = None, dump_main_grid = False,
                  freq_range = [200,3100], max_cycles = 5000, onCandidateRollover = None, verbose = False):
         
         HPS, BPT, MAX_FREQ, SAMPLE_RATE = 3, 3, freq_range[1], 12000
@@ -278,6 +301,7 @@ class Cycle_manager():
         
         self.running = True
         self.verbose = verbose
+        self.dump_main_grid = dump_main_grid
         self.freq_range = freq_range
         self.audio_in_wav = audio_in_wav
         self.input_device_idx = find_device(input_device_keywords)
@@ -300,16 +324,16 @@ class Cycle_manager():
         if(not self.audio_in_wav):
             delay = self.spectrum.sigspec.cycle_seconds - self.cycle_time()
             self.tlog(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)")
-
+        
     def update_spectrum(self, z, t):
         self.spectrum.on_fft(z, t)
 
     def start_audio(self):
         self.audio_started = True
         if(self.audio_in_wav):
-            threading.Thread(target = self.audio_in.start_wav, args = (self.audio_in_wav, self.spectrum.dt/self.global_time_multiplier), daemon=True).start()
+            self.audio_in.start_wav(self.audio_in_wav, self.spectrum.dt/self.global_time_multiplier)
         else:
-            threading.Thread(target = self.audio_in.start_live, args=(self.input_device_idx,), daemon=True).start()
+            self.audio_in.start_live(self.input_device_idx, self.spectrum.dt)
      
     def tlog(self, txt):
         print(f"{self.cyclestart_str(time.time())} {self.cycle_time():5.2f} {txt}")
@@ -320,7 +344,16 @@ class Cycle_manager():
 
     def cycle_time(self):
         return (time.time()*self.global_time_multiplier-self.global_time_offset) % self.cycle_seconds
-                
+
+    def analyse_hoptimes(self):
+        if not any(self.spectrum.hoptimes): return
+        diffs = np.ediff1d(self.spectrum.hoptimes)
+        if(self.verbose):
+            m = 1000*np.mean(diffs)
+            s = 1000*np.std(diffs)
+            pc = safe_pc(s, 1000/self.spectrum.sigspec.symbols_persec) 
+            self.tlog(f"\n[Cycle manager] Hop timings: mean = {m:.2f}ms, sd = {s:.2f}ms ({pc:5.1f}% symbol)")
+        
     def manage_cycle(self):
         cycle_searched = True
         cands_rollover_done = False
@@ -341,13 +374,19 @@ class Cycle_manager():
                 if(cycle_counter > self.max_cycles):
                     self.running = False
                     break
+                if(self.dump_main_grid):
+                    import pickle
+                    with open(self.cyclestart_str(time.time()-3)+"_dump.pkl","wb") as f:
+                        pickle.dump(self.spectrum.zgrid_main, f)
                 cycle_searched = False
                 cands_rollover_done = False
                 self.check_for_tx()
-                self.spectrum.pgrid_fine_ptr = 0
+                self.spectrum.grid_main_ptr = 0
+                self.analyse_hoptimes()
+                self.spectrum.hoptimes = []
                 if not self.audio_started: self.start_audio()
 
-            if (self.spectrum.pgrid_fine_ptr > self.spectrum.h_search and not cycle_searched):
+            if (self.spectrum.grid_main_ptr > self.spectrum.h_search and not cycle_searched):
 
                 cycle_searched = True
                 if(self.verbose): self.tlog(f"[Cycle manager] Search spectrum ...")
@@ -367,7 +406,7 @@ class Cycle_manager():
                     self.running = False
                 
             to_demap = [c for c in self.cands_list
-                            if (self.spectrum.pgrid_fine_ptr > c.last_payload_hop
+                            if (self.spectrum.grid_main_ptr > c.last_payload_hop
                             and not c.demap_started)]
             for c in to_demap:
                 c.demap(self.spectrum)
