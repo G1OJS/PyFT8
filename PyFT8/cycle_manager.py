@@ -137,12 +137,12 @@ class Candidate:
         def get_llr(h0_idx):
             hps, bpt = spectrum.hops_persymb, spectrum.fbins_pertone
             hops = np.array([h0_idx + hps* s for s in spectrum.sigspec.payload_symb_idxs])
-            p = np.log(spectrum.pgrid_fine[np.ix_(hops, self.freq_idxs)])
+            p = np.log10(spectrum.pgrid_fine[np.ix_(hops, self.freq_idxs)])
             llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
             llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
             llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
             llr = np.column_stack((llra, llrb, llrc))
-            snr = int(np.clip(10 * np.max(p) - 107, -24, 24))
+            snr = int(np.clip(10*np.max(p) - 107, -24, 24))
             llr = llr.ravel()
             s, llr_quality = np.std(llr), 0
             if (s > 0.1):

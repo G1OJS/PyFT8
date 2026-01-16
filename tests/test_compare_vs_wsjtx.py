@@ -5,9 +5,10 @@ import time
 from PyFT8.cycle_manager import Cycle_manager
 from PyFT8.sigspecs import FT8
 
-global wsjtx_dicts, pyft8_cands, cands_matched
+global wsjtx_dicts, pyft8_cands, matches, cands_matched
 wsjtx_dicts = []
 pyft8_cands = []
+matches = None
 cands_matched = None
 
 def wsjtx_all_tailer(all_file, cycle_manager):
@@ -25,7 +26,7 @@ def wsjtx_all_tailer(all_file, cycle_manager):
                 yield line.strip()
     for line in follow():
         ls = line.split()
-        decode_dict = False
+        decode_dict = False3
         try:
             cs, freq, dt, snr = ls[0], int(ls[6]), float(ls[5]), int(ls[4])
             msg = f"{ls[7]} {ls[8]} {ls[9]}"
@@ -50,7 +51,7 @@ def onCandidateRollover(candidates):
     threading.Thread(target = analyse_dictionaries).start()
 
 def analyse_dictionaries():
-    global cands_matched
+    global cands_matched, matches
     time.sleep(2)
 
     matches = [(w, c) for w in wsjtx_dicts for c in pyft8_cands if c.demap_completed
@@ -60,7 +61,8 @@ def analyse_dictionaries():
     for w, c in matches:
         key = (w['cs'], w['msg'])
         has_message = True if c.msg else False
-        score = (has_message, -abs(w['f'] - c.fHz))
+       # score = (has_message, -abs(w['f'] - c.fHz))
+        score = (has_message, c.sync_score)
         if key not in best or score > best[key][0]:
             best[key] = (score, w, c)
     matches = [(w, c) for (_, w, c) in best.values()]
@@ -88,6 +90,18 @@ def analyse_dictionaries():
 
     print(f"{len(unique)} unique decodes")
   #  print(signal_info)
+    
+
+def calibrate_snr():
+    import matplotlib.pyplot as plt
+    fix, ax = plt.subplots()
+    x,y = [],[]
+    for w, c in matches:
+#        x.append(np.max(c.pgrid))
+        x.append(c.snr)
+        y.append(float(w['snr']))
+    ax.plot(x,y)
+    plt.show()
 
 def initialise_outputs():
     with open('compare_wsjtx.csv', 'w') as f:
@@ -138,9 +152,13 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
         print("\nStopping")
         cycle_manager.running = False
 
-#compare("210703_133430", [100,3100])
+    time.sleep(5)
 
-compare(None, [100,3100])
+    calibrate_snr()
+
+compare("210703_133430", [100,3100])
+
+#compare(None, [100,3100])
 
 
     
