@@ -22,6 +22,7 @@ import time
 import wave
 import numpy as np
 import pyaudio
+import threading
 
 
 class AudioIn:
@@ -59,25 +60,33 @@ class AudioIn:
             self._callback(frames, None, None, None)
         wf.close()
 
-    def start_live(self, input_device_idx):
+    def start_live(self, input_device_idx, hop_dt):
         self._running = True
+        self.hop_dt = hop_dt
         self.stream = self._pa.open(
             format = pyaudio.paInt16, channels=1, rate = self.sample_rate,
             input = True, input_device_index = input_device_idx,
             frames_per_buffer = int(self.sample_rate // self.hop_rate), stream_callback=self._callback,)
         self.stream.start_stream()
+        threading.Thread(target = self.do_fft).start()
 
     def _callback(self, in_data, frame_count, time_info, status_flags):
         samples = np.frombuffer(in_data, dtype=np.int16).astype(np.float32)
         ns = len(samples)
         self.audio_buffer[:-ns] = self.audio_buffer[ns:]
         self.audio_buffer[-ns:] = samples
-        x = self.audio_buffer * self.fft_window
-        z = np.fft.rfft(x)
-        time.sleep(0.001)
-        self.on_fft(z, time.time())
         return (None, pyaudio.paContinue)
 
+    def do_fft(self):
+        next_hop_time = time.time()
+        while self._running:
+            next_hop_time += self.hop_dt
+            now = time.time()
+            if now < next_hop_time:
+                time.sleep(next_hop_time - now)
+            x = self.audio_buffer * self.fft_window
+            z = np.fft.rfft(x)
+            self.on_fft(z, time.time())
 
 class AudioOut:
 

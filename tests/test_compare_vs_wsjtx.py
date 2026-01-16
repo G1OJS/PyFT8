@@ -5,11 +5,12 @@ import time
 from PyFT8.cycle_manager import Cycle_manager
 from PyFT8.sigspecs import FT8
 
-global wsjtx_dicts, pyft8_cands, matches, cands_matched
+global wsjtx_dicts, pyft8_cands, matches, cands_matched, do_analysis
 wsjtx_dicts = []
 pyft8_cands = []
 matches = None
 cands_matched = None
+do_analysis = False
 
 def wsjtx_all_tailer(all_file, cycle_manager):
     global wsjtx_dicts
@@ -26,7 +27,7 @@ def wsjtx_all_tailer(all_file, cycle_manager):
                 yield line.strip()
     for line in follow():
         ls = line.split()
-        decode_dict = False3
+        decode_dict = False
         try:
             cs, freq, dt, snr = ls[0], int(ls[6]), float(ls[5]), int(ls[4])
             msg = f"{ls[7]} {ls[8]} {ls[9]}"
@@ -45,10 +46,9 @@ def pc_str(x,y):
     return "{}" if y == 0 else f"{int(100*x/y)}%"
 
 def onCandidateRollover(candidates):
-    
-    global pyft8_cands
+    global pyft8_cands, do_analysis
     pyft8_cands = candidates.copy()
-    threading.Thread(target = analyse_dictionaries).start()
+    do_analysis = True
 
 def analyse_dictionaries():
     global cands_matched, matches
@@ -131,6 +131,7 @@ def show_matched_cands(dBrange = 30):
 
             
 def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X/ALL.txt"):
+    global do_analysis
 
     initialise_outputs()
     
@@ -148,6 +149,10 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
     try:
         while cycle_manager.running:
             time.sleep(1)
+            if(do_analysis):
+                do_analysis = False
+                analyse_dictionaries()
+                
     except KeyboardInterrupt:
         print("\nStopping")
         cycle_manager.running = False
@@ -156,9 +161,9 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
 
     calibrate_snr()
 
-compare("210703_133430", [100,3100])
+#compare("210703_133430", [100,3100])
 
-#compare(None, [100,3100])
+compare(None, [100,3100])
 
 
     
