@@ -133,7 +133,6 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
         
     try:
         while cycle_manager.running:
-           # update_charts()
             time.sleep(1)
     except KeyboardInterrupt:
         print("\nStopping")

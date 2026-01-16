@@ -89,14 +89,14 @@ class Spectrum:
             c = Candidate()
             syncs = []
             for iBlock in [0,1]:
-                best = (0, f0_idx, -1e30)
+                best = (0, f0_idx, -1e30, 0)
                 for h0_idx in range(block_off * iBlock, block_off * iBlock + self.hop_start_lattitude):
                     sync_score = float(np.dot(pnorm[h0_idx + self.hop_idxs_Costas ,  :].ravel(), self.csync_flat))
                     test = (h0_idx - block_off * iBlock, f0_idx, sync_score)
                     if test[2] > best[2]:
-                        best = test 
+                        best = test
                 syncs.append(best)
-            c.record_possible_syncs(self, syncs)
+            c.record_sync(self, syncs)
             c.cyclestart_str = cyclestart_str            
             cands.append(c)
         return cands
@@ -107,6 +107,7 @@ class Candidate:
         self.dedupe_key = ""
         self.demap_started, self.demap_completed = None, None
         self.decode_completed = None
+        self.decode_verified = False
         self.ncheck = None
         self.ncheck0 = None
         self.llr = None
@@ -118,31 +119,29 @@ class Candidate:
         self.snr = -999
         self.edges6, self.edges7 = None, None
 
-    def record_possible_syncs(self, spectrum, syncs):
+    def record_sync(self, spectrum, syncs):
         hps, bpt = spectrum.hops_persymb, spectrum.fbins_pertone
-        self.syncs = syncs
         self.f0_idx = syncs[0][1]
         self.freq_idxs = [self.f0_idx + bpt // 2 + bpt * t for t in range(spectrum.sigspec.tones_persymb)]
         self.fHz = int((self.f0_idx + bpt // 2) * spectrum.df)
-        self.last_payload_hop = np.max([syncs[0][0], syncs[1][0]]) + hps * spectrum.sigspec.payload_symb_idxs[-1]
-
-    def record_chosen_sync(self, spectrum, sync_idx):
-        self.h0_idx = self.syncs[sync_idx][0]
-        self.sync_score = self.syncs[sync_idx][2]
-        self.dt = self.h0_idx * spectrum.dt-0.7
+        h0a, h0b = syncs[0][0], syncs[1][0]
+        if(h0b == h0a): h0b +=1
+        self.payload_hop_idxs_0  = [h0a + hps* s for s in spectrum.sigspec.payload_symb_idxs]   
+        self.payload_hop_idxs_1  = [h0b + hps* s for s in spectrum.sigspec.payload_symb_idxs]
+        self.last_payload_hop = np.max([self.payload_hop_idxs_0[-1],self.payload_hop_idxs_1[-1]])
+        self.dt = syncs[0][0] * spectrum.dt-0.7
         
     def demap(self, spectrum):
         self.demap_started = time.time()
         
-        def get_llr(h0_idx):
-            hps, bpt = spectrum.hops_persymb, spectrum.fbins_pertone
-            hops = np.array([h0_idx + hps* s for s in spectrum.sigspec.payload_symb_idxs])
-            p = np.log(spectrum.pgrid_fine[np.ix_(hops, self.freq_idxs)])
-            llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
-            llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
-            llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
+        def get_llr(hop_idxs):
+            hops = np.array(hop_idxs)
+            p = spectrum.pgrid_fine[np.ix_(hops, self.freq_idxs)]
+            llra = np.log(np.max(p[:, [4,5,6,7]], axis=1)) - np.log(np.max(p[:, [0,1,2,3]], axis=1))
+            llrb = np.log(np.max(p[:, [2,3,4,7]], axis=1)) - np.log(np.max(p[:, [0,1,5,6]], axis=1))
+            llrc = np.log(np.max(p[:, [1,2,6,7]], axis=1)) - np.log(np.max(p[:, [0,3,4,5]], axis=1))
             llr = np.column_stack((llra, llrb, llrc))
-            snr = int(np.clip(10 * np.max(p) - 107, -24, 24))
+            snr = int(np.clip(10 * np.log10(np.max(p)) - 107, -24, 24))
             llr = llr.ravel()
             s, llr_quality = np.std(llr), 0
             if (s > 0.1):
@@ -150,12 +149,10 @@ class Candidate:
                 llr = np.clip(llr, -LLR_GEN['clip'], LLR_GEN['clip'])
                 llr_quality = np.sum(np.sign(llr) * llr)
             return (llr, llr_quality, p, snr)
-
-        demap0 = get_llr(self.syncs[0][0])
-        demap1 = get_llr(self.syncs[1][0])
-        sync_idx =  0 if demap0[1] > demap1[1] else 1
-        self.record_chosen_sync(spectrum, sync_idx)
-        demap = [demap0, demap1][sync_idx]
+            
+        demap1 = get_llr(np.array(self.payload_hop_idxs_0))
+        demap2 = get_llr(np.array(self.payload_hop_idxs_1))
+        demap = demap1 if demap1[1] > demap2[1] else demap2
         
         self.llr0, self.llr0_quality, self.pgrid, self.snr = demap
         self.ncheck0 = self.calc_ncheck(self.llr0)
