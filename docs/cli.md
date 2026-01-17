@@ -30,20 +30,7 @@ CQ G1OJS IO90
 PyFT8 will wait for the *next* cycle boundary, and the file will be deleted during the transmit cycle. If you want to transmit via a transceiver,
 you will have to organise your own method of controlling the PTT (e.g. [DATA]VOX, or sending your own CAT commands).
 
-## Approach
-You won't find many comments in the code; I try to make things as obvious as possible via variable names and logical structure, to 
-minimise the *need for* comments. Also - this is mainly my plaything, and I find bloated, sprawling code incredibly difficult to 
-read, so I like to keep things very compact so that I can see the bigger picture. If you find an if-then-else spanning several
-paragraphs, it's probably a mistake.
 
-Do feel free to get in touch and ask how anything works. I might add some diagrams etc at some point too - especially
-if I find an approach that seems to offer something improved and/or very compact (I'm very pleased for e.g. that the entire candidate
-search, synch, and demodulate process all works by refering to a single time-frequency grid; read the audio, FFT 5 times for each 
-symbol duration, store it, and that's used for everything that follows.)
-
-## Limitations
-In pursuit of tight code, I've concentrated on core standard messages, leaving out some of the less-used features. The receive part of the
-code doesn't (yet) have the full capability of the advanced decoders used in WSJT-x, and so gets only about 50% of the decodes that WSJT-x gets.
 ### Here's my current understanding of the differences:
 
 |Step|PyFT8|WSJT-X|
