@@ -151,19 +151,19 @@ class Candidate:
         if(final):
             self.decode_completed = time.time()
         
-    def _invoke_actor(self):
+    def _invoke_actor(self, nc_thresh_bitflip = 28, nc_max_ldpc = 35, iters_max_ldpc = 7, osd_qual_range = [400,470]):
         counter = 0
-        if self.ncheck > 28 and not self.counters[counter] > 0:  
+        if self.ncheck > nc_thresh_bitflip and not self.counters[counter] > 0:  
             self.llr, self.ncheck = flip_bits(self.llr, self.ncheck, width = 50, nbits=1, keep_best = True)
             self.counters[counter] += 1
             return "A"
         counter = 1
-        if 35 > self.ncheck > 0 and not self.counters[counter] > 7:  
+        if nc_max_ldpc > self.ncheck > 0 and not self.counters[counter] > iters_max_ldpc:  
             self.llr, self.ncheck = self.ldpc.do_ldpc_iteration(self.llr)
             self.counters[counter] += 1
             return "L"
         counter = 2
-        if(400 < self.llr0_quality < 470 and not self.counters[counter] > 0):
+        if(osd_qual_range[0] < self.llr0_quality < osd_qual_range[1] and not self.counters[counter] > 0):
             reliab_order = np.argsort(np.abs(self.llr))[::-1]
             codeword_bits = osd_decode_minimal(self.llr0, reliab_order, G, Ls = [30,8,3])
             self.llr = np.array([1 if(b==1) else -1 for b in codeword_bits])
