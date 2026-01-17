@@ -3,6 +3,7 @@ from collections import Counter
 import numpy as np
 import time
 from .audio import find_device, AudioIn
+from PyFT8.demapper import get_llr
 from .FT8_unpack import FT8_unpack
 from PyFT8.FT8_crc import check_crc_codeword_list
 from PyFT8.ldpc import LdpcDecoder
@@ -13,11 +14,6 @@ import queue
 import wave
 import os
 
-
-eps = 1e-12
-LLR_GEN =   {'abs_min':405, 'final_sd':3.3, 'clip':3.7}
-
-         
 generator_matrix_rows = ["8329ce11bf31eaf509f27fc",  "761c264e25c259335493132",  "dc265902fb277c6410a1bdc",  "1b3f417858cd2dd33ec7f62",  "09fda4fee04195fd034783a",  "077cccc11b8873ed5c3d48a",  "29b62afe3ca036f4fe1a9da",  "6054faf5f35d96d3b0c8c3e",  "e20798e4310eed27884ae90",  "775c9c08e80e26ddae56318",  "b0b811028c2bf997213487c",  "18a0c9231fc60adf5c5ea32",  "76471e8302a0721e01b12b8",  "ffbccb80ca8341fafb47b2e",  "66a72a158f9325a2bf67170",  "c4243689fe85b1c51363a18",  "0dff739414d1a1b34b1c270",  "15b48830636c8b99894972e",  "29a89c0d3de81d665489b0e",  "4f126f37fa51cbe61bd6b94",  "99c47239d0d97d3c84e0940",  "1919b75119765621bb4f1e8",  "09db12d731faee0b86df6b8",  "488fc33df43fbdeea4eafb4",  "827423ee40b675f756eb5fe",  "abe197c484cb74757144a9a",  "2b500e4bc0ec5a6d2bdbdd0",  "c474aa53d70218761669360",  "8eba1a13db3390bd6718cec",  "753844673a27782cc42012e",  "06ff83a145c37035a5c1268",  "3b37417858cc2dd33ec3f62",  "9a4a5a28ee17ca9c324842c",  "bc29f465309c977e89610a4",  "2663ae6ddf8b5ce2bb29488",  "46f231efe457034c1814418",  "3fb2ce85abe9b0c72e06fbe",  "de87481f282c153971a0a2e",  "fcd7ccf23c69fa99bba1412",  "f0261447e9490ca8e474cec",  "4410115818196f95cdd7012",  "088fc31df4bfbde2a4eafb4",  "b8fef1b6307729fb0a078c0",  "5afea7acccb77bbc9d99a90",  "49a7016ac653f65ecdc9076",  "1944d085be4e7da8d6cc7d0",  "251f62adc4032f0ee714002",  "56471f8702a0721e00b12b8",  "2b8e4923f2dd51e2d537fa0",  "6b550a40a66f4755de95c26",  "a18ad28d4e27fe92a4f6c84",  "10c2e586388cb82a3d80758",  "ef34a41817ee02133db2eb0",  "7e9c0c54325a9c15836e000",  "3693e572d1fde4cdf079e86",  "bfb2cec5abe1b0c72e07fbe",  "7ee18230c583cccc57d4b08",  "a066cb2fedafc9f52664126",  "bb23725abc47cc5f4cc4cd2",  "ded9dba3bee40c59b5609b4",  "d9a7016ac653e6decdc9036",  "9ad46aed5f707f280ab5fc4",  "e5921c77822587316d7d3c2",  "4f14da8242a8b86dca73352",  "8b8b507ad467d4441df770e",  "22831c9cf1169467ad04b68",  "213b838fe2ae54c38ee7180",  "5d926b6dd71f085181a4e12",  "66ab79d4b29ee6e69509e56",  "958148682d748a38dd68baa",  "b8ce020cf069c32a723ab14",  "f4331d6d461607e95752746",  "6da23ba424b9596133cf9c8",  "a636bcbc7b30c5fbeae67fe",  "5cb0d86a07df654a9089a20",  "f11f106848780fc9ecdd80a",  "1fbb5364fb8d2c9d730d5ba",  "fcb86bc70a50c9d02a5d034",  "a534433029eac15f322e34c",  "c989d9c7c3d3b8c55d75130",  "7bb38b2f0186d46643ae962",  "2644ebadeb44b9467d1f42c",  "608cc857594bfbb55d69600"]
 kGEN = np.array([int(row,16)>>1 for row in generator_matrix_rows])
 A = np.zeros((83, 91), dtype=np.uint8)
@@ -28,13 +24,6 @@ G = np.concatenate([np.eye(91, dtype=np.uint8), A.T],axis=1)
     
 def safe_pc(x,y):
     return 100*x/y if y>0 else 0
-
-def bitsLE_to_int(bits):
-    """bits is MSB-first."""
-    n = 0
-    for b in bits:
-        n = (n << 1) | (b & 1)
-    return n
 
 class Spectrum:
     def __init__(self, sigspec, sample_rate, max_freq, hops_persymb, fbins_pertone):
@@ -114,60 +103,55 @@ class Candidate:
         self.freq_idxs = [self.f0_idx + bpt // 2 + bpt * t for t in range(spectrum.sigspec.tones_persymb)]
         self.fHz = int((self.f0_idx + bpt // 2) * spectrum.df)
         self.last_payload_hop = np.max([syncs[0][0], syncs[1][0]]) + hps * spectrum.sigspec.payload_symb_idxs[-1]
-
-    def record_chosen_sync(self, spectrum, sync_idx):
+        
+    def demap(self, spectrum, min_qual = 400):
+        self.demap_started = time.time()
+        
+        h0, h1 = self.syncs[0][0], self.syncs[1][0]
+        if(h0 == h1): h1 = h0 +1
+        demap0 = get_llr(spectrum.audio_in.pgrid_main, h0, spectrum.hops_persymb, self.freq_idxs, spectrum.sigspec.payload_symb_idxs)
+        demap1 = get_llr(spectrum.audio_in.pgrid_main, h1, spectrum.hops_persymb, self.freq_idxs, spectrum.sigspec.payload_symb_idxs)
+        sync_idx =  0 if demap0[1] > demap1[1] else 1
+        
         self.h0_idx = self.syncs[sync_idx][0]
         self.sync_score = self.syncs[sync_idx][2]
         self.dt = self.h0_idx * spectrum.dt-0.7
         
-    def demap(self, spectrum):
-        self.demap_started = time.time()
-        
-        def get_llr(h0_idx):
-            hps, bpt = spectrum.hops_persymb, spectrum.fbins_pertone
-            hops = np.array([h0_idx + hps* s for s in spectrum.sigspec.payload_symb_idxs])
-            praw = spectrum.audio_in.pgrid_main[np.ix_(hops, self.freq_idxs)]
-            pclip = np.clip(praw, np.max(praw)/1e8, None)
-            p = np.log10(pclip)
-            llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
-            llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
-            llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
-            llr = np.column_stack((llra, llrb, llrc))
-            snr = int(np.clip(10*np.max(p) - 107, -24, 24))
-            llr = llr.ravel()
-            s, llr_quality = np.std(llr), 0
-            if (s > 0.1):
-                llr = LLR_GEN['final_sd'] * llr / s 
-                llr = np.clip(llr, -LLR_GEN['clip'], LLR_GEN['clip'])
-                llr_quality = np.sum(np.sign(llr) * llr)
-            return (llr, llr_quality, p, snr)
-
-        h0, h1 = self.syncs[0][0], self.syncs[1][0]
-        if(h0 == h1): h1 = h0 +1
-        demap0 = get_llr(h0)
-        demap1 = get_llr(h1)
-        sync_idx =  0 if demap0[1] > demap1[1] else 1
-        self.record_chosen_sync(spectrum, sync_idx)
-        demap = [demap0, demap1][sync_idx]
-        
-        self.llr0, self.llr0_quality, self.pgrid, self.snr = demap
+        self.llr0, self.llr0_quality, self.pgrid, self.snr = [demap0, demap1][sync_idx]
         self.ncheck0 = self.ldpc.calc_ncheck(self.llr0)
         self.llr = self.llr0.copy()
         self.ncheck = self.ncheck0
 
-        quality_too_low = (self.llr0_quality < LLR_GEN['abs_min'])
-        self.record_state(f"I", self.ncheck, final = quality_too_low)
+        quality_too_low = (self.llr0_quality < min_qual)
+        self._record_state(f"I", self.ncheck, final = quality_too_low)
         
         self.demap_completed = time.time()
 
-    def record_state(self, actor_code, ncheck, final = False):
+    def progress_decode(self):
+        final = False
+        if(self.ncheck > 0):
+            actor = self._invoke_actor()
+            self.invoked_actors.add(actor)
+            stalled = (actor == "_")
+            self._record_state(actor, self.ncheck, final = stalled)
+        if(self.ncheck == 0 or final):
+            codeword_bits = (self.llr > 0).astype(int).tolist()
+            if check_crc_codeword_list(codeword_bits):
+                self.payload_bits = codeword_bits[:77]
+                self.msg = FT8_unpack(self.payload_bits)
+            if self.msg:
+                self._record_state("C", 0, final = True)
+            else:
+                self._record_state("X", 0, final = True)
+
+    def _record_state(self, actor_code, ncheck, final = False):
         self.ncheck = ncheck
         finalcode = "#" if final else ";"
         self.decode_path = self.decode_path + f"{actor_code}{ncheck:02d}{finalcode}"
         if(final):
             self.decode_completed = time.time()
         
-    def invoke_actor(self):
+    def _invoke_actor(self):
         counter = 0
         if self.ncheck > 28 and not self.counters[counter] > 0:  
             self.llr, self.ncheck = flip_bits(self.llr, self.ncheck, width = 50, nbits=1, keep_best = True)
@@ -190,24 +174,7 @@ class Candidate:
             return "O"
         return "_"
 
-    def progress_decode(self):
-        final = False
-        
-        if(self.ncheck > 0):
-            actor = self.invoke_actor()
-            self.invoked_actors.add(actor)
-            stalled = (actor == "_")
-            self.record_state(actor, self.ncheck, final = stalled)
-
-        if(self.ncheck == 0 or final):
-            codeword_bits = (self.llr > 0).astype(int).tolist()
-            if check_crc_codeword_list(codeword_bits):
-                self.payload_bits = codeword_bits[:77]
-                self.msg = FT8_unpack(self.payload_bits)
-            if self.msg:
-                self.record_state("C", 0, final = True)
-            else:
-                self.record_state("X", 0, final = True)
+                
                 
 class Cycle_manager():
     def __init__(self, sigspec, onSuccess, onOccupancy, audio_in_wav = None, test_speed_factor = 1.0, 
