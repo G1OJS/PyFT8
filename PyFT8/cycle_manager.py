@@ -1,5 +1,4 @@
 import threading
-import itertools
 from collections import Counter
 import numpy as np
 import time
@@ -7,6 +6,7 @@ from .audio import find_device, AudioIn
 from .FT8_unpack import FT8_unpack
 from PyFT8.FT8_crc import check_crc_codeword_list
 from PyFT8.ldpc import LdpcDecoder
+from PyFT8.bitflipper import flip_bits
 from PyFT8.osd import osd_decode_minimal
 import pyaudio
 import queue
@@ -149,17 +149,6 @@ class Candidate:
         sync_idx =  0 if demap0[1] > demap1[1] else 1
         self.record_chosen_sync(spectrum, sync_idx)
         demap = [demap0, demap1][sync_idx]
-
-        """
-        code for frequency drift when implemented above
-        sync_idx = 0 if self.syncs[0][2] > self.syncs[1][2] else 1
-        self.record_chosen_sync(spectrum, sync_idx)
-        demaps = []
-        for drift in [-1,0,1]:
-            demaps.append( get_llr(self.syncs[sync_idx][0], drift = drift) )
-        demap_idx = np.argmax([demaps[0][1],demaps[1][1],demaps[2][1]])
-        demap = demaps[demap_idx]
-        """
         
         self.llr0, self.llr0_quality, self.pgrid, self.snr = demap
         self.ncheck0 = self.ldpc.calc_ncheck(self.llr0)
@@ -177,59 +166,28 @@ class Candidate:
         self.decode_path = self.decode_path + f"{actor_code}{ncheck:02d}{finalcode}"
         if(final):
             self.decode_completed = time.time()
-
-    def flip_bits(self, width, nbits, keep_best = False):
-#        bad6 = CHECK_VARS_6[self.parity6.astype(bool)] 
-#        bad7 = CHECK_VARS_7[self.parity7.astype(bool)] 
-#        bad_vars = np.concatenate([bad6.ravel(), bad7.ravel()])
-#        counts = np.bincount(bad_vars, minlength=len(self.llr))
-#        cands = np.argsort(counts)[::-1]
-        cands = np.argsort(np.abs(self.llr))
-        idxs = cands[:nbits]
-        
-        best = {'llr':self.llr.copy(), 'nc':self.ncheck}
-        for k in range(1, width + 1):
-            for comb in itertools.combinations(range(len(idxs)), k):
-                self.llr[idxs[list(comb)]] *= -1
-                n = self.ldpc.calc_ncheck(self.llr)
-                if n < best['nc']:
-                    best = {'llr':self.llr.copy(), 'nc':n}
-                    if n == 0:
-                        break
-                if n >= best['nc'] or not keep_best:
-                    self.llr[idxs[list(comb)]] *= -1
-        self.llr   = best['llr']
-        self.ncheck = best['nc']
         
     def invoke_actor(self):
-
         counter = 0
         if self.ncheck > 28 and not self.counters[counter] > 0:  
-            self.flip_bits(width = 50, nbits=1, keep_best = True)
+            self.llr, self.ncheck = flip_bits(self.llr, self.ncheck, width = 50, nbits=1, keep_best = True)
             self.counters[counter] += 1
             return "A"
-
         counter = 1
         if 35 > self.ncheck > 0 and not self.counters[counter] > 7:  
-            self.llr = self.ldpc.do_ldpc_iteration(self.llr)
-            self.ncheck = self.ldpc.calc_ncheck(self.llr)
+            self.llr, self.ncheck = self.ldpc.do_ldpc_iteration(self.llr)
             self.counters[counter] += 1
             return "L"
-
         counter = 2
         if(400 < self.llr0_quality < 470 and not self.counters[counter] > 0):
-            entry_state = (self.llr, self.ncheck)
             reliab_order = np.argsort(np.abs(self.llr))[::-1]
             codeword_bits = osd_decode_minimal(self.llr0, reliab_order, G, Ls = [30,8,3])
             self.llr = np.array([1 if(b==1) else -1 for b in codeword_bits])
             codeword_bits = (self.llr > 0).astype(int).tolist()
             if check_crc_codeword_list(codeword_bits):
                 self.ncheck = 0
-            else:
-                self.llr, self.ncheck = entry_state
             self.counters[counter] += 1
             return "O"
-
         return "_"
 
     def progress_decode(self):

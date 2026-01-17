@@ -30,4 +30,4 @@ class LdpcDecoder:
         self.mC2V_prev6 = self._pass_messages(llr, self.CV6idx, self.mC2V_prev6, update_collector)
         self.mC2V_prev7 = self._pass_messages(llr, self.CV7idx, self.mC2V_prev7, update_collector)
         llr += update_collector
-        return llr
+        return llr, self.calc_ncheck(llr)
