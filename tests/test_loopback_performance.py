@@ -1,4 +1,6 @@
 import numpy as np
+from PyFT8.cycle_manager import Cycle_manager, Candidate
+from PyFT8.sigspecs import FT8
 from PyFT8.ldpc import LdpcDecoder
 from PyFT8.FT8_encoder import encode_bits77
 from PyFT8.FT8_crc import bitsLE_to_int
@@ -9,16 +11,20 @@ num_symbols = 79
 tones_persymb = 8
 payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
 costas=[3,1,4,0,6,5,2]
-    
-class Candidate:
-    def __init__(self, t0_idx, dt, f0_idx, df):
-        self.t0_idx = t0_idx
-        self.f0_idx = f0_idx
-        self.origin = (t0_idx, f0_idx, dt*t0_idx, df * (f0_idx + 1))
-        self.size = (79*3, 8*3)
-        self.n_its = 0
-        self.ldpc = LdpcDecoder()
 
+
+def onDecode(c):
+    pass
+cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, verbose = False)
+cycle_manager.running = False
+
+hops_percycle = cycle_manager.spectrum.audio_in.hops_percycle
+samps_perhop = int(cycle_manager.spectrum.audio_in.sample_rate // cycle_manager.spectrum.audio_in.hop_rate)
+fft_len = cycle_manager.spectrum.audio_in.fft_len
+nFreqs = cycle_manager.spectrum.audio_in.nFreqs
+df = cycle_manager.spectrum.df
+dt = cycle_manager.spectrum.dt
+    
 def create_ft8_wave(symbols, fs=12000, f_base=873.0, f_step=6.25, amplitude = 0.5, added_noise = -50):
     symbol_len = int(fs * 0.160)
     t = np.arange(symbol_len) / fs
@@ -41,10 +47,9 @@ def create_ft8_wave(symbols, fs=12000, f_base=873.0, f_step=6.25, amplitude = 0.
         waveform_noisy = waveform + noise
     return waveform_noisy
 
-
-def single_loopback(snr=20, max_its = 10):
+def single_loopback(snr=20):
     f_base = 1000
-    
+
    # input_int = int(2**77 * np.random.rand())
     input_int = 133398380429840941814865
     symbols, _, _, _, _ = encode_bits77(input_int)
@@ -53,58 +58,40 @@ def single_loopback(snr=20, max_its = 10):
     symbols_framed.extend([-10]*7)
     audio_data = create_ft8_wave(symbols_framed, f_base = f_base, amplitude = 0.1, added_noise = -snr)
 
-    dt = 0.16/3
-    symbs_persec = 1/0.16
-    sample_rate = 12000
-    max_freq = 3000
-    FFT_len = int(3 * 12000 // symbs_persec)
-    FFT_out_len = int(FFT_len/2) + 1
-    fmax_fft = sample_rate/2
-    nFreqs = int(FFT_out_len * max_freq / fmax_fft)
-    samps_perhop = int(12000 / (3*symbs_persec))
-    fft_window = np.kaiser(FFT_len, 20)
-    df = max_freq / (nFreqs)
-
-    hops_percycle = 270
-    fine_grid_complex = np.zeros((hops_percycle, nFreqs), dtype = np.complex64)
+    fine_grid_complex = cycle_manager.spectrum.audio_in.zgrid_main
     for hop in range(hops_percycle):
         samp0 = hop*samps_perhop
-        audio_for_fft = audio_data[samp0:samp0 + FFT_len]
-        audio_for_fft = audio_for_fft * fft_window
-        fine_grid_complex[hop,:] = np.fft.rfft(audio_for_fft)[:nFreqs]
+        audio_for_fft = audio_data[samp0:samp0 + fft_len]
+        if(len(audio_for_fft) == fft_len):
+            audio_for_fft = audio_for_fft * np.kaiser(fft_len,20)
+            fine_grid_complex[hop,:nFreqs] = np.fft.rfft(audio_for_fft)[:nFreqs]
+    cycle_manager.spectrum.audio_in.pgrid_main = np.abs(cycle_manager.spectrum.audio_in.zgrid_main)**2
+    
+  #  import matplotlib.pyplot as plt
+  #  fig, ax = plt.subplots()
+  #  ax.imshow(cycle_manager.spectrum.audio_in.pgrid_main)
+  #  plt.show()
 
     t0_idx=18
     f0_idx=int(f_base/df)
-    c = Candidate(t0_idx, dt,  f0_idx, df)
-    c.synced_grid_complex = fine_grid_complex[c.origin[0]:c.origin[0]+c.size[0], c.origin[1]:c.origin[1]+c.size[1]]
-    synced_grid_complex = c.synced_grid_complex.reshape(num_symbols, 3, tones_persymb, 3)
-    synced_grid_pwr = np.abs(synced_grid_complex[:,0,:,1])**2
-    p = synced_grid_pwr[payload_symb_idxs] 
-    llr0 = np.log(np.max(p[:,[4,5,6,7]], axis=1)) - np.log(np.max(p[:,[0,1,2,3]], axis=1))
-    llr1 = np.log(np.max(p[:,[2,3,4,7]], axis=1)) - np.log(np.max(p[:,[0,1,5,6]], axis=1))
-    llr2 = np.log(np.max(p[:,[1,2,6,7]], axis=1)) - np.log(np.max(p[:,[0,3,4,5]], axis=1))
-    c.llr = np.column_stack((llr0, llr1, llr2)).ravel()
-    c.llr_sd = np.std(c.llr)
-    c.llr = np.clip(3.5 * c.llr / c.llr_sd, -3.7, 3.7)
-    c.llr = np.asarray(c.llr, dtype=np.float32)
-    c.llr0 = c.llr.copy()
+    c = Candidate()
+    syncs = [(t0_idx, f0_idx, 3), (t0_idx+1, f0_idx, 3)]
+    c.record_possible_syncs(cycle_manager.spectrum, syncs)
+    c.demap(cycle_manager.spectrum)
     
-    t0 = time.time()
-    for n_its in range(max_its):
-        c.llr, c.ncheck = c.ldpc.do_ldpc_iteration(c.llr)
-        if(n_its == 0): ncheck_initial = c.ncheck
-        success = (c.ncheck == 0)
-        if(success): break
-    t_ldpc = time.time() - t0
+    for its in range(20):
+        c.progress_decode()
+        if("#" in c.decode_path):
+            break
 
     output_bits = (c.llr > 0).astype(int).tolist()[:77]
     output_int = bitsLE_to_int(output_bits)
     success = output_int == input_int
-    results = {'snr':snr, 'success': success, 'llr_sd':c.llr_sd, 'sumabs_llr':np.sum(np.abs(c.llr0)), 'ncheck0':ncheck_initial, 'n_its':n_its,'t_ldpc':t_ldpc}
+    results = {'snr':snr, 'success': success, 'llr_sd':c.llr0_sd, 'sumabs_llr':np.sum(np.abs(c.llr0)), 'ncheck0':c.ncheck0, 'n_its':c.counters[1]}
     
     return results
 
-def test_vs_snr(snrs, max_its = 20, load_last = False):
+def test_vs_snr(snrs, load_last = False):
     import matplotlib.pyplot as plt
     import pickle
     if(load_last):
@@ -113,7 +100,7 @@ def test_vs_snr(snrs, max_its = 20, load_last = False):
     else:    
         successes, failures = [],[]
         for i, snr in enumerate(snrs):
-            results = single_loopback(snr = snr, max_its = max_its)
+            results = single_loopback(snr = snr)
             if(results['success']):
                 successes.append(results)
             else:
@@ -164,8 +151,7 @@ def test_vs_snr(snrs, max_its = 20, load_last = False):
     plt.tight_layout()
     plt.show()
 
-
-snrs = -26 + 10 * np.random.random(500)
+snrs = -26 + 10 * np.random.random(1000)
 test_vs_snr(snrs)
 #test_vs_snr(snrs, load_last = True)
 

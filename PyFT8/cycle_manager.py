@@ -111,13 +111,14 @@ class Candidate:
         if(h0 == h1): h1 = h0 +1
         demap0 = get_llr(spectrum.audio_in.pgrid_main, h0, spectrum.hops_persymb, self.freq_idxs, spectrum.sigspec.payload_symb_idxs)
         demap1 = get_llr(spectrum.audio_in.pgrid_main, h1, spectrum.hops_persymb, self.freq_idxs, spectrum.sigspec.payload_symb_idxs)
-        sync_idx =  0 if demap0[1] > demap1[1] else 1
+        sync_idx =  0 if demap0[2] > demap1[2] else 1
         
         self.h0_idx = self.syncs[sync_idx][0]
         self.sync_score = self.syncs[sync_idx][2]
         self.dt = self.h0_idx * spectrum.dt-0.7
-        
-        self.llr0, self.llr0_quality, self.pgrid, self.snr = [demap0, demap1][sync_idx]
+
+        demap = [demap0, demap1][sync_idx]
+        self.llr0, self.llr0_sd, self.llr0_quality, self.pgrid, self.snr = demap
         self.ncheck0 = self.ldpc.calc_ncheck(self.llr0)
         self.llr = self.llr0.copy()
         self.ncheck = self.ncheck0
