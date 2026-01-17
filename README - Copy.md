@@ -27,14 +27,22 @@ by about 2 orders of magnitude since I first hand-translated some FORTRAN into P
 
 
 ## Installation
-This repository is usually a little ahead of the releases I send to PyPI, but you can pip install it from there and just use the CLI if you want to
+This repository is usually a little ahead of the releases I send to PyPI, but you can pip install it from there and just use the Command Line Interface if you want to.
+
+<img width="981" height="511" alt="cmd" src="https://github.com/user-attachments/assets/a3df103a-0a43-4da6-a3b1-8825012f07b0" />
+
+
+Install using:
 ```
 pip install PyFT8
 ```
+
+And to run, use the following (more info [here](https://github.com/G1OJS/PyFT8/blob/main/docs/cli.md))
 ```
 PyFT8_cli "Keyword1, Keyword2" [-c][-v]
-(where keywords identify the sound device - partial match is fine - and -c = concise, -v = verbose)
 ```
+<sub> * where keywords identify the sound device - partial match is fine - and -c = concise, -v = verbose</sub>
+
 Otherwise, please download or browse the code, or fork the repo and play with it! If you do fork it, please check back here as I'm constantly (as of Jan 2026) rewriting and improving.
 
 ## Limitations
