@@ -11,8 +11,8 @@ This started out as me thinking "How hard can it be, really?" after some frustra
 My current aim is to push the low SNR performance whilst using only one time/frequency grid and no time-domain processing. 
 
 Code I'd like to highlight, all in 100% Python:
-* LDPC using just three 5~8 line functions and running 250 us per iteration on a Dell Optiplex
-* Ordered Statistics Decoding in about 60 lines of code & similarly fast (not measured yet)
+* [LDPC using just three 5~8 line functions](https://github.com/G1OJS/PyFT8/blob/main/PyFT8/ldpc.py) and running 250 us per iteration on a Dell Optiplex
+* [Ordered Statistics Decoding](https://github.com/G1OJS/PyFT8/blob/main/PyFT8/osd.py) in about 60 lines of code & similarly fast (not measured yet)
 
 ## Uses
 I use this code for my own hobby-level reseearch into FT8 decoding and Python coding techniques, and I'm also building a browser-GUI station controller (image below) which has an FT8 transceiver integrated within it. You can see that [here](https://github.com/G1OJS/station-gui) but note that it's focussed on my station, i.e. ICOM-IC-7100 with an Arduino controlling antenna switching and magloop tuning.
