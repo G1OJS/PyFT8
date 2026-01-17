@@ -163,9 +163,9 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
 
     
     
-#compare("210703_133430", [100,3100])
+compare("210703_133430", [100,3100])
 
-compare(None, [100,3100])
+#compare(None, [100,3100])
 
 
     
