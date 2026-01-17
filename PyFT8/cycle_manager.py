@@ -166,9 +166,8 @@ class Candidate:
         if(osd_qual_range[0] < self.llr0_quality < osd_qual_range[1] and not self.counters[counter] > 0):
             reliab_order = np.argsort(np.abs(self.llr))[::-1]
             codeword_bits = osd_decode_minimal(self.llr0, reliab_order, G, Ls = [50,20,3])
-            self.llr = np.array([1 if(b==1) else -1 for b in codeword_bits])
-            codeword_bits = (self.llr > 0).astype(int).tolist()
             if check_crc_codeword_list(codeword_bits):
+                self.llr = np.array([1 if(b==1) else -1 for b in codeword_bits])
                 self.ncheck = 0
             self.counters[counter] += 1
             return "O"
