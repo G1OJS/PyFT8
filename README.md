@@ -27,7 +27,7 @@ I use this code for my own hobby-level reseearch into FT8 decoding and Python co
 
 
 ## Installation
-This repository is usually a little ahead of the releases I send to PyPI, but you can pip install it from there and just use the Command Line Interface if you want to.
+This repository is usually a little ahead of the releases I send to PyPI, but you can pip install it from there and just use the Command Line Interface (which can also transmit individual messages) if you want to.
 
 <img width="981" height="511" alt="cmd" src="https://github.com/user-attachments/assets/a3df103a-0a43-4da6-a3b1-8825012f07b0" />
 
