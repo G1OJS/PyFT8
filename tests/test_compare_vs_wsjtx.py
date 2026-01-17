@@ -61,7 +61,6 @@ def analyse_dictionaries():
     for w, c in matches:
         key = (w['cs'], w['msg'])
         has_message = True if c.msg else False
-       # score = (has_message, -abs(w['f'] - c.fHz))
         score = (has_message, c.sync_score)
         if key not in best or score > best[key][0]:
             best[key] = (score, w, c)
@@ -90,9 +89,8 @@ def analyse_dictionaries():
             f.write(f"{c.llr0_quality:4.0f},{c.ncheck0:2d},{c.decode_path}\n")
 
     print(f"{len(unique)} unique decodes")
-  #  print(signal_info)
-    
 
+    
 def calibrate_snr():
     import matplotlib.pyplot as plt
     fix, ax = plt.subplots()
@@ -162,10 +160,9 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
     show_matched_cands()
 
     
-    
-compare("210703_133430", [100,3100])
+#compare("210703_133430", [100,3100])
 
-#compare(None, [100,3100])
+compare(None, [100,3100])
 
 
     
