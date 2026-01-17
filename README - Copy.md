@@ -31,6 +31,10 @@ This repository is usually a little ahead of the releases I send to PyPI, but yo
 ```
 pip install PyFT8
 ```
+```
+PyFT8_cli "Keyword1, Keyword2" [-c][-v]
+(where keywords identify the sound device - partial match is fine - and -c = concise, -v = verbose)
+```
 Otherwise, please download or browse the code, or fork the repo and play with it! If you do fork it, please check back here as I'm constantly (as of Jan 2026) rewriting and improving.
 
 ## Limitations
