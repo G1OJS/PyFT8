@@ -1,6 +1,6 @@
 # PyFT8 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/pyft8?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/pyft8)
 # FT8 Decoding and Encoding in Python with CLI and research code
-This repository contains Python code to decode and encode (all the way to audio) FT8, plus a minimal Command Line Interface for reception, and a nascent set of research code.
+This repository contains Python code to decode and encode (all the way to audio) FT8, plus a minimal Command Line Interface for reception, and a nascent set of research code. My current aim is to push the low SNR performance whilst using only one time/frequency grid and no time-domain processing.
 <img width="960" height="540" alt="Untitled presentation" src="https://github.com/user-attachments/assets/93ce8755-9d49-423c-9f35-d96eb9067740" />
 
 This started out as me thinking "How hard can it be, really?" and has become a bit of a mission to provide the most direct,
