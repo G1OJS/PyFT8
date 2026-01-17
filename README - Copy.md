@@ -1,12 +1,23 @@
 # PyFT8 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/pyft8?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/pyft8)
 # FT8 Decoding and Encoding in Python with CLI and research code
-This repository contains Python code to decode and encode (all the way to audio) FT8, plus a minimal Command Line Interface for reception, and a nascent set of research code. My current aim is to push the low SNR performance whilst using only one time/frequency grid and no time-domain processing. Code I'd like to highlight, all in 100% Python:
-* LDPC using just three 5~8 line functions and running 250 us per iteration on a Dell Optiplex
-* Ordered Statistics Decoding in about 60 lines of code & similarly fast (not measured yet)
+This repository contains Python code to decode and encode (all the way to audio) FT8, plus a minimal Command Line Interface for reception, and a nascent set of research code. 
 <img width="960" height="540" alt="Untitled presentation" src="https://github.com/user-attachments/assets/93ce8755-9d49-423c-9f35-d96eb9067740" />
 
-This started out as me thinking "How hard can it be, really?" and has become a bit of a mission to provide the most direct,
-compact, and fast FT8 decoder that I can without copying code from elsewhere, apart from constants of course. 
+My current aim is to push the low SNR performance whilst using only one time/frequency grid and no time-domain processing. 
+
+Code I'd like to highlight, all in 100% Python:
+* LDPC using just three 5~8 line functions and running 250 us per iteration on a Dell Optiplex
+* Ordered Statistics Decoding in about 60 lines of code & similarly fast (not measured yet)
+
+## Motivation
+This started out as me thinking "How hard can it be, really?" after some frustration with Windows moving sound devices around and wanting to get a minimal decoder running that I can fully control.
+
+## Uses
+I use this code for my own hobby-level reseearch into FT8 decoding and Python coding techniques, and I'm also building a browser-GUI station controller (image below) which has an FT8 transceiver integrated within it. You can see that [here](https://github.com/G1OJS/station-gui) but note that it's focussed on my station, i.e. ICOM-IC-7100 with an Arduino controlling antenna switching and magloop tuning.
+
+<img width="1521" height="815" alt="station-gui" src="https://github.com/user-attachments/assets/973eb8b5-8017-4e57-b3b5-a26cea0f4b4a" />
+
+## Contents
 
 As I'm still exploring decoding techniques, I'm necessarily developing tools to expose what's going on in the signal's jouney from received audio to printed text. These tools aren't polished, though I'm trying to do that as I go along.
 
@@ -14,6 +25,8 @@ The code itself is light on explanation, but I've avoided anonymous variable nam
 been productive - constantly badgering AI has resulted in a very compact and very fast LDPC decoder which has increased in speed
 by about 2 orders of magnitude since I first hand-translated some FORTRAN into Python.
 
+
+## Installation
 This repository is usually a little ahead of the releases I send to PyPI, but you can pip install it from there and just use the CLI if you want to
 ```
 pip install PyFT8
