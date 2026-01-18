@@ -12,7 +12,7 @@ def get_llr(pgrid_main, h0_idx, hps, freq_idxs, payload_symb_idxs, target_params
     llr0 = llr0.ravel()
     llr0_sd, llr0_quality = np.std(llr0), 0
     snr = int(np.clip(10*np.max(pgrid) - 107, -24, 24))
-    if (llr0_sd > 0.1):
+    if (llr0_sd > 0.001):
         llr0 = target_params[0] * llr0 / llr0_sd 
         llr0 = np.clip(llr0, -target_params[1], target_params[1])
         llr0_quality = np.sum(np.sign(llr0) * llr0)
