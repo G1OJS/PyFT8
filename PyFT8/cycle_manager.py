@@ -53,27 +53,31 @@ class Spectrum:
             csync[sym_idx, sigspec.costas_len*self.fbins_pertone:] = 0
         return csync.ravel()
 
+    def get_syncs(self, f0_idx, pnorm):
+        syncs = []
+        block_off = 36 * self.hops_persymb
+        for iBlock in [0,1]:
+            best = (0, f0_idx, -1e30)
+            for h0_idx in range(block_off * iBlock, block_off * iBlock + self.hop_start_lattitude):
+                sync_score = float(np.dot(pnorm[h0_idx + self.hop_idxs_Costas ,  :].ravel(), self.csync_flat))
+                test = (h0_idx - block_off * iBlock, f0_idx, sync_score)
+                if test[2] > best[2]:
+                    best = test 
+            syncs.append(best)
+        return syncs
+
     def search(self, freq_range, cyclestart_str):
         cands = []
         f0_idxs = range(int(freq_range[0]/self.df),
                         min(self.nFreqs - self.fbins_per_signal, int(freq_range[1]/self.df)))
         pgrid = self.audio_in.pgrid_main[:self.h_search,:]
-        block_off = 36 * self.hops_persymb
         for f0_idx in f0_idxs:
             p = pgrid[:, f0_idx:f0_idx + self.fbins_per_signal]
             max_pwr = np.max(p)
             pnorm = p / max_pwr
             self.occupancy[f0_idx:f0_idx + self.fbins_per_signal] += max_pwr
             c = Candidate()
-            syncs = []
-            for iBlock in [0,1]:
-                best = (0, f0_idx, -1e30)
-                for h0_idx in range(block_off * iBlock, block_off * iBlock + self.hop_start_lattitude):
-                    sync_score = float(np.dot(pnorm[h0_idx + self.hop_idxs_Costas ,  :].ravel(), self.csync_flat))
-                    test = (h0_idx - block_off * iBlock, f0_idx, sync_score)
-                    if test[2] > best[2]:
-                        best = test 
-                syncs.append(best)
+            syncs = self.get_syncs(f0_idx, pnorm)
             c.record_possible_syncs(self, syncs)
             c.cyclestart_str = cyclestart_str            
             cands.append(c)

@@ -66,16 +66,15 @@ def single_loopback(snr=20):
             audio_for_fft = audio_for_fft * np.kaiser(fft_len,20)
             fine_grid_complex[hop,:nFreqs] = np.fft.rfft(audio_for_fft)[:nFreqs]
     cycle_manager.spectrum.audio_in.pgrid_main = np.abs(cycle_manager.spectrum.audio_in.zgrid_main)**2
-    
-  #  import matplotlib.pyplot as plt
-  #  fig, ax = plt.subplots()
-  #  ax.imshow(cycle_manager.spectrum.audio_in.pgrid_main)
-  #  plt.show()
 
     t0_idx=18
     f0_idx=int(f_base/df)
     c = Candidate()
-    syncs = [(t0_idx, f0_idx, 3), (t0_idx+1, f0_idx, 3)]
+    pgrid = cycle_manager.spectrum.audio_in.pgrid_main
+    p = pgrid[:, f0_idx:f0_idx + 24]
+    max_pwr = np.max(p)
+    pnorm = p / max_pwr
+    syncs = cycle_manager.spectrum.get_syncs(f0_idx, pnorm)
     c.record_possible_syncs(cycle_manager.spectrum, syncs)
     c.demap(cycle_manager.spectrum)
     
@@ -103,7 +102,8 @@ def test_vs_snr(snrs, load_last = False):
         if(not (i % 10)):
             print(f"{i}/{len(snrs)}")
     with open("last_montecarlo.pkl", "wb") as f:
-        pickle.dump((successes, failures),f)        
+        pickle.dump((successes, failures),f)
+    plot_results()
 
 def plot_results(filename = 'last_montecarlo.pkl'):
     import pickle
@@ -154,10 +154,10 @@ def plot_results(filename = 'last_montecarlo.pkl'):
     plt.tight_layout()
     plt.show()
 
-snrs = -26 + 10 * np.random.random(1000)
+snrs = -26 + 10 * np.random.random(100)
 
-#test_vs_snr(snrs)
-plot_results(filename = "data/montecarlo_ldpc_only.pkl")
+test_vs_snr(snrs)
+#plot_results(filename = "data/montecarlo_ldpc_only.pkl")
 
 
 
