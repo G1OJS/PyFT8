@@ -90,9 +90,10 @@ def analyse_dictionaries():
 
     print(f"{len(unique)} unique decodes")
     unprocessed = [c for w, c in matches if not "#" in c.decode_path]
-    best_unprocessed_quality = np.max([c.llr0_quality for c in unprocessed])
-    best_unprocessed_ncheck0 = np.min([c.ncheck0 for c in unprocessed])
-    print(f"{len(unprocessed)} unprocessed candidates decoded by wsjt-x, best qual {best_unprocessed_quality:4.0f} best ncheck0 {best_unprocessed_ncheck0}")
+    if(len(unprocessed)):
+        best_unprocessed_quality = np.max([c.llr0_quality for c in unprocessed])
+        best_unprocessed_ncheck0 = np.min([c.ncheck0 for c in unprocessed])
+        print(f"{len(unprocessed)} unprocessed candidates decoded by wsjt-x, best qual {best_unprocessed_quality:4.0f} best ncheck0 {best_unprocessed_ncheck0}")
 
     
 def calibrate_snr():
