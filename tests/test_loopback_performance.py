@@ -15,7 +15,7 @@ costas=[3,1,4,0,6,5,2]
 
 def onDecode(c):
     pass
-cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, verbose = False)
+cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, verbose = False, freq_range = [100,500])
 cycle_manager.running = False
 
 hops_percycle = cycle_manager.spectrum.audio_in.hops_percycle
@@ -48,7 +48,8 @@ def create_ft8_wave(symbols, fs=12000, f_base=873.0, f_step=6.25, amplitude = 0.
     return waveform_noisy
 
 def single_loopback(snr=20):
-    f_base = 1000
+    t0 = time.time()
+    f_base = 250
 
    # input_int = int(2**77 * np.random.rand())
     input_int = 133398380429840941814865
@@ -58,6 +59,8 @@ def single_loopback(snr=20):
     symbols_framed.extend([-10]*7)
     audio_data = create_ft8_wave(symbols_framed, f_base = f_base, amplitude = 0.1, added_noise = -snr)
 
+    t_gen = time.time()   
+    
     fine_grid_complex = cycle_manager.spectrum.audio_in.zgrid_main
     for hop in range(hops_percycle):
         samp0 = hop*samps_perhop
@@ -67,16 +70,15 @@ def single_loopback(snr=20):
             fine_grid_complex[hop,:nFreqs] = np.fft.rfft(audio_for_fft)[:nFreqs]
     cycle_manager.spectrum.audio_in.pgrid_main = np.abs(cycle_manager.spectrum.audio_in.zgrid_main)**2
 
+    t_spec = time.time()
+
     t0_idx=18
     f0_idx=int(f_base/df)
-    c = Candidate()
-    pgrid = cycle_manager.spectrum.audio_in.pgrid_main
-    p = pgrid[:, f0_idx:f0_idx + 24]
-    max_pwr = np.max(p)
-    pnorm = p / max_pwr
-    syncs = cycle_manager.spectrum.get_syncs(f0_idx, pnorm)
-    c.record_possible_syncs(cycle_manager.spectrum, syncs)
+    cands = cycle_manager.spectrum.search([f0_idx],"000000_000000")
+    c = cands[0]
     c.demap(cycle_manager.spectrum)
+
+    t_demap = time.time()
     
     for its in range(20):
         c.progress_decode()
@@ -85,8 +87,13 @@ def single_loopback(snr=20):
 
     output_bits = (c.llr > 0).astype(int).tolist()[:77]
     output_int = bitsLE_to_int(output_bits)
+
+    t_decode = time.time()
+
     success = output_int == input_int
-    results = {'snr':snr, 'success': success, 'llr_sd':c.llr0_sd, 'sumabs_llr':np.sum(np.abs(c.llr0)), 'ncheck0':c.ncheck0, 'n_its':c.counters[1]}
+    results = {'snr':snr, 'success': success, 'llr_sd':c.llr0_sd, 'sumabs_llr':np.sum(np.abs(c.llr0)),
+               'ncheck0':c.ncheck0, 'n_its':c.counters[1],
+               't_gen':1000*(t_gen-t0), 't_spec':1000*(t_spec-t_gen), 't_demap':1000*(t_demap-t_spec), 't_decode':1000*(t_decode-t_demap)}
     
     return results
 
@@ -110,8 +117,19 @@ def plot_results(filename = 'last_montecarlo.pkl'):
     import matplotlib.pyplot as plt
     with open(filename, "rb") as f:
         successes, failures = pickle.load(f)
+
+    plot_params = ['t_gen', 't_demap', 't_decode']
+    fig, axs = plt.subplots(1, len(plot_params), figsize = (15,5))
+    for iax, param in enumerate(plot_params):
+        axs[iax].scatter([d['snr'] for d in successes],[d[param] for d in successes], color = 'green')
+        axs[iax].scatter([d['snr'] for d in failures],[d[param] for d in failures], color = 'red')
+        axs[iax].set_ylabel(f"{param}, ms")
+        axs[iax].set_xlabel("Cycle timings vs imposed channel SNR")
+    plt.suptitle(f"")
+    plt.tight_layout()
+    plt.show()
+
     plot_params = ['llr_sd', 'sumabs_llr', 'ncheck0']
-    
     fig, axs = plt.subplots(1, len(plot_params), figsize = (15,5))
     for iax, param in enumerate(plot_params):
         axs[iax].scatter([d['snr'] for d in successes],[d[param] for d in successes], color = 'green')
