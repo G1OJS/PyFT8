@@ -2,9 +2,9 @@ import threading
 from collections import Counter
 import numpy as np
 import time
-from .audio import find_device, AudioIn
+from PyFT8.audio import find_device, AudioIn
 from PyFT8.demapper import get_llr
-from .FT8_unpack import FT8_unpack
+from PyFT8.FT8_unpack import FT8_unpack
 from PyFT8.FT8_crc import check_crc_codeword_list
 from PyFT8.ldpc import LdpcDecoder
 from PyFT8.bitflipper import flip_bits

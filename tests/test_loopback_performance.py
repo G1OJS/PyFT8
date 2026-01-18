@@ -1,10 +1,15 @@
 import numpy as np
 from PyFT8.cycle_manager import Cycle_manager, Candidate
 from PyFT8.sigspecs import FT8
+from PyFT8.FT8_unpack import FT8_unpack
 from PyFT8.ldpc import LdpcDecoder
-from PyFT8.FT8_encoder import encode_bits77
+from PyFT8.FT8_encoder import encode_bits77, pack_message
 from PyFT8.FT8_crc import bitsLE_to_int
 import time
+
+global test_messages
+test_messages = []
+
 
 gray_seq = [0,1,3,2,5,6,4,7]
 num_symbols = 79
@@ -47,13 +52,21 @@ def create_ft8_wave(symbols, fs=12000, f_base=873.0, f_step=6.25, amplitude = 0.
         waveform_noisy = waveform + noise
     return waveform_noisy
 
+def generate_test_messages():
+    global test_messages
+    messages = ['CQ G1OJS IO90', 'G1OJS W3PEN -13', 'W3PEN G1OJS RR73', 'G1OJS W3PEN 73']
+    for msg in messages:
+        c1, c2, grid_rpt = msg.split()
+        symbols = pack_message(c1, c2, grid_rpt)
+        test_messages.append((msg, symbols))
+
+
 def single_loopback(snr=20):
     t0 = time.time()
     f_base = 250
 
-   # input_int = int(2**77 * np.random.rand())
-    input_int = 133398380429840941814865
-    symbols, _, _, _, _ = encode_bits77(input_int)
+    imsg = np.random.randint(0, len(test_messages))
+    input_msg, symbols = test_messages[imsg]
     symbols_framed = [-10]*7
     symbols_framed.extend(symbols)
     symbols_framed.extend([-10]*7)
@@ -87,17 +100,21 @@ def single_loopback(snr=20):
 
     output_bits = (c.llr > 0).astype(int).tolist()[:77]
     output_int = bitsLE_to_int(output_bits)
+    output_msg = FT8_unpack(output_bits)
+    output_msg = ' '.join(output_msg)
 
     t_decode = time.time()
 
-    success = output_int == input_int
+    success = output_msg == input_msg
     results = {'snr':snr, 'success': success, 'llr_sd':c.llr0_sd, 'sumabs_llr':np.sum(np.abs(c.llr0)),
-               'ncheck0':c.ncheck0, 'n_its':c.counters[1],
+               'ncheck0':c.ncheck0, 'n_its':c.counters[1], 'decode_path':c.decode_path, 
                't_gen':1000*(t_gen-t0), 't_spec':1000*(t_spec-t_gen), 't_demap':1000*(t_demap-t_spec), 't_decode':1000*(t_decode-t_demap)}
     
     return results
 
-def test_vs_snr(snrs, load_last = False):
+def test_vs_snr(run_params = "Default", ntrials = 200, snr_range = [-26,-16]):
+    generate_test_messages()
+    snrs = snr_range[0] + (snr_range[1] - snr_range[0]) * np.random.random(ntrials)
     import pickle
     successes, failures = [],[]
     for i, snr in enumerate(snrs):
@@ -108,37 +125,79 @@ def test_vs_snr(snrs, load_last = False):
             failures.append(results)
         if(not (i % 10)):
             print(f"{i}/{len(snrs)}")
-    with open("last_montecarlo.pkl", "wb") as f:
+    with open(f"results/data/montecarlo_{run_params}.pkl", "wb") as f:
         pickle.dump((successes, failures),f)
-    plot_results()
 
-def plot_results(filename = 'last_montecarlo.pkl'):
-    import pickle
-    import matplotlib.pyplot as plt
-    with open(filename, "rb") as f:
+
+import pickle
+import matplotlib.pyplot as plt
+import matplotlib.lines as lines
+
+CAT_COLOURS = ['red','lime','blue','orange','green']
+global leg_decode_type, leg_decode_outcome
+
+def decode_category(dpath):
+    if(not "#" in dpath):
+        return 0
+    if(dpath[3]=="#" or dpath[7]=="#" ):
+        return 1
+    elif('O' in dpath):
+        return 2
+    elif('A' in dpath):
+        return 3
+    elif('L' in dpath):
+        return 4
+
+def make_legends():
+    global leg_decode_type, leg_decode_outcome
+    leg_decode_type = [ lines.Line2D([0], [0], marker='o', color='w',label='Immediate', markerfacecolor=CAT_COLOURS[1], markersize=8),
+                        lines.Line2D([0], [0], marker='o', color='w',label='LDPC', markerfacecolor=CAT_COLOURS[4], markersize=8),
+                        lines.Line2D([0], [0], marker='o', color='w',label='LDPC + bitflips', markerfacecolor=CAT_COLOURS[3], markersize=8),
+                        lines.Line2D([0], [0], marker='o', color='w',label='OSD', markerfacecolor=CAT_COLOURS[2], markersize=8),
+                        ]
+
+    leg_decode_outcome = [lines.Line2D([0], [0], marker='o', color='k',label='Success', markersize=8),
+                          lines.Line2D([0], [0], marker='o', markeredgecolor='red', markeredgewidth=2.0, color='k',label='Failure', markersize=8),
+                        ]
+
+
+def add_legends(ax):
+    leg1 = ax.legend(handles=leg_decode_type, loc='upper left')
+    ax.add_artist(leg1) 
+    ax.legend(handles=leg_decode_outcome, loc='upper right')
+
+def plot_results(run_params = "Default"):
+    with open(f"results/data/montecarlo_{run_params}.pkl", "rb") as f:
         successes, failures = pickle.load(f)
+    n_trials = len(successes)+len(failures)
 
+    make_legends()
+    s_colors = [CAT_COLOURS[decode_category(s['decode_path'])] for s in successes]
+    f_colors = [CAT_COLOURS[decode_category(f['decode_path'])] for f in failures]
+    
     plot_params = ['t_gen', 't_spec', 't_demap', 't_decode']
     fig, axs = plt.subplots(1, len(plot_params), figsize = (15,5))
     for iax, param in enumerate(plot_params):
-        axs[iax].scatter([d['snr'] for d in successes],[d[param] for d in successes], color = 'green')
-        axs[iax].scatter([d['snr'] for d in failures],[d[param] for d in failures], color = 'red')
+        axs[iax].scatter([d['snr'] for d in successes],[d[param] for d in successes], color = s_colors)
+        axs[iax].scatter([d['snr'] for d in failures],[d[param] for d in failures], color = f_colors, edgecolor = 'red', lw=1.5, zorder=3)
         axs[iax].set_ylabel(f"{param}, ms")
-        axs[iax].set_xlabel("Cycle timings vs imposed channel SNR")
-    plt.suptitle(f"")
+        axs[iax].set_xlabel(f"Imposed channel SNR")
+        add_legends(axs[iax])
+    plt.suptitle(f"Cycle timings vs imposed channel SNR for {run_params} n_trials = {n_trials}")
     plt.tight_layout()
-    plt.show()
+    fig.savefig(f"results/test_timings_{run_params}.png", bbox_inches="tight")
 
     plot_params = ['llr_sd', 'sumabs_llr', 'ncheck0']
     fig, axs = plt.subplots(1, len(plot_params), figsize = (15,5))
     for iax, param in enumerate(plot_params):
-        axs[iax].scatter([d['snr'] for d in successes],[d[param] for d in successes], color = 'green')
-        axs[iax].scatter([d['snr'] for d in failures],[d[param] for d in failures], color = 'red')
+        axs[iax].scatter([d['snr'] for d in successes],[d[param] for d in successes], color = s_colors)
+        axs[iax].scatter([d['snr'] for d in failures],[d[param] for d in failures], color = f_colors,  edgecolor = 'red', lw=1.5, zorder=3)
         axs[iax].set_ylabel(param)
         axs[iax].set_xlabel("Imposed channel SNR")
-    plt.suptitle(f"Proxies vs imposed SNR for successes and failures for {filename}")
+        add_legends(axs[iax])
+    plt.suptitle(f"Proxies vs imposed SNR for successes and failures for {run_params} n_trials = {n_trials}")
     plt.tight_layout()
-    plt.show()
+    fig.savefig(f"results/proxy_plots_{run_params}.png", bbox_inches="tight")
 
     plot_params = ['snr', 'llr_sd', 'sumabs_llr', 'ncheck0']
     plot_ranges = [[-26,-19],[0,1.5],[350,550],[0,45]]
@@ -168,14 +227,14 @@ def plot_results(filename = 'last_montecarlo.pkl'):
         axs[iax].set_xlim(plot_ranges[iax])
         axs[iax].set_ylabel("Decoder success")
 
-    plt.suptitle(f"Decoder performance against imposed SNR and proxies for {filename}")
+    plt.suptitle(f"Decoder performance against imposed SNR and proxies for {run_params} n_trials = {n_trials}")
     plt.tight_layout()
-    plt.show()
+    fig.savefig(f"results/decoder_performance_{run_params}.png", bbox_inches="tight")
+   # plt.show()
 
-snrs = -26 + 10 * np.random.random(1000)
 
-test_vs_snr(snrs)
-#plot_results(filename = "data/montecarlo_ldpc_only.pkl")
+#test_vs_snr("full_decoder", ntrials = 2000)
+plot_results("full_decoder")
 
 
 """
