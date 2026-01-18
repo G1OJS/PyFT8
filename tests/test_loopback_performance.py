@@ -128,7 +128,6 @@ def test_vs_snr(run_params = "Default", ntrials = 200, snr_range = [-26,-16]):
     with open(f"results/data/montecarlo_{run_params}.pkl", "wb") as f:
         pickle.dump((successes, failures),f)
 
-
 import pickle
 import matplotlib.pyplot as plt
 import matplotlib.lines as lines
@@ -154,6 +153,7 @@ def make_legends():
                         lines.Line2D([0], [0], marker='o', color='w',label='LDPC', markerfacecolor=CAT_COLOURS[4], markersize=8),
                         lines.Line2D([0], [0], marker='o', color='w',label='LDPC + bitflips', markerfacecolor=CAT_COLOURS[3], markersize=8),
                         lines.Line2D([0], [0], marker='o', color='w',label='OSD', markerfacecolor=CAT_COLOURS[2], markersize=8),
+                        lines.Line2D([0], [0], marker='o', color='w',label='Timeout not tested', markerfacecolor=CAT_COLOURS[0], markersize=8),
                         ]
 
     leg_decode_outcome = [lines.Line2D([0], [0], marker='o', color='k',label='Success', markersize=8),
@@ -230,33 +230,9 @@ def plot_results(run_params = "Default"):
     plt.suptitle(f"Decoder performance against imposed SNR and proxies for {run_params} n_trials = {n_trials}")
     plt.tight_layout()
     fig.savefig(f"results/decoder_performance_{run_params}.png", bbox_inches="tight")
-   # plt.show()
 
 
-#test_vs_snr("full_decoder", ntrials = 2000)
-plot_results("full_decoder")
+run_params = "full_decoder_osd_50"
+test_vs_snr(run_params, ntrials = 2000)
+plot_results(run_params)
 
-
-"""
--24.00 dB   12.0% avg_its = 18     ms per ldpc =  3.58   ms_per_iteration = 0.20   
--23.50 dB   38.0% avg_its = 14     ms per ldpc =  2.88   ms_per_iteration = 0.21   
--23.00 dB   68.0% avg_its = 10     ms per ldpc =  2.04   ms_per_iteration = 0.21   
--22.50 dB   86.0% avg_its = 6      ms per ldpc =  1.30   ms_per_iteration = 0.22   
--22.00 dB   98.0% avg_its = 2      ms per ldpc =  0.72   ms_per_iteration = 0.35   
--21.50 dB  100.0% avg_its = 1      ms per ldpc =  0.38   ms_per_iteration = 0.37  
-"""
-
-
-"""
-import matplotlib.pyplot as plt
-fig,ax = plt.subplots()
-
-for max_ncheck in [26,27,28,29,30,31,32,33,34]:
-    res, x = test_vs_snr()
-    ax.plot(x, res, label = f"{max_ncheck}")
-    ax.set_title("Success vs max_ncheck")
-    ax.legend()
-    plt.pause(0.5)
-
-plt.show()
-"""
