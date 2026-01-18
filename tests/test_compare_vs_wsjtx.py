@@ -89,8 +89,10 @@ def analyse_dictionaries():
             f.write(f"{c.llr0_quality:4.0f},{c.ncheck0:2d},{c.decode_path}\n")
 
     print(f"{len(unique)} unique decodes")
-    n_unprocessed = len([c for w, c in matches if not "#" in c.decode_path])
-    print(f"{n_unprocessed} unprocessed candidates decoded by wsjt-x")
+    unprocessed = [c for w, c in matches if not "#" in c.decode_path]
+    best_unprocessed_quality = np.max([c.llr0_quality for c in unprocessed])
+    best_unprocessed_ncheck0 = np.min([c.ncheck0 for c in unprocessed])
+    print(f"{len(unprocessed)} unprocessed candidates decoded by wsjt-x, best qual {best_unprocessed_quality:4.0f} best ncheck0 {best_unprocessed_ncheck0}")
 
     
 def calibrate_snr():
@@ -162,9 +164,9 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
     show_matched_cands()
 
     
-compare("data/210703_133430", [100,3100])
+#compare("data/210703_133430", [100,3100])
 
-#compare(None, [100,3100])
+compare(None, [100,3100])
 
 
     

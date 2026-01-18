@@ -106,7 +106,7 @@ class Candidate:
         self.fHz = int((self.f0_idx + bpt // 2) * spectrum.df)
         self.last_payload_hop = np.max([syncs[0][0], syncs[1][0]]) + hps * spectrum.sigspec.payload_symb_idxs[-1]
         
-    def demap(self, spectrum, min_qual = 400):
+    def demap(self, spectrum, min_qual = 350, min_sd = 0.5):
         self.demap_started = time.time()
         
         h0, h1 = self.syncs[0][0], self.syncs[1][0]
@@ -125,7 +125,7 @@ class Candidate:
         self.llr = self.llr0.copy()
         self.ncheck = self.ncheck0
 
-        quality_too_low = (self.llr0_quality < min_qual)
+        quality_too_low = (self.llr0_quality < min_qual or self.llr0_sd < min_sd)
         self._record_state(f"I", self.ncheck, final = quality_too_low)
         
         self.demap_completed = time.time()
@@ -154,7 +154,7 @@ class Candidate:
         if(final):
             self.decode_completed = time.time()
         
-    def _invoke_actor(self, nc_thresh_bitflip = 28, nc_max_ldpc = 35, iters_max_ldpc = 7, osd_qual_range = [300,470]):
+    def _invoke_actor(self, nc_thresh_bitflip = 28, nc_max_ldpc = 35, iters_max_ldpc = 7, osd_qual_range = [300,440]):
         counter = 0
         if self.ncheck > nc_thresh_bitflip and not self.counters[counter] > 0:  
             self.llr, self.ncheck = flip_bits(self.llr, self.ncheck, width = 50, nbits=1, keep_best = True)
@@ -170,7 +170,7 @@ class Candidate:
         
         if(osd_qual_range[0] < self.llr0_quality < osd_qual_range[1] and not self.counters[counter] > 0):
             reliab_order = np.argsort(np.abs(self.llr))[::-1]
-            codeword_bits = osd_decode_minimal(self.llr0, reliab_order, G, Ls = [50,30])
+            codeword_bits = osd_decode_minimal(self.llr0, reliab_order, G, Ls = [50,20])
             if check_crc_codeword_list(codeword_bits):
                 self.llr = np.array([1 if(b==1) else -1 for b in codeword_bits])
                 self.ncheck = 0

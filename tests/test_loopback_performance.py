@@ -61,7 +61,7 @@ def generate_test_messages():
         test_messages.append((msg, symbols))
 
 
-def single_loopback(snr=20):
+def single_loopback(snr=20, amplitude = 0.5):
     t0 = time.time()
     f_base = 250
 
@@ -70,7 +70,7 @@ def single_loopback(snr=20):
     symbols_framed = [-10]*7
     symbols_framed.extend(symbols)
     symbols_framed.extend([-10]*7)
-    audio_data = create_ft8_wave(symbols_framed, f_base = f_base, amplitude = 0.1, added_noise = -snr)
+    audio_data = create_ft8_wave(symbols_framed, f_base = f_base, amplitude = amplitude, added_noise = -snr)
     t_gen = time.time()   
     
     z = cycle_manager.spectrum.audio_in.zgrid_main
@@ -114,11 +114,13 @@ def single_loopback(snr=20):
 
 def test_vs_snr(run_params = "Default", ntrials = 200, snr_range = [-26,-16]):
     generate_test_messages()
+    amplitudes = np.random.random(ntrials)
     snrs = snr_range[0] + (snr_range[1] - snr_range[0]) * np.random.random(ntrials)
     import pickle
     successes, failures = [],[]
     for i, snr in enumerate(snrs):
-        results = single_loopback(snr = snr)
+        amp = amplitudes[i]
+        results = single_loopback(snr = snr, amplitude = amp)
         if(results['success']):
             successes.append(results)
         else:
@@ -232,7 +234,7 @@ def plot_results(run_params = "Default"):
     fig.savefig(f"results/decoder_performance_{run_params}.png", bbox_inches="tight")
 
 
-run_params = "full_decoder_osd_50_30"
-test_vs_snr(run_params, ntrials = 2000)
+run_params = "full_decoder_varying_amplitudes_osd_50_30_minqualSD0.5"
+test_vs_snr(run_params, ntrials = 1000)
 plot_results(run_params)
 
