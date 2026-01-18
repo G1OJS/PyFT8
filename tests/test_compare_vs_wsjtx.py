@@ -76,7 +76,7 @@ def analyse_dictionaries():
     
     unique = set()
     signal_info = []
-    with open('compare_wsjtx.csv', 'a') as f:
+    with open('data/compare_wsjtx.csv', 'a') as f:
         for w, c in matches:
             cands_matched.append(c)
             td = f"{c.decode_completed %60:5.2f}" if c.decode_completed else '     '
@@ -102,7 +102,7 @@ def calibrate_snr():
     plt.show()
 
 def initialise_outputs():
-    with open('compare_wsjtx.csv', 'w') as f:
+    with open('data/compare_wsjtx.csv', 'w') as f:
         f.write('')
 
 def onDecode(c):
@@ -160,9 +160,9 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
     show_matched_cands()
 
     
-#compare("210703_133430", [100,3100])
+compare("data/210703_133430", [100,3100])
 
-compare(None, [100,3100])
+#compare(None, [100,3100])
 
 
     

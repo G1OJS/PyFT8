@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
-with open(f"compare_wsjtx.csv", "r") as f:
+with open(f"data/compare_wsjtx.csv", "r") as f:
     lines=f.readlines()
 
 pycols = ['lime','green','orange','yellow','white']

@@ -92,37 +92,39 @@ def single_loopback(snr=20):
     return results
 
 def test_vs_snr(snrs, load_last = False):
-    import matplotlib.pyplot as plt
     import pickle
-    if(load_last):
-        with open("last_montecarlo.pkl", "rb") as f:
-            successes, failures = pickle.load(f)
-    else:    
-        successes, failures = [],[]
-        for i, snr in enumerate(snrs):
-            results = single_loopback(snr = snr)
-            if(results['success']):
-                successes.append(results)
-            else:
-                failures.append(results)
-            if(not (i % 10)):
-                print(f"{i}/{len(snrs)}")
-        with open("last_montecarlo.pkl", "wb") as f:
-            pickle.dump((successes, failures),f)        
+    successes, failures = [],[]
+    for i, snr in enumerate(snrs):
+        results = single_loopback(snr = snr)
+        if(results['success']):
+            successes.append(results)
+        else:
+            failures.append(results)
+        if(not (i % 10)):
+            print(f"{i}/{len(snrs)}")
+    with open("last_montecarlo.pkl", "wb") as f:
+        pickle.dump((successes, failures),f)        
 
-
+def plot_results(filename = 'last_montecarlo.pkl'):
+    import pickle
+    import matplotlib.pyplot as plt
+    with open(filename, "rb") as f:
+        successes, failures = pickle.load(f)
     plot_params = ['llr_sd', 'sumabs_llr', 'ncheck0']
+    
     fig, axs = plt.subplots(1, len(plot_params), figsize = (15,5))
     for iax, param in enumerate(plot_params):
         axs[iax].scatter([d['snr'] for d in successes],[d[param] for d in successes], color = 'green')
         axs[iax].scatter([d['snr'] for d in failures],[d[param] for d in failures], color = 'red')
         axs[iax].set_ylabel(param)
         axs[iax].set_xlabel("Imposed channel SNR")
-    plt.suptitle("Proxies vs imposed SNR for successes and failures")
+    plt.suptitle(f"Proxies vs imposed SNR for successes and failures for {filename}")
     plt.tight_layout()
     plt.show()
 
     plot_params = ['snr', 'llr_sd', 'sumabs_llr', 'ncheck0']
+    plot_ranges = [[-26,-19],[0,1.5],[350,550],[0,45]]
+    
     fig, axs = plt.subplots(1, len(plot_params), figsize = (15,5))
     for iax, param in enumerate(plot_params):        
         xs = [s[param] for s in successes]
@@ -145,15 +147,17 @@ def test_vs_snr(snrs, load_last = False):
                 
         p = axs[iax].plot(xbins,histvals, alpha = 0.7, lw=1)  
         axs[iax].set_xlabel(param)
+        axs[iax].set_xlim(plot_ranges[iax])
         axs[iax].set_ylabel("Decoder success")
 
-    plt.suptitle("Decoder performance against imposed SNR and proxies")
+    plt.suptitle(f"Decoder performance against imposed SNR and proxies for {filename}")
     plt.tight_layout()
     plt.show()
 
 snrs = -26 + 10 * np.random.random(1000)
-test_vs_snr(snrs)
-#test_vs_snr(snrs, load_last = True)
+
+#test_vs_snr(snrs)
+plot_results(filename = "data/montecarlo_ldpc_only.pkl")
 
 
 
