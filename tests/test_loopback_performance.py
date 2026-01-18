@@ -58,17 +58,17 @@ def single_loopback(snr=20):
     symbols_framed.extend(symbols)
     symbols_framed.extend([-10]*7)
     audio_data = create_ft8_wave(symbols_framed, f_base = f_base, amplitude = 0.1, added_noise = -snr)
-
     t_gen = time.time()   
     
-    fine_grid_complex = cycle_manager.spectrum.audio_in.zgrid_main
+    z = cycle_manager.spectrum.audio_in.zgrid_main
+    win = np.kaiser(fft_len, 20)
     for hop in range(hops_percycle):
         samp0 = hop*samps_perhop
         audio_for_fft = audio_data[samp0:samp0 + fft_len]
         if(len(audio_for_fft) == fft_len):
-            audio_for_fft = audio_for_fft * np.kaiser(fft_len,20)
-            fine_grid_complex[hop,:nFreqs] = np.fft.rfft(audio_for_fft)[:nFreqs]
-    cycle_manager.spectrum.audio_in.pgrid_main = np.abs(cycle_manager.spectrum.audio_in.zgrid_main)**2
+            audio_for_fft = audio_for_fft * win
+            z[hop,:nFreqs] = np.fft.rfft(audio_for_fft)[:nFreqs]
+    cycle_manager.spectrum.audio_in.pgrid_main = z.real*z.real + z.imag*z.imag
 
     t_spec = time.time()
 
@@ -118,7 +118,7 @@ def plot_results(filename = 'last_montecarlo.pkl'):
     with open(filename, "rb") as f:
         successes, failures = pickle.load(f)
 
-    plot_params = ['t_gen', 't_demap', 't_decode']
+    plot_params = ['t_gen', 't_spec', 't_demap', 't_decode']
     fig, axs = plt.subplots(1, len(plot_params), figsize = (15,5))
     for iax, param in enumerate(plot_params):
         axs[iax].scatter([d['snr'] for d in successes],[d[param] for d in successes], color = 'green')
@@ -172,11 +172,10 @@ def plot_results(filename = 'last_montecarlo.pkl'):
     plt.tight_layout()
     plt.show()
 
-snrs = -26 + 10 * np.random.random(100)
+snrs = -26 + 10 * np.random.random(1000)
 
 test_vs_snr(snrs)
 #plot_results(filename = "data/montecarlo_ldpc_only.pkl")
-
 
 
 """
