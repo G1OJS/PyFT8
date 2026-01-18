@@ -106,7 +106,7 @@ class Candidate:
         self.fHz = int((self.f0_idx + bpt // 2) * spectrum.df)
         self.last_payload_hop = np.max([syncs[0][0], syncs[1][0]]) + hps * spectrum.sigspec.payload_symb_idxs[-1]
         
-    def demap(self, spectrum, min_qual = 350, min_sd = 0.5):
+    def demap(self, spectrum, min_qual = 400, min_sd = 0.5):
         self.demap_started = time.time()
         
         h0, h1 = self.syncs[0][0], self.syncs[1][0]
