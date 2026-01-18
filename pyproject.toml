@@ -1,6 +1,6 @@
 [project]
 name = "PyFT8"
-version = "0.3.0"
+version = "1.0.0"
 license = "GPL-3.0-or-later"
 
 authors = [
@@ -19,7 +19,7 @@ classifiers = [
     "Operating System :: OS Independent"
 ]
 
-keywords = ["ham radio", "radio", "FT8"]
+keywords = ["ham radio", "radio", "FT8", "LDPC", "CPMFSK"]
 
 [project.urls]
 Homepage = "https://github.com/G1OJS/PyFT8"

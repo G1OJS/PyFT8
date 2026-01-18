@@ -66,7 +66,7 @@ def analyse_dictionaries():
             best[key] = (score, w, c)
     matches = [(w, c) for (_, w, c) in best.values()]
 
-    wsjtx_cofreqs = [w['f'] for w,c in matches for w2,c in matches if 0 <= np.abs(w['f'] - w2['f']) <= 2 and ''.join(w['msg']) != ''.join(w2['msg'])]
+    wsjtx_cofreqs = [w['f'] for w,c in matches for w2,c in matches if 0 <= np.abs(w['f'] - w2['f']) <= 51 and ''.join(w['msg']) != ''.join(w2['msg'])]
 
     pyft8 = [c for c in pyft8_cands if c.msg]
     pyft8_msgs = [c.msg for c in pyft8]
