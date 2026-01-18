@@ -232,7 +232,7 @@ def plot_results(run_params = "Default"):
     fig.savefig(f"results/decoder_performance_{run_params}.png", bbox_inches="tight")
 
 
-run_params = "full_decoder_osd_50"
+run_params = "full_decoder_osd_50_30"
 test_vs_snr(run_params, ntrials = 2000)
 plot_results(run_params)
 
