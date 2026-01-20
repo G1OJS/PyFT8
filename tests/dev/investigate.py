@@ -159,25 +159,25 @@ def show_sig(ax, p1, dBrange, f0_idx, known_message):
     axs[1].set_xlim(-5,5)
 
     llr = get_llr(p[h0_idx:,:][payload_symb_idxs,:])
-    print(len(llr))
+    nbad = np.count_nonzero(np.abs(llr<0.5))
     msg = decode(llr)
 
-    fig.suptitle(f"{signal[1]}\n{f0_idx*6.25:5.1f}Hz {0.16*h0_idx:5.2f}s Tone errors:{n_tone_errors}\n{msg}")
+    fig.suptitle(f"{signal[1]}\n{f0_idx*6.25:5.1f}Hz {0.16*h0_idx:5.2f}s Tone errors:{n_tone_errors} |llr|<0.5: {nbad}\n{msg}")
     
 
-signal_info_list = [(2571, 'W1FC F5BZB -08'), (2157, 'WM3PEN EA6VQ -09')]
+signal_info_list = [(2571, 'W1FC F5BZB -08'), (2157, 'WM3PEN EA6VQ -09'), (1197, 'CQ F5RXL IN94')]
                     
 audio_samples = read_wav("../data/210703_133430.wav")
 
 
 # what's the best way to incorporate possible time and frequency offsets and slopes automatically?
 
-signal = signal_info_list[1]
+signal = signal_info_list[2]
 freq, msg = signal
 f0_idx = int(freq/6.25)
 fig,axs = plt.subplots(1,2, figsize = (5,10))
 plt.ion()
-pf = get_spectrum(audio_samples, 2.8 * 0.16, -1.3, 0/80)
+pf = get_spectrum(audio_samples, -2 * 0.16, -4, 0/80)
 print(pf.shape)
 show_spectrum(pf)
 show_sig(axs, pf, 6, f0_idx, msg)
