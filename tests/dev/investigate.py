@@ -40,13 +40,12 @@ def read_wav(wav_path):
     print(f"Loaded {ptr} samples")
     return audio_samples
 
-def get_spectrum(audio_samples, time_offset, phase_global, phase_per_symbol):
+def get_spectrum(audio_samples, time_offset, phase_global, phase_per_symbol, max_freq = 3100):
     hops_per_cycle = int(15 * 6.25)
     samples_per_hop = int(12000  / 6.25 )
     fft_len = 1920
     fft_window=np.kaiser(fft_len, 5) 
-    freqs = np.fft.fftfreq(fft_len, d=1/12000)
-    nFreqs = len(freqs[(freqs<3100)])
+    nFreqs = int(max_freq/6.25)
     samples_offset = int(time_offset * 12000)
     pf = np.zeros((hops_per_cycle, nFreqs), dtype = np.float32)
     for hop_idx in range(hops_per_cycle):
@@ -157,7 +156,7 @@ def show_sig(ax, p1, dBrange, f0_idx, known_message):
     llr_full = get_llr(p)
     axs[1].barh(range(len(llr_full)), llr_full, align='edge')
     axs[1].set_ylim(0,len(llr_full))
-    axs[1].set_xlim(-10,10)
+    axs[1].set_xlim(-5,5)
 
     llr = get_llr(p[h0_idx:,:][payload_symb_idxs,:])
     print(len(llr))
@@ -169,7 +168,7 @@ def show_sig(ax, p1, dBrange, f0_idx, known_message):
 signal_info_list = [(2571, 'W1FC F5BZB -08'), (2157, 'WM3PEN EA6VQ -09')]
                     
 audio_samples = read_wav("../data/210703_133430.wav")
-#show_spectrum(pf)
+
 
 # what's the best way to incorporate possible time and frequency offsets and slopes automatically?
 
@@ -179,7 +178,9 @@ f0_idx = int(freq/6.25)
 fig,axs = plt.subplots(1,2, figsize = (5,10))
 plt.ion()
 pf = get_spectrum(audio_samples, 2.8 * 0.16, -1.3, 0/80)
-show_sig(axs, pf, 30, f0_idx, msg)
+print(pf.shape)
+show_spectrum(pf)
+show_sig(axs, pf, 6, f0_idx, msg)
 plt.pause(0.1)
     
 gray_seq = [0,1,3,2,5,6,4,7]
