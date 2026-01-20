@@ -1,6 +1,5 @@
 import numpy as np
 import time
-from PyFT8.waterfall import Waterfall
 from PyFT8.sigspecs import FT8
 from PyFT8.cycle_manager import Cycle_manager
 
@@ -8,7 +7,7 @@ from PyFT8.cycle_manager import Cycle_manager
 from PyFT8.FT8_encoder import pack_ft8_c28, pack_ft8_g15, encode_bits77
 import PyFT8.audio as audio
 
-WAV = "Local_gen_test.wav"
+WAV = "data/Local_gen_test.wav"
 
 c28a = pack_ft8_c28("VK1ABC")
 c28b = pack_ft8_c28("VK3JPK")
