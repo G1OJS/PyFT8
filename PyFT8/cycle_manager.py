@@ -155,7 +155,7 @@ class Candidate:
             self.decode_completed = time.time()
         
     def _invoke_actor(self, nc_thresh_bitflip = 28, nc_max_ldpc = 35,
-                      iters_max_ldpc = 7, osd_qual_range = [400,460]):
+                      iters_max_ldpc = 7, osd_qual_range = [400,470]):
         counter = 0
         if self.ncheck > nc_thresh_bitflip and not self.counters[counter] > 0:  
             self.llr, self.ncheck = flip_bits(self.llr, self.ncheck, width = 50, nbits=1, keep_best = True)
