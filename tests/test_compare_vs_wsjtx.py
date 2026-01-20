@@ -165,9 +165,9 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
     show_matched_cands()
 
     
-compare("data/210703_133430", [100,3100])
+#compare("data/210703_133430", [100,3100])
 
-#compare(None, [100,3100])
+compare(None, [100,3100])
 
 
     
