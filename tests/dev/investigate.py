@@ -40,7 +40,7 @@ def read_wav(wav_path):
     print(f"Loaded {ptr} samples")
     return audio_samples
 
-def get_spectrum(audio_samples, phase_global, phase_per_symbol):
+def get_spectrum(audio_samples, time_offset, phase_global, phase_per_symbol):
     hops_per_cycle = int(15 * 6.25)
     samples_per_hop = int(12000  / 6.25 )
     fft_len = 1920
@@ -48,12 +48,12 @@ def get_spectrum(audio_samples, phase_global, phase_per_symbol):
     freqs = np.fft.fftfreq(fft_len, d=1/12000)
     print(freqs[:10])
     nFreqs = len(freqs[(freqs<3100)])
-    print(nFreqs)
+    samples_offset = int(time_offset * 12000)
     pf = np.zeros((hops_per_cycle, nFreqs), dtype = np.float32)
     for hop_idx in range(hops_per_cycle):
         phs = np.linspace(0, phase_global + hop_idx * phase_per_symbol, fft_len)
         za = np.zeros_like(fft_window, dtype = np.complex64)
-        aud = audio_samples[hop_idx * samples_per_hop: hop_idx * samples_per_hop + fft_len]
+        aud = audio_samples[samples_offset + hop_idx * samples_per_hop: samples_offset+ hop_idx * samples_per_hop + fft_len]
         za[:len(aud)] = aud
         za = za *fft_window * np.exp(1j * phs)
         z = np.fft.fft(za)[:nFreqs]
@@ -127,7 +127,7 @@ def show_sig(ax, p1, dBrange, f0_idx, known_message):
     tsyncs = get_tsyncs(pf)
     h0_idx = tsyncs[1][0]
     print("tsyncs hardwired to 3")
-    h0_idx = 3
+    h0_idx = 0
     
     symbols = create_symbols(known_message)
     pvt = np.mean(p + 0.001, axis = 1)
@@ -172,12 +172,14 @@ signal_info_list = [(2571, 'W1FC F5BZB -08'), (2157, 'WM3PEN EA6VQ -09')]
 audio_samples = read_wav("../data/210703_133430.wav")
 #show_spectrum(pf)
 
+# what's the best way to incorporate possible time and frequency offsets and slopes automatically?
+
 signal = signal_info_list[1]
 freq, msg = signal
 f0_idx = int(freq/6.25)
 fig,axs = plt.subplots(1,2, figsize = (5,10))
 plt.ion()
-pf = get_spectrum(audio_samples, -3,-2/80)
+pf = get_spectrum(audio_samples, 2.6 * 0.16, 3, 0/80)
 show_sig(axs, pf, 30, f0_idx, msg)
 plt.pause(0.1)
     
