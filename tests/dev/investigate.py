@@ -44,9 +44,8 @@ def get_spectrum(audio_samples, time_offset, phase_global, phase_per_symbol):
     hops_per_cycle = int(15 * 6.25)
     samples_per_hop = int(12000  / 6.25 )
     fft_len = 1920
-    fft_window=np.kaiser(fft_len, 7) 
+    fft_window=np.kaiser(fft_len, 5) 
     freqs = np.fft.fftfreq(fft_len, d=1/12000)
-    print(freqs[:10])
     nFreqs = len(freqs[(freqs<3100)])
     samples_offset = int(time_offset * 12000)
     pf = np.zeros((hops_per_cycle, nFreqs), dtype = np.float32)
@@ -179,7 +178,7 @@ freq, msg = signal
 f0_idx = int(freq/6.25)
 fig,axs = plt.subplots(1,2, figsize = (5,10))
 plt.ion()
-pf = get_spectrum(audio_samples, 2.6 * 0.16, 3, 0/80)
+pf = get_spectrum(audio_samples, 2.8 * 0.16, -1.3, 0/80)
 show_sig(axs, pf, 30, f0_idx, msg)
 plt.pause(0.1)
     
