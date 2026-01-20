@@ -73,7 +73,7 @@ def single_loopback(snr=20, amplitude = 0.5):
     audio_data = create_ft8_wave(symbols_framed, f_base = f_base, amplitude = amplitude, added_noise = -snr)
     t_gen = time.time()   
     
-    z = cycle_manager.spectrum.audio_in.zgrid_main
+    z = np.zeros_like(cycle_manager.spectrum.audio_in.pgrid_main, dtype = np.complex64)
     win = np.kaiser(fft_len, 20)
     for hop in range(hops_percycle):
         samp0 = hop*samps_perhop

@@ -42,7 +42,6 @@ class AudioIn:
         self.wav_finished = False
         self.hoptimes = []
         self.hops_percycle = int(spectrum.sigspec.cycle_seconds * self.hop_rate)
-        self.zgrid_main = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.complex64)
         self.pgrid_main = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)
         self.grid_main_ptr = 0
 
@@ -53,7 +52,6 @@ class AudioIn:
         p = z.real*z.real + z.imag*z.imag
         p = p[:self.nFreqs]
         self.hoptimes.append(t)
-        self.zgrid_main[self.grid_main_ptr] = p
         self.pgrid_main[self.grid_main_ptr] = p
         self.grid_main_ptr = (self.grid_main_ptr + 1) % self.hops_percycle
 

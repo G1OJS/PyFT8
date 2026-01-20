@@ -184,14 +184,13 @@ class Candidate:
                 
 class Cycle_manager():
     def __init__(self, sigspec, onSuccess, onOccupancy, audio_in_wav = None, test_speed_factor = 1.0, 
-                 input_device_keywords = None, output_device_keywords = None, dump_main_grid = False,
+                 input_device_keywords = None, output_device_keywords = None,
                  freq_range = [200,3100], max_cycles = 5000, onCandidateRollover = None, verbose = False):
         
         HPS, BPT, MAX_FREQ, SAMPLE_RATE = 3, 3, freq_range[1], 12000
         self.spectrum = Spectrum(sigspec, SAMPLE_RATE, MAX_FREQ, HPS, BPT)
         self.running = True
         self.verbose = verbose
-        self.dump_main_grid = dump_main_grid
         self.freq_range = freq_range
         self.f0_idxs = range(int(freq_range[0]/self.spectrum.df),
                         min(self.spectrum.nFreqs - self.spectrum.fbins_per_signal, int(freq_range[1]/self.spectrum.df)))
@@ -263,10 +262,6 @@ class Cycle_manager():
                 if(cycle_counter > self.max_cycles):
                     self.running = False
                     break
-                if(self.dump_main_grid):
-                    import pickle
-                    with open(self.cyclestart_str(time.time()-3)+"_dump.pkl","wb") as f:
-                        pickle.dump(self.spectrum.audio_in.zgrid_main, f)
                 cycle_searched = False
                 cands_rollover_done = False
                 self.check_for_tx()
