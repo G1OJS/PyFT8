@@ -177,7 +177,7 @@ freq, msg = signal
 f0_idx = int(freq/6.25)
 fig,axs = plt.subplots(1,2, figsize = (5,10))
 plt.ion()
-pf = get_spectrum(audio_samples, -3.5,-2/80)
+pf = get_spectrum(audio_samples, -3,-2/80)
 show_sig(axs, pf, 30, f0_idx, msg)
 plt.pause(0.1)
     
