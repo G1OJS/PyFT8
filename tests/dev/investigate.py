@@ -5,36 +5,68 @@ import matplotlib.patches as patches
 from matplotlib.colors import LogNorm
 from PyFT8.FT8_encoder import pack_ft8_c28, pack_ft8_g15, encode_bits77
 
-hps=1
+hps=3
 bpt=3
 
-def wav_to_spectrum(wav_path):
-    fft_len = 1920 * bpt
-    fft_out_len = fft_len//2 + 1
-    hop_rate = int(6.25 * hps)
-    hops_per_cycle = 15 * hop_rate
-    zf = np.zeros((hops_per_cycle, fft_out_len), dtype = np.complex64)
-    pf = np.zeros((hops_per_cycle, fft_out_len), dtype = np.complex64)
-    
-    fft_window=np.kaiser(fft_len, 20)
+def read_wav(wav_path):
+    samples_per_cycle = 15 * 12000
     wf = wave.open(wav_path, "rb")
     ptr = 0
     frames = True
-    audio_samples = np.zeros((hops_per_cycle), dtype = np.complex64)
+    audio_samples = np.zeros((samples_per_cycle), dtype = np.float32)
     while frames:
-        frames = wf.readframes(1)
+        frames = wf.readframes(12000)
         if(frames):
             samples = np.frombuffer(frames, dtype=np.int16).astype(np.float32)
-            print(len(samples))
-            if(len(samples) == fft_len):
-                x = samples * fft_window
-                z = np.fft.rfft(x)
-                p = z.real*z.real + z.imag*z.imag
-                zf[ptr, :] = z
-                pf[ptr, :] = p
-                ptr = (ptr + 1) % hops_per_cycle
-    print(f"Loaded {ptr} hops")
+            ns = len(samples)
+            audio_samples[ptr:ptr+ns]= samples
+            ptr += ns
+    print(f"Loaded {ptr} samples")
+    return audio_samples
+
+def get_spectrum(audio_samples):
+    hops_per_cycle = int(15 * 6.25 * hps)
+    samples_per_hop = int(12000 / (6.25 * hps))
+    print(samples_per_hop)
+    fft_len = 1920 * bpt
+    fft_out_len = fft_len//2 + 1
+    fft_window=np.kaiser(fft_len, 20)
+    zf = np.zeros((hops_per_cycle, fft_out_len), dtype = np.complex64)
+    pf = np.zeros((hops_per_cycle, fft_out_len), dtype = np.float32)
+    for hop_idx in range(hops_per_cycle):
+        x = np.zeros_like(fft_window)
+        aud = audio_samples[hop_idx * samples_per_hop: hop_idx * samples_per_hop + fft_len]
+        x[:len(aud)] = aud
+        x*=fft_window
+        z = np.fft.rfft(x)
+        p = z.real*z.real + z.imag*z.imag
+        zf[hop_idx, :] = z
+        pf[hop_idx, :] = p
     return zf, pf
+
+def get_tsyncs(pf, f0_idx):
+    pnorm = pf[:, f0_idx:f0_idx+8*bpt]
+    pnorm = pnorm / np.max(pnorm)
+    costas=[3,1,4,0,6,5,2]
+    csync = np.full((len(costas), 8*bpt), -1/(7*bpt), np.float32)
+    for sym_idx, tone in enumerate(costas):
+        fbins = range(tone*bpt, (tone+1) * bpt)
+        csync[sym_idx, fbins] = 1.0
+        csync[sym_idx, len(costas)*bpt:] = 0
+
+    syncs = []
+    block_off = 36 * hps
+    hop_start_lattitude = int(2 * 6.25 * hps)
+    hop_idxs_Costas =  np.arange(len(costas)) * hps
+    for iBlock in [0,1]:
+        best = (0, f0_idx, -1e30)
+        for h0_idx in range(block_off * iBlock, block_off * iBlock + hop_start_lattitude):
+            sync_score = float(np.dot(pnorm[h0_idx + hop_idxs_Costas ,  :].ravel(), csync.ravel()))
+            test = (h0_idx - block_off * iBlock, f0_idx, sync_score)
+            if test[2] > best[2]:
+                best = test 
+        syncs.append(best)
+    return syncs
 
 def create_mask(msg):
     msg = msg.split(" ")
@@ -70,16 +102,6 @@ def show_power(ax, z, dBrange = 10, mask = None):
     im = ax.imshow(dB, origin="lower", aspect="auto", 
                     cmap="inferno", interpolation="none", alpha = 0.8)
     
-def show_phase(ax, z, mask = None):
-    phs = np.angle(z)
-    alpha_mask = np.zeros_like(phs) + 1
-    if(mask is not None):
-        alpha_mask[(mask==False)] = 0.5
-    im1 = ax.imshow(phs, origin="lower", aspect="auto", 
-                    cmap="twilight", interpolation="none", alpha = alpha_mask)
-    im1.norm.vmin = -3.14
-    im1.norm.vmax = 3.14
-
 def show_llr(ax,llr, tone):
     ax.barh(range(len(llr)), llr, align='edge')
     ax.set_ylim(0,len(llr))
@@ -99,11 +121,14 @@ def get_llr(zf):
     llr = 3.8*llr/np.std(llr)
     return llr, np.argmax(p, axis = 1)
 
+def show_spectrum(zf, dBrange = 40):
+    fig,ax = plt.subplots( figsize = (10,5))
+    show_power(ax, zf, dBrange = dBrange)
+    plt.show()
+
 def show_sig(zf, signal, dBrange = 10, symbols = [0,79]):
     hop_idxs = np.array(range(signal[1]-hps//2, signal[1]+79*hps-hps//2))
     hop_idxs = np.clip(hop_idxs, 0, zf.shape[0]-1)
-    print(hop_idxs)
-    print(zf.shape)
     zf = zf[hop_idxs, signal[0]:signal[0]+8*bpt]
     mask = create_mask(signal[2])
     fig,axs = plt.subplots(1,2, figsize = (5,10))
@@ -118,13 +143,17 @@ def show_sig(zf, signal, dBrange = 10, symbols = [0,79]):
 
 signal_info_list = [(1233, 33, 'W1FC F5BZB -08'), (1034, 23, 'WM3PEN EA6VQ -09'), (574, 1, 'CQ F5RXL IN94'), (306, 33, 'N1JFU EA6EE R-07'), (346, 29, 'A92EE F5PSR -14'), (1293, 21, 'K1BZM EA3GP -09'), (191, 33, 'W0RSJ EA3BMU RR73'), (282, 34, 'K1JT HA0DU KN07'), (1311, 37, 'W1DIG SV9CVY -14'), (790, 28, 'K1JT EA3AGB -15'), (1368, 31, 'XE2X HA2NP RR73'), (1209, 56, 'K1BZM EA3CJ JN01'), (1220, 49, 'WA2FZW DL5AXX RR73'), (1073, 33, 'N1API HA6FQ -23'), (222, 33, 'N1PJT HB9CQK -10'), (725, 46, 'N1API F2VX 73'), (977, 27, 'K1JT HA5WA 73'), (225, 39, 'KD2UGC F6GCP R-23'), (1094, 28, 'CQ EA2BFM IN83')]
 
-zf, zp = wav_to_spectrum("../data/210703_133430.wav")
+audio_samples = read_wav("../data/210703_133430.wav")
+zf, pf = get_spectrum(audio_samples)
+#show_spectrum(zf)
 
-for signal_info in signal_info_list:
+for signal in signal_info_list:
+    tsyncs = get_tsyncs(pf, signal[0])
+    signal_info = (int((bpt*signal[0])/3), tsyncs[1][0],signal[2])
     show_sig(zf, signal_info, dBrange = 20, symbols = [0,79])
 
 gray_seq = [0,1,3,2,5,6,4,7]
 gray_map = np.array([[0,0,0],[0,0,1],[0,1,1],[0,1,0],[1,1,0],[1,0,0],[1,0,1],[1,1,1]])
 payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
-costas=[3,1,4,0,6,5,2]
+
 

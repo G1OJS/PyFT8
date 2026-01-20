@@ -86,7 +86,7 @@ class AudioIn:
         self.stream = self._pa.open(
             format = pyaudio.paInt16, channels=1, rate = self.sample_rate,
             input = True, input_device_index = input_device_idx,
-            frames_per_buffer = int(self.sample_rate // self.hop_rate), stream_callback=self._callback,)
+            frames_per_buffer = int(self.sample_rate / self.hop_rate), stream_callback=self._callback,)
         self.stream.start_stream()
         threading.Thread(target = self.live_consumer).start()
 
