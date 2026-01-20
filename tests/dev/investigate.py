@@ -8,6 +8,7 @@ from PyFT8.FT8_unpack import FT8_unpack
 from PyFT8.ldpc import LdpcDecoder
 
 def decode(llr):
+    llr0 = llr.copy()
     ldpc = LdpcDecoder()
     ncheck = ldpc.calc_ncheck(llr)
     n_its = 0
@@ -15,9 +16,13 @@ def decode(llr):
         for n_its in range(1, 10):
             llr, ncheck = ldpc.do_ldpc_iteration(llr)
             if(ncheck == 0):break
-    cw_bits = (llr > 0).astype(int).tolist()
-    msg = FT8_unpack(cw_bits)
-    return f"{msg} in {n_its} its"
+    msg = "Not decoded"
+    n_err = "?"
+    if(ncheck == 0):
+        cw_bits = (llr > 0).astype(int).tolist()
+        msg = FT8_unpack(cw_bits)
+        n_err = np.count_nonzero(np.sign(llr) != np.sign(llr0))
+    return f"{msg} in {n_its} its, bit errs = {n_err}"
 
 def read_wav(wav_path):
     samples_per_cycle = 15 * 12000
@@ -139,9 +144,12 @@ def show_sig(ax, p1, dBrange, f0_idx, known_message):
                     cmap="inferno", interpolation="none", alpha = 0.8)
 
     ax2 = plt.gca()
+    n_tone_errors = 0
     for i, t in enumerate(symbols):
         edge = 'g'
-        if (t != np.argmax(dB[h0_idx+i,:])): edge = 'r'
+        if (t != np.argmax(dB[h0_idx+i,:])):
+            edge = 'r'
+            n_tone_errors +=1
         if (i<=6) or i>=72 or (i>=36 and i<=42): edge = 'b'
         rect = patches.Rectangle((t-0.5 , i + h0_idx-0.5 ),1,1,linewidth=1.5,edgecolor=edge,facecolor='none')
         axs[0].add_patch(rect)
@@ -156,7 +164,7 @@ def show_sig(ax, p1, dBrange, f0_idx, known_message):
     print(len(llr))
     msg = decode(llr)
 
-    fig.suptitle(f"{signal[1]}\n{f0_idx*6.25:5.1f}Hz {0.16*h0_idx:5.2f}s \n{msg}")
+    fig.suptitle(f"{signal[1]}\n{f0_idx*6.25:5.1f}Hz {0.16*h0_idx:5.2f}s Tone errors:{n_tone_errors}\n{msg}")
     
 
 signal_info_list = [(2571, 'W1FC F5BZB -08'), (2157, 'WM3PEN EA6VQ -09')]
