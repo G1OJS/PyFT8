@@ -35,20 +35,23 @@ def read_wav(wav_path):
     print(f"Loaded {ptr} samples")
     return audio_samples
 
-def get_spectrum(audio_samples, phase_ramp = 0.1):
+def get_spectrum(audio_samples, phase_global, phase_per_symbol):
     hops_per_cycle = int(15 * 6.25)
     samples_per_hop = int(12000  / 6.25 )
     fft_len = 1920
-    s = phase_ramp
-    phs = np.arange(0, s, s/fft_len)
-    fft_window=np.kaiser(fft_len, 7) * np.exp(1j * phs)
-    pf = np.zeros((hops_per_cycle, fft_len), dtype = np.float32)
+    fft_window=np.kaiser(fft_len, 7) 
+    freqs = np.fft.fftfreq(fft_len, d=1/12000)
+    print(freqs[:10])
+    nFreqs = len(freqs[(freqs<3100)])
+    print(nFreqs)
+    pf = np.zeros((hops_per_cycle, nFreqs), dtype = np.float32)
     for hop_idx in range(hops_per_cycle):
-        za = np.zeros_like(fft_window)
+        phs = np.linspace(0, phase_global + hop_idx * phase_per_symbol, fft_len)
+        za = np.zeros_like(fft_window, dtype = np.complex64)
         aud = audio_samples[hop_idx * samples_per_hop: hop_idx * samples_per_hop + fft_len]
         za[:len(aud)] = aud
-        za*=fft_window
-        z = np.fft.fft(za)
+        za = za *fft_window * np.exp(1j * phs)
+        z = np.fft.fft(za)[:nFreqs]
         p = z.real*z.real + z.imag*z.imag
         pf[hop_idx, :] = p
     return pf
@@ -96,8 +99,6 @@ def calc_dB(pwr, dBrange = 20, rel_to_max = False):
     return dB
 
 def get_llr(p):
-    pvt = np.mean(p + 0.001, axis = 1)
-   # p = p / pvt[:,None]
     p = calc_dB(p, dBrange = 30)
     llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
     llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
@@ -113,7 +114,10 @@ def show_spectrum(p1, dBrange = 40):
                     cmap="inferno", interpolation="none", alpha = 0.8)
     plt.show()
 
-def show_sig(p1, dBrange, f0_idx, known_message):
+global im
+im = None
+def show_sig(ax, p1, dBrange, f0_idx, known_message):
+    global im
     p = p1[:, f0_idx:f0_idx+8]
     tsyncs = get_tsyncs(pf)
     h0_idx = tsyncs[1][0]
@@ -121,7 +125,6 @@ def show_sig(p1, dBrange, f0_idx, known_message):
     h0_idx = 3
     
     symbols = create_symbols(known_message)
-    fig,axs = plt.subplots(1,2, figsize = (5,10))
     pvt = np.mean(p + 0.001, axis = 1)
     p = p / pvt[:,None]
 
@@ -129,9 +132,12 @@ def show_sig(p1, dBrange, f0_idx, known_message):
         ps = p[s,:]
         p[s, np.argmax(ps)]=2
     dB = calc_dB(p, dBrange = dBrange, rel_to_max = True)
-    print(dB.shape)
-    im = axs[0].imshow(dB, origin="lower", aspect="auto", 
+    if(im):
+        im.set_data(dB)
+    else:
+        im = axs[0].imshow(dB, origin="lower", aspect="auto", 
                     cmap="inferno", interpolation="none", alpha = 0.8)
+
     ax2 = plt.gca()
     for i, t in enumerate(symbols):
         edge = 'g'
@@ -151,7 +157,7 @@ def show_sig(p1, dBrange, f0_idx, known_message):
     msg = decode(llr)
 
     fig.suptitle(f"{signal[1]}\n{f0_idx*6.25:5.1f}Hz {0.16*h0_idx:5.2f}s \n{msg}")
-    plt.show()
+    
 
 signal_info_list = [(2571, 'W1FC F5BZB -08'), (2157, 'WM3PEN EA6VQ -09')]
                     
@@ -160,11 +166,13 @@ audio_samples = read_wav("../data/210703_133430.wav")
 
 signal = signal_info_list[1]
 freq, msg = signal
-f0_idx = int(1+freq/6.25)
-phs_ramp = 1.5
-pf = get_spectrum(audio_samples, phase_ramp = phs_ramp)
-show_sig(pf, 20, f0_idx, msg)
-
+f0_idx = int(freq/6.25)
+fig,axs = plt.subplots(1,2, figsize = (5,10))
+plt.ion()
+pf = get_spectrum(audio_samples, -3.5,-2/80)
+show_sig(axs, pf, 30, f0_idx, msg)
+plt.pause(0.1)
+    
 gray_seq = [0,1,3,2,5,6,4,7]
 gray_map = np.array([[0,0,0],[0,0,1],[0,1,1],[0,1,0],[1,1,0],[1,0,0],[1,0,1],[1,1,1]])
 payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
