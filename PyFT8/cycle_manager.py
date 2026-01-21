@@ -126,31 +126,31 @@ class Candidate:
         self.ncheck = self.ncheck0
 
         quality_too_low = (self.llr0_quality < min_qual or self.llr0_sd < min_sd)
-        self._record_state(f"I", self.ncheck, final = quality_too_low)
+        self._record_state(f"I", final = quality_too_low)
         
         self.demap_completed = time.time()
 
     def progress_decode(self):
-        final = False
+        stalled = False
+        ALLOW_STALLS_TO_CRC = False
         if(self.ncheck > 0):
             actor = self._invoke_actor()
             self.invoked_actors.add(actor)
             stalled = (actor == "_")
-            self._record_state(actor, self.ncheck, final = stalled)
-        if(self.ncheck == 0 or final):
+            self._record_state(actor, final = stalled)
+        if(self.ncheck == 0 or (stalled and ALLOW_STALLS_TO_CRC)):
             codeword_bits = (self.llr > 0).astype(int).tolist()
             if check_crc_codeword_list(codeword_bits):
                 self.payload_bits = codeword_bits[:77]
                 self.msg = FT8_unpack(self.payload_bits)
             if self.msg:
-                self._record_state("C", 0, final = True)
+                self._record_state("C", final = True)
             else:
-                self._record_state("X", 0, final = True)
+                self._record_state("X", final = True)
 
-    def _record_state(self, actor_code, ncheck, final = False):
-        self.ncheck = ncheck
+    def _record_state(self, actor_code, final = False):
         finalcode = "#" if final else ";"
-        self.decode_path = self.decode_path + f"{actor_code}{ncheck:02d}{finalcode}"
+        self.decode_path = self.decode_path + f"{actor_code}{self.ncheck:02d}{finalcode}"
         if(final):
             self.decode_completed = time.time()
         
