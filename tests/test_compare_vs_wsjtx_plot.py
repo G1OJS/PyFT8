@@ -7,7 +7,7 @@ with open(f"data/compare_wsjtx.csv", "r") as f:
 
 pycols = ['lime','green','orange','yellow','white']
 pylabs = ["Immediate","LDPC","LDPC & BitFlip","OSD","Timeouts"]
-bins = [350 + 25*b for b in range(50)]
+bins = [350 + 5*b for b in range(50)]
 
 py = [[],[],[],[],[]]
 ws = []
