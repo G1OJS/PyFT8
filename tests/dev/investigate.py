@@ -165,7 +165,7 @@ def show_sig(ax, p1, dBrange, f0_idx, known_message):
     nbad = np.count_nonzero(np.abs(llr<0.5))
     msg = decode(llr)
 
-    fig.suptitle(f"{signal[1]}\nTone errors:{n_tone_errors} |llr|<0.5: {nbad}\n{msg}")
+    fig.suptitle(f"{signal[1]}\nTone errors:{n_tone_errors}   σ(llr): {np.std(llr):5.2f}\n{msg}")
     
 
 signal_info_list = [(2571, 'W1FC F5BZB -08', 5*.16, 0.5), (2157, 'WM3PEN EA6VQ -09', 2.7*0.16, 1), (1197, 'CQ F5RXL IN94', -1.86*0.16, -1.1)]
