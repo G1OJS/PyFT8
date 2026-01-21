@@ -121,12 +121,8 @@ global im
 im = None
 def show_sig(ax, p1, dBrange, f0_idx, known_message):
     global im
-    p = p1[:, f0_idx:f0_idx+8]
-    tsyncs = get_tsyncs(pf)
-    h0_idx = tsyncs[1][0]
-    print("tsyncs hardwired to 3")
-    h0_idx = 0
-    
+    p = p1[:79, f0_idx:f0_idx+8]
+
     symbols = create_symbols(known_message)
     pvt = np.mean(p + 0.001, axis = 1)
     p = p / pvt[:,None]
@@ -135,6 +131,13 @@ def show_sig(ax, p1, dBrange, f0_idx, known_message):
         ps = p[s,:]
         p[s, np.argmax(ps)]=2
     dB = calc_dB(p, dBrange = dBrange, rel_to_max = True)
+
+    def uplift_costas_area(x, dBval):
+        x[(x<dBval)] = dBval
+    uplift_costas_area(dB[:7],-0.8*dBrange)
+    uplift_costas_area(dB[36:43],-0.8*dBrange)
+    uplift_costas_area(dB[72:],-0.8*dBrange)
+    
     if(im):
         im.set_data(dB)
     else:
@@ -145,11 +148,11 @@ def show_sig(ax, p1, dBrange, f0_idx, known_message):
     n_tone_errors = 0
     for i, t in enumerate(symbols):
         edge = 'g'
-        if (t != np.argmax(dB[h0_idx+i,:])):
+        if (t != np.argmax(dB[i,:])):
             edge = 'r'
             n_tone_errors +=1
         if (i<=6) or i>=72 or (i>=36 and i<=42): edge = 'b'
-        rect = patches.Rectangle((t-0.5 , i + h0_idx-0.5 ),1,1,linewidth=1.5,edgecolor=edge,facecolor='none')
+        rect = patches.Rectangle((t-0.5 , i -0.5 ),1,1,linewidth=1.5,edgecolor=edge,facecolor='none')
         axs[0].add_patch(rect)
 
     payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
@@ -158,11 +161,11 @@ def show_sig(ax, p1, dBrange, f0_idx, known_message):
     axs[1].set_ylim(0,len(llr_full))
     axs[1].set_xlim(-5,5)
 
-    llr = get_llr(p[h0_idx:,:][payload_symb_idxs,:])
+    llr = get_llr(p[payload_symb_idxs,:])
     nbad = np.count_nonzero(np.abs(llr<0.5))
     msg = decode(llr)
 
-    fig.suptitle(f"{signal[1]}\n{f0_idx*6.25:5.1f}Hz {0.16*h0_idx:5.2f}s Tone errors:{n_tone_errors} |llr|<0.5: {nbad}\n{msg}")
+    fig.suptitle(f"{signal[1]}\nTone errors:{n_tone_errors} |llr|<0.5: {nbad}\n{msg}")
     
 
 signal_info_list = [(2571, 'W1FC F5BZB -08', 5*.16, 0.5), (2157, 'WM3PEN EA6VQ -09', 2.7*0.16, 1), (1197, 'CQ F5RXL IN94', -1.86*0.16, -1.1)]
