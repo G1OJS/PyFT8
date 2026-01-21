@@ -106,7 +106,7 @@ def single_loopback(snr=20, amplitude = 0.5):
     t_decode = time.time()
 
     success = output_msg == input_msg
-    results = {'snr':snr, 'success': success, 'llr_sd':c.llr0_sd, 'llr_qual':np.sum(np.abs(c.llr0)),
+    results = {'snr':snr, 'success': success, 'llr_sd':c.llr0_sd, 'llr_qual':c.llr0_quality,
                'ncheck0':c.ncheck0, 'n_its':c.counters[1], 'decode_path':c.decode_path, 
                't_gen':1000*(t_gen-t0), 't_spec':1000*(t_spec-t_gen), 't_demap':1000*(t_demap-t_spec), 't_decode':1000*(t_decode-t_demap)}
     
@@ -235,6 +235,6 @@ def plot_results(run_params = "Default"):
 
 
 run_params = "default"
-test_vs_snr(run_params, ntrials = 1000)
+test_vs_snr(run_params, ntrials = 500)
 plot_results(run_params)
 

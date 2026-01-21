@@ -106,7 +106,7 @@ class Candidate:
         self.fHz = int((self.f0_idx + bpt // 2) * spectrum.df)
         self.last_payload_hop = np.max([syncs[0][0], syncs[1][0]]) + hps * spectrum.sigspec.payload_symb_idxs[-1]
         
-    def demap(self, spectrum, min_qual = 410, min_sd = 0.45):
+    def demap(self, spectrum, min_qual = 395, min_sd = 0):
         self.demap_started = time.time()
         
         h0, h1 = self.syncs[0][0], self.syncs[1][0]
@@ -155,7 +155,7 @@ class Candidate:
             self.decode_completed = time.time()
         
     def _invoke_actor(self, nc_thresh_bitflip = 28, nc_max_ldpc = 35,
-                      iters_max_ldpc = 7, osd_qual_range = [400,470]):
+                      iters_max_ldpc = 7, osd_qual_range = [395,470]):
         counter = 0
         if self.ncheck > nc_thresh_bitflip and not self.counters[counter] > 0:  
             self.llr, self.ncheck = flip_bits(self.llr, self.ncheck, width = 50, nbits=1, keep_best = True)

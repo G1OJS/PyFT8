@@ -49,7 +49,7 @@ def get_spectrum(audio_samples, time_offset, phase_global, phase_per_symbol, max
     samples_offset = int(time_offset * 12000)
     pf = np.zeros((hops_per_cycle, nFreqs), dtype = np.float32)
     for hop_idx in range(hops_per_cycle):
-        phs = np.linspace(0, phase_global + hop_idx * phase_per_symbol, fft_len)
+        phs = np.pi*np.linspace(0, phase_global + hop_idx * phase_per_symbol, fft_len)
         za = np.zeros_like(fft_window, dtype = np.complex64)
         aud = audio_samples[samples_offset + hop_idx * samples_per_hop: samples_offset+ hop_idx * samples_per_hop + fft_len]
         za[:len(aud)] = aud
@@ -165,19 +165,19 @@ def show_sig(ax, p1, dBrange, f0_idx, known_message):
     fig.suptitle(f"{signal[1]}\n{f0_idx*6.25:5.1f}Hz {0.16*h0_idx:5.2f}s Tone errors:{n_tone_errors} |llr|<0.5: {nbad}\n{msg}")
     
 
-signal_info_list = [(2571, 'W1FC F5BZB -08'), (2157, 'WM3PEN EA6VQ -09'), (1197, 'CQ F5RXL IN94')]
+signal_info_list = [(2571, 'W1FC F5BZB -08', 5*.16, 0.5), (2157, 'WM3PEN EA6VQ -09', 2.7*0.16, 1), (1197, 'CQ F5RXL IN94', -1.86*0.16, -1.1)]
                     
 audio_samples = read_wav("../data/210703_133430.wav")
 
 
 # what's the best way to incorporate possible time and frequency offsets and slopes automatically?
 
-signal = signal_info_list[2]
-freq, msg = signal
+signal = signal_info_list[1]
+freq, msg, t0, df0 = signal
 f0_idx = int(freq/6.25)
 fig,axs = plt.subplots(1,2, figsize = (5,10))
 plt.ion()
-pf = get_spectrum(audio_samples, -1.8 * 0.16, -3.5, 0/80)
+pf = get_spectrum(audio_samples, t0, df0, 0/80)
 print(pf.shape)
 show_spectrum(pf)
 show_sig(axs, pf, 6, f0_idx, msg)
