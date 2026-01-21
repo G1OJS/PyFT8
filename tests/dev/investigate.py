@@ -40,43 +40,40 @@ def read_wav(wav_path):
     print(f"Loaded {ptr} samples")
     return audio_samples
 
-def get_spectrum(audio_samples, time_offset, phase_global, phase_per_symbol, max_freq = 3100):
-    hops_per_cycle = int(15 * 6.25)
-    samples_per_hop = int(12000  / 6.25 )
+def get_spectrum(audio_samples, time_offset, phase_global, phase_per_symbol, max_freq = 3100, nSyms = 79):
+    samples_per_symbol = int(12000  / 6.25 )
     fft_len = 1920
     fft_window=np.kaiser(fft_len, 5) 
     nFreqs = int(max_freq/6.25)
     samples_offset = int(time_offset * 12000)
-    pf = np.zeros((hops_per_cycle, nFreqs), dtype = np.float32)
-    for hop_idx in range(hops_per_cycle):
-        phs = np.pi*np.linspace(0, phase_global + hop_idx * phase_per_symbol, fft_len)
+    pf = np.zeros((nSyms, nFreqs), dtype = np.float32)
+    for sym_idx in range(nSyms):
+        phs = np.pi*np.linspace(0, phase_global + sym_idx * phase_per_symbol, fft_len)
         za = np.zeros_like(fft_window, dtype = np.complex64)
-        aud = audio_samples[samples_offset + hop_idx * samples_per_hop: samples_offset+ hop_idx * samples_per_hop + fft_len]
+        aud = audio_samples[samples_offset + sym_idx * samples_per_symbol: samples_offset + sym_idx * samples_per_symbol + fft_len]
         za[:len(aud)] = aud
         za = za *fft_window * np.exp(1j * phs)
         z = np.fft.fft(za)[:nFreqs]
         p = z.real*z.real + z.imag*z.imag
-        pf[hop_idx, :] = p
+        pf[sym_idx, :] = p
     return pf
 
-def get_tsyncs(p):
+def get_tsyncs(f0_idx):
     costas=[3,1,4,0,6,5,2]
-    csync = np.full((len(costas), len(costas)), -1/7, np.float32)
+    csync = np.full((len(costas), 8), -1/7, np.float32)
     for sym_idx, tone in enumerate(costas):
-        csync[sym_idx:sym_idx+1, tone:tone+1] = 1.0
+        csync[sym_idx, tone] = 1.0
     syncs = []
     block_off = 36
-    hop_start_lattitude = int(2 * 6.25 )
-    hop_idxs_Costas =  np.arange(len(costas)) 
-    f_idxs = np.arange(len(costas)) 
-    pnorm = p[:, f_idxs]
-    pnorm = pnorm / np.max(pnorm)
     for iBlock in [0,1]:
         best = (0, -1e30)
-        for h0_idx in range(block_off * iBlock, block_off * iBlock + hop_start_lattitude):
-           # sync_score = float(np.dot(pnorm[h0_idx+hop_idxs_Costas,:].ravel(), csync.ravel()))
-            sync_score = np.sum(pnorm[h0_idx+hop_idxs_Costas,:] * csync)
-            test = (h0_idx - block_off * iBlock, sync_score)
+        for t0 in np.arange(-1,2,.016):
+            pf = get_spectrum(audio_samples, t0 + iBlock*36*0.16, 0, 0, nSyms = 7)
+            pnorm = pf[:, f0_idx:f0_idx+8]
+            pnorm = pnorm / np.max(pnorm)
+            # sync_score = float(np.dot(pnorm[h0_idx+hop_idxs_Costas,:].ravel(), csync.ravel()))
+            sync_score = np.sum(pnorm * csync)
+            test = (t0, sync_score)
             if test[1] > best[1]:
                 best = test 
         syncs.append(best)
@@ -117,10 +114,8 @@ def show_spectrum(p1, dBrange = 40):
                     cmap="inferno", interpolation="none", alpha = 0.8)
     plt.show()
 
-global im
-im = None
-def show_sig(ax, p1, dBrange, f0_idx, known_message):
-    global im
+
+def show_sig(ax, p1, f0_idx, known_message):
     p = p1[:79, f0_idx:f0_idx+8]
 
     symbols = create_symbols(known_message)
@@ -130,19 +125,17 @@ def show_sig(ax, p1, dBrange, f0_idx, known_message):
     for s in range(p.shape[0]):
         ps = p[s,:]
         p[s, np.argmax(ps)]=2
-    dB = calc_dB(p, dBrange = dBrange, rel_to_max = True)
+    dB = calc_dB(p, dBrange = 6, rel_to_max = True)
 
-    def uplift_costas_area(x, dBval):
+    def colour_background(x, dBval):
         x[(x<dBval)] = dBval
-    uplift_costas_area(dB[:7],-0.8*dBrange)
-    uplift_costas_area(dB[36:43],-0.8*dBrange)
-    uplift_costas_area(dB[72:],-0.8*dBrange)
+    colour_background(dB[:7],-4)
+    colour_background(dB[36:43],-4)
+    colour_background(dB[72:],-4)
     
-    if(im):
-        im.set_data(dB)
-    else:
-        im = axs[0].imshow(dB, origin="lower", aspect="auto", 
-                    cmap="inferno", interpolation="none", alpha = 0.8)
+    im = axs[0].imshow(dB, origin="lower", aspect="auto", 
+                cmap="inferno", interpolation="none", alpha = 0.8)
+ 
 
     ax2 = plt.gca()
     n_tone_errors = 0
@@ -151,7 +144,6 @@ def show_sig(ax, p1, dBrange, f0_idx, known_message):
         if (t != np.argmax(dB[i,:])):
             edge = 'r'
             n_tone_errors +=1
-        if (i<=6) or i>=72 or (i>=36 and i<=42): edge = 'b'
         rect = patches.Rectangle((t-0.5 , i -0.5 ),1,1,linewidth=1.5,edgecolor=edge,facecolor='none')
         axs[0].add_patch(rect)
 
@@ -161,30 +153,37 @@ def show_sig(ax, p1, dBrange, f0_idx, known_message):
     axs[1].set_ylim(0,len(llr_full))
     axs[1].set_xlim(-5,5)
 
+    ticks = {'Costas1':0, 'C1+r':7,'C2+r+R':16.66,'Grid-rpt+i3':26.66,'CRC':32, 'Costas2':36, 'CRCcont':43,'Parity':44.33,'Costas3':72}
+    axs[0].set_yticks(np.array([v for k, v in ticks.items()])-0.5, labels=[k for k, v in ticks.items()])
+    axs[1].set_yticks(np.array([3*v for k, v in ticks.items()])-0.5, labels="")    
+
     llr = get_llr(p[payload_symb_idxs,:])
     nbad = np.count_nonzero(np.abs(llr<0.5))
     msg = decode(llr)
 
-    fig.suptitle(f"{signal[1]}\nTone errors:{n_tone_errors}   σ(llr): {np.std(llr):5.2f}\n{msg}")
-    
+    return n_tone_errors, llr, msg 
 
-signal_info_list = [(2571, 'W1FC F5BZB -08', 5*.16, 0.5), (2157, 'WM3PEN EA6VQ -09', 2.7*0.16, 1), (1197, 'CQ F5RXL IN94', -1.86*0.16, -1.1)]
+signal_info_list = [(2571, 'W1FC F5BZB -08', 0.5, 0), (2157, 'WM3PEN EA6VQ -09',  1, 0),
+                    (1197, 'CQ F5RXL IN94', -1.1, 0), (2852, 'XE2X HA2NP RR73', -1, 0)]
                     
 audio_samples = read_wav("../data/210703_133430.wav")
 
 
 # what's the best way to incorporate possible time and frequency offsets and slopes automatically?
 
-signal = signal_info_list[1]
-freq, msg, t0, df0 = signal
+signal = signal_info_list[3]
+freq, known_msg, df0, fd_per_sym = signal
 f0_idx = int(freq/6.25)
-fig,axs = plt.subplots(1,2, figsize = (5,10))
-plt.ion()
-pf = get_spectrum(audio_samples, t0, df0, 0/80)
-print(pf.shape)
-show_spectrum(pf)
-show_sig(axs, pf, 6, f0_idx, msg)
-plt.pause(0.1)
+
+tsyncs = get_tsyncs(f0_idx)
+for s in tsyncs:
+    print(f"{s[0]:5.2f} {s[1]:5.2f}")
+    t0 = s[0]
+    pf = get_spectrum(audio_samples, t0, df0, fd_per_sym)
+    fig, axs = plt.subplots(1,2, figsize = (5,10))
+    n_tone_errors, llr, decoded_msg = show_sig(axs, pf, f0_idx, known_msg)
+    fig.suptitle(f"{signal[1]}\nT0 {t0:5.2f} df0 {df0:5.2f} \nTone errors:{n_tone_errors}   σ(llr): {np.std(llr):5.2f}\n{decoded_msg}")
+plt.show()
     
 gray_seq = [0,1,3,2,5,6,4,7]
 gray_map = np.array([[0,0,0],[0,0,1],[0,1,1],[0,1,0],[1,1,0],[1,0,0],[1,0,1],[1,1,1]])
