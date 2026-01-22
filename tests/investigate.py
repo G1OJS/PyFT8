@@ -8,7 +8,7 @@ from PyFT8.FT8_unpack import FT8_unpack
 from PyFT8.ldpc import LdpcDecoder
 
 SAMPLE_RATE = 12000
-KAISER_IND = 20
+KAISER_IND = 6
 OSAMP_FREQ = 3
 WAV_FILE = "data/210703_133430.wav"
 
@@ -96,7 +96,7 @@ def get_llr(p):
     llr = 3.8*llr/np.std(llr)
     return llr.flatten()
 
-def show_spectrum(p1, dBrange = 40):
+def show_spectrum(p1, dBrange = 60):
     fig,ax = plt.subplots(figsize = (10,5))
     dB = calc_dB(p1, dBrange = dBrange, rel_to_max = True)
     im = ax.imshow(dB, origin="lower", aspect="auto", 
@@ -104,10 +104,9 @@ def show_spectrum(p1, dBrange = 40):
     plt.show()
 
 
-def show_sig(axP,axL, p1, f0_idx, t0, df0, known_message, show_ylabels = True):
+def show_sig(axP,axL, p1, f0_idx, t0, df0, known_message = None, show_ylabels = True):
     p = p1[:79, f0_idx:f0_idx+8]
 
-    symbols = create_symbols(known_message)
     pvt = np.mean(p + 0.001, axis = 1)
     p = p / pvt[:,None]
 
@@ -126,13 +125,15 @@ def show_sig(axP,axL, p1, f0_idx, t0, df0, known_message, show_ylabels = True):
                 cmap="inferno", interpolation="none", alpha = 0.8)
  
     n_tone_errors = 0
-    for i, t in enumerate(symbols):
-        edge = 'g'
-        if (t != np.argmax(dB[i,:])):
-            edge = 'r'
-            n_tone_errors +=1
-        rect = patches.Rectangle((t-0.5 , i -0.5 ),1,1,linewidth=1.5,edgecolor=edge,facecolor='none')
-        axP.add_patch(rect)
+    if(known_message is not None):
+        symbols = create_symbols(known_message)
+        for i, t in enumerate(symbols):
+            edge = 'g'
+            if (t != np.argmax(dB[i,:])):
+                edge = 'r'
+                n_tone_errors +=1
+            rect = patches.Rectangle((t-0.5 , i -0.5 ),1,1,linewidth=1.5,edgecolor=edge,facecolor='none')
+            axP.add_patch(rect)
 
     payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
     llr_full = get_llr(p)
@@ -189,6 +190,7 @@ def grid_t0df0(known_signal, df0_a, df0_b):
         for j, s in enumerate(tsyncs):
             t0 = s[0]
             pf = get_spectrum(audio_samples, t0, df0, 0)
+            show_spectrum(pf)
             show_sig(axs[1-j,2*i],axs[1-j, 2*i+1], pf, f0_idx, t0, df0, known_msg, show_ylabels = (i == 0))
             plt.pause(0.1)
 
@@ -219,19 +221,39 @@ def get_syncs(f0_idx):
         syncs.append(best)
     return syncs
 
+def get_syncs_2D():
+    costas=[3,1,4,0,6,5,2]
+
+    pf = get_spectrum(audio_samples, 0, 0, 0, nSyms = int(3/0.16) + len(costas))
+    
+    csync = np.zeros((7,8), np.float32)
+    for sym_idx, tone in enumerate(costas):
+        csync[sym_idx, :] = -1/7
+        csync[sym_idx, tone] = 1.0
+
+    csync = pf[3:30, 403:433+8].copy()
+
+    from scipy import signal
+    csync -= np.mean(csync)
+    p = signal.correlate(pf, csync)
+    print(pf.shape)
+    print(p.shape)
+    
+    t0, f0 = np.unravel_index(np.argmax(p), p.shape)
+    show_spectrum(pf)
+
+    show_spectrum(p)
+    return t0, f0
 
 
-def single_combi_synced(known_signal):
-    freq, known_msg = known_signal
-    f0_idx = int(0.5+freq/6.25)
+def single_combi_synced():
     fig, axs = plt.subplots(1, 2, figsize =  (5,10))
     plt.ion()
-    syncs = get_syncs(f0_idx)
-   # sync = syncs[0] if syncs[0][2]>syncs[1][2] else syncs[1]
-    sync = syncs[1]
-    t0, df0, score = sync
-    pf = get_spectrum(audio_samples, t0, df0, 0)
-    show_sig(axs[0],axs[1], pf, f0_idx, t0, df0, known_msg)
+    t0_idx, f0_idx = get_syncs_2D()
+    t0 = t0_idx * 0.16
+    print(t0_idx, f0_idx)
+    pf = get_spectrum(audio_samples, t0, 0, 0)
+    show_sig(axs[0],axs[1], pf, f0_idx, 0, 0)
     plt.pause(0.1)    
     
     
@@ -245,7 +267,8 @@ signal_info_list = [(2571, 'W1FC F5BZB -08'), (2157, 'WM3PEN EA6VQ -09'),
                     
 audio_samples = read_wav(WAV_FILE)
 
-grid_t0df0(signal_info_list[0], -3,-2)
 
 
-#single_combi_synced(signal_info_list[3])
+#grid_t0df0(signal_info_list[1], -1,1)
+
+single_combi_synced()
