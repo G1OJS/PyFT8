@@ -8,7 +8,7 @@ from PyFT8.FT8_unpack import FT8_unpack
 from PyFT8.ldpc import LdpcDecoder
 
 SAMPLE_RATE = 12000
-KAISER_IND = 10
+KAISER_IND = 2
 WAV_FILE = "data/210703_133430.wav"
 
 def decode(llr):
@@ -66,7 +66,7 @@ def get_spectrum(audio_samples, time_offset, phase_global, phase_per_symbol, max
         pf[sym_idx, :] = p
     return pf
 
-def get_tsyncs(f0_idx):
+def get_tsyncs(f0_idx, df):
     costas=[3,1,4,0,6,5,2]
     csync = np.full((len(costas), 8), -1/7, np.float32)
     for sym_idx, tone in enumerate(costas):
@@ -76,7 +76,7 @@ def get_tsyncs(f0_idx):
     for iBlock in [0,1]:
         best = (0, -1e30)
         for t0 in np.arange(-1,2,.016):
-            pf = get_spectrum(audio_samples, t0 + iBlock*36*0.16, 0, 0, nSyms = 7)
+            pf = get_spectrum(audio_samples, t0 + iBlock*36*0.16, df, 0, nSyms = 7)
             pnorm = pf[:, f0_idx:f0_idx+8]
             pnorm = pnorm / np.max(pnorm)
             # sync_score = float(np.dot(pnorm[h0_idx+hop_idxs_Costas,:].ravel(), csync.ravel()))
@@ -188,8 +188,8 @@ for ax in fig.axes:
     
 plt.ion()
 plt.pause(0.1)
-for i, df in enumerate(np.linspace(-2,2,n_finefreqs)):
-    tsyncs = get_tsyncs(f0_idx)
+for i, df in enumerate(np.linspace(-1,1,n_finefreqs)):
+    tsyncs = get_tsyncs(f0_idx, df)
     for j, s in enumerate(tsyncs):
         print(f"t0: {s[0]:5.2f}s has sync score:{s[1]:5.2f}")
         t0 = s[0]
