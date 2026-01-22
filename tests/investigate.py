@@ -8,7 +8,8 @@ from PyFT8.FT8_unpack import FT8_unpack
 from PyFT8.ldpc import LdpcDecoder
 
 SAMPLE_RATE = 12000
-KAISER_IND = 2
+KAISER_IND = 20
+OSAMP_FREQ = 3
 WAV_FILE = "data/210703_133430.wav"
 
 def decode(llr):
@@ -49,10 +50,10 @@ def read_wav(wav_path):
 
 def get_spectrum(audio_samples, time_offset, phase_global, phase_per_symbol, max_freq = 3100, nSyms = 79):
     samples_per_symbol = int(SAMPLE_RATE  / 6.25 )
-    fft_len = samples_per_symbol
+    fft_len = OSAMP_FREQ * samples_per_symbol
     fft_window=np.kaiser(fft_len, KAISER_IND)
     fft_df = SAMPLE_RATE / fft_len 
-    nFreqs = int(max_freq/fft_df)
+    nFreqs = int(max_freq / fft_df)
     samples_offset = int(time_offset * SAMPLE_RATE)
     pf = np.zeros((nSyms, nFreqs), dtype = np.float32)
     for sym_idx in range(nSyms):
@@ -61,32 +62,11 @@ def get_spectrum(audio_samples, time_offset, phase_global, phase_per_symbol, max
         aud = audio_samples[samples_offset + sym_idx * samples_per_symbol: samples_offset + sym_idx * samples_per_symbol + fft_len]
         za[:len(aud)] = aud
         za = za *fft_window * np.exp(1j * phs)
-        z = np.fft.fft(za)[:nFreqs]
+        z = np.fft.fft(za)
+        z = z[:-OSAMP_FREQ:OSAMP_FREQ][:nFreqs]
         p = z.real*z.real + z.imag*z.imag
         pf[sym_idx, :] = p
     return pf
-
-def get_tsyncs(f0_idx, df):
-    costas=[3,1,4,0,6,5,2]
-    csync = np.full((len(costas), 8), -1/7, np.float32)
-    for sym_idx, tone in enumerate(costas):
-        csync[sym_idx, tone] = 1.0
-    syncs = []
-    block_off = 36
-    for iBlock in [0,1]:
-        best = (0, -1e30)
-        for t0 in np.arange(-1,2,.016):
-            pf = get_spectrum(audio_samples, t0 + iBlock*36*0.16, df, 0, nSyms = 7)
-            pnorm = pf[:, f0_idx:f0_idx+8]
-            pmax = np.max(pnorm)
-            if(pmax >0):
-                pnorm = pnorm / pmax
-                sync_score = np.sum(pnorm * csync)
-                test = (t0, sync_score)
-                if test[1] > best[1]:
-                    best = test 
-        syncs.append(best)
-    return syncs
 
 def create_symbols(msg):
     msg = msg.split(" ")
@@ -161,7 +141,8 @@ def show_sig(axP,axL, p1, f0_idx, t0, df0, known_message, show_ylabels = True):
     axL.set_xlim(-5,5)
 
     ticks = {'Costas1':0, 'C1+r':7,'C2+r+R':16.66,'Grid-rpt+i3':26.66,'CRC':32, 'Costas2':36, 'CRCcont':43,'Parity':44.33,'Costas3':72}
-    axP.set_yticks(np.array([v for k, v in ticks.items()])-0.5, labels=[k for k, v in ticks.items()] if show_ylabels else "")
+    axP.set_yticks(np.array([v for k, v in ticks.items()])-0.5)
+    axP.set_yticklabels([k for k, v in ticks.items()] if show_ylabels else "", fontsize = 6)
     axL.set_yticks(np.array([3*v for k, v in ticks.items()])-0.5, labels="")    
 
     llr = get_llr(p[payload_symb_idxs,:])
@@ -170,22 +151,42 @@ def show_sig(axP,axL, p1, f0_idx, t0, df0, known_message, show_ylabels = True):
     axP.set_title(f"{msg}\n{t0:5.2f}s {df0:5.2f}b {n_tone_errors}x", fontsize = 6)
     axL.set_title(f"σ={np.std(llr):5.2f} {n_bit_errors}x", fontsize = 6)
 
+def get_tsyncs(f0_idx, df):
+    costas=[3,1,4,0,6,5,2]
+    csync = np.full((len(costas), 8), -1/7, np.float32)
+    for sym_idx, tone in enumerate(costas):
+        csync[sym_idx, tone] = 1.0
+    syncs = []
+    block_off = 36
+    for iBlock in [0,1]:
+        best = (0, -1e30)
+        for t0 in np.arange(-1,2,.016):
+            pf = get_spectrum(audio_samples, t0 + iBlock*36*0.16, df, 0, nSyms = 7)
+            pnorm = pf[:, f0_idx:f0_idx+8]
+            pmax = np.max(pnorm)
+            if(pmax >0):
+                pnorm = pnorm / pmax
+                sync_score = np.sum(pnorm * csync)
+                test = (t0, sync_score)
+                if test[1] > best[1]:
+                    best = test 
+        syncs.append(best)
+    return syncs
 
-def grid_t0df0(known_signal):
+def grid_t0df0(known_signal, df0_a, df0_b):
     freq, known_msg = known_signal
-    f0_idx = int(freq/6.25)
+    f0_idx = int(0.5+freq/6.25)
     n_finefreqs = 5
     fig, axs = plt.subplots(2, n_finefreqs*2, figsize = (14,8))
-    fig.suptitle(f"{known_signal[1]} Kaiser = {KAISER_IND}")
+    fig.suptitle(f"{known_signal[1]}, Kaiser = {KAISER_IND}, Freq oversampling = {OSAMP_FREQ}")
     for ax in fig.axes:
         ax.set_yticks(np.array([0,0]),labels = ['',''])
         ax.set_xticks(np.array([0,0]),labels = ['',''])
     plt.ion()
     plt.pause(0.1)
-    for i, df0 in enumerate(np.linspace(-1,1,n_finefreqs)):
+    for i, df0 in enumerate(np.linspace(df0_a,df0_b,n_finefreqs)):
         tsyncs = get_tsyncs(f0_idx, df0)
         for j, s in enumerate(tsyncs):
-            print(f"t0: {s[0]:5.2f}s has sync score:{s[1]:5.2f}")
             t0 = s[0]
             pf = get_spectrum(audio_samples, t0, df0, 0)
             show_sig(axs[1-j,2*i],axs[1-j, 2*i+1], pf, f0_idx, t0, df0, known_msg, show_ylabels = (i == 0))
@@ -193,16 +194,44 @@ def grid_t0df0(known_signal):
 
     plt.pause(0.1)
 
+
+def get_syncs(f0_idx):
+    costas=[3,1,4,0,6,5,2]
+    csync = np.full((len(costas), 8), -1/7, np.float32)
+    for sym_idx, tone in enumerate(costas):
+        csync[sym_idx, tone] = 1.0
+    syncs = []
+    block_off = 36
+    for iBlock in [0,1]:
+        best = (0, 0, -1e30)
+        for df0 in np.arange(-1,1,0.1):
+            print(df0)
+            for t0 in np.arange(-1,2,.016):
+                pf = get_spectrum(audio_samples, t0 + iBlock*36*0.16, df0, 0, nSyms = 7)
+                pnorm = pf[:, f0_idx:f0_idx+8]
+                pmax = np.max(pnorm)
+                if(pmax >0):
+                    pnorm = pnorm / pmax
+                    sync_score = np.sum(pnorm * csync)
+                    test = (t0, df0, sync_score)
+                    if test[2] > best[2]:
+                        best = test 
+        syncs.append(best)
+    return syncs
+
+
+
 def single_combi_synced(known_signal):
     freq, known_msg = known_signal
-    f0_idx = int(freq/6.25)
-    fig, axs = plt.subplots(2, figsize =  (5,5))
+    f0_idx = int(0.5+freq/6.25)
+    fig, axs = plt.subplots(1, 2, figsize =  (5,10))
     plt.ion()
-    # insert 2D sync
-    df0=0
-    t0=0
+    syncs = get_syncs(f0_idx)
+   # sync = syncs[0] if syncs[0][2]>syncs[1][2] else syncs[1]
+    sync = syncs[1]
+    t0, df0, score = sync
     pf = get_spectrum(audio_samples, t0, df0, 0)
-    show_sig(axs[0],axs[1], pf, f0_idx, df0, known_msg)
+    show_sig(axs[0],axs[1], pf, f0_idx, t0, df0, known_msg)
     plt.pause(0.1)    
     
     
@@ -215,5 +244,8 @@ signal_info_list = [(2571, 'W1FC F5BZB -08'), (2157, 'WM3PEN EA6VQ -09'),
                     (1197, 'CQ F5RXL IN94'), (2852, 'XE2X HA2NP RR73')]
                     
 audio_samples = read_wav(WAV_FILE)
-known_signal = signal_info_list[1]
-grid_t0df0(known_signal)
+
+grid_t0df0(signal_info_list[0], -3,-2)
+
+
+#single_combi_synced(signal_info_list[3])
