@@ -8,6 +8,8 @@ from PyFT8.FT8_unpack import FT8_unpack
 from PyFT8.ldpc import LdpcDecoder
 
 SAMPLE_RATE = 12000
+KAISER_IND = 10
+WAV_FILE = "data/210703_133430.wav"
 
 def decode(llr):
     llr0 = llr.copy()
@@ -48,7 +50,7 @@ def read_wav(wav_path):
 def get_spectrum(audio_samples, time_offset, phase_global, phase_per_symbol, max_freq = 3100, nSyms = 79):
     samples_per_symbol = int(SAMPLE_RATE  / 6.25 )
     fft_len = samples_per_symbol
-    fft_window=np.kaiser(fft_len, 4)
+    fft_window=np.kaiser(fft_len, KAISER_IND)
     fft_df = SAMPLE_RATE / fft_len 
     nFreqs = int(max_freq/fft_df)
     samples_offset = int(time_offset * SAMPLE_RATE)
@@ -164,13 +166,13 @@ def show_sig(axP,axL, p1, f0_idx, df, known_message, show_ylabels = False):
     llr = get_llr(p[payload_symb_idxs,:])
     msg, n_its, n_bit_errors = decode(llr)
 
-    axP.set_title(f"{t0:5.2f}s {df:5.2f}b {n_tone_errors}x\n{msg}", fontsize = 6)
-    axL.set_title(f"σ={np.std(llr):5.2f} {n_bit_errors}x\n{msg}", fontsize = 6)
+    axP.set_title(f"{msg}\n{t0:5.2f}s {df:5.2f}b {n_tone_errors}x", fontsize = 6)
+    axL.set_title(f"σ={np.std(llr):5.2f} {n_bit_errors}x", fontsize = 6)
 
 signal_info_list = [(2571, 'W1FC F5BZB -08'), (2157, 'WM3PEN EA6VQ -09'),
                     (1197, 'CQ F5RXL IN94'), (2852, 'XE2X HA2NP RR73')]
                     
-audio_samples = read_wav("../data/210703_133430.wav")
+audio_samples = read_wav(WAV_FILE)
 
 
 # what's the best way to incorporate possible time and frequency offsets and slopes automatically?
@@ -180,6 +182,10 @@ freq, known_msg = signal
 f0_idx = int(freq/6.25)
 n_finefreqs = 5
 fig, axs = plt.subplots(2, n_finefreqs*2, figsize = (14,8))
+for ax in fig.axes:
+    ax.set_yticks(np.array([0,0]),labels = ['',''])
+    ax.set_xticks(np.array([0,0]),labels = ['',''])
+    
 plt.ion()
 plt.pause(0.1)
 for i, df in enumerate(np.linspace(-2,2,n_finefreqs)):
@@ -190,7 +196,7 @@ for i, df in enumerate(np.linspace(-2,2,n_finefreqs)):
         pf = get_spectrum(audio_samples, t0, df, 0)
         show_sig(axs[1-j,2*i],axs[1-j, 2*i+1], pf, f0_idx, df, known_msg, show_ylabels = (i == 0))
         plt.pause(0.1)
-    fig.suptitle(f"{signal[1]}")
+    fig.suptitle(f"{signal[1]} Kaiser = {KAISER_IND}")
 plt.pause(0.1)
     
 gray_seq = [0,1,3,2,5,6,4,7]
