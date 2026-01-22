@@ -7,6 +7,8 @@ from PyFT8.FT8_encoder import pack_ft8_c28, pack_ft8_g15, encode_bits77
 from PyFT8.FT8_unpack import FT8_unpack
 from PyFT8.ldpc import LdpcDecoder
 
+SAMPLE_RATE = 12000
+
 def decode(llr):
     llr0 = llr.copy()
     ldpc = LdpcDecoder()
@@ -16,36 +18,40 @@ def decode(llr):
         for n_its in range(1, 10):
             llr, ncheck = ldpc.do_ldpc_iteration(llr)
             if(ncheck == 0):break
-    msg = "Not decoded"
+    msg = "FAILED"
     n_err = "?"
     if(ncheck == 0):
         cw_bits = (llr > 0).astype(int).tolist()
         msg = FT8_unpack(cw_bits)
         n_err = np.count_nonzero(np.sign(llr) != np.sign(llr0))
-    return f"{msg} in {n_its} its, bit errs = {n_err}"
+        if(msg):
+            msg = ' '.join(msg)
+    return msg, n_its, n_err
 
 def read_wav(wav_path):
-    samples_per_cycle = 15 * 12000
+    max_samples = 30 * SAMPLE_RATE
     wf = wave.open(wav_path, "rb")
     ptr = 0
     frames = True
-    audio_samples = np.zeros((samples_per_cycle), dtype = np.float32)
+    audio_samples = np.zeros((max_samples), dtype = np.float32)
+    samples_per_frame = SAMPLE_RATE # convenience = 1 second frames
     while frames:
-        frames = wf.readframes(12000)
+        frames = wf.readframes(samples_per_frame)
         if(frames):
             samples = np.frombuffer(frames, dtype=np.int16).astype(np.float32)
             ns = len(samples)
-            audio_samples[ptr:ptr+ns]= samples
+            audio_samples[ptr:ptr+ns] = samples
             ptr += ns
-    print(f"Loaded {ptr} samples")
+    print(f"Loaded {ptr} samples ({ptr/SAMPLE_RATE:5.2f}s)")
     return audio_samples
 
 def get_spectrum(audio_samples, time_offset, phase_global, phase_per_symbol, max_freq = 3100, nSyms = 79):
-    samples_per_symbol = int(12000  / 6.25 )
-    fft_len = 1920
-    fft_window=np.kaiser(fft_len, 5) 
-    nFreqs = int(max_freq/6.25)
-    samples_offset = int(time_offset * 12000)
+    samples_per_symbol = int(SAMPLE_RATE  / 6.25 )
+    fft_len = samples_per_symbol
+    fft_window=np.kaiser(fft_len, 4)
+    fft_df = SAMPLE_RATE / fft_len 
+    nFreqs = int(max_freq/fft_df)
+    samples_offset = int(time_offset * SAMPLE_RATE)
     pf = np.zeros((nSyms, nFreqs), dtype = np.float32)
     for sym_idx in range(nSyms):
         phs = np.pi*np.linspace(0, phase_global + sym_idx * phase_per_symbol, fft_len)
@@ -115,7 +121,7 @@ def show_spectrum(p1, dBrange = 40):
     plt.show()
 
 
-def show_sig(ax, p1, f0_idx, known_message):
+def show_sig(axP,axL, p1, f0_idx, df, known_message, show_ylabels = False):
     p = p1[:79, f0_idx:f0_idx+8]
 
     symbols = create_symbols(known_message)
@@ -133,11 +139,9 @@ def show_sig(ax, p1, f0_idx, known_message):
     colour_background(dB[36:43],-4)
     colour_background(dB[72:],-4)
     
-    im = axs[0].imshow(dB, origin="lower", aspect="auto", 
+    im = axP.imshow(dB, origin="lower", aspect="auto", 
                 cmap="inferno", interpolation="none", alpha = 0.8)
  
-
-    ax2 = plt.gca()
     n_tone_errors = 0
     for i, t in enumerate(symbols):
         edge = 'g'
@@ -145,45 +149,49 @@ def show_sig(ax, p1, f0_idx, known_message):
             edge = 'r'
             n_tone_errors +=1
         rect = patches.Rectangle((t-0.5 , i -0.5 ),1,1,linewidth=1.5,edgecolor=edge,facecolor='none')
-        axs[0].add_patch(rect)
+        axP.add_patch(rect)
 
     payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
     llr_full = get_llr(p)
-    axs[1].barh(range(len(llr_full)), llr_full, align='edge')
-    axs[1].set_ylim(0,len(llr_full))
-    axs[1].set_xlim(-5,5)
+    axL.barh(range(len(llr_full)), llr_full, align='edge')
+    axL.set_ylim(0,len(llr_full))
+    axL.set_xlim(-5,5)
 
     ticks = {'Costas1':0, 'C1+r':7,'C2+r+R':16.66,'Grid-rpt+i3':26.66,'CRC':32, 'Costas2':36, 'CRCcont':43,'Parity':44.33,'Costas3':72}
-    axs[0].set_yticks(np.array([v for k, v in ticks.items()])-0.5, labels=[k for k, v in ticks.items()])
-    axs[1].set_yticks(np.array([3*v for k, v in ticks.items()])-0.5, labels="")    
+    axP.set_yticks(np.array([v for k, v in ticks.items()])-0.5, labels=[k for k, v in ticks.items()] if show_ylabels else "")
+    axL.set_yticks(np.array([3*v for k, v in ticks.items()])-0.5, labels="")    
 
     llr = get_llr(p[payload_symb_idxs,:])
-    nbad = np.count_nonzero(np.abs(llr<0.5))
-    msg = decode(llr)
+    msg, n_its, n_bit_errors = decode(llr)
 
-    return n_tone_errors, llr, msg 
+    axP.set_title(f"{t0:5.2f}s {df:5.2f}b {n_tone_errors}x\n{msg}", fontsize = 6)
+    axL.set_title(f"σ={np.std(llr):5.2f} {n_bit_errors}x\n{msg}", fontsize = 6)
 
-signal_info_list = [(2571, 'W1FC F5BZB -08', 0.5, 0), (2157, 'WM3PEN EA6VQ -09',  1, 0),
-                    (1197, 'CQ F5RXL IN94', -1.1, 0), (2852, 'XE2X HA2NP RR73', -1, 0)]
+signal_info_list = [(2571, 'W1FC F5BZB -08'), (2157, 'WM3PEN EA6VQ -09'),
+                    (1197, 'CQ F5RXL IN94'), (2852, 'XE2X HA2NP RR73')]
                     
 audio_samples = read_wav("../data/210703_133430.wav")
 
 
 # what's the best way to incorporate possible time and frequency offsets and slopes automatically?
 
-signal = signal_info_list[3]
-freq, known_msg, df0, fd_per_sym = signal
+signal = signal_info_list[1]
+freq, known_msg = signal
 f0_idx = int(freq/6.25)
-
-tsyncs = get_tsyncs(f0_idx)
-for s in tsyncs:
-    print(f"{s[0]:5.2f} {s[1]:5.2f}")
-    t0 = s[0]
-    pf = get_spectrum(audio_samples, t0, df0, fd_per_sym)
-    fig, axs = plt.subplots(1,2, figsize = (5,10))
-    n_tone_errors, llr, decoded_msg = show_sig(axs, pf, f0_idx, known_msg)
-    fig.suptitle(f"{signal[1]}\nT0 {t0:5.2f} df0 {df0:5.2f} \nTone errors:{n_tone_errors}   σ(llr): {np.std(llr):5.2f}\n{decoded_msg}")
-plt.show()
+n_finefreqs = 5
+fig, axs = plt.subplots(2, n_finefreqs*2, figsize = (14,8))
+plt.ion()
+plt.pause(0.1)
+for i, df in enumerate(np.linspace(-2,2,n_finefreqs)):
+    tsyncs = get_tsyncs(f0_idx)
+    for j, s in enumerate(tsyncs):
+        print(f"t0: {s[0]:5.2f}s has sync score:{s[1]:5.2f}")
+        t0 = s[0]
+        pf = get_spectrum(audio_samples, t0, df, 0)
+        show_sig(axs[1-j,2*i],axs[1-j, 2*i+1], pf, f0_idx, df, known_msg, show_ylabels = (i == 0))
+        plt.pause(0.1)
+    fig.suptitle(f"{signal[1]}")
+plt.pause(0.1)
     
 gray_seq = [0,1,3,2,5,6,4,7]
 gray_map = np.array([[0,0,0],[0,0,1],[0,1,1],[0,1,0],[1,1,0],[1,0,0],[1,0,1],[1,1,1]])
