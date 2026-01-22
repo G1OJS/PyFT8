@@ -78,12 +78,13 @@ def get_tsyncs(f0_idx, df):
         for t0 in np.arange(-1,2,.016):
             pf = get_spectrum(audio_samples, t0 + iBlock*36*0.16, df, 0, nSyms = 7)
             pnorm = pf[:, f0_idx:f0_idx+8]
-            pnorm = pnorm / np.max(pnorm)
-            # sync_score = float(np.dot(pnorm[h0_idx+hop_idxs_Costas,:].ravel(), csync.ravel()))
-            sync_score = np.sum(pnorm * csync)
-            test = (t0, sync_score)
-            if test[1] > best[1]:
-                best = test 
+            pmax = np.max(pnorm)
+            if(pmax >0):
+                pnorm = pnorm / pmax
+                sync_score = np.sum(pnorm * csync)
+                test = (t0, sync_score)
+                if test[1] > best[1]:
+                    best = test 
         syncs.append(best)
     return syncs
 
@@ -123,7 +124,7 @@ def show_spectrum(p1, dBrange = 40):
     plt.show()
 
 
-def show_sig(axP,axL, p1, f0_idx, df, known_message, show_ylabels = False):
+def show_sig(axP,axL, p1, f0_idx, t0, df0, known_message, show_ylabels = True):
     p = p1[:79, f0_idx:f0_idx+8]
 
     symbols = create_symbols(known_message)
@@ -166,41 +167,53 @@ def show_sig(axP,axL, p1, f0_idx, df, known_message, show_ylabels = False):
     llr = get_llr(p[payload_symb_idxs,:])
     msg, n_its, n_bit_errors = decode(llr)
 
-    axP.set_title(f"{msg}\n{t0:5.2f}s {df:5.2f}b {n_tone_errors}x", fontsize = 6)
+    axP.set_title(f"{msg}\n{t0:5.2f}s {df0:5.2f}b {n_tone_errors}x", fontsize = 6)
     axL.set_title(f"σ={np.std(llr):5.2f} {n_bit_errors}x", fontsize = 6)
+
+
+def grid_t0df0(known_signal):
+    freq, known_msg = known_signal
+    f0_idx = int(freq/6.25)
+    n_finefreqs = 5
+    fig, axs = plt.subplots(2, n_finefreqs*2, figsize = (14,8))
+    fig.suptitle(f"{known_signal[1]} Kaiser = {KAISER_IND}")
+    for ax in fig.axes:
+        ax.set_yticks(np.array([0,0]),labels = ['',''])
+        ax.set_xticks(np.array([0,0]),labels = ['',''])
+    plt.ion()
+    plt.pause(0.1)
+    for i, df0 in enumerate(np.linspace(-1,1,n_finefreqs)):
+        tsyncs = get_tsyncs(f0_idx, df0)
+        for j, s in enumerate(tsyncs):
+            print(f"t0: {s[0]:5.2f}s has sync score:{s[1]:5.2f}")
+            t0 = s[0]
+            pf = get_spectrum(audio_samples, t0, df0, 0)
+            show_sig(axs[1-j,2*i],axs[1-j, 2*i+1], pf, f0_idx, t0, df0, known_msg, show_ylabels = (i == 0))
+            plt.pause(0.1)
+
+    plt.pause(0.1)
+
+def single_combi_synced(known_signal):
+    freq, known_msg = known_signal
+    f0_idx = int(freq/6.25)
+    fig, axs = plt.subplots(2, figsize =  (5,5))
+    plt.ion()
+    # insert 2D sync
+    df0=0
+    t0=0
+    pf = get_spectrum(audio_samples, t0, df0, 0)
+    show_sig(axs[0],axs[1], pf, f0_idx, df0, known_msg)
+    plt.pause(0.1)    
+    
+    
+
+#=======================================================
+# investigation section
+#=======================================================
 
 signal_info_list = [(2571, 'W1FC F5BZB -08'), (2157, 'WM3PEN EA6VQ -09'),
                     (1197, 'CQ F5RXL IN94'), (2852, 'XE2X HA2NP RR73')]
                     
 audio_samples = read_wav(WAV_FILE)
-
-
-# what's the best way to incorporate possible time and frequency offsets and slopes automatically?
-
-signal = signal_info_list[1]
-freq, known_msg = signal
-f0_idx = int(freq/6.25)
-n_finefreqs = 5
-fig, axs = plt.subplots(2, n_finefreqs*2, figsize = (14,8))
-for ax in fig.axes:
-    ax.set_yticks(np.array([0,0]),labels = ['',''])
-    ax.set_xticks(np.array([0,0]),labels = ['',''])
-    
-plt.ion()
-plt.pause(0.1)
-for i, df in enumerate(np.linspace(-1,1,n_finefreqs)):
-    tsyncs = get_tsyncs(f0_idx, df)
-    for j, s in enumerate(tsyncs):
-        print(f"t0: {s[0]:5.2f}s has sync score:{s[1]:5.2f}")
-        t0 = s[0]
-        pf = get_spectrum(audio_samples, t0, df, 0)
-        show_sig(axs[1-j,2*i],axs[1-j, 2*i+1], pf, f0_idx, df, known_msg, show_ylabels = (i == 0))
-        plt.pause(0.1)
-    fig.suptitle(f"{signal[1]} Kaiser = {KAISER_IND}")
-plt.pause(0.1)
-    
-gray_seq = [0,1,3,2,5,6,4,7]
-gray_map = np.array([[0,0,0],[0,0,1],[0,1,1],[0,1,0],[1,1,0],[1,0,0],[1,0,1],[1,1,1]])
-payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
-
-
+known_signal = signal_info_list[1]
+grid_t0df0(known_signal)
