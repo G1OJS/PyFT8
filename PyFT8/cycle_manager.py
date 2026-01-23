@@ -85,6 +85,7 @@ class Candidate:
 
     def __init__(self):
         self.dedupe_key = ""
+        self.hard_decode_started = None
         self.demap_started, self.demap_completed = None, None
         self.decode_completed = None
         self.ncheck = None
@@ -105,7 +106,42 @@ class Candidate:
         self.freq_idxs = [self.f0_idx + bpt // 2 + bpt * t for t in range(spectrum.sigspec.tones_persymb)]
         self.fHz = int((self.f0_idx + bpt // 2) * spectrum.df)
         self.last_payload_hop = np.max([syncs[0][0], syncs[1][0]]) + hps * spectrum.sigspec.payload_symb_idxs[-1]
-        
+        self.last_data_hop = np.max([syncs[0][0], syncs[1][0]]) + hps * 45
+
+    def hard_decode(self, spectrum):
+        for sync in self.syncs:
+            self.h0_idx, self.f0_idx = sync[0], sync[1]
+            hps, bpt = spectrum.hops_persymb, spectrum.fbins_pertone
+            self.hard_decode_started = time.time()
+            symb_idxs = list(range(7, 45))
+            hops = np.array([self.h0_idx + hps* s for s in symb_idxs])
+            freq_idxs = self.f0_idx + np.array(range(24))
+            praw = spectrum.audio_in.pgrid_main[np.ix_(hops, freq_idxs)]
+            maxpwr_idxs = np.argmax(praw, axis = 1)
+            symbols = np.array([int(m / bpt) for m in maxpwr_idxs])
+            bits = [[[0,0,0],[0,0,1],[0,1,1],[0,1,0],[1,1,0],[1,0,0],[1,0,1],[1,1,1]][tone] for tone in symbols]
+            bits = np.array(bits).flatten().tolist()
+            bits = bits[:87]+bits[21+87:21+91]
+            msg = False
+            if(check_crc_codeword_list(bits)):
+                msg = FT8_unpack(bits)
+            if(msg):
+                self.demap_started = time.time()
+                self.demap_completed = time.time()
+                self.decode_completed = time.time()
+                self.sync_score = sync[2]
+                self.dt = self.h0_idx * spectrum.dt-0.7
+                self.llr0_quality = 600
+                praw = praw[:, [t*bpt + bpt//2 for t in range(8)]]
+                pclip = np.clip(praw, np.max(praw)/1e8, None)
+                self.pgrid = np.log10(pclip)
+                self.snr = 24
+                self.ncheck0 = 0
+                self.ncheck = 0
+                self.msg = msg
+                self._record_state(f"H", final = True)
+                return
+       
     def demap(self, spectrum, min_qual = 395, min_sd = 0):
         self.demap_started = time.time()
         
@@ -289,6 +325,12 @@ class Cycle_manager():
                 self.cands_list = self.new_cands
                 if(self.spectrum.audio_in.wav_finished):
                     self.running = False
+
+            to_hard_decode = [c for c in self.cands_list
+                            if (self.spectrum.audio_in.grid_main_ptr > c.last_data_hop
+                            and not c.hard_decode_started)]
+            for c in to_hard_decode:
+                c.hard_decode(self.spectrum)
                 
             to_demap = [c for c in self.cands_list
                             if (self.spectrum.audio_in.grid_main_ptr > c.last_payload_hop
