@@ -97,6 +97,7 @@ class Candidate:
         self.decode_path = ""
         self.counters = [0]*10
         self.llr0_quality = 0
+        self.llr0_sd = 0
         self.msg = None
         self.snr = -999
         self.ldpc = LdpcDecoder()
@@ -327,11 +328,13 @@ class Cycle_manager():
                 if(self.spectrum.audio_in.wav_finished):
                     self.running = False
 
-            to_hard_decode = [c for c in self.cands_list
-                            if (self.spectrum.audio_in.grid_main_ptr > c.last_data_hop
-                            and not c.hard_decode_started)]
-            for c in to_hard_decode:
-                c.hard_decode(self.spectrum)
+            HD = False
+            if(HD):
+                to_hard_decode = [c for c in self.cands_list
+                                if (self.spectrum.audio_in.grid_main_ptr > c.last_data_hop
+                                and not c.hard_decode_started)]
+                for c in to_hard_decode:
+                    c.hard_decode(self.spectrum)
 
             to_demap = [c for c in self.cands_list if not c.msg 
                             and (self.spectrum.audio_in.grid_main_ptr > c.last_payload_hop

@@ -84,7 +84,7 @@ def analyse_dictionaries():
             msg = ' '.join(c.msg) if c.msg else ''
             if(msg !=''): unique.add(msg)
             print(f"{basics} {w['msg']:<23} {msg:<23} {c.llr0_quality:4.0f} {c.decode_path}")
-            f.write(f"{c.llr0_quality:4.0f},{c.ncheck0:2d},{c.decode_path}\n")
+            f.write(f"{c.sync_score:5.2f},{c.llr0_sd:5.2f},{c.llr0_quality:5.0f},{c.ncheck0:2d},{c.decode_path}\n")
 
     print(f"{len(unique)} unique decodes")
     unprocessed = [c for w, c in matches if not "#" in c.decode_path]
