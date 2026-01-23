@@ -139,7 +139,8 @@ class Candidate:
                 self.ncheck0 = 0
                 self.ncheck = 0
                 self.msg = msg
-                self._record_state(f"H", final = True)
+                self._record_state("H")
+                self._record_state("C", final = True)
                 return
        
     def demap(self, spectrum, min_qual = 395, min_sd = 0):

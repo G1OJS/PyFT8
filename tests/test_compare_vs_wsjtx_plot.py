@@ -7,7 +7,7 @@ with open(f"data/compare_wsjtx.csv", "r") as f:
 
 pycols = ['lime','green','orange','yellow','white']
 pylabs = ["Immediate","LDPC","LDPC & BitFlip","OSD","Timeouts"]
-bins = [350 + 5*b for b in range(50)]
+bins = [350 + 5*b for b in range(60)]
 
 py = [[],[],[],[],[]]
 ws = []
@@ -17,7 +17,7 @@ for lfull in lines:
     q, nc, dpath =float(fields[0]), int(fields[1]), fields[2]
     if("C00#" in dpath):
         pydecs +=1
-        if('I00' in dpath):
+        if('H00' in dpath or 'I00' in dpath):
             py[0].append(q)
         elif('O00' in dpath):
             py[3].append(q)
