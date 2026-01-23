@@ -12,7 +12,8 @@ KAISER_IND = 6
 OSAMP_FREQ = 3
 WAV_FILE = "data/210703_133430.wav"
 
-
+def print_bits(np_arr_bits):
+    print(''.join([str(b) for b in np_arr_bits]))
 
 def calc_dB(pwr, dBrange = 20, rel_to_max = False):
     thresh = np.max(pwr) * 10**(-dBrange/10)
@@ -44,7 +45,7 @@ def full_decode(p):
             llr, ncheck = ldpc.do_ldpc_iteration(llr)
             if(ncheck == 0):break
     msg = "FAILED"
-    n_err = "?"
+    n_corrected_bits = "?"
     if(ncheck == 0):
         cw_bits = (llr > 0).astype(int).tolist()
         msg = FT8_unpack(cw_bits)
@@ -52,6 +53,16 @@ def full_decode(p):
         if(msg):
             msg = ' '.join(msg)
     return msg, n_its, n_corrected_bits, llr, llr_full
+
+def hard_decode(p):
+    symb_idxs = list(range(7, 33))
+    symbols = np.argmax(p[symb_idxs], axis = 1)
+    bits = [[[0,0,0],[0,0,1],[0,1,1],[0,1,0],[1,1,0],[1,0,0],[1,0,1],[1,1,1]][tone] for tone in symbols]
+    bits = np.array(bits).flatten()[:77].tolist()
+    msg = FT8_unpack(bits)
+    if(msg):
+        msg = ' '.join(msg)
+    return msg, bits
 
 def read_wav(wav_path):
     max_samples = 30 * SAMPLE_RATE
@@ -141,7 +152,8 @@ def show_sig(axP,axL, p1, f0_idx, t0, df0, known_message = None, show_ylabels = 
             rect = patches.Rectangle((t-0.5 , i -0.5 ),1,1,linewidth=1.5,edgecolor=edge,facecolor='none')
             axP.add_patch(rect)
 
-    msg, n_its, n_corrected_bits, llr, llr_full = full_decode(p)
+    hard_msg, hard_bits = hard_decode(p)    
+    ldpc_msg, n_its, n_corrected_bits, llr, llr_full = full_decode(p)
 
     axL.barh(range(len(llr_full)), llr_full, align='edge')
     axL.set_ylim(0,len(llr_full))
@@ -152,9 +164,8 @@ def show_sig(axP,axL, p1, f0_idx, t0, df0, known_message = None, show_ylabels = 
     axP.set_yticklabels([k for k, v in ticks.items()] if show_ylabels else "", fontsize = 6)
     axL.set_yticks(np.array([3*v for k, v in ticks.items()])-0.5, labels="")    
 
-
-    axP.set_title(f"{msg}\n{t0:5.2f}s {df0:5.2f}b {n_tone_errors}x", fontsize = 6)
-    axL.set_title(f"σ={np.std(llr):5.2f} {n_corrected_bits}x", fontsize = 6)
+    axP.set_title(f"H: {hard_msg}\n{t0:5.2f}s {df0:5.2f}b {n_tone_errors}x", fontsize = 6)
+    axL.set_title(f"L: {ldpc_msg}\nσ={np.std(llr):5.2f} {n_corrected_bits}x", fontsize = 6)
 
 def get_tsyncs(f0_idx, df):
     costas=[3,1,4,0,6,5,2]
@@ -194,7 +205,7 @@ def grid_t0df0(known_signal, df0_a, df0_b):
         for j, s in enumerate(tsyncs):
             t0 = s[0]
             pf = get_spectrum(audio_samples, t0, df0, 0)
-            show_spectrum(pf)
+           # show_spectrum(pf)
             show_sig(axs[1-j,2*i],axs[1-j, 2*i+1], pf, f0_idx, t0, df0, known_msg, show_ylabels = (i == 0))
             plt.pause(0.1)
 
@@ -250,12 +261,12 @@ def get_syncs_2D():
     return t0, f0
 
 
-def single_manual(t0, f0):
-    f0_idx = int(0.5+f0/6.25)
+def single_manual(known_signal, t0, df0):
     fig, axs = plt.subplots(1, 2, figsize =  (5,10))
     plt.ion()
-    pf = get_spectrum(audio_samples, t0, 0, 0)
-    show_sig(axs[0],axs[1], pf, f0_idx, t0, 0)
+    pf = get_spectrum(audio_samples, t0, df0, 0)
+    f0_idx = int(0.5 + known_signal[0] / 6.25)
+    show_sig(axs[0],axs[1], pf, f0_idx, t0, 0, known_message = known_signal[1])
     plt.pause(0.1)    
     
     
@@ -271,6 +282,6 @@ audio_samples = read_wav(WAV_FILE)
 
 
 
-#grid_t0df0(signal_info_list[1], -1,1)
+grid_t0df0(signal_info_list[1], -1,1)
 
-single_manual(0.26, 2157)
+#single_manual(signal_info_list[1], 0.28, -.5)
