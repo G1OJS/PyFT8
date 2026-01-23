@@ -83,8 +83,9 @@ def analyse_dictionaries():
             basics = f"{c.cyclestart_str} {w['f']:4d} {cofreq} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.dt:4.1f} {w['td']} {td}"
             msg = ' '.join(c.msg) if c.msg else ''
             if(msg !=''): unique.add(msg)
+            sig = np.max(c.pgrid)
             print(f"{basics} {w['msg']:<23} {msg:<23} {c.llr0_quality:4.0f} {c.decode_path}")
-            f.write(f"{c.sync_score:5.2f},{c.llr0_sd:5.2f},{c.llr0_quality:5.0f},{c.ncheck0:2d},{c.decode_path}\n")
+            f.write(f"{sig:5.2f},{c.llr0_sd:5.2f},{c.llr0_quality:5.0f},{c.ncheck0:2d},{c.decode_path}\n")
 
     print(f"{len(unique)} unique decodes")
     unprocessed = [c for w, c in matches if not "#" in c.decode_path]

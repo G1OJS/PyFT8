@@ -136,7 +136,7 @@ class Candidate:
                 praw = praw[:, [t*bpt + bpt//2 for t in range(8)]]
                 pclip = np.clip(praw, np.max(praw)/1e8, None)
                 self.pgrid = np.log10(pclip)
-                self.snr = 24
+                self.snr = int(np.clip(10*np.max(self.pgrid) - 107, -24, 24))
                 self.ncheck0 = 0
                 self.ncheck = 0
                 self.msg = msg
@@ -329,6 +329,7 @@ class Cycle_manager():
                     self.running = False
 
             HD = False
+            HD = True
             if(HD):
                 to_hard_decode = [c for c in self.cands_list
                                 if (self.spectrum.audio_in.grid_main_ptr > c.last_data_hop
