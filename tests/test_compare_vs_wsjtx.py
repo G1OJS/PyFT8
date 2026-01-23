@@ -54,7 +54,7 @@ def analyse_dictionaries():
     global cands_matched, matches
     time.sleep(2)
 
-    matches = [(w, c) for w in wsjtx_dicts for c in pyft8_cands if c.demap_completed
+    matches = [(w, c) for w in wsjtx_dicts for c in pyft8_cands if c.sync_completed
                and abs(w['f'] - c.fHz) < 3 and (w['cs'] == c.cyclestart_str or w['cs']=='any')]
     
     best = {}
@@ -75,7 +75,6 @@ def analyse_dictionaries():
     pyft8_only = [c for c in pyft8 if ' '.join(c.msg) not in wsjtx_msgs]
     
     unique = set()
-    signal_info = []
     with open('data/compare_wsjtx.csv', 'a') as f:
         for w, c in matches:
             cands_matched.append(c)
@@ -84,7 +83,6 @@ def analyse_dictionaries():
             basics = f"{c.cyclestart_str} {w['f']:4d} {cofreq} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.dt:4.1f} {w['td']} {td}"
             msg = ' '.join(c.msg) if c.msg else ''
             if(msg !=''): unique.add(msg)
-            signal_info.append((c.f0_idx, c.h0_idx, w['msg']))
             print(f"{basics} {w['msg']:<23} {msg:<23} {c.llr0_quality:4.0f} {c.decode_path}")
             f.write(f"{c.llr0_quality:4.0f},{c.ncheck0:2d},{c.decode_path}\n")
 
@@ -165,9 +163,9 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
     show_matched_cands()
 
     
-compare("data/210703_133430", [100,3100])
+#compare("data/210703_133430", [100,3100])
 
-#compare(None, [100,3100])
+compare(None, [100,3100])
 
 
     

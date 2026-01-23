@@ -85,9 +85,11 @@ class Candidate:
 
     def __init__(self):
         self.dedupe_key = ""
-        self.hard_decode_started = None
-        self.demap_started, self.demap_completed = None, None
-        self.decode_completed = None
+        self.hard_decode_started = False
+        self.demap_started = False
+        self.sync_completed = False
+        self.demap_completed = False
+        self.decode_completed = False
         self.ncheck = None
         self.ncheck0 = None
         self.llr = None
@@ -107,12 +109,13 @@ class Candidate:
         self.fHz = int((self.f0_idx + bpt // 2) * spectrum.df)
         self.last_payload_hop = np.max([syncs[0][0], syncs[1][0]]) + hps * spectrum.sigspec.payload_symb_idxs[-1]
         self.last_data_hop = np.max([syncs[0][0], syncs[1][0]]) + hps * 45
+        self.sync_completed = True
 
     def hard_decode(self, spectrum):
+        self.hard_decode_started = True
         for sync in self.syncs:
-            self.h0_idx, self.f0_idx = sync[0], sync[1]
+            self.h0_idx = sync[0]
             hps, bpt = spectrum.hops_persymb, spectrum.fbins_pertone
-            self.hard_decode_started = time.time()
             symb_idxs = list(range(7, 45))
             hops = np.array([self.h0_idx + hps* s for s in symb_idxs])
             freq_idxs = self.f0_idx + np.array(range(24))
@@ -126,9 +129,6 @@ class Candidate:
             if(check_crc_codeword_list(bits)):
                 msg = FT8_unpack(bits)
             if(msg):
-                self.demap_started = time.time()
-                self.demap_completed = time.time()
-                self.decode_completed = time.time()
                 self.sync_score = sync[2]
                 self.dt = self.h0_idx * spectrum.dt-0.7
                 self.llr0_quality = 600
@@ -143,7 +143,7 @@ class Candidate:
                 return
        
     def demap(self, spectrum, min_qual = 395, min_sd = 0):
-        self.demap_started = time.time()
+        self.demap_started = True
         
         h0, h1 = self.syncs[0][0], self.syncs[1][0]
         if(h0 == h1): h1 = h0 +1
@@ -164,7 +164,7 @@ class Candidate:
         quality_too_low = (self.llr0_quality < min_qual or self.llr0_sd < min_sd)
         self._record_state(f"I", final = quality_too_low)
         
-        self.demap_completed = time.time()
+        self.demap_completed = True
 
     def progress_decode(self):
         stalled = False
@@ -188,7 +188,7 @@ class Candidate:
         finalcode = "#" if final else ";"
         self.decode_path = self.decode_path + f"{actor_code}{self.ncheck:02d}{finalcode}"
         if(final):
-            self.decode_completed = time.time()
+            self.decode_completed = True
         
     def _invoke_actor(self, nc_thresh_bitflip = 28, nc_max_ldpc = 35,
                       iters_max_ldpc = 7, osd_qual_range = [395,470]):
@@ -331,9 +331,9 @@ class Cycle_manager():
                             and not c.hard_decode_started)]
             for c in to_hard_decode:
                 c.hard_decode(self.spectrum)
-                
-            to_demap = [c for c in self.cands_list
-                            if (self.spectrum.audio_in.grid_main_ptr > c.last_payload_hop
+
+            to_demap = [c for c in self.cands_list if not c.msg 
+                            and (self.spectrum.audio_in.grid_main_ptr > c.last_payload_hop
                             and not c.demap_started)]
             for c in to_demap:
                 c.demap(self.spectrum)
