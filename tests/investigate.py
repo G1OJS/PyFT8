@@ -12,7 +12,29 @@ KAISER_IND = 6
 OSAMP_FREQ = 3
 WAV_FILE = "data/210703_133430.wav"
 
-def decode(llr):
+
+
+def calc_dB(pwr, dBrange = 20, rel_to_max = False):
+    thresh = np.max(pwr) * 10**(-dBrange/10)
+    pwr = np.clip(pwr, thresh, None)
+    dB = 10*np.log10(pwr)
+    if(rel_to_max):
+        dB = dB - np.max(dB)
+    return dB
+
+def get_llr(p):
+    p = calc_dB(p, dBrange = 30)
+    llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
+    llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
+    llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
+    llr = np.column_stack((llra, llrb, llrc)).ravel()
+    llr = 3.8*llr/np.std(llr)
+    return llr.flatten()
+
+def full_decode(p):
+    payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
+    llr_full = get_llr(p)
+    llr = get_llr(p[payload_symb_idxs,:])
     llr0 = llr.copy()
     ldpc = LdpcDecoder()
     ncheck = ldpc.calc_ncheck(llr)
@@ -26,10 +48,10 @@ def decode(llr):
     if(ncheck == 0):
         cw_bits = (llr > 0).astype(int).tolist()
         msg = FT8_unpack(cw_bits)
-        n_err = np.count_nonzero(np.sign(llr) != np.sign(llr0))
+        n_corrected_bits = np.count_nonzero(np.sign(llr) != np.sign(llr0))
         if(msg):
             msg = ' '.join(msg)
-    return msg, n_its, n_err
+    return msg, n_its, n_corrected_bits, llr, llr_full
 
 def read_wav(wav_path):
     max_samples = 30 * SAMPLE_RATE
@@ -79,22 +101,6 @@ def create_symbols(msg):
     symbols, bits174_int, bits91_int, bits14_int, bits83_int = encode_bits77(bits77)
     return symbols
 
-def calc_dB(pwr, dBrange = 20, rel_to_max = False):
-    thresh = np.max(pwr) * 10**(-dBrange/10)
-    pwr = np.clip(pwr, thresh, None)
-    dB = 10*np.log10(pwr)
-    if(rel_to_max):
-        dB = dB - np.max(dB)
-    return dB
-
-def get_llr(p):
-    p = calc_dB(p, dBrange = 30)
-    llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
-    llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
-    llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
-    llr = np.column_stack((llra, llrb, llrc)).ravel()
-    llr = 3.8*llr/np.std(llr)
-    return llr.flatten()
 
 def show_spectrum(p1, dBrange = 60):
     fig,ax = plt.subplots(figsize = (10,5))
@@ -135,8 +141,8 @@ def show_sig(axP,axL, p1, f0_idx, t0, df0, known_message = None, show_ylabels = 
             rect = patches.Rectangle((t-0.5 , i -0.5 ),1,1,linewidth=1.5,edgecolor=edge,facecolor='none')
             axP.add_patch(rect)
 
-    payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
-    llr_full = get_llr(p)
+    msg, n_its, n_corrected_bits, llr, llr_full = full_decode(p)
+
     axL.barh(range(len(llr_full)), llr_full, align='edge')
     axL.set_ylim(0,len(llr_full))
     axL.set_xlim(-5,5)
@@ -146,11 +152,9 @@ def show_sig(axP,axL, p1, f0_idx, t0, df0, known_message = None, show_ylabels = 
     axP.set_yticklabels([k for k, v in ticks.items()] if show_ylabels else "", fontsize = 6)
     axL.set_yticks(np.array([3*v for k, v in ticks.items()])-0.5, labels="")    
 
-    llr = get_llr(p[payload_symb_idxs,:])
-    msg, n_its, n_bit_errors = decode(llr)
 
     axP.set_title(f"{msg}\n{t0:5.2f}s {df0:5.2f}b {n_tone_errors}x", fontsize = 6)
-    axL.set_title(f"σ={np.std(llr):5.2f} {n_bit_errors}x", fontsize = 6)
+    axL.set_title(f"σ={np.std(llr):5.2f} {n_corrected_bits}x", fontsize = 6)
 
 def get_tsyncs(f0_idx, df):
     costas=[3,1,4,0,6,5,2]
@@ -246,14 +250,12 @@ def get_syncs_2D():
     return t0, f0
 
 
-def single_combi_synced():
+def single_manual(t0, f0):
+    f0_idx = int(0.5+f0/6.25)
     fig, axs = plt.subplots(1, 2, figsize =  (5,10))
     plt.ion()
-    t0_idx, f0_idx = get_syncs_2D()
-    t0 = t0_idx * 0.16
-    print(t0_idx, f0_idx)
     pf = get_spectrum(audio_samples, t0, 0, 0)
-    show_sig(axs[0],axs[1], pf, f0_idx, 0, 0)
+    show_sig(axs[0],axs[1], pf, f0_idx, t0, 0)
     plt.pause(0.1)    
     
     
@@ -271,4 +273,4 @@ audio_samples = read_wav(WAV_FILE)
 
 #grid_t0df0(signal_info_list[1], -1,1)
 
-single_combi_synced()
+single_manual(0.26, 2157)
