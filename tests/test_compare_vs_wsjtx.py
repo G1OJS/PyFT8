@@ -120,12 +120,14 @@ def show_matched_cands(dBrange = 30):
     n = len(cands_matched)
     fig, axs = plt.subplots(1, n, figsize = (15, 5))
     for i, c in enumerate(cands_matched):
-        p = np.clip(c.pgrid, np.max(c.pgrid) - dBrange, None)
-        axs[i].imshow(p, origin="lower", aspect="auto", 
-                  cmap="inferno", interpolation="none", alpha = 0.8)       
-        axs[i].xaxis.set_major_locator(ticker.NullLocator())
-        axs[i].yaxis.set_major_locator(ticker.NullLocator())
-        axs[i].set_ylabel(c.msg, fontsize=8)
+        if(c.p_dB is not None):
+            p = c.p_dB
+            p = np.clip(p, np.max(p) - dBrange, None)
+            axs[i].imshow(p, origin="lower", aspect="auto", 
+                      cmap="inferno", interpolation="none", alpha = 0.8)       
+            axs[i].xaxis.set_major_locator(ticker.NullLocator())
+            axs[i].yaxis.set_major_locator(ticker.NullLocator())
+            axs[i].set_ylabel(c.msg, fontsize=8)
     plt.tick_params(labelleft=False)
     plt.tight_layout()
     plt.show()
@@ -163,9 +165,9 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
     show_matched_cands()
 
     
-#compare("data/210703_133430", [100,3100])
+compare("data/210703_133430", [100,3100])
 
-compare(None, [100,3100])
+#compare(None, [100,3100])
 
 
     
