@@ -337,7 +337,8 @@ class Cycle_manager():
                     c.demap(self.spectrum)
 
             to_progress_decode = [c for c in self.cands_list if c.demap_completed and not c.decode_completed]
-            to_progress_decode.sort(key = lambda c: -c.llr0_quality) # in case of emergency (timeouts) process best first
+      #      to_progress_decode.sort(key = lambda c: -c.llr0_quality) # in case of emergency (timeouts) process best first
+            to_progress_decode.sort(key = lambda c: c.ncheck0) # in case of emergency (timeouts) process best first
             for c in to_progress_decode[:25]:
                 c.progress_decode()
             
