@@ -61,7 +61,7 @@ def analyse_dictionaries():
     for w, c in matches:
         key = (w['cs'], w['msg'])
         has_message = True if c.msg else False
-        score = (has_message, c.sync_score)
+        score = (has_message, c.llr0_quality)
         if key not in best or score > best[key][0]:
             best[key] = (score, w, c)
     matches = [(w, c) for (_, w, c) in best.values()]
@@ -75,16 +75,14 @@ def analyse_dictionaries():
     pyft8_only = [c for c in pyft8 if ' '.join(c.msg) not in wsjtx_msgs]
     
     unique = set()
-    signal_info = []
     with open('data/compare_wsjtx.csv', 'a') as f:
         for w, c in matches:
             cands_matched.append(c)
             td = f"{c.decode_completed %60:5.2f}" if c.decode_completed else '     '
             cofreq = "cofreq" if w['f'] in wsjtx_cofreqs else "  --  "
-            basics = f"{c.cyclestart_str} {w['f']:4d} {cofreq} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.dt:4.1f} {w['td']} {td}"
+            basics = f"{c.cyclestart_str} {w['f']:4d} {cofreq} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.tsecs:4.1f} {w['td']} {td}"
             msg = ' '.join(c.msg) if c.msg else ''
             if(msg !=''): unique.add(msg)
-            signal_info.append((c.f0_idx, c.h0_idx, w['msg']))
             print(f"{basics} {w['msg']:<23} {msg:<23} {c.llr0_quality:4.0f} {c.decode_path}")
             f.write(f"{c.llr0_quality:4.0f},{c.ncheck0:2d},{c.decode_path}\n")
 

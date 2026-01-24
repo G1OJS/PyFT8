@@ -26,14 +26,15 @@ class Spectrum:
         self.audio_in = AudioIn(self)
         self.nFreqs = self.audio_in.nFreqs
         self.dt = 1.0 / (self.sigspec.symbols_persec * self.hops_persymb) 
-        self.df = max_freq / (self.nFreqs -1)
         self.fbins_per_signal = self.sigspec.tones_persymb * self.fbins_pertone
         self.hop_idxs_Costas =  np.arange(self.sigspec.costas_len) * self.hops_persymb
-        self.hop_start_lattitude = int(1.9 / self.dt)
+        self.hop_start_lattitude = int(2 / self.dt)
         self.nhops_costas = self.sigspec.costas_len * self.hops_persymb
-        self.h_search = self.hop_start_lattitude + self.nhops_costas  + 36 * self.hops_persymb
+        self.h_search = self.hop_start_lattitude + self.nhops_costas
         self.h_demap = self.sigspec.payload_symb_idxs[-1] * self.hops_persymb
         self.occupancy = np.zeros(self.nFreqs)
+        self.base_payload_hops = np.array([self.hops_persymb * s for s in self.sigspec.payload_symb_idxs])
+        self.base_data_hops = np.array([self.hops_persymb * s for s in self.sigspec.data_symb_idxs])
         self.csync_flat = self.make_csync(sigspec)
 
     def make_csync(self, sigspec):
@@ -53,32 +54,34 @@ class Spectrum:
             test_sync = {'h0_idx':h0_idx - block_off, 'score':sync_score}
             if test_sync['score'] > c.sync['score']:
                 c.sync = test_sync
-        c.dt = c.sync['h0_idx'] * self.dt-0.7
+        c.tsecs = c.sync['h0_idx'] * self.dt-0.7
         c.data_hops = c.sync['h0_idx'] + self.base_data_hops
-        c.last_data_hop = c.sync['h0_idx'] + self.hops_persymb * 45
-        c.last_payload_hop = c.sync['h0_idx'] + self.hops_persymb * self.sigspec.payload_symb_idxs[-1]
+        c.last_data_hop = c.data_hops[-1]
+        c.payload_hops = c.sync['h0_idx'] + self.base_payload_hops
+        c.last_payload_hop = c.payload_hops[-1]
 
-    def search(self, f0_idxs, cyclestart_str):
+    def search(self, freq_range, cyclestart_str):
         cands = []
         pgrid = self.audio_in.pgrid_main[:self.h_search,:]
+        f0_idx_low = int(freq_range[0]/self.audio_in.fft_df)
+        f0_idx_high = int(freq_range[1]/self.audio_in.fft_df)
+        f0_idxs = range(f0_idx_low, np.min([f0_idx_high, pgrid.shape[1] - 24]))
         for f0_idx in f0_idxs:
-            p = pgrid[:, f0_idx:f0_idx + self.fbins_per_signal]
-            max_pwr = np.max(p)
-            pnorm = p / max_pwr
-            self.occupancy[f0_idx:f0_idx + self.fbins_per_signal] += max_pwr
             c = Candidate()
-            c.base_payload_hops, c.base_data_hops = self.base_payload_hops, self.base_data_hops
-            bpt = self.fbins_pertone
             c.f0_idx = f0_idx
             c.fine_freq_idxs = c.f0_idx + np.array(range(24))
-            c.fHz = int((c.f0_idx + bpt // 2) * self.audio_in.fft_df)
+            c.fHz = int((c.f0_idx + self.fbins_pertone // 2) * self.audio_in.fft_df)
+            p = pgrid[:, c.fine_freq_idxs]
+            max_pwr = np.max(p)
+            pnorm = p / max_pwr
+            self.occupancy[c.fine_freq_idxs] += max_pwr
+            c.base_payload_hops, c.base_data_hops = self.base_payload_hops, self.base_data_hops
             self.sync(c, 0)
             c.cyclestart_str = cyclestart_str            
             cands.append(c)
         return cands
 
 class Candidate:
-
     def __init__(self):
         self.msg = None
         self.ldpc = LdpcDecoder()
@@ -93,7 +96,7 @@ class Candidate:
         self.llr0_quality = 0
         self.llr0_sd = 0
         self.snr, self.snr2 = -999, -999
-
+        
     def get_llr(self, pgrid, target_params = (3.3, 3.7)):
         pclip = np.clip(pgrid, np.max(pgrid)/1e8, None)
         pgrid_dB = 10*np.log10(pclip)
@@ -109,6 +112,15 @@ class Candidate:
             llr0 = np.clip(llr0, -target_params[1], target_params[1])
             llr0_quality =  np.sum(np.abs(llr0)) * 3*(79-21)/len(llr0)
         return (llr0, llr0_sd, llr0_quality, snr)
+
+    def get_snr2(self, spectrum, snr2_limit = 0.15):
+        praw = spectrum.audio_in.pgrid_main[np.ix_(self.data_hops, self.fine_freq_idxs)]
+        max_p = np.max(praw, axis = 1)
+        sum_p = np.sum(praw, axis = 1)
+        if(np.min(sum_p) > 0):
+            self.snr2 = np.mean(max_p / sum_p)
+        if(self.snr2 < snr2_limit):
+            self._record_state("I", final = True)
 
     def hard_decode(self, spectrum):
         self.hard_decode_started = True
@@ -130,7 +142,7 @@ class Candidate:
             self._record_state("H")
             self._record_state("C", final = True)
        
-    def demap(self, spectrum, min_qual = 410, max_ncheck = 45):
+    def demap(self, spectrum, min_qual = 400, max_ncheck = 45, min_sd = 0.45):
         self.demap_started = True
         if(self.pgrid_copy is None):
             self.pgrid_copy = spectrum.audio_in.pgrid_main[:, self.fine_freq_idxs].copy()
@@ -150,7 +162,6 @@ class Candidate:
         ALLOW_STALLS_TO_CRC = False
         if(self.ncheck > 0):
             actor = self._invoke_actor()
-            self.invoked_actors.add(actor)
             stalled = (actor == "_")
             self._record_state(actor, final = stalled)
         if(self.ncheck == 0 or (stalled and ALLOW_STALLS_TO_CRC)):
@@ -176,13 +187,11 @@ class Candidate:
             self.llr, self.ncheck = flip_bits(self.llr, self.ncheck, width = 50, nbits=1, keep_best = True)
             self.counters[counter] += 1
             return "A"
-        
         counter = 1
         if nc_max_ldpc > self.ncheck > 0 and not self.counters[counter] > iters_max_ldpc:  
             self.llr, self.ncheck = self.ldpc.do_ldpc_iteration(self.llr)
             self.counters[counter] += 1
             return "L"
-
         counter = 2        
         if(osd_qual_range[0] < self.llr0_quality < osd_qual_range[1] and not self.counters[counter] > 0):
             reliab_order = np.argsort(np.abs(self.llr))[::-1]
@@ -192,11 +201,8 @@ class Candidate:
                 self.ncheck = 0
             self.counters[counter] += 1
             return "O"
-        
         return "_"
 
-                
-                
 class Cycle_manager():
     def __init__(self, sigspec, onSuccess, onOccupancy, audio_in_wav = None, test_speed_factor = 1.0, 
                  input_device_keywords = None, output_device_keywords = None,
@@ -207,8 +213,6 @@ class Cycle_manager():
         self.running = True
         self.verbose = verbose
         self.freq_range = freq_range
-        self.f0_idxs = range(int(freq_range[0]/self.spectrum.df),
-                        min(self.spectrum.nFreqs - self.spectrum.fbins_per_signal, int(freq_range[1]/self.spectrum.df)))
         self.audio_in_wav = audio_in_wav
         self.input_device_idx = find_device(input_device_keywords)
         self.output_device_idx = find_device(output_device_keywords)
@@ -256,8 +260,27 @@ class Cycle_manager():
             s = 1000*np.std(diffs)
             pc = safe_pc(s, 1000/self.spectrum.sigspec.symbols_persec) 
             self.tlog(f"\n[Cycle manager] Hop timings: mean = {m:.2f}ms, sd = {s:.2f}ms ({pc:5.1f}% symbol)")
+
+    def check_for_tx(self):
+        from .FT8_encoder import pack_message
+        tx_msg_file = 'PyFT8_tx_msg.txt'
+        if os.path.exists(tx_msg_file):
+            if(not self.output_device_idx):
+                self.tlog("[Tx] Tx message file found but no output device specified")
+                return
+            with open(tx_msg_file, 'r') as f:
+                tx_msg = f.readline().strip()
+                tx_freq = f.readline().strip()
+            tx_freq = int(tx_freq) if tx_freq else 1000    
+            self.tlog(f"[TX] transmitting {tx_msg} on {tx_freq} Hz")
+            os.remove(tx_msg_file)
+            c1, c2, grid_rpt = tx_msg.split()
+            symbols = pack_message(c1, c2, grid_rpt)
+            audio_data = self.audio_out.create_ft8_wave(self, symbols, f_base = tx_freq)
+            self.audio_out.play_data_to_soundcard(self, audio_data, self.output_device_idx)
+            self.tlog("[Tx] done transmitting")
         
-    def manage_cycle(self):
+    def manage_cycle(self, allow_hard_decode_attempts = True, allow_pass2_hard_decode_attempts = False):
         cycle_searched = True
         cands_rollover_done = False
         cycle_counter = 0
@@ -286,14 +309,11 @@ class Cycle_manager():
                 if not self.audio_started: self.start_audio()
 
             if (self.spectrum.audio_in.grid_main_ptr > self.spectrum.h_search and not cycle_searched):
-
                 cycle_searched = True
                 if(self.verbose): self.tlog(f"[Cycle manager] Search spectrum ...")
-
-                self.new_cands = self.spectrum.search(self.f0_idxs, self.cyclestart_str(time.time()))
+                self.new_cands = self.spectrum.search(self.freq_range, self.cyclestart_str(time.time()))
                 if(self.verbose): self.tlog(f"[Cycle manager] Spectrum searched -> {len(self.new_cands)} candidates")
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
-
                 if(self.verbose): self.tlog(f"[Cycle manager] Candidate rollover")
                 cands_rollover_done = True
                 n_unprocessed = len([c for c in self.cands_list if not "#" in c.decode_path])
@@ -343,22 +363,5 @@ class Cycle_manager():
                     c.call_a, c.call_b, c.grid_rpt = c.msg[0], c.msg[1], c.msg[2]
                     if(self.onSuccess): self.onSuccess(c)
                     
-    def check_for_tx(self):
-        from .FT8_encoder import pack_message
-        tx_msg_file = 'PyFT8_tx_msg.txt'
-        if os.path.exists(tx_msg_file):
-            if(not self.output_device_idx):
-                self.tlog("[Tx] Tx message file found but no output device specified")
-                return
-            with open(tx_msg_file, 'r') as f:
-                tx_msg = f.readline().strip()
-                tx_freq = f.readline().strip()
-            tx_freq = int(tx_freq) if tx_freq else 1000    
-            self.tlog(f"[TX] transmitting {tx_msg} on {tx_freq} Hz")
-            os.remove(tx_msg_file)
-            c1, c2, grid_rpt = tx_msg.split()
-            symbols = pack_message(c1, c2, grid_rpt)
-            audio_data = self.audio_out.create_ft8_wave(self, symbols, f_base = tx_freq)
-            self.audio_out.play_data_to_soundcard(self, audio_data, self.output_device_idx)
-            self.tlog("[Tx] done transmitting")
+
             
