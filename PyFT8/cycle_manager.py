@@ -13,6 +13,13 @@ import queue
 import wave
 import os
 
+MIN_LLR0_QUALITY = 410
+MAX_LLR0_QUALITY_OSD = 470
+MIN_SNR_METRIC = 0.10
+NC_THRESH_BITFLIP = 28
+NC_MAX_LDPC = 30
+MAX_ITERS_LDPC = 6
+
 def safe_pc(x,y):
     return 100*x/y if y>0 else 0
 
@@ -127,7 +134,7 @@ class Candidate:
             llr0_quality =  np.sum(np.abs(llr0)) * 3*(79-21)/len(llr0)
         return (llr0, llr0_sd, llr0_quality, p_dB, snr)
 
-    def hard_decode(self, spectrum, min_snr_metric = -90):
+    def hard_decode(self, spectrum):
         self.hard_decode_started = True
         self._update_pgrid_copy(spectrum)
         for sync_idx in [0,1]:
@@ -135,7 +142,7 @@ class Candidate:
             p = self.pgrid_copy[data_hops,:]
             max_p = np.max(p, axis = 1)
             sum_p = np.sum(p, axis = 1)
-            if(np.mean(max_p / sum_p) > min_snr_metric):
+            if(np.mean(max_p / sum_p) > MIN_SNR_METRIC):
                 maxpwr_idxs = np.argmax(p, axis = 1)
                 symbols = np.array([int(m / spectrum.fbins_pertone) for m in maxpwr_idxs])
                 bits = [[[0,0,0],[0,0,1],[0,1,1],[0,1,0],[1,1,0],[1,0,0],[1,0,1],[1,1,1]][tone] for tone in symbols]
@@ -151,7 +158,7 @@ class Candidate:
                     self._record_state("C", final = True)
                     return
        
-    def demap(self, spectrum, min_llr0_quality = 410):
+    def demap(self, spectrum):
         self._update_pgrid_copy(spectrum)
         self.demap_started = True
         demap0 = self._get_llr(spectrum, spectrum.base_payload_hops + self.syncs[0]['h0_idx'])
@@ -163,11 +170,10 @@ class Candidate:
         self.llr = self.llr0.copy()
         self.ncheck = self.ncheck0
         self.demap_completed = time.time()
-        qual_too_low = self.llr0_quality < min_llr0_quality
+        qual_too_low = self.llr0_quality < MIN_LLR0_QUALITY
         self._record_state("I", final = qual_too_low)
 
-    def progress_decode(self, nc_thresh_bitflip = 28, nc_max_ldpc = 30,
-                      iters_max_ldpc = 6, osd_qual_range = [410,470]):
+    def progress_decode(self, osd_qual_range = [MIN_LLR0_QUALITY,470]):
         
         if(self.ncheck == 0):
             codeword_bits = (self.llr > 0).astype(int).tolist()
@@ -179,15 +185,15 @@ class Candidate:
                 self._record_state("X", final = True)
             return
 
-        if self.ncheck > nc_thresh_bitflip and not "A" in self.codes_this_sync:  
+        if self.ncheck >= NC_THRESH_BITFLIP and not "A" in self.codes_this_sync:  
             self.llr, self.ncheck = flip_bits(self.llr, self.ncheck, width = 50, nbits=1, keep_best = True)
             self._record_state("A")
             return
-        if nc_max_ldpc > self.ncheck > 0 and not self.codes_this_sync.count("L") > iters_max_ldpc:  
+        if NC_MAX_LDPC >= self.ncheck > 0 and not self.codes_this_sync.count("L") > MAX_ITERS_LDPC:  
             self.llr, self.ncheck = self.ldpc.do_ldpc_iteration(self.llr)
             self._record_state("L")
             return       
-        if(osd_qual_range[0] < self.llr0_quality < osd_qual_range[1] and not "O" in self.codes_this_sync):
+        if(self.llr0_quality < MAX_LLR0_QUALITY_OSD and not "O" in self.codes_this_sync):
             reliab_order = np.argsort(np.abs(self.llr))[::-1]
             codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Ls = [30,20,2])
             if check_crc_codeword_list(codeword_bits):

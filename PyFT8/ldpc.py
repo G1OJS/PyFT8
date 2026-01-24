@@ -1,4 +1,6 @@
 import numpy as np
+import warnings
+warnings.filterwarnings("error")
 
 class LdpcDecoder:
     def __init__(self):
@@ -19,7 +21,11 @@ class LdpcDecoder:
             mC2V_prev = np.zeros(CVidx.shape, dtype=np.float32)
         mV2C = llr[CVidx] - mC2V_prev
         tanh_mV2C = np.tanh(-mV2C)
-        tanh_mC2V = np.prod(tanh_mV2C, axis=1, keepdims=True) / tanh_mV2C
+        tanh_mC2V = np.prod(tanh_mV2C, axis=1, keepdims=True)
+        try:
+            tanh_mC2V = tanh_mC2V / tanh_mV2C
+        except:
+            tanh_mC2V = tanh_mC2V / (tanh_mV2C + 0.001)
         alpha_atanh_approx = 1.18
         mC2V_curr  = tanh_mC2V / ((tanh_mC2V - alpha_atanh_approx) * (alpha_atanh_approx + tanh_mC2V))
         np.add.at(update_collector, CVidx, mC2V_curr - mC2V_prev)
