@@ -5,7 +5,7 @@ import pandas as pd
 with open(f"data/compare_wsjtx.csv", "r") as f:
     lines=f.readlines()
 
-pycols = ['cyan', 'lime','green','orange','yellow','white']
+pycols = ['black', 'lime','green','orange','yellow','white']
 pylabs = ["Hard t+8 sec", "Immediate", "LDPC", "LDPC & BitFlip", "OSD", "Timeouts"]
 bins = [350 + 5*b for b in range(50)]
 
