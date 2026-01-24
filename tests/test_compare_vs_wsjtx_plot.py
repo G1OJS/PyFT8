@@ -52,7 +52,8 @@ ax.set_ylabel(f"Number of decodes")
 
 ntot = len(ws)
 py_pc = f"{int(100*pydecs/ntot)}"
-fig.suptitle(f"PyFT8 vs WSJTX. {ntot} decodes, {py_pc}% to PyFT8")
+pyh_pc = f"{int(100*len(py[0])/ntot)}"
+fig.suptitle(f"PyFT8 vs WSJTX. {ntot} decodes, {py_pc}% to PyFT8 ({pyh_pc}% using hard decode only)")
 
 plt.tight_layout()
 plt.show()

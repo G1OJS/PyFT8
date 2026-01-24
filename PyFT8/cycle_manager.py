@@ -30,8 +30,7 @@ class Spectrum:
         self.hop_idxs_Costas =  np.arange(self.sigspec.costas_len) * self.hops_persymb
         self.hop_start_lattitude = int(2 / self.dt)
         self.nhops_costas = self.sigspec.costas_len * self.hops_persymb
-        self.h_search = self.hop_start_lattitude + self.nhops_costas
-        self.h_demap = self.sigspec.payload_symb_idxs[-1] * self.hops_persymb
+        self.h_search = self.hop_start_lattitude + self.nhops_costas + 36 * self.hops_persymb
         self.occupancy = np.zeros(self.nFreqs)
         self.base_payload_hops = np.array([self.hops_persymb * s for s in self.sigspec.payload_symb_idxs])
         self.base_data_hops = np.array([self.hops_persymb * s for s in self.sigspec.data_symb_idxs])
@@ -45,18 +44,19 @@ class Spectrum:
             csync[sym_idx, sigspec.costas_len*self.fbins_pertone:] = 0
         return csync.ravel()
 
-    def sync(self, c, costas_block_index):
+    def sync(self, c):
         p = self.audio_in.pgrid_main[:, c.f0_idx:c.f0_idx + self.fbins_per_signal]
         pnorm = p / np.max(p)
-        block_off = 36 * costas_block_index * self.hops_persymb
-        for h0_idx in range(block_off, block_off + self.hop_start_lattitude):
-            sync_score = float(np.dot(pnorm[h0_idx + self.hop_idxs_Costas ,  :].ravel(), self.csync_flat))
-            test_sync = {'h0_idx':h0_idx - block_off, 'score':sync_score}
-            if test_sync['score'] > c.sync['score']:
-                c.sync = test_sync
-        c.tsecs = c.sync['h0_idx'] * self.dt-0.7
-        c.data_hops = c.sync['h0_idx'] + self.base_data_hops
-        c.payload_hops = c.sync['h0_idx'] + self.base_payload_hops
+        for costas_block_index in [0,1]:
+            block_off = 36 * costas_block_index * self.hops_persymb
+            for h0_idx in range(block_off, block_off + self.hop_start_lattitude):
+                sync_score = float(np.dot(pnorm[h0_idx + self.hop_idxs_Costas ,  :].ravel(), self.csync_flat))
+                test_sync = {'h0_idx':h0_idx - block_off, 'score':sync_score, 'tsecs': h0_idx * self.dt-0.7}
+                if test_sync['score'] > c.syncs[costas_block_index]['score']:
+                    c.syncs[costas_block_index] = test_sync
+        latest_h0 = np.max([c.syncs[0]['h0_idx'], c.syncs[1]['h0_idx']])
+        c.last_data_hop = latest_h0 + self.sigspec.data_symb_idxs[-1] * self.hops_persymb
+        c.last_payload_hop = latest_h0 + self.sigspec.payload_symb_idxs[-1] * self.hops_persymb
 
     def search(self, freq_range, cyclestart_str):
         cands = []
@@ -73,8 +73,7 @@ class Spectrum:
             max_pwr = np.max(p)
             pnorm = p / max_pwr
             self.occupancy[c.fine_freq_idxs] += max_pwr
-            c.base_payload_hops, c.base_data_hops = self.base_payload_hops, self.base_data_hops
-            self.sync(c, 0)
+            self.sync(c)
             c.cyclestart_str = cyclestart_str            
             cands.append(c)
         return cands
@@ -86,11 +85,13 @@ class Candidate:
         self.dedupe_key = ""
         self.pgrid_copy = np.zeros((1,1))
         self.hard_decode_started, self.demap_started, self.demap_completed, self.decode_completed, self.sync2_started = False, False, False, False, False
-        self.sync = {'h0_idx':0, 'score':0}
+        s = {'h0_idx':0, 'score':0}
+        self.syncs = [s,s]
+        self.tsecs = 0
+        self.codes_this_sync = ""
         self.ncheck, self.ncheck0 = 99, 99
         self.llr = None
         self.decode_path = ""
-        self.codes_this_sync = ""
         self.llr0_quality = 0
         self.llr0_sd = 0
         self.snr, self.snr2 = -999, -999
@@ -129,27 +130,35 @@ class Candidate:
     def hard_decode(self, spectrum, min_snr_metric = -90):
         self.hard_decode_started = True
         self._update_pgrid_copy(spectrum)
-        p = self.pgrid_copy[self.data_hops,:]
-        max_p = np.max(p, axis = 1)
-        sum_p = np.sum(p, axis = 1)
-        if(np.mean(max_p / sum_p) > min_snr_metric):
-            maxpwr_idxs = np.argmax(p, axis = 1)
-            symbols = np.array([int(m / spectrum.fbins_pertone) for m in maxpwr_idxs])
-            bits = [[[0,0,0],[0,0,1],[0,1,1],[0,1,0],[1,1,0],[1,0,0],[1,0,1],[1,1,1]][tone] for tone in symbols]
-            bits = np.array(bits).flatten().tolist()
-            bits = bits[:87]+bits[21+87:21+91]
-            self.llr0, self.llr0_sd, self.llr0_quality, self.p_dB, self.snr = self._get_llr(spectrum, self.data_hops)
-            if(check_crc_codeword_list(bits)):
-                self.msg = FT8_unpack(bits[:77])
-            if(self.msg):
-                self.ncheck0, self.ncheck = 0, 0
-                self._record_state("H")
-                self._record_state("C", final = True)
+        for sync_idx in [0,1]:
+            data_hops = self.syncs[sync_idx]['h0_idx'] + spectrum.base_data_hops
+            p = self.pgrid_copy[data_hops,:]
+            max_p = np.max(p, axis = 1)
+            sum_p = np.sum(p, axis = 1)
+            if(np.mean(max_p / sum_p) > min_snr_metric):
+                maxpwr_idxs = np.argmax(p, axis = 1)
+                symbols = np.array([int(m / spectrum.fbins_pertone) for m in maxpwr_idxs])
+                bits = [[[0,0,0],[0,0,1],[0,1,1],[0,1,0],[1,1,0],[1,0,0],[1,0,1],[1,1,1]][tone] for tone in symbols]
+                bits = np.array(bits).flatten().tolist()
+                bits = bits[:87]+bits[21+87:21+91]
+                dummy_demap = self._get_llr(spectrum, data_hops)
+                self.llr0, self.llr0_sd, self.llr0_quality, self.p_dB, self.snr = dummy_demap
+                if(check_crc_codeword_list(bits)):
+                    self.msg = FT8_unpack(bits[:77])
+                if(self.msg):
+                    self.ncheck0, self.ncheck = 0, 0
+                    self._record_state("H")
+                    self._record_state("C", final = True)
+                    return
        
     def demap(self, spectrum, min_llr0_quality = 410):
-        self.demap_started = True
         self._update_pgrid_copy(spectrum)
-        self.llr0, self.llr0_sd, self.llr0_quality, self.p_dB, self.snr = self._get_llr(spectrum, self.payload_hops)
+        self.demap_started = True
+        demap0 = self._get_llr(spectrum, spectrum.base_payload_hops + self.syncs[0]['h0_idx'])
+        demap1 = self._get_llr(spectrum, spectrum.base_payload_hops + self.syncs[1]['h0_idx'])
+        demap = demap0 if demap0[2] > demap1[2] else demap1
+        self.tsecs = self.syncs[0]['tsecs'] if demap0[2] > demap1[2] else self.syncs[1]['tsecs']
+        self.llr0, self.llr0_sd, self.llr0_quality, self.p_dB, self.snr = demap
         self.ncheck0 = self.ldpc.calc_ncheck(self.llr0)
         self.llr = self.llr0.copy()
         self.ncheck = self.ncheck0
@@ -193,7 +202,7 @@ class Cycle_manager():
     def __init__(self, sigspec, onSuccess, onOccupancy, audio_in_wav = None, test_speed_factor = 1.0, 
                  input_device_keywords = None, output_device_keywords = None,
                  freq_range = [200,3100], max_cycles = 5000, onCandidateRollover = None, verbose = False,
-                 hard_decoding = {'allowed':True, 'on_sync2':False}):
+                 hard_decoding = True):
         self.hard_decoding = hard_decoding
         self.spectrum = Spectrum(sigspec, 12000, freq_range[1], 3, 3)
         self.running = True
@@ -304,15 +313,14 @@ class Cycle_manager():
                     self.onCandidateRollover(self.cands_list)
                 self.cands_list = self.new_cands
 
-            if(self.hard_decoding['allowed']):
-                data_hops_filled = [c for c in self.cands_list if self.spectrum.audio_in.grid_main_ptr > c.data_hops[-1]]
-                to_hard_decode = [c for c in data_hops_filled if not c.decode_completed
-                                    and (self.hard_decoding['on_sync2'] or not c.sync2_started)]
+            if(self.hard_decoding):
+                data_hops_filled = [c for c in self.cands_list if self.spectrum.audio_in.grid_main_ptr > c.last_data_hop]
+                to_hard_decode = [c for c in data_hops_filled if not c.decode_completed]
                 for c in to_hard_decode:
                     if not c.hard_decode_started:
                         c.hard_decode(self.spectrum)
 
-            to_demap = [c for c in self.cands_list if (self.spectrum.audio_in.grid_main_ptr > c.payload_hops[-1]) and not c.decode_completed]
+            to_demap = [c for c in self.cands_list if self.spectrum.audio_in.grid_main_ptr > c.last_payload_hop and not c.decode_completed]
             for c in to_demap:
                 if(not c.demap_started):
                     c.demap(self.spectrum)
@@ -321,16 +329,6 @@ class Cycle_manager():
             to_progress_decode.sort(key = lambda c: -c.llr0_quality) # in case of emergency (timeouts) process best first
             for c in to_progress_decode[:25]:
                 c.progress_decode()
-
-            to_try_sync_2 = [c for c in self.cands_list if not c.msg and c.decode_completed]
-            for c in to_try_sync_2:
-                if not c.sync2_started:
-                    c.sync2_started = True
-                    h0_0 = c.sync['h0_idx']
-                    self.spectrum.sync(c, 1)
-                    if(c.sync['h0_idx'] != h0_0):
-                        c.hard_decode_started, c.demap_started, c.demap_completed, c.decode_completed = False, False, False, False
-                        c.codes_this_sync = ""
             
             with_message = [c for c in self.cands_list if c.msg]
             for c in with_message:
