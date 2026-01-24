@@ -118,6 +118,9 @@ class Candidate:
         
     def _get_llr(self, spectrum, hops, target_params = (3.3, 3.7)):
         centrebins = [t * spectrum.fbins_pertone for t in range(8)]
+        self._update_pgrid_copy(spectrum)
+        if(self.pgrid_copy.shape[0] < hops[-1]):  # shouldn't be necessary but seems to be
+            return
         p = self.pgrid_copy[hops, :][:, centrebins]
         p = np.clip(p, np.max(p)/1e8, None)
         p_dB = 10*np.log10(p)
@@ -159,10 +162,12 @@ class Candidate:
                     return
        
     def demap(self, spectrum):
-        self._update_pgrid_copy(spectrum)
         self.demap_started = True
         demap0 = self._get_llr(spectrum, spectrum.base_payload_hops + self.syncs[0]['h0_idx'])
         demap1 = self._get_llr(spectrum, spectrum.base_payload_hops + self.syncs[1]['h0_idx'])
+        if(demap0 is None or demap1 is None): # shouldn't be necessary but seems to be
+            self.demap_started = False
+            return
         demap = demap0 if demap0[2] > demap1[2] else demap1
         self.tsecs = self.syncs[0]['tsecs'] if demap0[2] > demap1[2] else self.syncs[1]['tsecs']
         self.llr0, self.llr0_sd, self.llr0_quality, self.p_dB, self.snr = demap
