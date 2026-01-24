@@ -54,8 +54,8 @@ def analyse_dictionaries():
     global cands_matched, matches
     time.sleep(2)
 
-    matches = [(w, c) for w in wsjtx_dicts for c in pyft8_cands if c.demap_completed
-               and abs(w['f'] - c.fHz) < 3 and (w['cs'] == c.cyclestart_str or w['cs']=='any')]
+    matches = [(w, c) for w in wsjtx_dicts for c in pyft8_cands if abs(w['f'] - c.fHz) < 3
+               and (w['cs'] == c.cyclestart_str or w['cs']=='any')]
     
     best = {}
     for w, c in matches:
@@ -109,6 +109,7 @@ def initialise_outputs():
         f.write('')
 
 def onDecode(c):
+  #  print(c.fHz, c.msg)
     pass
 
 def show_matched_cands(dBrange = 30):

@@ -126,7 +126,7 @@ class Candidate:
             llr0_quality =  np.sum(np.abs(llr0)) * 3*(79-21)/len(llr0)
         return (llr0, llr0_sd, llr0_quality, p_dB, snr)
 
-    def hard_decode(self, spectrum, min_snr_metric = 0.15):
+    def hard_decode(self, spectrum, min_snr_metric = -90):
         self.hard_decode_started = True
         self._update_pgrid_copy(spectrum)
         p = self.pgrid_copy[self.data_hops,:]
@@ -146,7 +146,7 @@ class Candidate:
                 self._record_state("H")
                 self._record_state("C", final = True)
        
-    def demap(self, spectrum, min_llr0_quality = 400):
+    def demap(self, spectrum, min_llr0_quality = 390):
         self.demap_started = True
         self._update_pgrid_copy(spectrum)
         self.llr0, self.llr0_sd, self.llr0_quality, self.p_dB, self.snr = self._get_llr(spectrum, self.payload_hops)
@@ -267,7 +267,6 @@ class Cycle_manager():
         
     def manage_cycle(self):
         cycle_searched = True
-        cands_rollover_done = False
         cycle_counter = 0
         cycle_time_prev = 0
         to_demap = []
@@ -286,7 +285,6 @@ class Cycle_manager():
                     self.running = False
                     break
                 cycle_searched = False
-                cands_rollover_done = False
                 self.check_for_tx()
                 self.spectrum.audio_in.grid_main_ptr = 0
                 self.analyse_hoptimes()
@@ -299,12 +297,10 @@ class Cycle_manager():
                 self.new_cands = self.spectrum.search(self.freq_range, self.cyclestart_str(time.time()))
                 if(self.verbose): self.tlog(f"[Cycle manager] Spectrum searched -> {len(self.new_cands)} candidates")
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
-                if(self.verbose): self.tlog(f"[Cycle manager] Candidate rollover")
-                cands_rollover_done = True
                 n_unprocessed = len([c for c in self.cands_list if not "#" in c.decode_path])
                 if(n_unprocessed and self.verbose):
                     self.tlog(f"[Cycle manager] {n_unprocessed} unprocessed candidates detected")
-                if(self.onCandidateRollover and cycle_counter >1):
+                if(self.onCandidateRollover and cycle_counter > 1):
                     self.onCandidateRollover(self.cands_list)
                 self.cands_list = self.new_cands
 
@@ -330,19 +326,18 @@ class Cycle_manager():
             for c in to_try_sync_2:
                 if not c.sync2_started:
                     c.sync2_started = True
-                    c.codes_this_sync = ""
                     h0_0 = c.sync['h0_idx']
                     self.spectrum.sync(c, 1)
                     if(c.sync['h0_idx'] != h0_0):
                         c.hard_decode_started, c.demap_started, c.demap_completed, c.decode_completed = False, False, False, False
-                   
+                        c.codes_this_sync = ""
+            
             with_message = [c for c in self.cands_list if c.msg]
             for c in with_message:
                 c.dedupe_key = c.cyclestart_str+" "+' '.join(c.msg)
                 if(not c.dedupe_key in self.duplicate_filter or "Q" in c.decode_path):
                     self.duplicate_filter.add(c.dedupe_key)
                     c.call_a, c.call_b, c.grid_rpt = c.msg[0], c.msg[1], c.msg[2]
-                    if(self.onSuccess): self.onSuccess(c)
-                    
+                    if(self.onSuccess): self.onSuccess(c)                   
 
             
