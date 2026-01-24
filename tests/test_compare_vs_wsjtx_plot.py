@@ -5,11 +5,11 @@ import pandas as pd
 with open(f"data/compare_wsjtx.csv", "r") as f:
     lines=f.readlines()
 
-pycols = ['lime','green','orange','yellow','white']
-pylabs = ["Immediate","LDPC","LDPC & BitFlip","OSD","Timeouts"]
+pycols = ['cyan', 'lime','green','orange','yellow','white']
+pylabs = ["Hard t+8 sec", "Immediate", "LDPC", "LDPC & BitFlip", "OSD", "Timeouts"]
 bins = [350 + 5*b for b in range(50)]
 
-py = [[],[],[],[],[]]
+py = [[],[],[],[],[],[]]
 ws = []
 pydecs = 0
 for lfull in lines:
@@ -17,16 +17,18 @@ for lfull in lines:
     q, nc, dpath =float(fields[0]), int(fields[1]), fields[2]
     if("C00#" in dpath):
         pydecs +=1
-        if('I00' in dpath):
+        if('H00' in dpath):
             py[0].append(q)
-        elif('O00' in dpath):
-            py[3].append(q)
-        elif('A' in dpath):
-            py[2].append(q)
-        elif('L' in dpath):
+        elif('I00' in dpath):
             py[1].append(q)
+        elif('O00' in dpath):
+            py[4].append(q)
+        elif('A' in dpath):
+            py[3].append(q)
+        elif('L' in dpath):
+            py[2].append(q)
             
-    if(not "#" in dpath): py[4].append(q)
+    if(not "#" in dpath): py[5].append(q)
     ws.append(q)
 
 fig, ax = plt.subplots( figsize=(10,6))

@@ -146,7 +146,7 @@ class Candidate:
                 self._record_state("H")
                 self._record_state("C", final = True)
        
-    def demap(self, spectrum, min_llr0_quality = 390):
+    def demap(self, spectrum, min_llr0_quality = 410):
         self.demap_started = True
         self._update_pgrid_copy(spectrum)
         self.llr0, self.llr0_sd, self.llr0_quality, self.p_dB, self.snr = self._get_llr(spectrum, self.payload_hops)
@@ -157,8 +157,8 @@ class Candidate:
         qual_too_low = self.llr0_quality < min_llr0_quality
         self._record_state("I", final = qual_too_low)
 
-    def progress_decode(self, nc_thresh_bitflip = 28, nc_max_ldpc = 35,
-                      iters_max_ldpc = 7, osd_qual_range = [395,470]):
+    def progress_decode(self, nc_thresh_bitflip = 28, nc_max_ldpc = 30,
+                      iters_max_ldpc = 6, osd_qual_range = [410,470]):
         
         if(self.ncheck == 0):
             codeword_bits = (self.llr > 0).astype(int).tolist()
