@@ -140,9 +140,11 @@ class Candidate:
     def hard_decode(self, spectrum):
         self.hard_decode_started = True
         self._update_pgrid_copy(spectrum)
-        for sync_idx in [0,1]:
-            data_hops = self.syncs[sync_idx]['h0_idx'] + spectrum.base_data_hops
-            p = self.pgrid_copy[data_hops,:]
+        for sync_idx in [0, 1]:
+            hops = self.syncs[sync_idx]['h0_idx'] + spectrum.base_data_hops
+            if(self.pgrid_copy.shape[0] <= hops[-1]):  # shouldn't be necessary but seems to be
+                return
+            p = self.pgrid_copy[hops,:]
             max_p = np.max(p, axis = 1)
             sum_p = np.sum(p, axis = 1)
             if(np.mean(max_p / sum_p) > MIN_SNR_METRIC):
@@ -151,7 +153,7 @@ class Candidate:
                 bits = [[[0,0,0],[0,0,1],[0,1,1],[0,1,0],[1,1,0],[1,0,0],[1,0,1],[1,1,1]][tone] for tone in symbols]
                 bits = np.array(bits).flatten().tolist()
                 bits = bits[:87]+bits[21+87:21+91]
-                dummy_demap = self._get_llr(spectrum, data_hops)
+                dummy_demap = self._get_llr(spectrum, hops)
                 self.llr0, self.llr0_sd, self.llr0_quality, self.p_dB, self.snr = dummy_demap
                 if(check_crc_codeword_list(bits)):
                     self.msg = FT8_unpack(bits[:77])
