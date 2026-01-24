@@ -119,7 +119,7 @@ class Candidate:
     def _get_llr(self, spectrum, hops, target_params = (3.3, 3.7)):
         centrebins = [t * spectrum.fbins_pertone for t in range(8)]
         self._update_pgrid_copy(spectrum)
-        if(self.pgrid_copy.shape[0] < hops[-1]):  # shouldn't be necessary but seems to be
+        if(self.pgrid_copy.shape[0] <= hops[-1]):  # shouldn't be necessary but seems to be
             return
         p = self.pgrid_copy[hops, :][:, centrebins]
         p = np.clip(p, np.max(p)/1e8, None)
