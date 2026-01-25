@@ -318,7 +318,7 @@ class Cycle_manager():
                 if(self.verbose): self.tlog(f"[Cycle manager] Search spectrum ...")
                 self.new_cands = self.spectrum.search(self.freq_range, self.cyclestart_str(time.time()))
                 if(self.verbose): self.tlog(f"[Cycle manager] Spectrum searched -> {len(self.new_cands)} candidates")
-                if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
+                if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.audio_in.fft_df)
                 n_unprocessed = len([c for c in self.cands_list if not "#" in c.decode_path])
                 if(n_unprocessed and self.verbose):
                     self.tlog(f"[Cycle manager] {n_unprocessed} unprocessed candidates detected")
