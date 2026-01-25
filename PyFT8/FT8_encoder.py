@@ -26,8 +26,11 @@ def pack_ft8_c28(call):
         call = call + '  '
     charmap = [' ' + digs + ltrs, digs + ltrs, digs + ' ' * 17] + [' ' + ltrs] * 3
     factors = np.array([36*10*27**3, 10*27**3, 27**3, 27**2, 27, 1])
-    indices = np.array([cmap.index(call[i]) for i, cmap in enumerate(charmap)])
-    
+    try:
+        indices = np.array([cmap.index(call[i]) for i, cmap in enumerate(charmap)])
+    except:
+        print(f"Couldn't encode '{call}'")
+        return 0
     return int(np.sum(factors * indices) + 2_063_592 + 4_194_304)
 
 def pack_ft8_g15(txt):

@@ -87,6 +87,8 @@ def analyse_dictionaries():
             f.write(f"{c.fHz},{cofreq},{c.llr0_quality:4.0f},{c.ncheck0:2d},{c.decode_path}\n")
 
     print(f"{len(unique)} unique decodes")
+    if(not len(unique)):
+        print("Is WSJT-X running??")
     unprocessed = [c for w, c in matches if not "#" in c.decode_path]
     if(len(unprocessed)):
         best_unprocessed_quality = np.max([c.llr0_quality for c in unprocessed])

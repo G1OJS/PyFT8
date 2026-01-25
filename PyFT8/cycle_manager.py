@@ -8,6 +8,7 @@ from PyFT8.FT8_crc import check_crc_codeword_list
 from PyFT8.ldpc import LdpcDecoder
 from PyFT8.bitflipper import flip_bits
 from PyFT8.osd import osd_decode_minimal
+from PyFT8.audio import AudioOut
 import pyaudio
 import queue
 import wave
@@ -83,6 +84,11 @@ class Spectrum:
             self.sync(c)
             c.cyclestart_str = cyclestart_str            
             cands.append(c)
+        k = 3
+        for i, c in enumerate(cands):
+            i = np.clip(i-k,0,None)
+            j = np.clip(i+k,None,len(cands))
+            c.cofreqs = [c2 for c2 in cands[i:j]] 
         return cands
 
 class Candidate:
@@ -91,7 +97,7 @@ class Candidate:
         self.ldpc = LdpcDecoder()
         self.dedupe_key = ""
         self.pgrid_copy = np.zeros((1,1))
-        self.hard_decode_started, self.demap_started, self.demap_completed, self.decode_completed, self.sync2_started = False, False, False, False, False
+        self.hard_decode_started, self.demap_started, self.demap_completed, self.decode_completed = False, False, False, False
         s = {'h0_idx':0, 'score':0}
         self.syncs = [s,s]
         self.tsecs = 0
@@ -158,6 +164,7 @@ class Candidate:
                 if(check_crc_codeword_list(bits)):
                     self.msg = FT8_unpack(bits[:77])
                 if(self.msg):
+                    self.h0_idx = self.syncs[sync_idx]['h0_idx']
                     self.ncheck0, self.ncheck = 0, 0
                     self._record_state("H")
                     self._record_state("C", final = True)
@@ -172,6 +179,7 @@ class Candidate:
             return
         demap = demap0 if demap0[2] > demap1[2] else demap1
         self.tsecs = self.syncs[0]['tsecs'] if demap0[2] > demap1[2] else self.syncs[1]['tsecs']
+        self.h0_idx = self.syncs[0]['h0_idx'] if demap0[2] > demap1[2] else self.syncs[1]['h0_idx']
         self.llr0, self.llr0_sd, self.llr0_quality, self.p_dB, self.snr = demap
         self.ncheck0 = self.ldpc.calc_ncheck(self.llr0)
         self.llr = self.llr0.copy()
@@ -231,9 +239,8 @@ class Cycle_manager():
         self.onSuccess = onSuccess
         self.onOccupancy = onOccupancy
         self.duplicate_filter = set()
-        if(self.output_device_idx):
-            from .audio import AudioOut
-            self.audio_out = AudioOut
+
+        self.audio_out = AudioOut
         self.audio_started = False
         self.cycle_seconds = sigspec.cycle_seconds
         threading.Thread(target=self.manage_cycle, daemon=True).start()
@@ -269,7 +276,7 @@ class Cycle_manager():
             self.tlog(f"\n[Cycle manager] Hop timings: mean = {m:.2f}ms, sd = {s:.2f}ms ({pc:5.1f}% symbol)")
 
     def check_for_tx(self):
-        from .FT8_encoder import pack_message
+        from PyFT8.FT8_encoder import pack_message
         tx_msg_file = 'PyFT8_tx_msg.txt'
         if os.path.exists(tx_msg_file):
             if(not self.output_device_idx):
@@ -350,6 +357,31 @@ class Cycle_manager():
                 if(not c.dedupe_key in self.duplicate_filter or "Q" in c.decode_path):
                     self.duplicate_filter.add(c.dedupe_key)
                     c.call_a, c.call_b, c.grid_rpt = c.msg[0], c.msg[1], c.msg[2]
-                    if(self.onSuccess): self.onSuccess(c)                   
+                    if(self.onSuccess): self.onSuccess(c)
+                    if(len(c.cofreqs)):
+                        self.subtract_spectrum(c)
+                        self.reprocess_cofreqs(c)
 
-            
+    def reprocess_cofreqs(self, c):
+        for c2 in c.cofreqs:
+            c2.demap_completed = False
+            c2.hard_decode_started = False
+            c2.demap_started = False
+            c2.decode_completed = False
+            c2.pgrid_copy = np.zeros((1,1))
+            self.spectrum.sync(c2)
+                                
+    def subtract_spectrum(self, c):
+        from PyFT8.FT8_encoder import pack_message
+        c1, c2, grid_rpt = c.msg
+        symbols = pack_message(c1, c2, grid_rpt)
+        audio_data = self.audio_out.create_ft8_wave(self, symbols, f_base = c.fHz)
+        self.spectrum.audio_in.subtract(audio_data, c.h0_idx, c.fine_freq_idxs)
+
+
+
+
+
+
+
+                    
