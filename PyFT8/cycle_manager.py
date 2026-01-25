@@ -17,8 +17,8 @@ MIN_LLR0_QUALITY = 400
 MAX_LLR0_QUALITY_OSD = 470
 MIN_SNR_METRIC = 0.15
 NC_THRESH_BITFLIP = 28
-NC_MAX_LDPC = 33
-MAX_ITERS_LDPC = 7
+NC_MAX_LDPC = 45
+MAX_ITERS_LDPC = 4
 
 def safe_pc(x,y):
     return 100*x/y if y>0 else 0
@@ -324,7 +324,8 @@ class Cycle_manager():
                     self.tlog(f"[Cycle manager] {n_unprocessed} unprocessed candidates detected")
                 if(self.onCandidateRollover and cycle_counter > 1):
                     self.onCandidateRollover(self.cands_list)
-                self.cands_list = self.new_cands
+                t = time.time()
+                self.cands_list = [c for c in self.cands_list if c.demap_completed and t - c.demap_completed < 30] + self.new_cands
 
             if(self.hard_decoding):
                 data_hops_filled = [c for c in self.cands_list if self.spectrum.audio_in.grid_main_ptr > c.last_data_hop]
@@ -339,7 +340,6 @@ class Cycle_manager():
                     c.demap(self.spectrum)
 
             to_progress_decode = [c for c in self.cands_list if c.demap_completed and not c.decode_completed]
-      #      to_progress_decode.sort(key = lambda c: -c.llr0_quality) # in case of emergency (timeouts) process best first
             to_progress_decode.sort(key = lambda c: (c.ncheck0, -c.llr0_quality)) # in case of emergency (timeouts) process best first
             for c in to_progress_decode[:25]:
                 c.progress_decode()
