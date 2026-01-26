@@ -15,11 +15,11 @@ import wave
 import os
 
 MIN_LLR0_QUALITY = 410
-MAX_LLR0_QUALITY_OSD = [510, 450, 430]
-OSD_L_LIST = [40, 20, 3]
+MAX_LLR0_QUALITY_OSD = [470, 440, 410]
+OSD_L_LIST = [30, 20, 0]
 MIN_SNR_METRIC = 0.15
 NC_THRESH_BITFLIP = 28
-NC_MAX_LDPC = 55
+NC_MAX_LDPC = 33
 MAX_ITERS_LDPC = 4
 
 def safe_pc(x,y):
@@ -380,14 +380,14 @@ class Cycle_manager():
                     c.demap(self.spectrum)
 
             to_progress_decode = [c for c in self.cands_list if c.demap_completed and not c.decode_completed]
-            to_progress_decode.sort(key = lambda c: (c.ncheck0, -c.llr0_quality)) # in case of emergency (timeouts) process best first
+            to_progress_decode.sort(key = lambda c: (-c.llr0_quality, c.ncheck0)) # in case of emergency (timeouts) process best first
             for c in to_progress_decode[:25]:
                 c.progress_decode()
             
             with_message = [c for c in self.cands_list if c.msg]
             for c in with_message:
                 c.dedupe_key = c.cyclestart_str+" "+' '.join(c.msg)
-                if(not c.dedupe_key in self.duplicate_filter or "Q" in c.decode_path):
+                if(not c.dedupe_key in self.duplicate_filter):
                     self.duplicate_filter.add(c.dedupe_key)
                     c.call_a, c.call_b, c.grid_rpt = c.msg[0], c.msg[1], c.msg[2]
                     if(self.onSuccess): self.onSuccess(c)
