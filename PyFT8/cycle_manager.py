@@ -14,13 +14,13 @@ import queue
 import wave
 import os
 
-MIN_LLR0_QUALITY = 400
-MAX_LLR0_QUALITY_OSD = 470
-OSD_L_LIST = [50,20,5]
+MIN_LLR0_QUALITY = 410
+MAX_LLR0_QUALITY_OSD = [510, 450, 430]
+OSD_L_LIST = [40, 20, 3]
 MIN_SNR_METRIC = 0.15
-NC_THRESH_BITFLIP = 128
-NC_MAX_LDPC = 0
-MAX_ITERS_LDPC = 0
+NC_THRESH_BITFLIP = 28
+NC_MAX_LDPC = 55
+MAX_ITERS_LDPC = 4
 
 def safe_pc(x,y):
     return 100*x/y if y>0 else 0
@@ -217,17 +217,31 @@ class Candidate:
             self.llr, self.ncheck = self.ldpc.do_ldpc_iteration(self.llr)
             self._record_state("L")
             return       
-        if(self.llr0_quality < MAX_LLR0_QUALITY_OSD and not "O" in self.codes_this_pass):
+        if(self.llr0_quality < MAX_LLR0_QUALITY_OSD[0] and not "O" in self.codes_this_pass):
             reliab_order = np.argsort(np.abs(self.llr))[::-1]
-            # modify this to do one order at a time with crc check inbetween? - Could do that inside OSD.py
-            # double check if syndrome check is faster / better than crc
-            codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Ls = OSD_L_LIST)
+            codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Order = 1, L = OSD_L_LIST[0])
             if check_crc_codeword_list(codeword_bits):
                 self.llr = np.array([1 if(b==1) else -1 for b in codeword_bits])
                 self.ncheck = 0
             self._record_state("O")
             return
-
+        if(self.llr0_quality < MAX_LLR0_QUALITY_OSD[1] and not "P" in self.codes_this_pass):
+            reliab_order = np.argsort(np.abs(self.llr))[::-1]
+            codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Order = 2, L = OSD_L_LIST[1])
+            if check_crc_codeword_list(codeword_bits):
+                self.llr = np.array([1 if(b==1) else -1 for b in codeword_bits])
+                self.ncheck = 0
+            self._record_state("P")
+            return
+        if(self.llr0_quality < MAX_LLR0_QUALITY_OSD[2] and not "Q" in self.codes_this_pass):
+            reliab_order = np.argsort(np.abs(self.llr))[::-1]
+            codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Order = 3, L = OSD_L_LIST[2])
+            if check_crc_codeword_list(codeword_bits):
+                self.llr = np.array([1 if(b==1) else -1 for b in codeword_bits])
+                self.ncheck = 0
+            self._record_state("Q")
+            return
+        
         self._record_state("_", final = True)
 
 class Cycle_manager():

@@ -57,7 +57,7 @@ def weighted_distance_bits(c, r_hard, w):
     diff = c ^ r_hard
     return float(np.sum(w * diff))
 
-def osd_decode_minimal(llr_channel, reliab_order, Ls = [30,8,2]):
+def osd_decode_minimal(llr_channel, reliab_order, Order = 1, L = 50):
     llr_channel = np.asarray(llr_channel, dtype=np.float32)
     r = (llr_channel > 0).astype(np.uint8)
     w = np.abs(llr_channel).astype(np.float32)
@@ -71,16 +71,15 @@ def osd_decode_minimal(llr_channel, reliab_order, Ls = [30,8,2]):
     best_c_sys = c0_sys.copy()
     best_m = weighted_distance_bits(best_c_sys, r_sys, w_sys)
     info_reliab = w_sys[:k]
-    for t in range(1, len(Ls) + 1):
-        flip_pool = np.argsort(info_reliab)[:min(Ls[t-1], k)]    
-        for comb in combinations(flip_pool, t):
-            u = u0.copy()
-            u[list(comb)] ^= 1
-            c_sys = encode_gf2(u, Gsys)
-            m = weighted_distance_bits(c_sys, r_sys, w_sys)
-            if m < best_m:
-                best_m = m
-                best_c_sys = c_sys
+    flip_pool = np.argsort(info_reliab)[:min(L, k)]    
+    for comb in combinations(flip_pool, Order):
+        u = u0.copy()
+        u[list(comb)] ^= 1
+        c_sys = encode_gf2(u, Gsys)
+        m = weighted_distance_bits(c_sys, r_sys, w_sys)
+        if m < best_m:
+            best_m = m
+            best_c_sys = c_sys
     inv = np.empty(n, dtype=np.int64)
     inv[colperm] = np.arange(n)
     best_c_orig = best_c_sys[inv]

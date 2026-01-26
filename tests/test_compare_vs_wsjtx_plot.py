@@ -24,7 +24,7 @@ for lfull in lines:
             py[0].append(q)
         elif('I00' in dpath):
             py[1].append(q)
-        elif('O00' in dpath):
+        elif('O00' in dpath or 'P00' in dpath or 'Q00' in dpath):
             py[4].append(q)
         elif('A' in dpath):
             py[3].append(q)
