@@ -5,11 +5,11 @@ import pandas as pd
 with open(f"data/compare_wsjtx.csv", "r") as f:
     lines=f.readlines()
 
-pycols = ['black', 'lime','green','orange','yellow','white', 'red']
-pylabs = ["Hard t+8 sec", "Immediate", "LDPC", "LDPC & BitFlip", "OSD", "Timeouts", "Incorrect"]
+pycols = ['black', 'lime','green','cyan', 'orange','yellow','white', 'red']
+pylabs = ["Hard t+8 sec", "Immediate", "LDPC", "LDPC & BitFlip", "OSD1", "OSD2", "Timeouts", "Incorrect"]
 bins = [350 + 5*b for b in range(50)]
 
-py = [[],[],[],[],[],[],[]]
+py = [[],[],[],[],[],[],[],[]]
 ws = [[],[]]
 pydecs = 0
 for lfull in lines:
@@ -24,14 +24,16 @@ for lfull in lines:
             py[0].append(q)
         elif('I00' in dpath):
             py[1].append(q)
-        elif('O00' in dpath or 'P00' in dpath or 'Q00' in dpath):
+        elif('O00' in dpath):
             py[4].append(q)
+        elif('P00' in dpath):
+            py[5].append(q)
         elif('A' in dpath):
             py[3].append(q)
         elif('L' in dpath):
             py[2].append(q)
             
-    if(not "#" in dpath): py[5].append(q)
+    if(not "#" in dpath): py[6].append(q)
     if('cofreq' in cofreq):
         ws[1].append(q)
     else:
