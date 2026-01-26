@@ -84,7 +84,7 @@ class Spectrum:
             self.sync(c)
             c.cyclestart_str = cyclestart_str            
             cands.append(c)
-        k = 3
+        k = 24
         for i, c in enumerate(cands):
             i = np.clip(i-k,0,None)
             j = np.clip(i+k,None,len(cands))
@@ -95,6 +95,8 @@ class Candidate:
     def __init__(self):
         self.msg = None
         self.ldpc = LdpcDecoder()
+        self.subtracted = False
+        self.reprocessed = False
         self.dedupe_key = ""
         self.pgrid_copy = np.zeros((1,1))
         self.hard_decode_started, self.demap_started, self.demap_completed, self.decode_completed = False, False, False, False
@@ -329,6 +331,8 @@ class Cycle_manager():
                 n_unprocessed = len([c for c in self.cands_list if not "#" in c.decode_path])
                 if(n_unprocessed and self.verbose):
                     self.tlog(f"[Cycle manager] {n_unprocessed} unprocessed candidates detected")
+                if(self.verbose):
+                    self.tlog(f"[Cycle manager] subtracted {len([c for c in self.cands_list if c.subtracted])} decoded sigs")
                 if(self.onCandidateRollover and cycle_counter > 1):
                     self.onCandidateRollover(self.cands_list)
                 t = time.time()
@@ -358,18 +362,26 @@ class Cycle_manager():
                     self.duplicate_filter.add(c.dedupe_key)
                     c.call_a, c.call_b, c.grid_rpt = c.msg[0], c.msg[1], c.msg[2]
                     if(self.onSuccess): self.onSuccess(c)
-                    if(len(c.cofreqs)):
-                        self.subtract_spectrum(c)
-                        self.reprocess_cofreqs(c)
+
+        
+            to_subtract = [c for c in with_message if all([c2.decode_completed for c2 in c.cofreqs])
+                           and not c.subtracted]
+            for c in to_subtract:
+                c.subtracted = True
+                self.subtract_spectrum(c)
+                self.reprocess_cofreqs(c)
+        
 
     def reprocess_cofreqs(self, c):
         for c2 in c.cofreqs:
-            c2.demap_completed = False
-            c2.hard_decode_started = False
-            c2.demap_started = False
-            c2.decode_completed = False
-            c2.pgrid_copy = np.zeros((1,1))
-            self.spectrum.sync(c2)
+            if not c2.msg and not c2.reprocessed:
+                c2.demap_completed = False
+                c2.hard_decode_started = False
+                c2.demap_started = False
+                c2.decode_completed = False
+                c2.pgrid_copy = np.zeros((1,1))
+                c2.reprocessed = True
+                self.spectrum.sync(c2)
                                 
     def subtract_spectrum(self, c):
         from PyFT8.FT8_encoder import pack_message

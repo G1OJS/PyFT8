@@ -83,7 +83,7 @@ def analyse_dictionaries():
             basics = f"{c.cyclestart_str} {w['f']:4d} {cofreq} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.tsecs:4.1f} {w['td']} {td}"
             msg = ' '.join(c.msg) if c.msg else ''
             if(msg !=''): unique.add(msg)
-            print(f"{basics} {w['msg']:<23} {msg:<23} {c.llr0_quality:4.0f} {c.decode_path}")
+            print(f"{basics} {w['msg']:<23} {msg:<23} {c.llr0_quality:4.0f} {'-' if c.subtracted else ' '} {'r' if c.reprocessed else ' '} {c.decode_path}")
             f.write(f"{c.fHz},{cofreq},{c.llr0_quality:4.0f},{c.ncheck0:2d},{c.decode_path}\n")
 
     print(f"{len(unique)} unique decodes")

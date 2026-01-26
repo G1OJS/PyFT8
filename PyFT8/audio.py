@@ -55,7 +55,7 @@ class AudioIn:
             p = z.real*z.real + z.imag*z.imag
             p_ex = self.pgrid_main[ptr, freq_idxs]
             p = p * np.max(p_ex) / np.max(p)
-            self.pgrid_main[ptr:ptr+self.samples_perhop, freq_idxs] = np.abs(p_ex - p) + 0.001
+            self.pgrid_main[ptr:ptr+self.samples_perhop, freq_idxs] = np.abs(p_ex - 0.9*p) + 0.001
             in_ptr += self.samples_perhop
             ptr += 1
 

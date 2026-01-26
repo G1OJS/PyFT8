@@ -18,7 +18,8 @@ def pack_message(c1, c2, gr):
 def pack_ft8_c28(call):
     if (call == "CQ"): return 2
     from string import ascii_uppercase as ltrs, digits as digs
-    if(call[1] in digs and not (call[2] in digs)):
+    # If the last digit in the call is in char pos 1 i.e. second character, prepend a space
+    if(call[1] in digs and not any([d.isdigit() for d in call[2:]])):
         call = ' '+call
     if (call[-3] in digs):
         call = call + ' '
