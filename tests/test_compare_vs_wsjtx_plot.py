@@ -5,19 +5,22 @@ import pandas as pd
 with open(f"data/compare_wsjtx.csv", "r") as f:
     lines=f.readlines()
 
-pycols = ['black', 'lime','green','orange','yellow','white']
-pylabs = ["Hard t+8 sec", "Immediate", "LDPC", "LDPC & BitFlip", "OSD", "Timeouts"]
+pycols = ['black', 'lime','green','orange','yellow','white', 'red']
+pylabs = ["Hard t+8 sec", "Immediate", "LDPC", "LDPC & BitFlip", "OSD", "Timeouts", "Incorrect"]
 bins = [350 + 5*b for b in range(50)]
 
-py = [[],[],[],[],[],[]]
+py = [[],[],[],[],[],[],[]]
 ws = [[],[]]
 pydecs = 0
 for lfull in lines:
-    Hz, cofreq, q, nc, dpath = lfull.split(",")
+    Hz, cofreq, q, nc, flags, dpath = lfull.split(",")
     q = float(q)
     if("C00#" in dpath):
-        pydecs +=1
-        if('H00' in dpath):
+        if (not "i" in flags):
+            pydecs +=1
+        if("i" in flags):
+            py[6].append(q)
+        elif('H00' in dpath):
             py[0].append(q)
         elif('I00' in dpath):
             py[1].append(q)
@@ -56,7 +59,7 @@ ax.set_ylabel(f"Number of decodes")
 ntot = len(lines)
 py_pc = f"{int(100*pydecs/ntot)}"
 pyh_pc = f"{int(100*len(py[0])/ntot)}"
-fig.suptitle(f"PyFT8 vs WSJTX. {ntot} decodes, {py_pc}% to PyFT8 ({pyh_pc}% using hard decode only)")
+fig.suptitle(f"PyFT8 vs WSJTX. {ntot} decodes, {py_pc}% correct to PyFT8 ({pyh_pc}% using hard decode only)")
 
 plt.tight_layout()
 plt.show()

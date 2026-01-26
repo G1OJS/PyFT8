@@ -84,8 +84,10 @@ def analyse_dictionaries():
             basics = f"{c.cyclestart_str} {w['f']:4d} {cofreq} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.tsecs:4.1f} {w['td']} {td}"
             msg = ' '.join(c.msg) if c.msg else ''
             if(msg !=''): unique.add(msg)
-            print(f"{basics} {w['msg']:<23} {msg:<23} {c.llr0_quality:4.0f} {'-' if c.subtracted else ' '} {'r' if c.reprocessed else ' '} {c.decode_path}")
-            f.write(f"{c.fHz},{cofreq},{c.llr0_quality:4.0f},{c.ncheck0:2d},{c.decode_path}\n")
+            incorrect = (msg !='' and msg != w['msg'])
+            flags = f"{'-' if c.subtracted else ' '}{'r' if c.reprocessed else ' '}{'i' if incorrect else ' '}"
+            print(f"{basics} {w['msg']:<23} {msg:<23} {c.llr0_quality:4.0f} {flags} {c.decode_path}")
+            f.write(f"{c.fHz},{cofreq},{c.llr0_quality:4.0f},{c.ncheck0:2d},{flags},{c.decode_path}\n")
 
     print(f"{len(unique)} unique decodes")
     if(not len(unique)):
@@ -145,12 +147,12 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
     if(dataset):
         cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, test_speed_factor = 1, max_cycles = 2, 
                                       onCandidateRollover = onCandidateRollover, freq_range = freq_range,
-                                      audio_in_wav = dataset+".wav", verbose = True, subtraction = True)
+                                      audio_in_wav = dataset+".wav", verbose = True, subtraction = do_subtraction)
         get_wsjtx_decodes(dataset+".txt")
     else:
         cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None,
                                       onCandidateRollover = onCandidateRollover, freq_range = freq_range,
-                                      input_device_keywords = ['Microphone', 'CODEC'], verbose = True, subtraction = True)
+                                      input_device_keywords = ['Microphone', 'CODEC'], verbose = True, subtraction = do_subtraction)
         threading.Thread(target=wsjtx_all_tailer, args = (all_file,cycle_manager,)).start()
         
     try:
@@ -174,6 +176,7 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
     #calibrate_snr()
     show_matched_cands()
 
+do_subtraction = False
     
 #compare("data/210703_133430", [100,3100])
 
