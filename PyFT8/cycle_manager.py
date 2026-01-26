@@ -345,7 +345,7 @@ class Cycle_manager():
                 if(self.onCandidateRollover and cycle_counter > 1):
                     self.onCandidateRollover(self.cands_list)
                 t = time.time()
-                worth_keeping = [c for c in self.cands_list if (c.demap_completed and t - c.demap_completed < 30) or c.reprocessed] 
+                worth_keeping = [c for c in self.cands_list if (not c.decode_completed and t - c.demap_completed < 5) or c.reprocessed] 
                 self.cands_list = self.new_cands + worth_keeping
                 
             if(self.hard_decoding):
