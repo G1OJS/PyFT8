@@ -73,7 +73,8 @@ def analyse_dictionaries():
     pyft8 = [c for c in pyft8 if c.msg not in pyft8_msgs]
     wsjtx_msgs = [w['msg'] for w in wsjtx_dicts]
     pyft8_only = [c for c in pyft8 if ' '.join(c.msg) not in wsjtx_msgs]
-    
+
+    matches.sort(key = lambda tup: tup[1].fHz)
     unique = set()
     with open('data/compare_wsjtx.csv', 'a') as f:
         for w, c in matches:
@@ -149,7 +150,7 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
     else:
         cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None,
                                       onCandidateRollover = onCandidateRollover, freq_range = freq_range,
-                                      input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
+                                      input_device_keywords = ['Microphone', 'CODEC'], verbose = True, subtraction = True)
         threading.Thread(target=wsjtx_all_tailer, args = (all_file,cycle_manager,)).start()
         
     try:

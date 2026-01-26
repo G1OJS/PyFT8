@@ -66,7 +66,7 @@ class Spectrum:
         c.last_data_hop = latest_h0 + self.sigspec.data_symb_idxs[-1] * self.hops_persymb
         c.last_payload_hop = latest_h0 + self.sigspec.payload_symb_idxs[-1] * self.hops_persymb
 
-    def search(self, freq_range, cyclestart_str):
+    def search(self, freq_range, cyclestart_str, find_k_cofreqs):
         cands = []
         pgrid = self.audio_in.pgrid_main[:self.h_search,:]
         f0_idx_low = int(freq_range[0]/self.audio_in.fft_df)
@@ -84,18 +84,21 @@ class Spectrum:
             self.sync(c)
             c.cyclestart_str = cyclestart_str            
             cands.append(c)
-        k = 24
-        for i, c in enumerate(cands):
-            i = np.clip(i-k,0,None)
-            j = np.clip(i+k,None,len(cands))
-            c.cofreqs = [c2 for c2 in cands[i:j]] 
+        if(find_k_cofreqs):
+            k = find_k_cofreqs
+            for i, c in enumerate(cands):
+                i = np.clip(i-k,0,None)
+                j = np.clip(i+k,None,len(cands))
+                c.cofreqs = [c2 for c2 in cands[i:j]] 
         return cands
 
 class Candidate:
     def __init__(self):
         self.msg = None
         self.ldpc = LdpcDecoder()
-        self.subtracted = False
+        self.available_hops = 0
+        self.cofreqs = None
+        self.subtracted = None
         self.reprocessed = False
         self.dedupe_key = ""
         self.pgrid_copy = np.zeros((1,1))
@@ -120,9 +123,9 @@ class Candidate:
             self.decode_completed = time.time()
 
     def _update_pgrid_copy(self, spectrum):
-        available_hops = spectrum.audio_in.grid_main_ptr
-        if(available_hops > self.pgrid_copy.shape[0]):
-            self.pgrid_copy = spectrum.audio_in.pgrid_main[:available_hops, self.fine_freq_idxs].copy()
+        self.available_hops = spectrum.audio_in.grid_main_ptr
+        if(self.available_hops > self.pgrid_copy.shape[0]):
+            self.pgrid_copy = spectrum.audio_in.pgrid_main[:self.available_hops, self.fine_freq_idxs].copy()
         
     def _get_llr(self, spectrum, hops, target_params = (3.3, 3.7)):
         centrebins = [t * spectrum.fbins_pertone for t in range(8)]
@@ -194,6 +197,9 @@ class Candidate:
         
         if(self.ncheck == 0):
             codeword_bits = (self.llr > 0).astype(int).tolist()
+            if(np.sum(codeword_bits) == 0):
+                self._record_state("0", final = True)
+                return
             if check_crc_codeword_list(codeword_bits):
                 self.msg = FT8_unpack(codeword_bits)
             if self.msg:
@@ -225,8 +231,10 @@ class Cycle_manager():
     def __init__(self, sigspec, onSuccess, onOccupancy, audio_in_wav = None, test_speed_factor = 1.0, 
                  input_device_keywords = None, output_device_keywords = None,
                  freq_range = [200,3100], max_cycles = 5000, onCandidateRollover = None, verbose = False,
-                 hard_decoding = True):
+                 hard_decoding = True, subtraction = False):
         self.hard_decoding = hard_decoding
+        self.subtraction = subtraction
+        self.find_k_cofreqs = 1 if self.subtraction else 0
         self.spectrum = Spectrum(sigspec, 12000, freq_range[1], 3, 3)
         self.running = True
         self.verbose = verbose
@@ -325,27 +333,31 @@ class Cycle_manager():
             if (self.spectrum.audio_in.grid_main_ptr > self.spectrum.h_search and not cycle_searched):
                 cycle_searched = True
                 if(self.verbose): self.tlog(f"[Cycle manager] Search spectrum ...")
-                self.new_cands = self.spectrum.search(self.freq_range, self.cyclestart_str(time.time()))
+                self.new_cands = self.spectrum.search(self.freq_range, self.cyclestart_str(time.time()), self.find_k_cofreqs)
                 if(self.verbose): self.tlog(f"[Cycle manager] Spectrum searched -> {len(self.new_cands)} candidates")
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.audio_in.fft_df)
                 n_unprocessed = len([c for c in self.cands_list if not "#" in c.decode_path])
                 if(n_unprocessed and self.verbose):
                     self.tlog(f"[Cycle manager] {n_unprocessed} unprocessed candidates detected")
                 if(self.verbose):
-                    self.tlog(f"[Cycle manager] subtracted {len([c for c in self.cands_list if c.subtracted])} decoded sigs")
+                    self.tlog(f"[Cycle manager] subtracted {len([c for c in self.cands_list if c.subtracted == True])} decoded sigs")
+                    self.tlog(f"[Cycle manager] couldn't subtract {len([c for c in self.cands_list if c.subtracted == False])} decoded sigs")
                 if(self.onCandidateRollover and cycle_counter > 1):
                     self.onCandidateRollover(self.cands_list)
                 t = time.time()
-                self.cands_list = [c for c in self.cands_list if c.demap_completed and t - c.demap_completed < 30] + self.new_cands
-
+                worth_keeping = [c for c in self.cands_list if (c.demap_completed and t - c.demap_completed < 30) or c.reprocessed] 
+                self.cands_list = self.new_cands + worth_keeping
+                
             if(self.hard_decoding):
-                data_hops_filled = [c for c in self.cands_list if self.spectrum.audio_in.grid_main_ptr > c.last_data_hop]
+                data_hops_filled = [c for c in self.cands_list if self.spectrum.audio_in.grid_main_ptr > c.last_data_hop or c.available_hops > c.last_payload_hop]
                 to_hard_decode = [c for c in data_hops_filled if not c.decode_completed]
                 for c in to_hard_decode:
                     if not c.hard_decode_started:
                         c.hard_decode(self.spectrum)
 
-            to_demap = [c for c in self.cands_list if self.spectrum.audio_in.grid_main_ptr > c.last_payload_hop and not c.decode_completed]
+            to_demap = [c for c in self.cands_list if (self.spectrum.audio_in.grid_main_ptr > c.last_payload_hop
+                                                        or c.available_hops > c.last_payload_hop)
+                                                       and not c.decode_completed]
             for c in to_demap:
                 if(not c.demap_started):
                     c.demap(self.spectrum)
@@ -362,15 +374,14 @@ class Cycle_manager():
                     self.duplicate_filter.add(c.dedupe_key)
                     c.call_a, c.call_b, c.grid_rpt = c.msg[0], c.msg[1], c.msg[2]
                     if(self.onSuccess): self.onSuccess(c)
-
-        
-            to_subtract = [c for c in with_message if all([c2.decode_completed for c2 in c.cofreqs])
-                           and not c.subtracted]
-            for c in to_subtract:
-                c.subtracted = True
-                self.subtract_spectrum(c)
-                self.reprocess_cofreqs(c)
-        
+ 
+            if(self.subtraction):
+                to_subtract = [c for c in with_message if all([c2.decode_completed for c2 in c.cofreqs])
+                               and not c.subtracted is None]
+                for c in to_subtract:
+                    c.subtracted = self.subtract_spectrum(c)
+                    if(c.subtracted):
+                        self.reprocess_cofreqs(c)
 
     def reprocess_cofreqs(self, c):
         for c2 in c.cofreqs:
@@ -394,7 +405,7 @@ class Cycle_manager():
         c1, c2, grid_rpt = c.msg
         symbols = pack_message(c1, c2, grid_rpt)
         audio_data = self.audio_out.create_ft8_wave(self, symbols, f_base = c.fHz)
-        self.spectrum.audio_in.subtract(audio_data, c.h0_idx, c.fine_freq_idxs)
+        return self.spectrum.audio_in.subtract(audio_data, c.h0_idx, c.fine_freq_idxs)
 
 
 

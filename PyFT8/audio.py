@@ -49,15 +49,19 @@ class AudioIn:
     def subtract(self, audio_data, h0_idx, freq_idxs):
         in_ptr = 0
         ptr = h0_idx
-        while(in_ptr + self.fft_len < len(audio_data)):
-            x = audio_data[in_ptr: in_ptr + self.fft_len] * self.fft_window
-            z = np.fft.rfft(x)[freq_idxs]
-            p = z.real*z.real + z.imag*z.imag
-            p_ex = self.pgrid_main[ptr, freq_idxs]
-            p = p * np.max(p_ex) / np.max(p)
-            self.pgrid_main[ptr:ptr+self.samples_perhop, freq_idxs] = np.abs(p_ex - 0.9*p) + 0.001
-            in_ptr += self.samples_perhop
-            ptr += 1
+        if(self.grid_main_ptr > h0_idx + 72 * self.samples_perhop or self.grid_main_ptr < h0_idx):
+            while(in_ptr + self.fft_len < len(audio_data)):
+                x = audio_data[in_ptr: in_ptr + self.fft_len] * self.fft_window
+                z = np.fft.rfft(x)[freq_idxs]
+                p = z.real*z.real + z.imag*z.imag
+                p_ex = self.pgrid_main[ptr, freq_idxs]
+                p = p * np.max(p_ex) / np.max(p)
+                self.pgrid_main[ptr:ptr+self.samples_perhop, freq_idxs] = np.abs(p_ex - 0.9*p) + 0.001
+                in_ptr += self.samples_perhop
+                ptr += 1
+            return True
+        else:
+            return False
 
     def do_fft(self):
         t = time.time()
