@@ -31,6 +31,7 @@ class AudioIn:
         self.symbol_rate = spectrum.sigspec.symbols_persec
         self.sample_rate = spectrum.sample_rate
         self.samples_perhop = int(self.sample_rate / (spectrum.hops_persymb * self.symbol_rate))
+        self.hops_persymb = spectrum.hops_persymb
 
         self.fft_len = int(spectrum.hops_persymb * self.sample_rate / self.symbol_rate)
         self.fft_df = self.sample_rate / self.fft_len 
@@ -49,7 +50,7 @@ class AudioIn:
     def subtract(self, audio_data, h0_idx, freq_idxs):
         in_ptr = 0
         ptr = h0_idx
-        if(self.grid_main_ptr > h0_idx + 72 * self.samples_perhop or self.grid_main_ptr < h0_idx):
+        if(self.grid_main_ptr > h0_idx + 72 * self.hops_persymb or self.grid_main_ptr < h0_idx):
             while(in_ptr + self.fft_len < len(audio_data)):
                 x = audio_data[in_ptr: in_ptr + self.fft_len] * self.fft_window
                 z = np.fft.rfft(x)[freq_idxs]

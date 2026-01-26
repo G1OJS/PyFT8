@@ -17,7 +17,7 @@ import os
 MIN_LLR0_QUALITY = 410
 BITFLIP_CONTROL = (28, 50)
 LDPC_CONTROL = (35, 7)
-OSD_CONTROL = [(470, 30), (440, 5)]
+OSD_CONTROL = [(470, 30), (450, 5)]
 MIN_SNR_METRIC = 0.15
 
 def safe_pc(x,y):

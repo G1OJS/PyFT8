@@ -5,10 +5,16 @@ import pandas as pd
 with open(f"data/compare_wsjtx.csv", "r") as f:
     lines=f.readlines()
 
-py      = [[],              [],             [],         [],                 [],         [],         [],         []          ]
-pycols  = ['black',         'lime',         'green',    'cyan',             'orange',   'yellow',   'white',    'red'       ]
-pylabs  = ["Hard t+8 sec",  "Immediate",    "LDPC",     "LDPC & BitFlip",   "OSD1",     "OSD2",     "Timeouts", "Incorrect" ]
-substrs = ['H00',           'I00',          'L',        'A',                'O00',      'P00']
+py      = [[],              [],             [],         [],         [],                 [],         [],         []          ]
+pycols  = ['black',         'lime',         'yellow',   'orange',   'teal',             'green',    'white',    'red'       ]
+pylabs  = ['Hard t+8 sec',  'Immediate',    'OSD2',     'OSD1',     'LDPC &Bitflip',    'LDPC',     'Timeouts', 'Incorrect' ]
+substrs = ['H00',           'I00',          'P00'       'O00',      'A',                'L']
+
+print(len(py))
+print(len(pycols))
+print(len(pylabs))
+print(len(substrs))
+
 bins = [350 + 5*b for b in range(50)]
 
 ws = [[],[]]
