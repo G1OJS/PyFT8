@@ -103,19 +103,19 @@ class Candidate:
         s = {'h0_idx':0, 'score':0}
         self.syncs = [s,s]
         self.tsecs = 0
-        self.codes_this_sync = ""
+        self.codes_this_pass = ""
         self.ncheck, self.ncheck0 = 99, 99
         self.llr = None
         self.decode_path = ""
         self.llr0_quality = 0
         self.llr0_sd = 0
-        self.snr, self.snr2 = -999, -999
+        self.snr = -999
         self.p_dB = None 
         
     def _record_state(self, actor_code, final = False):
         finalcode = "#" if final else ";"
         self.decode_path = self.decode_path + f"{actor_code}{self.ncheck:02d}{finalcode}"
-        self.codes_this_sync = self.codes_this_sync + actor_code
+        self.codes_this_pass = self.codes_this_pass + actor_code
         if(final):
             self.decode_completed = time.time()
 
@@ -202,15 +202,15 @@ class Candidate:
                 self._record_state("X", final = True)
             return
 
-        if self.ncheck >= NC_THRESH_BITFLIP and not "A" in self.codes_this_sync:  
+        if self.ncheck >= NC_THRESH_BITFLIP and not "A" in self.codes_this_pass:  
             self.llr, self.ncheck = flip_bits(self.llr, self.ncheck, width = 50, nbits=1, keep_best = True)
             self._record_state("A")
             return
-        if NC_MAX_LDPC >= self.ncheck > 0 and not self.codes_this_sync.count("L") > MAX_ITERS_LDPC:  
+        if NC_MAX_LDPC >= self.ncheck > 0 and not self.codes_this_pass.count("L") > MAX_ITERS_LDPC:  
             self.llr, self.ncheck = self.ldpc.do_ldpc_iteration(self.llr)
             self._record_state("L")
             return       
-        if(self.llr0_quality < MAX_LLR0_QUALITY_OSD and not "O" in self.codes_this_sync):
+        if(self.llr0_quality < MAX_LLR0_QUALITY_OSD and not "O" in self.codes_this_pass):
             reliab_order = np.argsort(np.abs(self.llr))[::-1]
             codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Ls = [30,20,2])
             if check_crc_codeword_list(codeword_bits):
@@ -380,6 +380,12 @@ class Cycle_manager():
                 c2.demap_started = False
                 c2.decode_completed = False
                 c2.pgrid_copy = np.zeros((1,1))
+                c2.ncheck, self.ncheck0 = 99, 99
+                c2.llr0_quality = 0
+                c2.llr0_sd = 0
+                c2.snr = -999
+                c2.p_dB = None
+                c2.codes_this_pass = ""
                 c2.reprocessed = True
                 self.spectrum.sync(c2)
                                 
