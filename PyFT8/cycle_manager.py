@@ -84,12 +84,12 @@ class Spectrum:
             self.sync(c)
             c.cyclestart_str = cyclestart_str            
             cands.append(c)
-        if(find_k_cofreqs):
+        if(find_k_cofreqs is not None):
             k = find_k_cofreqs
             for i, c in enumerate(cands):
-                i = np.clip(i-k,0,None)
-                j = np.clip(i+k,None,len(cands))
-                c.cofreqs = [c2 for c2 in cands[i:j]] 
+                i1 = np.clip(i-k,0,None)
+                i2 = np.clip(i+k,None,len(cands))
+                c.cofreqs = [c2 for c2 in cands[i1:i2]] 
         return cands
 
 class Candidate:
@@ -234,7 +234,7 @@ class Cycle_manager():
                  hard_decoding = True, subtraction = False):
         self.hard_decoding = hard_decoding
         self.subtraction = subtraction
-        self.find_k_cofreqs = 1 if self.subtraction else 0
+        self.find_k_cofreqs = 0 if self.subtraction else None
         self.spectrum = Spectrum(sigspec, 12000, freq_range[1], 3, 3)
         self.running = True
         self.verbose = verbose
@@ -376,8 +376,7 @@ class Cycle_manager():
                     if(self.onSuccess): self.onSuccess(c)
  
             if(self.subtraction):
-                to_subtract = [c for c in with_message if all([c2.decode_completed for c2 in c.cofreqs])
-                               and not c.subtracted is None]
+                to_subtract = [c for c in with_message if all([c.decode_completed for c in c.cofreqs]) and c.subtracted is None]
                 for c in to_subtract:
                     c.subtracted = self.subtract_spectrum(c)
                     if(c.subtracted):
@@ -405,8 +404,8 @@ class Cycle_manager():
         c1, c2, grid_rpt = c.msg
         symbols = pack_message(c1, c2, grid_rpt)
         audio_data = self.audio_out.create_ft8_wave(self, symbols, f_base = c.fHz)
-        return self.spectrum.audio_in.subtract(audio_data, c.h0_idx, c.fine_freq_idxs)
-
+        success = self.spectrum.audio_in.subtract(audio_data, c.h0_idx, c.fine_freq_idxs)
+        return success
 
 
 

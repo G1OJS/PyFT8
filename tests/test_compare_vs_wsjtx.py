@@ -131,7 +131,7 @@ def show_matched_cands(dBrange = 30):
                       cmap="inferno", interpolation="none", alpha = 0.8)       
             axs[i].xaxis.set_major_locator(ticker.NullLocator())
             axs[i].yaxis.set_major_locator(ticker.NullLocator())
-            axs[i].set_ylabel(c.msg, fontsize=8)
+            axs[i].set_ylabel(f"{c.msg} {'SUB' if c.subtracted else ''} {'REP' if c.reprocessed else ''}", fontsize=8)
     plt.tick_params(labelleft=False)
     plt.tight_layout()
     plt.show()
@@ -145,7 +145,7 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
     if(dataset):
         cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, test_speed_factor = 1, max_cycles = 2, 
                                       onCandidateRollover = onCandidateRollover, freq_range = freq_range,
-                                      audio_in_wav = dataset+".wav", verbose = True)
+                                      audio_in_wav = dataset+".wav", verbose = True, subtraction = True)
         get_wsjtx_decodes(dataset+".txt")
     else:
         cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None,
@@ -167,6 +167,10 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
         cycle_manager.running = False
 
     time.sleep(1)
+
+    print(f"[Compare] subtracted {len([c for c in pyft8_cands if c.subtracted == True])} decoded sigs")
+    print(f"[Compare] couldn't subtract {len([c for c in pyft8_cands if c.subtracted == False])} decoded sigs")
+
     #calibrate_snr()
     show_matched_cands()
 
