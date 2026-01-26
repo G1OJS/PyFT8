@@ -15,12 +15,10 @@ import wave
 import os
 
 MIN_LLR0_QUALITY = 410
-MAX_LLR0_QUALITY_OSD = [470, 440]
-OSD_L_LIST = [30, 10]
+BITFLIP_CONTROL = (28, 50)
+LDPC_CONTROL = (35, 7)
+OSD_CONTROL = [(470, 30), (440, 5)]
 MIN_SNR_METRIC = 0.15
-NC_THRESH_BITFLIP = 28
-NC_MAX_LDPC = 35
-MAX_ITERS_LDPC = 7
 
 def safe_pc(x,y):
     return 100*x/y if y>0 else 0
@@ -112,7 +110,6 @@ class Candidate:
         self.llr = None
         self.decode_path = ""
         self.llr0_quality = 0
-        self.llr0_sd = 0
         self.snr = -999
         self.p_dB = None 
         
@@ -123,17 +120,14 @@ class Candidate:
         if(final):
             self.decode_completed = time.time()
 
-    def _update_pgrid_copy(self, spectrum):
-        self.available_hops = spectrum.audio_in.grid_main_ptr
-        if(self.available_hops > self.pgrid_copy.shape[0]):
-            self.pgrid_copy = spectrum.audio_in.pgrid_main[:self.available_hops, self.fine_freq_idxs].copy()
-        
+    def _get_snr(self, p_dB):
+        snr = int(np.clip(np.max(p_dB) - 107, -24, 24))
+        return snr
+
     def _get_llr(self, spectrum, hops, target_params = (3.3, 3.7)):
         centrebins = [t * spectrum.fbins_pertone for t in range(8)]
-        self._update_pgrid_copy(spectrum)
-        if(self.pgrid_copy.shape[0] <= hops[-1]):  # shouldn't be necessary but seems to be
-            return
-        p = self.pgrid_copy[hops, :][:, centrebins]
+        self.pgrid = spectrum.audio_in.pgrid_main[:, self.fine_freq_idxs]
+        p = self.pgrid[hops, :][:, centrebins]
         p = np.clip(p, np.max(p)/1e8, None)
         p_dB = 10*np.log10(p)
         llra = np.max(p_dB[:, [4,5,6,7]], axis=1) - np.max(p_dB[:, [0,1,2,3]], axis=1)
@@ -141,36 +135,34 @@ class Candidate:
         llrc = np.max(p_dB[:, [1,2,6,7]], axis=1) - np.max(p_dB[:, [0,3,4,5]], axis=1)
         llr0 = np.column_stack((llra, llrb, llrc))
         llr0 = llr0.ravel()
-        llr0_sd = np.std(llr0)
-        snr = int(np.clip(np.max(p_dB) - 107, -24, 24))
-        if (llr0_sd > 0.001):
-            llr0 = target_params[0] * llr0 / llr0_sd
-            llr0 = np.clip(llr0, -target_params[1], target_params[1])
-            llr0_quality =  np.sum(np.abs(llr0)) * 3*(79-21)/len(llr0)
-        return (llr0, llr0_sd, llr0_quality, p_dB, snr)
+        snr = self._get_snr(p_dB)
+        llr0 = target_params[0] * llr0 / np.std(llr0)
+        llr0 = np.clip(llr0, -target_params[1], target_params[1])
+        llr0_quality =  np.sum(np.abs(llr0)) * 3*(79-21)/len(llr0)
+        return (llr0, llr0_quality, p_dB, snr)
 
     def hard_decode(self, spectrum):
         self.hard_decode_started = True
-        self._update_pgrid_copy(spectrum)
         for sync_idx in [0, 1]:
             hops = self.syncs[sync_idx]['h0_idx'] + spectrum.base_data_hops
-            if(self.pgrid_copy.shape[0] <= hops[-1]):  # shouldn't be necessary but seems to be
-                return
-            p = self.pgrid_copy[hops,:]
+            self.pgrid = spectrum.audio_in.pgrid_main[:, self.fine_freq_idxs]
+            p = self.pgrid[hops, :]
             max_p = np.max(p, axis = 1)
             sum_p = np.sum(p, axis = 1)
-            if(np.mean(max_p / sum_p) > MIN_SNR_METRIC):
+            metric = np.mean(max_p / sum_p)
+            if(metric > MIN_SNR_METRIC):
                 maxpwr_idxs = np.argmax(p, axis = 1)
                 symbols = np.array([int(m / spectrum.fbins_pertone) for m in maxpwr_idxs])
                 bits = [[[0,0,0],[0,0,1],[0,1,1],[0,1,0],[1,1,0],[1,0,0],[1,0,1],[1,1,1]][tone] for tone in symbols]
                 bits = np.array(bits).flatten().tolist()
                 bits = bits[:87]+bits[21+87:21+91]
-                dummy_demap = self._get_llr(spectrum, hops)
-                self.llr0, self.llr0_sd, self.llr0_quality, self.p_dB, self.snr = dummy_demap
                 if(check_crc_codeword_list(bits)):
                     self.msg = FT8_unpack(bits[:77])
                 if(self.msg):
-                    self.h0_idx = self.syncs[sync_idx]['h0_idx']
+                    p_dB = 10*np.log10(p)
+                    snr = self._get_snr(p_dB)
+                    self.record_metrics(self.syncs[sync_idx]['h0_idx'], self.syncs[sync_idx]['tsecs'],
+                                        None, 1600*metric, p_dB, snr)
                     self.ncheck0, self.ncheck = 0, 0
                     self._record_state("H")
                     self._record_state("C", final = True)
@@ -180,16 +172,18 @@ class Candidate:
         self.demap_started = True
         demap0 = self._get_llr(spectrum, spectrum.base_payload_hops + self.syncs[0]['h0_idx'])
         demap1 = self._get_llr(spectrum, spectrum.base_payload_hops + self.syncs[1]['h0_idx'])
-        if(demap0 is None or demap1 is None): # shouldn't be necessary but seems to be
-            self.demap_started = False
-            return
-        demap = demap0 if demap0[2] > demap1[2] else demap1
-        self.tsecs = self.syncs[0]['tsecs'] if demap0[2] > demap1[2] else self.syncs[1]['tsecs']
-        self.h0_idx = self.syncs[0]['h0_idx'] if demap0[2] > demap1[2] else self.syncs[1]['h0_idx']
-        self.llr0, self.llr0_sd, self.llr0_quality, self.p_dB, self.snr = demap
-        self.ncheck0 = self.ldpc.calc_ncheck(self.llr0)
-        self.llr = self.llr0.copy()
-        self.ncheck = self.ncheck0
+        demap_choice = 0 if demap0[1] > demap1[1] else 1
+        llr0, llr0_quality, p_dB, snr = [demap0, demap1][demap_choice]
+        self.record_metrics(self.syncs[demap_choice]['h0_idx'], self.syncs[demap_choice]['tsecs'], llr0, llr0_quality, p_dB, snr)
+
+    def record_metrics(self, h0_idx, tsecs, llr0, llr0_quality, p_dB, snr):
+        self.tsecs = tsecs
+        self.h0_idx = h0_idx
+        self.llr0, self.llr0_quality, self.p_dB, self.snr = llr0, llr0_quality, p_dB, snr
+        if(self.llr0 is not None):
+            self.ncheck0 = self.ldpc.calc_ncheck(self.llr0)
+            self.ncheck = self.ncheck0
+            self.llr = self.llr0.copy()
         self.demap_completed = time.time()
         qual_too_low = self.llr0_quality < MIN_LLR0_QUALITY
         self._record_state("I", final = qual_too_low)
@@ -209,30 +203,24 @@ class Candidate:
                 self._record_state("X", final = True)
             return
 
-        if self.ncheck >= NC_THRESH_BITFLIP and not "A" in self.codes_this_pass:  
-            self.llr, self.ncheck = flip_bits(self.llr, self.ncheck, width = 50, nbits=1, keep_best = True)
+        if self.ncheck >= BITFLIP_CONTROL[0] and not "A" in self.codes_this_pass:  
+            self.llr, self.ncheck = flip_bits(self.llr, self.ncheck, width = BITFLIP_CONTROL[0], nbits=1, keep_best = True)
             self._record_state("A")
             return
-        if NC_MAX_LDPC >= self.ncheck > 0 and not self.codes_this_pass.count("L") > MAX_ITERS_LDPC:  
+        if LDPC_CONTROL[0] >= self.ncheck > 0 and not self.codes_this_pass.count("L") > LDPC_CONTROL[1]:  
             self.llr, self.ncheck = self.ldpc.do_ldpc_iteration(self.llr)
             self._record_state("L")
-            return       
-        if(self.llr0_quality < MAX_LLR0_QUALITY_OSD[0] and not "O" in self.codes_this_pass):
-            reliab_order = np.argsort(np.abs(self.llr))[::-1]
-            codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Order = 1, L = OSD_L_LIST[0])
-            if check_crc_codeword_list(codeword_bits):
-                self.llr = np.array([1 if(b==1) else -1 for b in codeword_bits])
-                self.ncheck = 0
-            self._record_state("O")
             return
-        if(self.llr0_quality < MAX_LLR0_QUALITY_OSD[1] and not "P" in self.codes_this_pass):
-            reliab_order = np.argsort(np.abs(self.llr))[::-1]
-            codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Order = 2, L = OSD_L_LIST[1])
-            if check_crc_codeword_list(codeword_bits):
-                self.llr = np.array([1 if(b==1) else -1 for b in codeword_bits])
-                self.ncheck = 0
-            self._record_state("P")
-            return
+        for i in [0,1]:
+            code = ['O','P'][i]
+            if(self.llr0_quality < OSD_CONTROL[i][0] and not code in self.codes_this_pass):
+                reliab_order = np.argsort(np.abs(self.llr))[::-1]
+                codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Order = 1, L = OSD_CONTROL[i][1])
+                if check_crc_codeword_list(codeword_bits):
+                    self.llr = np.array([1 if(b==1) else -1 for b in codeword_bits])
+                    self.ncheck = 0
+                self._record_state(code)
+                return
         
         self._record_state("_", final = True)
 
@@ -358,18 +346,15 @@ class Cycle_manager():
                 self.cands_list = self.new_cands + worth_keeping
                 
             if(self.hard_decoding):
-                data_hops_filled = [c for c in self.cands_list if self.spectrum.audio_in.grid_main_ptr > c.last_data_hop or c.available_hops > c.last_payload_hop]
-                to_hard_decode = [c for c in data_hops_filled if not c.decode_completed]
+                to_hard_decode = [c for c in self.cands_list if self.spectrum.audio_in.grid_main_ptr > c.last_data_hop
+                                    and not c.decode_completed and not c.hard_decode_started]
                 for c in to_hard_decode:
-                    if not c.hard_decode_started:
-                        c.hard_decode(self.spectrum)
+                    c.hard_decode(self.spectrum)
 
-            to_demap = [c for c in self.cands_list if (self.spectrum.audio_in.grid_main_ptr > c.last_payload_hop
-                                                        or c.available_hops > c.last_payload_hop)
-                                                       and not c.decode_completed]
+            to_demap = [c for c in self.cands_list if (self.spectrum.audio_in.grid_main_ptr > c.last_payload_hop)
+                                                       and not c.decode_completed and not c.demap_started]
             for c in to_demap:
-                if(not c.demap_started):
-                    c.demap(self.spectrum)
+                c.demap(self.spectrum)
 
             to_progress_decode = [c for c in self.cands_list if c.demap_completed and not c.decode_completed]
             to_progress_decode.sort(key = lambda c: (-c.llr0_quality, c.ncheck0)) # in case of emergency (timeouts) process best first
@@ -401,7 +386,6 @@ class Cycle_manager():
                 c2.pgrid_copy = np.zeros((1,1))
                 c2.ncheck, self.ncheck0 = 99, 99
                 c2.llr0_quality = 0
-                c2.llr0_sd = 0
                 c2.snr = -999
                 c2.p_dB = None
                 c2.codes_this_pass = ""

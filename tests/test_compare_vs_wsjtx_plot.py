@@ -5,39 +5,33 @@ import pandas as pd
 with open(f"data/compare_wsjtx.csv", "r") as f:
     lines=f.readlines()
 
-pycols = ['black', 'lime','green','cyan', 'orange','yellow','white', 'red']
-pylabs = ["Hard t+8 sec", "Immediate", "LDPC", "LDPC & BitFlip", "OSD1", "OSD2", "Timeouts", "Incorrect"]
+py      = [[],              [],             [],         [],                 [],         [],         [],         []          ]
+pycols  = ['black',         'lime',         'green',    'cyan',             'orange',   'yellow',   'white',    'red'       ]
+pylabs  = ["Hard t+8 sec",  "Immediate",    "LDPC",     "LDPC & BitFlip",   "OSD1",     "OSD2",     "Timeouts", "Incorrect" ]
+substrs = ['H00',           'I00',          'L',        'A',                'O00',      'P00']
 bins = [350 + 5*b for b in range(50)]
 
-py = [[],[],[],[],[],[],[],[]]
 ws = [[],[]]
 pydecs = 0
 for lfull in lines:
     Hz, cofreq, q, nc, flags, dpath = lfull.split(",")
-    q = float(q)
+    q = int(q)
+    if(not "#" in dpath): py[6].append(q)
     if("C00#" in dpath):
+        for i, s in enumerate(substrs):
+            if(s in dpath):
+                py[i].append(q)
+                break
         if (not "i" in flags):
             pydecs +=1
         if("i" in flags):
-            py[6].append(q)
-        elif('H00' in dpath):
-            py[0].append(q)
-        elif('I00' in dpath):
-            py[1].append(q)
-        elif('O00' in dpath):
-            py[4].append(q)
-        elif('P00' in dpath):
-            py[5].append(q)
-        elif('A' in dpath):
-            py[3].append(q)
-        elif('L' in dpath):
-            py[2].append(q)
-            
-    if(not "#" in dpath): py[6].append(q)
+            py[7].append(q)
+  
     if('cofreq' in cofreq):
         ws[1].append(q)
     else:
         ws[0].append(q)
+
 
 fig, ax = plt.subplots( figsize=(10,6))
 wsjtx = ax.hist(ws, bins = bins,  rwidth = 1.0, label = 'All',

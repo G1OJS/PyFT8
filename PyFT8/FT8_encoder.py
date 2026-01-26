@@ -7,18 +7,22 @@ kGEN = np.array([int(row,16)>>1 for row in generator_matrix_rows])
 
 def pack_message(c1, c2, gr):
     # need to add packing for /P now it's decoded
-    c28a = pack_ft8_c28(c1)
-    c28b = pack_ft8_c28(c2)
+    c28a, p1a = pack_ft8_c28(c1)
+    c28b, p1b = pack_ft8_c28(c2)
     g15, ir = pack_ft8_g15(gr)
     i3 = 1
     n3 = 0
-    bits77 = (c28a<<28+1+2+15+3) | (c28b<<2+15+3)|(ir<<15+3)|(g15<< 3)|(i3)
+    bits77 = (1<<1+28+2+15+3) | (c28a<<1+28+2+15+3) | (p1a<<28+2+15+3) | (c28b<<2+15+3) | (p1b<<+1+15+3) | (ir<<15+3)|(g15<< 3)|(i3)
     symbols, bits174_int, bits91_int, bits14_int, bits83_int = encode_bits77(bits77)
     return symbols
 
 def pack_ft8_c28(call):
-    if (call == "CQ"): return 2
+    if (call == "CQ"): return 2, 0
     from string import ascii_uppercase as ltrs, digits as digs
+    p1 = 0
+    if(call.endswith("/P")):
+       call = call[:-2]
+       p1 = 1
     # If the last digit in the call is in char pos 1 i.e. second character, prepend a space
     if(call[1] in digs and not any([d.isdigit() for d in call[2:]])):
         call = ' '+call
@@ -32,8 +36,8 @@ def pack_ft8_c28(call):
         indices = np.array([cmap.index(call[i]) for i, cmap in enumerate(charmap)])
     except:
         print(f"Couldn't encode '{call}'")
-        return 0
-    return int(np.sum(factors * indices) + 2_063_592 + 4_194_304)
+        return 0, 0
+    return int(np.sum(factors * indices) + 2_063_592 + 4_194_304), p1
 
 def pack_ft8_g15(txt):
     ir = 0
@@ -91,5 +95,13 @@ def encode_bits77(bits77_int):
     return symbols, bits174_int, bits91_int, bits14_int, bits83_int
 
 
+def int_to_bitsLE(n, width):
+    """Return [b(width-1), ..., b0], MSB-first."""
+    return [ (n >> (width - 1 - i)) & 1 for i in range(width) ]
 
+def loopback_test():
+    symbols, bits77 = pack_message("G1OJS/P", "G1OJS/P", "IO90")
+    from PyFT8.FT8_unpack import FT8_unpack
+    print(FT8_unpack(int_to_bitsLE(bits77,77)))
 
+#loopback_test()
