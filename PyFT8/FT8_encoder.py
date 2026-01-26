@@ -6,6 +6,7 @@ generator_matrix_rows = ["8329ce11bf31eaf509f27fc",  "761c264e25c259335493132", 
 kGEN = np.array([int(row,16)>>1 for row in generator_matrix_rows])
 
 def pack_message(c1, c2, gr):
+    # need to add packing for /P now it's decoded
     c28a = pack_ft8_c28(c1)
     c28b = pack_ft8_c28(c2)
     g15, ir = pack_ft8_g15(gr)

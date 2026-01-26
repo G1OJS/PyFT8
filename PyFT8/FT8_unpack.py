@@ -29,7 +29,8 @@ def unpack_ft8_g15(g15, ir):
     return f"{R}{snr:+03d}"
 
 def FT8_unpack(bits):
-    # need to add support for /P and R+report (R-05)
+    # need to add PW8BR RR73; HK1J  messages i3=0 n3 =1
+    # need to add callsign hashing
     if not bits:
         return None
     i3 = 4*bits[74]+2*bits[75]+bits[76]
@@ -40,6 +41,9 @@ def FT8_unpack(bits):
     if(c28_a + c28_b + g15 == 0):
         return None
     call_a = unpack_ft8_c28(c28_a)
+    if(bits[28]): call_a = call_a + "/P"
     call_b =  unpack_ft8_c28(c28_b)
+    if(bits[57]): call_b = call_b + "/P"
+    
     grid_rpt = unpack_ft8_g15(g15, ir)
     return (call_a, call_b, grid_rpt)
