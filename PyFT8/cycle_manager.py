@@ -15,12 +15,12 @@ import wave
 import os
 
 MIN_LLR0_QUALITY = 410
-MAX_LLR0_QUALITY_OSD = [470, 440, 410]
-OSD_L_LIST = [30, 20, 0]
+MAX_LLR0_QUALITY_OSD = [470, 440]
+OSD_L_LIST = [30, 10]
 MIN_SNR_METRIC = 0.15
 NC_THRESH_BITFLIP = 28
-NC_MAX_LDPC = 33
-MAX_ITERS_LDPC = 4
+NC_MAX_LDPC = 35
+MAX_ITERS_LDPC = 7
 
 def safe_pc(x,y):
     return 100*x/y if y>0 else 0
@@ -232,14 +232,6 @@ class Candidate:
                 self.llr = np.array([1 if(b==1) else -1 for b in codeword_bits])
                 self.ncheck = 0
             self._record_state("P")
-            return
-        if(self.llr0_quality < MAX_LLR0_QUALITY_OSD[2] and not "Q" in self.codes_this_pass):
-            reliab_order = np.argsort(np.abs(self.llr))[::-1]
-            codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Order = 3, L = OSD_L_LIST[2])
-            if check_crc_codeword_list(codeword_bits):
-                self.llr = np.array([1 if(b==1) else -1 for b in codeword_bits])
-                self.ncheck = 0
-            self._record_state("Q")
             return
         
         self._record_state("_", final = True)
