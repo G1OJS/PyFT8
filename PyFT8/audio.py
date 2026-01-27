@@ -45,29 +45,38 @@ class AudioIn:
         self.hoptimes = []
         self.hops_percycle = int(spectrum.sigspec.cycle_seconds * self.symbol_rate * spectrum.hops_persymb)
         self.pgrid_main = np.zeros((2 * self.hops_percycle, self.nFreqs), dtype = np.float32)
+        self._zgrid_main = np.zeros((2 * self.hops_percycle, self.nFreqs), dtype = np.complex64)
         self.grid_main_ptr = 0
         
     def subtract(self, audio_data, h0_idx, freq_idxs):
         audio_ptr = 0
         grid_ptr = h0_idx + 5
+     #   hop_indexes = np.array(range(h0_idx , h0_idx + self.hops_persymb * 79))
+     #   sum_power = np.sum(np.abs(self._zgrid_main[hop_indexes, :][:, freq_idxs])**2)
         while(audio_ptr + self.fft_len < len(audio_data)):
             x = audio_data[audio_ptr: audio_ptr + self.fft_len] * self.fft_window
-            z = np.fft.rfft(x)[:self.nFreqs]
-            p_generated_sig = z.real*z.real + z.imag*z.imag           
-            norm_factor = np.max(self.pgrid_main[grid_ptr, freq_idxs]) / np.max(p_generated_sig)  
-            self.pgrid_main[grid_ptr][:self.nFreqs] -= norm_factor * p_generated_sig
-            self.pgrid_main[grid_ptr][:self.nFreqs] = np.abs(self.pgrid_main[grid_ptr][:self.nFreqs])
+            gen_z = np.fft.rfft(x)[:self.nFreqs]
+            gen_p = gen_z.real*gen_z.real + gen_z.imag*gen_z.imag
+            gen_max_idx = np.argmax(gen_p)
+            gen_z /= gen_z[gen_max_idx]
+
+            ex_max = np.max(self._zgrid_main[grid_ptr][freq_idxs])
+            self._zgrid_main[grid_ptr] -= gen_z * ex_max
+            z = self._zgrid_main[grid_ptr]
+            self.pgrid_main[grid_ptr] = z.real*z.real + z.imag*z.imag 
             grid_ptr += 1
             audio_ptr += self.samples_perhop
+     #   reduction = sum_power / np.sum(np.abs(self._zgrid_main[hop_indexes, :][:, freq_idxs])**2)
+     #   print(10*np.log10(reduction))
 
             
     def do_fft(self):
         t = time.time()
         x = self.audio_buffer * self.fft_window
-        z = np.fft.rfft(x)
+        z = np.fft.rfft(x)[:self.nFreqs]
         p = z.real*z.real + z.imag*z.imag
-        p = p[:self.nFreqs]
         self.hoptimes.append(t)
+        self._zgrid_main[self.grid_main_ptr] = z
         self.pgrid_main[self.grid_main_ptr] = p
         self.grid_main_ptr = (self.grid_main_ptr + 1) % (2 * self.hops_percycle)
 

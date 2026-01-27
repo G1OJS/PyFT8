@@ -14,10 +14,10 @@ import queue
 import wave
 import os
 
-MIN_LLR0_QUALITY = 410
+MIN_LLR0_QUALITY = 405
 BITFLIP_CONTROL = (28, 50)
 LDPC_CONTROL = (35, 7)
-OSD_CONTROL = [(470, 50), (460, 8)]
+OSD_CONTROL = [(470, 60), (460, 30)]
 MIN_SNR_METRIC = 0.15
 
 def safe_pc(x,y):
