@@ -20,9 +20,10 @@ LDPC_CONTROL = (40, 4)
 OSD_CONTROL = [(470, 40), (460, 20)]
 MIN_SNR_METRIC = 0.15
 
-MIN_SNR_SUB = 0
+MIN_SNR_SUB = -10
 SUB_METH = 'complex'
-SUBTRACTION_FREQ_LATTITUDE_Hz = 4
+SUBTRACTION_FREQ_LATTITUDE_Hz = 3
+SUBTRACTION_TIME_OFFSET = 5
 
 def safe_pc(x,y):
     return 100*x/y if y>0 else 0
@@ -367,13 +368,13 @@ class Cycle_manager():
                     c.call_a, c.call_b, c.grid_rpt = c.msg[0], c.msg[1], c.msg[2]
                     if(self.onSuccess): self.onSuccess(c)
  
-            if(self.subtraction):
+            if(self.spectrum.audio_in.grid_main_ptr % self.hops_percycle > 14*self.hops_percycle/15 and self.subtraction):
                 to_subtract = [c for c in with_message if c.snr > MIN_SNR_SUB and not c.subtracted]
                 for c in to_subtract:
                     c.subtracted = True
                     self.subtract_spectrum(c)
                     for_2nd_look = self.spectrum.search([c.fHz-SUBTRACTION_FREQ_LATTITUDE_Hz, c.fHz+SUBTRACTION_FREQ_LATTITUDE_Hz], self.cyclestart_str(time.time()))
-                    for_2nd_look = [c for c in for_2nd_look for c2 in with_message if c.f0_idx == c2.f0_idx]
+                    for_2nd_look = [c for c in for_2nd_look for c2 in with_message if c.f0_idx != c2.f0_idx]
                     for c in for_2nd_look:
                         c.reprocessed = True
                     self.cands_list = self.cands_list + for_2nd_look
@@ -385,7 +386,7 @@ class Cycle_manager():
         symbols = pack_message(c1, c2, grid_rpt)
         audio_data = self.audio_out.create_ft8_wave(self, symbols, f_base = c.fHz)
         freq_idxs = np.array(range(c.f0_idx - 3, c.f0_idx +27))
-        self.spectrum.audio_in.subtract(audio_data, c.h0_idx, freq_idxs, SUB_METH)
+        self.spectrum.audio_in.subtract(audio_data, c.h0_idx + SUBTRACTION_TIME_OFFSET, freq_idxs, SUB_METH)
 
 
 

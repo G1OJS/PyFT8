@@ -46,7 +46,7 @@ class AudioIn:
         
     def subtract(self, audio_data, h0_idx, freq_idxs, meth = 'complex'):
         audio_ptr = 0
-        grid_ptr = h0_idx + 5
+        grid_ptr = h0_idx
      #   hop_indexes = np.array(range(h0_idx , h0_idx + self.hops_persymb * 79))
      #   sum_power = np.sum(np.abs(self._zgrid_main[hop_indexes, :][:, freq_idxs])**2)
         while(audio_ptr + self.fft_len < len(audio_data)):
@@ -69,7 +69,6 @@ class AudioIn:
      #   reduction = sum_power / np.sum(np.abs(self._zgrid_main[hop_indexes, :][:, freq_idxs])**2)
      #   print(10*np.log10(reduction))
 
-            
     def do_fft(self):
         t = time.time()
         x = self.audio_buffer * self.fft_window

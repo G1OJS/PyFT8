@@ -108,7 +108,7 @@ def get_wsjtx_decodes(decodes_file):
     with open(decodes_file,'r') as f:
         lines = f.readlines()
     for l in lines:
-        wsjtx_dicts.append({'cs':cs, 'f':int(l[16:21]), 'msg':l[24:].strip(), 'snr':int(l[8:11]), 'dt':float(l[12:16]), 'td':''})
+        wsjtx_dicts.append({'cs':'any', 'f':int(l[16:21]), 'msg':l[24:].strip(), 'snr':int(l[8:11]), 'dt':float(l[12:16]), 'td':''})
 
 def pc_str(x,y):
     return "{}" if y == 0 else f"{int(100*x/y)}%"
@@ -123,7 +123,7 @@ def analyse_dictionaries(fig_s, ax_s):
     time.sleep(2)
 
     new_matches = [(w, c) for w in wsjtx_dicts for c in pyft8_cands if abs(w['f'] - c.fHz) < 3
-               and (w['cs'] == c.cyclestart_str)]
+               and (w['cs'] == c.cyclestart_str or w['cs']=='any')]
     
     best = {}
     for w, c in new_matches:
@@ -236,10 +236,9 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
                 p = cycle_manager.spectrum.audio_in.pgrid_main
                 pmax = np.max(p)
                 if(pmax > 0):
-                    dB = 10 * np.log10(np.clip(p, pmax/1e8, None))
-                    dB = np.clip(dB - np.max(dB), - 60, 0)
+                    dB = 10 * np.log10(np.clip(p, pmax/1e8, None)) - 110
                     if(waterfall is None):
-                        waterfall = axs.imshow(dB, cmap = 'inferno', origin = 'lower')
+                        waterfall = axs.imshow(dB, cmap = 'inferno', vmax = 0, vmin = -40, origin = 'lower')
                     else:
                         waterfall.set_data(dB)
                     plt.pause(0.1)
@@ -259,7 +258,7 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
     show_matched_cands()
 
 do_subtraction = True
-show_waterfall = True
+show_waterfall = False
 show_success_plot = True
     
 #compare("data/210703_133430", [100,3100])
