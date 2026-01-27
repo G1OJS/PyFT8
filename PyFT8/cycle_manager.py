@@ -15,12 +15,13 @@ import wave
 import os
 
 MIN_LLR0_QUALITY = 410
-MIN_SNR_SUB = 5
-SUB_METH = 'complex'
 BITFLIP_CONTROL = (28, 50)
 LDPC_CONTROL = (40, 4)
 OSD_CONTROL = [(470, 40), (460, 20)]
 MIN_SNR_METRIC = 0.15
+
+MIN_SNR_SUB = 0
+SUB_METH = 'complex'
 SUBTRACTION_FREQ_LATTITUDE_Hz = 4
 
 def safe_pc(x,y):
