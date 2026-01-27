@@ -44,26 +44,23 @@ class AudioIn:
         self.wav_finished = False
         self.hoptimes = []
         self.hops_percycle = int(spectrum.sigspec.cycle_seconds * self.symbol_rate * spectrum.hops_persymb)
-        self.pgrid_main = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)
+        self.pgrid_main = np.zeros((2 * self.hops_percycle, self.nFreqs), dtype = np.float32)
         self.grid_main_ptr = 0
-
+        
     def subtract(self, audio_data, h0_idx, freq_idxs):
-        in_ptr = 0
-        ptr = h0_idx
-        if(self.grid_main_ptr > h0_idx + 72 * self.hops_persymb or self.grid_main_ptr < h0_idx):
-            while(in_ptr + self.fft_len < len(audio_data)):
-                x = audio_data[in_ptr: in_ptr + self.fft_len] * self.fft_window
-                z = np.fft.rfft(x)[freq_idxs]
-                p = z.real*z.real + z.imag*z.imag
-                p_ex = self.pgrid_main[ptr, freq_idxs]
-                p = p * np.max(p_ex) / np.max(p)
-                self.pgrid_main[ptr:ptr+self.samples_perhop, freq_idxs] = np.abs(p_ex - 0.9*p) + 0.001
-                in_ptr += self.samples_perhop
-                ptr += 1
-            return True
-        else:
-            return False
+        audio_ptr = 0
+        grid_ptr = h0_idx + 5
+        while(audio_ptr + self.fft_len < len(audio_data)):
+            x = audio_data[audio_ptr: audio_ptr + self.fft_len] * self.fft_window
+            z = np.fft.rfft(x)[:self.nFreqs]
+            p_generated_sig = z.real*z.real + z.imag*z.imag           
+            norm_factor = np.max(self.pgrid_main[grid_ptr, freq_idxs]) / np.max(p_generated_sig)  
+            self.pgrid_main[grid_ptr][:self.nFreqs] -= norm_factor * p_generated_sig
+            self.pgrid_main[grid_ptr][:self.nFreqs] = np.abs(self.pgrid_main[grid_ptr][:self.nFreqs])
+            grid_ptr += 1
+            audio_ptr += self.samples_perhop
 
+            
     def do_fft(self):
         t = time.time()
         x = self.audio_buffer * self.fft_window
@@ -72,7 +69,7 @@ class AudioIn:
         p = p[:self.nFreqs]
         self.hoptimes.append(t)
         self.pgrid_main[self.grid_main_ptr] = p
-        self.grid_main_ptr = (self.grid_main_ptr + 1) % self.hops_percycle
+        self.grid_main_ptr = (self.grid_main_ptr + 1) % (2 * self.hops_percycle)
 
     def start_wav(self, wav_path, hop_dt):
         threading.Thread(target = self.play_wav, args = (wav_path, hop_dt), daemon=True).start()

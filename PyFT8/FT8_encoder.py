@@ -23,20 +23,24 @@ def pack_ft8_c28(call):
     if(call.endswith("/P")):
        call = call[:-2]
        p1 = 1
-    # If the last digit in the call is in char pos 1 i.e. second character, prepend a space
-    if(call[1] in digs and not any([d.isdigit() for d in call[2:]])):
-        call = ' '+call
-    if (call[-3] in digs):
-        call = call + ' '
-    elif (call[-2] in digs):
-        call = call + '  '
+
+    # make 6 char call (012345) with last digit at position 2
+    digit_indexes = [i for i,c in enumerate(call) if c.isdigit()]
+    if(not(len(digit_indexes))):
+        print(f"Couldn't encode call with no digits '{call}'")
+        return 0, 0
+    frontpad = 2-digit_indexes[-1]
+    call = ' ' * frontpad + call 
+    backpad = 6 - len(call)
+    if(frontpad <0 or backpad <0):
+        print(f"Couldn't encode nonstandard call '{call}'")
+        return 0, 0
+    call = call + ' ' * backpad
+   # print(f"|{call}|")
+
     charmap = [' ' + digs + ltrs, digs + ltrs, digs + ' ' * 17] + [' ' + ltrs] * 3
     factors = np.array([36*10*27**3, 10*27**3, 27**3, 27**2, 27, 1])
-    try:
-        indices = np.array([cmap.index(call[i]) for i, cmap in enumerate(charmap)])
-    except:
-        print(f"Couldn't encode '{call}'")
-        return 0, 0
+    indices = np.array([cmap.index(call[i]) for i, cmap in enumerate(charmap)])
     return int(np.sum(factors * indices) + 2_063_592 + 4_194_304), p1
 
 def pack_ft8_g15(txt):
@@ -54,6 +58,8 @@ def pack_ft8_g15(txt):
         return 32403 , ir
     if txt == '73': #verified via audio -> wsjt-x
         return 32404 , ir
+    if(len(txt) != 4):
+        return 0, ir
     v = (ord(txt[0].upper()) - 65)
     v = v * 18 + (ord(txt[1].upper()) - 65)
     v = v * 10 + int(txt[2])

@@ -1,4 +1,5 @@
-
+import matplotlib.pyplot as plt
+import pandas as pd
 import threading
 import numpy as np
 import time
@@ -11,6 +12,73 @@ pyft8_cands = []
 matches = None
 cands_matched = []
 do_analysis = False
+
+def plot_success(fig, ax):
+    with open(f"data/compare_wsjtx.csv", "r") as f:
+        lines=f.readlines()
+
+    py      = [[],              [],             [],         [],         [],                 [],         [],         []          ]
+    pycols  = ['black',         'lime',         'yellow',   'orange',   'teal',             'green',    'white',    'red'       ]
+    pylabs  = ['Hard t+8 sec',  'Immediate',    'OSD2',     'OSD1',     'LDPC &Bitflip',    'LDPC',     'Timeouts', 'Incorrect' ]
+    substrs = ['H00',           'I00',          'P00'       'O00',      'A',                'L']
+
+    bins = [350 + 5*b for b in range(50)]
+
+    ws = [[],[]]
+    pydecs = 0
+    pydecs_correct = 0
+    pydecs_subs = 0
+    for lfull in lines:
+        Hz, cofreq, q, nc, flags, dpath = lfull.split(",")
+        q = int(q)
+        if(not "#" in dpath): py[6].append(q)
+        if("C00#" in dpath):
+            pydecs +=1
+            for i, s in enumerate(substrs):
+                if(s in dpath):
+                    py[i].append(q)
+                    break
+            if (not "i" in flags):
+                pydecs_correct +=1
+            if('r' in flags):
+                pydecs_subs += 1
+            if("i" in flags):
+                py[7].append(q)
+      
+        if('cofreq' in cofreq):
+            ws[1].append(q)
+        else:
+            ws[0].append(q)
+
+    if(pydecs ==0):
+        return
+
+    ax.cla()
+
+    wsjtx = ax.hist(ws, bins = bins,  rwidth = 1.0, label = 'All',
+            stacked = True, color = ['green', 'orange'], alpha = 0.2, lw=2, edgecolor = 'grey')
+
+    pyft8 = ax.hist(py, bins = bins, rwidth = 0.5, 
+            stacked = True, alpha = 0.7, lw=1, edgecolor = 'grey', color = pycols)
+
+    legwidth = 0.18
+    wsjtx_legend = ax.legend(handles=[wsjtx[2][0], wsjtx[2][1]], labels = ['isolated','ovelapping'],
+            loc='upper right', bbox_to_anchor=(1-legwidth,1, legwidth,0), mode='expand',
+            title = 'WSJT-X', title_fontproperties = {'weight':'bold', 'size':9}, alignment='left')
+    ax.add_artist(wsjtx_legend)
+    ax.legend(handles = pyft8[2], labels = pylabs,
+            loc = 'upper right', bbox_to_anchor=(1-legwidth,0.85, legwidth,0), mode='expand',
+            title = 'PyFT8', title_fontproperties = {'weight':'bold', 'size':9}, alignment='left')
+
+    ax.set_xlabel("Signal quality = sum of absolute values of log likelyhood ratios")
+    ax.set_ylabel(f"Number of decodes")
+
+    ntot = len(lines)
+    py_pc = f"{int(100*pydecs/ntot)}"
+    pyh_pc = f"{int(100*len(py[0])/ntot)}"
+    pyc_pc = f"{int(100*pydecs_correct/ntot)}"
+    pys_pc = f"{int(100*pydecs_subs/ntot)}"
+    fig.suptitle(f"PyFT8 vs WSJTX. {ntot} decodes, {py_pc}% ({pyc_pc}% correct) to PyFT8 ({pyh_pc}% using hard decode only, {pys_pc}% after subtraction )")
 
 def wsjtx_all_tailer(all_file, cycle_manager):
     global wsjtx_dicts
@@ -50,7 +118,7 @@ def onCandidateRollover(candidates):
     pyft8_cands = candidates.copy()
     do_analysis = True
 
-def analyse_dictionaries():
+def analyse_dictionaries(fig_s, ax_s):
     global cands_matched, matches
     time.sleep(2)
 
@@ -97,7 +165,9 @@ def analyse_dictionaries():
         best_unprocessed_quality = np.max([c.llr0_quality for c in unprocessed])
         best_unprocessed_ncheck0 = np.min([c.ncheck0 for c in unprocessed])
         print(f"{len(unprocessed)} unprocessed candidates decoded by wsjt-x, best qual {best_unprocessed_quality:4.0f} best ncheck0 {best_unprocessed_ncheck0}")
-
+    if(show_success_plot):
+        plot_success(fig_s, ax_s)
+        plt.pause(0.1)
     
 def calibrate_snr():
     import matplotlib.pyplot as plt
@@ -154,15 +224,35 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
                                       onCandidateRollover = onCandidateRollover, freq_range = freq_range,
                                       input_device_keywords = ['Microphone', 'CODEC'], verbose = True, subtraction = do_subtraction)
         threading.Thread(target=wsjtx_all_tailer, args = (all_file,cycle_manager,)).start()
-        
+
+    fig_s, ax_s = None, None
+    if(show_success_plot):
+        fig_s, ax_s = plt.subplots( figsize=(10,6))
+        plt.ion()
+    if(show_waterfall):
+        fig, axs = plt.subplots(figsize = (20,7))
+        plt.ion()
+        plt.tight_layout()
+        waterfall = None
     try:
         while cycle_manager.running:
             time.sleep(1)
+            if(show_waterfall):
+                p = cycle_manager.spectrum.audio_in.pgrid_main
+                pmax = np.max(p)
+                if(pmax > 0):
+                    dB = 10 * np.log10(np.clip(p, pmax/1e8, None))
+                    dB = np.clip(dB - np.max(dB), - 60, 0)
+                    if(waterfall is None):
+                        waterfall = axs.imshow(dB, cmap = 'inferno', origin = 'lower')
+                    else:
+                        waterfall.set_data(dB)
+                    plt.pause(0.1)
             if(do_analysis):
                 global wsjtx_dicts
                 wsjtx_dicts = wsjtx_dicts[-100:]
                 do_analysis = False
-                analyse_dictionaries()
+                analyse_dictionaries(fig_s, ax_s)
                 
     except KeyboardInterrupt:
         print("\nStopping")
@@ -170,18 +260,16 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
 
     time.sleep(1)
 
-    print(f"[Compare] subtracted {len([c for c in pyft8_cands if c.subtracted == True])} decoded sigs")
-    print(f"[Compare] couldn't subtract {len([c for c in pyft8_cands if c.subtracted == False])} decoded sigs")
-
     #calibrate_snr()
     show_matched_cands()
 
 do_subtraction = False
+show_waterfall = False
+show_success_plot = True
     
 #compare("data/210703_133430", [100,3100])
 
 compare(None, [100,3100])
-
 
     
 

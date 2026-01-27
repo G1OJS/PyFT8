@@ -35,7 +35,7 @@ def check_crc(bits91_int):
     """Return True if the 91-bit message (77 data + 14 CRC) passes WSJT-X CRC-14."""
     bits14_int = bits91_int & 0b11111111111111
     bits77_int = bits91_int >> 14
-    return bits14_int == crc14(bits77_int)
+    return bits14_int == crc14(bits77_int) and bits77_int > 0
 
 def int_to_bitsLE(n, width):
     """Return [b(width-1), ..., b0], MSB-first."""
