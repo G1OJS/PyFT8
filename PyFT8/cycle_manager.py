@@ -341,7 +341,7 @@ class Cycle_manager():
                     reprocessed = [c for c in self.cands_list if c.reprocessed]
                     self.tlog(f"[Cycle manager] reprocessed {len(reprocessed)} undecoded sigs ({len([c for c in reprocessed if c.decode_completed])} finished)")               
                 new_cands = self.spectrum.search(self.freq_range, self.cyclestart_str(time.time()))
-                worth_keeping = [c for c in self.cands_list if (not c.decode_completed and time.time() - c.demap_completed < 5)] 
+                worth_keeping = [c for c in self.cands_list if (not c.decode_completed and (time.time() - c.demap_completed < 8) or (time.time() - c.reprocessed < 8))] 
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.audio_in.fft_df)
                 if(self.onCandidateRollover and cycle_counter > 1): self.onCandidateRollover(self.cands_list)
                 self.cands_list = new_cands + worth_keeping
@@ -355,7 +355,8 @@ class Cycle_manager():
                     c.hard_decode_finished = True
 
             to_demap = [c for c in self.cands_list if ( self.spectrum.audio_in.grid_main_ptr > c.last_payload_hop)
-                                                       and c.hard_decode_finished and not c.decode_completed and not c.demap_started]
+                                                       and (c.hard_decode_finished or not self.hard_decoding)
+                                                       and not c.decode_completed and not c.demap_started]
             for c in to_demap:
                 c.demap_started = True
                 c.demap(self.spectrum)
@@ -386,7 +387,7 @@ class Cycle_manager():
                     freqs_to_avoid = [c.f0_idx for c in self.cands_list if c.reprocessed or c.subtracted or c.msg or not c.decode_completed]
                     for_2nd_look = [c for c in for_2nd_look if not c.f0_idx in freqs_to_avoid]
                     for c in for_2nd_look:
-                        c.reprocessed = True
+                        c.reprocessed = time.time()
                     self.cands_list = self.cands_list + for_2nd_look
 
 
@@ -396,7 +397,7 @@ class Cycle_manager():
         c1, c2, grid_rpt = c.msg
         symbols = pack_message(c1, c2, grid_rpt)
         audio_data = self.audio_out.create_ft8_wave(self, symbols, f_base = c.fHz)
-        freq_idxs = np.array(range(c.f0_idx - 1, c.f0_idx + 25))
+        freq_idxs = np.array(range(c.f0_idx - 2, c.f0_idx + 26))
         self.spectrum.audio_in.subtract(audio_data, c.h0_idx + SUBTRACTION_TIME_OFFSET, freq_idxs, SUB_METH)
 
 
