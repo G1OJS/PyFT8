@@ -355,7 +355,7 @@ class Cycle_manager():
                     c.hard_decode_finished = True
 
             to_demap = [c for c in self.cands_list if ( self.spectrum.audio_in.grid_main_ptr > c.last_payload_hop)
-                                                       and not c.hard_decode_finished and c.decode_completed and not c.demap_started]
+                                                       and c.hard_decode_finished and not c.decode_completed and not c.demap_started]
             for c in to_demap:
                 c.demap_started = True
                 c.demap(self.spectrum)
@@ -396,7 +396,7 @@ class Cycle_manager():
         c1, c2, grid_rpt = c.msg
         symbols = pack_message(c1, c2, grid_rpt)
         audio_data = self.audio_out.create_ft8_wave(self, symbols, f_base = c.fHz)
-        freq_idxs = np.array(range(c.f0_idx - 3, c.f0_idx +27))
+        freq_idxs = np.array(range(c.f0_idx - 1, c.f0_idx + 25))
         self.spectrum.audio_in.subtract(audio_data, c.h0_idx + SUBTRACTION_TIME_OFFSET, freq_idxs, SUB_METH)
 
 
