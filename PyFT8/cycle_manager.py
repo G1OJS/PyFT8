@@ -15,16 +15,16 @@ import wave
 import os
 
 MIN_LLR0_QUALITY = 410
-BITFLIP_CONTROL = (28, 50)
-LDPC_CONTROL = (40, 4)
-OSD_CONTROL = [(470, 40), (460, 20)]
+BITFLIP_CONTROL = (28, 45)
+LDPC_CONTROL = (35, 4)
+OSD_CONTROL = [(470, 30), (460, 20)]
 MIN_SNR_METRIC = 0.15
 
 MIN_SNR_SUB = -10
 SUB_METH = 'complex'
-SUBTRACTION_FREQ_LATTITUDE_Hz = 25
+SUBTRACTION_FREQ_LATTITUDE_Hz = 15
 SUBTRACTION_TIME_OFFSET = 5
-MAX_SUBTRACTIONS = 5
+MAX_SUBTRACTIONS = 3
 
 def safe_pc(x,y):
     return 100*x/y if y>0 else 0
@@ -102,7 +102,7 @@ class Candidate:
         self.reprocessed = False
         self.dedupe_key = ""
         self.pgrid_copy = np.zeros((1,1))
-        self.hard_decode_started, self.demap_started, self.demap_completed, self.decode_completed = False, False, False, False
+        self.hard_decode_started, self.hard_decode_finished, self.demap_started, self.demap_completed, self.decode_completed = False, False, False, False, False
         s = {'h0_idx': 0, 'score': 0, 'tsecs': 0}
         self.syncs = [s,s]
         self.tsecs = 0
@@ -352,9 +352,10 @@ class Cycle_manager():
                 for c in to_hard_decode:
                     c.hard_decode_started = True
                     c.hard_decode(self.spectrum)
+                    c.hard_decode_finished = True
 
             to_demap = [c for c in self.cands_list if ( self.spectrum.audio_in.grid_main_ptr > c.last_payload_hop)
-                                                       and not c.decode_completed and not c.demap_started]
+                                                       and not c.hard_decode_finished and c.decode_completed and not c.demap_started]
             for c in to_demap:
                 c.demap_started = True
                 c.demap(self.spectrum)
@@ -377,7 +378,7 @@ class Cycle_manager():
                 to_subtract = [c for c in with_message if c.snr > MIN_SNR_SUB and not c.subtracted]
                 self.subtraction_done_this_cycle = True
                 to_subtract.sort(key = lambda c: -c.snr)
-                for c in to_subtract[:2]:
+                for c in to_subtract[:1]:
                     c.subtracted = True
                     self.subtract_spectrum(c)
                     n_subtracted += 1
