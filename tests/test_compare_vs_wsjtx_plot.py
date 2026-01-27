@@ -19,17 +19,19 @@ bins = [350 + 5*b for b in range(50)]
 
 ws = [[],[]]
 pydecs = 0
+pydecs_correct = 0
 for lfull in lines:
     Hz, cofreq, q, nc, flags, dpath = lfull.split(",")
     q = int(q)
     if(not "#" in dpath): py[6].append(q)
     if("C00#" in dpath):
+        pydecs +=1
         for i, s in enumerate(substrs):
             if(s in dpath):
                 py[i].append(q)
                 break
         if (not "i" in flags):
-            pydecs +=1
+            pydecs_correct +=1
         if("i" in flags):
             py[7].append(q)
   
@@ -61,7 +63,8 @@ ax.set_ylabel(f"Number of decodes")
 ntot = len(lines)
 py_pc = f"{int(100*pydecs/ntot)}"
 pyh_pc = f"{int(100*len(py[0])/ntot)}"
-fig.suptitle(f"PyFT8 vs WSJTX. {ntot} decodes, {py_pc}% correct to PyFT8 ({pyh_pc}% using hard decode only)")
+pyc_pc = f"{int(100*pydecs_correct/ntot)}"
+fig.suptitle(f"PyFT8 vs WSJTX. {ntot} decodes, {py_pc}% ({pyc_pc}% correct) to PyFT8 ({pyh_pc}% using hard decode only)")
 
 plt.tight_layout()
 plt.show()
