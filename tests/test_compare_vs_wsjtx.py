@@ -16,10 +16,10 @@ do_analysis = False
 
 def plot_success(fig, ax):
     
-    py      = [[],              [],             [],         [],         [],                 [],         [],         []          ]
-    pycols  = ['black',         'lime',         'yellow',   'orange',   'teal',             'green',    'white',    'red'       ]
-    pylabs  = ['Hard t+8 sec',  'Immediate',    'OSD2',     'OSD1',     'LDPC &Bitflip',    'LDPC',     'Timeouts', 'Incorrect' ]
-    substrs = ['H00',           'I00',          'P00'       'O00',      'A',                'L']
+    py      = [[],             [],         [],         [],                 [],         [],         []          ]
+    pycols  = ['lime',         'yellow',   'orange',   'teal',             'green',    'white',    'red'       ]
+    pylabs  = ['Immediate',    'OSD2',     'OSD1',     'LDPC &Bitflip',    'LDPC',     'Timeouts', 'Incorrect' ]
+    substrs = ['I00',          'P00'       'O00',      'A',                'L']
 
   #  bins = [350 + 5*b for b in range(50)]
     bins = [-30 + 1*b for b in range(60)]
@@ -40,10 +40,8 @@ def plot_success(fig, ax):
                     break
             if(not "i" in flags):
                 pydecs_correct +=1
-            if('r' in flags):
-                pydecs_subs += 1
             if("i" in flags):
-                py[7].append(q)
+                py[6].append(q)
       
         if(cofreq):
             ws[1].append(q)
@@ -78,7 +76,7 @@ def plot_success(fig, ax):
     pyh_pc = f"{int(100*len(py[0])/ntot)}"
     pyc_pc = f"{int(100*pydecs_correct/ntot)}"
     pys_pc = f"{int(100*pydecs_subs/ntot)}"
-    fig.suptitle(f"PyFT8 vs WSJTX. {ntot} decodes, {py_pc}% ({pyc_pc}% correct) to PyFT8 ({pyh_pc}% using hard decode only, {pys_pc}% after subtraction )")
+    fig.suptitle(f"PyFT8 vs WSJTX. {ntot} decodes, {py_pc}% ({pyc_pc}% correct) to PyFT8")
 
 def wsjtx_all_tailer(all_file, cycle_manager):
     global wsjtx_dicts
@@ -212,12 +210,12 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
     if(dataset):
         cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, test_speed_factor = 1, max_cycles = 2, 
                                       onCandidateRollover = onCandidateRollover, freq_range = freq_range,
-                                      audio_in_wav = dataset+".wav", verbose = True, subtraction = do_subtraction)
+                                      audio_in_wav = dataset+".wav", verbose = True )
         get_wsjtx_decodes(dataset+".txt")
     else:
         cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None,
-                                      onCandidateRollover = onCandidateRollover, freq_range = freq_range,
-                                      input_device_keywords = ['Microphone', 'CODEC'], verbose = True, subtraction = do_subtraction)
+                                      onCandidateRollover = onCandidateRollover, freq_range = freq_range, 
+                                      input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
         threading.Thread(target=wsjtx_all_tailer, args = (all_file,cycle_manager,)).start()
 
     fig_s, ax_s = None, None
@@ -257,7 +255,6 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
     #calibrate_snr()
     show_matched_cands()
 
-do_subtraction = False
 show_waterfall = False
 show_success_plot = True
     
