@@ -22,8 +22,9 @@ MIN_SNR_METRIC = 0.15
 
 MIN_SNR_SUB = -10
 SUB_METH = 'complex'
-SUBTRACTION_FREQ_LATTITUDE_Hz = 10
+SUBTRACTION_FREQ_LATTITUDE_Hz = 25
 SUBTRACTION_TIME_OFFSET = 5
+MAX_SUBTRACTIONS = 5
 
 def safe_pc(x,y):
     return 100*x/y if y>0 else 0
@@ -231,7 +232,6 @@ class Cycle_manager():
                  hard_decoding = True, subtraction = False):
         self.hard_decoding = hard_decoding
         self.subtraction = subtraction
-        self.subtraction_done_this_cycle = False
         self.spectrum = Spectrum(sigspec, 12000, freq_range[1], 3, 3)
         self.running = True
         self.verbose = verbose
@@ -306,6 +306,7 @@ class Cycle_manager():
         cycle_searched = True
         cycle_counter = 0
         cycle_time_prev = 0
+        n_subtracted = 0
         to_demap = []
         if(self.audio_in_wav):
             self.global_time_offset = self.cycle_time()+0.5
@@ -322,7 +323,7 @@ class Cycle_manager():
                     self.running = False
                     break
                 cycle_searched = False
-                self.subtraction_done_this_cycle = False
+                n_subtracted = 0
                 self.check_for_tx()
                 if(self.spectrum.audio_in.grid_main_ptr > 1.5*self.hops_percycle):
                     self.spectrum.audio_in.grid_main_ptr = 0
@@ -336,7 +337,9 @@ class Cycle_manager():
                 if(self.verbose):
                     self.tlog(f"[Cycle manager] Search spectrum ...")
                     self.tlog(f"[Cycle manager] {n_unprocessed} unprocessed candidates detected")
-                    self.tlog(f"[Cycle manager] subtracted {len([c for c in self.cands_list if c.subtracted])} decoded sigs")               
+                    self.tlog(f"[Cycle manager] subtracted {len([c for c in self.cands_list if c.subtracted])} decoded sigs")
+                    reprocessed = [c for c in self.cands_list if c.reprocessed]
+                    self.tlog(f"[Cycle manager] reprocessed {len(reprocessed)} undecoded sigs ({len([c for c in reprocessed if c.decode_completed])} finished)")               
                 new_cands = self.spectrum.search(self.freq_range, self.cyclestart_str(time.time()))
                 worth_keeping = [c for c in self.cands_list if (not c.decode_completed and time.time() - c.demap_completed < 5)] 
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.audio_in.fft_df)
@@ -370,19 +373,21 @@ class Cycle_manager():
                     c.call_a, c.call_b, c.grid_rpt = c.msg[0], c.msg[1], c.msg[2]
                     if(self.onSuccess): self.onSuccess(c)
  
-            if(self.spectrum.audio_in.grid_main_ptr % self.hops_percycle > 14.5*self.hops_percycle/15 and self.subtraction and not self.subtraction_done_this_cycle):
+            if(self.subtraction and n_subtracted < MAX_SUBTRACTIONS):
                 to_subtract = [c for c in with_message if c.snr > MIN_SNR_SUB and not c.subtracted]
-                if(self.verbose):
-                    self.tlog(f"[Cycle manager] Subtract decoded candidates")
                 self.subtraction_done_this_cycle = True
-                for c in to_subtract:
+                to_subtract.sort(key = lambda c: -c.snr)
+                for c in to_subtract[:2]:
                     c.subtracted = True
                     self.subtract_spectrum(c)
-                for_2nd_look = self.spectrum.search([c.fHz-SUBTRACTION_FREQ_LATTITUDE_Hz, c.fHz+SUBTRACTION_FREQ_LATTITUDE_Hz], self.cyclestart_str(time.time()))
-                for_2nd_look = [c for c in for_2nd_look for ex_c in self.cands_list if not (c.f0_idx == ex_c.f0_idx and ex_c.msg)]
-                for c in for_2nd_look:
-                    c.reprocessed = True
-                self.cands_list = self.cands_list + for_2nd_look
+                    n_subtracted += 1
+                    for_2nd_look = self.spectrum.search([c.fHz-SUBTRACTION_FREQ_LATTITUDE_Hz, c.fHz+SUBTRACTION_FREQ_LATTITUDE_Hz], self.cyclestart_str(time.time()))
+                    freqs_to_avoid = [c.f0_idx for c in self.cands_list if c.reprocessed or c.subtracted or c.msg or not c.decode_completed]
+                    for_2nd_look = [c for c in for_2nd_look if not c.f0_idx in freqs_to_avoid]
+                    for c in for_2nd_look:
+                        c.reprocessed = True
+                    self.cands_list = self.cands_list + for_2nd_look
+
 
                                 
     def subtract_spectrum(self, c):
