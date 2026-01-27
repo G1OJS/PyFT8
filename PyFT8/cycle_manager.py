@@ -15,11 +15,13 @@ import wave
 import os
 
 MIN_LLR0_QUALITY = 410
+MIN_SNR_SUB = 5
+SUB_METH = 'complex'
 BITFLIP_CONTROL = (28, 50)
 LDPC_CONTROL = (40, 4)
 OSD_CONTROL = [(470, 40), (460, 20)]
 MIN_SNR_METRIC = 0.15
-SUBTRACTION_FREQ_LATTITUDE_Hz = 2
+SUBTRACTION_FREQ_LATTITUDE_Hz = 4
 
 def safe_pc(x,y):
     return 100*x/y if y>0 else 0
@@ -365,7 +367,7 @@ class Cycle_manager():
                     if(self.onSuccess): self.onSuccess(c)
  
             if(self.subtraction):
-                to_subtract = [c for c in with_message if not c.subtracted]
+                to_subtract = [c for c in with_message if c.snr > MIN_SNR_SUB and not c.subtracted]
                 for c in to_subtract:
                     c.subtracted = True
                     self.subtract_spectrum(c)
@@ -381,7 +383,8 @@ class Cycle_manager():
         c1, c2, grid_rpt = c.msg
         symbols = pack_message(c1, c2, grid_rpt)
         audio_data = self.audio_out.create_ft8_wave(self, symbols, f_base = c.fHz)
-        self.spectrum.audio_in.subtract(audio_data, c.h0_idx, c.fine_freq_idxs)
+        freq_idxs = np.array(range(c.f0_idx - 3, c.f0_idx +27))
+        self.spectrum.audio_in.subtract(audio_data, c.h0_idx, freq_idxs, SUB_METH)
 
 
 
