@@ -149,13 +149,13 @@ def analyse_dictionaries(fig_s, ax_s):
             cands_matched.append(c)
             td = f"{c.decode_completed %60:5.2f}" if c.decode_completed else '     '
             cofreq = "cofreq" if w['f'] in wsjtx_cofreqs else "  --  "
-            basics = f"{c.cyclestart_str} {w['f']:4d} {cofreq} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.tsecs:4.1f} {w['td']} {td}"
+            basics = f"{w['cs']} {w['f']:4d} {cofreq} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.tsecs:4.1f} {w['td']} {td}"
             msg = ' '.join(c.msg) if c.msg else ''
             if(msg !=''): unique.add(msg)
             incorrect = (msg !='' and msg != w['msg'])
             flags = f"{'-' if c.subtracted else ' '}{'r' if c.reprocessed else ' '}{'i' if incorrect else ' '}"
-            print(f"{basics} {w['msg']:<23} {msg:<23} {c.llr0_quality:4.0f} {flags} {c.decode_path}")
-            f.write(f"{c.fHz},{cofreq},{c.llr0_quality:4.0f},{c.ncheck0:2d},{flags},{c.decode_path}\n")
+            print(f"{basics} {w['msg']:<23} {msg:<23} {c.llr0_quality:3.0f} {flags} {c.decode_path}")
+            f.write(f"{c.fHz},{cofreq},{c.llr0_quality:3.0f},{c.ncheck0:2d},{flags},{c.decode_path}\n")
 
     print(f"{len(unique)} unique decodes")
     if(not len(unique)):
@@ -250,7 +250,7 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
                     plt.pause(0.1)
             if(do_analysis):
                 global wsjtx_dicts
-                wsjtx_dicts = wsjtx_dicts[-100:]
+                wsjtx_dicts = wsjtx_dicts[-200:]
                 do_analysis = False
                 analyse_dictionaries(fig_s, ax_s)
                 
@@ -264,7 +264,7 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
     show_matched_cands()
 
 do_subtraction = True
-show_waterfall = True
+show_waterfall = False
 show_success_plot = True
     
 #compare("data/210703_133430", [100,3100])

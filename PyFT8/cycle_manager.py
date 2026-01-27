@@ -105,7 +105,7 @@ class Candidate:
         self.llr = None
         self.decode_path = ""
         self.llr0_quality = 0
-        self.snr = -999
+        self.snr = -30
         self.p_dB = None 
         
     def _record_state(self, actor_code, final = False):
@@ -366,7 +366,7 @@ class Cycle_manager():
                 for c in to_subtract:
                     c.subtracted = True
                     self.subtract_spectrum(c)
-                    for_2nd_look = self.spectrum.search([c.fHz-1, c.fHz+1], self.cyclestart_str(time.time()))
+                    for_2nd_look = self.spectrum.search([c.fHz-25, c.fHz+25], self.cyclestart_str(time.time()))
                     for c in for_2nd_look:
                         c.reprocessed = True
                     self.cands_list = self.cands_list + for_2nd_look
