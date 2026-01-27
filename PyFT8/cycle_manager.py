@@ -22,7 +22,7 @@ MIN_SNR_METRIC = 0.15
 
 MIN_SNR_SUB = -10
 SUB_METH = 'complex'
-SUBTRACTION_FREQ_LATTITUDE_Hz = 3
+SUBTRACTION_FREQ_LATTITUDE_Hz = 10
 SUBTRACTION_TIME_OFFSET = 5
 
 def safe_pc(x,y):
@@ -231,6 +231,7 @@ class Cycle_manager():
                  hard_decoding = True, subtraction = False):
         self.hard_decoding = hard_decoding
         self.subtraction = subtraction
+        self.subtraction_done_this_cycle = False
         self.spectrum = Spectrum(sigspec, 12000, freq_range[1], 3, 3)
         self.running = True
         self.verbose = verbose
@@ -321,6 +322,7 @@ class Cycle_manager():
                     self.running = False
                     break
                 cycle_searched = False
+                self.subtraction_done_this_cycle = False
                 self.check_for_tx()
                 if(self.spectrum.audio_in.grid_main_ptr > 1.5*self.hops_percycle):
                     self.spectrum.audio_in.grid_main_ptr = 0
@@ -368,16 +370,19 @@ class Cycle_manager():
                     c.call_a, c.call_b, c.grid_rpt = c.msg[0], c.msg[1], c.msg[2]
                     if(self.onSuccess): self.onSuccess(c)
  
-            if(self.spectrum.audio_in.grid_main_ptr % self.hops_percycle > 14*self.hops_percycle/15 and self.subtraction):
+            if(self.spectrum.audio_in.grid_main_ptr % self.hops_percycle > 14.5*self.hops_percycle/15 and self.subtraction and not self.subtraction_done_this_cycle):
                 to_subtract = [c for c in with_message if c.snr > MIN_SNR_SUB and not c.subtracted]
+                if(self.verbose):
+                    self.tlog(f"[Cycle manager] Subtract decoded candidates")
+                self.subtraction_done_this_cycle = True
                 for c in to_subtract:
                     c.subtracted = True
                     self.subtract_spectrum(c)
-                    for_2nd_look = self.spectrum.search([c.fHz-SUBTRACTION_FREQ_LATTITUDE_Hz, c.fHz+SUBTRACTION_FREQ_LATTITUDE_Hz], self.cyclestart_str(time.time()))
-                    for_2nd_look = [c for c in for_2nd_look for c2 in with_message if c.f0_idx != c2.f0_idx]
-                    for c in for_2nd_look:
-                        c.reprocessed = True
-                    self.cands_list = self.cands_list + for_2nd_look
+                for_2nd_look = self.spectrum.search([c.fHz-SUBTRACTION_FREQ_LATTITUDE_Hz, c.fHz+SUBTRACTION_FREQ_LATTITUDE_Hz], self.cyclestart_str(time.time()))
+                for_2nd_look = [c for c in for_2nd_look for ex_c in self.cands_list if not (c.f0_idx == ex_c.f0_idx and ex_c.msg)]
+                for c in for_2nd_look:
+                    c.reprocessed = True
+                self.cands_list = self.cands_list + for_2nd_look
 
                                 
     def subtract_spectrum(self, c):
