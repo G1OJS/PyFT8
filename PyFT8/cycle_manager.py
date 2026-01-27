@@ -19,6 +19,7 @@ BITFLIP_CONTROL = (28, 50)
 LDPC_CONTROL = (35, 7)
 OSD_CONTROL = [(470, 60), (460, 30)]
 MIN_SNR_METRIC = 0.15
+SUBTRACTION_FREQ_LATTITUDE_Hz = 10
 
 def safe_pc(x,y):
     return 100*x/y if y>0 else 0
@@ -131,7 +132,9 @@ class Candidate:
         llr0 = np.column_stack((llra, llrb, llrc))
         llr0 = llr0.ravel()
         snr = self._get_snr(p_dB)
-        llr0 = target_params[0] * llr0 / np.std(llr0)
+        std = np.std(llr0)
+        if(std > 0):
+            llr0 = target_params[0] * llr0 / std
         llr0 = np.clip(llr0, -target_params[1], target_params[1])
         llr0_quality =  np.sum(np.abs(llr0)) * 3*(79-21)/len(llr0)
         return (llr0, llr0_quality, p_dB, snr)
@@ -366,7 +369,8 @@ class Cycle_manager():
                 for c in to_subtract:
                     c.subtracted = True
                     self.subtract_spectrum(c)
-                    for_2nd_look = self.spectrum.search([c.fHz-25, c.fHz+25], self.cyclestart_str(time.time()))
+                    for_2nd_look = self.spectrum.search([c.fHz-SUBTRACTION_FREQ_LATTITUDE_Hz, c.fHz+SUBTRACTION_FREQ_LATTITUDE_Hz], self.cyclestart_str(time.time()))
+                    for_2nd_look = [c for c in for_2nd_look for c2 in with_message if c.f0_idx == c2.f0_idx]
                     for c in for_2nd_look:
                         c.reprocessed = True
                     self.cands_list = self.cands_list + for_2nd_look

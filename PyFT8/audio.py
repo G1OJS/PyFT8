@@ -1,8 +1,11 @@
+import warnings
+warnings.filterwarnings("error")
 import numpy as np
 import wave
 import pyaudio
 import time
 pya = pyaudio.PyAudio()
+import threading
 
 def find_device(device_str_contains):
     if(not device_str_contains): #(this check probably shouldn't be needed - check calling code)
@@ -17,13 +20,6 @@ def find_device(device_str_contains):
             print(f"[Audio] Found device {name} index {dev_idx}")
             return dev_idx
     print(f"[Audio] No audio device found matching {device_str_contains}")
-
-import time
-import wave
-import numpy as np
-import pyaudio
-import threading
-
 
 class AudioIn:
     def __init__(self, spectrum):
@@ -51,19 +47,26 @@ class AudioIn:
     def subtract(self, audio_data, h0_idx, freq_idxs):
         audio_ptr = 0
         grid_ptr = h0_idx + 5
+        meth = 'complex'
      #   hop_indexes = np.array(range(h0_idx , h0_idx + self.hops_persymb * 79))
      #   sum_power = np.sum(np.abs(self._zgrid_main[hop_indexes, :][:, freq_idxs])**2)
         while(audio_ptr + self.fft_len < len(audio_data)):
             x = audio_data[audio_ptr: audio_ptr + self.fft_len] * self.fft_window
             gen_z = np.fft.rfft(x)[:self.nFreqs]
-            gen_p = gen_z.real*gen_z.real + gen_z.imag*gen_z.imag
-            gen_max_idx = np.argmax(gen_p)
-            gen_z /= gen_z[gen_max_idx]
 
-            ex_max = np.max(self._zgrid_main[grid_ptr][freq_idxs])
-            self._zgrid_main[grid_ptr] -= gen_z * ex_max
-            z = self._zgrid_main[grid_ptr]
-            self.pgrid_main[grid_ptr] = z.real*z.real + z.imag*z.imag 
+            if(meth == 'complex'):
+                max_idx = np.argmax(np.abs(gen_z))
+                gen_z = gen_z / gen_z[max_idx]
+                ex_z = self._zgrid_main[grid_ptr][freq_idxs]
+                ex_max = np.max(np.abs(ex_z))
+                self._zgrid_main[grid_ptr] = self._zgrid_main[grid_ptr] - gen_z * ex_max
+                new_z = self._zgrid_main[grid_ptr]
+                self.pgrid_main[grid_ptr] = new_z.real*new_z.real + new_z.imag*new_z.imag 
+            else:
+                gen_p = gen_z.real*gen_z.real + gen_z.imag*gen_z.imag
+                ex_p_max = np.max(self.pgrid_main[grid_ptr][freq_idxs])
+                self.pgrid_main[grid_ptr] -= gen_p * ex_p_max / np.max(gen_p)
+                self.pgrid_main[grid_ptr] = np.abs(self.pgrid_main[grid_ptr])
             grid_ptr += 1
             audio_ptr += self.samples_perhop
      #   reduction = sum_power / np.sum(np.abs(self._zgrid_main[hop_indexes, :][:, freq_idxs])**2)

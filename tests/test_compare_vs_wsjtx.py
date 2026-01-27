@@ -6,31 +6,31 @@ import time
 from PyFT8.cycle_manager import Cycle_manager
 from PyFT8.sigspecs import FT8
 
-global wsjtx_dicts, pyft8_cands, matches, cands_matched, do_analysis
+global wsjtx_dicts, pyft8_cands, new_matches, cands_matched, do_analysis
 wsjtx_dicts = []
 pyft8_cands = []
-matches = None
+new_matches = None
 cands_matched = []
+historic_matches = []
 do_analysis = False
 
 def plot_success(fig, ax):
-    with open(f"data/compare_wsjtx.csv", "r") as f:
-        lines=f.readlines()
-
+    
     py      = [[],              [],             [],         [],         [],                 [],         [],         []          ]
     pycols  = ['black',         'lime',         'yellow',   'orange',   'teal',             'green',    'white',    'red'       ]
     pylabs  = ['Hard t+8 sec',  'Immediate',    'OSD2',     'OSD1',     'LDPC &Bitflip',    'LDPC',     'Timeouts', 'Incorrect' ]
     substrs = ['H00',           'I00',          'P00'       'O00',      'A',                'L']
 
-    bins = [350 + 5*b for b in range(50)]
-
+  #  bins = [350 + 5*b for b in range(50)]
+    bins = [-30 + 1*b for b in range(60)]
+    
     ws = [[],[]]
     pydecs = 0
     pydecs_correct = 0
     pydecs_subs = 0
-    for lfull in lines:
-        Hz, cofreq, q, nc, flags, dpath = lfull.split(",")
-        q = int(q)
+    for w, c in historic_matches:
+        Hz, cofreq, wsnr, q, nc, flags, dpath =c.fHz, w['cofreq'], w['snr'], c.llr0_quality, c.ncheck0, c.flags, c.decode_path
+        q = int(wsnr)
         if(not "#" in dpath): py[6].append(q)
         if("C00#" in dpath):
             pydecs +=1
@@ -38,14 +38,14 @@ def plot_success(fig, ax):
                 if(s in dpath):
                     py[i].append(q)
                     break
-            if (not "i" in flags):
+            if(not "i" in flags):
                 pydecs_correct +=1
             if('r' in flags):
                 pydecs_subs += 1
             if("i" in flags):
                 py[7].append(q)
       
-        if('cofreq' in cofreq):
+        if(cofreq):
             ws[1].append(q)
         else:
             ws[0].append(q)
@@ -70,10 +70,10 @@ def plot_success(fig, ax):
             loc = 'upper right', bbox_to_anchor=(1-legwidth,0.85, legwidth,0), mode='expand',
             title = 'PyFT8', title_fontproperties = {'weight':'bold', 'size':9}, alignment='left')
 
-    ax.set_xlabel("Signal quality = sum of absolute values of log likelyhood ratios")
+    ax.set_xlabel("Signal quality = wsjt-x reported snr")
     ax.set_ylabel(f"Number of decodes")
 
-    ntot = len(lines)
+    ntot = len(historic_matches)
     py_pc = f"{int(100*pydecs/ntot)}"
     pyh_pc = f"{int(100*len(py[0])/ntot)}"
     pyc_pc = f"{int(100*pydecs_correct/ntot)}"
@@ -108,7 +108,7 @@ def get_wsjtx_decodes(decodes_file):
     with open(decodes_file,'r') as f:
         lines = f.readlines()
     for l in lines:
-        wsjtx_dicts.append({'cs':'any', 'f':int(l[16:21]), 'msg':l[24:].strip(), 'snr':int(l[8:11]), 'dt':float(l[12:16]), 'td':''})
+        wsjtx_dicts.append({'cs':cs, 'f':int(l[16:21]), 'msg':l[24:].strip(), 'snr':int(l[8:11]), 'dt':float(l[12:16]), 'td':''})
 
 def pc_str(x,y):
     return "{}" if y == 0 else f"{int(100*x/y)}%"
@@ -119,22 +119,22 @@ def onCandidateRollover(candidates):
     do_analysis = True
 
 def analyse_dictionaries(fig_s, ax_s):
-    global cands_matched, matches
+    global cands_matched, new_matches
     time.sleep(2)
 
-    matches = [(w, c) for w in wsjtx_dicts for c in pyft8_cands if abs(w['f'] - c.fHz) < 3
-               and (w['cs'] == c.cyclestart_str or w['cs']=='any')]
+    new_matches = [(w, c) for w in wsjtx_dicts for c in pyft8_cands if abs(w['f'] - c.fHz) < 3
+               and (w['cs'] == c.cyclestart_str)]
     
     best = {}
-    for w, c in matches:
+    for w, c in new_matches:
         key = (w['cs'], w['msg'])
         has_message = True if c.msg else False
         score = (has_message, c.llr0_quality)
         if key not in best or score > best[key][0]:
             best[key] = (score, w, c)
-    matches = [(w, c) for (_, w, c) in best.values()]
+    new_matches = [(w, c) for (_, w, c) in best.values()]
 
-    wsjtx_cofreqs = [w['f'] for w,c in matches for w2,c in matches if 0 <= np.abs(w['f'] - w2['f']) <= 51 and ''.join(w['msg']) != ''.join(w2['msg'])]
+    wsjtx_cofreqs = [w['f'] for w,c in new_matches for w2,c in new_matches if 0 <= np.abs(w['f'] - w2['f']) <= 51 and ''.join(w['msg']) != ''.join(w2['msg'])]
 
     pyft8 = [c for c in pyft8_cands if c.msg]
     pyft8_msgs = [c.msg for c in pyft8]
@@ -142,25 +142,26 @@ def analyse_dictionaries(fig_s, ax_s):
     wsjtx_msgs = [w['msg'] for w in wsjtx_dicts]
     pyft8_only = [c for c in pyft8 if ' '.join(c.msg) not in wsjtx_msgs]
 
-    matches.sort(key = lambda tup: tup[1].fHz)
+    new_matches.sort(key = lambda tup: tup[1].fHz)
     unique = set()
     with open('data/compare_wsjtx.csv', 'a') as f:
-        for w, c in matches:
+        for w, c in new_matches:
             cands_matched.append(c)
             td = f"{c.decode_completed %60:5.2f}" if c.decode_completed else '     '
-            cofreq = "cofreq" if w['f'] in wsjtx_cofreqs else "  --  "
-            basics = f"{w['cs']} {w['f']:4d} {cofreq} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.tsecs:4.1f} {w['td']} {td}"
+            w.update({'cofreq': w['f'] in wsjtx_cofreqs})
             msg = ' '.join(c.msg) if c.msg else ''
+            c.incorrect = (msg !='' and msg != w['msg'])
+            c.flags = f"{'-' if c.subtracted else ' '}{'r' if c.reprocessed else ' '}{'i' if c.incorrect else ' '}"
+            cofreq = 'cofreq' if w['cofreq'] else "  --  "
+            basics = f"{w['cs']} {w['f']:4d} {cofreq} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.tsecs:4.1f} {w['td']} {td}"
             if(msg !=''): unique.add(msg)
-            incorrect = (msg !='' and msg != w['msg'])
-            flags = f"{'-' if c.subtracted else ' '}{'r' if c.reprocessed else ' '}{'i' if incorrect else ' '}"
-            print(f"{basics} {w['msg']:<23} {msg:<23} {c.llr0_quality:3.0f} {flags} {c.decode_path}")
-            f.write(f"{c.fHz},{cofreq},{c.llr0_quality:3.0f},{c.ncheck0:2d},{flags},{c.decode_path}\n")
+            print(f"{basics} {w['msg']:<23} {msg:<23} {c.llr0_quality:3.0f} {c.flags} {c.decode_path}")
+            historic_matches.append((w,c))
 
     print(f"{len(unique)} unique decodes")
     if(not len(unique)):
         print("Is WSJT-X running??")
-    unprocessed = [c for w, c in matches if not "#" in c.decode_path]
+    unprocessed = [c for w, c in new_matches if not "#" in c.decode_path]
     if(len(unprocessed)):
         best_unprocessed_quality = np.max([c.llr0_quality for c in unprocessed])
         best_unprocessed_ncheck0 = np.min([c.ncheck0 for c in unprocessed])
@@ -173,15 +174,11 @@ def calibrate_snr():
     import matplotlib.pyplot as plt
     fix, ax = plt.subplots()
     x,y = [],[]
-    for w, c in matches:
+    for w, c in new_matches:
         x.append(c.snr)
         y.append(float(w['snr']))
     ax.plot(x,y)
     plt.show()
-
-def initialise_outputs():
-    with open('data/compare_wsjtx.csv', 'w') as f:
-        f.write('')
 
 def onDecode(c):
   #  print(c.fHz, c.msg)
@@ -212,8 +209,6 @@ def show_matched_cands(dBrange = 30):
 def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X/ALL.txt"):
     global do_analysis
 
-    initialise_outputs()
-    
     if(dataset):
         cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, test_speed_factor = 1, max_cycles = 2, 
                                       onCandidateRollover = onCandidateRollover, freq_range = freq_range,
