@@ -258,7 +258,7 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
     #calibrate_snr()
     show_matched_cands()
 
-do_subtraction = True
+do_subtraction = False
 show_waterfall = False
 show_success_plot = True
     
