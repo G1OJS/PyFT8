@@ -14,12 +14,12 @@ import queue
 import wave
 import os
 
-MIN_LLR0_QUALITY = 405
+MIN_LLR0_QUALITY = 410
 BITFLIP_CONTROL = (28, 50)
-LDPC_CONTROL = (35, 7)
-OSD_CONTROL = [(470, 60), (460, 30)]
+LDPC_CONTROL = (40, 4)
+OSD_CONTROL = [(470, 40), (460, 20)]
 MIN_SNR_METRIC = 0.15
-SUBTRACTION_FREQ_LATTITUDE_Hz = 10
+SUBTRACTION_FREQ_LATTITUDE_Hz = 2
 
 def safe_pc(x,y):
     return 100*x/y if y>0 else 0
@@ -140,7 +140,6 @@ class Candidate:
         return (llr0, llr0_quality, p_dB, snr)
 
     def hard_decode(self, spectrum):
-        self.hard_decode_started = True
         for sync_idx in [0, 1]:
             hops = self.syncs[sync_idx]['h0_idx'] + spectrum.base_data_hops
             self.pgrid = spectrum.audio_in.pgrid_main[:, self.fine_freq_idxs]
@@ -168,7 +167,6 @@ class Candidate:
                     return
        
     def demap(self, spectrum):
-        self.demap_started = True
         demap0 = self._get_llr(spectrum, spectrum.base_payload_hops + self.syncs[0]['h0_idx'])
         demap1 = self._get_llr(spectrum, spectrum.base_payload_hops + self.syncs[1]['h0_idx'])
         demap_choice = 0 if demap0[1] > demap1[1] else 1
@@ -183,7 +181,6 @@ class Candidate:
             self.ncheck0 = self.ldpc.calc_ncheck(self.llr0)
             self.ncheck = self.ncheck0
             self.llr = self.llr0.copy()
-        self.demap_completed = time.time()
         qual_too_low = self.llr0_quality < MIN_LLR0_QUALITY
         self._record_state("I", final = qual_too_low)
 
@@ -344,12 +341,15 @@ class Cycle_manager():
                 to_hard_decode = [c for c in self.cands_list if self.spectrum.audio_in.grid_main_ptr > c.last_data_hop
                                     and not c.decode_completed and not c.hard_decode_started]
                 for c in to_hard_decode:
+                    c.hard_decode_started = True
                     c.hard_decode(self.spectrum)
 
             to_demap = [c for c in self.cands_list if ( self.spectrum.audio_in.grid_main_ptr > c.last_payload_hop)
                                                        and not c.decode_completed and not c.demap_started]
             for c in to_demap:
+                c.demap_started = True
                 c.demap(self.spectrum)
+                c.demap_completed = True
 
             to_progress_decode = [c for c in self.cands_list if c.demap_completed and not c.decode_completed]
             to_progress_decode.sort(key = lambda c: (-c.llr0_quality, c.ncheck0)) # in case of emergency (timeouts) process best first
