@@ -211,12 +211,12 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
 
     if(dataset):
         cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, test_speed_factor = 1, max_cycles = 2, 
-                                      onCandidateRollover = onCandidateRollover, freq_range = freq_range,
+                                      onCandidateRollover = onCandidateRollover, freq_range = freq_range,  hard_decoding = hard_decoding,
                                       audio_in_wav = dataset+".wav", verbose = True, subtraction = do_subtraction)
         get_wsjtx_decodes(dataset+".txt")
     else:
         cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None,
-                                      onCandidateRollover = onCandidateRollover, freq_range = freq_range,
+                                      onCandidateRollover = onCandidateRollover, freq_range = freq_range, hard_decoding = hard_decoding,
                                       input_device_keywords = ['Microphone', 'CODEC'], verbose = True, subtraction = do_subtraction)
         threading.Thread(target=wsjtx_all_tailer, args = (all_file,cycle_manager,)).start()
 
@@ -257,7 +257,8 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
     #calibrate_snr()
     show_matched_cands()
 
-do_subtraction = False
+hard_decoding = False
+do_subtraction = True
 show_waterfall = False
 show_success_plot = True
     
