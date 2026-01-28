@@ -7,7 +7,7 @@ import time
 from PyFT8.cycle_manager import Cycle_manager, params
 from PyFT8.sigspecs import FT8
 
-global wsjtx_dicts, pyft8_cands, new_matches, cands_matched, historic_matches, do_analysis
+global wsjtx_dicts, pyft8_cands, new_matches, cands_matched, historic_matches, do_analysis, params
 wsjtx_dicts = []
 pyft8_cands = []
 new_matches = None
@@ -16,7 +16,7 @@ historic_matches = []
 do_analysis = False
 
 def plot_success(fig, ax, load_file = False):
-    global historic_matches
+    global historic_matches, params
 
     if(load_file):
         with open("results/data/compare_data.pkl", "rb") as f:
@@ -84,7 +84,7 @@ def plot_success(fig, ax, load_file = False):
     pydecs_corr = pydecs - len(py[2])
     pycorr_pc = f"{int(100*pydecs_corr/wdecs)}"
     pytot_pc = f"{int(100*pydecs/wdecs)}"
-    fig.suptitle(f"PyFT8 vs WSJTX. {wdecs} decodes, {pytot_pc}% ({pycorr_pc}% correct) to PyFT8")
+    fig.suptitle(f"PyFT8 {pydecs} vs WSJTX. {wdecs} decodes, {pytot_pc}% ({pycorr_pc}% correct) to PyFT8")
     params1 = dict(list(params.items())[:len(params)//2])
     params2 = dict(list(params.items())[len(params)//2:])
     plt.text(0,1.05, params1, fontsize = 6, transform = ax.transAxes)
@@ -275,11 +275,11 @@ show_success_plot = True
     
 #compare("data/210703_133430", [100,3100])
 
-#compare(None, [100,3100])
+compare(None, [100,3100])
 
-fig_s, ax_s = plt.subplots( figsize=(10,6))
-plot_success(fig_s, ax_s, 'compare_data.pkl')
-plt.show()
+#fig_s, ax_s = plt.subplots( figsize=(10,6))
+#plot_success(fig_s, ax_s, 'compare_data.pkl')
+#plt.show()
 
 
 
