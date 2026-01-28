@@ -1,12 +1,13 @@
 import matplotlib.pyplot as plt
 import pandas as pd
+import pickle
 import threading
 import numpy as np
 import time
-from PyFT8.cycle_manager import Cycle_manager
+from PyFT8.cycle_manager import Cycle_manager, params
 from PyFT8.sigspecs import FT8
 
-global wsjtx_dicts, pyft8_cands, new_matches, cands_matched, do_analysis
+global wsjtx_dicts, pyft8_cands, new_matches, cands_matched, historic_matches, do_analysis
 wsjtx_dicts = []
 pyft8_cands = []
 new_matches = None
@@ -14,73 +15,80 @@ cands_matched = []
 historic_matches = []
 do_analysis = False
 
-def plot_success(fig, ax):
-    
-    py      = [[],              [],             [],         [],         [],                 [],         [],         []          ]
-    pyrepro = [[],              [],             [],         [],         [],                 [],         [],         []          ]
-    pycols  = ['black',         'lime',         'yellow',   'orange',   'teal',             'green',    'white',    'red'       ]
-    pylabs  = ['Hard t+8 sec',  'Immediate',    'OSD2',     'OSD1',     'LDPC &Bitflip',    'LDPC',     'Timeouts', 'Incorrect' ]
-    substrs = ['H00',           'I00',          'P00'       'O00',      'A',                'L',        'TIMEOUT',         'ERR']
+def plot_success(fig, ax, load_file = False):
+    global historic_matches
 
-  #  bins = [350 + 5*b for b in range(50)]
+    if(load_file):
+        with open("results/data/compare_data.pkl", "rb") as f:
+            d = pickle.load(f)
+        historic_matches = d['matches']
+        params = d['params']
+
+    if not any(historic_matches):
+        return
+    
+    py =      [[],[],[],[],[]]
+    pycols  = ['green', 'lime', 'red', 'orange', 'white']
+    pylabs  = ['OK', 'OK-SUB', 'ERR', 'Stall', 'Timeout' ]          
+
     bins = [-30 + 1*b for b in range(60)]
     
     ws = [[],[]]
-    pydecs = 0
-    pydecs_correct = 0
-    pydecs_subs = 0
     for w, c in historic_matches:
         q = int(w['snr'])
+
         if(w['cofreq']):
             ws[1].append(q)
         else:
             ws[0].append(q)
-        if(not "#" in c.decode_path):
-            c.decode_path = c.decode_path + "TIMEOUT"
-        if("C00#" in c.decode_path):
-            pydecs +=1
-            for i, s in enumerate(substrs):
-                if(s in c.decode_path):
-                    if(s != "ERR"): pydecs_correct +=1
-                    if('REPRO' in c.decode_path):
-                        pyrepro[i].append(q)
-                        pydecs_subs += 1
-                    else:
-                        py[i].append(q)
-                    break                
 
-    if(pydecs ==0):
+        if(c.msg):
+            if(' '.join(c.msg) == w['msg']):
+                if(c.reprocessed):
+                    py[1].append(q)
+                else:
+                    py[0].append(q)
+            else:
+                py[2].append(q)
+        elif('#' in c.decode_path):
+            py[3].append(q)
+        else:
+            py[4].append(q)                
+
+    if(len(py[0]) ==0):
         return
 
     ax.cla()
 
-    wsjtx = ax.hist(ws, bins = bins,  rwidth = 1.0, label = 'All',
-            stacked = True, color = ['green', 'orange'], alpha = 0.2, lw=2, edgecolor = 'grey')
+    wsjtx = ax.hist(ws,   rwidth = 1.0, label = 'All',
+            stacked = True, color = ['green', 'orange'], alpha = 0.4, lw=0.5, edgecolor = 'grey')
 
-    pyft8 = ax.hist(py, bins = bins, rwidth = 0.8, 
-            stacked = True, alpha = 0.7, lw=1, edgecolor = 'grey', color = pycols)
-
-    pyft8_reprocessed = ax.hist(pyrepro, bins = bins, rwidth = 0.2, 
-            stacked = True, alpha = 1, lw=1, edgecolor = 'black', color = pycols)
+    pyft8 = ax.hist(py,rwidth = 0.5, 
+            stacked = True, alpha = 0.7, lw=.4, edgecolor = 'grey', color = pycols)
     
     legwidth = 0.18
-    wsjtx_legend = ax.legend(handles=[wsjtx[2][0], wsjtx[2][1]], labels = ['isolated','ovelapping'],
+    wsjtx_legend = ax.legend(handles = wsjtx[2], labels = ['isolated','ovelapping'],
             loc='upper right', bbox_to_anchor=(1-legwidth,1, legwidth,0), mode='expand',
             title = 'WSJT-X', title_fontproperties = {'weight':'bold', 'size':9}, alignment='left')
     ax.add_artist(wsjtx_legend)
-    ax.legend(handles = pyft8[2], labels = pylabs,
+    pyft8_legend = ax.legend(handles = pyft8[2], labels = pylabs,
             loc = 'upper right', bbox_to_anchor=(1-legwidth,0.85, legwidth,0), mode='expand',
             title = 'PyFT8', title_fontproperties = {'weight':'bold', 'size':9}, alignment='left')
+    ax.add_artist(pyft8_legend)
 
     ax.set_xlabel("Signal quality = wsjt-x reported snr")
     ax.set_ylabel(f"Number of decodes")
 
-    ntot = len(historic_matches)
-    py_pc = f"{int(100*pydecs/ntot)}"
-    pyh_pc = f"{int(100*len(py[0])/ntot)}"
-    pyc_pc = f"{int(100*pydecs_correct/ntot)}"
-    pys_pc = f"{int(100*pydecs_subs/ntot)}"
-    fig.suptitle(f"PyFT8 vs WSJTX. {ntot} decodes, {py_pc}% ({pyc_pc}% correct) to PyFT8 ({pyh_pc}% using hard decode only, {pys_pc}% after subtraction )")
+    wdecs = len(ws[0]) + len(ws[1])
+    pydecs = len(py[0])+len(py[1])
+    pydecs_corr = pydecs - len(py[2])
+    pycorr_pc = f"{int(100*pydecs_corr/wdecs)}"
+    pytot_pc = f"{int(100*pydecs/wdecs)}"
+    fig.suptitle(f"PyFT8 vs WSJTX. {wdecs} decodes, {pytot_pc}% ({pycorr_pc}% correct) to PyFT8")
+    params1 = dict(list(params.items())[:len(params)//2])
+    params2 = dict(list(params.items())[len(params)//2:])
+    plt.text(0,1.05, params1, fontsize = 6, transform = ax.transAxes)
+    plt.text(0,1.02, params2, fontsize = 6, transform = ax.transAxes)
 
 def wsjtx_all_tailer(all_file, cycle_manager):
     global wsjtx_dicts
@@ -105,9 +113,9 @@ def wsjtx_all_tailer(all_file, cycle_manager):
         except:
             print(f"Wsjtx_tailer error in line '{line}'")
 
-def get_wsjtx_decodes(decodes_file):
+def get_wsjtx_decodes(wav_decodes_file):
     global wsjtx_dicts
-    with open(decodes_file,'r') as f:
+    with open(wav_decodes_file,'r') as f:
         lines = f.readlines()
     for l in lines:
         wsjtx_dicts.append({'cs':'any', 'f':int(l[16:21]), 'msg':l[24:].strip(), 'snr':int(l[8:11]), 'dt':float(l[12:16]), 'td':''})
@@ -146,25 +154,19 @@ def analyse_dictionaries(fig_s, ax_s):
 
     new_matches.sort(key = lambda tup: tup[1].fHz)
     unique = set()
-    with open('data/compare_wsjtx.csv', 'a') as f:
-        for w, c in new_matches:
-            cands_matched.append(c)
-            td = f"{c.decode_completed %60:5.2f}" if c.decode_completed else '     '
-            w.update({'cofreq': w['f'] in wsjtx_cofreqs})
-            msg = ' '.join(c.msg) if c.msg else ''
-            if (msg !='' and msg != w['msg']):
-                c.decode_path = c.decode_path + "ERR"
-            if (c.reprocessed):
-                c.decode_path = c.decode_path + "REPRO"    
-            cofreq = 'cofreq' if w['cofreq'] else "  --  "
-            basics = f"{w['cs']} {w['f']:4d} {cofreq} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.tsecs:4.1f} {w['td']} {td}"
-            if(msg !=''): unique.add(msg)
-            print(f"{basics} {w['msg']:<23} {msg:<23} {c.llr0_quality:3.0f} {c.decode_path}")
-            historic_matches.append((w,c))
-        for c in pyft8_only:
-            basics = f"{c.cyclestart_str} {c.fHz:4d} {"  --  "} {c.fHz:4d} {c.snr:+03d} {c.snr:+03d} {c.tsecs:4.1f} {c.tsecs:4.1f} {0} {0}"
-            msg = ' '.join(c.msg) if c.msg else ''
-            print(f"{basics} {'':<23} {msg:<23} {c.llr0_quality:3.0f} {c.decode_path}")
+    for w, c in new_matches:
+        cands_matched.append(c)
+        td = f"{c.decode_completed %60:5.2f}" if c.decode_completed else '     '
+        w.update({'cofreq': w['f'] in wsjtx_cofreqs})
+        msg = ' '.join(c.msg) if c.msg else ''   
+        cofreq = 'cofreq' if w['cofreq'] else "  --  "
+        basics = f"{w['cs']} {w['f']:4d} {cofreq} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.tsecs:4.1f} {w['td']} {td}"
+        if(msg !=''): unique.add(msg)
+        print(f"{basics} {w['msg']:<23} {msg:<23} {c.llr0_quality:3.0f} {c.decode_path}")
+        historic_matches.append((w,c))
+    for c in pyft8_only:
+        basics = f"{c.cyclestart_str} {c.fHz:4d} {"  --  "} {c.fHz:4d} {c.snr:+03d} {c.snr:+03d} {c.tsecs:4.1f} {c.tsecs:4.1f} {0} {0}"
+        msg = ' '.join(c.msg) if c.msg else ''
 
     print(f"{len(unique)} unique decodes")
     if(not len(unique)):
@@ -177,6 +179,9 @@ def analyse_dictionaries(fig_s, ax_s):
     if(show_success_plot):
         plot_success(fig_s, ax_s)
         plt.pause(0.1)
+
+    with open("results/data/compare_data.pkl","wb") as f:
+        pickle.dump({'matches':historic_matches, 'params':params}, f)
     
 def calibrate_snr():
     import matplotlib.pyplot as plt
@@ -219,13 +224,13 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
 
     if(dataset):
         cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, test_speed_factor = 1, max_cycles = 2, 
-                                      onCandidateRollover = onCandidateRollover, freq_range = freq_range,  hard_decoding = hard_decoding,
-                                      audio_in_wav = dataset+".wav", verbose = True, subtraction = do_subtraction)
+                                      onCandidateRollover = onCandidateRollover, freq_range = freq_range,  
+                                      audio_in_wav = dataset+".wav", verbose = True)
         get_wsjtx_decodes(dataset+".txt")
     else:
         cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None,
-                                      onCandidateRollover = onCandidateRollover, freq_range = freq_range, hard_decoding = hard_decoding,
-                                      input_device_keywords = ['Microphone', 'CODEC'], verbose = True, subtraction = do_subtraction)
+                                      onCandidateRollover = onCandidateRollover, freq_range = freq_range, 
+                                      input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
         threading.Thread(target=wsjtx_all_tailer, args = (all_file,cycle_manager,)).start()
 
     fig_s, ax_s = None, None
@@ -265,16 +270,16 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
     #calibrate_snr()
     show_matched_cands()
 
-hard_decoding = False
-do_subtraction = True
 show_waterfall = False
 show_success_plot = True
     
 #compare("data/210703_133430", [100,3100])
 
-compare(None, [100,3100])
+#compare(None, [100,3100])
 
-    
+fig_s, ax_s = plt.subplots( figsize=(10,6))
+plot_success(fig_s, ax_s, 'compare_data.pkl')
+plt.show()
 
 
 

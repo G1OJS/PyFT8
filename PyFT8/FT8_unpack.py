@@ -25,7 +25,7 @@ def unpack_ft8_c28(c28, p1):
     for d in divisors:
         i, n = divmod(n, d)
         indices.append(i)
-    callsign = ''.join(t[i] for t, i in zip(charmap, indices)).lstrip()
+    callsign = ''.join(t[i] for t, i in zip(charmap, indices)).strip()
     if(p1):
         callsign = callsign + "/P"
     return callsign.strip()
