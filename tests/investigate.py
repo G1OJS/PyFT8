@@ -70,8 +70,8 @@ def get_spectrum(audio_samples, time_offset, phase_global, phase_per_symbol, max
 
 def create_symbols(msg):
     msg = msg.split(" ")
-    c28a = pack_ft8_c28(msg[0]) 
-    c28b = pack_ft8_c28(msg[1])
+    c28a, p1a = pack_ft8_c28(msg[0]) 
+    c28b, p1b = pack_ft8_c28(msg[1])
     g15, ir = pack_ft8_g15(msg[2])
     i3 = 1
     n3 = 0
@@ -221,42 +221,7 @@ def get_syncs(f0_idx):
         syncs.append(best)
     return syncs
 
-def get_syncs_2D():
-    costas=[3,1,4,0,6,5,2]
 
-    pf = get_spectrum(audio_samples, 0, 0, 0, nSyms = int(3/0.16) + len(costas))
-    
-    csync = np.zeros((7,8), np.float32)
-    for sym_idx, tone in enumerate(costas):
-        csync[sym_idx, :] = -1/7
-        csync[sym_idx, tone] = 1.0
-
-    csync = pf[3:30, 403:433+8].copy()
-
-    from scipy import signal
-    csync -= np.mean(csync)
-    p = signal.correlate(pf, csync)
-    print(pf.shape)
-    print(p.shape)
-    
-    t0, f0 = np.unravel_index(np.argmax(p), p.shape)
-    show_spectrum(pf)
-
-    show_spectrum(p)
-    return t0, f0
-
-
-def single_combi_synced():
-    fig, axs = plt.subplots(1, 2, figsize =  (5,10))
-    plt.ion()
-    t0_idx, f0_idx = get_syncs_2D()
-    t0 = t0_idx * 0.16
-    print(t0_idx, f0_idx)
-    pf = get_spectrum(audio_samples, t0, 0, 0)
-    show_sig(axs[0],axs[1], pf, f0_idx, 0, 0)
-    plt.pause(0.1)    
-    
-    
 
 #=======================================================
 # investigation section
@@ -269,6 +234,5 @@ audio_samples = read_wav(WAV_FILE)
 
 
 
-#grid_t0df0(signal_info_list[1], -1,1)
+grid_t0df0(signal_info_list[1], -1,1)
 
-single_combi_synced()

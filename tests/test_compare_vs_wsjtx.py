@@ -157,6 +157,10 @@ def analyse_dictionaries(fig_s, ax_s):
             if(msg !=''): unique.add(msg)
             print(f"{basics} {w['msg']:<23} {msg:<23} {c.llr0_quality:3.0f} {c.flags} {c.decode_path}")
             historic_matches.append((w,c))
+        for c in pyft8_only:
+            basics = f"{c.cyclestart_str} {c.fHz:4d} {"  --  "} {c.fHz:4d} {c.snr:+03d} {c.snr:+03d} {c.tsecs:4.1f} {c.tsecs:4.1f} {0} {0}"
+            msg = ' '.join(c.msg) if c.msg else ''
+            print(f"{basics} {'':<23} {msg:<23} {c.llr0_quality:3.0f} {c.flags} {c.decode_path}")
 
     print(f"{len(unique)} unique decodes")
     if(not len(unique)):

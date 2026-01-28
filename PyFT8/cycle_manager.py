@@ -21,10 +21,10 @@ OSD_CONTROL = [(470, 30), (460, 20)]
 MIN_SNR_METRIC = 0.15
 
 MIN_SNR_SUB = -10
-SUB_METH = 'complex'
+SUB_METH = 'power'
 SUBTRACTION_FREQ_LATTITUDE_Hz = 15
-SUBTRACTION_TIME_OFFSET = 5
-MAX_SUBTRACTIONS = 3
+SUB_HOP_OFFSET = 3
+MAX_SUBTRACTIONS = 6
 
 def safe_pc(x,y):
     return 100*x/y if y>0 else 0
@@ -83,7 +83,7 @@ class Spectrum:
             c.cyclestart_str = cyclestart_str  
             c.f0_idx = f0_idx
             c.fine_freq_idxs = c.f0_idx + np.array(range(24))
-            c.fHz = int((c.f0_idx + self.fbins_pertone // 2) * self.audio_in.fft_df)
+            c.fHz = int((c.f0_idx + self.fbins_pertone//2)  * self.audio_in.fft_df)
             p = pgrid[:, c.fine_freq_idxs]
             max_pwr = np.max(p)
             pnorm = p / max_pwr
@@ -189,7 +189,7 @@ class Candidate:
         qual_too_low = self.llr0_quality < MIN_LLR0_QUALITY
         self._record_state("I", final = qual_too_low)
 
-    def progress_decode(self, osd_qual_range = [MIN_LLR0_QUALITY,470]):
+    def progress_decode(self):
         
         if(self.ncheck == 0):
             codeword_bits = (self.llr > 0).astype(int).tolist()
@@ -245,9 +245,9 @@ class Cycle_manager():
         self.cands_list = []
         self.onSuccess = onSuccess
         self.onOccupancy = onOccupancy
-        self.duplicate_filter = set()
+        self.output_duplicate_filter = set()
+        self.subtract_duplicate_filter = set()
         self.hops_percycle = self.spectrum.audio_in.hops_percycle
-
         self.audio_out = AudioOut
         self.audio_started = False
         self.cycle_seconds = sigspec.cycle_seconds
@@ -370,17 +370,19 @@ class Cycle_manager():
             with_message = [c for c in self.cands_list if c.msg]
             for c in with_message:
                 c.dedupe_key = c.cyclestart_str+" "+' '.join(c.msg)
-                if(not c.dedupe_key in self.duplicate_filter):
-                    self.duplicate_filter.add(c.dedupe_key)
+                if(not c.dedupe_key in self.output_duplicate_filter):
+                    self.output_duplicate_filter.add(c.dedupe_key)
                     c.call_a, c.call_b, c.grid_rpt = c.msg[0], c.msg[1], c.msg[2]
                     if(self.onSuccess): self.onSuccess(c)
  
             if(self.subtraction and n_subtracted < MAX_SUBTRACTIONS):
-                to_subtract = [c for c in with_message if c.snr > MIN_SNR_SUB and not c.subtracted]
-                self.subtraction_done_this_cycle = True
+                to_subtract = [c for c in with_message if c.snr > MIN_SNR_SUB and not c.dedupe_key in self.subtract_duplicate_filter]
                 to_subtract.sort(key = lambda c: -c.snr)
                 for c in to_subtract[:1]:
                     c.subtracted = True
+                    self.subtract_duplicate_filter.add(c.dedupe_key)
+                    if(self.verbose):
+                        self.tlog(f"[Cycle manager] Subtract {c.msg} at {c.fHz}Hz (index {c.f0_idx}) / {c.tsecs:5.2f}s")
                     self.subtract_spectrum(c)
                     n_subtracted += 1
                     for_2nd_look = self.spectrum.search([c.fHz-SUBTRACTION_FREQ_LATTITUDE_Hz, c.fHz+SUBTRACTION_FREQ_LATTITUDE_Hz], self.cyclestart_str(time.time()))
@@ -396,9 +398,12 @@ class Cycle_manager():
         from PyFT8.FT8_encoder import pack_message
         c1, c2, grid_rpt = c.msg
         symbols = pack_message(c1, c2, grid_rpt)
+     #   if(c1 == "WM3PEN"):
+     #       print("3140652733363401044634242717463525533140652071236767430424106143434170503140652")
+     #       print(''.join([str(t) for t in symbols]))
         audio_data = self.audio_out.create_ft8_wave(self, symbols, f_base = c.fHz)
-        freq_idxs = np.array(range(c.f0_idx - 2, c.f0_idx + 26))
-        self.spectrum.audio_in.subtract(audio_data, c.h0_idx + SUBTRACTION_TIME_OFFSET, freq_idxs, SUB_METH)
+        freq_idxs = np.array(range(c.f0_idx - 1, c.f0_idx + 25))
+        self.spectrum.audio_in.subtract(audio_data, c.h0_idx + SUB_HOP_OFFSET, freq_idxs, SUB_METH)
 
 
 

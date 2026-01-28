@@ -47,8 +47,6 @@ class AudioIn:
     def subtract(self, audio_data, h0_idx, freq_idxs, meth = 'complex'):
         audio_ptr = 0
         grid_ptr = h0_idx
-     #   hop_indexes = np.array(range(h0_idx , h0_idx + self.hops_persymb * 79))
-     #   sum_power = np.sum(np.abs(self._zgrid_main[hop_indexes, :][:, freq_idxs])**2)
         while(audio_ptr + self.fft_len < len(audio_data)):
             x = audio_data[audio_ptr: audio_ptr + self.fft_len] * self.fft_window
             gen_z = np.fft.rfft(x)[:self.nFreqs][freq_idxs]
@@ -62,12 +60,12 @@ class AudioIn:
                 self._zgrid_main[grid_ptr][freq_idxs] = new_z
                 self.pgrid_main[grid_ptr][freq_idxs] = new_z.real*new_z.real + new_z.imag*new_z.imag 
             else:
-                new_p = ex_p - (gen_z.real*gen_z.real + gen_z.imag * gen_z.imag) * ex_p[ex_max_idx]
+                gen_p = gen_z.real*gen_z.real + gen_z.imag * gen_z.imag
+                new_p = ex_p - gen_p * ex_p[ex_max_idx] / gen_p[gen_max_idx]
+                self.pgrid_main[grid_ptr][freq_idxs] = new_p
                 self.pgrid_main[grid_ptr][freq_idxs] = np.clip(new_p, 0.001, None)
             grid_ptr += 1
             audio_ptr += self.samples_perhop
-     #   reduction = sum_power / np.sum(np.abs(self._zgrid_main[hop_indexes, :][:, freq_idxs])**2)
-     #   print(10*np.log10(reduction))
 
     def do_fft(self):
         t = time.time()
