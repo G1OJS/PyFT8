@@ -15,16 +15,16 @@ import wave
 import os
 
 params = {
-'MIN_LLR0_QUALITY': 415,
+'MIN_LLR0_QUALITY': 410,
 'BITFLIP_CONTROL': (28, 45),
-'LDPC_CONTROL': (45, 7),
-'OSD_CONTROL': [(500, 50), (460, 20)],
-'MIN_RATIO_HARD_DECODE': 0.15,
+'LDPC_CONTROL': (35, 7),
+'OSD_CONTROL': [(460, 50), (430, 20)],
+'MIN_RATIO_HARD_DECODE': 0.25,
 'MIN_SNR_SUB': 0,
 'SUB_METH':'power',
-'SUBTRACTION_FREQ_LATTITUDE_Hz': 50,
+'SUBTRACTION_FREQ_LATTITUDE_Hz': 2,
 'SUB_HOP_OFFSET': 3,
-'MAX_SUBTRACTIONS': 0,
+'MAX_SUBTRACTIONS': 3,
 }
 
 def safe_pc(x,y):
@@ -381,7 +381,7 @@ class Cycle_manager():
                     if(self.onSuccess): self.onSuccess(c)
  
             if(len(self.subtract_duplicate_filter) < params['MAX_SUBTRACTIONS']):
-                to_subtract = [c for c in with_message if c.snr > MIN_SNR_SUB
+                to_subtract = [c for c in with_message if c.snr > params['MIN_SNR_SUB']
                                and not c.dedupe_key in self.subtract_duplicate_filter]
                 to_subtract.sort(key = lambda c: -c.snr)
                 for c in to_subtract[:1]:
