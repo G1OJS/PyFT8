@@ -381,12 +381,12 @@ class Cycle_manager():
                 for c in to_subtract[:1]:
                     c.subtracted = True
                     self.subtract_duplicate_filter.add(c.dedupe_key)
-                    if(self.verbose):
-                        self.tlog(f"[Cycle manager] Subtract {c.msg} at {c.fHz}Hz (index {c.f0_idx}) / {c.tsecs:5.2f}s")
+                 #   if(self.verbose):
+                 #       self.tlog(f"[Cycle manager] Subtract {c.msg} at {c.fHz}Hz (index {c.f0_idx}) / {c.tsecs:5.2f}s")
                     self.subtract_spectrum(c)
                     n_subtracted += 1
                     for_2nd_look = self.spectrum.search([c.fHz-SUBTRACTION_FREQ_LATTITUDE_Hz, c.fHz+SUBTRACTION_FREQ_LATTITUDE_Hz], self.cyclestart_str(time.time()))
-                    freqs_to_avoid = [c.f0_idx for c in self.cands_list if c.reprocessed or c.subtracted or c.msg or not c.decode_completed]
+                    freqs_to_avoid = [c.f0_idx for c in self.cands_list if c.reprocessed or not c.decode_completed]
                     for_2nd_look = [c for c in for_2nd_look if not c.f0_idx in freqs_to_avoid]
                     for c in for_2nd_look:
                         c.reprocessed = time.time()

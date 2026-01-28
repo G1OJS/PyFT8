@@ -120,7 +120,7 @@ def onCandidateRollover(candidates):
 
 def analyse_dictionaries(fig_s, ax_s):
     global cands_matched, new_matches
-    time.sleep(2)
+    time.sleep(5)
 
     new_matches = [(w, c) for w in wsjtx_dicts for c in pyft8_cands if abs(w['f'] - c.fHz) < 3
                and (w['cs'] == c.cyclestart_str or w['cs']=='any')]

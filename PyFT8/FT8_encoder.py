@@ -7,10 +7,6 @@ generator_matrix_rows = ["8329ce11bf31eaf509f27fc",  "761c264e25c259335493132", 
 kGEN = np.array([int(row,16)>>1 for row in generator_matrix_rows])
 
 def pack_message(c1, c2, gr):
-    for c in [c1,c2]:
-        if(re.search(r"(?<!\d)\d{2}", c)):
-           print(f"Can't encode callsign with two digits {c}")
-           return
     c28a = pack_ft8_c28(c1)
     c28b = pack_ft8_c28(c2)
     g15, ir = pack_ft8_g15(gr)
@@ -33,7 +29,11 @@ def pack_ft8_c28(call):
         call = call + '  '
     charmap = [' ' + digs + ltrs, digs + ltrs, digs + ' ' * 17] + [' ' + ltrs] * 3
     factors = np.array([36*10*27**3, 10*27**3, 27**3, 27**2, 27, 1])
-    indices = np.array([cmap.index(call[i]) for i, cmap in enumerate(charmap)])
+    try:
+        indices = np.array([cmap.index(call[i]) for i, cmap in enumerate(charmap)])
+    except:
+        print(f"Couldn't encode {call}")
+        return 0
     return int(np.sum(factors * indices) + 2_063_592 + 4_194_304)
 
 def pack_ft8_g15(txt):
