@@ -89,6 +89,7 @@ def plot_success(fig, ax, load_file = False):
     params2 = dict(list(params.items())[len(params)//2:])
     plt.text(0,1.05, params1, fontsize = 6, transform = ax.transAxes)
     plt.text(0,1.02, params2, fontsize = 6, transform = ax.transAxes)
+    plt.savefig("compare_results.png")
 
 def wsjtx_all_tailer(all_file, cycle_manager):
     global wsjtx_dicts

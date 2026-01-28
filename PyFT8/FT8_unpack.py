@@ -44,3 +44,32 @@ def unpack_ft8_g15(g15, ir):
     R = '' if (ir == 0) else 'R'
     return f"{R}{snr:+03d}"
 
+def ihashcall(call, m):
+    chars = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ/"
+
+    while len(call) < 11:
+        call = call + " "
+
+    if sys.version_info.major >= 3:
+        x = 0
+        for c in call[0:11]:
+            j = chars.find(c)
+            x = 38*x + j
+            x = x & ((int(1) << 64) - 1)
+        x = x & ((1 << 64) - 1)
+        x = x * 47055833459
+        x = x & ((1 << 64) - 1)
+        x = x >> (64 - m)
+    else:
+        x = long(0)
+        for c in call[0:11]:
+            j = chars.find(c)
+            x = 38*x + j
+            x = x & ((long(1) << 64) - 1)
+        x = x & ((long(1) << 64) - 1)
+        x = x * long(47055833459)
+        x = x & ((long(1) << 64) - 1)
+        x = x >> (64 - m)
+    return x
+
+
