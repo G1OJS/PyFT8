@@ -8,7 +8,7 @@ kGEN = np.array([int(row,16)>>1 for row in generator_matrix_rows])
 
 
 def pack_message(c1, c2, gr):
-    symbols = _pack_message(c1, c2, gr)
+    symbols, bits77 = _pack_message(c1, c2, gr)
     return symbols
 
 def _pack_message(c1, c2, gr):
@@ -17,8 +17,10 @@ def _pack_message(c1, c2, gr):
     g15, ir = pack_ft8_g15(gr)
     i3 = 1
     n3 = 0
-    bits77 = (c28a<<28+1+2+15+3) | (c28b<<2+15+3)|(ir<<15+3)|(g15<< 3)|(i3)
-    symbols, bits174_int, bits91_int, bits14_int, bits83_int = encode_bits77(bits77)
+    symbols, bits77 = [], 0
+    if(c28a>=0 and c28b>=0):
+        bits77 = (c28a<<28+1+1+1+15+3) | (p1a<<28+1+1+15+3) | (c28b<<1+1+15+3) | (p1b <<1+15+3) | (ir<<15+3) | (g15<< 3) | (i3)
+        symbols, bits174_int, bits91_int, bits14_int, bits83_int = encode_bits77(bits77)
     return symbols, bits77
 
 def pack_ft8_c28(call):
@@ -43,7 +45,7 @@ def pack_ft8_c28(call):
         indices = np.array([cmap.index(call[i]) for i, cmap in enumerate(charmap)])
     except:
         print(f"Couldn't encode {call}")
-        return 0, 0 
+        return -1, 0 
     c28 =  int(np.sum(factors * indices) + 2_063_592 + 4_194_304)
     return c28, p1
 
@@ -110,10 +112,11 @@ def int_to_bitsLE(n, width):
     return [ (n >> (width - 1 - i)) & 1 for i in range(width) ]
 
 def loopback_test():
-    msgs = [("G1OJS/P", "G1OJS/P", "IO90"),("WM3PEN","EA6VQ","-08"),("E67A/P","EA6VQ","-08"),]
+    msgs = [("G1OJS/P", "G1OJS/P", "IO90"),("WM3PEN","EA6VQ","-08"),("E67A/P","EA6VQ","-08"),("CQ","CT7ARQ/P","IN51")]
     for msg in msgs:
         symbols, bits77 = _pack_message(*msg)
         from PyFT8.FT8_unpack import FT8_unpack
         print(msg, FT8_unpack(int_to_bitsLE(bits77,77)))
+        print(''.join([str(s) for s in symbols]))
 
-loopback_test()
+#loopback_test()

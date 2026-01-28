@@ -385,8 +385,8 @@ class Cycle_manager():
                                and not c.dedupe_key in self.subtract_duplicate_filter]
                 to_subtract.sort(key = lambda c: -c.snr)
                 for c in to_subtract[:1]:
-                  #  if(self.verbose):
-                  #      self.tlog(f"[Cycle manager] Subtract {c.msg} at {c.fHz}Hz (index {c.f0_idx}) / {c.tsecs:5.2f}s")
+                    if(self.verbose):
+                        self.tlog(f"[Cycle manager] Subtract {c.msg} at {c.fHz}Hz (index {c.f0_idx}) / {c.tsecs:5.2f}s")
                     self.subtract_spectrum(c)
                     self.subtract_duplicate_filter.add(c.dedupe_key)
                     c.subtracted = True
@@ -407,9 +407,10 @@ class Cycle_manager():
         from PyFT8.FT8_encoder import pack_message
         c1, c2, grid_rpt = c.msg
         symbols = pack_message(c1, c2, grid_rpt)
-        audio_data = self.audio_out.create_ft8_wave(self, symbols, f_base = c.fHz)
-        freq_idxs = np.array(range(c.f0_idx, c.f0_idx + 24))
-        self.spectrum.audio_in.subtract(audio_data, c.h0_idx + params['SUB_HOP_OFFSET'], freq_idxs, params['SUB_METH'])
+        if(any(symbols)):
+            audio_data = self.audio_out.create_ft8_wave(self, symbols, f_base = c.fHz)
+            freq_idxs = np.array(range(c.f0_idx, c.f0_idx + 24))
+            self.spectrum.audio_in.subtract(audio_data, c.h0_idx + params['SUB_HOP_OFFSET'], freq_idxs, params['SUB_METH'])
 
 
 
