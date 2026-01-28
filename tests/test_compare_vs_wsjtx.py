@@ -17,9 +17,10 @@ do_analysis = False
 def plot_success(fig, ax):
     
     py      = [[],              [],             [],         [],         [],                 [],         [],         []          ]
+    pyrepro = [[],              [],             [],         [],         [],                 [],         [],         []          ]
     pycols  = ['black',         'lime',         'yellow',   'orange',   'teal',             'green',    'white',    'red'       ]
     pylabs  = ['Hard t+8 sec',  'Immediate',    'OSD2',     'OSD1',     'LDPC &Bitflip',    'LDPC',     'Timeouts', 'Incorrect' ]
-    substrs = ['H00',           'I00',          'P00'       'O00',      'A',                'L']
+    substrs = ['H00',           'I00',          'P00'       'O00',      'A',                'L',        'TIMEOUT',         'ERR']
 
   #  bins = [350 + 5*b for b in range(50)]
     bins = [-30 + 1*b for b in range(60)]
@@ -29,26 +30,24 @@ def plot_success(fig, ax):
     pydecs_correct = 0
     pydecs_subs = 0
     for w, c in historic_matches:
-        Hz, cofreq, wsnr, q, nc, flags, dpath =c.fHz, w['cofreq'], w['snr'], c.llr0_quality, c.ncheck0, c.flags, c.decode_path
-        q = int(wsnr)
-        if(not "#" in dpath): py[6].append(q)
-        if("C00#" in dpath):
-            pydecs +=1
-            for i, s in enumerate(substrs):
-                if(s in dpath):
-                    py[i].append(q)
-                    break
-            if(not "i" in flags):
-                pydecs_correct +=1
-            if('r' in flags):
-                pydecs_subs += 1
-            if("i" in flags):
-                py[7].append(q)
-      
-        if(cofreq):
+        q = int(w['snr'])
+        if(w['cofreq']):
             ws[1].append(q)
         else:
             ws[0].append(q)
+        if(not "#" in c.decode_path):
+            c.decode_path = c.decode_path + "TIMEOUT"
+        if("C00#" in c.decode_path):
+            pydecs +=1
+            for i, s in enumerate(substrs):
+                if(s in c.decode_path):
+                    if(s != "ERR"): pydecs_correct +=1
+                    if('REPRO' in c.decode_path):
+                        pyrepro[i].append(q)
+                        pydecs_subs += 1
+                    else:
+                        py[i].append(q)
+                    break                
 
     if(pydecs ==0):
         return
@@ -58,9 +57,12 @@ def plot_success(fig, ax):
     wsjtx = ax.hist(ws, bins = bins,  rwidth = 1.0, label = 'All',
             stacked = True, color = ['green', 'orange'], alpha = 0.2, lw=2, edgecolor = 'grey')
 
-    pyft8 = ax.hist(py, bins = bins, rwidth = 0.5, 
+    pyft8 = ax.hist(py, bins = bins, rwidth = 0.8, 
             stacked = True, alpha = 0.7, lw=1, edgecolor = 'grey', color = pycols)
 
+    pyft8_reprocessed = ax.hist(pyrepro, bins = bins, rwidth = 0.2, 
+            stacked = True, alpha = 1, lw=1, edgecolor = 'black', color = pycols)
+    
     legwidth = 0.18
     wsjtx_legend = ax.legend(handles=[wsjtx[2][0], wsjtx[2][1]], labels = ['isolated','ovelapping'],
             loc='upper right', bbox_to_anchor=(1-legwidth,1, legwidth,0), mode='expand',
@@ -150,17 +152,19 @@ def analyse_dictionaries(fig_s, ax_s):
             td = f"{c.decode_completed %60:5.2f}" if c.decode_completed else '     '
             w.update({'cofreq': w['f'] in wsjtx_cofreqs})
             msg = ' '.join(c.msg) if c.msg else ''
-            c.incorrect = (msg !='' and msg != w['msg'])
-            c.flags = f"{'-' if c.subtracted else ' '}{'r' if c.reprocessed else ' '}{'i' if c.incorrect else ' '}"
+            if (msg !='' and msg != w['msg']):
+                c.decode_path = c.decode_path + "ERR"
+            if (c.reprocessed):
+                c.decode_path = c.decode_path + "REPRO"    
             cofreq = 'cofreq' if w['cofreq'] else "  --  "
             basics = f"{w['cs']} {w['f']:4d} {cofreq} {c.fHz:4d} {w['snr']:+03d} {c.snr:+03d} {w['dt']:4.1f} {c.tsecs:4.1f} {w['td']} {td}"
             if(msg !=''): unique.add(msg)
-            print(f"{basics} {w['msg']:<23} {msg:<23} {c.llr0_quality:3.0f} {c.flags} {c.decode_path}")
+            print(f"{basics} {w['msg']:<23} {msg:<23} {c.llr0_quality:3.0f} {c.decode_path}")
             historic_matches.append((w,c))
         for c in pyft8_only:
             basics = f"{c.cyclestart_str} {c.fHz:4d} {"  --  "} {c.fHz:4d} {c.snr:+03d} {c.snr:+03d} {c.tsecs:4.1f} {c.tsecs:4.1f} {0} {0}"
             msg = ' '.join(c.msg) if c.msg else ''
-            print(f"{basics} {'':<23} {msg:<23} {c.llr0_quality:3.0f} {c.flags} {c.decode_path}")
+            print(f"{basics} {'':<23} {msg:<23} {c.llr0_quality:3.0f} {c.decode_path}")
 
     print(f"{len(unique)} unique decodes")
     if(not len(unique)):
@@ -204,7 +208,7 @@ def show_matched_cands(dBrange = 30):
                       cmap="inferno", interpolation="none", alpha = 0.8)       
             axs[i].xaxis.set_major_locator(ticker.NullLocator())
             axs[i].yaxis.set_major_locator(ticker.NullLocator())
-            axs[i].set_ylabel(f"{c.msg} {'SUB' if c.subtracted else ''} {'REP' if c.reprocessed else ''}", fontsize=8)
+            axs[i].set_ylabel(f"{c.msg} {'REP' if c.reprocessed else ''}", fontsize=8)
     plt.tick_params(labelleft=False)
     plt.tight_layout()
     plt.show()

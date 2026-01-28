@@ -40,8 +40,8 @@ class AudioIn:
         self.wav_finished = False
         self.hoptimes = []
         self.hops_percycle = int(spectrum.sigspec.cycle_seconds * self.symbol_rate * spectrum.hops_persymb)
-        self.pgrid_main = np.zeros((2 * self.hops_percycle, self.nFreqs), dtype = np.float32)
-        self._zgrid_main = np.zeros((2 * self.hops_percycle, self.nFreqs), dtype = np.complex64)
+        self.pgrid_main = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)
+        self._zgrid_main = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.complex64)
         self.grid_main_ptr = 0
         
     def subtract(self, audio_data, h0_idx, freq_idxs, meth = 'complex'):
@@ -64,8 +64,10 @@ class AudioIn:
                 new_p = ex_p - gen_p * ex_p[ex_max_idx] / gen_p[gen_max_idx]
                 self.pgrid_main[grid_ptr][freq_idxs] = new_p
                 self.pgrid_main[grid_ptr][freq_idxs] = np.clip(new_p, 0.001, None)
-            grid_ptr += 1
             audio_ptr += self.samples_perhop
+            grid_ptr += 1
+            if(grid_ptr >= self.hops_percycle):
+                return
 
     def do_fft(self):
         t = time.time()
@@ -75,7 +77,7 @@ class AudioIn:
         self.hoptimes.append(t)
         self._zgrid_main[self.grid_main_ptr] = z
         self.pgrid_main[self.grid_main_ptr] = p
-        self.grid_main_ptr = (self.grid_main_ptr + 1) % (2 * self.hops_percycle)
+        self.grid_main_ptr = (self.grid_main_ptr + 1) % self.hops_percycle
 
     def start_wav(self, wav_path, hop_dt):
         threading.Thread(target = self.play_wav, args = (wav_path, hop_dt), daemon=True).start()
