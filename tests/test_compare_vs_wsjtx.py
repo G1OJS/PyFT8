@@ -60,10 +60,10 @@ def plot_success(fig, ax, load_file = False):
 
     ax.cla()
 
-    wsjtx = ax.hist(ws,   rwidth = 1.0, label = 'All',
+    wsjtx = ax.hist(ws, bins = bins,  rwidth = 1.0, label = 'All',
             stacked = True, color = ['green', 'orange'], alpha = 0.4, lw=0.5, edgecolor = 'grey')
 
-    pyft8 = ax.hist(py,rwidth = 0.5, 
+    pyft8 = ax.hist(py, bins = bins, rwidth = 0.5, 
             stacked = True, alpha = 0.7, lw=.4, edgecolor = 'grey', color = pycols)
     
     legwidth = 0.18
@@ -77,6 +77,7 @@ def plot_success(fig, ax, load_file = False):
     ax.add_artist(pyft8_legend)
 
     ax.set_xlabel("Signal quality = wsjt-x reported snr")
+    ax.set_xlim(-30,30)
     ax.set_ylabel(f"Number of decodes")
 
     wdecs = len(ws[0]) + len(ws[1])

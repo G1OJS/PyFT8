@@ -24,7 +24,7 @@ params = {
 'SUB_METH':'power',
 'SUBTRACTION_FREQ_LATTITUDE_Hz': 25,
 'SUB_HOP_OFFSET': 3,
-'MAX_SUBTRACTIONS': 6,
+'MAX_SUBTRACTIONS': 0
 }
 
 def safe_pc(x,y):
@@ -381,7 +381,9 @@ class Cycle_manager():
                     if(self.onSuccess): self.onSuccess(c)
  
             if(len(self.subtract_duplicate_filter) < params['MAX_SUBTRACTIONS']):
-                to_subtract = [c for c in with_message if c.snr > params['MIN_SNR_SUB']
+                # don't subtract a signal that's about to get overwritten
+                ptr = self.spectrum.audio_in.grid_main_ptr 
+                to_subtract = [c for c in with_message if c.snr > params['MIN_SNR_SUB'] and not (0 < ptr < c.last_payload_hop)
                                and not c.dedupe_key in self.subtract_duplicate_filter]
                 to_subtract.sort(key = lambda c: -c.snr)
                 for c in to_subtract[:1]:
