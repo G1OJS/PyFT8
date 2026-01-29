@@ -84,8 +84,8 @@ def plot_success(fig, ax, load_file = False):
     ax.set_ylabel(f"Number of decodes")
 
     wdecs = len(ws[0]) + len(ws[1])
-    pydecs = len(py[0])+len(py[1])
-    pydecs_corr = pydecs - len(py[2])
+    pydecs = len(py[0])+len(py[1])+len(py[2])
+    pydecs_corr = pydecs - len(py[3])
     pycorr_pc = f"{int(100*pydecs_corr/wdecs)}"
     pytot_pc = f"{int(100*pydecs/wdecs)}"
     fig.suptitle(f"PyFT8 {pydecs} vs WSJTX. {wdecs} decodes, {pytot_pc}% ({pycorr_pc}% correct) to PyFT8")
@@ -278,9 +278,9 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
 show_waterfall = False
 show_success_plot = True
     
-compare("data/210703_133430", [100,3100])
+#compare("data/210703_133430", [100,3100])
 
-#compare(None, [100,3100])
+compare(None, [100,3100])
 
 #fig_s, ax_s = plt.subplots( figsize=(10,6))
 #plot_success(fig_s, ax_s, 'compare_data.pkl')

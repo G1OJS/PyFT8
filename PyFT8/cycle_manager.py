@@ -17,8 +17,8 @@ import os
 params = {
 'MIN_LLR0_SD': 5,
 'BITFLIP_CONTROL': (28, 45),
-'LDPC_CONTROL': (65, 7),
-'OSD_CONTROL': [(14, 60), (8, 20)]
+'LDPC_CONTROL': (45, 5),
+'OSD_CONTROL': [(13, 50), (6, 20)]
 }
 
 def safe_pc(x,y):
