@@ -43,6 +43,31 @@ class AudioIn:
         self.pgrid_main = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)
         self._zgrid_main = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.complex64)
         self.grid_main_ptr = 0
+        
+    def subtract(self, audio_data, h0_idx, freq_idxs, meth = 'complex'):
+        audio_ptr = 0
+        grid_ptr = h0_idx
+        while(audio_ptr + self.fft_len < len(audio_data)):
+            x = audio_data[audio_ptr: audio_ptr + self.fft_len] * self.fft_window
+            gen_z = np.fft.rfft(x)[:self.nFreqs][freq_idxs]
+            gen_max_idx = np.argmax(np.abs(gen_z))
+            gen_z = gen_z / gen_z[gen_max_idx]
+            ex_p = self.pgrid_main[grid_ptr][freq_idxs]
+            ex_max_idx = np.argmax(ex_p)
+            if(meth == 'complex'):
+                ex_z = self._zgrid_main[grid_ptr][freq_idxs]
+                new_z = ex_z - gen_z * ex_z[ex_max_idx]
+                self._zgrid_main[grid_ptr][freq_idxs] = new_z
+                self.pgrid_main[grid_ptr][freq_idxs] = new_z.real*new_z.real + new_z.imag*new_z.imag 
+            else:
+                gen_p = gen_z.real*gen_z.real + gen_z.imag * gen_z.imag
+                new_p = ex_p - gen_p * ex_p[ex_max_idx] / gen_p[gen_max_idx]
+                self.pgrid_main[grid_ptr][freq_idxs] = new_p
+                self.pgrid_main[grid_ptr][freq_idxs] = np.clip(new_p, 0.001, None)
+            audio_ptr += self.samples_perhop
+            grid_ptr += 1
+            if(grid_ptr >= self.hops_percycle):
+                return
 
     def do_fft(self):
         t = time.time()

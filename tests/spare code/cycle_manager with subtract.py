@@ -15,10 +15,16 @@ import wave
 import os
 
 params = {
-'MIN_LLR0_SD': 5,
+'MIN_LLR0_QUALITY': 415,
 'BITFLIP_CONTROL': (28, 45),
-'LDPC_CONTROL': (65, 7),
-'OSD_CONTROL': [(14, 60), (8, 20)]
+'LDPC_CONTROL': (35, 7),
+'OSD_CONTROL': [(490, 50), (430, 5)],
+'MIN_RATIO_HARD_DECODE': 0.2,
+'MIN_SNR_SUB': -10,
+'SUB_METH':'power',
+'SUBTRACTION_FREQ_LATTITUDE_Hz': 20,
+'SUB_HOP_OFFSET': 3,
+'MAX_SUBTRACTIONS': 6
 }
 
 def safe_pc(x,y):
@@ -92,18 +98,27 @@ class Candidate:
         self.ldpc = LdpcDecoder()
         self.available_hops = 0
         self.dedupe_key = ""
-        self.demap_completed = False
-        self.decode_completed = False
+        self.pgrid_copy = None
+        self.subtracted = False
+        self.reprocessed = False
+        self.hard_decode_started, self.hard_decode_finished, self.demap_started, self.demap_completed, self.decode_completed = False, False, False, False, False
         s = {'h0_idx': 0, 'score': 0, 'tsecs': 0}
         self.syncs = [s,s]
         self.tsecs = 0
         self.decode_path = ""
         self.ncheck, self.ncheck0 = 99, 99
-        self.llr, self.llr0 = None, None
-        self.llr0_sd = 0
+        self.llr = None
+        self.llr0_quality = 0
         self.snr = -30
         self.p_dB = None
-     
+
+
+    def copy_spectrum(self, spectrum):
+        self.pgrid_copy = spectrum.audio_in.pgrid_main[:, self.fine_freq_idxs].copy()
+
+    def get_spectrum(self, spectrum):
+        return self.pgrid_copy if(self.pgrid_copy is not None) else spectrum.audio_in.pgrid_main[:, self.fine_freq_idxs]
+        
     def _record_state(self, actor_code, final = False):
         finalcode = "#" if final else ";"
         self.decode_path = self.decode_path + f"{actor_code}{self.ncheck:02d}{finalcode}"
@@ -116,13 +131,9 @@ class Candidate:
 
     def _get_llr(self, spectrum, hops, target_params = (3.3, 3.7)):
         centrebins = [t * spectrum.fbins_pertone for t in range(8)]
-        self.pgrid = spectrum.audio_in.pgrid_main[:, self.fine_freq_idxs]
+        self.pgrid = self.get_spectrum(spectrum)
         p = self.pgrid[hops, :][:, centrebins]
-        pmax = np.max(p)
-        if(pmax ==0):
-            return (None, None, None, None)
-        p /= pmax
-        p = np.clip(p, 1e-8, 1.0)
+        p = np.clip(p, np.max(p)/1e8, None)
         p_dB = 10*np.log10(p)
         llra = np.max(p_dB[:, [4,5,6,7]], axis=1) - np.max(p_dB[:, [0,1,2,3]], axis=1)
         llrb = np.max(p_dB[:, [2,3,4,7]], axis=1) - np.max(p_dB[:, [0,1,5,6]], axis=1)
@@ -130,29 +141,57 @@ class Candidate:
         llr0 = np.column_stack((llra, llrb, llrc))
         llr0 = llr0.ravel()
         snr = self._get_snr(p_dB)
-        llr0_sd = np.std(llr0)
-        if(llr0_sd > params['MIN_LLR0_SD']):
-            llr0 = target_params[0] * llr0 / llr0_sd
+        std = np.std(llr0)
+        if(std > 0):
+            llr0 = target_params[0] * llr0 / std
         llr0 = np.clip(llr0, -target_params[1], target_params[1])
-        return (llr0, llr0_sd, p_dB, snr)
+        llr0_quality =  np.sum(np.abs(llr0)) * 3*(79-21)/len(llr0)
+        return (llr0, llr0_quality, p_dB, snr)
 
+    def hard_decode(self, spectrum):
+        for sync_idx in [0, 1]:
+            hops = self.syncs[sync_idx]['h0_idx'] + spectrum.base_data_hops
+            self.pgrid = self.get_spectrum(spectrum)
+            p = self.pgrid[hops, :]
+            p = np.clip(p, np.max(p)/1e8, None)
+            max_p = np.max(p, axis = 1)
+            sum_p = np.sum(p, axis = 1)
+            metric = np.mean(max_p / sum_p)
+            if(metric > params['MIN_RATIO_HARD_DECODE']):
+                maxpwr_idxs = np.argmax(p, axis = 1)
+                symbols = np.array([int(m / spectrum.fbins_pertone) for m in maxpwr_idxs])
+                bits = [[[0,0,0],[0,0,1],[0,1,1],[0,1,0],[1,1,0],[1,0,0],[1,0,1],[1,1,1]][tone] for tone in symbols]
+                bits = np.array(bits).flatten().tolist()
+                bits = bits[:87]+bits[21+87:21+91]
+                if(check_crc_codeword_list(bits)):
+                    self.msg = FT8_unpack(bits[:77])
+                if(self.msg):
+                    p_dB = 10*np.log10(p)
+                    snr = self._get_snr(p_dB)
+                    self.record_metrics(self.syncs[sync_idx]['h0_idx'], self.syncs[sync_idx]['tsecs'],
+                                        None, 1600*metric, p_dB, snr)
+                    self.ncheck0, self.ncheck = 0, 0
+                    self._record_state("H")
+                    self._record_state("C", final = True)
+                    return
+       
     def demap(self, spectrum):
         demap0 = self._get_llr(spectrum, spectrum.base_payload_hops + self.syncs[0]['h0_idx'])
         demap1 = self._get_llr(spectrum, spectrum.base_payload_hops + self.syncs[1]['h0_idx'])
         demap_choice = 0 if demap0[1] > demap1[1] else 1
-        self.llr0, self.llr0_sd, self.p_dB, self.snr = [demap0, demap1][demap_choice]
-        self.tsecs = self.syncs[demap_choice]['tsecs']
-        self.h0_idx = self.syncs[demap_choice]['h0_idx']
-        if(self.llr0 is None):
-            self._record_state("I", final = True)
-            return
-        if(self.llr0_sd < params['MIN_LLR0_SD']):
-            self._record_state("I", final = True)
-        else:
+        llr0, llr0_quality, p_dB, snr = [demap0, demap1][demap_choice]
+        self.record_metrics(self.syncs[demap_choice]['h0_idx'], self.syncs[demap_choice]['tsecs'], llr0, llr0_quality, p_dB, snr)
+
+    def record_metrics(self, h0_idx, tsecs, llr0, llr0_quality, p_dB, snr):
+        self.tsecs = tsecs
+        self.h0_idx = h0_idx
+        self.llr0, self.llr0_quality, self.p_dB, self.snr = llr0, llr0_quality, p_dB, snr
+        if(self.llr0 is not None):
             self.ncheck0 = self.ldpc.calc_ncheck(self.llr0)
             self.ncheck = self.ncheck0
             self.llr = self.llr0.copy()
-            self._record_state("I")
+        qual_too_low = self.llr0_quality < params['MIN_LLR0_QUALITY']
+        self._record_state("I", final = qual_too_low)
 
     def progress_decode(self):
         
@@ -179,7 +218,7 @@ class Candidate:
             return
         for i in [0,1]:
             code = ['O','P'][i]
-            if(self.llr0_sd < params['OSD_CONTROL'][i][0] and not code in self.decode_path):
+            if(self.llr0_quality < params['OSD_CONTROL'][i][0] and not code in self.decode_path):
                 reliab_order = np.argsort(np.abs(self.llr))[::-1]
                 codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Order = 1, L = params['OSD_CONTROL'][i][1])
                 if check_crc_codeword_list(codeword_bits):
@@ -208,6 +247,7 @@ class Cycle_manager():
         self.onSuccess = onSuccess
         self.onOccupancy = onOccupancy
         self.output_duplicate_filter = set()
+        self.subtract_duplicate_filter = set()
         self.hops_percycle = self.spectrum.audio_in.hops_percycle
         self.audio_out = AudioOut
         self.audio_started = False
@@ -295,19 +335,37 @@ class Cycle_manager():
                 if(self.verbose):
                     self.tlog(f"[Cycle manager] Search spectrum ...")
                     self.tlog(f"[Cycle manager] {n_unprocessed} unprocessed candidates detected")
+                    self.tlog(f"[Cycle manager] subtracted {len(self.subtract_duplicate_filter)} decoded sigs")
+                    reprocessed = [c for c in self.cands_list if c.reprocessed]
+                    self.tlog(f"[Cycle manager] reprocessed {len(reprocessed)} undecoded sigs ({len([c for c in reprocessed if c.decode_completed])} finished)")               
+                new_cands = self.spectrum.search(self.freq_range, self.cyclestart_str(time.time()))
+                # only keep candidates that haven't finished decoding and were originated recently
+                worth_keeping = [c for c in self.cands_list if not c.decode_completed and (time.time() - c.demap_completed < 8 or time.time() - c.reprocessed < 8)]
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.audio_in.fft_df)
                 if(self.onCandidateRollover and cycle_counter > 1): self.onCandidateRollover(self.cands_list)
-                self.cands_list = self.spectrum.search(self.freq_range, self.cyclestart_str(time.time()))
+                self.cands_list = new_cands + worth_keeping
                 self.output_duplicate_filter = set()
+                self.subtract_duplicate_filter = set() 
                 
+
+            to_hard_decode = [c for c in self.cands_list if self.spectrum.audio_in.grid_main_ptr > c.last_data_hop
+                                and not c.decode_completed and not c.hard_decode_started]
+            for c in to_hard_decode:
+                c.hard_decode_started = True
+                c.hard_decode(self.spectrum)
+                c.hard_decode_finished = True
+
             to_demap = [c for c in self.cands_list if ( self.spectrum.audio_in.grid_main_ptr > c.last_payload_hop)
-                                                       and not c.decode_completed and not c.demap_completed]
+                                                       and (c.hard_decode_finished or not self.hard_decoding)
+                                                       and not c.decode_completed and not c.demap_started]
             for c in to_demap:
+                c.demap_started = True
+                c.copy_spectrum(self.spectrum)
                 c.demap(self.spectrum)
                 c.demap_completed = True
 
             to_progress_decode = [c for c in self.cands_list if c.demap_completed and not c.decode_completed]
-            to_progress_decode.sort(key = lambda c: (-c.llr0_sd, c.ncheck0)) # in case of emergency (timeouts) process best first
+            to_progress_decode.sort(key = lambda c: (-c.llr0_quality, c.ncheck0)) # in case of emergency (timeouts) process best first
             for c in to_progress_decode[:25]:
                 c.progress_decode()
             
@@ -317,7 +375,46 @@ class Cycle_manager():
                 if(not c.dedupe_key in self.output_duplicate_filter):
                     self.output_duplicate_filter.add(c.dedupe_key)
                     c.call_a, c.call_b, c.grid_rpt = c.msg[0], c.msg[1], c.msg[2]
+                    if(c.reprocessed):
+                        if(self.verbose):
+                            self.tlog(f"[Cycle manager] Successful decode after subtraction: {c.msg}")
                     if(self.onSuccess): self.onSuccess(c)
+ 
+            if(len(self.subtract_duplicate_filter) < params['MAX_SUBTRACTIONS']):
+                # don't subtract a signal that's about to get overwritten
+                ptr = self.spectrum.audio_in.grid_main_ptr 
+                to_subtract = [c for c in with_message if c.snr > params['MIN_SNR_SUB'] and not (0 < ptr < c.last_payload_hop)
+                               and not c.dedupe_key in self.subtract_duplicate_filter]
+                to_subtract.sort(key = lambda c: -c.snr)
+                for c in to_subtract[:1]:
+                    if(self.verbose):
+                        self.tlog(f"[Cycle manager] Subtract {c.msg} at {c.fHz}Hz (index {c.f0_idx}) / {c.tsecs:5.2f}s")
+                    self.subtract_spectrum(c)
+                    self.subtract_duplicate_filter.add(c.dedupe_key)
+                    c.subtracted = True
+
+            if(len(self.subtract_duplicate_filter)):
+                # search for new candidates +/- around the subtracted signal, but not at freq of candidates already given '2nd look' or in process of decoding
+                subtracted = [c for c in self.cands_list if c.subtracted]
+                lat = params['SUBTRACTION_FREQ_LATTITUDE_Hz']
+                for c in subtracted:
+                    potentials = self.spectrum.search([c.fHz - lat, c.fHz + lat], self.cyclestart_str(time.time()))
+                    freqs_to_avoid = [c.f0_idx for c in self.cands_list if c.reprocessed or not c.decode_completed]
+                    for_2nd_look = [c for c in potentials if not c.f0_idx in freqs_to_avoid]
+                    for c in for_2nd_look:
+                        c.reprocessed = time.time()
+                        self.cands_list.append(c)
+                                
+    def subtract_spectrum(self, c):
+        from PyFT8.FT8_encoder import pack_message
+        c1, c2, grid_rpt = c.msg
+        symbols = pack_message(c1, c2, grid_rpt)
+        if(any(symbols)):
+            audio_data = self.audio_out.create_ft8_wave(self, symbols, f_base = c.fHz)
+            freq_idxs = np.array(range(c.f0_idx, c.f0_idx + 24))
+            self.spectrum.audio_in.subtract(audio_data, c.h0_idx + params['SUB_HOP_OFFSET'], freq_idxs, params['SUB_METH'])
+
+
 
 
 
