@@ -89,7 +89,6 @@ class Candidate:
         self.invoked_actors = set()
         self.decode_path = ""
         self.counters = [0]*10
-        self.llr0_quality = 0
         self.msg = None
         self.snr = -30
         self.ldpc = LdpcDecoder()
@@ -101,20 +100,20 @@ class Candidate:
         if(h0 == h1): h1 = h0 +1
         demap0 = get_llr(spectrum.audio_in.pgrid_main, h0, spectrum.hops_persymb, self.freq_idxs, spectrum.sigspec.payload_symb_idxs)
         demap1 = get_llr(spectrum.audio_in.pgrid_main, h1, spectrum.hops_persymb, self.freq_idxs, spectrum.sigspec.payload_symb_idxs)
-        sync_idx =  0 if demap0[2] > demap1[2] else 1
+        sync_idx =  0 if demap0[1] > demap1[1] else 1
         
         self.h0_idx = self.syncs[sync_idx]['h0_idx']
         self.sync_score = self.syncs[sync_idx]['score']
         self.dt = self.syncs[sync_idx]['dt']
 
         demap = [demap0, demap1][sync_idx]
-        self.p_dB = 10*demap[3]
-        self.llr0, self.llr0_sd, self.llr0_quality, self.pgrid, self.snr = demap
+        self.p_dB = 10*demap[2]
+        self.llr0, self.llr0_sd, self.pgrid, self.snr = demap
         self.ncheck0 = self.ldpc.calc_ncheck(self.llr0)
         self.llr = self.llr0.copy()
         self.ncheck = self.ncheck0
 
-        quality_too_low = (self.llr0_quality < min_qual or self.llr0_sd < min_sd)
+        quality_too_low = (self.llr0_sd < 0.5)
         self._record_state(f"I", self.ncheck, final = quality_too_low)
         
         self.demap_completed = time.time()
@@ -144,7 +143,7 @@ class Candidate:
             self.decode_completed = time.time()
         
     def _invoke_actor(self, nc_thresh_bitflip = 28, nc_max_ldpc = 35,
-                      iters_max_ldpc = 7, osd_qual_range = [395,470]):
+                      iters_max_ldpc = 7, osd_qual_range = [0.5,2]):
         counter = 0
         if self.ncheck > nc_thresh_bitflip and not self.counters[counter] > 0:  
             self.llr, self.ncheck = flip_bits(self.llr, self.ncheck, width = 50, nbits=1, keep_best = True)
@@ -158,7 +157,7 @@ class Candidate:
             return "L"
 
         counter = 2        
-        if(osd_qual_range[0] < self.llr0_quality < osd_qual_range[1] and not self.counters[counter] > 0):
+        if(osd_qual_range[0] < self.llr0_sd < osd_qual_range[1] and not self.counters[counter] > 0):
             reliab_order = np.argsort(np.abs(self.llr))[::-1]
             codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Ls = [30,20,2])
             if check_crc_codeword_list(codeword_bits):
@@ -286,7 +285,7 @@ class Cycle_manager():
                 c.demap(self.spectrum)
 
             to_progress_decode = [c for c in self.cands_list if c.demap_completed and not c.decode_completed]
-            to_progress_decode.sort(key = lambda c: -c.llr0_quality) # in case of emergency (timeouts) process best first
+            to_progress_decode.sort(key = lambda c: -c.llr0_sd) # in case of emergency (timeouts) process best first
             for c in to_progress_decode[:25]:
                 c.progress_decode()
 
