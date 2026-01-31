@@ -13,6 +13,13 @@ import pyaudio
 import queue
 import wave
 import os
+
+params = {
+'MIN_LLR0_SD': 0.5,             # global minimum llr_sd
+'BITFLIP_CONTROL': (28, 50),    # min ncheck0, nBits
+'LDPC_CONTROL': (45, 7, 5),     # max ncheck0, 
+'OSD_CONTROL': (0.5, 3)         # min llr_sd, max llr_sd
+}
     
 def safe_pc(x,y):
     return 100*x/y if y>0 else 0
@@ -93,7 +100,7 @@ class Candidate:
         self.snr = -30
         self.ldpc = LdpcDecoder()
         
-    def demap(self, spectrum, min_qual = 395, min_sd = 0):
+    def demap(self, spectrum):
         self.demap_started = time.time()
         
         h0, h1 = self.syncs[0]['h0_idx'], self.syncs[1]['h0_idx']
@@ -113,7 +120,7 @@ class Candidate:
         self.llr = self.llr0.copy()
         self.ncheck = self.ncheck0
 
-        quality_too_low = (self.llr0_sd < 0.5)
+        quality_too_low = (self.llr0_sd < params['MIN_LLR0_SD'])
         self._record_state(f"I", self.ncheck, final = quality_too_low)
         
         self.demap_completed = time.time()
@@ -142,22 +149,21 @@ class Candidate:
         if(final):
             self.decode_completed = time.time()
         
-    def _invoke_actor(self, nc_thresh_bitflip = 28, nc_max_ldpc = 35,
-                      iters_max_ldpc = 7, osd_qual_range = [0.5,2]):
+    def _invoke_actor(self):
         counter = 0
-        if self.ncheck > nc_thresh_bitflip and not self.counters[counter] > 0:  
+        if self.ncheck > params['BITFLIP_CONTROL'][0] and not self.counters[counter] > 0:  
             self.llr, self.ncheck = flip_bits(self.llr, self.ncheck, width = 50, nbits=1, keep_best = True)
             self.counters[counter] += 1
             return "A"
         
         counter = 1
-        if nc_max_ldpc > self.ncheck > 0 and not self.counters[counter] > iters_max_ldpc:  
+        if params['LDPC_CONTROL'][0] > self.ncheck > 0 and not self.counters[counter] > params['LDPC_CONTROL'][1]:  
             self.llr, self.ncheck = self.ldpc.do_ldpc_iteration(self.llr)
             self.counters[counter] += 1
             return "L"
 
         counter = 2        
-        if(osd_qual_range[0] < self.llr0_sd < osd_qual_range[1] and not self.counters[counter] > 0):
+        if(params['OSD_CONTROL'][0] < self.llr0_sd < params['OSD_CONTROL'][1] and not self.counters[counter] > 0):
             reliab_order = np.argsort(np.abs(self.llr))[::-1]
             codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Ls = [30,20,2])
             if check_crc_codeword_list(codeword_bits):

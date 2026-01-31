@@ -4,7 +4,7 @@ import pickle
 import threading
 import numpy as np
 import time
-from PyFT8.cycle_manager import Cycle_manager
+from PyFT8.cycle_manager import Cycle_manager, params
 from PyFT8.sigspecs import FT8
 
 global wsjtx_dicts, pyft8_cands, new_matches, cands_matched, historic_matches, do_analysis, params
@@ -88,10 +88,10 @@ def plot_success(fig, ax, load_file = False):
     pycorr_pc = f"{int(100*pydecs_corr/wdecs)}"
     pytot_pc = f"{int(100*pydecs/wdecs)}"
     fig.suptitle(f"PyFT8 {pydecs} vs WSJTX. {wdecs} decodes, {pytot_pc}% ({pycorr_pc}% correct) to PyFT8")
-  #  params1 = dict(list(params.items())[:len(params)//2])
-  #  params2 = dict(list(params.items())[len(params)//2:])
-  #  plt.text(0,1.05, params1, fontsize = 6, transform = ax.transAxes)
-  #  plt.text(0,1.02, params2, fontsize = 6, transform = ax.transAxes)
+    params1 = dict(list(params.items())[:len(params)//2])
+    params2 = dict(list(params.items())[len(params)//2:])
+    plt.text(0,1.05, params1, fontsize = 6, transform = ax.transAxes)
+    plt.text(0,1.02, params2, fontsize = 6, transform = ax.transAxes)
     plt.savefig("compare_results.png")
 
 def wsjtx_all_tailer(all_file, cycle_manager):
