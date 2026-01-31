@@ -120,6 +120,7 @@ class Candidate:
         self.dt = self.h0_idx * spectrum.dt-0.7
 
         demap = [demap0, demap1][sync_idx]
+        self.p_dB = 10*demap[3]
         self.llr0, self.llr0_sd, self.llr0_quality, self.pgrid, self.snr = demap
         self.ncheck0 = self.ldpc.calc_ncheck(self.llr0)
         self.llr = self.llr0.copy()
