@@ -68,8 +68,11 @@ class Spectrum:
             self.occupancy[f0_idx:f0_idx + self.fbins_per_signal] += max_pwr
             c = Candidate()
             c.f0_idx = f0_idx
-            syncs = self.get_syncs(f0_idx, pnorm)
-            c.record_possible_syncs(self, syncs)
+            c.syncs = self.get_syncs(f0_idx, pnorm)
+            hps, bpt = self.hops_persymb, self.fbins_pertone
+            c.freq_idxs = [c.f0_idx + bpt // 2 + bpt * t for t in range(self.sigspec.tones_persymb)]
+            c.fHz = int((c.f0_idx + bpt // 2) * self.df)
+            c.last_payload_hop = np.max([c.syncs[0]['h0_idx'], c.syncs[1]['h0_idx']]) + hps * self.sigspec.payload_symb_idxs[-1]
             c.cyclestart_str = cyclestart_str            
             cands.append(c)
         return cands
@@ -90,13 +93,6 @@ class Candidate:
         self.msg = None
         self.snr = -30
         self.ldpc = LdpcDecoder()
-
-    def record_possible_syncs(self, spectrum, syncs):
-        hps, bpt = spectrum.hops_persymb, spectrum.fbins_pertone
-        self.syncs = syncs
-        self.freq_idxs = [self.f0_idx + bpt // 2 + bpt * t for t in range(spectrum.sigspec.tones_persymb)]
-        self.fHz = int((self.f0_idx + bpt // 2) * spectrum.df)
-        self.last_payload_hop = np.max([syncs[0]['h0_idx'], syncs[1]['h0_idx']]) + hps * spectrum.sigspec.payload_symb_idxs[-1]
         
     def demap(self, spectrum, min_qual = 395, min_sd = 0):
         self.demap_started = time.time()
