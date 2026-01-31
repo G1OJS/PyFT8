@@ -22,9 +22,9 @@ I use this code for my own hobby-level reseearch into FT8 decoding and Python co
 ## Performance
 On a quiet band with good signals, PyFT-8 typically gets 70% or 80% and often 100% of WSJT-x decodes. On a crowded band, PyFT8 performs less well. WSJT-x uses signal subtraction to improve performance with overlapping signals. PyFT8 can decode overlapping signals surprisingly well, but not as well as WSJT-x.
 
-I use the wav file "210703_133430.wav" as a reference. In NORM mode, WSJT-x gets 19 decodes. WSJT-x in FAST mode gets 14 decodes, PyFT8 gets 11, and FT8_lib gets 8. The specific decodes are shown in the table below.
+I use the wav file "210703_133430.wav" as a reference. In NORM mode, WSJT-x gets 19 decodes. WSJT-x in FAST mode gets 14 decodes, PyFT8 gets 12, and FT8_lib gets 8. The specific decodes are shown in the table below.
 
-<img width="655" height="429" alt="image" src="https://github.com/user-attachments/assets/8c5e6243-d4f7-4222-a832-5f8e174e6caa" />
+<img width="658" height="429" alt="image" src="https://github.com/user-attachments/assets/3d5fc12c-b36b-4297-ac44-f3ba287a123c" />
 
 
 ## Contents
