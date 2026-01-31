@@ -52,7 +52,8 @@ def get_spectrum(audio_samples, time_offset, phase_global, phase_per_symbol, max
     samples_per_symbol = int(SAMPLE_RATE  / 6.25 )
     fft_len = OSAMP_FREQ * samples_per_symbol
     fft_window=np.kaiser(fft_len, KAISER_IND)
-    fft_df = SAMPLE_RATE / fft_len 
+    fft_out_len = fft_len//2 +1
+    fft_df = SAMPLE_RATE / fft_out_len
     nFreqs = int(max_freq / fft_df)
     samples_offset = int(time_offset * SAMPLE_RATE)
     pf = np.zeros((nSyms, nFreqs), dtype = np.float32)
