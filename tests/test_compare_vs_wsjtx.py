@@ -113,7 +113,7 @@ def wsjtx_all_tailer(all_file, cycle_manager):
         try:
             cs, freq, dt, snr = ls[0], int(ls[6]), float(ls[5]), int(ls[4])
             msg = f"{ls[7]} {ls[8]} {ls[9]}"
-            wsjtx_dicts.append({'cs':cs,'f':int(freq),'msg':msg, 't':time.time(),'dt':dt,'snr':snr,'td': time.time() %60})
+            wsjtx_dicts.append({'cs':cs,'f':int(freq),'msg':msg, 'dt':dt,'snr':snr,'td': f"{time.time() %60:4.1f}"})
         except:
             print(f"Wsjtx_tailer error in line '{line}'")
 
