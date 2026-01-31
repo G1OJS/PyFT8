@@ -47,15 +47,15 @@ class Spectrum:
 
     def get_syncs(self, f0_idx, pnorm):
         syncs = []
-        block_off = 36 * self.hops_persymb
         for iBlock in [0,1]:
-            best = (0, f0_idx, -1e30)
-            for h0_idx in range(block_off * iBlock, block_off * iBlock + self.hop_start_lattitude):
+            best_sync = {'h0_idx':0, 'score':0, 'dt': 0}
+            block_off = 36 * self.hops_persymb * iBlock
+            for h0_idx in range(block_off, block_off + self.hop_start_lattitude):
                 sync_score = float(np.dot(pnorm[h0_idx + self.hop_idxs_Costas ,  :].ravel(), self.csync_flat))
-                test = (h0_idx - block_off * iBlock, f0_idx, sync_score)
-                if test[2] > best[2]:
-                    best = test 
-            syncs.append(best)
+                test_sync = {'h0_idx':h0_idx - block_off, 'score':sync_score, 'dt': (h0_idx - block_off) * self.dt-0.7}
+                if test_sync['score'] > best_sync['score']:
+                    best_sync = test_sync 
+            syncs.append(best_sync)
         return syncs
 
     def search(self, f0_idxs, cyclestart_str):
@@ -67,6 +67,7 @@ class Spectrum:
             pnorm = p / max_pwr
             self.occupancy[f0_idx:f0_idx + self.fbins_per_signal] += max_pwr
             c = Candidate()
+            c.f0_idx = f0_idx
             syncs = self.get_syncs(f0_idx, pnorm)
             c.record_possible_syncs(self, syncs)
             c.cyclestart_str = cyclestart_str            
@@ -87,29 +88,28 @@ class Candidate:
         self.counters = [0]*10
         self.llr0_quality = 0
         self.msg = None
-        self.snr = -999
+        self.snr = -30
         self.ldpc = LdpcDecoder()
 
     def record_possible_syncs(self, spectrum, syncs):
         hps, bpt = spectrum.hops_persymb, spectrum.fbins_pertone
         self.syncs = syncs
-        self.f0_idx = syncs[0][1]
         self.freq_idxs = [self.f0_idx + bpt // 2 + bpt * t for t in range(spectrum.sigspec.tones_persymb)]
         self.fHz = int((self.f0_idx + bpt // 2) * spectrum.df)
-        self.last_payload_hop = np.max([syncs[0][0], syncs[1][0]]) + hps * spectrum.sigspec.payload_symb_idxs[-1]
+        self.last_payload_hop = np.max([syncs[0]['h0_idx'], syncs[1]['h0_idx']]) + hps * spectrum.sigspec.payload_symb_idxs[-1]
         
     def demap(self, spectrum, min_qual = 395, min_sd = 0):
         self.demap_started = time.time()
         
-        h0, h1 = self.syncs[0][0], self.syncs[1][0]
+        h0, h1 = self.syncs[0]['h0_idx'], self.syncs[1]['h0_idx']
         if(h0 == h1): h1 = h0 +1
         demap0 = get_llr(spectrum.audio_in.pgrid_main, h0, spectrum.hops_persymb, self.freq_idxs, spectrum.sigspec.payload_symb_idxs)
         demap1 = get_llr(spectrum.audio_in.pgrid_main, h1, spectrum.hops_persymb, self.freq_idxs, spectrum.sigspec.payload_symb_idxs)
         sync_idx =  0 if demap0[2] > demap1[2] else 1
         
-        self.h0_idx = self.syncs[sync_idx][0]
-        self.sync_score = self.syncs[sync_idx][2]
-        self.dt = self.h0_idx * spectrum.dt-0.7
+        self.h0_idx = self.syncs[sync_idx]['h0_idx']
+        self.sync_score = self.syncs[sync_idx]['score']
+        self.dt = self.syncs[sync_idx]['dt']
 
         demap = [demap0, demap1][sync_idx]
         self.p_dB = 10*demap[3]
