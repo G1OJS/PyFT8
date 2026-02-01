@@ -15,10 +15,10 @@ import wave
 import os
 
 params = {
-'MIN_LLR0_SD': 0.5,             # global minimum llr_sd
-'BITFLIP_CONTROL': (28, 50),    # min ncheck0, nBits
-'LDPC_CONTROL': (45, 7, 5),     # max ncheck0, 
-'OSD_CONTROL': (0.5, 3)         # min llr_sd, max llr_sd
+'MIN_LLR0_SD': 0.5,                # global minimum llr_sd
+'BITFLIP_CONTROL': (28, 50),        # min ncheck0, nBits
+'LDPC_CONTROL': (45, 7, 5),         # max ncheck0, 
+'OSD_CONTROL': (0.5, 1.5, [30,20,2]) # min llr_sd, max llr_sd, L(order)
 }
     
 def safe_pc(x,y):
@@ -165,7 +165,7 @@ class Candidate:
         counter = 2        
         if(params['OSD_CONTROL'][0] < self.llr0_sd < params['OSD_CONTROL'][1] and not self.counters[counter] > 0):
             reliab_order = np.argsort(np.abs(self.llr))[::-1]
-            codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Ls = [30,20,2])
+            codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Ls = params['OSD_CONTROL'][2])
             if check_crc_codeword_list(codeword_bits):
                 self.llr = np.array([1 if(b==1) else -1 for b in codeword_bits])
                 self.ncheck = 0
