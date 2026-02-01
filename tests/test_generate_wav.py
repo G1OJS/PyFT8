@@ -9,16 +9,16 @@ import PyFT8.audio as audio
 
 WAV = "data/Local_gen_test.wav"
 
-c28a = pack_ft8_c28("VK1ABC")
-c28b = pack_ft8_c28("VK3JPK")
+c28a, p1a = pack_ft8_c28("VK1ABC")
+c28b, p1b = pack_ft8_c28("VK3JPK")
 g15, ir = pack_ft8_g15("QF22")
 i3 = 1
 n3 = 0
 
 print(f"Expected:  VK1ABC 1110000111111100010100110101")
-print(f"Generated: VK1ABC {c28a:028b}")
+print(f"Generated: VK1ABC {c28a}")
 print(f"Expected:  VK3JPK 1110001000000111101000011110")
-print(f"Generated: VK3JPK {c28b:028b}")
+print(f"Generated: VK3JPK {c28b}")
 print(f"Expected:  QF22 111001010001010")
 print(f"Generated: QF22 {g15:015b}")
 
@@ -42,7 +42,7 @@ print("Bits174:")
 print("111000011111110001010011010101110001000000111101000011110001110010100010100010011110011001001101010111110101110000011111111010100101110011011100110010000000000011100010000001")
 print(f"{bits174_int:0174b}")
 
-print(f"Payload symbols  expected:   {'7027413236410076024143535324211637464027735642254300025301'}")
+print(f"Payload symbols  expected:   {'3140652702741323641007602414353532423140652116374640277356422543000253013140652'}")
 print(f"Channel symbols modulated:   {''.join([str(s) for s in symbols])}")
 
 # full 15 sec cycle allows for 15/0.16 = 93.75 symbols so need to pad with 14
