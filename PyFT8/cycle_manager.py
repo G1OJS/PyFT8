@@ -155,58 +155,54 @@ class Candidate:
         self.ncheck = self.ncheck0
 
         quality_too_low = (self.llr0_sd < params['MIN_LLR0_SD'])
-        self._record_state(f"I", self.ncheck, final = quality_too_low)
+        self._record_state(f"I", final = quality_too_low)
         
         self.demap_completed = time.time()
 
+    def _record_state(self, actor_code, final = False):
+        finalcode = "#" if final else ";"
+        self.decode_path = self.decode_path + f"{actor_code}{self.ncheck:02d}{finalcode}"
+        if(final):
+            self.decode_completed = time.time()
+
     def progress_decode(self):
-        final = False
         if(self.ncheck > 0):
-            actor = self._invoke_actor()
-            self.invoked_actors.add(actor)
-            stalled = (actor == "_")
-            self._record_state(actor, self.ncheck, final = stalled)
-        if(self.ncheck == 0 or final):
+            if self.ncheck > params['BITFLIP_CONTROL'][0] and not self.bitflip_done:  
+                self.llr, self.ncheck = self._flip_bits(self.llr, self.ncheck, width = 50, nbits=1, keep_best = True)
+                self.bitflip_done = True
+                self._record_state("A")
+
+            if params['LDPC_CONTROL'][0] > self.ncheck > 0:
+                for it in range(params['LDPC_CONTROL'][1]):
+                    self.llr, self.ncheck = self.ldpc.do_ldpc_iteration(self.llr)
+                    self.n_ldpc += 1
+                    self._record_state("L")
+                    if(self.ncheck == 0):
+                        break
+
+            if(self.ncheck > 0 and params['OSD_CONTROL'][0] < self.llr0_sd < params['OSD_CONTROL'][1] and not self.osd_done):
+                reliab_order = np.argsort(np.abs(self.llr))[::-1]
+                codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Ls = params['OSD_CONTROL'][2])
+                if check_crc_codeword_list(codeword_bits):
+                    self.llr = np.array([1 if(b==1) else -1 for b in codeword_bits])
+                    self.ncheck = 0
+                self.osd_done = True
+                self._record_state("O")
+
+        if(self.ncheck == 0):
             codeword_bits = (self.llr > 0).astype(int).tolist()
             if check_crc_codeword_list(codeword_bits):
                 self.payload_bits = codeword_bits[:77]
                 self.msg = FT8_unpack(self.payload_bits)
             if self.msg:
-                self._record_state("C", 0, final = True)
+                self._record_state("C", final = True)
             else:
-                self._record_state("X", 0, final = True)
+                self._record_state("X", final = True)
+        else:
+            self._record_state("_", final = True)
 
-    def _record_state(self, actor_code, ncheck, final = False):
-        self.ncheck = ncheck
-        finalcode = "#" if final else ";"
-        self.decode_path = self.decode_path + f"{actor_code}{ncheck:02d}{finalcode}"
-        if(final):
-            self.decode_completed = time.time()
-        
-    def _invoke_actor(self):
-        if self.ncheck > params['BITFLIP_CONTROL'][0] and not self.bitflip_done:  
-            self.llr, self.ncheck = self._flip_bits(self.llr, self.ncheck, width = 50, nbits=1, keep_best = True)
-            self.bitflip_done = True
-            return "A"
-        
-        if params['LDPC_CONTROL'][0] > self.ncheck > 0 and not self.n_ldpc > params['LDPC_CONTROL'][1]:  
-            self.llr, self.ncheck = self.ldpc.do_ldpc_iteration(self.llr)
-            self.n_ldpc += 1
-            return "L"
-      
-        if(params['OSD_CONTROL'][0] < self.llr0_sd < params['OSD_CONTROL'][1] and not self.osd_done):
-            reliab_order = np.argsort(np.abs(self.llr))[::-1]
-            codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Ls = params['OSD_CONTROL'][2])
-            if check_crc_codeword_list(codeword_bits):
-                self.llr = np.array([1 if(b==1) else -1 for b in codeword_bits])
-                self.ncheck = 0
-            self.osd_done = True
-            return "O"
-        
-        return "_"
 
-                
-                
+            
 class Cycle_manager():
     def __init__(self, sigspec, onSuccess, onOccupancy, audio_in_wav = None, test_speed_factor = 1.0, 
                  input_device_keywords = None, output_device_keywords = None,
