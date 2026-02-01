@@ -324,7 +324,7 @@ class Cycle_manager():
             with_message = [c for c in self.cands_list if c.msg]
             for c in with_message:
                 c.dedupe_key = c.cyclestart_str+" "+' '.join(c.msg)
-                if(not c.dedupe_key in self.duplicate_filter or "Q" in c.decode_path):
+                if(not c.dedupe_key in self.duplicate_filter):
                     self.duplicate_filter.add(c.dedupe_key)
                     c.call_a, c.call_b, c.grid_rpt = c.msg[0], c.msg[1], c.msg[2]
                     if(self.onSuccess): self.onSuccess(c)
