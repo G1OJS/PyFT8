@@ -233,7 +233,7 @@ f0_idx = int(freq* OSAMP_FREQ /6.25)
 get_spectrum(audio_samples, t0, 0, 0)
 show_spectrum(fig_spec, ax_spec)
 peak = show_sig(fig_sig, axs_sig, f0_idx, t0, 0, known_msg, show_ylabels = True, peak = 120)
-plt.pause(1)
+plt.pause(2)
 
 symbols = create_symbols(known_msg)
 audio_data = create_ft8_wave(symbols, f_base = freq)
