@@ -281,8 +281,8 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
 show_waterfall = False
 show_success_plot = True
     
-#compare("data/210703_133430", [100,3100])
-compare(None, [100,3100])
+compare("data/210703_133430", [100,3100])
+#compare(None, [100,3100])
 
 #fig_s, ax_s = plt.subplots( figsize=(10,6))
 #plot_success(fig_s, ax_s, 'compare_data.pkl')
