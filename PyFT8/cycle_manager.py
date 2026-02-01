@@ -16,7 +16,7 @@ params = {
 'MIN_LLR0_SD': 0.5,                # global minimum llr_sd
 'BITFLIP_CONTROL': (28, 50),        # min ncheck0, nBits
 'LDPC_CONTROL': (45, 7, 5),         # max ncheck0, 
-'OSD_CONTROL': (0.5, 1.5, [30,20,2]) # min llr_sd, max llr_sd, L(order)
+'OSD_CONTROL': (0.5, 1.25, [30,20,2]) # min llr_sd, max llr_sd, L(order)
 }
     
 def safe_pc(x,y):

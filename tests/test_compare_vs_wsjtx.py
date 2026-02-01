@@ -27,13 +27,15 @@ def plot_success(fig, ax, load_file = False):
     if not any(historic_matches):
         return
     
-    py =      [[],[],[],[],[],[]]
-    pycols  = ['lime', 'green', 'yellow', 'red', 'orange', 'white']
-    pylabs  = ['OK', 'OK-LDPC', 'OK-OSD', 'ERR', 'Stall', 'Timeout' ]
+    py =        [[],[],[],[],[],[]]
+    pycols  =   ['lime', 'green', 'yellow', 'red', 'orange', 'white']
+    pylabs  =   ['OK', 'OK-LDPC', 'OK-OSD', 'ERR', 'Stall', 'Timeout' ]
+    ws =        [[],[]]
+    wcols =     ['grey','lightgrey']
+    wlabs =     ['isolated','overlapping']
 
-    bins = [0 + 0.1*b for b in range(40)]
+    bins = [0.4 + 0.1*b for b in range(20)]
     
-    ws = [[],[]]
     for w, c in historic_matches:
         q = c.llr0_sd
 
@@ -44,7 +46,7 @@ def plot_success(fig, ax, load_file = False):
 
         if(c.msg):
             if(' '.join(c.msg) == w['msg']):
-                if("O00" in c.decode_path or "P00" in c.decode_path or "Q00" in c.decode_path):
+                if("O00" in c.decode_path):
                     py[2].append(q)
                 elif ("L00" in c.decode_path):
                     py[1].append(q)
@@ -63,13 +65,13 @@ def plot_success(fig, ax, load_file = False):
     ax.cla()
 
     wsjtx = ax.hist(ws, bins = bins,  rwidth = 1.0, label = 'All',
-            stacked = True, color = ['green', 'orange'], alpha = 0.4, lw=0.5, edgecolor = 'grey')
+            stacked = True, color = wcols, alpha = 0.4, lw=0.5, edgecolor = 'grey')
 
-    pyft8 = ax.hist(py, bins = bins, rwidth = 0.5, 
-            stacked = True, alpha = 0.7, lw=.4, edgecolor = 'grey', color = pycols)
+    pyft8 = ax.hist(py, bins = bins, rwidth = 0.45, 
+            stacked = True, alpha = 0.7, lw=.5, edgecolor = 'grey', color = pycols)
     
     legwidth = 0.18
-    wsjtx_legend = ax.legend(handles = wsjtx[2], labels = ['isolated','ovelapping'],
+    wsjtx_legend = ax.legend(handles = wsjtx[2], labels = wlabs,
             loc='upper right', bbox_to_anchor=(1-legwidth,1, legwidth,0), mode='expand',
             title = 'WSJT-X', title_fontproperties = {'weight':'bold', 'size':9}, alignment='left')
     ax.add_artist(wsjtx_legend)
@@ -134,7 +136,6 @@ def onCandidateRollover(candidates):
 
 def analyse_dictionaries(fig_s, ax_s):
     global cands_matched, new_matches
-    time.sleep(5)
 
     new_matches = [(w, c) for w in wsjtx_dicts for c in pyft8_cands if abs(w['f'] - c.fHz) < 3
                and (w['cs'] == c.cyclestart_str or w['cs']=='000000_000000')]
@@ -280,8 +281,8 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
 show_waterfall = False
 show_success_plot = True
     
-compare("data/210703_133430", [100,3100])
-#compare(None, [100,3100])
+#compare("data/210703_133430", [100,3100])
+compare(None, [100,3100])
 
 #fig_s, ax_s = plt.subplots( figsize=(10,6))
 #plot_success(fig_s, ax_s, 'compare_data.pkl')
