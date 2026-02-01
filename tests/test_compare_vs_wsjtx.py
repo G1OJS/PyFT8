@@ -28,10 +28,10 @@ def plot_success(fig, ax, load_file = False):
         return
     
     py =        [[],[],[],[],[],[]]
-    pycols  =   ['lime', 'green', 'yellow', 'red', 'orange', 'white']
-    pylabs  =   ['OK', 'OK-LDPC', 'OK-OSD', 'ERR', 'Stall', 'Timeout' ]
+    pycols  =   ['lime', 'green', 'yellow', 'red', '#c0e7fa', '#ebf6fa']
+    pylabs  =   ['Immediate', 'LDPC', 'OSD', 'ERR', 'Stall', 'Timeout' ]
     ws =        [[],[]]
-    wcols =     ['grey','lightgrey']
+    wcols =     ['#141700','#664b07']
     wlabs =     ['isolated','overlapping']
 
     bins = [0.4 + 0.1*b for b in range(20)]
@@ -54,9 +54,9 @@ def plot_success(fig, ax, load_file = False):
                     py[0].append(q)
             else:
                 py[3].append(q)
-        elif('#' in c.decode_path):
+        elif('_' in c.decode_path):
             py[4].append(q)
-        else:
+        elif('#' not in c.decode_path):
             py[5].append(q)                
 
     if(len(py[0]) ==0):
@@ -90,10 +90,11 @@ def plot_success(fig, ax, load_file = False):
     pycorr_pc = f"{int(100*pydecs_corr/wdecs)}"
     pytot_pc = f"{int(100*pydecs/wdecs)}"
     fig.suptitle(f"PyFT8 {pydecs} vs WSJTX. {wdecs} decodes, {pytot_pc}% ({pycorr_pc}% correct) to PyFT8")
-    params1 = dict(list(params.items())[:len(params)//2])
-    params2 = dict(list(params.items())[len(params)//2:])
-    plt.text(0,1.05, params1, fontsize = 6, transform = ax.transAxes)
-    plt.text(0,1.02, params2, fontsize = 6, transform = ax.transAxes)
+    if(params):
+        params1 = dict(list(params.items())[:len(params)//2])
+        params2 = dict(list(params.items())[len(params)//2:])
+        plt.text(0,1.05, params1, fontsize = 6, transform = ax.transAxes)
+        plt.text(0,1.02, params2, fontsize = 6, transform = ax.transAxes)
     plt.savefig("compare_results.png")
 
 def wsjtx_all_tailer(all_file, cycle_manager):
@@ -187,7 +188,6 @@ def analyse_dictionaries(fig_s, ax_s):
         plot_success(fig_s, ax_s)
         plt.pause(0.1)
 
-    params = None
     with open("results/data/compare_data.pkl","wb") as f:
         pickle.dump({'matches':historic_matches, 'params':params}, f)
     
@@ -278,15 +278,20 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
     #calibrate_snr()
     show_matched_cands()
 
+def plot_success_file(file):
+    fig_s, ax_s = plt.subplots( figsize=(10,6))
+    plot_success(fig_s, ax_s, file)
+    plt.show()
+
 show_waterfall = False
 show_success_plot = True
     
-#compare("data/210703_133430", [100,3100])
-compare(None, [100,3100])
+compare("data/210703_133430", [100,3100])
+#compare(None, [100,3100])
 
-#fig_s, ax_s = plt.subplots( figsize=(10,6))
-#plot_success(fig_s, ax_s, 'compare_data.pkl')
-#plt.show()
+#plot_success_file('compare_data.pkl')
+
+
 
 
 

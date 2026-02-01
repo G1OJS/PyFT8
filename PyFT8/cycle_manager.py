@@ -90,11 +90,14 @@ class Candidate:
         self.bitflip_done = False
         self.osd_done = False
         self.n_ldpc = 0
+        self.dt = 0
+        self.fHz = 0
         self.ncheck, self.ncheck0 = 99, 99
         self.llr0_sd = 0
-        self.llr = None
+        self.llr = []
+        self.llr0 = []
         self.decode_path = ""
-        self.msg = None
+        self.msg = ''
         self.snr = -30
         self.ldpc = LdpcDecoder()
 
