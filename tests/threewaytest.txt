@@ -1,0 +1,1705 @@
+Python 3.12.2 (tags/v3.12.2:6abddd9, Feb  6 2024, 21:26:36) [MSC v.1937 64 bit (AMD64)] on win32
+Type "help", "copyright", "credits" or "license()" for more information.
+
+= RESTART: C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\test_compare_vs_wsjtx.py
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_00.txt
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_00_ft8_lib.txt
+260202_175330  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_175330  8.76 [Cycle manager] Search spectrum ...
+260202_175330 10.04 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175330 10.04 [Cycle manager] Candidate rollover
+260202_175345  0.20 
+[Cycle manager] rollover detected at 0.20
+260202_175345  0.23 
+[Cycle manager] Hop timings: mean = 53.15ms, sd = 7.92ms (  5.0% symbol)
+260202_175345  9.53 [Cycle manager] Search spectrum ...
+260202_175345 10.85 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175345 10.86 [Cycle manager] Candidate rollover
+260202_175400 10.87 [Cycle manager] 158 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_00
+WSJT-X:          W1FC F5BZB -08 FT8_lib Y PyFT8 Y
+WSJT-X:        WM3PEN EA6VQ -09 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ F5RXL IN94 FT8_lib Y PyFT8 Y
+WSJT-X:        N1JFU EA6EE R-07 FT8_lib Y PyFT8 Y
+WSJT-X:         A92EE F5PSR -14 FT8_lib Y PyFT8 Y
+WSJT-X:         K1BZM EA3GP -09 FT8_lib   PyFT8 Y
+WSJT-X:       W0RSJ EA3BMU RR73 FT8_lib   PyFT8 Y
+WSJT-X:         K1JT HA0DU KN07 FT8_lib Y PyFT8 Y
+WSJT-X:        W1DIG SV9CVY -14 FT8_lib   PyFT8 Y
+WSJT-X:         K1JT EA3AGB -15 FT8_lib   PyFT8 Y
+WSJT-X:         XE2X HA2NP RR73 FT8_lib Y PyFT8 Y
+WSJT-X:        K1BZM EA3CJ JN01 FT8_lib   PyFT8  
+WSJT-X:      WA2FZW DL5AXX RR73 FT8_lib   PyFT8  
+WSJT-X:         N1API HA6FQ -23 FT8_lib   PyFT8  
+WSJT-X:        N1PJT HB9CQK -10 FT8_lib Y PyFT8 Y
+WSJT-X:           N1API F2VX 73 FT8_lib   PyFT8  
+WSJT-X:           K1JT HA5WA 73 FT8_lib   PyFT8  
+WSJT-X:       KD2UGC F6GCP R-23 FT8_lib   PyFT8  
+WSJT-X:          CQ EA2BFM IN83 FT8_lib   PyFT8  
+WSJT-X: 19 FT8_lib: 8 PyFT8: 12
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_01.txt
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_01_ft8_lib.txt
+260202_175400  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_175400  8.75 [Cycle manager] Search spectrum ...
+260202_175400 10.14 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175400 10.15 [Cycle manager] Candidate rollover
+260202_175415  0.52 
+[Cycle manager] rollover detected at 0.52
+260202_175415  0.53 
+[Cycle manager] Hop timings: mean = 53.16ms, sd = 8.55ms (  5.3% symbol)
+260202_175415  9.54 [Cycle manager] Search spectrum ...
+260202_175415 10.84 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175415 10.85 [Cycle manager] Candidate rollover
+260202_175415 10.86 [Cycle manager] 477 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_01
+WSJT-X:          CQ IU8DMZ JN70 FT8_lib Y PyFT8 Y
+WSJT-X:      JO1COV PE1OYB JO21 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ IK4LZH JN54 FT8_lib Y PyFT8 Y
+WSJT-X:       JA1FWS OK2BV JN89 FT8_lib Y PyFT8  
+WSJT-X:       LY2EW DL1KDA RR73 FT8_lib Y PyFT8 Y
+WSJT-X:         SA5QED IQ5PJ 73 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ HB9CUZ JN47 FT8_lib Y PyFT8 Y
+WSJT-X:       EA9ACD HA5LGO -13 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ OK6LZ JN99 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ RX3ASQ KO95 FT8_lib Y PyFT8  
+WSJT-X:        JO1COV DL4SBF 73 FT8_lib Y PyFT8 Y
+WSJT-X:        JI1TYA DH1NAS 73 FT8_lib Y PyFT8 Y
+WSJT-X:        LZ365BM <...> 73 FT8_lib Y PyFT8  
+WSJT-X:       PY2DPM ON6UF RR73 FT8_lib Y PyFT8  
+WSJT-X:            CQ R8AU MO05 FT8_lib Y PyFT8 Y
+WSJT-X:       R1CBP SP9LKP RR73 FT8_lib   PyFT8  
+WSJT-X:            CQ E75C JN93 FT8_lib   PyFT8  
+WSJT-X:       <...> SQ9JJR JO90 FT8_lib   PyFT8  
+WSJT-X:       JA1FWS HA7CH JN97 FT8_lib   PyFT8  
+WSJT-X:           CQ HA1BF JN86 FT8_lib   PyFT8  
+WSJT-X:         MM0IMC 4U1A -06 FT8_lib   PyFT8  
+WSJT-X:            CQ 4U1A JN88 FT8_lib   PyFT8  
+WSJT-X:         F1BHB SP4TXI 73 FT8_lib   PyFT8  
+WSJT-X:          CQ OE8GMQ JN66 FT8_lib Y PyFT8 Y
+WSJT-X: 24 FT8_lib: 16 PyFT8: 12
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_02.txt
+Error reading line 000000  -4  1.2 2137 ~  CQ LZ365BM
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_02_ft8_lib.txt
+260202_175430  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_175430  8.75 [Cycle manager] Search spectrum ...
+260202_175430 10.10 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175430 10.10 [Cycle manager] Candidate rollover
+260202_175445  0.30 
+[Cycle manager] rollover detected at 0.30
+260202_175445  0.32 
+[Cycle manager] Hop timings: mean = 53.16ms, sd = 8.45ms (  5.3% symbol)
+260202_175445  9.42 [Cycle manager] Search spectrum ...
+260202_175445 10.70 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175445 10.71 [Cycle manager] Candidate rollover
+260202_175445 10.72 [Cycle manager] 405 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_02
+WSJT-X:       JH7DFZ S51SG JN76 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ DG0OFT JO50 FT8_lib Y PyFT8 Y
+WSJT-X:       JH7DFZ PD7RF RR73 FT8_lib Y PyFT8 Y
+WSJT-X:        DJ4TM EA5OL RR73 FT8_lib Y PyFT8 Y
+WSJT-X:        DH3JF OR7EG RR73 FT8_lib Y PyFT8  
+WSJT-X:      IZ5ILK TA3AHJ RR73 FT8_lib Y PyFT8  
+WSJT-X:          CQ MM0IMC IO75 FT8_lib Y PyFT8 Y
+WSJT-X:       JI1TYA I2XYI JN45 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ 9A9A JN75 FT8_lib Y PyFT8 Y
+WSJT-X:         SP4TXI F1BHB 73 FT8_lib Y PyFT8  
+WSJT-X:       BD8NBG UY7IV R-19 FT8_lib Y PyFT8  
+WSJT-X:           CQ F5CCX JN18 FT8_lib Y PyFT8  
+WSJT-X:            CQ R4HM LO43 FT8_lib Y PyFT8 Y
+WSJT-X:       CT3IQ EI8GVB IO63 FT8_lib Y PyFT8  
+WSJT-X:       SM6CWP JO1COV -10 FT8_lib Y PyFT8  
+WSJT-X:          CQ RV6AFG KN95 FT8_lib   PyFT8  
+WSJT-X:      JR1MVA DL4GBA JN47 FT8_lib   PyFT8  
+WSJT-X:        ES3AT OE3MLC -15 FT8_lib   PyFT8  
+WSJT-X:         E75C F4VTS JN33 FT8_lib Y PyFT8  
+WSJT-X:        OK2BJ JG1SRO -15 FT8_lib   PyFT8  
+WSJT-X:           CQ 7Z1AL LL56 FT8_lib Y PyFT8 Y
+WSJT-X:       <...> DL8RCH JN68 FT8_lib Y PyFT8  
+WSJT-X:        <...> OM7OM JN98 FT8_lib Y PyFT8  
+WSJT-X: 23 FT8_lib: 19 PyFT8: 9
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_03.txt
+Error reading line 000000  14  0.8 2632 ~  CQ OR18OSB
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_03_ft8_lib.txt
+Error reading line 000000 +16.0 +1.44 2631 ~  CQ OR18OSB 
+
+260202_175445  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_175500  8.77 [Cycle manager] Search spectrum ...
+260202_175500 10.15 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175500 10.15 [Cycle manager] Candidate rollover
+260202_175500  0.14 
+[Cycle manager] rollover detected at 0.14
+260202_175500  0.21 
+[Cycle manager] Hop timings: mean = 53.16ms, sd = 9.84ms (  6.2% symbol)
+260202_175515  9.66 [Cycle manager] Search spectrum ...
+260202_175515 11.00 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175515 11.00 [Cycle manager] Candidate rollover
+260202_175515 11.01 [Cycle manager] 470 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_03
+WSJT-X:          CQ IU8DMZ JN70 FT8_lib Y PyFT8 Y
+WSJT-X:       RV6AFG M0XMX IO92 FT8_lib Y PyFT8  
+WSJT-X:          CQ IK4LZH JN54 FT8_lib Y PyFT8 Y
+WSJT-X:       JA1FWS OK2BV JN89 FT8_lib Y PyFT8  
+WSJT-X:          CQ DL1KDA JO30 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ HB9CUZ JN47 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ OK6LZ JN99 FT8_lib Y PyFT8 Y
+WSJT-X:         PY2DPM ON6UF 73 FT8_lib Y PyFT8  
+WSJT-X:            CQ E75C JN93 FT8_lib Y PyFT8  
+WSJT-X:       F5CCX SP4TXI KO03 FT8_lib Y PyFT8 Y
+WSJT-X:       CT3HF YO7IUN KN24 FT8_lib   PyFT8  
+WSJT-X:        <...> E77VM R-11 FT8_lib   PyFT8  
+WSJT-X:         EA2DIC R7NO -25 FT8_lib   PyFT8  
+WSJT-X:           CQ HA1BF JN86 FT8_lib   PyFT8  
+WSJT-X:            CQ 4U1A JN88 FT8_lib   PyFT8  
+WSJT-X:            CQ R8AU MO05 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ OE8GMQ JN66 FT8_lib   PyFT8  
+WSJT-X:          EA5OL DJ4TM 73 FT8_lib   PyFT8  
+WSJT-X: 18 FT8_lib: 11 PyFT8: 7
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_04.txt
+Error reading line 000000  -9  1.1 2137 ~  CQ LZ365BM
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_04_ft8_lib.txt
+Error reading line 000000 +13.5 +1.76 2138 ~  CQ LZ365BM 
+
+260202_175515  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_175530  8.77 [Cycle manager] Search spectrum ...
+260202_175530 10.13 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175530 10.20 [Cycle manager] Candidate rollover
+260202_175530  0.08 
+[Cycle manager] rollover detected at 0.08
+260202_175530  0.11 
+[Cycle manager] Hop timings: mean = 53.19ms, sd = 7.88ms (  4.9% symbol)
+260202_175545  9.31 [Cycle manager] Search spectrum ...
+260202_175545 10.80 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175545 10.85 [Cycle manager] Candidate rollover
+260202_175545 10.86 [Cycle manager] 453 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_04
+WSJT-X:       CT3IQ EI8GVB IO63 FT8_lib   PyFT8  
+WSJT-X:      SM6CWP JO1COV RR73 FT8_lib Y PyFT8 Y
+WSJT-X:        M0XMX RV6AFG -22 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ DG0OFT JO50 FT8_lib Y PyFT8 Y
+WSJT-X:       UR7HN HB9BIN R+01 FT8_lib Y PyFT8 Y
+WSJT-X:      JR1MVA DL4GBA JN47 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ PD7RF JO22 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ EA5OL IM99 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ OR7EG JO11 FT8_lib   PyFT8  
+WSJT-X:        ES3AT OE3MLC -15 FT8_lib Y PyFT8  
+WSJT-X:       JI1TYA I2XYI JN45 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ 9A9A JN75 FT8_lib Y PyFT8 Y
+WSJT-X:       BD8NBG UY7IV R-19 FT8_lib Y PyFT8  
+WSJT-X:        SP4TXI F5CCX +05 FT8_lib Y PyFT8  
+WSJT-X:        <...> OM7OM JN98 FT8_lib Y PyFT8  
+WSJT-X:            CQ R4HM LO43 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ TA1NGE KN41 FT8_lib   PyFT8  
+WSJT-X:        OK2BJ JG1SRO -15 FT8_lib   PyFT8  
+WSJT-X:       <...> DL8RCH JN68 FT8_lib Y PyFT8  
+WSJT-X: 19 FT8_lib: 15 PyFT8: 10
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_05.txt
+Error reading line 000000   9  0.8 2632 ~  CQ OR18OSB
+
+Error reading line 000000 -13  0.9 1053 ~  <9A9A> F6DEO/QRP
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_05_ft8_lib.txt
+Error reading line 000000 +15.5 +1.44 2631 ~  CQ OR18OSB 
+
+260202_175545  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_175600  8.79 [Cycle manager] Search spectrum ...
+260202_175600 10.19 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175600 10.21 [Cycle manager] Candidate rollover
+260202_175600  0.01 
+[Cycle manager] rollover detected at 0.01
+260202_175600  0.03 
+[Cycle manager] Hop timings: mean = 53.15ms, sd = 7.02ms (  4.4% symbol)
+260202_175615  9.42 [Cycle manager] Search spectrum ...
+260202_175615 10.80 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175615 10.87 [Cycle manager] Candidate rollover
+260202_175615 10.89 [Cycle manager] 401 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_05
+WSJT-X:      JO1COV YO7IUN KN24 FT8_lib Y PyFT8  
+WSJT-X:       RV6AFG M0XMX R+03 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ IK4LZH JN54 FT8_lib Y PyFT8 Y
+WSJT-X:         R3FO DL1KDA -13 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ IQ5PJ JN53 FT8_lib Y PyFT8 Y
+WSJT-X:      TA1NGE RA3TPE LO25 FT8_lib   PyFT8  
+WSJT-X:          CQ HB9CUZ JN47 FT8_lib Y PyFT8 Y
+WSJT-X:       HB9BIN UR7HN RR73 FT8_lib   PyFT8  
+WSJT-X:          CQ SV2BRA KN10 FT8_lib Y PyFT8 Y
+WSJT-X:          LY2EW 4U1A -05 FT8_lib Y PyFT8 Y
+WSJT-X:       JI1TYA DF2FE JO51 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ F6HUK JN06 FT8_lib Y PyFT8 Y
+WSJT-X:        UA3NFG RW6PA -09 FT8_lib Y PyFT8  
+WSJT-X:        9A9A DH1NAS JO50 FT8_lib Y PyFT8  
+WSJT-X:       PY2DPM DL1DV JN39 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ ON6UF JO10 FT8_lib Y PyFT8  
+WSJT-X:            CQ R8AU MO05 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ E75C JN93 FT8_lib Y PyFT8  
+WSJT-X:       F5CCX SP4TXI R+10 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ IU8DMZ JN70 FT8_lib   PyFT8  
+WSJT-X:           CQ G3ZQQ IO82 FT8_lib Y PyFT8 Y
+WSJT-X:       <...> SQ9JJR JO90 FT8_lib   PyFT8  
+WSJT-X:        ZL2OK F8BBL IN94 FT8_lib   PyFT8  
+WSJT-X:         EA2DIC R7NO -25 FT8_lib   PyFT8  
+WSJT-X:           CQ HA1BF JN86 FT8_lib   PyFT8  
+WSJT-X:         R8JA CT3IQ RR73 FT8_lib Y PyFT8 Y
+WSJT-X:        7Z1AL OK2BV JN89 FT8_lib   PyFT8  
+WSJT-X:          CQ IZ5ILK JN63 FT8_lib   PyFT8  
+WSJT-X:          CQ SP9LKP JO90 FT8_lib   PyFT8  
+WSJT-X:          CQ OE8GMQ JN66 FT8_lib   PyFT8  
+WSJT-X: 30 FT8_lib: 19 PyFT8: 14
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_06.txt
+Error reading line 000000  -6  0.9  770 ~  CQ DM100ZM
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_06_ft8_lib.txt
+260202_175615  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_175630  8.75 [Cycle manager] Search spectrum ...
+260202_175630 10.15 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175630 10.18 [Cycle manager] Candidate rollover
+260202_175630  0.69 
+[Cycle manager] rollover detected at 0.69
+260202_175630  0.74 
+[Cycle manager] Hop timings: mean = 53.17ms, sd = 6.77ms (  4.2% symbol)
+260202_175645  9.68 [Cycle manager] Search spectrum ...
+260202_175645 11.05 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175645 11.06 [Cycle manager] Candidate rollover
+260202_175645 11.06 [Cycle manager] 489 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_06
+WSJT-X:        M0XMX RV6AFG RRR FT8_lib Y PyFT8 Y
+WSJT-X:          CQ DG0OFT JO50 FT8_lib   PyFT8  
+WSJT-X:       UR7HN HB9BIN R+01 FT8_lib Y PyFT8 Y
+WSJT-X:      JR1MVA DL4GBA JN47 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ EA5OL IM99 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ OR7EG JO11 FT8_lib Y PyFT8  
+WSJT-X:       ES3AT OE3MLC RR73 FT8_lib Y PyFT8  
+WSJT-X:       RX3ASQ TA3AHJ -08 FT8_lib Y PyFT8  
+WSJT-X:           CQ 7Z1AL LL56 FT8_lib Y PyFT8 Y
+WSJT-X:       OZ5VO IT9HVZ JM78 FT8_lib Y PyFT8  
+WSJT-X:          CQ MM0IMC IO75 FT8_lib Y PyFT8  
+WSJT-X:            CQ 9A9A JN75 FT8_lib Y PyFT8 Y
+WSJT-X:       SP4TXI F5CCX RR73 FT8_lib Y PyFT8  
+WSJT-X:       <...> PH0WAW JO32 FT8_lib   PyFT8  
+WSJT-X:            CQ R4HM LO43 FT8_lib Y PyFT8 Y
+WSJT-X:       CT3IQ EI8GVB IO63 FT8_lib Y PyFT8  
+WSJT-X:          CQ JO1COV PM95 FT8_lib Y PyFT8  
+WSJT-X:           CQ ON2RK JO20 FT8_lib Y PyFT8  
+WSJT-X:       SP9LKP F4VTS JN33 FT8_lib Y PyFT8 Y
+WSJT-X:        R7NO EA2DIC R-11 FT8_lib   PyFT8  
+WSJT-X:       RW6PA UA3NFG R-06 FT8_lib Y PyFT8  
+WSJT-X:         R8AU DK3EL JO31 FT8_lib   PyFT8  
+WSJT-X:       <...> DL8RCH JN68 FT8_lib Y PyFT8  
+WSJT-X:        <...> OM7OM JN98 FT8_lib   PyFT8  
+WSJT-X:          CQ 2E0LDW IO70 FT8_lib   PyFT8  
+WSJT-X:        YO7IUN CT3HF -18 FT8_lib Y PyFT8  
+WSJT-X: 26 FT8_lib: 20 PyFT8: 8
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_07.txt
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_07_ft8_lib.txt
+260202_175645  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_175700  8.77 [Cycle manager] Search spectrum ...
+260202_175700 10.14 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175700 10.19 [Cycle manager] Candidate rollover
+260202_175700  0.12 
+[Cycle manager] rollover detected at 0.12
+260202_175700  0.13 
+[Cycle manager] Hop timings: mean = 53.17ms, sd = 7.18ms (  4.5% symbol)
+260202_175715  9.47 [Cycle manager] Search spectrum ...
+260202_175715 10.83 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175715 10.86 [Cycle manager] Candidate rollover
+260202_175715 10.87 [Cycle manager] 391 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_07
+WSJT-X:         RV6AFG M0XMX 73 FT8_lib   PyFT8  
+WSJT-X:       2E0LDW OK6LZ JN99 FT8_lib   PyFT8  
+WSJT-X:           CQ G3ZQQ IO82 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ IK4LZH JN54 FT8_lib Y PyFT8 Y
+WSJT-X:        R3FO DL1KDA RR73 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ IQ5PJ JN53 FT8_lib Y PyFT8 Y
+WSJT-X:      TA1NGE RA3TPE R-15 FT8_lib Y PyFT8 Y
+WSJT-X:       DG1BQC HB9CUZ -17 FT8_lib Y PyFT8 Y
+WSJT-X:       HB9BIN UR7HN R+00 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ SV2BRA KN10 FT8_lib Y PyFT8 Y
+WSJT-X:         LY2EW 4U1A RR73 FT8_lib Y PyFT8 Y
+WSJT-X:       JI1TYA DF2FE JO51 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ F6HUK JN06 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ IZ5ILK JN63 FT8_lib Y PyFT8 Y
+WSJT-X:       UA3NFG RW6PA RR73 FT8_lib Y PyFT8  
+WSJT-X:           CQ ON6UF JO10 FT8_lib Y PyFT8  
+WSJT-X:          DK3EL R8AU -16 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ E75C JN93 FT8_lib Y PyFT8  
+WSJT-X:         F5CCX SP4TXI 73 FT8_lib Y PyFT8 Y
+WSJT-X:         ES1KK <...> -08 FT8_lib Y PyFT8  
+WSJT-X:       <...> SQ9JJR JO90 FT8_lib   PyFT8  
+WSJT-X:        ZL2OK F8BBL IN94 FT8_lib   PyFT8  
+WSJT-X:          CQ IU8DMZ JN70 FT8_lib   PyFT8  
+WSJT-X:           R3FO R7NO -16 FT8_lib   PyFT8  
+WSJT-X:           CQ HA1BF JN86 FT8_lib   PyFT8  
+WSJT-X:      JO1COV PA0CAH JO21 FT8_lib   PyFT8  
+WSJT-X:          CQ RX3ASQ KO95 FT8_lib Y PyFT8  
+WSJT-X:        7Z1AL OK2BV JN89 FT8_lib   PyFT8  
+WSJT-X:      MM0IMC SQ6PZL JO80 FT8_lib   PyFT8  
+WSJT-X:        F4VTS SP9LKP -20 FT8_lib   PyFT8  
+WSJT-X:          CQ OE8GMQ JN66 FT8_lib   PyFT8  
+WSJT-X: 31 FT8_lib: 19 PyFT8: 14
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_08.txt
+Error reading line 000000 -12  0.9  774 ~  CQ DM100ZM
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_08_ft8_lib.txt
+260202_175715  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_175730  8.76 [Cycle manager] Search spectrum ...
+260202_175730 10.17 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175730 10.19 [Cycle manager] Candidate rollover
+260202_175730  0.23 
+[Cycle manager] rollover detected at 0.23
+260202_175730  0.25 
+[Cycle manager] Hop timings: mean = 53.23ms, sd = 5.91ms (  3.7% symbol)
+260202_175745  9.18 [Cycle manager] Search spectrum ...
+260202_175745 10.55 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175745 10.58 [Cycle manager] Candidate rollover
+260202_175745 10.58 [Cycle manager] 534 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_08
+WSJT-X:       CT3IQ EI8GVB IO63 FT8_lib Y PyFT8  
+WSJT-X:         M0XMX RV6AFG 73 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ ON2RK JO20 FT8_lib Y PyFT8 Y
+WSJT-X:       UR7HN HB9BIN RR73 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ EA5OL IM99 FT8_lib Y PyFT8 Y
+WSJT-X:       SV2BRA I4WQH JN54 FT8_lib Y PyFT8 Y
+WSJT-X:       RX3ASQ TA3AHJ -08 FT8_lib Y PyFT8  
+WSJT-X:       OZ5VO IT9HVZ JM78 FT8_lib Y PyFT8  
+WSJT-X:       SQ6PZL MM0IMC -06 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ 9A9A JN75 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ F5CCX JN18 FT8_lib Y PyFT8  
+WSJT-X:            CQ R4HM LO43 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ JO1COV PM95 FT8_lib Y PyFT8 Y
+WSJT-X:        OK6LZ 2E0LDW +06 FT8_lib Y PyFT8 Y
+WSJT-X:      RA3TPE TA1NGE RR73 FT8_lib Y PyFT8  
+WSJT-X:           CQ OR7EG JO11 FT8_lib   PyFT8  
+WSJT-X:       SP9LKP F4VTS R-12 FT8_lib Y PyFT8  
+WSJT-X:           CQ 7Z1AL LL56 FT8_lib   PyFT8  
+WSJT-X: 18 FT8_lib: 16 PyFT8: 10
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_09.txt
+Error reading line 000000 -11  0.9 1054 ~  <9A9A> F6DEO/QRP
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_09_ft8_lib.txt
+260202_175745  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_175745  8.77 [Cycle manager] Search spectrum ...
+260202_175745 10.20 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175745 10.21 [Cycle manager] Candidate rollover
+260202_175800  0.55 
+[Cycle manager] rollover detected at 0.55
+260202_175800  0.61 
+[Cycle manager] Hop timings: mean = 53.16ms, sd = 7.47ms (  4.7% symbol)
+260202_175800  9.56 [Cycle manager] Search spectrum ...
+260202_175800 10.94 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175800 10.96 [Cycle manager] Candidate rollover
+260202_175800 10.96 [Cycle manager] 477 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_09
+WSJT-X:       JO1COV IZ7NLM -11 FT8_lib Y PyFT8  
+WSJT-X:       2E0LDW OK6LZ R-09 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ G3ZQQ IO82 FT8_lib Y PyFT8  
+WSJT-X:          CQ IK4LZH JN54 FT8_lib Y PyFT8 Y
+WSJT-X:        R3FO DL1KDA RR73 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ IQ5PJ JN53 FT8_lib Y PyFT8 Y
+WSJT-X:        TA1NGE RA3TPE 73 FT8_lib Y PyFT8 Y
+WSJT-X:       DG1BQC HB9CUZ -17 FT8_lib Y PyFT8 Y
+WSJT-X:         HB9BIN UR7HN 73 FT8_lib Y PyFT8 Y
+WSJT-X:        I4WQH SV2BRA -06 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ CT3IQ IM12 FT8_lib Y PyFT8  
+WSJT-X:          CQ RX3ASQ KO95 FT8_lib Y PyFT8  
+WSJT-X:           CQ F6HUK JN06 FT8_lib Y PyFT8 Y
+WSJT-X:         9A9A DJ4TM JN47 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ ON6UF JO10 FT8_lib Y PyFT8  
+WSJT-X:          DK3EL R8AU -16 FT8_lib Y PyFT8 Y
+WSJT-X:      <...> OR18OSB RR73 FT8_lib Y PyFT8  
+WSJT-X:       ON2RK SP4TXI KO03 FT8_lib   PyFT8  
+WSJT-X:        ZL2OK F8BBL R-10 FT8_lib   PyFT8  
+WSJT-X:          CQ IU8DMZ JN70 FT8_lib   PyFT8  
+WSJT-X:           R3FO R7NO -16 FT8_lib   PyFT8  
+WSJT-X:           CQ HA1BF JN86 FT8_lib   PyFT8  
+WSJT-X:            CQ 4U1A JN88 FT8_lib   PyFT8 Y
+WSJT-X:      JO1COV PA0CAH JO21 FT8_lib   PyFT8  
+WSJT-X:          CQ IZ5ILK JN63 FT8_lib Y PyFT8 Y
+WSJT-X:         9A9A HA5LGO -07 FT8_lib   PyFT8  
+WSJT-X: 26 FT8_lib: 18 PyFT8: 13
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_10.txt
+Error reading line 000000  -8  1.0  775 ~  CQ DM100ZM
+
+Error reading line 000000 -24  1.1 1509 ~  CQ ZY50Y
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_10_ft8_lib.txt
+Error reading line 000000 +17.5 +1.60  775 ~  CQ DM100ZM 
+
+Error reading line 000000 +17.0 +1.60 2134 ~  CQ LZ365BM 
+
+260202_175815  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_175815  8.72 [Cycle manager] Search spectrum ...
+260202_175815 10.15 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175815 10.15 [Cycle manager] Candidate rollover
+260202_175830  0.46 
+[Cycle manager] rollover detected at 0.46
+260202_175830  0.54 
+[Cycle manager] Hop timings: mean = 53.16ms, sd = 7.66ms (  4.8% symbol)
+260202_175830  9.64 [Cycle manager] Search spectrum ...
+260202_175830 11.04 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175830 11.05 [Cycle manager] Candidate rollover
+260202_175830 11.06 [Cycle manager] 454 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_10
+WSJT-X:       CT3IQ EI8GVB IO63 FT8_lib Y PyFT8  
+WSJT-X:          CQ RV6AFG KN95 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ ON2RK JO20 FT8_lib Y PyFT8 Y
+WSJT-X:        OK6LZ 2E0LDW +06 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ EA5OL IM99 FT8_lib Y PyFT8  
+WSJT-X:       SV2BRA I4WQH R-09 FT8_lib Y PyFT8 Y
+WSJT-X:       RX3ASQ TA3AHJ -08 FT8_lib Y PyFT8  
+WSJT-X:       OZ5VO IT9HVZ R-04 FT8_lib Y PyFT8  
+WSJT-X:      SQ6PZL MM0IMC RR73 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ 9A9A JN75 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ F5CCX JN18 FT8_lib Y PyFT8  
+WSJT-X:          ES3AT R4HM -06 FT8_lib Y PyFT8 Y
+WSJT-X:       DH1NAS JO1COV -05 FT8_lib Y PyFT8  
+WSJT-X:           CQ OR7EG JO11 FT8_lib   PyFT8  
+WSJT-X:           CQ 7Z1AL LL56 FT8_lib   PyFT8  
+WSJT-X:        E75C PA3GAE JO21 FT8_lib Y PyFT8 Y
+WSJT-X:       <...> DL8RCH JN68 FT8_lib Y PyFT8  
+WSJT-X:        <...> OM7OM JN98 FT8_lib   PyFT8  
+WSJT-X: 18 FT8_lib: 15 PyFT8: 8
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_11.txt
+Error reading line 000000  12  0.8 2632 ~  <...> OR18OSB
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_11_ft8_lib.txt
+Error reading line 000000 +10.5 +1.44 2631 ~  <...> OR18OSB 
+
+260202_175845  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_175845  8.77 [Cycle manager] Search spectrum ...
+260202_175845 12.05 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175845 12.06 [Cycle manager] Candidate rollover
+260202_175900  0.04 
+[Cycle manager] rollover detected at 0.04
+260202_175900  0.10 
+[Cycle manager] Hop timings: mean = 53.16ms, sd = 3.62ms (  2.3% symbol)
+260202_175900  9.85 [Cycle manager] Search spectrum ...
+260202_175900 13.35 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175900 13.38 [Cycle manager] Candidate rollover
+260202_175900 13.39 [Cycle manager] 741 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_11
+WSJT-X:      JO1COV DH1NAS R+02 FT8_lib Y PyFT8 Y
+WSJT-X:       2E0LDW OK6LZ R-04 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ IK4LZH JN54 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ DL1KDA JO30 FT8_lib   PyFT8  
+WSJT-X:           CQ IQ5PJ JN53 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ IU8DMZ JN70 FT8_lib Y PyFT8 Y
+WSJT-X:       DG1BQC HB9CUZ RRR FT8_lib Y PyFT8 Y
+WSJT-X:           CQ UR7HN KN79 FT8_lib Y PyFT8 Y
+WSJT-X:       I4WQH SV2BRA RR73 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ CT3IQ IM12 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ F6HUK JN06 FT8_lib Y PyFT8 Y
+WSJT-X:        MM0IMC SQ6PZL 73 FT8_lib Y PyFT8  
+WSJT-X:         9A9A DJ4TM JN47 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ ON6UF JO10 FT8_lib Y PyFT8  
+WSJT-X:         DK3EL R8AU RR73 FT8_lib Y PyFT8 Y
+WSJT-X:         PA3GAE E75C +02 FT8_lib Y PyFT8  
+WSJT-X:        BA7IO EA3ZD JN01 FT8_lib Y PyFT8  
+WSJT-X:          CQ OE8GMQ JN66 FT8_lib Y PyFT8  
+WSJT-X:       JO1COV IZ7NLM -11 FT8_lib   PyFT8  
+WSJT-X:       ON2RK SP4TXI KO03 FT8_lib   PyFT8  
+WSJT-X:           CQ G3ZQQ IO82 FT8_lib Y PyFT8  
+WSJT-X:       <...> SQ9JJR JO90 FT8_lib   PyFT8  
+WSJT-X:          ZL2OK F8BBL 73 FT8_lib   PyFT8  
+WSJT-X:            CQ R7NO KN98 FT8_lib   PyFT8  
+WSJT-X:           CQ HA1BF JN86 FT8_lib   PyFT8  
+WSJT-X:            CQ 4U1A JN88 FT8_lib   PyFT8  
+WSJT-X:          CQ RX3ASQ KO95 FT8_lib   PyFT8  
+WSJT-X:        R1CBP IZ5ILK -13 FT8_lib   PyFT8  
+WSJT-X:         9A9A HA5LGO -07 FT8_lib   PyFT8  
+WSJT-X:      JO1COV PA0CAH JO21 FT8_lib   PyFT8  
+WSJT-X: 30 FT8_lib: 18 PyFT8: 12
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_12.txt
+Error reading line 000000 -12  1.1 2134 ~  CQ LZ365BM
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_12_ft8_lib.txt
+Error reading line 000000 +10.5 +1.76 2134 ~  CQ LZ365BM 
+
+260202_175915  0.01 
+[Cycle manager] rollover detected at 0.01
+260202_175915  8.75 [Cycle manager] Search spectrum ...
+260202_175915 12.29 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175915 12.30 [Cycle manager] Candidate rollover
+260202_175930  0.85 
+[Cycle manager] rollover detected at 0.85
+260202_175930  0.87 
+[Cycle manager] Hop timings: mean = 53.21ms, sd = 4.66ms (  2.9% symbol)
+260202_175930 10.11 [Cycle manager] Search spectrum ...
+260202_175930 13.47 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175930 13.48 [Cycle manager] Candidate rollover
+260202_175930 13.49 [Cycle manager] 662 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_12
+WSJT-X:       CT3IQ EI8GVB IO63 FT8_lib Y PyFT8  
+WSJT-X:          CQ RV6AFG KN95 FT8_lib Y PyFT8 Y
+WSJT-X:        SP4TXI ON2RK +06 FT8_lib Y PyFT8 Y
+WSJT-X:        YO9IAB <...> +06 FT8_lib Y PyFT8  
+WSJT-X:           CQ EA5OL IM99 FT8_lib Y PyFT8 Y
+WSJT-X:       CT3IQ RV6ARS KN84 FT8_lib   PyFT8  
+WSJT-X:        IQ5PJ TA3AHJ -07 FT8_lib Y PyFT8  
+WSJT-X:         OZ5VO IT9HVZ 73 FT8_lib Y PyFT8  
+WSJT-X:        4U1A MM0IMC R-03 FT8_lib Y PyFT8 Y
+WSJT-X:         RA9UJP 9A9A -12 FT8_lib Y PyFT8 Y
+WSJT-X:        E75C PA3GAE R+01 FT8_lib Y PyFT8 Y
+WSJT-X:         R2GCT F5CCX -05 FT8_lib Y PyFT8  
+WSJT-X:       <...> DL8RCH JN68 FT8_lib Y PyFT8  
+WSJT-X:          ES3AT R4HM -06 FT8_lib Y PyFT8 Y
+WSJT-X:      DH1NAS JO1COV RR73 FT8_lib Y PyFT8 Y
+WSJT-X:        OK6LZ 2E0LDW +06 FT8_lib   PyFT8  
+WSJT-X:        <...> OM7OM JN98 FT8_lib   PyFT8  
+WSJT-X: 17 FT8_lib: 14 PyFT8: 8
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_13.txt
+Error reading line 000000   7  0.8 2632 ~  <...> OR18OSB
+
+Error reading line 000000  -6  0.9 1054 ~  <9A9A> F6DEO/QRP
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_13_ft8_lib.txt
+Error reading line 000000 +14.5 +1.44 2631 ~  <...> OR18OSB 
+
+260202_175945  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_175945  8.74 [Cycle manager] Search spectrum ...
+260202_175945 11.11 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_175945 11.14 [Cycle manager] Candidate rollover
+260202_180000  0.99 
+[Cycle manager] rollover detected at 0.99
+260202_180000  1.02 
+[Cycle manager] Hop timings: mean = 53.16ms, sd = 4.52ms (  2.8% symbol)
+260202_180000 10.24 [Cycle manager] Search spectrum ...
+260202_180000 12.43 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180000 12.44 [Cycle manager] Candidate rollover
+260202_180000 12.46 [Cycle manager] 625 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_13
+WSJT-X:        <...> S51SG JN76 FT8_lib Y PyFT8  
+WSJT-X:       2E0LDW OK6LZ R-08 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ IK4LZH JN54 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ DL1KDA JO30 FT8_lib Y PyFT8 Y
+WSJT-X:          RG0S IQ5PJ -12 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ IU8DMZ JN70 FT8_lib Y PyFT8 Y
+WSJT-X:       DG1BQC HB9CUZ RRR FT8_lib Y PyFT8 Y
+WSJT-X:           CQ UR7HN KN79 FT8_lib Y PyFT8  
+WSJT-X:        MM0IMC 4U1A RR73 FT8_lib Y PyFT8  
+WSJT-X:            CQ 4U1A JN88 FT8_lib Y PyFT8 Y
+WSJT-X:       <...> YO9IAB R-11 FT8_lib Y PyFT8  
+WSJT-X:        DM2DLG F6HUK -13 FT8_lib Y PyFT8 Y
+WSJT-X:       R1CBP IZ5ILK RR73 FT8_lib Y PyFT8 Y
+WSJT-X:        9A9A RA9UJP R+04 FT8_lib Y PyFT8  
+WSJT-X:           CQ ON6UF JO10 FT8_lib Y PyFT8  
+WSJT-X:         PA3GAE E75C +02 FT8_lib Y PyFT8  
+WSJT-X:        BA7IO EA3ZD JN01 FT8_lib Y PyFT8  
+WSJT-X:       ON2RK SP4TXI R+14 FT8_lib   PyFT8  
+WSJT-X:           CQ G3ZQQ IO82 FT8_lib Y PyFT8  
+WSJT-X:       <...> SQ9JJR JO90 FT8_lib   PyFT8  
+WSJT-X:            CQ R7NO KN98 FT8_lib   PyFT8  
+WSJT-X:        <...> G3WAG R-15 FT8_lib   PyFT8  
+WSJT-X:          CQ SQ6PZL JO80 FT8_lib Y PyFT8  
+WSJT-X:            CQ R8AU MO05 FT8_lib Y PyFT8 Y
+WSJT-X: 24 FT8_lib: 20 PyFT8: 10
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_14.txt
+Error reading line 000000 -15  1.2 2133 ~  CQ LZ365BM
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_14_ft8_lib.txt
+Error reading line 000000 +14.0 +1.92 2134 ~  CQ LZ365BM 
+
+260202_180015  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_180015  8.79 [Cycle manager] Search spectrum ...
+260202_180015 11.82 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180015 11.83 [Cycle manager] Candidate rollover
+260202_180030  0.14 
+[Cycle manager] rollover detected at 0.14
+260202_180030  0.16 
+[Cycle manager] Hop timings: mean = 53.17ms, sd = 5.39ms (  3.4% symbol)
+260202_180030  9.47 [Cycle manager] Search spectrum ...
+260202_180030 12.98 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180030 13.00 [Cycle manager] Candidate rollover
+260202_180030 13.01 [Cycle manager] 528 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_14
+WSJT-X:       CT3IQ EI8GVB IO63 FT8_lib Y PyFT8  
+WSJT-X:          CQ RV6AFG KN95 FT8_lib Y PyFT8 Y
+WSJT-X:       SP4TXI ON2RK RR73 FT8_lib Y PyFT8 Y
+WSJT-X:      <...> DM100ZM RR73 FT8_lib Y PyFT8  
+WSJT-X:           CQ EA5OL IM99 FT8_lib Y PyFT8  
+WSJT-X:           CQ OR7EG JO11 FT8_lib Y PyFT8  
+WSJT-X:          4U1A MM0IMC 73 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ R4WZ LO67 FT8_lib Y PyFT8 Y
+WSJT-X:        RA9UJP 9A9A RR73 FT8_lib Y PyFT8 Y
+WSJT-X:        R2GCT F5CCX RR73 FT8_lib Y PyFT8  
+WSJT-X:         ES3AT R4HM RR73 FT8_lib Y PyFT8  
+WSJT-X:          CQ JO1COV PM95 FT8_lib Y PyFT8 Y
+WSJT-X:       CT3IQ RV6ARS KN84 FT8_lib   PyFT8  
+WSJT-X:        E75C PA3GAE R+02 FT8_lib Y PyFT8 Y
+WSJT-X:       <...> DL8RCH JN68 FT8_lib Y PyFT8  
+WSJT-X:           CQ 7Z1AL LL56 FT8_lib Y PyFT8  
+WSJT-X: 16 FT8_lib: 15 PyFT8: 7
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_15.txt
+Error reading line 000000  -9  0.7 1939 ~  PD0CIF/PHOTO
+
+Error reading line 000000   5  0.8 2632 ~  CQ OR18OSB
+
+Error reading line 000000 -10  0.9 1054 ~  <9A9A> F6DEO/QRP
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_15_ft8_lib.txt
+Error reading line 000000 +15.5 +1.36 1941 ~  PD0CIF/PHOTO
+
+Error reading line 000000 +15.0 +1.44 2631 ~  CQ OR18OSB 
+
+260202_180045  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_180045  8.74 [Cycle manager] Search spectrum ...
+260202_180045 12.40 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180045 12.41 [Cycle manager] Candidate rollover
+260202_180100  0.15 
+[Cycle manager] rollover detected at 0.15
+260202_180100  0.18 
+[Cycle manager] Hop timings: mean = 53.20ms, sd = 4.34ms (  2.7% symbol)
+260202_180100  8.97 [Cycle manager] Search spectrum ...
+260202_180100 11.36 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180100 11.37 [Cycle manager] Candidate rollover
+260202_180100 11.38 [Cycle manager] 718 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_15
+WSJT-X:       JO1COV IZ7NLM -11 FT8_lib Y PyFT8 Y
+WSJT-X:         2E0LDW OK6LZ 73 FT8_lib Y PyFT8 Y
+WSJT-X:        <...> S51SG JN76 FT8_lib Y PyFT8  
+WSJT-X:          CQ IK4LZH JN54 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ DL1KDA JO30 FT8_lib Y PyFT8 Y
+WSJT-X:          RG0S IQ5PJ RRR FT8_lib Y PyFT8 Y
+WSJT-X:          CQ IU8DMZ JN70 FT8_lib Y PyFT8 Y
+WSJT-X:          ES1KK R7NO -07 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ UR7HN KN79 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ 4U1A JN88 FT8_lib Y PyFT8  
+WSJT-X:       PH0WAW CT3IQ RR73 FT8_lib Y PyFT8 Y
+WSJT-X:        DM100ZM <...> 73 FT8_lib Y PyFT8  
+WSJT-X:        DM2DLG F6HUK -13 FT8_lib Y PyFT8 Y
+WSJT-X:         R1CBP IZ5ILK 73 FT8_lib   PyFT8  
+WSJT-X:          9A9A RA9UJP 73 FT8_lib Y PyFT8  
+WSJT-X:        <...> DJ4TM JN47 FT8_lib Y PyFT8  
+WSJT-X:           CQ ON6UF JO10 FT8_lib Y PyFT8  
+WSJT-X:            CQ R8AU MO05 FT8_lib Y PyFT8 Y
+WSJT-X:        PA3GAE E75C RR73 FT8_lib Y PyFT8  
+WSJT-X:        BA7IO EA3ZD JN01 FT8_lib Y PyFT8  
+WSJT-X:         ON2RK SP4TXI 73 FT8_lib   PyFT8  
+WSJT-X:       UY7IV SQ9JJR JO90 FT8_lib   PyFT8  
+WSJT-X:       DG1BQC HB9CUZ RRR FT8_lib   PyFT8 Y
+WSJT-X:          ZY50Y <...> 73 FT8_lib   PyFT8  
+WSJT-X:           CQ HA1BF JN86 FT8_lib   PyFT8  
+WSJT-X: 25 FT8_lib: 19 PyFT8: 12
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_16.txt
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_16_ft8_lib.txt
+260202_180115  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_180115  8.76 [Cycle manager] Search spectrum ...
+260202_180115 12.06 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180115 12.06 [Cycle manager] Candidate rollover
+260202_180130  0.50 
+[Cycle manager] rollover detected at 0.50
+260202_180130  0.51 
+[Cycle manager] Hop timings: mean = 53.23ms, sd = 6.56ms (  4.1% symbol)
+260202_180130 10.04 [Cycle manager] Search spectrum ...
+260202_180130 13.33 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180130 13.35 [Cycle manager] Candidate rollover
+260202_180130 13.36 [Cycle manager] 656 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_16
+WSJT-X:       CT3IQ EI8GVB IO63 FT8_lib Y PyFT8  
+WSJT-X:          CQ RV6AFG KN95 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ EA5OL IM99 FT8_lib Y PyFT8 Y
+WSJT-X:       SQ6PZL TA3AHJ -04 FT8_lib Y PyFT8  
+WSJT-X:          CQ MM0IMC IO75 FT8_lib Y PyFT8 Y
+WSJT-X:       JA7GFI DK3BT JO40 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ R4WZ LO67 FT8_lib Y PyFT8 Y
+WSJT-X:        JI1QNP F5CCX -15 FT8_lib Y PyFT8  
+WSJT-X:          LU5HA 9A9A -12 FT8_lib Y PyFT8 Y
+WSJT-X:       <...> ON3ONX JO20 FT8_lib Y PyFT8  
+WSJT-X:            CQ R4HM LO43 FT8_lib Y PyFT8  
+WSJT-X:       PA0CAH JO1COV -18 FT8_lib Y PyFT8  
+WSJT-X:      DL1KDA UA3YPL KO73 FT8_lib Y PyFT8  
+WSJT-X:           CQ 7Z1AL LL56 FT8_lib Y PyFT8  
+WSJT-X:         DJ4TM <...> -07 FT8_lib Y PyFT8  
+WSJT-X:          E75C PA3GAE 73 FT8_lib Y PyFT8 Y
+WSJT-X: 16 FT8_lib: 16 PyFT8: 7
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_17.txt
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_17_ft8_lib.txt
+260202_180145  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_180145  8.73 [Cycle manager] Search spectrum ...
+260202_180145 12.23 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180145 12.25 [Cycle manager] Candidate rollover
+260202_180200  0.03 
+[Cycle manager] rollover detected at 0.03
+260202_180200  0.05 
+[Cycle manager] Hop timings: mean = 53.16ms, sd = 6.75ms (  4.2% symbol)
+260202_180200  9.18 [Cycle manager] Search spectrum ...
+260202_180200 11.24 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180200 11.24 [Cycle manager] Candidate rollover
+260202_180200 11.25 [Cycle manager] 644 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_17
+WSJT-X:       YC6RMT IZ7NLM -22 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ IK4LZH JN54 FT8_lib Y PyFT8 Y
+WSJT-X:       UA3YPL DL1KDA -06 FT8_lib Y PyFT8 Y
+WSJT-X:           RG0S IQ5PJ 73 FT8_lib Y PyFT8 Y
+WSJT-X:      YC6RMT IK3JLT JN65 FT8_lib Y PyFT8 Y
+WSJT-X:         ES1KK R7NO RR73 FT8_lib Y PyFT8 Y
+WSJT-X:       DG1BQC HB9CUZ RRR FT8_lib Y PyFT8 Y
+WSJT-X:           CQ UR7HN KN79 FT8_lib Y PyFT8 Y
+WSJT-X:           R8JA 4U1A -23 FT8_lib Y PyFT8  
+WSJT-X:            CQ 4U1A JN88 FT8_lib Y PyFT8  
+WSJT-X:       7Z1AL RA3TPE LO25 FT8_lib   PyFT8  
+WSJT-X:       DM2DLG F6HUK RR73 FT8_lib Y PyFT8  
+WSJT-X:          CQ DH1NAS JO50 FT8_lib Y PyFT8  
+WSJT-X:       <...> IV3KVC JN65 FT8_lib   PyFT8  
+WSJT-X:        <...> DJ4TM R-06 FT8_lib Y PyFT8  
+WSJT-X:           CQ ON6UF JO10 FT8_lib Y PyFT8  
+WSJT-X:            CQ R8AU MO05 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ E75C JN93 FT8_lib Y PyFT8  
+WSJT-X:        BA7IO EA3ZD JN01 FT8_lib Y PyFT8  
+WSJT-X:          CQ OE8GMQ JN66 FT8_lib Y PyFT8 Y
+WSJT-X:         UX0KR <...> -11 FT8_lib Y PyFT8  
+WSJT-X:       UY7IV SQ9JJR JO90 FT8_lib   PyFT8  
+WSJT-X:          CQ IU8DMZ JN70 FT8_lib   PyFT8  
+WSJT-X:           CQ CT3IQ IM12 FT8_lib   PyFT8  
+WSJT-X:           CQ RX6DA KN85 FT8_lib   PyFT8  
+WSJT-X:       YO8CQM I4WQH JN54 FT8_lib   PyFT8  
+WSJT-X: 26 FT8_lib: 19 PyFT8: 10
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_18.txt
+Error reading line 000000 -11  1.0  779 ~  CQ DM100ZM
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_18_ft8_lib.txt
+Error reading line 000000 +16.5 +1.68  778 ~  CQ DM100ZM 
+
+260202_180200  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_180215  8.77 [Cycle manager] Search spectrum ...
+260202_180215 10.88 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180215 10.90 [Cycle manager] Candidate rollover
+260202_180215  0.34 
+[Cycle manager] rollover detected at 0.34
+260202_180230  0.39 
+[Cycle manager] Hop timings: mean = 53.16ms, sd = 5.41ms (  3.4% symbol)
+260202_180230  9.32 [Cycle manager] Search spectrum ...
+260202_180230 11.90 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180230 11.91 [Cycle manager] Candidate rollover
+260202_180230 11.92 [Cycle manager] 610 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_18
+WSJT-X:       CT3IQ EI8GVB IO63 FT8_lib Y PyFT8  
+WSJT-X:          CQ RV6AFG KN95 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ EA5OL IM99 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ OR7EG JO11 FT8_lib Y PyFT8  
+WSJT-X:      SQ6PZL TA3AHJ RR73 FT8_lib Y PyFT8  
+WSJT-X:       <...> IT9HVZ JM78 FT8_lib   PyFT8  
+WSJT-X:          CQ MM0IMC IO75 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ R4WZ LO67 FT8_lib Y PyFT8  
+WSJT-X:       JI1QNP F5CCX RR73 FT8_lib Y PyFT8  
+WSJT-X:         LU5HA 9A9A RR73 FT8_lib Y PyFT8 Y
+WSJT-X:         R8AU F4AGZ JN38 FT8_lib Y PyFT8  
+WSJT-X:       <...> ON3ONX JO20 FT8_lib Y PyFT8  
+WSJT-X:      PA0CAH JO1COV RR73 FT8_lib Y PyFT8  
+WSJT-X:           IQ5PJ RG0S 73 FT8_lib Y PyFT8  
+WSJT-X:          CQ EA5AMC IM98 FT8_lib Y PyFT8  
+WSJT-X:       CT3IQ RV6ARS KN84 FT8_lib Y PyFT8  
+WSJT-X:        I4WQH YO8CQM -06 FT8_lib   PyFT8  
+WSJT-X:      <...> LZ365BM RR73 FT8_lib Y PyFT8  
+WSJT-X:         R8AU EA3YE JN11 FT8_lib   PyFT8  
+WSJT-X: 19 FT8_lib: 16 PyFT8: 4
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_19.txt
+Error reading line 000000 -15  0.9 1054 ~  <...> F6DEO/QRP
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_19_ft8_lib.txt
+260202_180230  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_180245  8.76 [Cycle manager] Search spectrum ...
+260202_180245 10.50 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180245 10.51 [Cycle manager] Candidate rollover
+260202_180245  0.61 
+[Cycle manager] rollover detected at 0.61
+260202_180245  0.62 
+[Cycle manager] Hop timings: mean = 53.19ms, sd = 6.14ms (  3.8% symbol)
+260202_180300  9.66 [Cycle manager] Search spectrum ...
+260202_180300 12.75 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180300 12.80 [Cycle manager] Candidate rollover
+260202_180300 12.81 [Cycle manager] 631 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_19
+WSJT-X:           CQ F5UOU JN06 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ IK4LZH JN54 FT8_lib Y PyFT8 Y
+WSJT-X:      UA3YPL DL1KDA RR73 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ IQ5PJ JN53 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ IU8DMZ JN70 FT8_lib   PyFT8 Y
+WSJT-X:      YC6RMT IK3JLT JN65 FT8_lib Y PyFT8  
+WSJT-X:            CQ R7NO KN98 FT8_lib   PyFT8 Y
+WSJT-X:       DG1BQC HB9CUZ RRR FT8_lib Y PyFT8 Y
+WSJT-X:        DM2DLG UR7HN -16 FT8_lib Y PyFT8 Y
+WSJT-X:           R8JA 4U1A -23 FT8_lib Y PyFT8  
+WSJT-X:            CQ 4U1A JN88 FT8_lib Y PyFT8 Y
+WSJT-X:        RV6ARS CT3IQ -04 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ YO9IAB KN25 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ RX6DA KN85 FT8_lib   PyFT8  
+WSJT-X:           CQ F6HUK JN06 FT8_lib Y PyFT8  
+WSJT-X:          CQ DH1NAS JO50 FT8_lib Y PyFT8 Y
+WSJT-X:       <...> IV3KVC JN65 FT8_lib Y PyFT8  
+WSJT-X:        LZ365BM <...> 73 FT8_lib Y PyFT8  
+WSJT-X:           CQ ON6UF JO10 FT8_lib Y PyFT8  
+WSJT-X:            CQ R8AU MO05 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ E75C JN93 FT8_lib Y PyFT8  
+WSJT-X:        BA7IO EA3ZD JN01 FT8_lib Y PyFT8  
+WSJT-X:          CQ OE8GMQ JN66 FT8_lib Y PyFT8 Y
+WSJT-X:      <...> OR18OSB RR73 FT8_lib Y PyFT8  
+WSJT-X:           CQ G3WAG IO82 FT8_lib   PyFT8  
+WSJT-X:       UY7IV SQ9JJR JO90 FT8_lib   PyFT8  
+WSJT-X:        <...> M0XMX IO92 FT8_lib   PyFT8  
+WSJT-X:       7Z1AL RA3TPE LO25 FT8_lib   PyFT8  
+WSJT-X:       YO8CQM I4WQH R-24 FT8_lib   PyFT8  
+WSJT-X: 29 FT8_lib: 21 PyFT8: 14
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_20.txt
+Error reading line 000000 -15  1.0  780 ~  CQ DM100ZM
+
+Error reading line 000000 -16  1.0 2132 ~  CQ LZ365BM
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_20_ft8_lib.txt
+Error reading line 000000 +15.0 +1.68 2131 ~  CQ LZ365BM 
+
+Error reading line 000000 +12.5 +1.68  781 ~  CQ DM100ZM 
+
+260202_180300  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_180315  8.78 [Cycle manager] Search spectrum ...
+260202_180315 12.67 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180315 12.68 [Cycle manager] Candidate rollover
+260202_180315  0.05 
+[Cycle manager] rollover detected at 0.05
+260202_180330  0.09 
+[Cycle manager] Hop timings: mean = 53.16ms, sd = 5.99ms (  3.7% symbol)
+260202_180330  9.08 [Cycle manager] Search spectrum ...
+260202_180330 12.89 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180330 12.90 [Cycle manager] Candidate rollover
+260202_180330 12.91 [Cycle manager] 739 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_20
+WSJT-X:       CT3IQ EI8GVB IO63 FT8_lib Y PyFT8  
+WSJT-X:          CQ RV6AFG KN95 FT8_lib Y PyFT8 Y
+WSJT-X:        <...> S51SG JN76 FT8_lib Y PyFT8  
+WSJT-X:       <...> IK2ZDT JN45 FT8_lib Y PyFT8  
+WSJT-X:           CQ EA5OL IM99 FT8_lib Y PyFT8 Y
+WSJT-X:       CT3IQ RV6ARS R-15 FT8_lib Y PyFT8  
+WSJT-X:        OH3BY DJ1DM R-18 FT8_lib Y PyFT8 Y
+WSJT-X:       <...> IT9HVZ JM78 FT8_lib Y PyFT8  
+WSJT-X:       DL1GHB MM0IMC -06 FT8_lib Y PyFT8 Y
+WSJT-X:          ES3AT R4WZ -19 FT8_lib Y PyFT8  
+WSJT-X:            CQ 9A9A JN75 FT8_lib Y PyFT8 Y
+WSJT-X:         R8AU F4AGZ JN38 FT8_lib   PyFT8  
+WSJT-X:       <...> ON3ONX JO20 FT8_lib Y PyFT8  
+WSJT-X:          CQ JO1COV PM95 FT8_lib Y PyFT8 Y
+WSJT-X:        DL1KDA UA3YPL 73 FT8_lib   PyFT8  
+WSJT-X:       I4WQH YO8CQM RR73 FT8_lib   PyFT8  
+WSJT-X:         R8AU EA3YE JN11 FT8_lib   PyFT8  
+WSJT-X:       <...> DL8RCH JN68 FT8_lib Y PyFT8  
+WSJT-X: 18 FT8_lib: 14 PyFT8: 6
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_21.txt
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_21_ft8_lib.txt
+260202_180345  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_180345  8.74 [Cycle manager] Search spectrum ...
+260202_180345 12.73 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180345 12.79 [Cycle manager] Candidate rollover
+260202_180400  0.09 
+[Cycle manager] rollover detected at 0.09
+260202_180400  0.11 
+[Cycle manager] Hop timings: mean = 53.16ms, sd = 5.38ms (  3.4% symbol)
+260202_180400  9.22 [Cycle manager] Search spectrum ...
+260202_180400 13.07 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180400 13.13 [Cycle manager] Candidate rollover
+260202_180400 13.14 [Cycle manager] 613 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_21
+WSJT-X:      JO1COV RA9UJP NO25 FT8_lib Y PyFT8  
+WSJT-X:           CQ F5UOU JN06 FT8_lib Y PyFT8 Y
+WSJT-X:       <...> OE9KFV JN47 FT8_lib Y PyFT8  
+WSJT-X:          CQ IK4LZH JN54 FT8_lib Y PyFT8 Y
+WSJT-X:       BI8DHZ DL1KDA -17 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ IQ5PJ JN53 FT8_lib Y PyFT8 Y
+WSJT-X:      YC6RMT IK3JLT JN65 FT8_lib Y PyFT8  
+WSJT-X:            CQ R7NO KN98 FT8_lib Y PyFT8 Y
+WSJT-X:       DG1BQC HB9CUZ RRR FT8_lib   PyFT8 Y
+WSJT-X:        DM2DLG UR7HN -13 FT8_lib Y PyFT8  
+WSJT-X:           R8JA 4U1A -23 FT8_lib Y PyFT8 Y
+WSJT-X:         BI8DHZ 4U1A -16 FT8_lib Y PyFT8 Y
+WSJT-X:       RV6ARS CT3IQ RR73 FT8_lib Y PyFT8  
+WSJT-X:        <...> OM7OM R+00 FT8_lib Y PyFT8  
+WSJT-X:        7Z1AL DF2FE JO51 FT8_lib   PyFT8  
+WSJT-X:           CQ F6HUK JN06 FT8_lib Y PyFT8  
+WSJT-X:          CQ DH1NAS JO50 FT8_lib Y PyFT8 Y
+WSJT-X:       <...> IV3KVC JN65 FT8_lib Y PyFT8  
+WSJT-X:        <...> ON6UF JO10 FT8_lib   PyFT8  
+WSJT-X:          EA3YE R8AU -16 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ E75C JN93 FT8_lib Y PyFT8  
+WSJT-X:        BA7IO EA3ZD JN01 FT8_lib Y PyFT8  
+WSJT-X:        JO1COV PD0WH -13 FT8_lib   PyFT8  
+WSJT-X:        EA5INF G3WAG -04 FT8_lib   PyFT8  
+WSJT-X:       UY7IV SQ9JJR JO90 FT8_lib   PyFT8  
+WSJT-X:       YC6RMT IZ7NLM -22 FT8_lib   PyFT8  
+WSJT-X:       JA1FWS RU3OX LO00 FT8_lib   PyFT8  
+WSJT-X:       OR7EG RX3ASQ KO95 FT8_lib   PyFT8  
+WSJT-X:       JA1FWS OK2BV R-13 FT8_lib   PyFT8  
+WSJT-X:           CQ RX6DA KN85 FT8_lib   PyFT8  
+WSJT-X:          CQ SQ6PZL JO80 FT8_lib   PyFT8  
+WSJT-X:          CQ SP9LKP JO90 FT8_lib   PyFT8  
+WSJT-X:      EA5AMC PA3GAE JO21 FT8_lib   PyFT8  
+WSJT-X:         YO8CQM I4WQH 73 FT8_lib   PyFT8  
+WSJT-X: 34 FT8_lib: 19 PyFT8: 10
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_22.txt
+Error reading line 000000 -16  1.2 2132 ~  CQ LZ365BM
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_22_ft8_lib.txt
+Error reading line 000000 +16.0 +1.92 2131 ~  CQ LZ365BM 
+
+260202_180415  0.01 
+[Cycle manager] rollover detected at 0.01
+260202_180415  8.81 [Cycle manager] Search spectrum ...
+260202_180415 12.69 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180415 12.76 [Cycle manager] Candidate rollover
+260202_180430  0.06 
+[Cycle manager] rollover detected at 0.06
+260202_180430  0.08 
+[Cycle manager] Hop timings: mean = 53.17ms, sd = 4.32ms (  2.7% symbol)
+260202_180430  9.22 [Cycle manager] Search spectrum ...
+260202_180430 13.12 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180430 13.14 [Cycle manager] Candidate rollover
+260202_180430 13.15 [Cycle manager] 777 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_22
+WSJT-X:       CT3IQ EI8GVB IO63 FT8_lib Y PyFT8  
+WSJT-X:       RA9UJP JO1COV -11 FT8_lib Y PyFT8  
+WSJT-X:          CQ RV6AFG KN95 FT8_lib Y PyFT8 Y
+WSJT-X:        <...> S51SG JN76 FT8_lib Y PyFT8  
+WSJT-X:        YO7IUN <...> +04 FT8_lib Y PyFT8  
+WSJT-X:        IQ5PJ R3KCW KO90 FT8_lib Y PyFT8  
+WSJT-X:       <...> IK2ZDT JN45 FT8_lib Y PyFT8  
+WSJT-X:           CQ EA5OL IM99 FT8_lib Y PyFT8  
+WSJT-X:        RX3ASQ OR7EG -02 FT8_lib Y PyFT8  
+WSJT-X:           CQ G0OSK IO91 FT8_lib Y PyFT8  
+WSJT-X:        OZ5VO TA3AHJ -10 FT8_lib Y PyFT8  
+WSJT-X:       <...> IT9HVZ JM78 FT8_lib Y PyFT8  
+WSJT-X:       DL1GHB MM0IMC -06 FT8_lib Y PyFT8 Y
+WSJT-X:         ES3AT R4WZ RR73 FT8_lib Y PyFT8  
+WSJT-X:         LU5HA 9A9A RR73 FT8_lib Y PyFT8 Y
+WSJT-X:         R8AU EA3YE R-13 FT8_lib Y PyFT8  
+WSJT-X:           CQ F5CCX JN18 FT8_lib Y PyFT8  
+WSJT-X:       <...> ON3ONX JO20 FT8_lib Y PyFT8  
+WSJT-X:          CQ 2E0LDW IO70 FT8_lib   PyFT8  
+WSJT-X:          OH3BY DJ1DM 73 FT8_lib   PyFT8  
+WSJT-X:          CQ OE8GMQ JN66 FT8_lib   PyFT8  
+WSJT-X:       <...> DL8RCH JN68 FT8_lib   PyFT8  
+WSJT-X: 22 FT8_lib: 18 PyFT8: 3
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_23.txt
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_23_ft8_lib.txt
+260202_180445  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_180445  8.72 [Cycle manager] Search spectrum ...
+260202_180445 12.18 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180445 12.24 [Cycle manager] Candidate rollover
+260202_180500  0.23 
+[Cycle manager] rollover detected at 0.23
+260202_180500  0.26 
+[Cycle manager] Hop timings: mean = 53.16ms, sd = 7.72ms (  4.8% symbol)
+260202_180500  9.21 [Cycle manager] Search spectrum ...
+260202_180500 12.45 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180500 12.47 [Cycle manager] Candidate rollover
+260202_180500 12.48 [Cycle manager] 667 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_23
+WSJT-X:      JO1COV RA9UJP R+01 FT8_lib Y PyFT8  
+WSJT-X:       EA5INF G3WAG RR73 FT8_lib Y PyFT8  
+WSJT-X:       <...> OE9KFV JN47 FT8_lib Y PyFT8  
+WSJT-X:          CQ IK4LZH JN54 FT8_lib Y PyFT8 Y
+WSJT-X:       BI8DHZ DL1KDA -17 FT8_lib Y PyFT8 Y
+WSJT-X:         R3KCW IQ5PJ +03 FT8_lib Y PyFT8 Y
+WSJT-X:       DG1BQC HB9CUZ RRR FT8_lib Y PyFT8 Y
+WSJT-X:        DM2DLG UR7HN -13 FT8_lib   PyFT8  
+WSJT-X:         BI8DHZ 4U1A -16 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ CT3IQ IM12 FT8_lib Y PyFT8  
+WSJT-X:          ZY50Y <...> 73 FT8_lib Y PyFT8  
+WSJT-X:           CQ F6HUK JN06 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ DH1NAS JO50 FT8_lib Y PyFT8 Y
+WSJT-X:     <ZY50Y> IV3KVC JN65 FT8_lib   PyFT8  
+WSJT-X:        <...> ON6UF JO10 FT8_lib Y PyFT8  
+WSJT-X:         EA3YE R8AU RR73 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ E75C JN93 FT8_lib Y PyFT8  
+WSJT-X:        BA7IO EA3ZD JN01 FT8_lib Y PyFT8  
+WSJT-X:        R1OAY <...> R-11 FT8_lib Y PyFT8  
+WSJT-X:           CQ F5UOU JN06 FT8_lib   PyFT8  
+WSJT-X:       UY7IV SQ9JJR JO90 FT8_lib   PyFT8  
+WSJT-X:       JA1FWS F8BBL R-15 FT8_lib   PyFT8  
+WSJT-X:       JA1FWS RU3OX LO00 FT8_lib   PyFT8  
+WSJT-X:      JO1COV PD0MNO JO22 FT8_lib   PyFT8  
+WSJT-X:          CQ SP9LKP JO90 FT8_lib   PyFT8  
+WSJT-X:           CQ G3ZQQ IO82 FT8_lib   PyFT8  
+WSJT-X: 26 FT8_lib: 17 PyFT8: 8
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_24.txt
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_24_ft8_lib.txt
+260202_180515  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_180515  8.75 [Cycle manager] Search spectrum ...
+260202_180515 11.85 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180515 11.87 [Cycle manager] Candidate rollover
+260202_180530  0.10 
+[Cycle manager] rollover detected at 0.10
+260202_180530  0.12 
+[Cycle manager] Hop timings: mean = 53.21ms, sd = 4.38ms (  2.7% symbol)
+260202_180530  9.25 [Cycle manager] Search spectrum ...
+260202_180530 12.08 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180530 12.12 [Cycle manager] Candidate rollover
+260202_180530 12.13 [Cycle manager] 742 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_24
+WSJT-X:       CT3IQ EI8GVB IO63 FT8_lib Y PyFT8  
+WSJT-X:          CQ RV6AFG KN95 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ 2E0LDW IO70 FT8_lib Y PyFT8 Y
+WSJT-X:      <...> DM100ZM RR73 FT8_lib Y PyFT8  
+WSJT-X:        IQ5PJ R3KCW R+01 FT8_lib Y PyFT8  
+WSJT-X:       <...> IK2ZDT JN45 FT8_lib Y PyFT8  
+WSJT-X:           CQ EA5OL IM99 FT8_lib Y PyFT8 Y
+WSJT-X:        RX3ASQ OR7EG -02 FT8_lib Y PyFT8  
+WSJT-X:        CT3IQ UY7IV KN97 FT8_lib   PyFT8  
+WSJT-X:       <...> IT9HVZ JM78 FT8_lib Y PyFT8  
+WSJT-X:      DL1GHB MM0IMC RR73 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ R4WZ LO67 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ 9A9A JN75 FT8_lib Y PyFT8 Y
+WSJT-X:           R8AU EA3YE 73 FT8_lib Y PyFT8  
+WSJT-X:           CQ F5CCX JN18 FT8_lib Y PyFT8  
+WSJT-X:        <...> ON8SS JO10 FT8_lib Y PyFT8  
+WSJT-X:      RA9UJP JO1COV RR73 FT8_lib Y PyFT8  
+WSJT-X:          CQ YO8CQM KN37 FT8_lib   PyFT8  
+WSJT-X:       DH1NAS RZ9WA LO74 FT8_lib Y PyFT8  
+WSJT-X:         F4AGZ <...> -03 FT8_lib Y PyFT8  
+WSJT-X:          CQ OE8GMQ JN66 FT8_lib   PyFT8  
+WSJT-X:       <...> DL8RCH JN68 FT8_lib Y PyFT8  
+WSJT-X: 22 FT8_lib: 19 PyFT8: 6
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_25.txt
+Error reading line 000000  -9  0.7 1939 ~  PD0CIF/PHOTO
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_25_ft8_lib.txt
+260202_180545  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_180545  8.77 [Cycle manager] Search spectrum ...
+260202_180545 11.64 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180545 11.65 [Cycle manager] Candidate rollover
+260202_180600  0.97 
+[Cycle manager] rollover detected at 0.97
+260202_180600  1.03 
+[Cycle manager] Hop timings: mean = 53.17ms, sd = 5.49ms (  3.4% symbol)
+260202_180600  9.91 [Cycle manager] Search spectrum ...
+260202_180600 12.70 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180600 12.75 [Cycle manager] Candidate rollover
+260202_180600 12.76 [Cycle manager] 520 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_25
+WSJT-X:        JO1COV RA9UJP 73 FT8_lib Y PyFT8 Y
+WSJT-X:       <...> US5IQI KN87 FT8_lib Y PyFT8  
+WSJT-X:          CQ IK4LZH JN54 FT8_lib Y PyFT8 Y
+WSJT-X:       BI8DHZ DL1KDA -17 FT8_lib Y PyFT8 Y
+WSJT-X:         R3KCW IQ5PJ RRR FT8_lib Y PyFT8 Y
+WSJT-X:      YC6RMT IK3JLT JN65 FT8_lib Y PyFT8 Y
+WSJT-X:       DG1BQC HB9CUZ RRR FT8_lib Y PyFT8 Y
+WSJT-X:       JA1FWS RU3OX LO00 FT8_lib Y PyFT8  
+WSJT-X:           R8JA 4U1A -23 FT8_lib Y PyFT8 Y
+WSJT-X:         BI8DHZ 4U1A -16 FT8_lib Y PyFT8 Y
+WSJT-X:         UY7IV CT3IQ -07 FT8_lib Y PyFT8  
+WSJT-X:        7Z1AL DF2FE JO51 FT8_lib Y PyFT8  
+WSJT-X:        SA0BYP F6HUK +01 FT8_lib Y PyFT8 Y
+WSJT-X:        RZ9WA DH1NAS -13 FT8_lib Y PyFT8  
+WSJT-X:       <...> IV3KVC R-21 FT8_lib Y PyFT8  
+WSJT-X:          CQ BD8NBG OL36 FT8_lib Y PyFT8  
+WSJT-X:            CQ R8AU MO05 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ E75C JN93 FT8_lib Y PyFT8  
+WSJT-X:        BA7IO EA3ZD JN01 FT8_lib Y PyFT8  
+WSJT-X:        <...> OR18OSB 73 FT8_lib Y PyFT8  
+WSJT-X:       JA1FWS F8BBL R-15 FT8_lib   PyFT8  
+WSJT-X:       YC6RMT IZ7NLM -22 FT8_lib   PyFT8  
+WSJT-X:       OR7EG RX3ASQ R-08 FT8_lib   PyFT8  
+WSJT-X:       JA1FWS OK2BV R-13 FT8_lib   PyFT8  
+WSJT-X:        <...> F4AGZ JN38 FT8_lib   PyFT8  
+WSJT-X:          CQ SP9LKP JO90 FT8_lib   PyFT8  
+WSJT-X:        DM100ZM <...> 73 FT8_lib   PyFT8  
+WSJT-X: 27 FT8_lib: 20 PyFT8: 10
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_26.txt
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_26_ft8_lib.txt
+260202_180615  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_180615  8.72 [Cycle manager] Search spectrum ...
+260202_180615 12.64 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180615 12.65 [Cycle manager] Candidate rollover
+260202_180630  0.04 
+[Cycle manager] rollover detected at 0.04
+260202_180630  0.07 
+[Cycle manager] Hop timings: mean = 53.16ms, sd = 3.36ms (  2.1% symbol)
+260202_180630  9.34 [Cycle manager] Search spectrum ...
+260202_180630 11.16 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180630 11.16 [Cycle manager] Candidate rollover
+260202_180630 11.17 [Cycle manager] 742 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_26
+WSJT-X:       CT3IQ EI8GVB IO63 FT8_lib Y PyFT8  
+WSJT-X:       F5UOU RV6AFG R-21 FT8_lib Y PyFT8 Y
+WSJT-X:       BD8NBG S51SG JN76 FT8_lib   PyFT8  
+WSJT-X:          IQ5PJ R3KCW 73 FT8_lib Y PyFT8  
+WSJT-X:       <...> IK2ZDT JN45 FT8_lib Y PyFT8  
+WSJT-X:           CQ EA5OL IM99 FT8_lib Y PyFT8 Y
+WSJT-X:       RU3OX DL4GBA JN47 FT8_lib Y PyFT8 Y
+WSJT-X:       RX3ASQ OR7EG RR73 FT8_lib Y PyFT8  
+WSJT-X:           CQ F1BHB JN09 FT8_lib Y PyFT8  
+WSJT-X:       <...> IT9HVZ JM78 FT8_lib Y PyFT8  
+WSJT-X:        ES3AT MM0IMC -03 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ R4WZ LO67 FT8_lib Y PyFT8 Y
+WSJT-X:         LY3BES 9A9A +07 FT8_lib Y PyFT8 Y
+WSJT-X:       BD8NBG OM7OM JN98 FT8_lib Y PyFT8 Y
+WSJT-X:        E75C RV6ARS KN84 FT8_lib Y PyFT8  
+WSJT-X:         RU0LL F5CCX -10 FT8_lib   PyFT8  
+WSJT-X:       <...> DL8RCH JN68 FT8_lib Y PyFT8  
+WSJT-X:          CQ 2E0LDW IO70 FT8_lib   PyFT8  
+WSJT-X:           CQ G0OSK IO91 FT8_lib   PyFT8  
+WSJT-X:        <...> ZY50Y RR73 FT8_lib Y PyFT8  
+WSJT-X:      DH1NAS UA3NFG LO28 FT8_lib Y PyFT8  
+WSJT-X:         F4AGZ <...> -02 FT8_lib Y PyFT8  
+WSJT-X:          CQ OE8GMQ JN66 FT8_lib   PyFT8  
+WSJT-X: 23 FT8_lib: 18 PyFT8: 7
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_27.txt
+Error reading line 000000   0  0.8 2631 ~  CQ OR18OSB
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_27_ft8_lib.txt
+Error reading line 000000 +12.0 +1.44 2631 ~  CQ OR18OSB 
+
+260202_180645  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_180645  8.78 [Cycle manager] Search spectrum ...
+260202_180645 11.70 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180645 11.71 [Cycle manager] Candidate rollover
+260202_180700  0.37 
+[Cycle manager] rollover detected at 0.37
+260202_180700  0.39 
+[Cycle manager] Hop timings: mean = 53.16ms, sd = 4.11ms (  2.6% symbol)
+260202_180700  9.64 [Cycle manager] Search spectrum ...
+260202_180700 12.46 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180700 12.52 [Cycle manager] Candidate rollover
+260202_180700 12.52 [Cycle manager] 459 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_27
+WSJT-X:       RV6AFG F5UOU RR73 FT8_lib Y PyFT8  
+WSJT-X:          CQ IK4LZH JN54 FT8_lib Y PyFT8 Y
+WSJT-X:       BI8DHZ DL1KDA -17 FT8_lib Y PyFT8 Y
+WSJT-X:          R3KCW IQ5PJ 73 FT8_lib Y PyFT8 Y
+WSJT-X:      YC6RMT IK3JLT JN65 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ HB9CUZ JN47 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ SV2BRA KN10 FT8_lib   PyFT8  
+WSJT-X:        BI8DHZ 4U1A RR73 FT8_lib Y PyFT8 Y
+WSJT-X:        SM3MXR 4U1A R-08 FT8_lib Y PyFT8 Y
+WSJT-X:       ON2RK YO9IAB KN25 FT8_lib Y PyFT8 Y
+WSJT-X:        7Z1AL DF2FE JO51 FT8_lib Y PyFT8  
+WSJT-X:       SA0BYP F6HUK RR73 FT8_lib   PyFT8  
+WSJT-X:         R4WZ UV5IW KN88 FT8_lib Y PyFT8  
+WSJT-X:        RZ9WA DH1NAS -13 FT8_lib Y PyFT8 Y
+WSJT-X:        R4WZ PA3GAE JO21 FT8_lib Y PyFT8 Y
+WSJT-X:          ZY50Y <...> 73 FT8_lib Y PyFT8  
+WSJT-X:        <...> F4AGZ R-05 FT8_lib Y PyFT8  
+WSJT-X:          CQ BD8NBG OL36 FT8_lib Y PyFT8  
+WSJT-X:            CQ R8AU MO05 FT8_lib Y PyFT8 Y
+WSJT-X:        BA7IO EA3ZD JN01 FT8_lib Y PyFT8  
+WSJT-X:           CQ G3WAG IO82 FT8_lib   PyFT8  
+WSJT-X:       <...> US5IQI KN87 FT8_lib Y PyFT8  
+WSJT-X:       JA1FWS F8BBL R-15 FT8_lib   PyFT8  
+WSJT-X:          CQ IU8DMZ JN70 FT8_lib   PyFT8  
+WSJT-X:       YC6RMT IZ7NLM -22 FT8_lib   PyFT8  
+WSJT-X:       JA1FWS OK2BV R-13 FT8_lib   PyFT8  
+WSJT-X:         R4WZ ON6UF JO10 FT8_lib   PyFT8  
+WSJT-X:           CQ G3ZQQ IO82 FT8_lib   PyFT8  
+WSJT-X: 28 FT8_lib: 19 PyFT8: 11
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_28.txt
+Error reading line 000000  -6  0.9  782 ~  CQ DM100ZM
+
+Error reading line 000000 -24  0.9 1509 ~  CQ ZY50Y
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_28_ft8_lib.txt
+Error reading line 000000 +17.0 +1.60  781 ~  CQ DM100ZM 
+
+260202_180715  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_180715  8.74 [Cycle manager] Search spectrum ...
+260202_180715 11.45 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180715 11.50 [Cycle manager] Candidate rollover
+260202_180730  0.06 
+[Cycle manager] rollover detected at 0.06
+260202_180730  0.07 
+[Cycle manager] Hop timings: mean = 53.25ms, sd = 4.73ms (  3.0% symbol)
+260202_180730 10.02 [Cycle manager] Search spectrum ...
+260202_180730 13.51 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180730 13.56 [Cycle manager] Candidate rollover
+260202_180730 13.58 [Cycle manager] 575 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_28
+WSJT-X:       CT3IQ EI8GVB IO63 FT8_lib Y PyFT8  
+WSJT-X:       F5UOU RV6AFG R-21 FT8_lib Y PyFT8 Y
+WSJT-X:       BD8NBG S51SG JN76 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ EA5OL IM99 FT8_lib Y PyFT8 Y
+WSJT-X:       SV2BRA DJ1DM JN58 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ F1BHB JN09 FT8_lib Y PyFT8  
+WSJT-X:        CT3IQ UY7IV R-10 FT8_lib Y PyFT8  
+WSJT-X:       OH3BY IZ6MPZ JN63 FT8_lib   PyFT8  
+WSJT-X:       ES3AT MM0IMC RR73 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ R4WZ LO67 FT8_lib Y PyFT8  
+WSJT-X:        LY3BES 9A9A RR73 FT8_lib Y PyFT8 Y
+WSJT-X:      BD8NBG RA3TPE LO25 FT8_lib Y PyFT8 Y
+WSJT-X:        E75C RV6ARS R+03 FT8_lib Y PyFT8  
+WSJT-X:        RU0LL F5CCX RR73 FT8_lib   PyFT8  
+WSJT-X:        <...> R3KCW KO90 FT8_lib Y PyFT8  
+WSJT-X:          CQ 2E0LDW IO70 FT8_lib   PyFT8  
+WSJT-X:           CQ G0OSK IO91 FT8_lib   PyFT8  
+WSJT-X:      BD8NBG DL4SBF JN48 FT8_lib   PyFT8  
+WSJT-X:      <...> LZ365BM RR73 FT8_lib Y PyFT8  
+WSJT-X:          CQ OE8GMQ JN66 FT8_lib   PyFT8  
+WSJT-X:        <...> ON8SS JO10 FT8_lib   PyFT8  
+WSJT-X:       <...> DL8RCH JN68 FT8_lib Y PyFT8  
+WSJT-X:           CQ ON2RK JO20 FT8_lib   PyFT8  
+WSJT-X: 23 FT8_lib: 15 PyFT8: 7
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_29.txt
+Error reading line 000000   2  0.8 2632 ~  CQ OR18OSB
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_29_ft8_lib.txt
+Error reading line 000000 +13.5 +1.44 2631 ~  CQ OR18OSB 
+
+260202_180745  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_180745  8.74 [Cycle manager] Search spectrum ...
+260202_180745 10.40 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180745 10.41 [Cycle manager] Candidate rollover
+260202_180800  0.16 
+[Cycle manager] rollover detected at 0.16
+260202_180800  0.17 
+[Cycle manager] Hop timings: mean = 53.23ms, sd = 7.47ms (  4.7% symbol)
+260202_180800  9.23 [Cycle manager] Search spectrum ...
+260202_180800 10.87 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180800 10.88 [Cycle manager] Candidate rollover
+260202_180800 10.89 [Cycle manager] 423 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_29
+WSJT-X:       <...> US5IQI KN87 FT8_lib   PyFT8  
+WSJT-X:          CQ IK4LZH JN54 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ IQ5PJ JN53 FT8_lib Y PyFT8 Y
+WSJT-X:      YC6RMT IK3JLT JN65 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ HB9CUZ JN47 FT8_lib Y PyFT8 Y
+WSJT-X:        DJ1DM SV2BRA +03 FT8_lib Y PyFT8 Y
+WSJT-X:          <...> 4U1A -20 FT8_lib Y PyFT8  
+WSJT-X:       <...> YO9IAB KN25 FT8_lib Y PyFT8  
+WSJT-X:       JA1FWS OK2BV R-13 FT8_lib Y PyFT8  
+WSJT-X:         R4WZ UV5IW KN88 FT8_lib Y PyFT8 Y
+WSJT-X:        RZ9WA DH1NAS -13 FT8_lib Y PyFT8 Y
+WSJT-X:        R4WZ PA3GAE JO21 FT8_lib Y PyFT8 Y
+WSJT-X:        LZ365BM <...> 73 FT8_lib Y PyFT8  
+WSJT-X:       RA3TPE BD8NBG -18 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ R8AU MO05 FT8_lib Y PyFT8 Y
+WSJT-X:        RV6ARS E75C RR73 FT8_lib Y PyFT8  
+WSJT-X:          CQ IU8DMZ JN70 FT8_lib   PyFT8  
+WSJT-X:        SM3MXR 4U1A R-08 FT8_lib   PyFT8  
+WSJT-X:        UY7IV CT3IQ RR73 FT8_lib   PyFT8  
+WSJT-X:        7Z1AL DF2FE JO51 FT8_lib   PyFT8  
+WSJT-X:        ES1KK SP9LKP -13 FT8_lib   PyFT8  
+WSJT-X:       YC6RMT IZ7NLM -22 FT8_lib   PyFT8  
+WSJT-X: 22 FT8_lib: 15 PyFT8: 10
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_30.txt
+Error reading line 000000  -1  1.0  782 ~  CQ DM100ZM
+
+Error reading line 000000  -7  0.8  578 ~  CQ PA33EUDXF
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_30_ft8_lib.txt
+Error reading line 000000 +16.0 +1.60  781 ~  CQ DM100ZM 
+
+260202_180800  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_180815  8.72 [Cycle manager] Search spectrum ...
+260202_180815 10.40 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180815 10.40 [Cycle manager] Candidate rollover
+260202_180830  0.61 
+[Cycle manager] rollover detected at 0.61
+260202_180830  0.64 
+[Cycle manager] Hop timings: mean = 53.18ms, sd = 6.96ms (  4.4% symbol)
+260202_180830  9.88 [Cycle manager] Search spectrum ...
+260202_180830 11.51 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180830 11.51 [Cycle manager] Candidate rollover
+260202_180830 11.52 [Cycle manager] 501 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_30
+WSJT-X:       CT3IQ EI8GVB IO63 FT8_lib Y PyFT8  
+WSJT-X:       F5UOU RV6AFG R-21 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ 2E0LDW IO70 FT8_lib Y PyFT8 Y
+WSJT-X:       G3WAG SP4TXI KO03 FT8_lib   PyFT8  
+WSJT-X:           CQ EA5OL IM99 FT8_lib Y PyFT8 Y
+WSJT-X:       RU3OX DL4GBA JN47 FT8_lib Y PyFT8 Y
+WSJT-X:        <...> 9A3KG JN83 FT8_lib Y PyFT8  
+WSJT-X:           CQ F1BHB JN09 FT8_lib Y PyFT8  
+WSJT-X:          CT3IQ UY7IV 73 FT8_lib Y PyFT8  
+WSJT-X:       OH3BY IZ6MPZ R-07 FT8_lib Y PyFT8 Y
+WSJT-X:       CT3IQ IT9HVZ JM78 FT8_lib Y PyFT8  
+WSJT-X:            CQ R4WZ LO67 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ 9A9A JN75 FT8_lib Y PyFT8 Y
+WSJT-X:      BD8NBG RA3TPE LO25 FT8_lib Y PyFT8 Y
+WSJT-X:          E75C RV6ARS 73 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ F5CCX JN18 FT8_lib Y PyFT8  
+WSJT-X:        <...> R3KCW KO90 FT8_lib Y PyFT8  
+WSJT-X:           CQ ON2RK JO20 FT8_lib   PyFT8  
+WSJT-X:       SV2BRA DJ1DM R-08 FT8_lib   PyFT8  
+WSJT-X:         ES1KK <...> -16 FT8_lib Y PyFT8  
+WSJT-X:        US5IQI <...> -08 FT8_lib Y PyFT8  
+WSJT-X:        BD8NBG DJ2BW -15 FT8_lib   PyFT8  
+WSJT-X:          CQ OE8GMQ JN66 FT8_lib   PyFT8  
+WSJT-X:        LU5HA RA0ASM -13 FT8_lib   PyFT8  
+WSJT-X:           CQ 7Z1AL LL56 FT8_lib   PyFT8  
+WSJT-X: 25 FT8_lib: 18 PyFT8: 9
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_31.txt
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_31_ft8_lib.txt
+260202_180830  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_180845  8.75 [Cycle manager] Search spectrum ...
+260202_180845 10.63 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180845 10.64 [Cycle manager] Candidate rollover
+260202_180845  0.85 
+[Cycle manager] rollover detected at 0.85
+260202_180845  0.88 
+[Cycle manager] Hop timings: mean = 53.22ms, sd = 7.92ms (  4.9% symbol)
+260202_180900 10.11 [Cycle manager] Search spectrum ...
+260202_180900 11.73 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180900 11.74 [Cycle manager] Candidate rollover
+260202_180900 11.75 [Cycle manager] 380 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_31
+WSJT-X:        SP4TXI G3WAG +13 FT8_lib   PyFT8  
+WSJT-X:          CQ IK4LZH JN54 FT8_lib Y PyFT8 Y
+WSJT-X:         JA1FWS F8BBL 73 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ IQ5PJ JN53 FT8_lib Y PyFT8 Y
+WSJT-X:      YC6RMT IK3JLT JN65 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ HB9CUZ JN47 FT8_lib Y PyFT8 Y
+WSJT-X:       DJ1DM SV2BRA RR73 FT8_lib Y PyFT8 Y
+WSJT-X:       <...> YO9IAB KN25 FT8_lib Y PyFT8  
+WSJT-X:        <...> IZ7NLM -16 FT8_lib Y PyFT8  
+WSJT-X:        7Z1AL DF2FE JO51 FT8_lib Y PyFT8 Y
+WSJT-X:         R4WZ DJ4TM JN47 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ DH1NAS JO50 FT8_lib Y PyFT8 Y
+WSJT-X:        R4WZ PA3GAE JO21 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ R8AU MO05 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ E75C JN93 FT8_lib Y PyFT8  
+WSJT-X:        <...> OK6LZ JN99 FT8_lib   PyFT8  
+WSJT-X:       <...> US5IQI R-06 FT8_lib Y PyFT8  
+WSJT-X:       ZL2OK DL1KDA JO30 FT8_lib   PyFT8  
+WSJT-X:        <...> E77VM R-11 FT8_lib Y PyFT8  
+WSJT-X:           CQ HA1BF JN86 FT8_lib   PyFT8  
+WSJT-X:      JO1COV PD0MNO JO22 FT8_lib   PyFT8  
+WSJT-X:           CQ PY5JO GG54 FT8_lib Y PyFT8  
+WSJT-X:        ES1KK SP9LKP -13 FT8_lib   PyFT8  
+WSJT-X:          CQ IU8DMZ JN70 FT8_lib   PyFT8  
+WSJT-X: 24 FT8_lib: 17 PyFT8: 11
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_32.txt
+Error reading line 000000   0  0.9  577 ~  CQ PA33EUDXF
+
+Error reading line 000000  -3  1.0  783 ~  CQ DM100ZM
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_32_ft8_lib.txt
+Error reading line 000000 +13.0 +1.68  784 ~  CQ DM100ZM 
+
+Error reading line 000000 +10.0 +1.52  575 ~  CQ PA33EUDXF 
+
+260202_180900  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_180915  8.72 [Cycle manager] Search spectrum ...
+260202_180915 10.38 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180915 10.38 [Cycle manager] Candidate rollover
+260202_180915  0.03 
+[Cycle manager] rollover detected at 0.03
+260202_180915  0.04 
+[Cycle manager] Hop timings: mean = 53.19ms, sd = 5.94ms (  3.7% symbol)
+260202_180930  9.16 [Cycle manager] Search spectrum ...
+260202_180930 10.79 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180930 10.79 [Cycle manager] Candidate rollover
+260202_180930 10.80 [Cycle manager] 451 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_32
+WSJT-X:       CT3IQ EI8GVB IO63 FT8_lib Y PyFT8  
+WSJT-X:       F5UOU RV6AFG R-21 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ 2E0LDW IO70 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ EA5OL IM99 FT8_lib Y PyFT8 Y
+WSJT-X:       RU3OX DL4GBA JN47 FT8_lib Y PyFT8 Y
+WSJT-X:         SV2BRA DJ1DM 73 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ F1BHB JN09 FT8_lib Y PyFT8  
+WSJT-X:         OH3BY IZ6MPZ 73 FT8_lib Y PyFT8 Y
+WSJT-X:       CT3IQ IT9HVZ JM78 FT8_lib Y PyFT8  
+WSJT-X:         RM3T MM0IMC -18 FT8_lib Y PyFT8 Y
+WSJT-X:       JA7GFI DK3BT JO40 FT8_lib Y PyFT8 Y
+WSJT-X:         LY3BES R4WZ -07 FT8_lib Y PyFT8  
+WSJT-X:            CQ 9A9A JN75 FT8_lib Y PyFT8 Y
+WSJT-X:      BD8NBG RA3TPE LO25 FT8_lib Y PyFT8 Y
+WSJT-X:         F4AGZ F5CCX -06 FT8_lib Y PyFT8  
+WSJT-X:        <...> ON8SS JO10 FT8_lib Y PyFT8  
+WSJT-X:        EA5INF ON2RK -10 FT8_lib   PyFT8  
+WSJT-X:        <...> DH3JF JO31 FT8_lib Y PyFT8  
+WSJT-X:        <...> 9A3KG JN83 FT8_lib   PyFT8  
+WSJT-X:           CQ 7Z1AL LL56 FT8_lib   PyFT8  
+WSJT-X:          CQ DL4SBF JN48 FT8_lib   PyFT8  
+WSJT-X:      <...> LZ365BM RR73 FT8_lib Y PyFT8  
+WSJT-X:        BD8NBG DJ2BW -15 FT8_lib   PyFT8  
+WSJT-X: 23 FT8_lib: 18 PyFT8: 10
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_33.txt
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_33_ft8_lib.txt
+260202_180930  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_180945  8.75 [Cycle manager] Search spectrum ...
+260202_180945 10.50 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_180945 10.51 [Cycle manager] Candidate rollover
+260202_180945  0.52 
+[Cycle manager] rollover detected at 0.52
+260202_180945  0.53 
+[Cycle manager] Hop timings: mean = 53.16ms, sd = 7.17ms (  4.5% symbol)
+260202_181000  9.76 [Cycle manager] Search spectrum ...
+260202_181000 11.43 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_181000 11.43 [Cycle manager] Candidate rollover
+260202_181000 11.44 [Cycle manager] 402 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_33
+WSJT-X:            CQ R7NO KN98 FT8_lib Y PyFT8 Y
+WSJT-X:       SP4TXI G3WAG RR73 FT8_lib Y PyFT8  
+WSJT-X:        LZ365BM <...> 73 FT8_lib Y PyFT8  
+WSJT-X:          CQ IK4LZH JN54 FT8_lib Y PyFT8 Y
+WSJT-X:             CQ DX G0PQO FT8_lib Y PyFT8  
+WSJT-X:           CQ IQ5PJ JN53 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ IU8DMZ JN70 FT8_lib Y PyFT8 Y
+WSJT-X:      YC6RMT IK3JLT JN65 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ HB9CUZ JN47 FT8_lib Y PyFT8 Y
+WSJT-X:        SM3MXR 4U1A R-08 FT8_lib Y PyFT8 Y
+WSJT-X:          <...> 4U1A -20 FT8_lib Y PyFT8  
+WSJT-X:        IT9HVZ CT3IQ -02 FT8_lib Y PyFT8 Y
+WSJT-X:        <...> IZ7NLM -16 FT8_lib Y PyFT8  
+WSJT-X:       PP5AM DM7GBW JO71 FT8_lib Y PyFT8 Y
+WSJT-X:       RA3TPE BD8NBG -17 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ R8AU MO05 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ E75C JN93 FT8_lib Y PyFT8  
+WSJT-X:        F5CCX F4AGZ JN38 FT8_lib Y PyFT8  
+WSJT-X:         R3KCW <...> -11 FT8_lib Y PyFT8  
+WSJT-X:        <...> RD4AN LN19 FT8_lib   PyFT8  
+WSJT-X:        <...> OK6LZ JN99 FT8_lib   PyFT8  
+WSJT-X:        SP5QAC F5UOU -11 FT8_lib   PyFT8  
+WSJT-X:       ZL2OK DL1KDA R-24 FT8_lib   PyFT8  
+WSJT-X:        <...> E77VM R-11 FT8_lib   PyFT8  
+WSJT-X:           CQ HA1BF JN86 FT8_lib   PyFT8  
+WSJT-X:           CQ PY5JO GG54 FT8_lib   PyFT8  
+WSJT-X:         F1BHB BA7IO -21 FT8_lib   PyFT8  
+WSJT-X:           CQ G3ZQQ IO82 FT8_lib   PyFT8  
+WSJT-X: 28 FT8_lib: 19 PyFT8: 11
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_34.txt
+Error reading line 000000 -13  1.2 2130 ~  CQ LZ365BM
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_34_ft8_lib.txt
+Error reading line 000000 +11.5 +1.84 2128 ~  CQ LZ365BM 
+
+260202_181000  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_181015  8.72 [Cycle manager] Search spectrum ...
+260202_181015 10.40 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_181015 10.41 [Cycle manager] Candidate rollover
+260202_181015  0.52 
+[Cycle manager] rollover detected at 0.52
+260202_181015  0.54 
+[Cycle manager] Hop timings: mean = 53.25ms, sd = 7.16ms (  4.5% symbol)
+260202_181030 10.06 [Cycle manager] Search spectrum ...
+260202_181030 11.71 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_181030 11.72 [Cycle manager] Candidate rollover
+260202_181030 11.73 [Cycle manager] 541 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_34
+WSJT-X:       CT3IQ EI8GVB IO63 FT8_lib Y PyFT8  
+WSJT-X:       F5UOU RV6AFG R-21 FT8_lib Y PyFT8 Y
+WSJT-X:         UX0KR <...> -04 FT8_lib   PyFT8  
+WSJT-X:          R2DP <...> +00 FT8_lib Y PyFT8  
+WSJT-X:       IQ5PJ IZ6MPZ JN63 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ EA5OL IM99 FT8_lib Y PyFT8 Y
+WSJT-X:       RU3OX DL4GBA JN47 FT8_lib Y PyFT8 Y
+WSJT-X:        <...> 9A3KG JN83 FT8_lib Y PyFT8  
+WSJT-X:        JG2PQN F1BHB -24 FT8_lib   PyFT8  
+WSJT-X:       CT3IQ IT9HVZ R-03 FT8_lib Y PyFT8  
+WSJT-X:       JA7GFI DK3BT JO40 FT8_lib Y PyFT8  
+WSJT-X:        LY3BES R4WZ RR73 FT8_lib Y PyFT8  
+WSJT-X:          <...> 9A9A -22 FT8_lib Y PyFT8  
+WSJT-X:      BD8NBG RA3TPE R-17 FT8_lib Y PyFT8 Y
+WSJT-X:        ES3AT RV6ARS -13 FT8_lib Y PyFT8  
+WSJT-X:         F4AGZ F5CCX -04 FT8_lib Y PyFT8  
+WSJT-X:          CQ YC6RMT NJ81 FT8_lib   PyFT8  
+WSJT-X:         IQ5PJ RA9H NO26 FT8_lib   PyFT8  
+WSJT-X:           CQ 7Z1AL LL56 FT8_lib   PyFT8  
+WSJT-X:         RM3T MM0IMC -18 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ DL4SBF JN48 FT8_lib   PyFT8  
+WSJT-X:        BD8NBG DJ2BW -15 FT8_lib   PyFT8  
+WSJT-X:         SV2BRA DJ1DM 73 FT8_lib   PyFT8 Y
+WSJT-X:        <...> DK3WL JO50 FT8_lib Y PyFT8  
+WSJT-X: 24 FT8_lib: 16 PyFT8: 7
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_35.txt
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_35_ft8_lib.txt
+260202_181030  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_181045  8.76 [Cycle manager] Search spectrum ...
+260202_181045 10.43 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_181045 10.44 [Cycle manager] Candidate rollover
+260202_181045  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_181045  0.06 
+[Cycle manager] Hop timings: mean = 53.16ms, sd = 7.20ms (  4.5% symbol)
+260202_181100  9.52 [Cycle manager] Search spectrum ...
+260202_181100 11.20 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_181100 11.20 [Cycle manager] Candidate rollover
+260202_181100 11.21 [Cycle manager] 439 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_35
+WSJT-X:            CQ R7NO KN98 FT8_lib Y PyFT8 Y
+WSJT-X:        <...> OK6LZ JN99 FT8_lib Y PyFT8  
+WSJT-X:          CQ IK4LZH JN54 FT8_lib Y PyFT8 Y
+WSJT-X:             CQ DX G0PQO FT8_lib Y PyFT8  
+WSJT-X:          R1AV IQ5PJ -21 FT8_lib Y PyFT8 Y
+WSJT-X:      YC6RMT IK3JLT JN65 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ HB9CUZ JN47 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ SV2BRA KN10 FT8_lib Y PyFT8 Y
+WSJT-X:          R8JA 4U1A RR73 FT8_lib Y PyFT8 Y
+WSJT-X:       IT9HVZ CT3IQ RR73 FT8_lib Y PyFT8 Y
+WSJT-X:         ZY50Y <...> RRR FT8_lib Y PyFT8  
+WSJT-X:         9A9A DJ4TM JN47 FT8_lib Y PyFT8 Y
+WSJT-X:      RA3TPE BD8NBG RR73 FT8_lib Y PyFT8  
+WSJT-X:            CQ E75C JN93 FT8_lib Y PyFT8  
+WSJT-X:           CQ UV5IW KN88 FT8_lib Y PyFT8 Y
+WSJT-X:         R3KCW <...> -11 FT8_lib Y PyFT8  
+WSJT-X:        SP5QAC R8AU MO05 FT8_lib Y PyFT8 Y
+WSJT-X:      JO1COV PE1OYB JO21 FT8_lib Y PyFT8  
+WSJT-X:        <...> RD4AN LN19 FT8_lib   PyFT8  
+WSJT-X:           CQ G3WAG IO82 FT8_lib   PyFT8  
+WSJT-X:        SP5QAC F5UOU -11 FT8_lib   PyFT8  
+WSJT-X:       ZL2OK DL1KDA R-24 FT8_lib   PyFT8  
+WSJT-X:          CQ IU8DMZ JN70 FT8_lib   PyFT8  
+WSJT-X:           CQ HA1BF JN86 FT8_lib   PyFT8  
+WSJT-X:       PP5AM DH1NAS JO50 FT8_lib   PyFT8  
+WSJT-X:          <...> 4U1A -20 FT8_lib   PyFT8  
+WSJT-X:          CQ SQ6PZL JO80 FT8_lib Y PyFT8  
+WSJT-X:        9A9A SP9LKP JO90 FT8_lib   PyFT8  
+WSJT-X:        F5CCX F4AGZ JN38 FT8_lib   PyFT8  
+WSJT-X:           CQ G3ZQQ IO82 FT8_lib   PyFT8  
+WSJT-X:      <ZY50Y> E77VM R-11 FT8_lib   PyFT8  
+WSJT-X:          CQ OE8GMQ JN66 FT8_lib   PyFT8  
+WSJT-X: 32 FT8_lib: 19 PyFT8: 11
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_36.txt
+Error reading line 000000 -17  1.2 2130 ~  CQ LZ365BM
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_36_ft8_lib.txt
+Error reading line 000000 +09.5 +1.84 2128 ~  CQ LZ365BM 
+
+260202_181100  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_181115  8.71 [Cycle manager] Search spectrum ...
+260202_181115 10.39 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_181115 10.39 [Cycle manager] Candidate rollover
+260202_181115  0.40 
+[Cycle manager] rollover detected at 0.40
+260202_181115  0.41 
+[Cycle manager] Hop timings: mean = 53.21ms, sd = 6.77ms (  4.2% symbol)
+260202_181130  9.87 [Cycle manager] Search spectrum ...
+260202_181130 11.67 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_181130 11.67 [Cycle manager] Candidate rollover
+260202_181130 11.68 [Cycle manager] 516 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_36
+WSJT-X:       CT3IQ EI8GVB IO63 FT8_lib Y PyFT8  
+WSJT-X:       F5UOU RV6AFG R-21 FT8_lib Y PyFT8 Y
+WSJT-X:    <...> PA33EUDXF RR73 FT8_lib Y PyFT8  
+WSJT-X:      <...> DM100ZM RR73 FT8_lib Y PyFT8  
+WSJT-X:         R8AU R6LIG KN97 FT8_lib Y PyFT8 Y
+WSJT-X:       RU3OX DL4GBA JN47 FT8_lib Y PyFT8 Y
+WSJT-X:        <...> 9A3KG JN83 FT8_lib Y PyFT8  
+WSJT-X:        JG2PQN F1BHB -24 FT8_lib Y PyFT8  
+WSJT-X:         CT3IQ IT9HVZ 73 FT8_lib Y PyFT8  
+WSJT-X:         RM3T MM0IMC -18 FT8_lib Y PyFT8 Y
+WSJT-X:       JA7GFI DK3BT JO40 FT8_lib   PyFT8  
+WSJT-X:            CQ R4WZ LO67 FT8_lib Y PyFT8  
+WSJT-X:          <...> 9A9A -22 FT8_lib Y PyFT8  
+WSJT-X:        BD8NBG RA3TPE 73 FT8_lib   PyFT8  
+WSJT-X:       ES3AT RV6ARS RR73 FT8_lib Y PyFT8 Y
+WSJT-X:        BA7IO EA3ZD JN01 FT8_lib Y PyFT8  
+WSJT-X:         F4AGZ F5CCX -17 FT8_lib Y PyFT8  
+WSJT-X:        PY5JO DH3JF JO31 FT8_lib   PyFT8  
+WSJT-X:           CQ EA5OL IM99 FT8_lib   PyFT8  
+WSJT-X:         IQ5PJ RA9H NO26 FT8_lib   PyFT8  
+WSJT-X:           CQ 7Z1AL LL56 FT8_lib   PyFT8  
+WSJT-X:       DH1NAS RZ9WA R-16 FT8_lib   PyFT8  
+WSJT-X:        BD8NBG DJ2BW -15 FT8_lib   PyFT8  
+WSJT-X: 23 FT8_lib: 15 PyFT8: 5
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_37.txt
+Error reading line 000000  -2  0.8 2632 ~  CQ OR18OSB
+
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_37_ft8_lib.txt
+Error reading line 000000 +14.0 +1.52 2631 ~  CQ OR18OSB 
+
+260202_181130  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_181130  8.73 [Cycle manager] Search spectrum ...
+260202_181145 10.58 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_181145 10.59 [Cycle manager] Candidate rollover
+260202_181145  0.61 
+[Cycle manager] rollover detected at 0.61
+260202_181145  0.63 
+[Cycle manager] Hop timings: mean = 53.20ms, sd = 6.95ms (  4.3% symbol)
+260202_181200 10.29 [Cycle manager] Search spectrum ...
+260202_181200 11.98 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_181200 12.03 [Cycle manager] Candidate rollover
+260202_181200 12.04 [Cycle manager] 457 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_37
+WSJT-X:      JO1COV PE1OYB JO21 FT8_lib Y PyFT8 Y
+WSJT-X:         PA3GAE R7NO -03 FT8_lib Y PyFT8 Y
+WSJT-X:           CQ G3WAG IO82 FT8_lib Y PyFT8  
+WSJT-X:          CQ IK4LZH JN54 FT8_lib Y PyFT8 Y
+WSJT-X:             CQ DX G0PQO FT8_lib Y PyFT8  
+WSJT-X:          R1AV IQ5PJ -15 FT8_lib Y PyFT8 Y
+WSJT-X:      YC6RMT IK3JLT JN65 FT8_lib Y PyFT8 Y
+WSJT-X:          R6LIG R8AU -11 FT8_lib   PyFT8  
+WSJT-X:          CQ HB9CUZ JN47 FT8_lib Y PyFT8 Y
+WSJT-X:       DM2DLG UR7HN RR73 FT8_lib Y PyFT8 Y
+WSJT-X:            CQ 4U1A JN88 FT8_lib Y PyFT8 Y
+WSJT-X:         ZY50Y <...> RRR FT8_lib Y PyFT8  
+WSJT-X:        <...> I4WQH JN54 FT8_lib Y PyFT8  
+WSJT-X:            CQ E75C JN93 FT8_lib Y PyFT8  
+WSJT-X:        <...> RD4AN LN19 FT8_lib   PyFT8  
+WSJT-X:        <...> OK6LZ JN99 FT8_lib   PyFT8  
+WSJT-X:       <...> US5IQI KN87 FT8_lib   PyFT8  
+WSJT-X:      <ZY50Y> E77VM R-11 FT8_lib   PyFT8  
+WSJT-X:           CQ HA1BF JN86 FT8_lib   PyFT8  
+WSJT-X:            CQ DX PD0MNO FT8_lib Y PyFT8  
+WSJT-X:       PP5AM DM7GBW JO71 FT8_lib Y PyFT8 Y
+WSJT-X:        9A9A SP9LKP JO90 FT8_lib   PyFT8  
+WSJT-X:         R4WZ G3ZQQ IO82 FT8_lib   PyFT8  
+WSJT-X: 23 FT8_lib: 15 PyFT8: 9
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_38.txt
+Reading C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_38_ft8_lib.txt
+260202_181200  0.00 
+[Cycle manager] rollover detected at 0.00
+260202_181200  8.75 [Cycle manager] Search spectrum ...
+260202_181200 10.48 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_181200 10.50 [Cycle manager] Candidate rollover
+260202_181215  0.68 
+[Cycle manager] rollover detected at 0.68
+260202_181215  0.75 
+[Cycle manager] Hop timings: mean = 53.16ms, sd = 8.22ms (  5.1% symbol)
+260202_181215  9.62 [Cycle manager] Search spectrum ...
+260202_181230 11.35 [Cycle manager] Spectrum searched -> 1417 candidates
+260202_181230 11.38 [Cycle manager] Candidate rollover
+260202_181230 11.39 [Cycle manager] 641 unprocessed candidates detected
+Comparing C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_38
+WSJT-X:       CT3IQ EI8GVB IO63 FT8_lib Y PyFT8  
+WSJT-X:       F5UOU RV6AFG R-21 FT8_lib Y PyFT8 Y
+WSJT-X:          CQ 2E0LDW IO70 FT8_lib   PyFT8  
+WSJT-X:        R2DP IK2ZDT JN45 FT8_lib   PyFT8  
+WSJT-X:           CQ EA5OL IM99 FT8_lib Y PyFT8 Y
+WSJT-X:       RU3OX DL4GBA JN47 FT8_lib Y PyFT8 Y
+WSJT-X:        JG2PQN F1BHB -24 FT8_lib Y PyFT8  
+WSJT-X:       UV5IW IT9HVZ JM78 FT8_lib Y PyFT8  
+WSJT-X:         RM3T MM0IMC -18 FT8_lib Y PyFT8 Y
+WSJT-X:          <...> 9A9A -22 FT8_lib Y PyFT8  
+WSJT-X:        BD8NBG DJ2BW -15 FT8_lib Y PyFT8 Y
+WSJT-X:        BA7IO EA3ZD JN01 FT8_lib Y PyFT8  
+WSJT-X:         F4AGZ F5CCX -17 FT8_lib Y PyFT8  
+WSJT-X:        <...> R3KCW KO90 FT8_lib Y PyFT8  
+WSJT-X:        PY5JO DH3JF JO31 FT8_lib   PyFT8  
+WSJT-X:        <...> 9A3KG JN83 FT8_lib   PyFT8  
+WSJT-X:        SV2BRA R4IG LO43 FT8_lib   PyFT8  
+WSJT-X:            CQ RA9H NO26 FT8_lib Y PyFT8 Y
+WSJT-X:        G0PQO 7Z1AL LL56 FT8_lib   PyFT8  
+WSJT-X: 19 FT8_lib: 13 PyFT8: 6

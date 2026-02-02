@@ -63,7 +63,7 @@ class Spectrum:
             syncs.append(best_sync)
         return syncs
 
-    def search(self, f0_idxs, cyclestart_str):
+    def search(self, f0_idxs, cyclestart_str, cycle_counter):
         cands = []
         pgrid = self.audio_in.pgrid_main[:self.h_search,:]
         for f0_idx in f0_idxs:
@@ -72,6 +72,7 @@ class Spectrum:
             pnorm = p / max_pwr
             self.occupancy[f0_idx:f0_idx + self.fbins_per_signal] += max_pwr
             c = Candidate()
+            c.cycle_counter = cycle_counter
             c.f0_idx = f0_idx
             c.syncs = self.get_syncs(f0_idx, pnorm)
             hps, bpt = self.hops_persymb, self.fbins_pertone
@@ -96,6 +97,8 @@ class Candidate:
         self.llr0_sd = 0
         self.llr = []
         self.llr0 = []
+        self.cycle_counter = 0
+        self.cyclestart_str = ""
         self.decode_path = ""
         self.msg = ''
         self.snr = -30
@@ -298,7 +301,7 @@ class Cycle_manager():
                 cycle_searched = True
                 if(self.verbose): self.tlog(f"[Cycle manager] Search spectrum ...")
 
-                self.new_cands = self.spectrum.search(self.f0_idxs, self.cyclestart_str(time.time()))
+                self.new_cands = self.spectrum.search(self.f0_idxs, self.cyclestart_str(time.time()), cycle_counter)
                 if(self.verbose): self.tlog(f"[Cycle manager] Spectrum searched -> {len(self.new_cands)} candidates")
                 if(self.onOccupancy): self.onOccupancy(self.spectrum.occupancy, self.spectrum.df)
 

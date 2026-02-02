@@ -7,15 +7,15 @@ import time
 from PyFT8.cycle_manager import Cycle_manager, params
 from PyFT8.sigspecs import FT8
 
-global wsjtx_dicts, pyft8_cands, new_matches, cands_matched, historic_matches, do_analysis, params
-wsjtx_dicts = []
-pyft8_cands = []
+global other_decoder_dicts, new_matches, historic_matches, do_analysis, params, test_cycle_counter, pyft8_dicts_cycle
+other_decoder_dicts = []
 new_matches = None
-cands_matched = []
 historic_matches = []
 do_analysis = False
+test_cycle_counter = 1
+waterfall = None
 
-def plot_success(fig, ax, load_file = False):
+def plot_success(fig, ax, source, other_decoder_suffix, load_file = False):
     global historic_matches, params
 
     if(load_file):
@@ -23,6 +23,7 @@ def plot_success(fig, ax, load_file = False):
             d = pickle.load(f)
         historic_matches = d['matches']
         params = d['params']
+        other_decoder_suffix = d['other_decoder_suffix']
 
     if not any(historic_matches):
         return
@@ -34,47 +35,44 @@ def plot_success(fig, ax, load_file = False):
     wcols =     ['#141700','#664b07']
     wlabs =     ['isolated','overlapping']
 
-    bins = [0.4 + 0.1*b for b in range(20)]
+    bins = [0.4 + 0.1*b for b in range(25)]
     
-    for w, c in historic_matches:
-        q = c.llr0_sd
+    for w, p in historic_matches:
+        q = p['llr0_sd']
 
         if(w['cofreq']):
             ws[1].append(q)
         else:
             ws[0].append(q)
 
-        if(c.msg):
-            if(' '.join(c.msg) == w['msg']):
-                if("O00" in c.decode_path):
+        if(p['msg']):
+            if(p['msg'] == w['msg']):
+                if("O00" in p['decode_path']):
                     py[2].append(q)
-                elif ("L00" in c.decode_path):
+                elif ("L00" in p['decode_path']):
                     py[1].append(q)
                 else:
                     py[0].append(q)
             else:
                 py[3].append(q)
-        elif('_' in c.decode_path):
+        elif('_' in p['decode_path']):
             py[4].append(q)
-        elif('#' not in c.decode_path):
+        elif('#' not in p['decode_path']):
             py[5].append(q)                
-
-    if(len(py[0]) ==0):
-        return
 
     ax.cla()
 
-    wsjtx = ax.hist(ws, bins = bins,  rwidth = 1.0, label = 'All',
+    dict_2 = ax.hist(ws, bins = bins,  rwidth = 1.0, label = 'All',
             stacked = True, color = wcols, alpha = 0.4, lw=0.5, edgecolor = 'grey')
 
     pyft8 = ax.hist(py, bins = bins, rwidth = 0.45, 
             stacked = True, alpha = 0.7, lw=.5, edgecolor = 'grey', color = pycols)
-    
+
     legwidth = 0.18
-    wsjtx_legend = ax.legend(handles = wsjtx[2], labels = wlabs,
+    dict_2_legend = ax.legend(handles = dict_2[2], labels = wlabs,
             loc='upper right', bbox_to_anchor=(1-legwidth,1, legwidth,0), mode='expand',
-            title = 'WSJT-X', title_fontproperties = {'weight':'bold', 'size':9}, alignment='left')
-    ax.add_artist(wsjtx_legend)
+            title = other_decoder_suffix, title_fontproperties = {'weight':'bold', 'size':9}, alignment='left')
+    ax.add_artist(dict_2_legend)
     pyft8_legend = ax.legend(handles = pyft8[2], labels = pylabs,
             loc = 'upper right', bbox_to_anchor=(1-legwidth,0.85, legwidth,0), mode='expand',
             title = 'PyFT8', title_fontproperties = {'weight':'bold', 'size':9}, alignment='left')
@@ -89,7 +87,7 @@ def plot_success(fig, ax, load_file = False):
     pydecs_corr = pydecs - len(py[3])
     pycorr_pc = f"{int(100*pydecs_corr/wdecs)}"
     pytot_pc = f"{int(100*pydecs/wdecs)}"
-    fig.suptitle(f"PyFT8 {pydecs} vs WSJTX. {wdecs} decodes, {pytot_pc}% ({pycorr_pc}% correct) to PyFT8")
+    fig.suptitle(f"{source}\nPyFT8 {pydecs} vs {other_decoder_suffix} {wdecs} decodes, {pytot_pc}% ({pycorr_pc}% correct) to PyFT8")
     if(params):
         params1 = dict(list(params.items())[:len(params)//2])
         params2 = dict(list(params.items())[len(params)//2:])
@@ -98,7 +96,7 @@ def plot_success(fig, ax, load_file = False):
     plt.savefig("compare_results.png")
 
 def wsjtx_all_tailer(all_file, cycle_manager):
-    global wsjtx_dicts
+    global other_decoder_dicts
     print(f"Following {all_file}")
     
     def follow():
@@ -116,129 +114,118 @@ def wsjtx_all_tailer(all_file, cycle_manager):
         try:
             cs, freq, dt, snr = ls[0], int(ls[6]), float(ls[5]), int(ls[4])
             msg = f"{ls[7]} {ls[8]} {ls[9]}"
-            wsjtx_dicts.append({'cs':cs,'f':int(freq),'msg':msg, 'dt':dt,'snr':snr,'td': f"{time.time() %60:4.1f}"})
+            other_decoder_dicts.append({'cs':cs,'f':int(freq),'msg':msg, 'dt':dt,'snr':snr,'td': f"{time.time() %60:4.1f}", 'cycle_idx':-1})
         except:
             print(f"Wsjtx_tailer error in line '{line}'")
 
-def get_wsjtx_decodes(wav_decodes_file):
-    global wsjtx_dicts
+def read_wsjtx_format(wav_decodes_file):
+    print(f"Reading {wav_decodes_file}")
     with open(wav_decodes_file,'r') as f:
         lines = f.readlines()
+    cycle_idx = 0
+    cyclestart_str = ''
+    dicts = []
     for l in lines:
-        wsjtx_dicts.append({'cs':'000000_000000', 'f':int(l[16:21]), 'msg':l[24:].strip(), 'snr':int(l[8:11]), 'dt':float(l[12:16]), 'td':''})
-
+        if(l.startswith('-')):
+            continue
+        fields = l.split()
+        if(fields[0] != cyclestart_str):
+            cycle_idx +=1
+            cyclestart_str = fields[0]
+        try:
+            tilde_offset = 1 if("~" in fields) else 0
+            msg = fields[4 + tilde_offset].strip() + ' ' + fields[5 + tilde_offset].strip() + ' ' + fields[6 + tilde_offset].strip()
+            d = {'cs':cyclestart_str, 'cycle_idx':cycle_idx, 'f':int(fields[3]), 'msg':msg, 'snr':int(float(fields[1])), 'dt':float(fields[2]), 'td':''}
+            dicts.append(d)
+        except:
+            print(f"Error reading line {l}")
+    return dicts
+ 
 def pc_str(x,y):
     return "{}" if y == 0 else f"{int(100*x/y)}%"
 
 def onCandidateRollover(candidates):
-    global pyft8_cands, do_analysis
+    global do_analysis, pyft8_dicts_cycle
     pyft8_cands = candidates.copy()
+    pyft8_dicts_cycle = []
+    for c in pyft8_cands:
+        td = f"{c.decode_completed %60:4.1f}" if c.decode_completed else '     '
+        d = {'cs':c.cyclestart_str, 'cycle_idx':c.cycle_counter, 'f':c.fHz, 'msg':' '.join(c.msg), 'snr':c.snr,
+             'dt':c.dt, 'td':td, 'ncheck0':c.ncheck0, 'llr0_sd':c.llr0_sd, 'td':td, 'decode_path':c.decode_path}
+        pyft8_dicts_cycle.append(d)
+    
     do_analysis = True
 
-def analyse_dictionaries(fig_s, ax_s):
-    global cands_matched, new_matches
+def analyse_dictionaries(fig_s, ax_s, source, other_decoder_dicts, other_decoder_suffix):
+    global new_matches, test_cycle_counter
 
-    new_matches = [(w, c) for w in wsjtx_dicts for c in pyft8_cands if abs(w['f'] - c.fHz) < 3
-               and (w['cs'] == c.cyclestart_str or w['cs']=='000000_000000')]
-    
+    this_cycle_start = other_decoder_dicts[-1]['cs']
+    other_decoder_dicts_cycle = [w for w in other_decoder_dicts if (int(w['cycle_idx']) == test_cycle_counter)
+                        or (w['cycle_idx'] == -1 and w['cs'] == this_cycle_start)]
+    other_decoder_dicts_cofreqs = [w['f'] for w in other_decoder_dicts for w2 in other_decoder_dicts if 0 <= np.abs(w['f'] - w2['f']) <= 51 and ''.join(w['msg']) != ''.join(w2['msg'])]
+
+    new_matches = [(w, p) for w in other_decoder_dicts_cycle for p in pyft8_dicts_cycle if abs(w['f'] - p['f']) < 4]
+    test_cycle_counter +=1
+
     best = {}
-    for w, c in new_matches:
+    for w, p in new_matches:
         key = (w['cs'], w['msg'])
-        has_message = True if c.msg else False
-        score = (has_message, c.llr0_sd)
+        has_message = True if p['msg'] else False
+        score = (has_message, p['llr0_sd'])
         if key not in best or score > best[key][0]:
-            best[key] = (score, w, c)
-    new_matches = [(w, c) for (_, w, c) in best.values()]
+            best[key] = (score, w, p)
+    new_matches = [(w, p) for (_, w, p) in best.values()]
 
-    wsjtx_cofreqs = [w['f'] for w,c in new_matches for w2,c in new_matches if 0 <= np.abs(w['f'] - w2['f']) <= 51 and ''.join(w['msg']) != ''.join(w2['msg'])]
-
-    pyft8 = [c for c in pyft8_cands if c.msg]
-    pyft8_msgs = [c.msg for c in pyft8]
-    pyft8 = [c for c in pyft8 if c.msg not in pyft8_msgs]
-    wsjtx_msgs = [w['msg'] for w in wsjtx_dicts]
-    pyft8_only = [c for c in pyft8 if ' '.join(c.msg) not in wsjtx_msgs]
-
-    new_matches.sort(key = lambda tup: tup[1].fHz)
+    new_matches.sort(key = lambda tup: tup[1]['f'])
     unique = set()
     print(f"{'Cycle start':<13} {'fHzW':<4} {'cofreq':<6} {'fHzP':<4} {'snrW':<3} {'snrP':<3} {'dtW':<4} {'dtP':<4} {'tdW':<4} {'tdP':<4}"
               +f"{'msgW':<23} {'msgP':<23} {'llrSD':<4} {'decode_history'}")
-    for w, c in new_matches:
-        cands_matched.append(c)
-        td = f"{c.decode_completed %60:4.1f}" if c.decode_completed else '     '
-        w.update({'cofreq': w['f'] in wsjtx_cofreqs})
-        msg = ' '.join(c.msg) if c.msg else ''   
-        cofreq = 'cofreq' if w['cofreq'] else "  --  "
-        basics = f"{w['cs']} {w['f']:4d} {cofreq} {c.fHz:4d}{w['snr']:+04d} {c.snr:+04d} {w['dt']:4.1f} {c.dt:4.1f} {w['td']:<4} {td:<4}"
-        if(msg !=''): unique.add(msg)
-        print(f"{basics} {w['msg']:<23} {msg:<23} {c.llr0_sd:04.2f} {c.decode_path}")
-        historic_matches.append((w,c))
-    for c in pyft8_only:
-        basics = f"{c.cyclestart_str} {c.fHz:4d} {"  --  "} {c.fHz:4d} {c.snr:+03d} {c.snr:+03d} {c.dt:4.1f} {c.dt:4.1f} {0} {0}"
-        msg = ' '.join(c.msg) if c.msg else ''
+    for w, p in new_matches:
+        w.update({'cofreq': w['f'] in other_decoder_dicts_cofreqs})
+        basics = f"{w['cs']} {w['f']:4d} {'cofreq' if w['cofreq'] else "  --  "}"
+        basics = basics + f"{p['f']:4d}{w['snr']:+04d} {p['snr']:+04d} {w['dt']:4.1f} {p['dt']:4.1f} {w['td']:<4} {p['td']:<4}"
+        if(p['msg'] !=''): unique.add(p['msg'])
+        print(f"{basics} {w['msg']:<23} {p['msg']:<23} {p['llr0_sd']:04.2f} {p['decode_path']}")
+        historic_matches.append((w, p))
+        with open('latest_test.txt','a') as f:
+            YN = "Y" if p['msg'] else "N"
+            f.write(f"{w['cs']} {w['snr']:>3} {w['dt']:3.1f} {w['f']:>3} {w['msg']:>3} {YN}\n") 
+  #  for p in pyft8_only:
+  #      basics = f"{p['cyclestart_str']} {0:4d} {"  --  "} {p['snr']:+04d} {0:4.1f} {p['dt']:4.1f} {'':<4} {p['td']:<4}"
 
     print(f"{len(unique)} unique decodes")
-    if(not len(unique)):
-        print("Is WSJT-X running??")
-    unprocessed = [c for w, c in new_matches if not "#" in c.decode_path]
+    unprocessed = [p for w, p in new_matches if not "#" in p['decode_path']]
     if(len(unprocessed)):
-        best_unprocessed_quality = np.max([c.llr0_sd for c in unprocessed])
-        best_unprocessed_ncheck0 = np.min([c.ncheck0 for c in unprocessed])
-        print(f"{len(unprocessed)} unprocessed candidates decoded by wsjt-x, best qual {best_unprocessed_quality:4.2f} best ncheck0 {best_unprocessed_ncheck0}")
+        best_unprocessed_quality = np.max([p['llr0_sd'] for p in unprocessed])
+        best_unprocessed_ncheck0 = np.min([p['ncheck0'] for p in unprocessed])
+        print(f"{len(unprocessed)} unprocessed candidates decoded by other decoder, best qual {best_unprocessed_quality:4.2f} best ncheck0 {best_unprocessed_ncheck0}")
     if(show_success_plot):
-        plot_success(fig_s, ax_s)
-        plt.pause(0.1)
+        plot_success(fig_s, ax_s, source, other_decoder_suffix)
+        time.sleep(0.001)
+        plt.pause(0.5)
+        time.sleep(0.001)
 
     with open("results/data/compare_data.pkl","wb") as f:
-        pickle.dump({'matches':historic_matches, 'params':params}, f)
-    
-def calibrate_snr():
-    import matplotlib.pyplot as plt
-    fix, ax = plt.subplots()
-    x,y = [],[]
-    for w, c in new_matches:
-        x.append(c.snr)
-        y.append(float(w['snr']))
-    ax.plot(x,y)
-    plt.show()
+        pickle.dump({'matches':historic_matches, 'params':params, 'other_decoder_suffix':other_decoder_suffix}, f)
 
 def onDecode(c):
   #  print(c.fHz, c.msg)
     pass
 
-def show_matched_cands(dBrange = 30):
-    import matplotlib.pyplot as plt
-    import matplotlib.ticker as ticker
-    
-    if not len(cands_matched): return
-
-    n = len(cands_matched)
-    fig, axs = plt.subplots(1, n, figsize = (15, 5))
-    for i, c in enumerate(cands_matched):
-        if(c.p_dB is not None):
-            p = c.p_dB
-            p = np.clip(p, np.max(p) - dBrange, None)
-            axs[i].imshow(p, origin="lower", aspect="auto", 
-                      cmap="inferno", interpolation="none", alpha = 0.8)       
-            axs[i].xaxis.set_major_locator(ticker.NullLocator())
-            axs[i].yaxis.set_major_locator(ticker.NullLocator())
-            axs[i].set_ylabel(f"{c.msg}", fontsize=8)
-    plt.tick_params(labelleft=False)
-    plt.tight_layout()
-    plt.show()
-
-            
-def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X/ALL.txt"):
+def run(dataset, other_decoder_suffix, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X/ALL.txt"):
     global do_analysis
 
     if(dataset):
         cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, test_speed_factor = 1, max_cycles = 2, 
                                       onCandidateRollover = onCandidateRollover, freq_range = freq_range,  
                                       audio_in_wav = dataset+".wav", verbose = True)
-        get_wsjtx_decodes(dataset+".txt")
+        other_decoder_dicts = read_wsjtx_format(dataset+other_decoder_suffix+".txt")
+        source = dataset
     else:
         cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None,
                                       onCandidateRollover = onCandidateRollover, freq_range = freq_range, 
                                       input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
+        source = "Live"
         threading.Thread(target=wsjtx_all_tailer, args = (all_file,cycle_manager,)).start()
 
     fig_s, ax_s = None, None
@@ -264,19 +251,12 @@ def compare(dataset, freq_range, all_file = "C:/Users/drala/AppData/Local/WSJT-X
                         waterfall.set_data(dB)
                     plt.pause(0.1)
             if(do_analysis):
-                global wsjtx_dicts
-                wsjtx_dicts = wsjtx_dicts[-200:]
                 do_analysis = False
-                analyse_dictionaries(fig_s, ax_s)
-                
+                analyse_dictionaries(fig_s, ax_s, source,  other_decoder_dicts, other_decoder_suffix)
     except KeyboardInterrupt:
         print("\nStopping")
         cycle_manager.running = False
-
     time.sleep(1)
-
-    #calibrate_snr()
-    show_matched_cands()
 
 def plot_success_file(file):
     fig_s, ax_s = plt.subplots( figsize=(10,6))
@@ -285,9 +265,15 @@ def plot_success_file(file):
 
 show_waterfall = False
 show_success_plot = True
-    
-compare("data/210703_133430", [100,3100])
-#compare(None, [100,3100])
+
+for n in range(1,2):
+    run(r"C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_"+f"{n:02d}", "_ft8_lib", [100,3100])
+
+#run(r"C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_01", [100,3100])
+
+#run("data/G4WNT/FT-8-Comp-31-12-22-5mins-2-12000", [100,3100])
+#run("data/210703_133430", [100,3100])
+#run(None, [100,3100])
 
 #plot_success_file('compare_data.pkl')
 
