@@ -83,7 +83,7 @@ def plot_success(fig, ax, source, other_decoder_suffix, load_file = False):
     ax.set_ylabel(f"Number of decodes")
 
     wdecs = len(ws[0]) + len(ws[1])
-    pydecs = len(py[0])+len(py[1])+len(py[2])
+    pydecs = len(py[0])+len(py[1])+len(py[2])+len(py[3])
     pydecs_corr = pydecs - len(py[3])
     pycorr_pc = f"{int(100*pydecs_corr/wdecs)}"
     pytot_pc = f"{int(100*pydecs/wdecs)}"

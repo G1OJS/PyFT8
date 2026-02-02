@@ -30,7 +30,7 @@ class AudioIn:
 
         self.symbol_rate = spectrum.sigspec.symbols_persec
         self.sample_rate = spectrum.sample_rate
-        self.hop_rate = self.symbol_rate * spectrum.hops_persymb
+        self.samples_perhop = int(self.sample_rate / (self.symbol_rate * spectrum.hops_persymb))
         fmax_fft = self.sample_rate/2
         self.fft_len = int(spectrum.fbins_pertone * self.sample_rate // self.symbol_rate)
         fft_out_len = int(self.fft_len/2) + 1
@@ -41,7 +41,7 @@ class AudioIn:
         self._running = False
         self.wav_finished = False
         self.hoptimes = []
-        self.hops_percycle = int(spectrum.sigspec.cycle_seconds * self.hop_rate)
+        self.hops_percycle = int(spectrum.sigspec.cycle_seconds * self.symbol_rate * spectrum.hops_persymb)
         self.pgrid_main = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)
         self.grid_main_ptr = 0
 
@@ -66,7 +66,7 @@ class AudioIn:
         next_hop_time = time.time()
         dummy_frames = None
         while self._running:
-            frames = wf.readframes(int(self.sample_rate // self.hop_rate))
+            frames = wf.readframes(self.samples_perhop)
             if not dummy_frames:
                 dummy_frames = frames
             if not frames:
@@ -86,7 +86,7 @@ class AudioIn:
         self.stream = self._pa.open(
             format = pyaudio.paInt16, channels=1, rate = self.sample_rate,
             input = True, input_device_index = input_device_idx,
-            frames_per_buffer = int(self.sample_rate / self.hop_rate), stream_callback=self._callback,)
+            frames_per_buffer = self.samples_perhop, stream_callback=self._callback,)
         self.stream.start_stream()
         threading.Thread(target = self.live_consumer).start()
 
