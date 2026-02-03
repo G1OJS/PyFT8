@@ -19,16 +19,25 @@ def run(dataset, freq_range):
     spectrum.audio_in.load_wav(dataset+".wav")
     f0_idxs = range(int(freq_range[0]/spectrum.df),
                         min(spectrum.nFreqs - spectrum.fbins_per_signal, int(freq_range[1]/spectrum.df)))
+
+    results = []
+    msgs = []
     candidates = spectrum.search(f0_idxs, '000000_000000')
     for c in candidates:
         c.demap(spectrum)
         c.decode()
-        if(c.msg):
-            print(c.msg)
+        if(c.msg and not c.msg in msgs):
+            msgs.append(c.msg)
+            row = f"000000 {c.snr:3d} {c.dt:3.1f} {c.fHz:4d} ~ {' '.join(c.msg)}"
+            print(row)
+            results.append(row)
+    
+    with open(dataset+"_pyft8.txt", "w") as f:
+        f.write('\n'.join(results))
  
 
-for n in range(1,2):
-    run(r"C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_"+f"{n:02d}", [100,3100])
+for n in range(2,39):
+    run(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\data\ft8_lib\20m_busy\test_"+f"{n:02d}", [100,3100])
 
 #run(r"C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_01", [100,3100])
 
