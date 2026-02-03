@@ -1,5 +1,7 @@
 import numpy as np
-from PyFT8.cycle_manager import Cycle_manager, Candidate
+from PyFT8.cycle_manager import Cycle_manager
+from PyFT8.candidate import Candidate
+from PyFT8.spectrum import Spectrum
 from PyFT8.sigspecs import FT8
 from PyFT8.FT8_unpack import FT8_unpack
 from PyFT8.ldpc import LdpcDecoder
@@ -20,11 +22,11 @@ costas=[3,1,4,0,6,5,2]
 
 def onDecode(c):
     pass
-cycle_manager = Cycle_manager(FT8, onDecode, onOccupancy = None, verbose = False, freq_range = [100,500])
+cycle_manager = Cycle_manager(FT8, onDecode, verbose = False, freq_range = [100,500])
 cycle_manager.running = False
 
 hops_percycle = cycle_manager.spectrum.audio_in.hops_percycle
-samps_perhop = int(cycle_manager.spectrum.audio_in.sample_rate // cycle_manager.spectrum.audio_in.hop_rate)
+samps_perhop = cycle_manager.spectrum.audio_in.samples_perhop
 fft_len = cycle_manager.spectrum.audio_in.fft_len
 nFreqs = cycle_manager.spectrum.audio_in.nFreqs
 df = cycle_manager.spectrum.df
@@ -90,25 +92,16 @@ def single_loopback(snr=20, amplitude = 0.5):
     cands = cycle_manager.spectrum.search([f0_idx],"000000_000000")
     c = cands[0]
     c.demap(cycle_manager.spectrum)
-
     t_demap = time.time()
-    
-    for its in range(20):
-        c.progress_decode()
-        if("#" in c.decode_path):
-            break
-
-    output_bits = (c.llr > 0).astype(int).tolist()[:77]
-    output_int = bitsLE_to_int(output_bits)
-    output_msg = FT8_unpack(output_bits)
-    output_msg = ' '.join(output_msg)
+    c.decode()
+    output_msg = ' '.join(c.msg)
 
     t_decode = time.time()
 
     success = output_msg == input_msg
     results = {'snr':snr, 'success': success, 'llr_sd':c.llr0_sd,
                'ncheck0':c.ncheck0, 'decode_path':c.decode_path, 
-               't_gen':1000*(t_gen-t0), 't_spec':1000*(t_spec-t_gen), 't_demap':1000*(t_demap-t_spec), 't_decode':1000*(t_decode-t_demap)}
+               't_gen':1000.0*(t_gen-t0), 't_spec':1000.0*(t_spec-t_gen), 't_demap':1000.0*(t_demap-t_spec), 't_decode':1000.0*(t_decode-t_demap)}
     
     return results
 
@@ -137,17 +130,21 @@ import matplotlib.lines as lines
 CAT_COLOURS = ['red','lime','blue','orange','green']
 global leg_decode_type, leg_decode_outcome
 
+def savefig(fig, savename):
+    print(f"Results saved to {savename}")
+    fig.savefig(savename, bbox_inches="tight")
+
 def decode_category(dpath):
     if(not "#" in dpath):
         return 0
-    if(dpath[3]=="#" or dpath[7]=="#" ):
-        return 1
     elif('O' in dpath):
         return 2
     elif('A' in dpath):
         return 3
     elif('L' in dpath):
         return 4
+    else:
+        return 1
 
 def make_legends():
     global leg_decode_type, leg_decode_outcome
@@ -155,7 +152,7 @@ def make_legends():
                         lines.Line2D([0], [0], marker='o', color='w',label='LDPC', markerfacecolor=CAT_COLOURS[4], markersize=8),
                         lines.Line2D([0], [0], marker='o', color='w',label='LDPC + bitflips', markerfacecolor=CAT_COLOURS[3], markersize=8),
                         lines.Line2D([0], [0], marker='o', color='w',label='OSD', markerfacecolor=CAT_COLOURS[2], markersize=8),
-                        lines.Line2D([0], [0], marker='o', color='w',label='Timeout not tested', markerfacecolor=CAT_COLOURS[0], markersize=8),
+                        lines.Line2D([0], [0], marker='o', color='w',label='(Note: timeouts not included)', markerfacecolor=CAT_COLOURS[0], markersize=8),
                         ]
 
     leg_decode_outcome = [lines.Line2D([0], [0], marker='o', color='k',label='Success', markersize=8),
@@ -187,7 +184,7 @@ def plot_results(run_params = "Default"):
         add_legends(axs[iax])
     plt.suptitle(f"Cycle timings vs imposed channel SNR for {run_params} n_trials = {n_trials}")
     plt.tight_layout()
-    fig.savefig(f"results/test_timings_{run_params}.png", bbox_inches="tight")
+    savefig(fig, f"results/test_timings_{run_params}.png")
 
     plot_params = ['llr_sd', 'ncheck0']
     fig, axs = plt.subplots(1, len(plot_params), figsize = (15,5))
@@ -199,7 +196,7 @@ def plot_results(run_params = "Default"):
         add_legends(axs[iax])
     plt.suptitle(f"Proxies vs imposed SNR for successes and failures for {run_params} n_trials = {n_trials}")
     plt.tight_layout()
-    fig.savefig(f"results/proxy_plots_{run_params}.png", bbox_inches="tight")
+    savefig(fig, f"results/proxy_plots_{run_params}.png")
 
     plot_params = ['snr', 'llr_sd', 'ncheck0']
     plot_ranges = [[-26,-19],[0,2],[0,55]]
@@ -231,10 +228,10 @@ def plot_results(run_params = "Default"):
 
     plt.suptitle(f"Decoder performance against imposed SNR and proxies for {run_params} n_trials = {n_trials}")
     plt.tight_layout()
-    fig.savefig(f"results/decoder_performance_{run_params}.png", bbox_inches="tight")
-
+    savefig(fig, f"results/decoder_performance_{run_params}.png")
+ 
 
 run_params = "default"
-test_vs_snr(run_params, ntrials = 500)
+test_vs_snr(run_params, ntrials = 100)
 plot_results(run_params)
 
