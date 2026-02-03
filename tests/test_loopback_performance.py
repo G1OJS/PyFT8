@@ -232,6 +232,6 @@ def plot_results(run_params = "Default"):
  
 
 run_params = "default"
-test_vs_snr(run_params, ntrials = 100)
+test_vs_snr(run_params, ntrials = 1000)
 plot_results(run_params)
 
