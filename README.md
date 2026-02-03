@@ -26,7 +26,6 @@ On a quiet band with good signals, PyFT-8 typically gets 70% or 80% and often 10
 
 <img width="1049" height="623" alt="image" src="https://github.com/user-attachments/assets/70064f89-2bb1-442d-be46-758bca4e6270" />
 
-
 I have been using the file "210703_133430.wav" (third plot above) as a reference. In NORM mode, WSJT-x gets 19 decodes. WSJT-x in FAST mode gets 14 decodes, PyFT8 gets 12, and FT8_lib gets 8. The specific decodes are shown in the table below.
 
 <img width="658" height="429" alt="image" src="https://github.com/user-attachments/assets/3d5fc12c-b36b-4297-ac44-f3ba287a123c" />
