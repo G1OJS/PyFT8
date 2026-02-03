@@ -17,9 +17,6 @@ class Candidate:
     def __init__(self):
         self.dedupe_key = ""
         self.demap_started, self.demap_completed, self.decode_completed = None, None, None
-        self.bitflip_done = False
-        self.osd_done = False
-        self.n_ldpc = 0
         self.dt = 0
         self.fHz = 0
         self.ncheck, self.ncheck0 = 99, 99
@@ -93,46 +90,40 @@ class Candidate:
         self.demap_completed = time.time()
 
     def _record_state(self, actor_code, final = False):
-        finalcode = "#" if final else ";"
+        finalcode = "#" if final else ""
         self.decode_path = self.decode_path + f"{actor_code}{self.ncheck:02d}{finalcode}"
         if(final):
             self.decode_completed = time.time()
 
     def decode(self):
-        if self.ncheck > params['BITFLIP_CONTROL'][0] and not self.bitflip_done:  
+        if self.ncheck > params['BITFLIP_CONTROL'][0]:  
             self.llr, self.ncheck = self._flip_bits(self.llr, self.ncheck, width = 50, nbits=1, keep_best = True)
-            self.bitflip_done = True
             self._record_state("A")
 
         if params['LDPC_CONTROL'][0] > self.ncheck > 0:
             for it in range(params['LDPC_CONTROL'][1]):
                 self.llr, self.ncheck = self.ldpc.do_ldpc_iteration(self.llr)
-                self.n_ldpc += 1
                 self._record_state("L")
                 if(self.ncheck == 0):
                     break
 
-        if(self.ncheck > 0 and params['OSD_CONTROL'][0] < self.llr0_sd < params['OSD_CONTROL'][1] and not self.osd_done):
-            reliab_order = np.argsort(np.abs(self.llr))[::-1]
-            codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Ls = params['OSD_CONTROL'][2])
-            self.check_success(codeword_bits)
-            self.osd_done = True
-            self._record_state("O")
-        else:  
+        if(self.ncheck == 0):  
             codeword_bits = (self.llr > 0).astype(int).tolist()
-            if not self.check_success(codeword_bits):
-                self._record_state("_", final = True)
+            self.check_crc_and_get_message(codeword_bits)
 
-    def check_success(self, codeword_bits):
+        if(not self.msg):
+            if(params['OSD_CONTROL'][0] < self.llr0_sd < params['OSD_CONTROL'][1]):
+                reliab_order = np.argsort(np.abs(self.llr))[::-1]
+                codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Ls = params['OSD_CONTROL'][2])
+                self.check_crc_and_get_message(codeword_bits)
+                if(self.msg): self.ncheck = 0
+                self._record_state("O")
+
+        self._record_state("M" if self.msg else "_", final = True)
+
+    def check_crc_and_get_message(self, codeword_bits):
         if check_crc_codeword_list(codeword_bits):
             if(any(codeword_bits[:77])):
                 self.msg = FT8_unpack(codeword_bits[:77])
-                self._record_state("C", final = True)
-                return True
-            else:
-                self._record_state("X", final = True)
-        else:
-            self._record_state("_", final = True)
-        return False
 
 

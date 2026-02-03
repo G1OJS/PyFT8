@@ -5,10 +5,10 @@ def plot_success(fig, ax, load_file):
 
     with open("results/data/compare_data.pkl", "rb") as f:
         d = pickle.load(f)
-    matches = d['matches']
+    decodes = d['decodes']
     params = d['params']
 
-    if not any(matches):
+    if not any(decodes):
         return
     
     py =        [[],[],[],[],[],[]]
@@ -20,16 +20,17 @@ def plot_success(fig, ax, load_file):
 
     bins = [0.4 + 0.1*b for b in range(25)]
     
-    for w, p in matches:
+    for w, p in decodes:
         q = p['llr0_sd']
 
-        if(w['cofreq']):
-            ws[1].append(q)
-        else:
-            ws[0].append(q)
+        if(w['msg'] != ''):
+            if(w['cofreq']):
+                ws[1].append(q)
+            else:
+                ws[0].append(q)
 
-        if(p['msg']):
-            if(p['msg'] == w['msg']):
+        if(p['msg'] != ''):
+            if(p['msg'] == w['msg'] or w['msg'] == ''):
                 if("O00" in p['decode_path']):
                     py[2].append(q)
                 elif ("L00" in p['decode_path']):

@@ -7,52 +7,47 @@ from PyFT8.candidate import params
 from PyFT8.sigspecs import FT8
 from PyFT8.tests_wsjtx_all_tailer import Wsjtx_all_tailer
 from PyFT8.tests_plot_success import plot_success
+from PyFT8.time_utils import tlog
 
-global all_matches
-all_matches = []
-  
-def analyse_dictionaries(fig_s, ax_s, pyft8_dicts, wsjtx_dicts):
-    global all_matches
+global all_decodes
+all_decodes = []
+
+def analyse_dictionaries(pyft8_dicts, wsjtx_dicts):
+    global all_decodes
     if(not len(wsjtx_dicts)):
         print("No WSJT-X decodes - is WSJT-X running?")
         return
 
     wsjtx_dicts_cofreqs = [w['f'] for w in wsjtx_dicts for w2 in wsjtx_dicts if 0 <= np.abs(w['f'] - w2['f']) <= 51 and ''.join(w['msg']) != ''.join(w2['msg'])]
-    new_matches = [(w, p) for w in wsjtx_dicts for p in pyft8_dicts if abs(w['f'] - p['f']) < 4]
 
-    best = {}
-    for w, p in new_matches:
-        key = (w['cs'], w['msg'])
-        has_message = True if p['msg'] else False
-        score = (has_message, p['llr0_sd'])
-        if key not in best or score > best[key][0]:
-            best[key] = (score, w, p)
-    new_matches = [(w, p) for (_, w, p) in best.values()]
-
-    new_matches.sort(key = lambda tup: tup[1]['f'])
-    unique = set()
     print(f"{'Cycle start':<13} {'fHzW':<4} {'cofreq':<6} {'fHzP':<4} {'snrW':<3} {'snrP':<3} {'dtW':<4} {'dtP':<4} {'tdW':<4} {'tdP':<4}"
-              +f"{'msgW':<23} {'msgP':<23} {'llrSD':<4} {'decode_history'}")
-    for w, p in new_matches:
+              +f"{'msgW':<23} {'msgP':<23} {'llrSD':<4} {'decode_path'}")
+    no_match = {'Cycle start':'000000_000000', 'f':0, 'snr':-30, 'dt':0, 'td':'', 'msg':'', 'llr0_sd':0, 'decode_path':'No Match'}
+
+    wsjtx_msgs = []
+    for w in wsjtx_dicts:
         w.update({'cofreq': w['f'] in wsjtx_dicts_cofreqs})
-        basics = f"{w['cs']} {w['f']:4d} {'cofreq' if w['cofreq'] else "  --  "}"
-        basics = basics + f"{p['f']:4d}{w['snr']:+04d} {p['snr']:+04d} {w['dt']:4.1f} {p['dt']:4.1f} {w['td']:<4} {p['td']:<4}"
-        if(p['msg'] !=''): unique.add(p['msg'])
-        print(f"{basics} {w['msg']:<23} {p['msg']:<23} {p['llr0_sd']:04.2f} {p['decode_path']}")
-        all_matches.append((w, p))
-
-  #  for p in pyft8_only:
-  #      basics = f"{p['cyclestart_str']} {0:4d} {"  --  "} {p['snr']:+04d} {0:4.1f} {p['dt']:4.1f} {'':<4} {p['td']:<4}"
-
-    print(f"{len(unique)} unique decodes")
-    unprocessed = [p for w, p in new_matches if not "#" in p['decode_path']]
-    if(len(unprocessed)):
-        best_unprocessed_quality = np.max([p['llr0_sd'] for p in unprocessed])
-        best_unprocessed_ncheck0 = np.min([p['ncheck0'] for p in unprocessed])
-        print(f"{len(unprocessed)} unprocessed candidates decoded by other decoder, best qual {best_unprocessed_quality:4.2f} best ncheck0 {best_unprocessed_ncheck0}")
+        decodes = [p for p in pyft8_dicts if np.abs(w['f'] - p['f']) < 4]
+        decodes.sort(key = lambda p: (p['msg'], p['llr0_sd']))
+        p = decodes[0] if(len(decodes)) else no_match
+        all_decodes.append((w, p))
+        row = f"{w['cs']} {w['f']:4d} {'cofreq' if w['cofreq'] else '  --  '} {p['f']:4d} {w['snr']:+04d} {p['snr']:+04d} {w['dt']:4.1f} {p['dt']:4.1f} {w['td']:<4} {p['td']:<4} {w['msg']:<23} {p['msg']:<23} {p['llr0_sd']:04.2f} {p['decode_path']}" 
+        print(row)
+        wsjtx_msgs.append(w['msg'])
+        
+    pyft8_unique = set ()
+    for p in pyft8_dicts:
+        if(p['msg'] != '' and p['msg'] not in pyft8_unique and p['msg'] not in wsjtx_msgs):
+            all_decodes.append((no_match, p))
+            if(p['msg'].replace(" ","") not in wsjtx_msgs):
+                row = f"{p['cs']} {0:4d} {'  --  '} {p['f']:4d} {-30:+04d} {p['snr']:+04d} {0:4.1f} {p['dt']:4.1f} {0:<4} {p['td']:<4} {'':<23} {p['msg']:<23} {p['llr0_sd']:04.2f} {p['decode_path']}"
+                print(row)
+        pyft8_unique.add(p['msg'])
+                
+    tlog(f"[Analyse dictionaries] Unique decodes pyft8: {len(pyft8_unique)} wsjt-x: {len(wsjtx_dicts)} ")
 
     with open("results/data/compare_data.pkl","wb") as f:
-        pickle.dump({'matches':all_matches, 'params':params}, f)
+        pickle.dump({'decodes':all_decodes, 'params':params}, f)
 
 def run(freq_range):
     pyft8_dicts = []
@@ -61,7 +56,7 @@ def run(freq_range):
 
     cycle_manager = Cycle_manager(FT8, on_decode = lambda d: pyft8_dicts.append(d), on_decode_include_failures = True, freq_range = freq_range, 
                                   input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
-    wsjtx_all_tailer = Wsjtx_all_tailer(on_decode = lambda d: wsjtx_dicts.append(d), running = cycle_manager.running)
+    wsjtx_all_tailer = False
     
     if(show_success_plot):
         plt.ion()
@@ -86,11 +81,15 @@ def run(freq_range):
                     else:
                         waterfall.set_data(dB)
                     plt.pause(0.1)
-            if(time.time() % 15 > 5 and not cycle_analysed):
-                analyse_dictionaries(fig_s, ax_s, pyft8_dicts, wsjtx_dicts)
-                if(show_success_plot):
-                    plot_success(fig_s, ax_s, "results/data/compare_data.pkl")
-                    plt.pause(0.5)
+            if(len(pyft8_dicts) and not wsjtx_all_tailer):
+                wsjtx_all_tailer = Wsjtx_all_tailer(on_decode = lambda d: wsjtx_dicts.append(d), running = cycle_manager.running)
+
+            if(time.time() % 15 > 10 and not cycle_analysed):
+                if(len(pyft8_dicts)):
+                    analyse_dictionaries(pyft8_dicts, wsjtx_dicts)
+                    if(show_success_plot):
+                        plot_success(fig_s, ax_s, "results/data/compare_data.pkl")
+                        plt.pause(0.5)
                 pyft8_dicts = []
                 wsjtx_dicts = []
                 cycle_analysed = True
