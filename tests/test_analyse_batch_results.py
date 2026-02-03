@@ -2,7 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-pattern = 'ldpc_30its_pyft8'
+pattern = '0.5_200_80_65_40_0.5_2.5_40_5_pyft8'
 totals = []
 folder = r"C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\data\ft8_lib\20m_busy"
 for filename in os.listdir(folder):
@@ -37,7 +37,7 @@ for t in tests:
     print(f"{t:<6} {row['PyFT8']:>8} {row['FT8_lib']:>10} {row['WSJT-X']:>8}")
 
 wsjt = [table[t]["WSJT-X"]  for t in tests]
-n_complete = np.count_nonzero(wsjt) - 1
+n_complete = np.count_nonzero(wsjt)
 lib  = [table[t]["FT8_lib"] for t in tests][:n_complete]
 py   = [table[t]["PyFT8"]   for t in tests][:n_complete]
 wsjt = wsjt[:n_complete]
@@ -47,7 +47,7 @@ for i in range(n_complete):
     py[i] = py[i] * 100 / wsjt[i]
     lib[i] = lib[i] * 100 / wsjt[i]
 
-x = np.arange(n_complete)     
+x = 1+np.arange(n_complete)     
 w = 0.25                      
 
 
