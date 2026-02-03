@@ -11,7 +11,7 @@ from PyFT8.audio import find_device
 import os
 
 class Cycle_manager():
-    def __init__(self, sigspec, on_decode = None, on_occupancy = None, on_decode_include_failures = False,
+    def __init__(self, sigspec, on_decode, on_occupancy = None, on_decode_include_failures = False,
                  input_device_keywords = None, output_device_keywords = None,
                  freq_range = [200,3100], verbose = False):
         
@@ -93,27 +93,25 @@ class Cycle_manager():
                 self.cands_list = self.new_cands
                 if(self.on_occupancy):
                     self.on_occupancy(self.spectrum.occupancy, self.spectrum.df)
-                
-            to_demap = [c for c in self.cands_list
-                            if (self.spectrum.audio_in.grid_main_ptr > c.last_payload_hop
-                            and not c.demap_started)]
-            for c in to_demap:
-                c.demap(self.spectrum)
+
+            for c in self.cands_list:
+                if (self.spectrum.audio_in.grid_main_ptr > c.last_payload_hop and not c.demap_started):
+                    c.demap(self.spectrum)
 
             to_decode = [c for c in self.cands_list if c.demap_completed and not c.decode_completed]
             to_decode.sort(key = lambda c: -c.llr0_sd) # in case of emergency (timeouts) process best first
             for c in to_decode[:25]:
                 c.decode()
 
-            with_message = [c for c in self.cands_list if c.msg]
-            for c in with_message:
-                success = False
-                c.dedupe_key = c.cyclestart_str+" "+' '.join(c.msg)
-                if(not c.dedupe_key in self.duplicate_filter):
-                    self.duplicate_filter.add(c.dedupe_key)
-                    c.call_a, c.call_b, c.grid_rpt = c.msg[0], c.msg[1], c.msg[2]
-                    success = True
-                if((success or self.on_decode_include_failures) and self.on_decode):
+            for c in self.cands_list:
+                if(c.msg):
+                    c.dedupe_key = c.cyclestart_str+" "+' '.join(c.msg)
+                    if(not c.dedupe_key in self.duplicate_filter):
+                        self.duplicate_filter.add(c.dedupe_key)
+                        c.call_a, c.call_b, c.grid_rpt = c.msg[0], c.msg[1], c.msg[2]
+
+            for c in self.cands_list:
+                if (c.msg or self.on_decode_include_failures):
                     td = f"{c.decode_completed %60:4.1f}" if c.decode_completed else '     '
                     decode_dict = {'cs':c.cyclestart_str, 'cycle_idx':c.cycle_counter, 'f':c.fHz, 'msg':' '.join(c.msg), 'snr':c.snr,
                          'dt':c.dt, 'td':td, 'ncheck0':c.ncheck0, 'llr0_sd':c.llr0_sd, 'td':td, 'decode_path':c.decode_path}

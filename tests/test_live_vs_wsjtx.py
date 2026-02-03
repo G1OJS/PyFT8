@@ -7,20 +7,18 @@ from PyFT8.candidate import params
 from PyFT8.sigspecs import FT8
 from PyFT8.tests_wsjtx_all_tailer import Wsjtx_all_tailer
 from PyFT8.tests_plot_success import plot_success
+
+global all_matches
+all_matches = []
   
 def analyse_dictionaries(fig_s, ax_s, pyft8_dicts, wsjtx_dicts):
-
+    global all_matches
     if(not len(wsjtx_dicts)):
         print("No WSJT-X decodes - is WSJT-X running?")
         return
 
-    this_cycle_start = wsjtx_dicts[-1]['cs']
-    wsjtx_dicts_cycle = [w for w in wsjtx_dicts if (int(w['cycle_idx']) == test_cycle_counter)
-                        or (w['cycle_idx'] == -1)]
     wsjtx_dicts_cofreqs = [w['f'] for w in wsjtx_dicts for w2 in wsjtx_dicts if 0 <= np.abs(w['f'] - w2['f']) <= 51 and ''.join(w['msg']) != ''.join(w2['msg'])]
-
-    new_matches = [(w, p) for w in wsjtx_dicts_cycle for p in pyft8_dicts if abs(w['f'] - p['f']) < 4]
-    test_cycle_counter +=1
+    new_matches = [(w, p) for w in wsjtx_dicts for p in pyft8_dicts if abs(w['f'] - p['f']) < 4]
 
     best = {}
     for w, p in new_matches:
@@ -41,10 +39,8 @@ def analyse_dictionaries(fig_s, ax_s, pyft8_dicts, wsjtx_dicts):
         basics = basics + f"{p['f']:4d}{w['snr']:+04d} {p['snr']:+04d} {w['dt']:4.1f} {p['dt']:4.1f} {w['td']:<4} {p['td']:<4}"
         if(p['msg'] !=''): unique.add(p['msg'])
         print(f"{basics} {w['msg']:<23} {p['msg']:<23} {p['llr0_sd']:04.2f} {p['decode_path']}")
-        historic_matches.append((w, p))
-        with open('latest_test.txt','a') as f:
-            YN = "Y" if p['msg'] else "N"
-            f.write(f"{w['cs']} {w['snr']:>3} {w['dt']:3.1f} {w['f']:>3} {w['msg']:>3} {YN}\n") 
+        all_matches.append((w, p))
+
   #  for p in pyft8_only:
   #      basics = f"{p['cyclestart_str']} {0:4d} {"  --  "} {p['snr']:+04d} {0:4.1f} {p['dt']:4.1f} {'':<4} {p['td']:<4}"
 
@@ -54,28 +50,22 @@ def analyse_dictionaries(fig_s, ax_s, pyft8_dicts, wsjtx_dicts):
         best_unprocessed_quality = np.max([p['llr0_sd'] for p in unprocessed])
         best_unprocessed_ncheck0 = np.min([p['ncheck0'] for p in unprocessed])
         print(f"{len(unprocessed)} unprocessed candidates decoded by other decoder, best qual {best_unprocessed_quality:4.2f} best ncheck0 {best_unprocessed_ncheck0}")
-    if(show_success_plot):
-        plot_success(fig_s, ax_s)
-        time.sleep(0.001)
-        plt.pause(0.5)
-        time.sleep(0.001)
 
     with open("results/data/compare_data.pkl","wb") as f:
-        pickle.dump({'matches':historic_matches, 'params':params}, f)
+        pickle.dump({'matches':all_matches, 'params':params}, f)
 
 def run(freq_range):
     pyft8_dicts = []
     wsjtx_dicts = []
-    cycle_analysed = False
+    cycle_analysed = True
 
-    cycle_manager = Cycle_manager(FT8, on_decode = lambda d: pyft8_dicts.append(d), freq_range = freq_range, 
+    cycle_manager = Cycle_manager(FT8, on_decode = lambda d: pyft8_dicts.append(d), on_decode_include_failures = True, freq_range = freq_range, 
                                   input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
     wsjtx_all_tailer = Wsjtx_all_tailer(on_decode = lambda d: wsjtx_dicts.append(d), running = cycle_manager.running)
     
     if(show_success_plot):
         plt.ion()
         fig_s, ax_s = plt.subplots( figsize=(10,6))
-        plot_success(fig_s, ax_s, "results/data/compare_data.pkl")
     if(show_waterfall):
         plt.ion()
         fig, axs = plt.subplots(figsize = (20,7))
@@ -84,6 +74,8 @@ def run(freq_range):
     try:
         while True:
             time.sleep(1)
+            if(time.time() % 15 < 1 and cycle_analysed):
+                cycle_analysed = False
             if(show_waterfall):
                 p = cycle_manager.spectrum.audio_in.pgrid_main
                 pmax = np.max(p)
@@ -96,6 +88,9 @@ def run(freq_range):
                     plt.pause(0.1)
             if(time.time() % 15 > 5 and not cycle_analysed):
                 analyse_dictionaries(fig_s, ax_s, pyft8_dicts, wsjtx_dicts)
+                if(show_success_plot):
+                    plot_success(fig_s, ax_s, "results/data/compare_data.pkl")
+                    plt.pause(0.5)
                 pyft8_dicts = []
                 wsjtx_dicts = []
                 cycle_analysed = True
