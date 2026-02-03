@@ -26,7 +26,7 @@ def analyse_dictionaries(pyft8_dicts, wsjtx_dicts, cyclestart_str):
 
     tlog(f"[Analyse dicts] {'Cycle start':<13} {'fHzW':<4} {'cofreq':<6} {'fHzP':<4} {'snrW':<3} {'snrP':<3} {'dtW':<4} {'dtP':<4} {'tdW':<4} {'tdP':<4}"
               +f"{'msgW':<23} {'msgP':<23} {'llrSD':<4} {'decode_path'}")
-    no_match = {'Cycle start':'000000_000000', 'f':0, 'snr':-30, 'dt':0, 'td':'', 'msg':'', 'llr0_sd':0, 'decode_path':'No Match'}
+    no_match = {'cs':'000000_000000', 'f':0, 'snr':-30, 'dt':0, 'td':'', 'msg':'', 'llr0_sd':0, 'decode_path':'No Match'}
 
     wsjtx_keys = set()
     pyft8_keys = set()
@@ -36,11 +36,8 @@ def analyse_dictionaries(pyft8_dicts, wsjtx_dicts, cyclestart_str):
         decodes.sort(key = lambda p: (-len(p['msg']), -p['llr0_sd']))
         p = decodes[0] if(len(decodes)) else no_match
         all_decodes.append((w, p))
-        try:
-            pkey = p['cs'] + " " + p['msg']
-            pyft8_keys.add(pkey)
-        except:
-            print(p)
+        pkey = p['cs'] + " " + p['msg']
+        pyft8_keys.add(pkey)
         row = f"{w['cs']} {w['f']:4d} {'cofreq' if w['cofreq'] else '  --  '} {p['f']:4d} {w['snr']:+04d} {p['snr']:+04d} {w['dt']:4.1f} {p['dt']:4.1f} {w['td']:<4} {p['td']:<4} {w['msg']:<23} {p['msg']:<23} {p['llr0_sd']:04.2f} {p['decode_path']}" 
         tlog(f"[Analyse dicts] {row}")
         wkey = w['cs'] + " " + w['msg']
