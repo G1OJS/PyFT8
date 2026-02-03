@@ -27,9 +27,16 @@ On a quiet band with good signals, PyFT-8 typically gets 70% or 80% and often 10
 <img width="1049" height="623" alt="image" src="https://github.com/user-attachments/assets/70064f89-2bb1-442d-be46-758bca4e6270" />
 
 
-I use the wav file "210703_133430.wav" (third plot above) as a reference. In NORM mode, WSJT-x gets 19 decodes. WSJT-x in FAST mode gets 14 decodes, PyFT8 gets 12, and FT8_lib gets 8. The specific decodes are shown in the table below.
+I have been using the file "210703_133430.wav" (third plot above) as a reference. In NORM mode, WSJT-x gets 19 decodes. WSJT-x in FAST mode gets 14 decodes, PyFT8 gets 12, and FT8_lib gets 8. The specific decodes are shown in the table below.
 
 <img width="658" height="429" alt="image" src="https://github.com/user-attachments/assets/3d5fc12c-b36b-4297-ac44-f3ba287a123c" />
+
+However, a single wav file with a single FT8 cycle is not sufficient to characterise performance - it's been good for developing, but it's not enough for characterising. So, I've taken a step further by rewriting the decoding code to allow tests to be run in batch mode using a folder of 15s wav files. The image below shows the number of decodes from PyFT8 and FT8_lib both as a percentage of WSJT-x V2.7.0 running in NORM mode, for three different configurations of the PyFT8 decoder. The source wav files are copied from [https://github.com/kgoba/ft8_lib/tree/master/test/wav/20m_busy](https://github.com/kgoba/ft8_lib/tree/master/test/wav/20m_busy), and I've run ft8_lib and PyFT8 for all 38 of them, but only run WSJT-x for 20 so far as it has to be manual cut and paste.
+
+<img width="1039" height="580" alt="image" src="https://github.com/user-attachments/assets/5ec76b0c-3bc2-425f-8ee2-c99b6cc39d4f" />
+
+It has to be said that adding OSD and bitflipping doesn't produce as significant a difference as I had hoped! So there is certainly scope for further development. I've also seen that despite my efforts to write fast Python, FT8_lib is still considerably faster (and probably faster than WSJT-x). Overall, ignoring WSJT-X, FT8_lib wins in terms of decode numbers, being beaten by PyFT8 on only a few occasions.
+
 
 
 ## Contents
