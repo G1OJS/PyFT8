@@ -8,15 +8,16 @@ from PyFT8.osd import osd_decode_minimal
 
 params = {
 'MIN_LLR0_SD': 0.5,                # global minimum llr_sd
-'BITFLIP_CONTROL': (28, 50),        # min ncheck0, nBits
-'LDPC_CONTROL': (45, 7, 5),         # max ncheck0, 
-'OSD_CONTROL': (0.5, 1.5, [30,20,2]) # min llr_sd, max llr_sd, L(order)
+'BITFLIP_CONTROL': (280, 50),        # min ncheck0, nBits
+'LDPC_CONTROL': (55, 30, 5),         # max ncheck0, 
+'OSD_CONTROL': (0.5, .5, [30,20,2]) # min llr_sd, max llr_sd, L(order)
 }
     
 class Candidate:
     def __init__(self):
         self.dedupe_key = ""
         self.demap_started, self.demap_completed, self.decode_completed = None, None, None
+        self.cyclestart_str = ""
         self.dt = 0
         self.fHz = 0
         self.ncheck, self.ncheck0 = 99, 99
@@ -58,7 +59,7 @@ class Candidate:
         llrc = np.max(pgrid[:, [1,2,6,7]], axis=1) - np.max(pgrid[:, [0,3,4,5]], axis=1)
         llr0 = np.column_stack((llra, llrb, llrc))
         llr0 = llr0.ravel()
-        llr0_sd = np.std(llr0)
+        llr0_sd = int(0.5+100*np.std(llr0))/100.0
         snr = int(np.clip(10*np.max(pgrid) - 107, -24, 24))
         if (llr0_sd > 0.001):
             llr0 = target_params[0] * llr0 / llr0_sd
@@ -76,7 +77,7 @@ class Candidate:
         
         self.h0_idx = self.syncs[sync_idx]['h0_idx']
         self.sync_score = self.syncs[sync_idx]['score']
-        self.dt = self.syncs[sync_idx]['dt']
+        self.dt = int(0.5+100*self.syncs[sync_idx]['dt'])/100.0
 
         demap = [demap0, demap1][sync_idx]
         self.p_dB = 10*demap[2]
@@ -86,7 +87,7 @@ class Candidate:
         self.ncheck = self.ncheck0
 
         quality_too_low = (self.llr0_sd < params['MIN_LLR0_SD'])
-        self._record_state(f"I", final = quality_too_low)
+        self._record_state("I", final = quality_too_low)
         self.demap_completed = time.time()
 
     def _record_state(self, actor_code, final = False):
@@ -96,11 +97,11 @@ class Candidate:
             self.decode_completed = time.time()
 
     def decode(self):
-        if self.ncheck > params['BITFLIP_CONTROL'][0]:  
+        if not self.decode_completed and self.ncheck > params['BITFLIP_CONTROL'][0]:  
             self.llr, self.ncheck = self._flip_bits(self.llr, self.ncheck, width = 50, nbits=1, keep_best = True)
             self._record_state("A")
 
-        if params['LDPC_CONTROL'][0] > self.ncheck > 0:
+        if not self.decode_completed and params['LDPC_CONTROL'][0] > self.ncheck > 0:
             for it in range(params['LDPC_CONTROL'][1]):
                 self.llr, self.ncheck = self.ldpc.do_ldpc_iteration(self.llr)
                 self._record_state("L")
@@ -111,7 +112,7 @@ class Candidate:
             codeword_bits = (self.llr > 0).astype(int).tolist()
             self.check_crc_and_get_message(codeword_bits)
 
-        if(not self.msg):
+        if(not self.decode_completed and not self.msg):
             if(params['OSD_CONTROL'][0] < self.llr0_sd < params['OSD_CONTROL'][1]):
                 reliab_order = np.argsort(np.abs(self.llr))[::-1]
                 codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Ls = params['OSD_CONTROL'][2])

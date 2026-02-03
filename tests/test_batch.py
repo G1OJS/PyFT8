@@ -6,13 +6,7 @@ from PyFT8.FT8_crc import check_crc_codeword_list
 from PyFT8.spectrum import Spectrum
 from PyFT8.ldpc import LdpcDecoder
 from PyFT8.osd import osd_decode_minimal
-
-params = {
-'MIN_LLR0_SD': 0.5,                # global minimum llr_sd
-'BITFLIP_CONTROL': (28, 50),        # min ncheck0, nBits
-'LDPC_CONTROL': (45, 7, 5),         # max ncheck0, 
-'OSD_CONTROL': (0.5, 1.5, [30,20,2]) # min llr_sd, max llr_sd, L(order)
-}
+import time
 
 def run(dataset, freq_range):
     spectrum = Spectrum(FT8, 12000, 3100, 3, 3)
@@ -23,20 +17,25 @@ def run(dataset, freq_range):
     results = []
     msgs = []
     candidates = spectrum.search(f0_idxs, '000000_000000')
+
+    t0 = time.time()
     for c in candidates:
         c.demap(spectrum)
+    candidates.sort(key = lambda c: -c.llr0_sd)
+    for c in candidates:
         c.decode()
         if(c.msg and not c.msg in msgs):
             msgs.append(c.msg)
             row = f"000000 {c.snr:3d} {c.dt:3.1f} {c.fHz:4d} ~ {' '.join(c.msg)}"
-            print(row)
+            print(f"{time.time()-t0:5.2f} {c.sync_score:4.1f} {c.llr0_sd:4.1f} {c.ncheck0:2d} {row:<45} {c.decode_path}")
             results.append(row)
     
-    with open(dataset+"_pyft8.txt", "w") as f:
+    with open(dataset+"_ldpc_30its_pyft8.txt", "w") as f:
         f.write('\n'.join(results))
  
 
-for n in range(2,39):
+for n in range(1,21):
+    print(f"Running test with test_{n:02d}")
     run(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\data\ft8_lib\20m_busy\test_"+f"{n:02d}", [100,3100])
 
 #run(r"C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_01", [100,3100])

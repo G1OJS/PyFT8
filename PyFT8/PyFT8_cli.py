@@ -7,15 +7,11 @@ import signal
 
 global concise
 concise = False
-def on_decode(c):
-    decode_dict = {'cyclestart_str':c.cyclestart_str,
-                   'call_a':c.call_a, 'call_b':c.call_b, 'grid_rpt':c.grid_rpt}
-    if(not concise):
-        decode_dict.update({'decoder':'PyFT8',
-                   't_decode':f"{time.time() %15: 5.2f}", 'snr':f"{c.snr:5.0f}", 'freq':c.fHz,
-                   'dt':f"{c.dt:5.1f}"})
-
-    print(decode_dict)
+def on_decode(dd):
+    if(concise):
+        print(f"{dd['cs']} {dd['snr']} {dd['dt']} {dd['f']} ~ {dd['msg']}")
+    else:
+        print(dd)
 
 def cli():
     global concise
@@ -31,7 +27,7 @@ def cli():
     input_device_keywords = args.inputcard_keywords.replace(' ','').split(',')
     output_device_keywords = args.outputcard_keywords.replace(' ','').split(',') if args.outputcard_keywords is not None else None
 
-    cycle_manager = Cycle_manager(FT8, on_decode, onOccupancy = None, input_device_keywords = input_device_keywords,
+    cycle_manager = Cycle_manager(FT8, on_decode = on_decode, input_device_keywords = input_device_keywords,
                                   output_device_keywords = output_device_keywords, verbose = verbose) 
 
     print("PyFT8 Rx running — Ctrl-C to stop")
