@@ -3,8 +3,6 @@ hashed_calls = []
 def FT8_unpack(bits):
     # need to add PW8BR RR73; HK1J  messages i3=0 n3 =1
     # need to add callsign hashing
-    if not bits:
-        return None
     i3 = 4*bits[74]+2*bits[75]+bits[76]
     ir = int(bits[58])
     call_a = unpack_ft8_c28(int(''.join(str(b) for b in bits[0:28]), 2), bits[28])
