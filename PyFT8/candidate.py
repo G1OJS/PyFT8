@@ -10,7 +10,7 @@ params = {
 'MIN_LLR0_SD': 0.5,                # global minimum llr_sd
 'BITFLIP_CONTROL': (28, 50),        # min ncheck0, nBits
 'LDPC_CONTROL': (55, 10, 5),         # max ncheck0, 
-'OSD_CONTROL': (0.5, 1.5, [30,20,2]) # min llr_sd, max llr_sd, L(order)
+'OSD_CONTROL': (0.5, 1.5, [10,3]) # min llr_sd, max llr_sd, L(order)
 }
     
 class Candidate:

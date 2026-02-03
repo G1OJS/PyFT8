@@ -69,8 +69,8 @@ def plot_success(fig, ax, load_file):
     wdecs = len(ws[0]) + len(ws[1])
     pydecs = len(py[0])+len(py[1])+len(py[2])+len(py[3])
     pydecs_corr = pydecs - len(py[3])
-    pycorr_pc = f"{int(100*pydecs_corr/wdecs)}"
-    pytot_pc = f"{int(100*pydecs/wdecs)}"
+    pycorr_pc = f"{int(100*pydecs_corr/(wdecs+0.01))}"
+    pytot_pc = f"{int(100*pydecs/(wdecs+0.01))}"
     fig.suptitle(f"PyFT8 {pydecs} vs WSJT-X {wdecs} decodes, {pytot_pc}% ({pycorr_pc}% correct) to PyFT8")
     if(params):
         params1 = dict(list(params.items())[:len(params)//2])

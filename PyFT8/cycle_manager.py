@@ -57,6 +57,7 @@ class Cycle_manager():
         cycle_searched = True
         cycle_time_prev = 0
         to_demap = []
+        with_message = []
         delay = self.spectrum.sigspec.cycle_seconds - cycle_time()
         tlog(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)\n")
 
@@ -83,14 +84,17 @@ class Cycle_manager():
                 if(self.verbose):
                     tlog(f"[Cycle manager] Search spectrum ...")
                 self.new_cands = self.spectrum.search(self.f0_idxs, cyclestart_str(time.time()))
-                if(self.verbose):
-                    tlog(f"[Cycle manager] Spectrum searched -> {len(self.new_cands)} candidates")
-                    n_unprocessed = len([c for c in self.cands_list if not "#" in c.decode_path])
-                    tlog(f"[Cycle manager] {n_unprocessed} unprocessed candidates detected")                    
                 if(self.on_decode_include_failures):
                     completed = [c for c in self.cands_list if c.decode_completed and not c.msg]
                     for c in completed:
                         self.pack_and_send_decode(c)
+                if(self.verbose):
+                    tlog(f"[Cycle manager] Spectrum searched -> {len(self.new_cands)} candidates")
+                    n_unprocessed = len([c for c in self.cands_list if not "#" in c.decode_path])
+                    tlog(f"[Cycle manager] {n_unprocessed} unprocessed candidates detected")
+                    nf, ns = len(completed), len(with_message)
+                    tlog(f"[Cycle manager] last cycle had {nf} failed candidates and {ns} decodes (total = {nf+ns})")                    
+                    
                 self.cands_list = self.new_cands
                 if(self.on_occupancy):
                     self.on_occupancy(self.spectrum.occupancy, self.spectrum.df)
