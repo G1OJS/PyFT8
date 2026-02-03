@@ -2,6 +2,9 @@ import numpy as np
 import wave
 import pyaudio
 import time
+import threading
+from PyFT8.FT8_encoder import pack_message
+
 pya = pyaudio.PyAudio()
 
 def find_device(device_str_contains):
@@ -17,13 +20,6 @@ def find_device(device_str_contains):
             print(f"[Audio] Found device {name} index {dev_idx}")
             return dev_idx
     print(f"[Audio] No audio device found matching {device_str_contains}")
-
-import time
-import wave
-import numpy as np
-import pyaudio
-import threading
-
 
 class AudioIn:
     def __init__(self, spectrum):
@@ -96,6 +92,10 @@ class AudioIn:
 
 
 class AudioOut:
+
+    def create_ft8_symbols(self, tx_msg):
+        c1, c2, grid_rpt = tx_msg.split()
+        return pack_message(c1, c2, grid_rpt)
 
     def create_ft8_wave(self, symbols, fs=12000, f_base=873.0, f_step=6.25, amplitude = 0.5):
         symbol_len = int(fs * 0.160)

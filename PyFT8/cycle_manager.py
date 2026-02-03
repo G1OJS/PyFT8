@@ -115,10 +115,8 @@ class Cycle_manager():
                     self.duplicate_filter.add(c.dedupe_key)
                     c.call_a, c.call_b, c.grid_rpt = c.msg[0], c.msg[1], c.msg[2]
                     self.pack_and_send_decode(c)
-
                     
     def check_for_tx(self):
-        from .FT8_encoder import pack_message
         tx_msg_file = 'PyFT8_tx_msg.txt'
         if os.path.exists(tx_msg_file):
             if(not self.output_device_idx):
@@ -130,9 +128,8 @@ class Cycle_manager():
             tx_freq = int(tx_freq) if tx_freq else 1000    
             tlog(f"[TX] transmitting {tx_msg} on {tx_freq} Hz")
             os.remove(tx_msg_file)
-            c1, c2, grid_rpt = tx_msg.split()
-            symbols = pack_message(c1, c2, grid_rpt)
-            audio_data = self.audio_out.create_ft8_wave(self, symbols, f_base = tx_freq)
-            self.audio_out.play_data_to_soundcard(self, audio_data, self.output_device_idx)
+            symbols = self.audio_out.create_ft8_symbols(tx_msg_file)
+            audio_data = self.audio_out.create_ft8_wave(symbols, f_base = tx_freq)
+            self.audio_out.play_data_to_soundcard(audio_data, self.output_device_idx)
             tlog("[Tx] done transmitting")
                          
