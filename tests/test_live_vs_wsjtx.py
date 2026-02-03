@@ -36,8 +36,11 @@ def analyse_dictionaries(pyft8_dicts, wsjtx_dicts, cyclestart_str):
         decodes.sort(key = lambda p: (-len(p['msg']), -p['llr0_sd']))
         p = decodes[0] if(len(decodes)) else no_match
         all_decodes.append((w, p))
-        pkey = p['cs'] + " " + p['msg']
-        pyft8_keys.add(pkey)
+        try:
+            pkey = p['cs'] + " " + p['msg']
+            pyft8_keys.add(pkey)
+        except:
+            print(p)
         row = f"{w['cs']} {w['f']:4d} {'cofreq' if w['cofreq'] else '  --  '} {p['f']:4d} {w['snr']:+04d} {p['snr']:+04d} {w['dt']:4.1f} {p['dt']:4.1f} {w['td']:<4} {p['td']:<4} {w['msg']:<23} {p['msg']:<23} {p['llr0_sd']:04.2f} {p['decode_path']}" 
         tlog(f"[Analyse dicts] {row}")
         wkey = w['cs'] + " " + w['msg']

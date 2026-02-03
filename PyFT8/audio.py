@@ -39,7 +39,6 @@ class AudioIn:
         self.audio_buffer = np.zeros(self.fft_len, dtype=np.float32)
         self._pa = pyaudio.PyAudio()
         self._running = False
-        self.wav_finished = False
         self.hoptimes = []
         self.hops_percycle = int(spectrum.sigspec.cycle_seconds * self.symbol_rate * spectrum.hops_persymb)
         self.pgrid_main = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)

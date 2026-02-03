@@ -12,20 +12,19 @@ params = {
 'LDPC_CONTROL': (55, 10, 5),         # max ncheck0, 
 'OSD_CONTROL': (0.5, 1.5, [10,3]) # min llr_sd, max llr_sd, L(order)
 }
-    
+
 class Candidate:
     def __init__(self):
         self.dedupe_key = ""
         self.demap_started, self.demap_completed, self.decode_completed = None, None, None
         self.cyclestart_str = ""
         self.dt = 0
+        self.td = 0
         self.fHz = 0
         self.ncheck, self.ncheck0 = 99, 99
         self.llr0_sd = 0
         self.llr = []
         self.llr0 = []
-        self.cycle_counter = 0
-        self.cyclestart_str = ""
         self.decode_path = ""
         self.msg = ''
         self.snr = -30
