@@ -59,25 +59,13 @@ class AudioIn:
         threading.Thread(target = self.play_wav, args = (wav_path, hop_dt), daemon=True).start()
         threading.Thread(target = self.do_fft).start()
 
-    def play_wav(self, wav_path, hop_dt):
-        self.hop_dt = hop_dt
-        self._running = True
+    def load_wav(self, wav_path):
         wf = wave.open(wav_path, "rb")
-        next_hop_time = time.time()
-        dummy_frames = None
-        while self._running:
-            frames = wf.readframes(self.samples_perhop)
-            if not dummy_frames:
-                dummy_frames = frames
-            if not frames:
-                frames = dummy_frames
-                self.wav_finished = True
-            now = time.time()
-            if now < next_hop_time:
-                time.sleep(next_hop_time - now)
-            next_hop_time += hop_dt
+        frames = wf.readframes(self.samples_perhop)
+        while frames:
             self._callback(frames, None, None, None)
             self.do_fft()
+            frames = wf.readframes(self.samples_perhop)
         wf.close()
 
     def start_live(self, input_device_idx, hop_dt):
