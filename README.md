@@ -39,7 +39,8 @@ These tests show that PyFT8 is within a few percent of FT8_lib's performance ove
 * Swap my previous Kaiser(20) fft window for a Hanning window, at the same time as changing from 3 frequency bins per tone to 2.
 * Dial down the use of OSD to improve speed
 * The killer, lurking in my code and forgotten; expand the timing tolerance for signal start from my previous +1.9 seconds to a range of -1.12 to +3.48 seconds(*), allowing for signals starting as early as the cycle boundary corresponding to the first *data* symbol (#8 of 79) and signals ending as late as 15s corresponding to the last *data* symbol (#72 of 79). I had previously been throwing away good candidates!
-<sub> * How do you sync a signal whose sync block starts before t=0? Simple - use the second Costas block in the middle of the signal.</sub>
+
+<sub> (*) How do you sync a signal whose sync block starts before t=0? Simple - use the second Costas block in the middle of the signal.</sub>
 
 ## Contents
 [being written]
