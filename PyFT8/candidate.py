@@ -8,8 +8,9 @@ from PyFT8.osd import osd_decode_minimal
 
 params = {
 'MIN_LLR0_SD': 1,                # global minimum llr_sd
-'LDPC_CONTROL': (33, 15, 4),         # max ncheck0, 
-'OSD_CONTROL': (25, [60,20]) # min llr_sd, max llr_sd, L(order)
+'MIN_SNR': -24,
+'LDPC_CONTROL': (33, 10, 4),         # max ncheck0, 
+'OSD_CONTROL': (25, [30,20]) # min llr_sd, max llr_sd, L(order)
 }
 
 class Candidate:
@@ -51,13 +52,13 @@ class Candidate:
         hops = np.array([h0_idx + hps* s for s in payload_symb_idxs])
         praw = pgrid_main[np.ix_(hops, freq_idxs)]
         pgrid = np.clip(praw, np.max(praw)-120, None)
-        snr = np.max(pgrid) - 107
-        if(snr >= -26):
+        snr = int(np.max(pgrid)) - 107
+        if(snr >= params['MIN_SNR']):
             llra = np.max(pgrid[:, [4,5,6,7]], axis=1) - np.max(pgrid[:, [0,1,2,3]], axis=1)
             llrb = np.max(pgrid[:, [2,3,4,7]], axis=1) - np.max(pgrid[:, [0,1,5,6]], axis=1)
             llrc = np.max(pgrid[:, [1,2,6,7]], axis=1) - np.max(pgrid[:, [0,3,4,5]], axis=1)
             llr0 = np.column_stack((llra, llrb, llrc))
-            llr0 = llr0.ravel()
+            llr0 = llr0.ravel() / 10
             llr0_sd = int(0.5+100*np.std(llr0))/100.0
             if (llr0_sd > params['MIN_LLR0_SD']):
                 llr0 = target_params[0] * llr0 / llr0_sd

@@ -34,7 +34,7 @@ def run(dataset, freq_range):
         f.write('\n'.join(results))
  
 
-for n in range(1,39):
+for n in range(26,27):
     print(f"Running test with test_{n:02d}")
     run(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\data\ft8_lib\20m_busy\test_"+f"{n:02d}", [100,3100])
 
