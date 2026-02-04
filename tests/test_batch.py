@@ -42,13 +42,15 @@ def run_batch():
     n_decodes = 0
     n_cycles = 0
     t0 = time.time()
-    output_stub = "_tmp_pyft8.txt"
-    for n in range(27,39):
+    for n in range(1,39):
         print(f"Running test with test_{n:02d}")
         n_decodes += run(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\data\ft8_lib\20m_busy\test_"+f"{n:02d}", [100,3100])
         n_cycles +=1
     print(f"Avg decodes per cycle: {n_decodes / n_cycles : 4.1f}")
     print(f"Avg time per cycle: {(time.time()-t0) / n_cycles : 4.1f}")
+
+output_stub = "_tmp_pyft8.txt"
+run_batch()
 
 #run(r"C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_01", [100,3100])
 
