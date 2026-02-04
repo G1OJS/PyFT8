@@ -9,7 +9,7 @@ from PyFT8.osd import osd_decode_minimal
 import time
 
 def run(dataset, freq_range):
-    spectrum = Spectrum(FT8, 12000, 3100, 4, 2)
+    spectrum = Spectrum(FT8, 12000, 3100, 5, 2)
     spectrum.audio_in.load_wav(dataset+".wav")
     f0_idxs = range(int(freq_range[0]/spectrum.df),
                         min(spectrum.nFreqs - spectrum.fbins_per_signal, int(freq_range[1]/spectrum.df)))
@@ -33,7 +33,7 @@ def run(dataset, freq_range):
             n_decodes +=1
     print(f"{n_decodes} decodes")
     
-    with open(dataset+"_tmp_pyft8.txt", "w") as f:
+    with open(dataset + output_stub, "w") as f:
         f.write('\n'.join(results))
 
     return n_decodes
@@ -41,7 +41,8 @@ def run(dataset, freq_range):
 n_decodes = 0
 n_cycles = 0
 t0 = time.time()
-for n in range(29,39):
+output_stub = "_tmp_pyft8.txt"
+for n in range(27,39):
     print(f"Running test with test_{n:02d}")
     n_decodes += run(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\data\ft8_lib\20m_busy\test_"+f"{n:02d}", [100,3100])
     n_cycles +=1

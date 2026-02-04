@@ -17,7 +17,7 @@ class Spectrum:
         self.df = max_freq / (self.nFreqs -1)
         self.fbins_per_signal = self.sigspec.tones_persymb * self.fbins_pertone
         self.hop_idxs_Costas =  np.arange(self.sigspec.costas_len) * self.hops_persymb
-        self.hop_start_lattitude = int(1.9 / self.dt)
+        self.hop_start_lattitude = int(0.5 + (15 - (79-7)*0.16) / self.dt)
         self.nhops_costas = self.sigspec.costas_len * self.hops_persymb
         self.h_search = self.hop_start_lattitude + self.nhops_costas  + 36 * self.hops_persymb
         self.h_demap = self.sigspec.payload_symb_idxs[-1] * self.hops_persymb
@@ -34,15 +34,26 @@ class Spectrum:
 
     def get_syncs(self, f0_idx, pnorm):
         syncs = []
-        for iBlock in [0,1]:
-            best_sync = {'h0_idx':0, 'score':0, 'dt': 0}
-            block_off = 36 * self.hops_persymb * iBlock
-            for h0_idx in range(block_off, block_off + self.hop_start_lattitude):
-                sync_score = float(np.dot(pnorm[h0_idx + self.hop_idxs_Costas ,  :].ravel(), self.csync_flat))
-                test_sync = {'h0_idx':h0_idx - block_off, 'score':sync_score, 'dt': (h0_idx - block_off) * self.dt-0.7}
-                if test_sync['score'] > best_sync['score']:
-                    best_sync = test_sync 
-            syncs.append(best_sync)
+
+        # First Costas block
+        best_sync = {'h0_idx':0, 'score':0, 'dt': 0}
+        for h0_idx in range(0, self.hop_start_lattitude):
+            sync_score = float(np.dot(pnorm[h0_idx + self.hop_idxs_Costas ,  :].ravel(), self.csync_flat))
+            test_sync = {'h0_idx':h0_idx, 'score':sync_score, 'dt': h0_idx * self.dt - 0.7}
+            if test_sync['score'] > best_sync['score']:
+                best_sync = test_sync
+        syncs.append(best_sync)
+
+        # Second Costas block
+        best_sync = {'h0_idx':0, 'score':0, 'dt': 0}
+        block_off = 36 * self.hops_persymb
+        for h0_idx in range(block_off - 7 * self.hops_persymb , block_off + self.hop_start_lattitude):
+            sync_score = float(np.dot(pnorm[h0_idx + self.hop_idxs_Costas ,  :].ravel(), self.csync_flat))
+            test_sync = {'h0_idx':h0_idx - block_off, 'score':sync_score, 'dt': (h0_idx - block_off) * self.dt-0.7}
+            if test_sync['score'] > best_sync['score']:
+                best_sync = test_sync 
+        syncs.append(best_sync)
+
         return syncs
 
     def search(self, f0_idxs, cyclestart_str):

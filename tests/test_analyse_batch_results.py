@@ -3,67 +3,85 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 pattern = '_tmp_pyft8'
-totals = []
+data_table = {'P':{},'L':{},'W':{}}
 folder = r"C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\data\ft8_lib\20m_busy"
 for filename in os.listdir(folder):
     if(filename.endswith("txt")):
         filepath = os.path.join(folder, filename)
         idx = ""
-        if(pattern in filename): idx = "PyFT8"
-        if('ft8_lib' in filename): idx = "FT8_lib"
-        if('wsjt' in filename): idx = "WSJT-X"
+        if(pattern in filename): idx = "P"
+        if('ft8_lib' in filename): idx = "L"
+        if('wsjt' in filename): idx = "W"
         with open(filepath, 'r') as f:
             lines = f.readlines()
-        n_lines = len(lines)
         test_no = int(filename.split("_")[1])
         if(idx != ""):
-            totals.append((test_no, idx, n_lines))
+                data_table[idx][test_no] = {'n_decodes':len(lines), 'decodes':lines}
 
-table = {}
-for trow in totals:
-    test = f"test_{trow[0]:02d}_"
-    idx = trow[1]
-    n = trow[2]
-    if not test in table:
-        table[test] = {"PyFT8": 0, "FT8_lib": 0, "WSJT-X": 0}
-    table[test][idx] += n
+def plot_snrs():
+    fig, ax = plt.subplots()
+    decoders = [d for d in data_table]
+    tests = [t for t in data_table['P']]
+    
+    wsnr, psnr = [], []
+    for t in tests:
+        py_decodes = data_table['P'][t]['decodes']
+        ws_decodes = data_table['W'][t]['decodes']
+        for w in ws_decodes:
+            m = [p for p in py_decodes if p.split()[5:] == w.split()[5:]]
+            if(len(m)==1):
+                wsnr.append(int(w.split()[1]))
+                psnr.append(int(m[0].split()[1]))
+    
+    ax.scatter(wsnr, psnr)
+    ax.set_xlabel("WSJT-X SNR")
+    ax.axline((-30,-30),(30,30), linewidth=4, color='r')
+    plt.show()
 
-tests = sorted(table.keys())
-print(f"{'Test':<6} {'PyFT8':>8} {'FT8_lib':>10} {'WSJT-X':>8}")
-print("-" * 46)
+def plot_freqs():
+    fig, ax = plt.subplots()
+    decoders = [d for d in data_table]
+    tests = [t for t in data_table['P']]
+    
+    wfrqs, pfrqs = [], []
+    for t in tests:
+        py_decodes = data_table['P'][t]['decodes']
+        ws_decodes = data_table['W'][t]['decodes']
+        for w in ws_decodes:
+            m = [p for p in py_decodes if p.split()[5:] == w.split()[5:]]
+            if(len(m)==1):
+                wfrqs.append(int(w.split()[3]))
+                pfrqs.append(int(m[0].split()[3]))
 
-for t in tests:
-    row = table[t]
-    print(f"{t:<6} {row['PyFT8']:>8} {row['FT8_lib']:>10} {row['WSJT-X']:>8}")
+    pfrqs = np.array(pfrqs)    
+    wfrqs = np.array(wfrqs)
+    ax.scatter(wfrqs, pfrqs-wfrqs)
+    ax.set_xlabel("WSJT-X Frequency")
+    plt.show()
+    
+def plot_decode_counts():
+    fig, ax = plt.subplots()
+    decoders = [d for d in data_table]
+    tests = [t for t in data_table['P']]
+    n_decodes = [[]] * len(tests)
+    for i, t in enumerate(tests):
+        n_decodes[i] = [data_table[d][t]['n_decodes'] for d in decoders]
+    py = np.array([100*ns[0]/ns[2] for ns in n_decodes])
+    lb = np.array([100*ns[1]/ns[2] for ns in n_decodes])
+    tests = np.array(tests)
 
-wsjt = [table[t]["WSJT-X"]  for t in tests]
-n_complete = np.count_nonzero(wsjt)
-lib  = [table[t]["FT8_lib"] for t in tests][:n_complete]
-py   = [table[t]["PyFT8"]   for t in tests][:n_complete]
-wsjt = wsjt[:n_complete]
+    ax.bar(tests-0.5, py, width = 0.4, label = "PyFT8")
+    ax.bar(tests, lb, width = 0.4, label = "FT8_lib")
+    ax.legend()
+    ax.set_xlim(0,len(tests)+1)
+    ax.set_ylim(40,110)
+    ax.text(1,100, f"PyFT8 mean {np.mean(py):3.1f}%")
+    ax.text(1,96, f"FT8_lib mean {np.mean(lb):3.1f}%")
+    ax.set_xlabel("Test file number")
+    ax.set_ylabel("% of WSJT-X decodes")
+    fig.suptitle("PyFT8 and FT8_lib decodes as percentage of WSJT-X v2.7.0 in NORM mode")
+    plt.show()
 
-for i in range(n_complete):
-    print(i, lib[i], py[i], wsjt[i])
-    py[i] = py[i] * 100 / wsjt[i]
-    lib[i] = lib[i] * 100 / wsjt[i]
-
-x = 1+np.arange(n_complete)     
-w = 0.25                      
-
-
-plt.figure(figsize=(10,5))
-plt.bar(x - w, py,   width=w, label="PyFT8")
-plt.bar(x,     lib,  width=w, label="FT8_lib")
-
-
-plt.xticks(x, x)
-plt.xlabel("Test Number")
-plt.ylabel("Number of Decodes")
-plt.title("Number of Decodes PyFT8, FT8_lib, as percentage of WSJT-X v2.7.0 in NORM mode")
-plt.legend()
-plt.grid(axis='y', alpha=0.3)
-plt.tight_layout()
-plt.savefig(fname = pattern+".png")
-plt.show()
-
-       
+#plot_freqs()
+#plot_snrs()
+plot_decode_counts()   

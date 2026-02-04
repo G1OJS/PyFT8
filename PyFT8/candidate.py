@@ -7,9 +7,10 @@ from PyFT8.ldpc import LdpcDecoder
 from PyFT8.osd import osd_decode_minimal
 
 params = {
+'MIN_SNR': -22,                # global min snr
 'MIN_LLR0_SD': 0.5,            # global minimum llr_sd
 'LDPC_CONTROL': (35, 10),      # max ncheck0, max iterations
-'OSD_CONTROL': (10, [30,20,5]) # max ncheck, L(order)
+'OSD_CONTROL': (15, [30,20,3]) # max ncheck, L(order)
 }
 
 class Candidate:
@@ -33,7 +34,7 @@ class Candidate:
         hops = np.array([h0_idx + hps* s for s in payload_symb_idxs])
         praw = pgrid_main[np.ix_(hops, freq_idxs)]
         p_max = np.max(praw)
-        snr = int(p_max) - 107
+        snr = int( p_max - np.min(praw) - 58)
         pgrid = praw - p_max
         pgrid = np.clip(pgrid, -80, 0)
         llra = np.max(pgrid[:, [4,5,6,7]], axis=1) - np.max(pgrid[:, [0,1,2,3]], axis=1)
@@ -42,7 +43,7 @@ class Candidate:
         llr0 = np.column_stack((llra, llrb, llrc))
         llr0 = llr0.ravel() / 10
         llr0_sd = int(0.5+100*np.std(llr0))/100.0
-        if (llr0_sd > params['MIN_LLR0_SD']):
+        if (llr0_sd > params['MIN_LLR0_SD'] and snr >= params['MIN_SNR']):
             llr0 = target_params[0] * llr0 / llr0_sd
             llr0 = np.clip(llr0, -target_params[1], target_params[1])
             snr = int(np.clip(snr, -24, 24))
@@ -56,8 +57,8 @@ class Candidate:
         demap0 = self._get_llr(spectrum.audio_in.pgrid_main, h0, spectrum.hops_persymb, self.freq_idxs, spectrum.sigspec.payload_symb_idxs)
         demap1 = self._get_llr(spectrum.audio_in.pgrid_main, h1, spectrum.hops_persymb, self.freq_idxs, spectrum.sigspec.payload_symb_idxs)
         sync_idx =  0 if demap0[1] > demap1[1] else 1
-        demap = [demap0, demap1][sync_idx]
-        quality_too_low = (demap[1] <= params['MIN_LLR0_SD'])
+        demap = [demap0, demap1][sync_idx]            
+        quality_too_low = (len(demap[0])==0)
         if(quality_too_low):
             self._record_state("I", final = True)
             self.demap_completed = time.time()
@@ -92,12 +93,13 @@ class Candidate:
             self.check_crc_and_get_message(codeword_bits)
 
         if(0 < self.ncheck < params['OSD_CONTROL'][0]):
-            reliab_order = np.argsort(np.abs(self.llr))[::-1]
-            codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Ls = params['OSD_CONTROL'][1])
-            self.check_crc_and_get_message(codeword_bits)
-            if(self.msg):
-                self.ncheck = 0
-            self._record_state("O")
+            if(len(self.llr) == 174 and len(self.llr0)==174):
+                reliab_order = np.argsort(np.abs(self.llr))[::-1]
+                codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Ls = params['OSD_CONTROL'][1])
+                self.check_crc_and_get_message(codeword_bits)
+                if(self.msg):
+                    self.ncheck = 0
+                self._record_state("O")
 
         self._record_state("M" if self.msg else "_", final = True)
 

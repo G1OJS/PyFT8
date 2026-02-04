@@ -83,11 +83,11 @@ def single_loopback(snr=20, amplitude = 0.5):
         if(len(audio_for_fft) == fft_len):
             audio_for_fft = audio_for_fft * win
             z[hop,:nFreqs] = np.fft.rfft(audio_for_fft)[:nFreqs]
-    cycle_manager.spectrum.audio_in.pgrid_main = z.real*z.real + z.imag*z.imag
+    cycle_manager.spectrum.audio_in.pgrid_main = 10*np.log10(z.real*z.real + z.imag*z.imag + 1e-12)
 
     t_spec = time.time()
 
-    t0_idx=18
+    t0_idx=3
     f0_idx=int(f_base/df)
     cands = cycle_manager.spectrum.search([f0_idx],"000000_000000")
     c = cands[0]
@@ -199,7 +199,7 @@ def plot_results(run_params = "Default"):
     savefig(fig, f"results/proxy_plots_{run_params}.png")
 
     plot_params = ['snr', 'llr_sd', 'ncheck0']
-    plot_ranges = [[-26,-19],[0,2],[0,55]]
+    plot_ranges = [[-26,26],[0,2],[0,55]]
     
     fig, axs = plt.subplots(1, len(plot_params), figsize = (15,5))
     for iax, param in enumerate(plot_params):        
