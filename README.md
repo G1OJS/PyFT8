@@ -42,6 +42,27 @@ These tests show that PyFT8 is within a few percent of FT8_lib's performance ove
 
 <sub> (*) How do you sync a signal whose sync block starts before t=0? Simple - use the second Costas block in the middle of the signal.</sub>
 
+Looking back at my previously 'standard' wav file however, these new settings give only 9 decodes instead of my previous 12. This can be restored to 11 decodes by setting the control parameters for decoding as follows:
+```
+params = {
+'MIN_SNR': -20,                # global min snr
+'MIN_LLR0_SD': 0.6,            # global minimum llr_sd
+'LDPC_CONTROL': (36, 12),      # max ncheck0, max iterations
+'OSD_CONTROL': (20, [30,20,3]) # max ncheck, L(order)
+}
+```
+Compared with the following used for testing:
+```
+params = {
+'MIN_SNR': -22,                # global min snr
+'MIN_LLR0_SD': 0.5,            # global minimum llr_sd
+'LDPC_CONTROL': (35, 10),      # max ncheck0, max iterations
+'OSD_CONTROL': (15, [30,20,3]) # max ncheck, L(order)
+}
+```
+Which shows how balancing decoding time vs number of decodes can be quite a delicate balance.
+
+
 ## Contents
 [being written]
 * [Overview of main code and decoding process](https://github.com/G1OJS/PyFT8/blob/main/docs/main_code.md)
