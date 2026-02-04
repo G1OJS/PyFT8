@@ -38,7 +38,7 @@ However, a single wav file with a single FT8 cycle is not sufficient to characte
 <img width="640" height="480" alt="20m_busy_batch_tests_results_2bpt_4bps tweaked params" src="https://github.com/user-attachments/assets/e1a15f41-c9cc-4508-90b5-5ebe74d612fd" />
 
 These tests show that PyFT8 is within a few percent of FT8_lib's performance over all 38 'busy' 20m wav file tests. Reading FT8_lib's source code gave me a few good tips to improve performance to this level:
-* Swap my previous Kaiser(20) fft window for a Hanning window, at the same time as changing from 3 frequency bins per tone to 2.
+* Swap my previous Kaiser(20) fft window for a Hanning window, at the same time as changing from 3 frequency bins per tone to 2, and from 3 bins per symbol to 4.
 * Dial down the use of OSD to improve speed
 * The killer, lurking in my code and forgotten; expand the timing tolerance for signal start from my previous 0 to +1.9 seconds to a range of -1.12 to +3.48 seconds(*), allowing for signals starting as early as the cycle boundary corresponding to the first *data* symbol (#8 of 79) and signals ending as late as 15s corresponding to the last *data* symbol (#72 of 79). I had previously been throwing away good candidates!
 
