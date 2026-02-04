@@ -31,12 +31,36 @@ I have been using the file "210703_133430.wav" (third plot above) as a reference
 
 <img width="658" height="429" alt="image" src="https://github.com/user-attachments/assets/3d5fc12c-b36b-4297-ac44-f3ba287a123c" />
 
-However, a single wav file with a single FT8 cycle is not sufficient to characterise performance - it's been good for developing, but it's not enough for characterising. So, I've taken a step further by rewriting the decoding code to allow tests to be run in batch mode using a folder of 15s wav files. The image below shows the number of decodes from PyFT8 and FT8_lib both as a percentage of WSJT-x V2.7.0 running in NORM mode, for three different configurations of the PyFT8 decoder. The source wav files are copied from [https://github.com/kgoba/ft8_lib/tree/master/test/wav/20m_busy](https://github.com/kgoba/ft8_lib/tree/master/test/wav/20m_busy), and I've run ft8_lib and PyFT8 for all 38 of them, but only run WSJT-x for 20 so far as it has to be manual cut and paste.
+However, a single wav file with a single FT8 cycle is not sufficient to characterise performance - it's been good for developing, but it's not enough for characterising. So, I've taken a step further by rewriting the decoding code to allow tests to be run in batch mode using a folder of 15s wav files. The image below shows the number of decodes from PyFT8 and FT8_lib both as a percentage of WSJT-x V2.7.0 running in NORM mode. The source wav files are copied from [https://github.com/kgoba/ft8_lib/tree/master/test/wav/20m_busy](https://github.com/kgoba/ft8_lib/tree/master/test/wav/20m_busy), and I've run ft8_lib and PyFT8 for all 38 of them, as well as updating the WSJT-X results to version 2.7.0.
 
-<img width="1039" height="580" alt="image" src="https://github.com/user-attachments/assets/5ec76b0c-3bc2-425f-8ee2-c99b6cc39d4f" />
+<img width="640" height="480" alt="20m_busy_batch_tests_results_2bpt_4bps" src="https://github.com/user-attachments/assets/af11f4b1-8db0-48fa-906e-a0e691d46d61" />
 
-It has to be said that adding OSD and bitflipping doesn't produce as significant a difference as I had hoped! So there is certainly scope for further development. I've also seen that despite my efforts to write fast Python, FT8_lib is still considerably faster (and probably faster than WSJT-x). Overall, ignoring WSJT-X, FT8_lib wins in terms of decode numbers, being beaten by PyFT8 on only a few occasions.
+These tests show that PyFT8 is within a few percent of FT8_lib's performance over all 38 'busy' 20m wav file tests. Reading FT8_lib's source code gave me a few good tips to improve performance to this level:
+* Swap my previous Kaiser(20) fft window for a Hanning window, at the same time as changing from 3 frequency bins per tone to 2.
+* Dial down the use of OSD to improve speed
+* The killer, lurking in my code and forgotten; expand the timing tolerance for signal start from my previous 0 to +1.9 seconds to a range of -1.12 to +3.48 seconds(*), allowing for signals starting as early as the cycle boundary corresponding to the first *data* symbol (#8 of 79) and signals ending as late as 15s corresponding to the last *data* symbol (#72 of 79). I had previously been throwing away good candidates!
 
+<sub> (*) How do you sync a signal whose sync block starts before t=0? Simple - use the second Costas block in the middle of the signal.</sub>
+
+Looking back at my previously 'standard' wav file however, these new settings give only 9 decodes instead of my previous 12. This can be restored to 11 decodes by setting the control parameters for decoding as follows:
+```
+params = {
+'MIN_SNR': -20,                # global min snr
+'MIN_LLR0_SD': 0.6,            # global minimum llr_sd
+'LDPC_CONTROL': (36, 12),      # max ncheck0, max iterations
+'OSD_CONTROL': (20, [30,20,3]) # max ncheck, L(order)
+}
+```
+Compared with the following used for testing:
+```
+params = {
+'MIN_SNR': -22,                # global min snr
+'MIN_LLR0_SD': 0.5,            # global minimum llr_sd
+'LDPC_CONTROL': (35, 10),      # max ncheck0, max iterations
+'OSD_CONTROL': (15, [30,20,3]) # max ncheck, L(order)
+}
+```
+Which shows how balancing decoding time vs number of decodes can be quite a delicate balance.
 
 
 ## Contents
