@@ -106,7 +106,9 @@ show_success_plot = True
 
 run([100,3100])
 
-#plot_success_file('compare_data.pkl')
+#fig_s, ax_s = plt.subplots( figsize=(10,6))
+#plot_success(fig_s, ax_s, 'compare_data.pkl')
+#plt.show()
 
 
 

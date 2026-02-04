@@ -31,7 +31,8 @@ class AudioIn:
         self.fft_len = int(spectrum.fbins_pertone * self.sample_rate // self.symbol_rate)
         fft_out_len = int(self.fft_len/2) + 1
         self.nFreqs = int(fft_out_len * spectrum.max_freq / fmax_fft)
-        self.fft_window = fft_window=np.kaiser(self.fft_len, 20)
+#        self.fft_window = fft_window=np.kaiser(self.fft_len, 20)
+        self.fft_window = fft_window=np.hanning(self.fft_len)
         self.audio_buffer = np.zeros(self.fft_len, dtype=np.float32)
         self._pa = pyaudio.PyAudio()
         self._running = False
@@ -47,7 +48,7 @@ class AudioIn:
         p = z.real*z.real + z.imag*z.imag
         p = p[:self.nFreqs]
         self.hoptimes.append(t)
-        self.pgrid_main[self.grid_main_ptr] = p
+        self.pgrid_main[self.grid_main_ptr] = 10*np.log10(p+1e-12)
         self.grid_main_ptr = (self.grid_main_ptr + 1) % self.hops_percycle
 
     def start_wav(self, wav_path, hop_dt):

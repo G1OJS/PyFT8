@@ -9,7 +9,7 @@ from PyFT8.osd import osd_decode_minimal
 import time
 
 def run(dataset, freq_range):
-    spectrum = Spectrum(FT8, 12000, 3100, 3, 3)
+    spectrum = Spectrum(FT8, 12000, 3100, 4, 2)
     spectrum.audio_in.load_wav(dataset+".wav")
     f0_idxs = range(int(freq_range[0]/spectrum.df),
                         min(spectrum.nFreqs - spectrum.fbins_per_signal, int(freq_range[1]/spectrum.df)))
@@ -22,6 +22,7 @@ def run(dataset, freq_range):
     for c in candidates:
         c.demap(spectrum)
     candidates.sort(key = lambda c: -c.llr0_sd)
+    n_decodes = 0
     for c in candidates:
         c.decode()
         if(c.msg and not c.msg in msgs):
@@ -29,14 +30,24 @@ def run(dataset, freq_range):
             row = f"000000 {c.snr:3d} {c.dt:3.1f} {c.fHz:4d} ~ {' '.join(c.msg)}"
             print(f"{time.time()-t0:5.2f} {c.sync_score:4.1f} {c.llr0_sd:4.1f} {c.ncheck0:2d} {row:<45} {c.decode_path}")
             results.append(row)
+            n_decodes +=1
+    print(f"{n_decodes} decodes")
     
-    with open(dataset+"_0.5_200_80_65_40_0.5_2.5_40_5_pyft8.txt", "w") as f:
+    with open(dataset+"_tmp_pyft8.txt", "w") as f:
         f.write('\n'.join(results))
- 
 
-for n in range(1,21):
+    return n_decodes
+ 
+n_decodes = 0
+n_cycles = 0
+t0 = time.time()
+for n in range(29,39):
     print(f"Running test with test_{n:02d}")
-    run(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\data\ft8_lib\20m_busy\test_"+f"{n:02d}", [100,3100])
+    n_decodes += run(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\data\ft8_lib\20m_busy\test_"+f"{n:02d}", [100,3100])
+    n_cycles +=1
+
+print(f"Avg decodes per cycle: {n_decodes / n_cycles : 4.1f}")
+print(f"Avg time per cycle: {(time.time()-t0) / n_cycles : 4.1f}")
 
 #run(r"C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_01", [100,3100])
 

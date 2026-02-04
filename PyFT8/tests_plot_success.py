@@ -18,7 +18,7 @@ def plot_success(fig, ax, load_file):
     wcols =     ['#141700','#664b07']
     wlabs =     ['isolated','overlapping']
 
-    bins = [0.4 + 0.1*b for b in range(25)]
+    bins = [0.25 + 0.1*b for b in range(25)]
     
     for w, p in decodes:
         q = p['llr0_sd']

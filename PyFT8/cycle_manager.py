@@ -17,7 +17,7 @@ class Cycle_manager():
                  input_device_keywords = None, output_device_keywords = None,
                  freq_range = [200, 3100], verbose = False):
         
-        self.spectrum = Spectrum(sigspec, 12000, freq_range[1], 3, 3)
+        self.spectrum = Spectrum(sigspec, 12000, freq_range[1], 4, 2)
         self.running = True
         self.verbose = verbose
         self.freq_range = freq_range
