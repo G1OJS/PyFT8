@@ -7,10 +7,10 @@ from PyFT8.ldpc import LdpcDecoder
 from PyFT8.osd import osd_decode_minimal
 
 params = {
-'MIN_SNR': -22,                # global min snr
-'MIN_LLR0_SD': 0.5,            # global minimum llr_sd
-'LDPC_CONTROL': (35, 10),      # max ncheck0, max iterations
-'OSD_CONTROL': (15, [30,20,3]) # max ncheck, L(order)
+'MIN_SNR': -20,                # global min snr
+'MIN_LLR0_SD': 0.6,            # global minimum llr_sd
+'LDPC_CONTROL': (36, 12),      # max ncheck0, max iterations
+'OSD_CONTROL': (20, [30,20,3]) # max ncheck, L(order)
 }
 
 class Candidate:

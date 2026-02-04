@@ -199,7 +199,7 @@ def plot_results(run_params = "Default"):
     savefig(fig, f"results/proxy_plots_{run_params}.png")
 
     plot_params = ['llr_sd', 'imposed_snr', 'ncheck0']
-    plot_ranges = [[0,2], [-26,-16],[0,55]]
+    plot_ranges = [[0,0.75], [-26,-16],[0,55]]
     
     fig, axs = plt.subplots(1, len(plot_params), figsize = (15,5))
     for iax, param in enumerate(plot_params):        
@@ -232,6 +232,6 @@ def plot_results(run_params = "Default"):
  
 
 run_params = "default"
-test_vs_imposed_snr(run_params, ntrials = 5000)
+test_vs_imposed_snr(run_params, ntrials = 10000)
 plot_results(run_params)
 

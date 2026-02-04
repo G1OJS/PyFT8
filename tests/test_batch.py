@@ -9,7 +9,7 @@ from PyFT8.osd import osd_decode_minimal
 import time
 
 def run(dataset, freq_range):
-    spectrum = Spectrum(FT8, 12000, 3100, 5, 2)
+    spectrum = Spectrum(FT8, 12000, 3100, 4, 2)
     spectrum.audio_in.load_wav(dataset+".wav")
     f0_idxs = range(int(freq_range[0]/spectrum.df),
                         min(spectrum.nFreqs - spectrum.fbins_per_signal, int(freq_range[1]/spectrum.df)))
@@ -37,22 +37,24 @@ def run(dataset, freq_range):
         f.write('\n'.join(results))
 
     return n_decodes
- 
-n_decodes = 0
-n_cycles = 0
-t0 = time.time()
-output_stub = "_tmp_pyft8.txt"
-for n in range(27,39):
-    print(f"Running test with test_{n:02d}")
-    n_decodes += run(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\data\ft8_lib\20m_busy\test_"+f"{n:02d}", [100,3100])
-    n_cycles +=1
 
-print(f"Avg decodes per cycle: {n_decodes / n_cycles : 4.1f}")
-print(f"Avg time per cycle: {(time.time()-t0) / n_cycles : 4.1f}")
+def run_batch():
+    n_decodes = 0
+    n_cycles = 0
+    t0 = time.time()
+    output_stub = "_tmp_pyft8.txt"
+    for n in range(27,39):
+        print(f"Running test with test_{n:02d}")
+        n_decodes += run(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\data\ft8_lib\20m_busy\test_"+f"{n:02d}", [100,3100])
+        n_cycles +=1
+    print(f"Avg decodes per cycle: {n_decodes / n_cycles : 4.1f}")
+    print(f"Avg time per cycle: {(time.time()-t0) / n_cycles : 4.1f}")
 
 #run(r"C:\Users\drala\Documents\Projects\ft8_lib test\test\wav\20m_busy\test_01", [100,3100])
 
 #run("data/G4WNT/FT-8-Comp-31-12-22-5mins-2-12000", [100,3100])
+
+#output_stub = "210703_133430"
 #run("data/210703_133430", [100,3100])
 #run(None, [100,3100])
 
