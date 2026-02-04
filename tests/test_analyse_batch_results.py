@@ -2,7 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-pattern = '0.5_200_80_65_40_0.5_2.5_40_5_pyft8'
+pattern = '_tmp_pyft8'
 totals = []
 folder = r"C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\data\ft8_lib\20m_busy"
 for filename in os.listdir(folder):

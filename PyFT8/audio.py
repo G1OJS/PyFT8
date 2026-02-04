@@ -47,7 +47,7 @@ class AudioIn:
         p = z.real*z.real + z.imag*z.imag
         p = p[:self.nFreqs]
         self.hoptimes.append(t)
-        self.pgrid_main[self.grid_main_ptr] = p
+        self.pgrid_main[self.grid_main_ptr] = 10*np.log10(p+1e-12)
         self.grid_main_ptr = (self.grid_main_ptr + 1) % self.hops_percycle
 
     def start_wav(self, wav_path, hop_dt):

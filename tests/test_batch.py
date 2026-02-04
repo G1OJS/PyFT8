@@ -30,11 +30,11 @@ def run(dataset, freq_range):
             print(f"{time.time()-t0:5.2f} {c.sync_score:4.1f} {c.llr0_sd:4.1f} {c.ncheck0:2d} {row:<45} {c.decode_path}")
             results.append(row)
     
-    with open(dataset+"_0.5_200_80_65_40_0.5_2.5_40_5_pyft8.txt", "w") as f:
+    with open(dataset+"_tmp_pyft8.txt", "w") as f:
         f.write('\n'.join(results))
  
 
-for n in range(1,21):
+for n in range(1,39):
     print(f"Running test with test_{n:02d}")
     run(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\data\ft8_lib\20m_busy\test_"+f"{n:02d}", [100,3100])
 
