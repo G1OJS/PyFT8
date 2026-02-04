@@ -27,7 +27,9 @@ On a quiet band with good signals, PyFT-8 typically gets 70% or 80% and often 10
 <img width="1000" height="600" alt="20m lunchtime hanning window 4persymb 2pertone" src="https://github.com/user-attachments/assets/988b5b78-ee8d-4d61-b1ba-87bdcba969c1" />
 <img width="1000" height="600" alt="10m lunchtime hanning window 4persymb 2pertone" src="https://github.com/user-attachments/assets/9c7d8e73-87fe-499f-acd4-4b14d17e37b4" />
 
-I have been using the file "210703_133430.wav" (third plot above) as a reference. In NORM mode, WSJT-x gets 19 decodes. WSJT-x in FAST mode gets 14 decodes, PyFT8 gets 12, and FT8_lib gets 8. The specific decodes are shown in the table below.
+I have been using the file "210703_133430.wav" (third plot above) as a reference. In NORM mode, WSJT-x gets 19 decodes. WSJT-x in FAST mode gets 14 decodes, PyFT8 gets 12(*), and FT8_lib gets 8. The specific decodes are shown in the table below.
+
+<sub> (*) When using a Kaiser fft window param 20, 3 bins per tone, 3 bins per symbol, and suitably adjusted thresholds controlling bit-flipping, LDPC and OSD.</sub>
 
 <img width="658" height="429" alt="image" src="https://github.com/user-attachments/assets/3d5fc12c-b36b-4297-ac44-f3ba287a123c" />
 
