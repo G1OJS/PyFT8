@@ -7,7 +7,7 @@ from PyFT8.ldpc import LdpcDecoder
 from PyFT8.osd import osd_decode_minimal
 
 params = {
-'MIN_LLR0_SD': 0.8,            # global minimum llr_sd
+'MIN_LLR0_SD': 0.5,            # global minimum llr_sd
 'LDPC_CONTROL': (35, 10),      # max ncheck0, max iterations
 'OSD_CONTROL': (10, [30,20,5]) # max ncheck, L(order)
 }

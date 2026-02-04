@@ -31,7 +31,8 @@ class AudioIn:
         self.fft_len = int(spectrum.fbins_pertone * self.sample_rate // self.symbol_rate)
         fft_out_len = int(self.fft_len/2) + 1
         self.nFreqs = int(fft_out_len * spectrum.max_freq / fmax_fft)
-        self.fft_window = fft_window=np.kaiser(self.fft_len, 20)
+#        self.fft_window = fft_window=np.kaiser(self.fft_len, 20)
+        self.fft_window = fft_window=np.hanning(self.fft_len)
         self.audio_buffer = np.zeros(self.fft_len, dtype=np.float32)
         self._pa = pyaudio.PyAudio()
         self._running = False
