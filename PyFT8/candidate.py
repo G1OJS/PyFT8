@@ -14,7 +14,8 @@ params = {
 }
 
 class Candidate:
-    def __init__(self):
+    def __init__(self, testing = False):
+
         self.dedupe_key = ""
         self.demap_started, self.demap_completed, self.decode_completed = None, None, None
         self.cyclestart_str = ""

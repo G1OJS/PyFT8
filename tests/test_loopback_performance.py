@@ -1,6 +1,6 @@
 import numpy as np
 from PyFT8.cycle_manager import Cycle_manager
-from PyFT8.candidate import Candidate
+from PyFT8.candidate import Candidate, params
 from PyFT8.spectrum import Spectrum
 from PyFT8.sigspecs import FT8
 from PyFT8.FT8_unpack import FT8_unpack
@@ -12,13 +12,13 @@ import time
 global test_messages
 test_messages = []
 
+params.update({'MIN_SNR': -100, 'MIN_LLR0_SD': 0})
 
 gray_seq = [0,1,3,2,5,6,4,7]
 num_symbols = 79
 tones_persymb = 8
 payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
 costas=[3,1,4,0,6,5,2]
-
 
 def onDecode(c):
     pass
@@ -63,7 +63,7 @@ def generate_test_messages():
         test_messages.append((msg, symbols))
 
 
-def single_loopback(snr=20, amplitude = 0.5):
+def single_loopback(imposed_snr=20, amplitude = 0.5):
     t0 = time.time()
     f_base = 250
 
@@ -72,7 +72,7 @@ def single_loopback(snr=20, amplitude = 0.5):
     symbols_framed = [-10]*7
     symbols_framed.extend(symbols)
     symbols_framed.extend([-10]*7)
-    audio_data = create_ft8_wave(symbols_framed, f_base = f_base, amplitude = amplitude, added_noise = -snr)
+    audio_data = create_ft8_wave(symbols_framed, f_base = f_base, amplitude = amplitude, added_noise = -imposed_snr)
     t_gen = time.time()   
     
     z = np.zeros_like(cycle_manager.spectrum.audio_in.pgrid_main, dtype = np.complex64)
@@ -99,27 +99,27 @@ def single_loopback(snr=20, amplitude = 0.5):
     t_decode = time.time()
 
     success = output_msg == input_msg
-    results = {'snr':snr, 'success': success, 'llr_sd':c.llr0_sd,
+    results = {'imposed_snr':imposed_snr, 'snr': c.snr, 'success': success, 'llr_sd':c.llr0_sd,
                'ncheck0':c.ncheck0, 'decode_path':c.decode_path, 
                't_gen':1000.0*(t_gen-t0), 't_spec':1000.0*(t_spec-t_gen), 't_demap':1000.0*(t_demap-t_spec), 't_decode':1000.0*(t_decode-t_demap)}
     
     return results
 
-def test_vs_snr(run_params = "Default", ntrials = 200, snr_range = [-26,-16]):
+def test_vs_imposed_snr(run_params = "Default", ntrials = 200, imposed_snr_range = [-26,-16]):
     generate_test_messages()
     amplitudes = np.random.random(ntrials)
-    snrs = snr_range[0] + (snr_range[1] - snr_range[0]) * np.random.random(ntrials)
+    imposed_snrs = imposed_snr_range[0] + (imposed_snr_range[1] - imposed_snr_range[0]) * np.random.random(ntrials)
     import pickle
     successes, failures = [],[]
-    for i, snr in enumerate(snrs):
+    for i, imposed_snr in enumerate(imposed_snrs):
         amp = amplitudes[i]
-        results = single_loopback(snr = snr, amplitude = amp)
+        results = single_loopback(imposed_snr = imposed_snr, amplitude = amp)
         if(results['success']):
             successes.append(results)
         else:
             failures.append(results)
         if(not (i % 10)):
-            print(f"{i}/{len(snrs)}")
+            print(f"{i}/{len(imposed_snrs)}")
     with open(f"results/data/montecarlo_{run_params}.pkl", "wb") as f:
         pickle.dump((successes, failures),f)
 
@@ -177,29 +177,29 @@ def plot_results(run_params = "Default"):
     plot_params = ['t_gen', 't_spec', 't_demap', 't_decode']
     fig, axs = plt.subplots(1, len(plot_params), figsize = (15,5))
     for iax, param in enumerate(plot_params):
-        axs[iax].scatter([d['snr'] for d in successes],[d[param] for d in successes], color = s_colors)
-        axs[iax].scatter([d['snr'] for d in failures],[d[param] for d in failures], color = f_colors, edgecolor = 'red', lw=1.5, zorder=3)
+        axs[iax].scatter([d['imposed_snr'] for d in successes],[d[param] for d in successes], color = s_colors)
+        axs[iax].scatter([d['imposed_snr'] for d in failures],[d[param] for d in failures], color = f_colors, edgecolor = 'red', lw=1.5, zorder=3)
         axs[iax].set_ylabel(f"{param}, ms")
-        axs[iax].set_xlabel(f"Imposed channel SNR")
+        axs[iax].set_xlabel(f"Imposed channel snr")
         add_legends(axs[iax])
-    plt.suptitle(f"Cycle timings vs imposed channel SNR for {run_params} n_trials = {n_trials}")
+    plt.suptitle(f"Cycle timings vs imposed channel imposed_snr for {run_params} n_trials = {n_trials}")
     plt.tight_layout()
     savefig(fig, f"results/test_timings_{run_params}.png")
 
-    plot_params = ['llr_sd', 'ncheck0']
+    plot_params = ['llr_sd', 'snr', 'ncheck0']
     fig, axs = plt.subplots(1, len(plot_params), figsize = (15,5))
     for iax, param in enumerate(plot_params):
-        axs[iax].scatter([d['snr'] for d in successes],[d[param] for d in successes], color = s_colors)
-        axs[iax].scatter([d['snr'] for d in failures],[d[param] for d in failures], color = f_colors,  edgecolor = 'red', lw=1.5, zorder=3)
+        axs[iax].scatter([d['imposed_snr'] for d in successes],[d[param] for d in successes], color = s_colors)
+        axs[iax].scatter([d['imposed_snr'] for d in failures],[d[param] for d in failures], color = f_colors,  edgecolor = 'red', lw=1.5, zorder=3)
         axs[iax].set_ylabel(param)
-        axs[iax].set_xlabel("Imposed channel SNR")
+        axs[iax].set_xlabel("Imposed channel snr")
         add_legends(axs[iax])
-    plt.suptitle(f"Proxies vs imposed SNR for successes and failures for {run_params} n_trials = {n_trials}")
+    plt.suptitle(f"Proxies vs imposed imposed_snr for successes and failures for {run_params} n_trials = {n_trials}")
     plt.tight_layout()
     savefig(fig, f"results/proxy_plots_{run_params}.png")
 
-    plot_params = ['snr', 'llr_sd', 'ncheck0']
-    plot_ranges = [[-26,26],[0,2],[0,55]]
+    plot_params = ['llr_sd', 'imposed_snr', 'ncheck0']
+    plot_ranges = [[0,2], [-26,-16],[0,55]]
     
     fig, axs = plt.subplots(1, len(plot_params), figsize = (15,5))
     for iax, param in enumerate(plot_params):        
@@ -226,12 +226,12 @@ def plot_results(run_params = "Default"):
         axs[iax].set_xlim(plot_ranges[iax])
         axs[iax].set_ylabel("Decoder success")
 
-    plt.suptitle(f"Decoder performance against imposed SNR and proxies for {run_params} n_trials = {n_trials}")
+    plt.suptitle(f"Decoder performance against imposed imposed_snr and proxies for {run_params} n_trials = {n_trials}")
     plt.tight_layout()
     savefig(fig, f"results/decoder_performance_{run_params}.png")
  
 
 run_params = "default"
-test_vs_snr(run_params, ntrials = 1000)
+test_vs_imposed_snr(run_params, ntrials = 5000)
 plot_results(run_params)
 
