@@ -20,6 +20,8 @@ for i, txt in enumerate(txts):
     
 ax.set_xlim(60,80)
 ax.set_ylim(0.5,3)
+ax.set_ylabel("Decoding time used per cycle, s")
+ax.set_xlabel("Percent of WSJT-X decodes")
 ax.legend()
 fig.suptitle("% of WSJT-X decodes vs decode time per cycle")
 plt.show()
