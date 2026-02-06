@@ -86,7 +86,7 @@ class Cycle_manager():
                 self.new_cands = self.spectrum.search(self.f0_idxs, cyclestart_str(time.time()))
                 if(self.verbose):
                     ns, nf, nu = len(with_message), len(failed), len(unprocessed)
-                    tlog(f"[Cycle manager] Last cycle had {ns} decodes, {nf} failudes and {nu} unprocessed (total = {ns+nf+nu})")   
+                    tlog(f"[Cycle manager] Last cycle had {ns} decodes, {nf} failures and {nu} unprocessed (total = {ns+nf+nu})")   
                     tlog(f"[Cycle manager] New spectrum searched -> {len(self.new_cands)} candidates") 
                 if(self.on_decode_include_failures):
                     for c in failed:
@@ -99,7 +99,7 @@ class Cycle_manager():
                 if (self.spectrum.audio_in.grid_main_ptr > c.last_payload_hop and not c.demap_started):
                     c.demap(self.spectrum)
 
-            to_decode = [c for c in self.cands_list if c.demap_completed and not c.decode_completed]
+            to_decode = [c for c in self.cands_list if c.demap_results[1]>0 and not c.decode_completed]
             to_decode.sort(key = lambda c: -c.llr0_sd) # in case of emergency (timeouts) process best first
             for c in to_decode[:25]:
                 c.decode()

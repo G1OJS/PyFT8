@@ -11,14 +11,22 @@ params = {
 }
 
 class Candidate:
-    def __init__(self, testing = False):
+    def __init__(self):
 
-        self.demap_started, self.demap_completed, self.decode_completed = None, None, None
+        self.demap_started, self.decode_completed = False, False
+        self.demap_results = [], 0, []
+        self.ncheck0, self.ncheck = 99, 99
         self.dt, self.td, self.fHz, self.snr, self.llr0_sd = 0, 0, 0, -30, 0
         self.decode_path = ''
         self.cyclestart_str = ''
         self.msg = ''
         self.ldpc = LdpcDecoder()
+
+    def _record_state(self, actor_code, final = False):
+        finalcode = "#" if final else ""
+        self.decode_path = self.decode_path + f"{actor_code}{self.ncheck:02d}{finalcode}"
+        if(final):
+            self.decode_completed = True
 
     def _get_llr(self, spectrum, h0_idx, target_params = (3.3, 3.7)):
         hops = np.array([h0_idx + spectrum.hops_persymb * s for s in spectrum.sigspec.payload_symb_idxs])
@@ -36,44 +44,32 @@ class Candidate:
             llr0 = target_params[0] * llr0 / llr0_sd
             llr0 = np.clip(llr0, -target_params[1], target_params[1])
             return llr0, llr0_sd, p_dB
-        return [], 0, p_dB
+        return [], 0, []
         
     def demap(self, spectrum):
-        self.demap_started = time.time()
+        self.demap_started = True
         h0, h1 = self.syncs[0]['h0_idx'], self.syncs[1]['h0_idx']
         if(h0 == h1): h1 = h0 +1
-        demap0, demap1 = self._get_llr(spectrum, h0), self._get_llr(spectrum, h1)
-        self.sync_idx =  0 if demap0[1] > demap1[1] else 1
-        self.llr0, self.llr0_sd, self.p_dB = [demap0, demap1][self.sync_idx]
-        self.demap_completed = time.time()
-
-    def _record_state(self, actor_code, final = False):
-        finalcode = "#" if final else ""
-        self.decode_path = self.decode_path + f"{actor_code}{self.ncheck:02d}{finalcode}"
-        if(final):
-            self.decode_completed = time.time()
+        demap_results0, demap_results1 = self._get_llr(spectrum, h0), self._get_llr(spectrum, h1)
+        self.sync_idx =  0 if demap_results0[1] > demap_results1[1] else 1
+        self.demap_results = [demap_results0, demap_results1][self.sync_idx]
 
     def decode(self):
-        
-        quality_too_low = (len(self.llr0)==0)
-        if(quality_too_low):
-            self.ncheck0, self.ncheck = 99, 99
+        if(self.demap_results[1] == 0):
             self._record_state("I", final = True)
             return
-        self.ncheck0 = self.ldpc.calc_ncheck(self.llr0)
-        self.ncheck = self.ncheck0
-        codeword_bits = []
-        self.llr = self.llr0.copy()
+        self.llr, self.llr0_sd, self.p_dB = self.demap_results
+        self.ncheck = self.ldpc.calc_ncheck(self.llr)
+        self.ncheck0 = self.ncheck
         self._record_state("I")
 
         if self.ncheck > 0:
-            if self.ncheck0 <= params['LDPC_CONTROL'][0]:
+            if self.ncheck <= params['LDPC_CONTROL'][0]:
                 for it in range(params['LDPC_CONTROL'][1]):
                     self.llr, self.ncheck = self.ldpc.do_ldpc_iteration(self.llr)
                     self._record_state("L")
                     if(self.ncheck == 0):
-                        break
-                    
+                        break                    
         if(self.ncheck == 0):
             codeword_bits = (self.llr > 0).astype(int).tolist()
             if(any(codeword_bits[:77])):

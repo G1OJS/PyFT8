@@ -5,7 +5,6 @@ from PyFT8.FT8_unpack import FT8_unpack
 from PyFT8.FT8_crc import check_crc_codeword_list
 from PyFT8.spectrum import Spectrum
 from PyFT8.ldpc import LdpcDecoder
-from PyFT8.osd import osd_decode_minimal
 from PyFT8.candidate import params
 import time
 
@@ -24,7 +23,6 @@ def run(dataset, freq_range):
         c.demap(spectrum)
     candidates.sort(key = lambda c: -c.llr0_sd)
     n_decodes = 0
-    n_osd = 0
     for c in candidates:
         c.decode()
         if(c.msg and not c.msg in msgs):
@@ -33,33 +31,29 @@ def run(dataset, freq_range):
             print(f"{time.time()-t0:5.2f} {c.sync_score:4.1f} {c.llr0_sd:4.1f} {c.ncheck0:2d} {row:<45} {c.decode_path}")
             results.append(row)
             n_decodes +=1
-            if("O" in c.decode_path): n_osd +=1
             
     decoding_time = time.time()-t0
-    print(f"{n_decodes} decodes in {decoding_time:5.2f}s with {n_osd} osd")
+    print(f"{n_decodes} decodes in {decoding_time:5.2f}s")
     
     with open(dataset + output_stub, "w") as f:
         for r in results:
             f.write(f"{r}\n")
 
-    return n_decodes, decoding_time, n_osd
+    return n_decodes, decoding_time
 
 def run_batch():
     n_decodes = 0
     n_cycles = 0
     decoding_time = 0
-    n_osd = 0
     t0 = time.time()
     for n in range(1,39):
         print(f"\n============================\nRunning test with test_{n:02d}")
-        nd, dt, nosd = run(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\data\ft8_lib\20m_busy\test_"+f"{n:02d}", [100,3100])
+        nd, dt = run(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\data\ft8_lib\20m_busy\test_"+f"{n:02d}", [100,3100])
         n_decodes += nd
-        n_osd += nosd
         decoding_time += dt
         n_cycles += 1   
         print(f"Avg decodes per cycle: {n_decodes / n_cycles : 4.1f}")
         print(f"Avg time per cycle: {decoding_time / n_cycles : 4.1f}")
-        print(f"Avg osd % of decodes: {100*n_osd / n_decodes:4.1f}")
 
 output_stub = "_tmp_pyft8.txt"
 run_batch()
