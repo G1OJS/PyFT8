@@ -46,7 +46,7 @@ class Cycle_manager():
             tlog(f"[Cycle manager] Hop timings: mean = {m:.2f}ms, sd = {s:.2f}ms ({pc:5.1f}% symbol)")
 
     def pack_and_send_decode(self, c):
-        td = f"{c.decode_completed %60:4.1f}" if c.decode_completed else '     '
+        td = f"{time.time() %60:4.1f}" if c.decode_completed else '     '
         decode_dict = {'cs':c.cyclestart_str, 'f':c.fHz, 'msg':' '.join(c.msg), 'snr':c.snr,
              'dt':c.dt, 'td':td, 'ncheck0':c.ncheck0, 'llr0_sd':c.llr0_sd, 'decode_path':c.decode_path}
         self.on_decode(decode_dict)
