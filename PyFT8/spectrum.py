@@ -34,26 +34,17 @@ class Spectrum:
 
     def get_syncs(self, f0_idx, pnorm):
         syncs = []
-
-        # First Costas block
-        best_sync = {'h0_idx':0, 'score':0, 'dt': 0}
-        for h0_idx in range(0, self.hop_start_lattitude):
-            sync_score = float(np.dot(pnorm[h0_idx + self.hop_idxs_Costas ,  :].ravel(), self.csync_flat))
-            test_sync = {'h0_idx':h0_idx, 'score':sync_score, 'dt': h0_idx * self.dt - 0.7}
-            if test_sync['score'] > best_sync['score']:
-                best_sync = test_sync
-        syncs.append(best_sync)
-
-        # Second Costas block
-        best_sync = {'h0_idx':0, 'score':0, 'dt': 0}
-        block_off = 36 * self.hops_persymb
-        for h0_idx in range(block_off - 7 * self.hops_persymb , block_off + self.hop_start_lattitude):
-            sync_score = float(np.dot(pnorm[h0_idx + self.hop_idxs_Costas ,  :].ravel(), self.csync_flat))
-            test_sync = {'h0_idx':h0_idx - block_off, 'score':sync_score, 'dt': (h0_idx - block_off) * self.dt-0.7}
-            if test_sync['score'] > best_sync['score']:
-                best_sync = test_sync 
-        syncs.append(best_sync)
-
+        hps, bpt = self.hops_persymb, self.fbins_pertone
+        hop_idxs_Costas =  np.arange(7) * hps
+        for search_params in [(range(0, self.hop_start_lattitude), 0),
+                              (range((36-7) * hps, 36 * hps + self.hop_start_lattitude), -36 * hps)]:
+            best_sync = {'h0_idx':0, 'score':0, 'dt': 0}
+            for h0_idx in search_params[0]:
+                sync_score = float(np.dot(pnorm[h0_idx + hop_idxs_Costas ,  :].ravel(), self.csync_flat))
+                test_sync = {'h0_idx':h0_idx + search_params[1], 'score':sync_score, 'dt': h0_idx * self.dt - 0.7}
+                if test_sync['score'] > best_sync['score']:
+                    best_sync = test_sync
+            syncs.append(best_sync)
         return syncs
 
     def search(self, f0_idxs, cyclestart_str):

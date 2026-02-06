@@ -33,13 +33,10 @@ class AudioIn:
         self.grid_main_ptr = 0
 
     def do_fft(self):
-        t = time.time()
-        x = self.audio_buffer * self.fft_window
-        z = np.fft.rfft(x)
+        z = np.fft.rfft(self.audio_buffer * self.fft_window)
         p = z.real*z.real + z.imag*z.imag
-        p = p[:self.nFreqs]
-        self.hoptimes.append(t)
-        self.pgrid_main[self.grid_main_ptr] = 10*np.log10(p+1e-12)
+        self.hoptimes.append(time.time())
+        self.pgrid_main[self.grid_main_ptr] = 10*np.log10(p[:self.nFreqs]+1e-12)
         self.grid_main_ptr = (self.grid_main_ptr + 1) % self.hops_percycle
 
     def load_wav(self, wav_path):
@@ -47,7 +44,6 @@ class AudioIn:
         frames = wf.readframes(self.samples_perhop)
         while frames:
             self._callback(frames, None, None, None)
-            self.do_fft()
             frames = wf.readframes(self.samples_perhop)
         wf.close()
 

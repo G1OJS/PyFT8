@@ -22,6 +22,7 @@ def run(dataset, freq_range):
     for c in candidates:
         c.demap(spectrum)
     candidates.sort(key = lambda c: -c.llr0_sd)
+    
     n_decodes = 0
     for c in candidates:
         c.decode()

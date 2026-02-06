@@ -66,6 +66,7 @@ class Cycle_manager():
 
             if(rollover):
                 if(self.verbose):
+                    tlog("======================================================")
                     tlog(f"[Cycle manager] rollover detected at {cycle_time():.2f}")
                 cycle_searched = False
                 cands_rollover_done = False
