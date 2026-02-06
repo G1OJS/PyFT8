@@ -22,10 +22,9 @@ I use this code for my own hobby-level reseearch into FT8 decoding and Python co
 <img width="1521" height="815" alt="station-gui" src="https://github.com/user-attachments/assets/973eb8b5-8017-4e57-b3b5-a26cea0f4b4a" />
 
 ## Performance
-On a quiet band with good signals, PyFT-8 typically gets 70% or 80% and often 100% of WSJT-x decodes. On a crowded band, PyFT8 performs less well. WSJT-x uses signal subtraction to improve performance with overlapping signals. PyFT8 can decode overlapping signals surprisingly well, but not as well as WSJT-x. The plots below show real world performance on 10m and 20m respectively over lunchtime, with relatively many signals.
+On a quiet band with good signals, PyFT-8 typically gets 70% or 80% and often 100% of WSJT-x decodes. On a crowded band, PyFT8 performs less well. WSJT-x uses signal subtraction to improve performance with overlapping signals. PyFT8 can decode overlapping signals surprisingly well, but not as well as WSJT-x. The plots below show real world performance on 20m respectively over lunchtime, with relatively many signals.
 
-<img width="1000" height="600" alt="20m lunchtime hanning window 4persymb 2pertone" src="https://github.com/user-attachments/assets/988b5b78-ee8d-4d61-b1ba-87bdcba969c1" />
-<img width="1000" height="600" alt="10m lunchtime hanning window 4persymb 2pertone" src="https://github.com/user-attachments/assets/9c7d8e73-87fe-499f-acd4-4b14d17e37b4" />
+<img width="1000" height="600" alt="live test 20m lunchtime" src="https://github.com/user-attachments/assets/80108eac-4b6d-477f-bb0c-5c0a6d7479d2" />
 
 I have been using the file "210703_133430.wav" (third plot above) as a reference. In NORM mode, WSJT-x gets 19 decodes. WSJT-x in FAST mode gets 14 decodes, PyFT8 gets 12(*), and FT8_lib gets 8. The specific decodes are shown in the table below.
 
@@ -35,7 +34,7 @@ I have been using the file "210703_133430.wav" (third plot above) as a reference
 
 However, a single wav file with a single FT8 cycle is not sufficient to characterise performance - it's been good for developing, but it's not enough for characterising. So, I've taken a step further by rewriting the decoding code to allow tests to be run in batch mode using a folder of 15s wav files. The image below shows the number of decodes from PyFT8 and FT8_lib both as a percentage of WSJT-x V2.7.0 running in NORM mode. The source wav files are copied from [https://github.com/kgoba/ft8_lib/tree/master/test/wav/20m_busy](https://github.com/kgoba/ft8_lib/tree/master/test/wav/20m_busy), and I've run ft8_lib and PyFT8 for all 38 of them, as well as updating the WSJT-X results to version 2.7.0.
 
-<img width="640" height="480" alt="20m_busy_batch_tests_results_2bpt_4bps tweaked params" src="https://github.com/user-attachments/assets/e1a15f41-c9cc-4508-90b5-5ebe74d612fd" />
+<img width="640" height="480" alt="batch_tests_20m_busy" src="https://github.com/user-attachments/assets/0e506dcf-98e1-408c-ba37-e7120890287c" />
 
 These tests show that PyFT8 is within a few percent of FT8_lib's performance over all 38 'busy' 20m wav file tests. Reading FT8_lib's source code gave me a few good tips to improve performance to this level:
 * Swap my previous Kaiser(20) fft window for a Hanning window, at the same time as changing from 3 frequency bins per tone to 2, and from 3 bins per symbol to 4.
