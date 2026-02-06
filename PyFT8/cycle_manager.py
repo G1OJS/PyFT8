@@ -75,7 +75,7 @@ class Cycle_manager():
                 self.spectrum.audio_in.hoptimes = []
                 if not self.audio_started:
                     self.audio_started = True
-                    self.spectrum.audio_in.start_live(self.input_device_idx, self.spectrum.dt)
+                    self.spectrum.audio_in.start_live(self.input_device_idx)
 
             if (self.spectrum.audio_in.grid_main_ptr > self.spectrum.h_search and not cycle_searched):
                 cycle_searched = True

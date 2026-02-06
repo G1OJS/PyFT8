@@ -31,9 +31,7 @@ class Candidate:
     def _get_llr(self, spectrum, h0_idx, target_params = (3.3, 3.7)):
         hops = np.array([h0_idx + spectrum.hops_persymb * s for s in spectrum.sigspec.payload_symb_idxs])
         p_dB = spectrum.audio_in.pgrid_main[np.ix_(hops, self.freq_idxs)]
-        p_max = np.max(p_dB)
-        p = p_dB - p_max
-        p = np.clip(p, -80, 0)
+        p = np.clip(p_dB - np.max(p_dB), -80, 0)
         llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
         llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
         llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)

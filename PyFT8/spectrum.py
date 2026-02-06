@@ -11,7 +11,7 @@ class Spectrum:
         self.fbins_pertone = fbins_pertone
         self.max_freq = max_freq
         self.hops_persymb = hops_persymb
-        self.audio_in = AudioIn(self)
+        self.audio_in = AudioIn(self.sigspec.cycle_seconds, self.sigspec.symbols_persec, hops_persymb, fbins_pertone, max_freq)
         self.nFreqs = self.audio_in.nFreqs
         self.dt = 1.0 / (self.sigspec.symbols_persec * self.hops_persymb) 
         self.df = max_freq / (self.nFreqs -1)
