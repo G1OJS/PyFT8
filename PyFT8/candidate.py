@@ -16,7 +16,6 @@ class Candidate:
         self.demap_started, self.decode_completed = False, False
         self.demap_results = [], 0, []
         self.ncheck0, self.ncheck = 99, 99
-        self.dt, self.td, self.fHz, self.snr, self.llr0_sd = 0, 0, 0, -30, 0
         self.fHz, self.llr0_sd = 0, 0
         self.decode_path = ''
         self.decode_dict = False
