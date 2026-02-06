@@ -68,19 +68,19 @@ class Candidate:
         self.ncheck0 = self.ldpc.calc_ncheck(self.llr0)
         self.ncheck = self.ncheck0
         codeword_bits = []
+        self.llr = self.llr0.copy()
         self._record_state("I")
 
         if self.ncheck > 0:
-            self.llr = self.llr0.copy()
             if self.ncheck <= params['LDPC_CONTROL'][0]:
                 for it in range(params['LDPC_CONTROL'][1]):
                     self.llr, self.ncheck = self.ldpc.do_ldpc_iteration(self.llr)
                     self._record_state("L")
-                    if(self.ncheck == 0):
-                        codeword_bits = (self.llr > 0).astype(int).tolist()
-                        break
-
-        if self.ncheck > 0:
+                    if(self.ncheck == 0): break
+                    
+        if(self.ncheck == 0):
+            codeword_bits = (self.llr > 0).astype(int).tolist()
+        else:
             if(self.llr0_sd < params['OSD_CONTROL'][0]):
                 reliab_order = np.argsort(np.abs(self.llr))[::-1]
                 codeword_bits = osd_decode_minimal(self.llr0, reliab_order, Ls = params['OSD_CONTROL'][1])
