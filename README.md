@@ -86,7 +86,7 @@ Also thanks to [Robert Morris](https://github.com/rtmrtmrtmrtm) for [basicft8(*1
 
 ## Useful resources:
 **WSJTx - focussed:**
- - [WSJT-X on Sourceforge](https://sourceforge.net/p/wsjt/wsjtx/ci/master/tree/")
+ - [WSJT-X on Sourceforge](https://sourceforge.net/p/wsjt")
  - [W4KEK WSJT-x git mirror](https://www.repo.radio/w4kek/WSJT-X) (searchable)
 
 **Other FT8 decoding repos:**
