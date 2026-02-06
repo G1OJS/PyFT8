@@ -17,9 +17,12 @@ class Candidate:
         self.demap_results = [], 0, []
         self.ncheck0, self.ncheck = 99, 99
         self.dt, self.td, self.fHz, self.snr, self.llr0_sd = 0, 0, 0, -30, 0
+        self.fHz, self.llr0_sd = 0, 0
         self.decode_path = ''
+        self.decode_dict = False
         self.cyclestart_str = ''
         self.msg = ''
+        self.msg_tuple = ('')
         self.ldpc = LdpcDecoder()
 
     def _record_state(self, actor_code, final = False):
@@ -45,7 +48,7 @@ class Candidate:
         return [], 0, []
         
     def demap(self, spectrum):
-        self.demap_started = True
+        self.demap_started = time.time()
         h0, h1 = self.syncs[0]['h0_idx'], self.syncs[1]['h0_idx']
         if(h0 == h1): h1 = h0 +1
         demap_results0, demap_results1 = self._get_llr(spectrum, h0), self._get_llr(spectrum, h1)
@@ -73,10 +76,17 @@ class Candidate:
             if(any(codeword_bits[:77])):
                 if check_crc_codeword_list(codeword_bits):
                     self.msg = FT8_unpack(codeword_bits[:77])
-                    
-        self.h0_idx = self.syncs[self.sync_idx]['h0_idx']
-        self.sync_score = self.syncs[self.sync_idx]['score']
-        self.dt = int(0.5+100*self.syncs[self.sync_idx]['dt'])/100.0  
-        self.snr = int(np.max(self.p_dB) - np.min(self.p_dB) - 58)
-        self.snr = int(np.clip(self.snr, -24, 24))
+
         self._record_state("M" if self.msg else "_", final = True)
+        
+        self.decode_dict = {'cs':self.cyclestart_str, 'f':self.fHz, 'msg_tuple':self.msg, 'msg':' '.join(self.msg),
+                           'llr0_sd':self.llr0_sd, 'decode_path':self.decode_path,
+                           'h0_idx': self.syncs[self.sync_idx]['h0_idx'],
+                           'ncheck0': self.ncheck0,
+                           'sync_score': self.syncs[self.sync_idx]['score'],
+                           'snr': np.clip(int(np.max(self.p_dB) - np.min(self.p_dB) - 58), -24, 24),
+                           'dt': int(0.5+100*self.syncs[self.sync_idx]['dt'])/100.0, 
+                           'td': f"{time.time() %60:4.1f}"
+                           }
+
+

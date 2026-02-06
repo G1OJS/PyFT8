@@ -7,7 +7,6 @@ from PyFT8.candidate import Candidate
 from PyFT8.spectrum import Spectrum
 from PyFT8.audio import find_device
 from PyFT8.time_utils import tlog, cycle_time, cyclestart_str
-
 import os
 
 class Cycle_manager():
@@ -45,12 +44,6 @@ class Cycle_manager():
             pc = int(100*s /(1000/self.spectrum.sigspec.symbols_persec) )
             tlog(f"[Cycle manager] Hop timings: mean = {m:.2f}ms, sd = {s:.2f}ms ({pc:5.1f}% symbol)")
 
-    def pack_and_send_decode(self, c):
-        td = f"{time.time() %60:4.1f}" if c.decode_completed else '     '
-        decode_dict = {'cs':c.cyclestart_str, 'f':c.fHz, 'msg':' '.join(c.msg), 'snr':c.snr,
-             'dt':c.dt, 'td':td, 'ncheck0':c.ncheck0, 'llr0_sd':c.llr0_sd, 'decode_path':c.decode_path}
-        self.on_decode(decode_dict)
-
     def manage_cycle(self):
         cycle_searched = True
         cycle_time_prev = 0
@@ -68,6 +61,7 @@ class Cycle_manager():
                 if(self.verbose):
                     tlog("======================================================")
                     tlog(f"[Cycle manager] rollover detected at {cycle_time():.2f}")
+                first_demap = False
                 cycle_searched = False
                 cands_rollover_done = False
                 self.check_for_tx()
@@ -79,6 +73,7 @@ class Cycle_manager():
                     self.spectrum.audio_in.start_live(self.input_device_idx)
 
             if (self.spectrum.audio_in.grid_main_ptr > self.spectrum.h_search and not cycle_searched):
+                tlog(f"[Cycle manager] start search at hop { self.spectrum.audio_in.grid_main_ptr}")
                 cycle_searched = True
                 with self.lock:
                     with_message = [c for c in self.cands_list if c.msg]
@@ -91,27 +86,28 @@ class Cycle_manager():
                     tlog(f"[Cycle manager] New spectrum searched -> {len(self.new_cands)} candidates") 
                 if(self.on_decode_include_failures):
                     for c in failed:
-                        self.pack_and_send_decode(c)
+                        self.on_decode(c.decode_dict)
                 self.cands_list = self.new_cands
                 if(self.on_occupancy):
                     self.on_occupancy(self.spectrum.occupancy, self.spectrum.df)
 
             for c in self.cands_list:
                 if (self.spectrum.audio_in.grid_main_ptr > c.last_payload_hop and not c.demap_started):
+                    if(not first_demap):
+                        first_demap = True
+                        tlog("First demap")
                     c.demap(self.spectrum)
+                    
 
             to_decode = [c for c in self.cands_list if c.demap_results[1]>0 and not c.decode_completed]
             to_decode.sort(key = lambda c: -c.llr0_sd) # in case of emergency (timeouts) process best first
             for c in to_decode[:25]:
                 c.decode()
-
-            for c in self.cands_list:
                 if(c.msg):
                     c.dedupe_key = c.cyclestart_str+" "+' '.join(c.msg)
                     if(not c.dedupe_key in self.duplicate_filter):
                         self.duplicate_filter.add(c.dedupe_key)
-                        c.call_a, c.call_b, c.grid_rpt = c.msg[0], c.msg[1], c.msg[2]
-                        self.pack_and_send_decode(c)
+                        self.on_decode(c.decode_dict)
                     
     def check_for_tx(self):
         tx_msg_file = 'PyFT8_tx_msg.txt'

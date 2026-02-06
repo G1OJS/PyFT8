@@ -17,10 +17,9 @@ class Spectrum:
         self.df = max_freq / (self.nFreqs -1)
         self.fbins_per_signal = self.sigspec.tones_persymb * self.fbins_pertone
         self.hop_idxs_Costas =  np.arange(self.sigspec.costas_len) * self.hops_persymb
-        self.hop_start_lattitude = int(0.5 + (15 - (79-7)*0.16) / self.dt)
         self.nhops_costas = self.sigspec.costas_len * self.hops_persymb
-        self.h_search = self.hop_start_lattitude + self.nhops_costas  + 36 * self.hops_persymb
-        self.h_demap = self.sigspec.payload_symb_idxs[-1] * self.hops_persymb
+        self.h_search = int(10.4/self.dt)
+        self.hop_start_lattitude = int(3.48/self.dt)
         self.occupancy = np.zeros(self.nFreqs)
         self.csync_flat = self.make_csync(sigspec)
 
@@ -34,18 +33,28 @@ class Spectrum:
 
     def get_syncs(self, f0_idx, pnorm):
         syncs = []
-        hps, bpt = self.hops_persymb, self.fbins_pertone
-        hop_idxs_Costas =  np.arange(7) * hps
-        for search_params in [(range(0, self.hop_start_lattitude), 0),
-                              (range((36-7) * hps, 36 * hps + self.hop_start_lattitude), -36 * hps)]:
-            best_sync = {'h0_idx':0, 'score':0, 'dt': 0}
-            for h0_idx in search_params[0]:
-                sync_score = float(np.dot(pnorm[h0_idx + hop_idxs_Costas ,  :].ravel(), self.csync_flat))
-                test_sync = {'h0_idx':h0_idx + search_params[1], 'score':sync_score, 'dt': h0_idx * self.dt - 0.7}
-                if test_sync['score'] > best_sync['score']:
-                    best_sync = test_sync
-            syncs.append(best_sync)
+
+        # First Costas block
+        best_sync = {'h0_idx':0, 'score':0, 'dt': 0}
+        for h0_idx in range(0, self.hop_start_lattitude):
+            sync_score = float(np.dot(pnorm[h0_idx + self.hop_idxs_Costas ,  :].ravel(), self.csync_flat))
+            test_sync = {'h0_idx':h0_idx, 'score':sync_score, 'dt': h0_idx * self.dt - 0.7}
+            if test_sync['score'] > best_sync['score']:
+                best_sync = test_sync
+        syncs.append(best_sync)
+
+        # Second Costas block
+        best_sync = {'h0_idx':0, 'score':0, 'dt': 0}
+        block_off = 36 * self.hops_persymb
+        for h0_idx in range(block_off - 7 * self.hops_persymb , block_off + self.hop_start_lattitude):
+            sync_score = float(np.dot(pnorm[h0_idx + self.hop_idxs_Costas ,  :].ravel(), self.csync_flat))
+            test_sync = {'h0_idx':h0_idx - block_off, 'score':sync_score, 'dt': (h0_idx - block_off) * self.dt-0.7}
+            if test_sync['score'] > best_sync['score']:
+                best_sync = test_sync 
+        syncs.append(best_sync)
+
         return syncs
+    
 
     def search(self, f0_idxs, cyclestart_str):
         cands = []
@@ -61,7 +70,7 @@ class Spectrum:
             hps, bpt = self.hops_persymb, self.fbins_pertone
             c.freq_idxs = [c.f0_idx + bpt // 2 + bpt * t for t in range(self.sigspec.tones_persymb)]
             c.fHz = int((c.f0_idx + bpt // 2) * self.df)
-            c.last_payload_hop = np.max([c.syncs[0]['h0_idx'], c.syncs[1]['h0_idx']]) + hps * self.sigspec.payload_symb_idxs[-1]
+            c.last_payload_hop = np.max([c.syncs[0]['h0_idx'], c.syncs[1]['h0_idx']]) + hps * 72
             c.cyclestart_str = cyclestart_str            
             cands.append(c)
         return cands

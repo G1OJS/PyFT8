@@ -24,7 +24,7 @@ def analyse_dictionaries(pyft8_dicts, wsjtx_dicts, cyclestart_str):
 
     wsjtx_dicts_cofreqs = [w['f'] for w in wsjtx_dicts for w2 in wsjtx_dicts if 0 <= np.abs(w['f'] - w2['f']) <= 51 and ''.join(w['msg']) != ''.join(w2['msg'])]
 
-    tlog(f"[Analyse dicts] {'Cycle start':<13} {'fHzW':<4} {'cofreq':<6} {'fHzP':<4} {'snrW':<3} {'snrP':<3} {'dtW':<4} {'dtP':<4} {'tdW':<4}  {'tdP':<4}"
+    tlog(f"[Analyse dicts] {'Cycle start':<13} {'fHzW':<4} {'cofreq':<6} {'fHzP':<4} {'snrW':<3} {'snrP':<3}  {'dtW':<4} {'dtP':<4} {'tdW':<4} {'tdP':<4}"
               +f"{'msgW':<23} {'msgP':<23} {'llrSD':<4} {'decode_path'}")
     no_match = {'cs':'000000_000000', 'f':0, 'snr':-30, 'dt':0, 'td':'', 'msg':'', 'llr0_sd':0, 'decode_path':'No Match'}
 
@@ -32,8 +32,8 @@ def analyse_dictionaries(pyft8_dicts, wsjtx_dicts, cyclestart_str):
     pyft8_keys = set()
     for w in wsjtx_dicts:
         w.update({'cofreq': w['f'] in wsjtx_dicts_cofreqs})
-        decodes = [p for p in pyft8_dicts if np.abs(w['f'] - p['f']) < 5 or w['msg'] == p['msg']]
-        decodes.sort(key = lambda p: (-len(p['msg']), -p['llr0_sd']))
+        decodes = [p for p in pyft8_dicts if (np.abs(w['f'] - p['f']) < 5 or w['msg'] == p['msg']) and np.abs(float(w['td'])-float(p['td'])) < 4]
+        decodes.sort(key = lambda p: (-len(p['msg_tuple']), -p['llr0_sd']))
         p = decodes[0] if(len(decodes)) else no_match
         all_decodes.append((w, p))
         pkey = p['cs'] + " " + p['msg']

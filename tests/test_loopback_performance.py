@@ -99,9 +99,9 @@ def single_loopback(imposed_snr=20, amplitude = 0.5):
     t_decode = time.time()
 
     success = output_msg == input_msg
-    results = {'imposed_snr':imposed_snr, 'snr': c.snr, 'success': success, 'llr_sd':c.llr0_sd,
-               'ncheck0':c.ncheck0, 'decode_path':c.decode_path, 
-               't_gen':1000.0*(t_gen-t0), 't_spec':1000.0*(t_spec-t_gen), 't_demap':1000.0*(t_demap-t_spec), 't_decode':1000.0*(t_decode-t_demap)}
+    results = c.decode_dict
+    results.update({'imposed_snr':imposed_snr, 'success': success,  
+               't_gen':1000.0*(t_gen-t0), 't_spec':1000.0*(t_spec-t_gen), 't_demap':1000.0*(t_demap-t_spec), 't_decode':1000.0*(t_decode-t_demap)})
     
     return results
 
@@ -186,7 +186,7 @@ def plot_results(run_params = "Default"):
     plt.tight_layout()
     savefig(fig, f"results/test_timings_{run_params}.png")
 
-    plot_params = ['llr_sd', 'snr', 'ncheck0']
+    plot_params = ['llr0_sd', 'snr', 'ncheck0']
     fig, axs = plt.subplots(1, len(plot_params), figsize = (15,5))
     for iax, param in enumerate(plot_params):
         axs[iax].scatter([d['imposed_snr'] for d in successes],[d[param] for d in successes], color = s_colors)
@@ -198,7 +198,7 @@ def plot_results(run_params = "Default"):
     plt.tight_layout()
     savefig(fig, f"results/proxy_plots_{run_params}.png")
 
-    plot_params = ['llr_sd', 'imposed_snr', 'ncheck0']
+    plot_params = ['llr0_sd', 'imposed_snr', 'ncheck0']
     plot_ranges = [[0,0.75], [-26,-16],[0,55]]
     
     fig, axs = plt.subplots(1, len(plot_params), figsize = (15,5))
@@ -232,6 +232,6 @@ def plot_results(run_params = "Default"):
  
 
 run_params = "default"
-test_vs_imposed_snr(run_params, ntrials = 10000)
+test_vs_imposed_snr(run_params, ntrials = 100)
 plot_results(run_params)
 
