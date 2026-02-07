@@ -29,7 +29,7 @@ def analyse_dictionaries(pyft8_dicts, wsjtx_dicts, cyclestart_str):
     pyft8_keys = set()
     for w in wsjtx_dicts:
         w.update({'cofreq': w['f'] in wsjtx_dicts_cofreqs})
-        decodes = [p for p in pyft8_dicts if (np.abs(w['f'] - p['f']) < 5 or w['msg'] == p['msg']) and np.abs(float(w['td'])-float(p['td'])) < 5]
+        decodes = [p for p in pyft8_dicts if (np.abs(w['f'] - p['f']) < 5 or w['msg'] == p['msg']) and np.abs(float(w['td'])-float(p['td'])) < 10]
         decodes.sort(key = lambda p: (-len(p['msg_tuple']), -p['llr_sd']))
         p = decodes[0] if(len(decodes)) else no_match
         all_decodes.append((w, p))
@@ -56,11 +56,15 @@ def analyse_dictionaries(pyft8_dicts, wsjtx_dicts, cyclestart_str):
 
 
 def run(freq_range):
+    
     pyft8_dicts = []
     wsjtx_dicts = []
     cycle_analysed = True
 
-    cycle_manager = Cycle_manager(FT8, on_decode = lambda d: pyft8_dicts.append(d), on_decode_include_failures = True, freq_range = freq_range, 
+    def on_finished(dicts):
+        pyft8_dicts.extend(dicts)
+
+    cycle_manager = Cycle_manager(FT8, on_decode = None, on_finished = on_finished, freq_range = freq_range, 
                                   input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
     wsjtx_all_tailer = Wsjtx_all_tailer(on_decode = lambda d: wsjtx_dicts.append(d), running = True)
     

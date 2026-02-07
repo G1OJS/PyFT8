@@ -49,7 +49,7 @@ def plot_success(fig, ax, load_file):
     pycorr_pc = f"{int(100*pydecs_corr/(wdecs+0.01))}"
     pytot_pc = f"{int(100*pydecs/(wdecs+0.01))}"
 
-    bins = [0 + 0.1*b for b in range(30)]
+    bins = [0.25 + 0.1*b for b in range(30)]
     ax.cla()
 
     dict_2 = ax.hist(ws, bins = bins,  rwidth = 1.0, label = 'All',

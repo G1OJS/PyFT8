@@ -10,7 +10,7 @@ from PyFT8.time_utils import tlog, cycle_time, cyclestart_str
 import os
 
 class Cycle_manager():
-    def __init__(self, sigspec, on_decode, on_occupancy = None, on_decode_include_failures = False,
+    def __init__(self, sigspec, on_decode, on_occupancy = None, on_finished = False,
                  input_device_keywords = None, output_device_keywords = None,
                  freq_range = [200, 3100], verbose = False):
         self.spectrum = Spectrum(sigspec, 12000, freq_range[1], 4, 2)
@@ -20,7 +20,7 @@ class Cycle_manager():
         self.input_device_idx = find_device(input_device_keywords)
         self.output_device_idx = find_device(output_device_keywords)
         self.on_decode = on_decode
-        self.on_decode_include_failures = on_decode_include_failures
+        self.on_finished = on_finished
         self.on_occupancy = on_occupancy
         if(self.output_device_idx):
             from .audio import AudioOut
@@ -69,13 +69,12 @@ class Cycle_manager():
             if (self.spectrum.audio_in.grid_main_ptr > self.spectrum.h_search1 and not cycle_searched_1):
                 tlog(f"[Cycle manager] start first search at hop { self.spectrum.audio_in.grid_main_ptr}")
                 cycle_searched_1 = True
+                if(self.on_finished):
+                    self.on_finished([c.decode_dict for c in candidates])
                 with_message = [c for c in candidates if c.msg]
                 failed = [c for c in candidates if c.decode_completed and not c.msg]
                 unprocessed = [c for c in candidates if not "#" in c.decode_path]
                 candidates = self.spectrum.search(self.f0_idxs, cyclestart_str(time.time()), 0)
-                if(self.on_decode_include_failures):
-                    for c in failed:
-                        self.on_decode(c.decode_dict)
                 if(self.verbose):
                     ns, nf, nu = len(with_message), len(failed), len(unprocessed)
                     tlog(f"[Cycle manager] Last cycle had {ns} decodes, {nf} failures and {nu} unprocessed (total = {ns+nf+nu})")   
@@ -116,7 +115,8 @@ class Cycle_manager():
                     c.dedupe_key = c.cyclestart_str+" "+' '.join(c.msg)
                     if(not c.dedupe_key in duplicate_filter):
                         duplicate_filter.add(c.dedupe_key)
-                        self.on_decode(c.decode_dict)
+                        if(self.on_decode):
+                            self.on_decode(c.decode_dict)
                     
     def check_for_tx(self):
         tx_msg_file = 'PyFT8_tx_msg.txt'
