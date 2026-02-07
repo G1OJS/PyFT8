@@ -99,7 +99,7 @@ def run(freq_range):
                     analyse_dictionaries(pyft8_dicts, wsjtx_dicts, cycle_to_list)
                     if(show_success_plot):
                         plot_success(fig_s, ax_s, "results/data/compare_data.pkl")
-                        plt.pause(0.01)
+                        plt.pause(0.1)
 
                 if(show_waterfall):
                     p = cycle_manager.spectrum.audio_in.pgrid_main
@@ -110,7 +110,7 @@ def run(freq_range):
                             waterfall = axs.imshow(dB, cmap = 'inferno', vmax = 0, vmin = -40, origin = 'lower')
                         else:
                             waterfall.set_data(dB)
-                        plt.pause(0.01)
+                        plt.pause(0.1)
 
     except KeyboardInterrupt:
         print("\nStopping")
@@ -120,11 +120,11 @@ show_waterfall = False
 show_success_plot = True
 
 
-#run([100,3100])
+run([100,3100])
 
-fig_s, ax_s = plt.subplots( figsize=(10,6))
-plot_success(fig_s, ax_s, 'compare_data.pkl')
-plt.show()
+#fig_s, ax_s = plt.subplots( figsize=(10,6))
+#plot_success(fig_s, ax_s, 'compare_data.pkl')
+#plt.show()
 
 
 
