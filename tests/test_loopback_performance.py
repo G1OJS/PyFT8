@@ -12,7 +12,7 @@ import time
 global test_messages
 test_messages = []
 
-params.update({'MIN_SNR': -100, 'MIN_LLR0_SD': 0})
+params.update({'MIN_LLR_SD': 0})
 
 gray_seq = [0,1,3,2,5,6,4,7]
 num_symbols = 79
@@ -22,8 +22,7 @@ costas=[3,1,4,0,6,5,2]
 
 def onDecode(c):
     pass
-cycle_manager = Cycle_manager(FT8, onDecode, verbose = False, freq_range = [100,500])
-cycle_manager.running = False
+cycle_manager = Cycle_manager(FT8, on_decode = False, run = False, verbose = False, freq_range = [100,500])
 
 hops_percycle = cycle_manager.spectrum.audio_in.hops_percycle
 samps_perhop = cycle_manager.spectrum.audio_in.samples_perhop
@@ -89,7 +88,7 @@ def single_loopback(imposed_snr=20, amplitude = 0.5):
 
     t0_idx=3
     f0_idx=int(f_base/df)
-    cands = cycle_manager.spectrum.search([f0_idx],"000000_000000")
+    cands = cycle_manager.spectrum.search([f0_idx],"000000_000000", 0)
     c = cands[0]
     c.demap(cycle_manager.spectrum)
     t_demap = time.time()
@@ -99,9 +98,9 @@ def single_loopback(imposed_snr=20, amplitude = 0.5):
     t_decode = time.time()
 
     success = output_msg == input_msg
-    results = {'imposed_snr':imposed_snr, 'snr': c.snr, 'success': success, 'llr_sd':c.llr0_sd,
-               'ncheck0':c.ncheck0, 'decode_path':c.decode_path, 
-               't_gen':1000.0*(t_gen-t0), 't_spec':1000.0*(t_spec-t_gen), 't_demap':1000.0*(t_demap-t_spec), 't_decode':1000.0*(t_decode-t_demap)}
+    results = c.decode_dict
+    results.update({'imposed_snr':imposed_snr, 'success': success,  
+               't_gen':1000.0*(t_gen-t0), 't_spec':1000.0*(t_spec-t_gen), 't_demap':1000.0*(t_demap-t_spec), 't_decode':1000.0*(t_decode-t_demap)})
     
     return results
 
@@ -127,7 +126,7 @@ import pickle
 import matplotlib.pyplot as plt
 import matplotlib.lines as lines
 
-CAT_COLOURS = ['red','lime','blue','orange','green']
+CAT_COLOURS = ['lime','green']
 global leg_decode_type, leg_decode_outcome
 
 def savefig(fig, savename):
@@ -135,24 +134,15 @@ def savefig(fig, savename):
     fig.savefig(savename, bbox_inches="tight")
 
 def decode_category(dpath):
-    if(not "#" in dpath):
-        return 0
-    elif('O' in dpath):
-        return 2
-    elif('A' in dpath):
-        return 3
-    elif('L' in dpath):
-        return 4
-    else:
+    if('L' in dpath):
         return 1
+    else:
+        return 0
 
 def make_legends():
     global leg_decode_type, leg_decode_outcome
-    leg_decode_type = [ lines.Line2D([0], [0], marker='o', color='w',label='Immediate', markerfacecolor=CAT_COLOURS[1], markersize=8),
-                        lines.Line2D([0], [0], marker='o', color='w',label='LDPC', markerfacecolor=CAT_COLOURS[4], markersize=8),
-                        lines.Line2D([0], [0], marker='o', color='w',label='LDPC + bitflips', markerfacecolor=CAT_COLOURS[3], markersize=8),
-                        lines.Line2D([0], [0], marker='o', color='w',label='OSD', markerfacecolor=CAT_COLOURS[2], markersize=8),
-                        lines.Line2D([0], [0], marker='o', color='w',label='(Note: timeouts not included)', markerfacecolor=CAT_COLOURS[0], markersize=8),
+    leg_decode_type = [ lines.Line2D([0], [0], marker='o', color='w',label='Immediate', markerfacecolor=CAT_COLOURS[0], markersize=8),
+                        lines.Line2D([0], [0], marker='o', color='w',label='LDPC', markerfacecolor=CAT_COLOURS[1], markersize=8),
                         ]
 
     leg_decode_outcome = [lines.Line2D([0], [0], marker='o', color='k',label='Success', markersize=8),
@@ -232,6 +222,6 @@ def plot_results(run_params = "Default"):
  
 
 run_params = "default"
-test_vs_imposed_snr(run_params, ntrials = 10000)
+test_vs_imposed_snr(run_params, ntrials = 2000)
 plot_results(run_params)
 

@@ -2,17 +2,14 @@ import numpy as np
 import wave
 import pyaudio
 import time
-import threading
 from PyFT8.FT8_encoder import pack_message
-
-pya = pyaudio.PyAudio()
 
 def find_device(device_str_contains):
     if(not device_str_contains): #(this check probably shouldn't be needed - check calling code)
         return
     print(f"[Audio] Looking for audio device matching {device_str_contains}")
-    for dev_idx in range(pya.get_device_count()):
-        name = pya.get_device_info_by_index(dev_idx)['name']
+    for dev_idx in range(pyaudio.PyAudio().get_device_count()):
+        name = pyaudio.PyAudio().get_device_info_by_index(dev_idx)['name']
         match = True
         for pattern in device_str_contains:
             if (not pattern in name): match = False
@@ -22,74 +19,49 @@ def find_device(device_str_contains):
     print(f"[Audio] No audio device found matching {device_str_contains}")
 
 class AudioIn:
-    def __init__(self, spectrum):
-
-        self.symbol_rate = spectrum.sigspec.symbols_persec
-        self.sample_rate = spectrum.sample_rate
-        self.samples_perhop = int(self.sample_rate / (self.symbol_rate * spectrum.hops_persymb))
-        fmax_fft = self.sample_rate/2
-        self.fft_len = int(spectrum.fbins_pertone * self.sample_rate // self.symbol_rate)
+    def __init__(self, cycle_seconds, hops_percycle, symbol_rate, hops_persymb, fbins_pertone, max_freq):
+        self.sample_rate = 12000
+        self.samples_perhop = int(self.sample_rate / (symbol_rate * hops_persymb))
+        self.fft_len = int(fbins_pertone * self.sample_rate // symbol_rate)
         fft_out_len = int(self.fft_len/2) + 1
-        self.nFreqs = int(fft_out_len * spectrum.max_freq / fmax_fft)
+        self.nFreqs = int(fft_out_len * max_freq * 2 / self.sample_rate)
         self.fft_window = fft_window=np.hanning(self.fft_len)
         self.audio_buffer = np.zeros(self.fft_len, dtype=np.float32)
-        self._pa = pyaudio.PyAudio()
-        self._running = False
         self.hoptimes = []
-        self.hops_percycle = int(spectrum.sigspec.cycle_seconds * self.symbol_rate * spectrum.hops_persymb)
+        self.hops_percycle = hops_percycle
         self.pgrid_main = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)
         self.grid_main_ptr = 0
+        self.grid_main_zero_ptr = 0
 
     def do_fft(self):
-        t = time.time()
-        x = self.audio_buffer * self.fft_window
-        z = np.fft.rfft(x)
+        z = np.fft.rfft(self.audio_buffer * self.fft_window)
         p = z.real*z.real + z.imag*z.imag
-        p = p[:self.nFreqs]
-        self.hoptimes.append(t)
-        self.pgrid_main[self.grid_main_ptr] = 10*np.log10(p+1e-12)
+        self.hoptimes.append(time.time())
+        self.pgrid_main[self.grid_main_ptr] = 10*np.log10(p[:self.nFreqs]+1e-12)
         self.grid_main_ptr = (self.grid_main_ptr + 1) % self.hops_percycle
-
-    def start_wav(self, wav_path, hop_dt):
-        threading.Thread(target = self.play_wav, args = (wav_path, hop_dt), daemon=True).start()
-        threading.Thread(target = self.do_fft).start()
 
     def load_wav(self, wav_path):
         wf = wave.open(wav_path, "rb")
         frames = wf.readframes(self.samples_perhop)
         while frames:
             self._callback(frames, None, None, None)
-            self.do_fft()
             frames = wf.readframes(self.samples_perhop)
         wf.close()
 
-    def start_live(self, input_device_idx, hop_dt):
-        self._running = True
-        self.hop_dt = hop_dt
-        self.stream = self._pa.open(
+    def start_live(self, input_device_idx):
+        self.stream = pyaudio.PyAudio().open(
             format = pyaudio.paInt16, channels=1, rate = self.sample_rate,
             input = True, input_device_index = input_device_idx,
             frames_per_buffer = self.samples_perhop, stream_callback=self._callback,)
         self.stream.start_stream()
-        threading.Thread(target = self.live_consumer).start()
 
     def _callback(self, in_data, frame_count, time_info, status_flags):
         samples = np.frombuffer(in_data, dtype=np.int16).astype(np.float32)
         ns = len(samples)
         self.audio_buffer[:-ns] = self.audio_buffer[ns:]
         self.audio_buffer[-ns:] = samples
-        time.sleep(0.001)
+        self.do_fft()
         return (None, pyaudio.paContinue)
-
-    def live_consumer(self):
-        next_hop_time = time.time()
-        while self._running:
-            next_hop_time += self.hop_dt
-            now = time.time()
-            if now < next_hop_time:
-                time.sleep(next_hop_time - now)
-            self.do_fft()
-
 
 class AudioOut:
 
@@ -123,7 +95,7 @@ class AudioOut:
         wavefile.close()
 
     def play_data_to_soundcard(self, audio_data_int16, output_device_idx, fs=12000):
-        stream = pya.open(format=pyaudio.paInt16, channels=1, rate=fs,
+        stream = pyaudio.PyAudio().open(format=pyaudio.paInt16, channels=1, rate=fs,
                           output=True,
                           output_device_index = output_device_idx)
         stream.write(audio_data_int16.tobytes())

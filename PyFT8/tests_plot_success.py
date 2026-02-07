@@ -11,39 +11,45 @@ def plot_success(fig, ax, load_file):
     if not any(decodes):
         return
     
-    py =        [[],[],[],[],[],[]]
-    pycols  =   ['lime', 'green', 'yellow', 'red', '#c0e7fa', '#ebf6fa']
-    pylabs  =   ['Immediate', 'LDPC', 'OSD', 'ERR', 'Stall', 'Timeout' ]
+    py =        [[],[],[],[],[]]
+    pycols  =   ['lime',        '#04bf10',     '#01700b',  '#f79592',  '#805c5b']
+    pylabs  =   ['Immediate',   'Used LDPC', 'Bad msg',  'Stalled',  'Rejected' ]
     ws =        [[],[]]
     wcols =     ['#141700','#664b07']
     wlabs =     ['isolated','overlapping']
 
-    bins = [0.25 + 0.1*b for b in range(25)]
-    
+    wdecs = 0
+    pydecs = 0
+    pydecs_corr = 0
     for w, p in decodes:
-        q = p['llr0_sd']
+        q = p['llr_sd']
 
         if(w['msg'] != ''):
+            wdecs +=1
             if(w['cofreq']):
                 ws[1].append(q)
             else:
                 ws[0].append(q)
 
         if(p['msg'] != ''):
+            pydecs +=1
             if(p['msg'] == w['msg'] or w['msg'] == ''):
-                if("O00" in p['decode_path']):
-                    py[2].append(q)
-                elif ("L00" in p['decode_path']):
+                pydecs_corr +=1
+                if ("L00" in p['decode_path']):
                     py[1].append(q)
                 else:
                     py[0].append(q)
             else:
-                py[3].append(q)
+                py[2].append(q)
         elif('_' in p['decode_path']):
-            py[4].append(q)
+            py[3].append(q)
         elif('#' not in p['decode_path']):
-            py[5].append(q)                
+            py[4].append(q)
 
+    pycorr_pc = f"{int(100*pydecs_corr/(wdecs+0.01))}"
+    pytot_pc = f"{int(100*pydecs/(wdecs+0.01))}"
+
+    bins = [0.25 + 0.1*b for b in range(30)]
     ax.cla()
 
     dict_2 = ax.hist(ws, bins = bins,  rwidth = 1.0, label = 'All',
@@ -66,11 +72,7 @@ def plot_success(fig, ax, load_file):
     ax.set_xlim(bins[0],bins[-1])
     ax.set_ylabel(f"Number of decodes")
 
-    wdecs = len(ws[0]) + len(ws[1])
-    pydecs = len(py[0])+len(py[1])+len(py[2])+len(py[3])
-    pydecs_corr = pydecs - len(py[3])
-    pycorr_pc = f"{int(100*pydecs_corr/(wdecs+0.01))}"
-    pytot_pc = f"{int(100*pydecs/(wdecs+0.01))}"
+
     fig.suptitle(f"PyFT8 {pydecs} vs WSJT-X {wdecs} decodes, {pytot_pc}% ({pycorr_pc}% correct) to PyFT8")
     if(params):
         params1 = dict(list(params.items())[:len(params)//2])

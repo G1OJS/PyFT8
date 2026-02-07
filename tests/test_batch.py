@@ -16,19 +16,22 @@ def run(dataset, freq_range):
 
     results = []
     msgs = []
-    candidates = spectrum.search(f0_idxs, '000000_000000')
-
+    candidates = spectrum.search(f0_idxs, '000000_000000', 0)
+    candidates = candidates + spectrum.search(f0_idxs, '000000_000000', 1)
+    
     t0 = time.time()
     for c in candidates:
         c.demap(spectrum)
-    candidates.sort(key = lambda c: -c.llr0_sd)
+    candidates.sort(key = lambda c: -c.llr_sd)
+    
     n_decodes = 0
     for c in candidates:
         c.decode()
-        if(c.msg and not c.msg in msgs):
-            msgs.append(c.msg)
-            row = f"000000 {c.snr:3d} {c.dt:3.1f} {c.fHz:4d} ~ {' '.join(c.msg)}"
-            print(f"{time.time()-t0:5.2f} {c.sync_score:4.1f} {c.llr0_sd:4.1f} {c.ncheck0:2d} {row:<45} {c.decode_path}")
+        dd = c.decode_dict
+        if(dd['msg'] and not dd['msg'] in msgs):
+            msgs.append(dd['msg'])
+            row = f"000000 {dd['snr']:3d} {dd['dt']:3.1f} {dd['f']:4d} ~ {dd['msg']}"
+            print(f"{time.time()-t0:5.2f} {dd['sync_score']:4.1f} {dd['llr_sd']:4.1f} {dd['ncheck0']:2d} {row:<45} {dd['sync_idx']:1d} {dd['h0_idx']:2d} {dd['decode_path']}")
             results.append(row)
             n_decodes +=1
             

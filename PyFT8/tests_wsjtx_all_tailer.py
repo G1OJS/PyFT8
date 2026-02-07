@@ -25,6 +25,6 @@ class Wsjtx_all_tailer:
                 cs, freq, dt, snr = ls[0], int(ls[6]), float(ls[5]), int(ls[4])
                 msg = f"{ls[7]} {ls[8]} {ls[9]}"
                 td = f"{time.time() %60:4.1f}"
-                self.on_decode({'cs':cs, 'f':int(freq), 'msg':msg, 'dt':dt, 'snr':snr, 'td':td})
+                self.on_decode({'cs':cs, 'decoder':'WSJTX', 'f':int(freq), 'msg':msg, 'dt':dt, 'snr':snr, 'td':td})
             except:
                 print(f"Wsjtx_tailer error in line '{line}'")
