@@ -12,7 +12,7 @@ import time
 global test_messages
 test_messages = []
 
-params.update({'MIN_SNR': -100, 'MIN_LLR0_SD': 0})
+params.update({'MIN_LLR_SD': 0})
 
 gray_seq = [0,1,3,2,5,6,4,7]
 num_symbols = 79
@@ -22,8 +22,7 @@ costas=[3,1,4,0,6,5,2]
 
 def onDecode(c):
     pass
-cycle_manager = Cycle_manager(FT8, onDecode, verbose = False, freq_range = [100,500])
-cycle_manager.running = False
+cycle_manager = Cycle_manager(FT8, on_decode = False, run = False, verbose = False, freq_range = [100,500])
 
 hops_percycle = cycle_manager.spectrum.audio_in.hops_percycle
 samps_perhop = cycle_manager.spectrum.audio_in.samples_perhop

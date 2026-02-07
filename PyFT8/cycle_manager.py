@@ -10,7 +10,7 @@ from PyFT8.time_utils import tlog, cycle_time, cyclestart_str
 import os
 
 class Cycle_manager():
-    def __init__(self, sigspec, on_decode, on_occupancy = None, on_finished = False,
+    def __init__(self, sigspec, on_decode, run = True, on_occupancy = None, on_finished = False,
                  input_device_keywords = None, output_device_keywords = None,
                  freq_range = [200, 3100], verbose = False):
         self.spectrum = Spectrum(sigspec, 12000, freq_range[1], 4, 2)
@@ -26,7 +26,8 @@ class Cycle_manager():
             from .audio import AudioOut
             self.audio_out = AudioOut
         self.audio_started = False
-        threading.Thread(target=self.manage_cycle, daemon=True).start()
+        if(run):
+            threading.Thread(target=self.manage_cycle, daemon=True).start()
 
     def analyse_hoptimes(self):
         if not any(self.spectrum.audio_in.hoptimes): return
