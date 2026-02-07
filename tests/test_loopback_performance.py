@@ -89,7 +89,7 @@ def single_loopback(imposed_snr=20, amplitude = 0.5):
 
     t0_idx=3
     f0_idx=int(f_base/df)
-    cands = cycle_manager.spectrum.search([f0_idx],"000000_000000")
+    cands = cycle_manager.spectrum.search([f0_idx],"000000_000000", 0)
     c = cands[0]
     c.demap(cycle_manager.spectrum)
     t_demap = time.time()
@@ -127,7 +127,7 @@ import pickle
 import matplotlib.pyplot as plt
 import matplotlib.lines as lines
 
-CAT_COLOURS = ['red','lime','blue','orange','green']
+CAT_COLOURS = ['lime','green']
 global leg_decode_type, leg_decode_outcome
 
 def savefig(fig, savename):
@@ -135,24 +135,15 @@ def savefig(fig, savename):
     fig.savefig(savename, bbox_inches="tight")
 
 def decode_category(dpath):
-    if(not "#" in dpath):
-        return 0
-    elif('O' in dpath):
-        return 2
-    elif('A' in dpath):
-        return 3
-    elif('L' in dpath):
-        return 4
-    else:
+    if('L' in dpath):
         return 1
+    else:
+        return 0
 
 def make_legends():
     global leg_decode_type, leg_decode_outcome
-    leg_decode_type = [ lines.Line2D([0], [0], marker='o', color='w',label='Immediate', markerfacecolor=CAT_COLOURS[1], markersize=8),
-                        lines.Line2D([0], [0], marker='o', color='w',label='LDPC', markerfacecolor=CAT_COLOURS[4], markersize=8),
-                        lines.Line2D([0], [0], marker='o', color='w',label='LDPC + bitflips', markerfacecolor=CAT_COLOURS[3], markersize=8),
-                        lines.Line2D([0], [0], marker='o', color='w',label='OSD', markerfacecolor=CAT_COLOURS[2], markersize=8),
-                        lines.Line2D([0], [0], marker='o', color='w',label='(Note: timeouts not included)', markerfacecolor=CAT_COLOURS[0], markersize=8),
+    leg_decode_type = [ lines.Line2D([0], [0], marker='o', color='w',label='Immediate', markerfacecolor=CAT_COLOURS[0], markersize=8),
+                        lines.Line2D([0], [0], marker='o', color='w',label='LDPC', markerfacecolor=CAT_COLOURS[1], markersize=8),
                         ]
 
     leg_decode_outcome = [lines.Line2D([0], [0], marker='o', color='k',label='Success', markersize=8),
@@ -186,7 +177,7 @@ def plot_results(run_params = "Default"):
     plt.tight_layout()
     savefig(fig, f"results/test_timings_{run_params}.png")
 
-    plot_params = ['llr0_sd', 'snr', 'ncheck0']
+    plot_params = ['llr_sd', 'snr', 'ncheck0']
     fig, axs = plt.subplots(1, len(plot_params), figsize = (15,5))
     for iax, param in enumerate(plot_params):
         axs[iax].scatter([d['imposed_snr'] for d in successes],[d[param] for d in successes], color = s_colors)
@@ -198,7 +189,7 @@ def plot_results(run_params = "Default"):
     plt.tight_layout()
     savefig(fig, f"results/proxy_plots_{run_params}.png")
 
-    plot_params = ['llr0_sd', 'imposed_snr', 'ncheck0']
+    plot_params = ['llr_sd', 'imposed_snr', 'ncheck0']
     plot_ranges = [[0,0.75], [-26,-16],[0,55]]
     
     fig, axs = plt.subplots(1, len(plot_params), figsize = (15,5))
@@ -232,6 +223,6 @@ def plot_results(run_params = "Default"):
  
 
 run_params = "default"
-test_vs_imposed_snr(run_params, ntrials = 100)
+test_vs_imposed_snr(run_params, ntrials = 2000)
 plot_results(run_params)
 
