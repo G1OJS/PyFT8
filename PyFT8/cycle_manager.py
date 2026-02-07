@@ -68,7 +68,8 @@ class Cycle_manager():
                     self.spectrum.audio_in.start_live(self.input_device_idx)
 
             if (self.spectrum.audio_in.grid_main_ptr > self.spectrum.h_search1 and not cycle_searched_1):
-                tlog(f"[Cycle manager] start first search at hop { self.spectrum.audio_in.grid_main_ptr}")
+                if(self.verbose):
+                    tlog(f"[Cycle manager] start first search at hop { self.spectrum.audio_in.grid_main_ptr}")
                 cycle_searched_1 = True
                 if(self.on_finished):
                     self.on_finished([c.decode_dict for c in candidates])
@@ -84,7 +85,8 @@ class Cycle_manager():
                     self.on_occupancy(self.spectrum.occupancy, self.spectrum.df)
                     
             if (self.spectrum.audio_in.grid_main_ptr > self.spectrum.h_search2 and not cycle_searched_2):
-                tlog(f"[Cycle manager] start second search at hop { self.spectrum.audio_in.grid_main_ptr}")
+                if(self.verbose):
+                    tlog(f"[Cycle manager] start second search at hop { self.spectrum.audio_in.grid_main_ptr}")
                 cycle_searched_2 = True
                 block2_cands = self.spectrum.search(self.f0_idxs, cyclestart_str(time.time()), 1)
 
