@@ -19,7 +19,7 @@ def find_device(device_str_contains):
     print(f"[Audio] No audio device found matching {device_str_contains}")
 
 class AudioIn:
-    def __init__(self, cycle_seconds, symbol_rate, hops_persymb, fbins_pertone, max_freq):
+    def __init__(self, cycle_seconds, hops_percycle, symbol_rate, hops_persymb, fbins_pertone, max_freq):
         self.sample_rate = 12000
         self.samples_perhop = int(self.sample_rate / (symbol_rate * hops_persymb))
         self.fft_len = int(fbins_pertone * self.sample_rate // symbol_rate)
@@ -28,9 +28,10 @@ class AudioIn:
         self.fft_window = fft_window=np.hanning(self.fft_len)
         self.audio_buffer = np.zeros(self.fft_len, dtype=np.float32)
         self.hoptimes = []
-        self.hops_percycle = int(cycle_seconds * symbol_rate * hops_persymb)
+        self.hops_percycle = hops_percycle
         self.pgrid_main = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)
         self.grid_main_ptr = 0
+        self.grid_main_zero_ptr = 0
 
     def do_fft(self):
         z = np.fft.rfft(self.audio_buffer * self.fft_window)

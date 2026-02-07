@@ -11,17 +11,17 @@ def plot_success(fig, ax, load_file):
     if not any(decodes):
         return
     
-    py =        [[],[],[],[],[],[]]
-    pycols  =   ['lime', 'green', 'yellow', 'red', '#c0e7fa', '#ebf6fa']
-    pylabs  =   ['Immediate', 'LDPC', 'OSD', 'ERR', 'Stall', 'Timeout' ]
+    py =        [[],[],[],[],[]]
+    pycols  =   ['lime', 'green', 'yellow', 'orange', '#ebf6fa']
+    pylabs  =   ['Immediate', 'LDPC', 'ERR', 'Stall', 'Timeout' ]
     ws =        [[],[]]
     wcols =     ['#141700','#664b07']
     wlabs =     ['isolated','overlapping']
 
-    bins = [0.25 + 0.1*b for b in range(25)]
+    bins = [0 + 0.1*b for b in range(30)]
     
     for w, p in decodes:
-        q = p['llr0_sd']
+        q = p['llr_sd']
 
         if(w['msg'] != ''):
             if(w['cofreq']):
@@ -31,18 +31,16 @@ def plot_success(fig, ax, load_file):
 
         if(p['msg'] != ''):
             if(p['msg'] == w['msg'] or w['msg'] == ''):
-                if("O00" in p['decode_path']):
-                    py[2].append(q)
-                elif ("L00" in p['decode_path']):
+                if ("L00" in p['decode_path']):
                     py[1].append(q)
                 else:
                     py[0].append(q)
             else:
-                py[3].append(q)
+                py[2].append(q)
         elif('_' in p['decode_path']):
-            py[4].append(q)
+            py[3].append(q)
         elif('#' not in p['decode_path']):
-            py[5].append(q)                
+            py[4].append(q)                
 
     ax.cla()
 
