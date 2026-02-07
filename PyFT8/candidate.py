@@ -73,6 +73,7 @@ class Candidate:
         
         self.decode_dict = {'cs':self.cyclestart_str, 'f':self.fHz, 'msg_tuple':self.msg, 'msg':' '.join(self.msg),
                            'llr_sd':self.llr_sd,
+                           'decoder': 'PyFT8',
                            'decode_path':self.decode_path,
                            'h0_idx': self.sync['h0_idx'],
                            'ncheck0': self.ncheck0,
