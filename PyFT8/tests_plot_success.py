@@ -12,8 +12,8 @@ def plot_success(fig, ax, load_file):
         return
     
     py =        [[],[],[],[],[]]
-    pycols  =   ['lime', 'green', 'yellow', 'orange', '#ebf6fa']
-    pylabs  =   ['Immediate', 'LDPC', 'ERR', 'Stall', 'Timeout' ]
+    pycols  =   ['lime',        '#04bf10',     '#01700b',  '#f79592',  '#805c5b']
+    pylabs  =   ['Immediate',   'Used LDPC', 'Bad msg',  'Stalled',  'Rejected' ]
     ws =        [[],[]]
     wcols =     ['#141700','#664b07']
     wlabs =     ['isolated','overlapping']

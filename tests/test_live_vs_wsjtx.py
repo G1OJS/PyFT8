@@ -29,7 +29,7 @@ def analyse_dictionaries(pyft8_dicts, wsjtx_dicts, cyclestart_str):
     pyft8_keys = set()
     for w in wsjtx_dicts:
         w.update({'cofreq': w['f'] in wsjtx_dicts_cofreqs})
-        decodes = [p for p in pyft8_dicts if (np.abs(w['f'] - p['f']) < 5 or w['msg'] == p['msg']) and np.abs(float(w['td'])-float(p['td'])) < 10]
+        decodes = [p for p in pyft8_dicts if (np.abs(w['f'] - p['f']) < 4 or w['msg'] == p['msg']) and w['cs'] == p['cs']]
         decodes.sort(key = lambda p: (-len(p['msg_tuple']), -p['llr_sd']))
         p = decodes[0] if(len(decodes)) else no_match
         all_decodes.append((w, p))
@@ -120,11 +120,11 @@ show_waterfall = False
 show_success_plot = True
 
 
-run([100,3100])
+#run([100,3100])
 
-#fig_s, ax_s = plt.subplots( figsize=(10,6))
-#plot_success(fig_s, ax_s, 'compare_data.pkl')
-#plt.show()
+fig_s, ax_s = plt.subplots( figsize=(10,6))
+plot_success(fig_s, ax_s, 'compare_data.pkl')
+plt.show()
 
 
 

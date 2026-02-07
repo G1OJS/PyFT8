@@ -46,6 +46,7 @@ class Candidate:
         self.llr_sd = int(0.5+100*np.std(llr))/100.0
         llr = target_params[0] * llr / (1e-12 + self.llr_sd)
         self.llr = np.clip(llr, -target_params[1], target_params[1])
+        self.decode_dict.update({'llr_sd':self.llr_sd})
           
     def decode(self):
         if(self.llr_sd < params['MIN_LLR_SD']):
@@ -71,7 +72,8 @@ class Candidate:
         self._record_state("M" if self.msg else "_", final = True)
         
         self.decode_dict = {'cs':self.cyclestart_str, 'f':self.fHz, 'msg_tuple':self.msg, 'msg':' '.join(self.msg),
-                           'llr_sd':self.llr_sd, 'decode_path':self.decode_path,
+                           'llr_sd':self.llr_sd,
+                           'decode_path':self.decode_path,
                            'h0_idx': self.sync['h0_idx'],
                            'ncheck0': self.ncheck0,
                            'sync_idx': self.sync_idx, 
