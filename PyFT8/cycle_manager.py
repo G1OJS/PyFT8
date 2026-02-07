@@ -91,12 +91,13 @@ class Cycle_manager():
             for i, c2 in enumerate(block2_cands):
                 c = candidates[i]
                 if(c.decode_completed and not c.msg):
-                    c2.demap(self.spectrum)
-                    if(c2.llr_sd > c.llr_sd):
-                        c2.decode()
-                        if(c2.msg):
-                            candidates.append(c2)
-                            candidates.remove(c)
+                    if (self.spectrum.audio_in.grid_main_ptr > c2.last_payload_hop and not c2.demap_started):
+                        c2.demap(self.spectrum)
+                        if(c2.llr_sd > c.llr_sd and not c2.decode_completed):
+                            c2.decode()
+                            if(c2.msg):
+                                candidates.append(c2)
+                                candidates.remove(c)
                 
             for c in candidates:
                 if (self.spectrum.audio_in.grid_main_ptr > c.last_payload_hop and not c.demap_started):

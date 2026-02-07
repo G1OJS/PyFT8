@@ -14,9 +14,6 @@ all_decodes = []
 
 def analyse_dictionaries(pyft8_dicts, wsjtx_dicts, cyclestart_str):
     global all_decodes
-    if(not len(wsjtx_dicts) > 0):
-        print("No WSJT-X decodes - is WSJT-X running?")
-        return
 
     wsjtx_dicts = [d for d in wsjtx_dicts if d['cs'] == cyclestart_str]
     pyft8_dicts = [d for d in pyft8_dicts if d['cs'] == cyclestart_str]
@@ -32,7 +29,7 @@ def analyse_dictionaries(pyft8_dicts, wsjtx_dicts, cyclestart_str):
     pyft8_keys = set()
     for w in wsjtx_dicts:
         w.update({'cofreq': w['f'] in wsjtx_dicts_cofreqs})
-        decodes = [p for p in pyft8_dicts if (np.abs(w['f'] - p['f']) < 5 or w['msg'] == p['msg']) and np.abs(float(w['td'])-float(p['td'])) < 4]
+        decodes = [p for p in pyft8_dicts if (np.abs(w['f'] - p['f']) < 5 or w['msg'] == p['msg']) and np.abs(float(w['td'])-float(p['td'])) < 5]
         decodes.sort(key = lambda p: (-len(p['msg_tuple']), -p['llr_sd']))
         p = decodes[0] if(len(decodes)) else no_match
         all_decodes.append((w, p))
@@ -56,6 +53,8 @@ def analyse_dictionaries(pyft8_dicts, wsjtx_dicts, cyclestart_str):
     with open("results/data/compare_data.pkl","wb") as f:
         pickle.dump({'decodes':all_decodes, 'params':params}, f)
 
+
+
 def run(freq_range):
     pyft8_dicts = []
     wsjtx_dicts = []
@@ -73,29 +72,42 @@ def run(freq_range):
         fig, axs = plt.subplots(figsize = (20,7))
         plt.tight_layout()
         waterfall = None
+
+    ct_prev = 0
+    first_py = False
+    first_ws = False
     try:
         while True:
-            time.sleep(1)
-            if(time.time() % 15 < 1 and cycle_analysed):
-                cycle_analysed = False
-            if(show_waterfall):
-                p = cycle_manager.spectrum.audio_in.pgrid_main
-                pmax = np.max(p)
-                if(pmax > 0):
-                    dB = 10 * np.log10(np.clip(p, pmax/1e8, None)) - 110
-                    if(waterfall is None):
-                        waterfall = axs.imshow(dB, cmap = 'inferno', vmax = 0, vmin = -40, origin = 'lower')
-                    else:
-                        waterfall.set_data(dB)
-                    plt.pause(0.1)
-                
-            if(not cycle_analysed):
-                if(len(pyft8_dicts)):
-                    analyse_dictionaries(pyft8_dicts, wsjtx_dicts, cyclestart_str(time.time() - 15))
+            time.sleep(0.5)
+            ct = (time.time()) % 15
+            rollover = (ct < ct_prev)
+            ct_prev = ct
+
+            if(rollover):
+                cycle_to_list = cyclestart_str(time.time() - 30)
+                tlog(f"[Test loop] looking at cycle {cycle_to_list}")
+                if(not (first_py and first_ws)):
+                    if(cycle_to_list in [d['cs'] for d in pyft8_dicts]): first_py = True
+                    if(cycle_to_list in [d['cs'] for d in wsjtx_dicts]): first_ws = True
+                    if(not first_py): tlog(f"[Test loop] waiting for PyFT8")
+                    if(not first_ws): tlog(f"[Test loop] waiting for WSJTX")
+                else:
+                    analyse_dictionaries(pyft8_dicts, wsjtx_dicts, cycle_to_list)
                     if(show_success_plot):
                         plot_success(fig_s, ax_s, "results/data/compare_data.pkl")
-                        plt.pause(0.5)
-                cycle_analysed = True
+                        plt.pause(0.01)
+
+                if(show_waterfall):
+                    p = cycle_manager.spectrum.audio_in.pgrid_main
+                    pmax = np.max(p)
+                    if(pmax > 0):
+                        dB = 10 * np.log10(np.clip(p, pmax/1e8, None)) - 110
+                        if(waterfall is None):
+                            waterfall = axs.imshow(dB, cmap = 'inferno', vmax = 0, vmin = -40, origin = 'lower')
+                        else:
+                            waterfall.set_data(dB)
+                        plt.pause(0.01)
+
     except KeyboardInterrupt:
         print("\nStopping")
         cycle_manager.running = False
