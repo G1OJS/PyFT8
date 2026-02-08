@@ -72,7 +72,7 @@ class Cycle_manager():
                 with_message = [c for c in candidates if c.msg]
                 failed = [c for c in candidates if c.decode_completed and not c.msg]
                 unprocessed = [c for c in candidates if not "#" in c.decode_path]
-                candidates = self.spectrum.search(self.f0_idxs, cyclestart_str(time.time()-15), 0)
+                candidates = self.spectrum.search(self.f0_idxs, cyclestart_str(time.time()), 0)
                 if(self.verbose):
                     ns, nf, nu = len(with_message), len(failed), len(unprocessed)
                     tlog(f"[Cycle manager] Last cycle had {ns} decodes, {nf} failures and {nu} unprocessed (total = {ns+nf+nu})")   
@@ -84,7 +84,7 @@ class Cycle_manager():
                 if(self.verbose):
                     tlog(f"[Cycle manager] start second search at hop { self.spectrum.audio_in.grid_main_ptr}")
                 cycle_searched_2 = True
-                block2_cands = self.spectrum.search(self.f0_idxs, cyclestart_str(time.time()-15), 1)
+                block2_cands = self.spectrum.search(self.f0_idxs, cyclestart_str(time.time()), 1)
 
             for i, c2 in enumerate(block2_cands):
                 c = candidates[i]

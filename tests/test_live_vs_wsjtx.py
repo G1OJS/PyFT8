@@ -33,31 +33,48 @@ class Wsjtx_all_tailer:
                 if(not self.silent):
                     print(f"Wsjtx_tailer error in line '{line}'")
 
+
+def analyse(decodes, cyc):
+    p_msgs = set([d['cs']+d['msg'] for d in decodes if d['decoder'] == 'PyFT8'])
+    w_msgs = set([d['cs']+d['msg'] for d in decodes if d['decoder'] == 'WSJTX'])
+    both_msgs = p_msgs.intersection(w_msgs)
+    nw, np, nb = len(w_msgs), len(p_msgs), len(both_msgs)
+    if(nw>0):            
+        print(f"{cyc} W:{nw} P:{np}({np/nw:.1%}) B:{nb}({nb/nw:.1%})")
+
 def tab_print(dd):
     row = f"{dd['decoder']}, {dd['cs']} {dd['f']:4d} {dd['snr']:+04d} {dd['dt']:4.1f} {dd['td']:<4} {dd['msg']:<23} "
     tlog(f"{row}")    
 
 def run_live_test():
+    from collections import Counter
+
     decodes = []
     t_last_decode = 0
+    started = False
 
     def on_decode(dd):
-        t_last_decode = time.time()
         decodes.append(dd)
 
     cycle_manager = Cycle_manager(FT8, on_decode, input_device_keywords = ['Microphone', 'CODEC'], verbose = False)
     wsjtx_all_tailer = Wsjtx_all_tailer(on_decode, silent = True)
+    wait = 4 + 15 - time.time()%15
+    time.sleep(wait)
+    
     while True:
-        time.sleep(1)
-        if(time.time() - t_last_decode > 5):
-            t_last_decode = time.time()
-            cycles = set([d['cs'] for d in decodes])
-            if(len(cycles)>1):
-                curr_cycle = list(cycles)[-2]
-                decodes = [d for d in decodes if d['cs'] == curr_cycle]
-                for dd in decodes:
-                    tab_print(dd)
-            
-
+        time.sleep(15)
+        if(not started):
+                decoders = set([d['decoder'] for d in decodes])
+                if(len(decoders) == 2):
+                    decodes = []
+                    started = True
+        if(started):          
+            print("================================================")
+            cycles = list(set([d['cs'] for d in decodes]))
+            cycles.sort()
+            for cyc in cycles[::-1]:
+                decodes_cyc = [d for d in decodes if d['cs'] == cyc]
+                analyse(decodes_cyc, cyc)
+            analyse(decodes, "000000_000000")
 
 run_live_test()
