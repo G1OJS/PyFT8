@@ -10,7 +10,7 @@ from PyFT8.time_utils import tlog, cycle_time, cyclestart_str
 import os
 
 class Cycle_manager():
-    def __init__(self, sigspec, on_decode, run = True, on_occupancy = None, on_finished = False,
+    def __init__(self, sigspec, on_decode, run = True, on_occupancy = None,
                  input_device_keywords = None, output_device_keywords = None,
                  freq_range = [200, 3100], verbose = False):
         self.spectrum = Spectrum(sigspec, 12000, freq_range[1], 4, 2)
@@ -20,7 +20,6 @@ class Cycle_manager():
         self.input_device_idx = find_device(input_device_keywords)
         self.output_device_idx = find_device(output_device_keywords)
         self.on_decode = on_decode
-        self.on_finished = on_finished
         self.on_occupancy = on_occupancy
         if(self.output_device_idx):
             from PyFT8.audio import AudioOut
@@ -56,7 +55,6 @@ class Cycle_manager():
                 if(self.verbose):
                     tlog("======================================================")
                     tlog(f"[Cycle manager] rollover detected at {cycle_time():.2f}")
-                first_demap = False
                 cycle_searched_1, cycle_searched_2 = False, False
                 duplicate_filter = set()
                 self.check_for_tx()
@@ -71,12 +69,10 @@ class Cycle_manager():
                 if(self.verbose):
                     tlog(f"[Cycle manager] start first search at hop { self.spectrum.audio_in.grid_main_ptr}")
                 cycle_searched_1 = True
-                if(self.on_finished):
-                    self.on_finished([c.decode_dict for c in candidates])
                 with_message = [c for c in candidates if c.msg]
                 failed = [c for c in candidates if c.decode_completed and not c.msg]
                 unprocessed = [c for c in candidates if not "#" in c.decode_path]
-                candidates = self.spectrum.search(self.f0_idxs, cyclestart_str(time.time()), 0)
+                candidates = self.spectrum.search(self.f0_idxs, cyclestart_str(time.time()-15), 0)
                 if(self.verbose):
                     ns, nf, nu = len(with_message), len(failed), len(unprocessed)
                     tlog(f"[Cycle manager] Last cycle had {ns} decodes, {nf} failures and {nu} unprocessed (total = {ns+nf+nu})")   
@@ -88,7 +84,7 @@ class Cycle_manager():
                 if(self.verbose):
                     tlog(f"[Cycle manager] start second search at hop { self.spectrum.audio_in.grid_main_ptr}")
                 cycle_searched_2 = True
-                block2_cands = self.spectrum.search(self.f0_idxs, cyclestart_str(time.time()), 1)
+                block2_cands = self.spectrum.search(self.f0_idxs, cyclestart_str(time.time()-15), 1)
 
             for i, c2 in enumerate(block2_cands):
                 c = candidates[i]
@@ -103,9 +99,6 @@ class Cycle_manager():
                 
             for c in candidates:
                 if (self.spectrum.audio_in.grid_main_ptr > c.last_payload_hop and not c.demap_started):
-                    if(not first_demap):
-                        first_demap = True
-                        tlog("First demap")
                     c.demap(self.spectrum)
                     
             to_decode = [c for c in candidates if c.llr_sd > 0 and not c.decode_completed]
