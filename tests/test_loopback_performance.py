@@ -89,6 +89,7 @@ def single_loopback(imposed_snr=20, amplitude = 0.5):
     t0_idx=3
     f0_idx=int(f_base/df)
     cands = cycle_manager.spectrum.search([f0_idx],"000000_000000", 0)
+    cands = cands + cycle_manager.spectrum.search([f0_idx],"000000_000000", 1)
     c = cands[0]
     c.demap(cycle_manager.spectrum)
     t_demap = time.time()
@@ -189,7 +190,7 @@ def plot_results(run_params = "Default"):
     savefig(fig, f"results/proxy_plots_{run_params}.png")
 
     plot_params = ['llr_sd', 'imposed_snr', 'ncheck0']
-    plot_ranges = [[0,0.75], [-26,-16],[0,55]]
+    plot_ranges = [[0.25,0.75], [-26,-16],[0,55]]
     
     fig, axs = plt.subplots(1, len(plot_params), figsize = (15,5))
     for iax, param in enumerate(plot_params):        

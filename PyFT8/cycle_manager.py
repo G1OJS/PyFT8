@@ -23,7 +23,7 @@ class Cycle_manager():
         self.on_finished = on_finished
         self.on_occupancy = on_occupancy
         if(self.output_device_idx):
-            from .audio import AudioOut
+            from PyFT8.audio import AudioOut
             self.audio_out = AudioOut
         self.audio_started = False
         if(run):
