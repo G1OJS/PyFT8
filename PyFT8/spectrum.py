@@ -26,7 +26,7 @@ class Spectrum:
         self.csync_flat = self.make_csync(sigspec)
 
     def make_csync(self, sigspec):
-        csync = np.full((sigspec.costas_len, self.fbins_per_signal), -1/(self.fbins_per_signal - self.fbins_pertone), np.float32)
+        csync = np.full((sigspec.costas_len, self.fbins_per_signal), -self.fbins_pertone / (self.fbins_per_signal - self.fbins_pertone), np.float32)
         for sym_idx, tone in enumerate(sigspec.costas):
             fbins = range(tone* self.fbins_pertone, (tone+1) * self.fbins_pertone)
             csync[sym_idx, fbins] = 1.0
@@ -45,15 +45,12 @@ class Spectrum:
     
     def search(self, f0_idxs, cyclestart_str, sync_idx):
         cands = []
-        pgrid = self.audio_in.pgrid_main
+        dB_main = self.audio_in.dB_main
         for f0_idx in f0_idxs:
-            p = pgrid[:, f0_idx:f0_idx + self.fbins_per_signal]
-            max_pwr = np.max(p)
-            pnorm = p / max_pwr
-            self.occupancy[f0_idx:f0_idx + self.fbins_per_signal] += max_pwr
+            dB = dB_main[:, f0_idx:f0_idx + self.fbins_per_signal]
             c = Candidate()
             c.f0_idx = f0_idx
-            c.sync = self.get_sync(f0_idx, pnorm, sync_idx)
+            c.sync = self.get_sync(f0_idx, dB, sync_idx)
             hps, bpt = self.hops_persymb, self.fbins_pertone
             c.freq_idxs = [c.f0_idx + bpt // 2 + bpt * t for t in range(self.sigspec.tones_persymb)]
             c.fHz = int((c.f0_idx + bpt // 2) * self.df)

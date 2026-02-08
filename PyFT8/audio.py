@@ -29,16 +29,15 @@ class AudioIn:
         self.audio_buffer = np.zeros(self.fft_len, dtype=np.float32)
         self.hoptimes = []
         self.hops_percycle = hops_percycle
-        self.pgrid_main = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)
-        self.grid_main_ptr = 0
-        self.grid_main_zero_ptr = 0
+        self.dB_main = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)
+        self.main_ptr = 0
 
     def do_fft(self):
         z = np.fft.rfft(self.audio_buffer * self.fft_window)
         p = z.real*z.real + z.imag*z.imag
         self.hoptimes.append(time.time())
-        self.pgrid_main[self.grid_main_ptr] = 10*np.log10(p[:self.nFreqs]+1e-12)
-        self.grid_main_ptr = (self.grid_main_ptr + 1) % self.hops_percycle
+        self.dB_main[self.main_ptr] = 10*np.log10(p[:self.nFreqs]+1e-12)
+        self.main_ptr = (self.main_ptr + 1) % self.hops_percycle
 
     def load_wav(self, wav_path):
         wf = wave.open(wav_path, "rb")

@@ -66,31 +66,31 @@ class Cycle_manager():
                 cycle_searched_1, cycle_searched_2 = False, False
                 duplicate_filter = set()
                 self.check_for_tx()
-                self.spectrum.audio_in.grid_main_ptr = 0
+                self.spectrum.audio_in.main_ptr = 0
                 self.analyse_hoptimes()
                 self.spectrum.audio_in.hoptimes = []
                 if not self.audio_started:
                     self.audio_started = True
                     self.spectrum.audio_in.start_live(self.input_device_idx)
 
-            if (self.spectrum.audio_in.grid_main_ptr > self.spectrum.h_search1 and not cycle_searched_1):
+            if (self.spectrum.audio_in.main_ptr > self.spectrum.h_search1 and not cycle_searched_1):
                 cycle_searched_1 = True
                 summarise_cycle()
-                tlog(f"[Cycle manager] start first search at hop { self.spectrum.audio_in.grid_main_ptr}", verbose = self.verbose)
+                tlog(f"[Cycle manager] start first search at hop { self.spectrum.audio_in.main_ptr}", verbose = self.verbose)
                 candidates = self.spectrum.search(self.f0_idxs, cyclestart_str(time.time()), 0)
                 tlog(f"[Cycle manager] New spectrum searched -> {len(candidates)} candidates", verbose = self.verbose) 
                 if(self.on_occupancy):
                     self.on_occupancy(self.spectrum.occupancy, self.spectrum.df)
                     
-            if (self.spectrum.audio_in.grid_main_ptr > self.spectrum.h_search2 and not cycle_searched_2):
+            if (self.spectrum.audio_in.main_ptr > self.spectrum.h_search2 and not cycle_searched_2):
                 cycle_searched_2 = True
-                tlog(f"[Cycle manager] start second search at hop { self.spectrum.audio_in.grid_main_ptr}", verbose = self.verbose)
+                tlog(f"[Cycle manager] start second search at hop { self.spectrum.audio_in.main_ptr}", verbose = self.verbose)
                 block2_cands = self.spectrum.search(self.f0_idxs, cyclestart_str(time.time()), 1)
 
             for i, c2 in enumerate(block2_cands):
                 c = candidates[i]
                 if(c.decode_completed and not c.msg):
-                    if (self.spectrum.audio_in.grid_main_ptr > c2.last_payload_hop and not c2.demap_started):
+                    if (self.spectrum.audio_in.main_ptr > c2.last_payload_hop and not c2.demap_started):
                         c2.demap(self.spectrum)
                         if(c2.llr_sd > c.llr_sd and not c2.decode_completed):
                             c2.decode()
@@ -99,7 +99,7 @@ class Cycle_manager():
                                 candidates.remove(c)
                 
             for c in candidates:
-                if (self.spectrum.audio_in.grid_main_ptr > c.last_payload_hop and not c.demap_started):
+                if (self.spectrum.audio_in.main_ptr > c.last_payload_hop and not c.demap_started):
                     c.demap(self.spectrum)
                     
             to_decode = [c for c in candidates if c.llr_sd > 0 and not c.decode_completed]

@@ -36,8 +36,8 @@ class Candidate:
     def demap(self, spectrum, target_params = (3.3, 3.7)):
         self.demap_started = True
         hops = np.array([self.sync['h0_idx'] + spectrum.hops_persymb * s for s in spectrum.sigspec.payload_symb_idxs])
-        self.p_dB = spectrum.audio_in.pgrid_main[np.ix_(hops, self.freq_idxs)]
-        p = np.clip(self.p_dB - np.max(self.p_dB), -80, 0)
+        self.dB = spectrum.audio_in.dB_main[np.ix_(hops, self.freq_idxs)]
+        p = np.clip(self.dB - np.max(self.dB), -80, 0)
         llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
         llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
         llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
@@ -79,7 +79,7 @@ class Candidate:
                            'ncheck0': self.ncheck0,
                            'sync_idx': self.sync_idx, 
                            'sync_score': self.sync['score'],
-                           'snr': np.clip(int(np.max(self.p_dB) - np.min(self.p_dB) - 58), -24, 24),
+                           'snr': np.clip(int(np.max(self.dB) - np.min(self.dB) - 58), -24, 24),
                            'dt': int(0.5+100*self.sync['dt'])/100.0, 
                            'td': f"{time.time() %60:4.1f}"
                            }
