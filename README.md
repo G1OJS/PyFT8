@@ -3,45 +3,32 @@
 This repository contains Python code to decode and encode (all the way to audio) FT8, plus a minimal Command Line Interface for reception, and a nascent set of research code. 
 <img width="960" height="540" alt="Untitled presentation" src="https://github.com/user-attachments/assets/93ce8755-9d49-423c-9f35-d96eb9067740" />
 
-
-
 ## Motivation
 This started out as me thinking "How hard can it be, really?" after some frustration with Windows moving sound devices around and wanting to get a minimal decoder running that I can fully control. 
 
 I didn’t want to produce yet another port of the original Fortran / C into another language: instead I wanted to see how far I could get following audio -> spectrogram -> symbols -> bits -> error correction without resyncs and special treatments, writing my own code from scratch as far as possible. Also this has been, more than I expected, an exercise in writing Python ‘Pythonically’ for speed, which means absolutely not duplicating the big nested loops of Fortran and C. It also means writing code that is wide and short rather than thin and long, which suits my thinking style perfectly!
-
-My current aim is to push the low SNR performance whilst using only one time/frequency grid and no time-domain processing. 
-
-Code I'd like to highlight, all in 100% Python:
-* [LDPC using just three 5~8 line functions](https://github.com/G1OJS/PyFT8/blob/main/PyFT8/ldpc.py) and running 250 us per iteration on a Dell Optiplex
-* [Ordered Statistics Decoding](https://github.com/G1OJS/PyFT8/blob/main/PyFT8/osd.py) in about 60 lines of code & similarly fast (not measured yet)
 
 ## Uses
 I use this code for my own hobby-level reseearch into FT8 decoding and Python coding techniques, and I'm also building a browser-GUI station controller (image below) which has an FT8 transceiver integrated within it. You can see that [here](https://github.com/G1OJS/station-gui) but note that it's focussed on my station, i.e. ICOM-IC-7100 with an Arduino controlling antenna switching and magloop tuning.
 
 <img width="1521" height="815" alt="station-gui" src="https://github.com/user-attachments/assets/973eb8b5-8017-4e57-b3b5-a26cea0f4b4a" />
 
-## Performance
-On a quiet band with good signals, PyFT-8 typically gets 70% or 80% and often 100% of WSJT-x decodes. On a crowded band, PyFT8 performs less well. WSJT-x uses signal subtraction to improve performance with overlapping signals. PyFT8 can decode overlapping signals surprisingly well, but not as well as WSJT-x. The plots below show real world performance on 20m respectively over lunchtime, with relatively many signals.
+## Performance Compared with FT8_lib and WSJT-x
+The image below shows the number of decodes from PyFT8 and FT8_lib both as a percentage of WSJT-x V2.7.0 running in NORM mode, for a set of wav files copied from [FT8_lib's 20m_busy tests](https://github.com/kgoba/ft8_lib/tree/master/test/wav/20m_busy).
 
-<img width="1000" height="600" alt="live test 20m lunchtime" src="https://github.com/user-attachments/assets/80108eac-4b6d-477f-bb0c-5c0a6d7479d2" />
+<img width="640" height="480" alt="batch_tests_20m_busy" src="https://github.com/user-attachments/assets/77719d10-1853-40ca-9756-7bcb90298a3b" />
 
-I have been using the file "210703_133430.wav" (third plot above) as a reference. In NORM mode, WSJT-x gets 19 decodes. WSJT-x in FAST mode gets 14 decodes, PyFT8 gets 12(*), and FT8_lib gets 8. The specific decodes are shown in the table below.
+## Live performance compared to WSJT-x
+On a quiet band with good signals, PyFT-8 typically gets 70% or 80% and often 100% of WSJT-x decodes. On a crowded band (e.g. 20m plot below), PyFT8 performs less well. WSJT-x uses signal subtraction to improve performance with overlapping signals. PyFT8 can decode overlapping signals surprisingly well, but not as well as WSJT-x.
 
-<sub> (*) When using a Kaiser fft window param 20, 3 bins per tone, 3 bins per symbol, and suitably adjusted thresholds controlling bit-flipping, LDPC and OSD.</sub>
+### 40m midnight
 
-<img width="658" height="429" alt="image" src="https://github.com/user-attachments/assets/3d5fc12c-b36b-4297-ac44-f3ba287a123c" />
+<img width="1000" height="600" alt="40m midnight" src="https://github.com/user-attachments/assets/a4e56105-f695-4822-827f-6d980cc828f8" />
 
-However, a single wav file with a single FT8 cycle is not sufficient to characterise performance - it's been good for developing, but it's not enough for characterising. So, I've taken a step further by rewriting the decoding code to allow tests to be run in batch mode using a folder of 15s wav files. The image below shows the number of decodes from PyFT8 and FT8_lib both as a percentage of WSJT-x V2.7.0 running in NORM mode. The source wav files are copied from [https://github.com/kgoba/ft8_lib/tree/master/test/wav/20m_busy](https://github.com/kgoba/ft8_lib/tree/master/test/wav/20m_busy), and I've run ft8_lib and PyFT8 for all 38 of them, as well as updating the WSJT-X results to version 2.7.0.
+### 20m lunchtime
 
-<img width="640" height="480" alt="batch_tests_20m_busy" src="https://github.com/user-attachments/assets/0e506dcf-98e1-408c-ba37-e7120890287c" />
+<img width="1000" height="600" alt="20m lunch2" src="https://github.com/user-attachments/assets/a7923f3c-e751-4dce-a36c-181237c7a4ba" />
 
-These tests show that PyFT8 is within a few percent of FT8_lib's performance over all 38 'busy' 20m wav file tests. Reading FT8_lib's source code gave me a few good tips to improve performance to this level:
-* Swap my previous Kaiser(20) fft window for a Hanning window, at the same time as changing from 3 frequency bins per tone to 2, and from 3 bins per symbol to 4.
-* Dial down the use of OSD to improve speed (and after some parametric testing, 'dialled down' = 'removed')
-* The killer, lurking in my code and forgotten; expand the timing tolerance for signal start from my previous 0 to +1.9 seconds to a range of -1.12 to +3.48 seconds(*), allowing for signals starting as early as the cycle boundary corresponding to the first *data* symbol (#8 of 79) and signals ending as late as 15s corresponding to the last *data* symbol (#72 of 79). I had previously been throwing away good candidates!
-
-<sub> (*) How do you sync a signal whose sync block starts before t=0? Simple - use the second Costas block in the middle of the signal.</sub>
 
 ## Contents
 [being written]
