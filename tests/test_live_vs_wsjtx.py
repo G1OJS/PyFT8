@@ -3,6 +3,7 @@ import time
 from PyFT8.cycle_manager import Cycle_manager
 from PyFT8.sigspecs import FT8
 from PyFT8.time_utils import tlog
+import pickle
 
 class Wsjtx_all_tailer:
     
@@ -76,5 +77,8 @@ def run_live_test():
                 decodes_cyc = [d for d in decodes if d['cs'] == cyc]
                 analyse(decodes_cyc, cyc)
             analyse(decodes, "000000_000000")
+
+            with open("live_decodes_vs_wsjtx.pkl", "wb") as f:
+                pickle.dump(decodes,f)
 
 run_live_test()

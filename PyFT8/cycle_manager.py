@@ -29,9 +29,9 @@ class Cycle_manager():
             threading.Thread(target=self.manage_cycle, daemon=True).start()
 
     def analyse_hoptimes(self):
-        if not any(self.spectrum.audio_in.hoptimes): return
-        diffs = np.ediff1d(self.spectrum.audio_in.hoptimes)
         if(self.verbose):
+            if not any(self.spectrum.audio_in.hoptimes): return
+            diffs = np.ediff1d(self.spectrum.audio_in.hoptimes)
             m = 1000*np.mean(diffs)
             s = 1000*np.std(diffs)
             pc = int(100*s /(1000/self.spectrum.sigspec.symbols_persec) )
@@ -46,6 +46,14 @@ class Cycle_manager():
         delay = self.spectrum.sigspec.cycle_seconds - cycle_time()
         tlog(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)\n")
 
+        def summarise_cycle():
+            if(self.verbose):
+                with_message = [c for c in candidates if c.msg]
+                failed = [c for c in candidates if c.decode_completed and not c.msg]
+                unprocessed = [c for c in candidates if not "#" in c.decode_path]
+                ns, nf, nu = len(with_message), len(failed), len(unprocessed)
+                tlog(f"[Cycle manager] Last cycle had {ns} decodes, {nf} failures and {nu} unprocessed (total = {ns+nf+nu})")   
+
         while True:
             time.sleep(0.001)
             rollover = cycle_time() < cycle_time_prev 
@@ -54,7 +62,7 @@ class Cycle_manager():
             if(rollover):
                 if(self.verbose):
                     tlog("======================================================")
-                    tlog(f"[Cycle manager] rollover detected at {cycle_time():.2f}")
+                    tlog(f"[Cycle manager] rollover detected at {cycle_time():.2f}", verbose = self.verbose)
                 cycle_searched_1, cycle_searched_2 = False, False
                 duplicate_filter = set()
                 self.check_for_tx()
@@ -66,24 +74,17 @@ class Cycle_manager():
                     self.spectrum.audio_in.start_live(self.input_device_idx)
 
             if (self.spectrum.audio_in.grid_main_ptr > self.spectrum.h_search1 and not cycle_searched_1):
-                if(self.verbose):
-                    tlog(f"[Cycle manager] start first search at hop { self.spectrum.audio_in.grid_main_ptr}")
                 cycle_searched_1 = True
-                with_message = [c for c in candidates if c.msg]
-                failed = [c for c in candidates if c.decode_completed and not c.msg]
-                unprocessed = [c for c in candidates if not "#" in c.decode_path]
+                summarise_cycle()
+                tlog(f"[Cycle manager] start first search at hop { self.spectrum.audio_in.grid_main_ptr}", verbose = self.verbose)
                 candidates = self.spectrum.search(self.f0_idxs, cyclestart_str(time.time()), 0)
-                if(self.verbose):
-                    ns, nf, nu = len(with_message), len(failed), len(unprocessed)
-                    tlog(f"[Cycle manager] Last cycle had {ns} decodes, {nf} failures and {nu} unprocessed (total = {ns+nf+nu})")   
-                    tlog(f"[Cycle manager] New spectrum searched -> {len(candidates)} candidates") 
+                tlog(f"[Cycle manager] New spectrum searched -> {len(candidates)} candidates", verbose = self.verbose) 
                 if(self.on_occupancy):
                     self.on_occupancy(self.spectrum.occupancy, self.spectrum.df)
                     
             if (self.spectrum.audio_in.grid_main_ptr > self.spectrum.h_search2 and not cycle_searched_2):
-                if(self.verbose):
-                    tlog(f"[Cycle manager] start second search at hop { self.spectrum.audio_in.grid_main_ptr}")
                 cycle_searched_2 = True
+                tlog(f"[Cycle manager] start second search at hop { self.spectrum.audio_in.grid_main_ptr}", verbose = self.verbose)
                 block2_cands = self.spectrum.search(self.f0_idxs, cyclestart_str(time.time()), 1)
 
             for i, c2 in enumerate(block2_cands):
@@ -118,16 +119,16 @@ class Cycle_manager():
         tx_msg_file = 'PyFT8_tx_msg.txt'
         if os.path.exists(tx_msg_file):
             if(not self.output_device_idx):
-                tlog("[Tx] Tx message file found but no output device specified")
+                tlog("[Tx] Tx message file found but no output device specified", verbose = True)
                 return
             with open(tx_msg_file, 'r') as f:
                 tx_msg = f.readline().strip()
                 tx_freq = f.readline().strip()
             tx_freq = int(tx_freq) if tx_freq else 1000    
-            tlog(f"[TX] transmitting {tx_msg} on {tx_freq} Hz")
+            tlog(f"[TX] transmitting {tx_msg} on {tx_freq} Hz", verbose = self.verbose)
             os.remove(tx_msg_file)
             symbols = self.audio_out.create_ft8_symbols(tx_msg_file)
             audio_data = self.audio_out.create_ft8_wave(symbols, f_base = tx_freq)
             self.audio_out.play_data_to_soundcard(audio_data, self.output_device_idx)
-            tlog("[Tx] done transmitting")
+            tlog("[Tx] done transmitting", verbose = self.verbose)
                          
