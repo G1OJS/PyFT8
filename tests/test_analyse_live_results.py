@@ -30,8 +30,6 @@ def list_cycle_stats():
 def timings():
     p_td, w_td = [], []
     for p in decodes_p:
-#        key = p['cs']+p['msg']
-#        w = [d for d in decodes_w if d['cs']+d['msg'] == key]
         w = [d for d in decodes_w if d['msg'] == p['msg'] and np.abs(float(p['td']) - float(d['td']))%15 < 5]
         if(len(w)):
            w_td.append(float(w[0]['td']) %15)
@@ -40,11 +38,11 @@ def timings():
     ax.scatter(w_td, p_td)
     plt.show()
     
-with open("live_decodes_vs_wsjtx_20m_pm.pkl", "rb") as f:
+with open("live_decodes_vs_wsjtx.pkl", "rb") as f:
     decodes = pickle.load(f)
 decodes_p =  [d for d in decodes if d['decoder'] == 'PyFT8']
 decodes_w =  [d for d in decodes if d['decoder'] == 'WSJTX']
 
-list_decodes('260208_150100')
+#list_decodes('260208_150100')
 #list_cycle_stats()
-#timings()
+timings()

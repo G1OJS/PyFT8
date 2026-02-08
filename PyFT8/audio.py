@@ -29,6 +29,7 @@ class AudioIn:
         self.audio_buffer = np.zeros(self.fft_len, dtype=np.float32)
         self.hoptimes = []
         self.hops_percycle = hops_percycle
+        self.wav_finished = False
         self.dB_main = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)
         self.main_ptr = 0
 
@@ -39,13 +40,20 @@ class AudioIn:
         self.dB_main[self.main_ptr] = 10*np.log10(p[:self.nFreqs]+1e-12)
         self.main_ptr = (self.main_ptr + 1) % self.hops_percycle
 
-    def load_wav(self, wav_path):
+    def load_wav(self, wav_path, hop_dt=0):
         wf = wave.open(wav_path, "rb")
         frames = wf.readframes(self.samples_perhop)
+        th = time.time()
         while frames:
+            if(hop_dt>0):
+                delay = hop_dt - (time.time()-th)
+                if(delay>0):
+                    time.sleep(delay)
             self._callback(frames, None, None, None)
             frames = wf.readframes(self.samples_perhop)
+            th = time.time()
         wf.close()
+        self.wav_finished = True
 
     def start_live(self, input_device_idx):
         self.stream = pyaudio.PyAudio().open(

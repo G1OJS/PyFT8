@@ -55,7 +55,7 @@ def run_live_test():
     started = False
 
     def on_decode(dd):
-        if(started): tab_print(dd)
+        #if(started): tab_print(dd)
         decodes.append(dd)
 
     cycle_manager = Cycle_manager(FT8, on_decode, input_device_keywords = ['Microphone', 'CODEC'], verbose = False)
