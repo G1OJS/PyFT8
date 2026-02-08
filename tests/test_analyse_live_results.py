@@ -11,8 +11,13 @@ def analyse(decodes, cyc):
         print(f"{cyc} W:{nw} P:{np}({np/nw:.1%}) B:{nb}({nb/nw:.1%})")
 
 def tab_print(dd):
-    row = f"{dd['decoder']}, {dd['cs']} {dd['f']:4d} {dd['snr']:+04d} {dd['dt']:4.1f} {dd['td']:<4} {dd['msg']:<23} "
-    print(f"{row}")    
+    sync_idx = dd['sync_idx'] if dd['decoder'] == 'PyFT8' else ''
+    row = f"{dd['decoder']}, {dd['cs']} {dd['f']:4d} {dd['snr']:+04d} {dd['dt']:4.1f} {dd['td']:<4} {dd['msg']:<23} {sync_idx} "
+    print(f"{row}")
+
+def list_decodes(cyc):
+    for d in [d for d in decodes if d['cs'] == cyc]:
+        tab_print(d)
 
 def list_cycle_stats():
     cycles = list(set([d['cs'] for d in decodes]))
@@ -35,10 +40,11 @@ def timings():
     ax.scatter(w_td, p_td)
     plt.show()
     
-with open("live_decodes_vs_wsjtx.pkl", "rb") as f:
+with open("live_decodes_vs_wsjtx_20m_pm.pkl", "rb") as f:
     decodes = pickle.load(f)
 decodes_p =  [d for d in decodes if d['decoder'] == 'PyFT8']
 decodes_w =  [d for d in decodes if d['decoder'] == 'WSJTX']
 
-list_cycle_stats()
-timings()
+list_decodes('260208_150100')
+#list_cycle_stats()
+#timings()
