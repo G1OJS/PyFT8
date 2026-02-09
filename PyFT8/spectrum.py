@@ -51,12 +51,27 @@ class Spectrum:
             fHz = int((f0_idx + bpt // 2) * self.df)
             dB = dB_main[:, f0_idx:f0_idx + self.fbins_per_signal]
             c = Candidate()
+            c.f0_idx = f0_idx
             c.sync = self.get_sync(f0_idx, dB, sync_idx)
+            c.freq_idxs = [c.f0_idx + bpt // 2 + bpt * t for t in range(self.sigspec.tones_persymb)]
+            c.fHz = int((c.f0_idx + bpt // 2) * self.df)
             c.freq_idxs = [f0_idx + bpt // 2 + bpt * t for t in range(self.sigspec.tones_persymb)]
             c.last_payload_hop = c.sync['h0_idx'] + hps * 72
             c.cyclestart_str = cyclestart_str
             c.sync_idx = sync_idx
-            c.decode_dict.update({'cs':cyclestart_str, 'f0_idx':f0_idx, 'f':fHz, 'sync_idx': sync_idx})
+            c.decode_dict = {'cs':c.cyclestart_str, 'f':c.fHz, 'msg_tuple':(''), 'msg':'',
+               'llr_sd':0, 'decode_path':'',
+               'h0_idx': c.sync['h0_idx'],
+               'f0_idx': c.f0_idx,
+               'ncheck': 99,
+               'ncheck0': 99,
+               'sync_idx': 0, 
+               'sync_score': c.sync['score'],
+               'snr': -30,
+               'dt': int(0.5+100*c.sync['dt'])/100.0, 
+               'td': 0}
+
+            
             cands.append(c)
         return cands
 
