@@ -44,7 +44,6 @@ class Spectrum:
         return best_sync
     
     def search(self, f0_idxs, cyclestart_str, sync_idx):
-        hps, bpt = self.hops_persymb, self.fbins_pertone
         cands = []
         dB_main = self.audio_in.dB_main
         for f0_idx in f0_idxs:
@@ -52,6 +51,7 @@ class Spectrum:
             c = Candidate()
             c.f0_idx = f0_idx
             c.sync = self.get_sync(f0_idx, dB, sync_idx)
+            hps, bpt = self.hops_persymb, self.fbins_pertone
             c.freq_idxs = [c.f0_idx + bpt // 2 + bpt * t for t in range(self.sigspec.tones_persymb)]
             c.fHz = int((c.f0_idx + bpt // 2) * self.df)
             c.last_payload_hop = c.sync['h0_idx'] + hps * 72
