@@ -14,9 +14,8 @@ class Candidate:
     def __init__(self):
 
         self.demap_started, self.decode_completed = False, False
-        self.ncheck, self.ncheck0 = 99, 99
+        self.ncheck0, self.ncheck = 99, 99
         self.llr_sd = 0
-        self.sync = []
         self.sync_idx = 0
         self.msg = ''
         self.ldpc = LdpcDecoder()
