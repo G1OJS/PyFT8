@@ -15,7 +15,6 @@ class Candidate:
 
         self.demap_started, self.decode_completed = False, False
         self.ncheck, self.ncheck0 = 99, 99
-        self.llr = []
         self.llr_sd = 0
         self.sync = []
         self.sync_idx = 0
@@ -47,6 +46,7 @@ class Candidate:
         self.llr_sd = int(0.5+100*np.std(llr))/100.0
         llr = target_params[0] * llr / (1e-12 + self.llr_sd)
         self.llr = np.clip(llr, -target_params[1], target_params[1])
+        self.decode_dict.update({'llr_sd':self.llr_sd})
           
     def decode(self):
         if(self.llr_sd < params['MIN_LLR_SD']):
