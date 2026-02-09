@@ -66,9 +66,6 @@ class Cycle_manager():
         def summarise_cycle():
             
             if(self.verbose):
-                for c in candidates[:20]:
-                    print(c.decode_completed)
-                    print(c.decode_dict)
                 unprocessed = [c for c in candidates if not c.decode_completed]
                 with_message = [c for c in candidates if c.decode_dict['msg']]
                 failed = [c for c in candidates if c.decode_completed and not c.decode_dict['msg']]
