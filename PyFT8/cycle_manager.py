@@ -32,8 +32,7 @@ class Cycle_manager():
             global_time_utils.tlog(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)\n")
             time.sleep(delay)
         else:
-            delay = self.spectrum.sigspec.cycle_seconds - global_time_utils.cycle_time()
-            global_time_utils.set_global_offset(delay + 1)
+            global_time_utils.set_global_offset(global_time_utils.cycle_time() + 1)
             threading.Thread(target=self.spectrum.audio_in.load_wav, args = (self.wav_input, self.spectrum.dt, ),  daemon=True).start()
 
         if(run):
