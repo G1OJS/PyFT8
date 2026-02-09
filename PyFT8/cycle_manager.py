@@ -100,7 +100,7 @@ class Cycle_manager():
                         duplicate_filter.add(key)
                         self.on_decode(c.decode_dict)
             new_to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
-            for c in new_to_decode[:25]:
+            for c in new_to_decode[:35]:
                 c.decode()
 
             if(self.spectrum.audio_in.main_ptr != main_ptr_prev):

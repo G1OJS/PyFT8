@@ -79,6 +79,7 @@ def run_batch(test_idxs, offline = False):
     n_decodes_ft8_lib = 0
     n_cycles = 0
     decoding_time = 0
+    summary_rows = []
     import os
     if(os.path.exists("batch_test_baseline.pkl")):
         with open("batch_test_baseline.pkl","rb") as f:
@@ -101,12 +102,19 @@ def run_batch(test_idxs, offline = False):
         n_decodes += nd
         decoding_time += dt
         n_cycles += 1
+        print(f"Total decodes: {n_decodes}")
         print(f"Avg decodes per cycle: {n_decodes / n_cycles : 4.1f}")
         print(f"Avg time per cycle: {decoding_time / n_cycles : 4.1f}")
-        print(f"Avg percent wsjtx, ft8_lib: {n_decodes / n_decodes_wsjtx : 4.1%}, {n_decodes / n_decodes_ft8_lib : 4.1%}")
+        row = f"{n_decodes / n_decodes_wsjtx : 4.1%}, {n_decodes / n_decodes_ft8_lib : 4.1%}"
+        summary_rows.append(row)
+        print(f"Avg percent wsjtx, ft8_lib: {row}")
 
     with open("batch_test_baseline_new.pkl","wb") as f:
         pickle.dump(baseline,f)
+        
+    for i, r in enumerate(summary_rows):
+        print(f"Test_{test_idxs[i]:02d}.wav {r}")
+    
 
 run_batch(range(1,39), offline = False)
 
