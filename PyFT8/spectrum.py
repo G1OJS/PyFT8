@@ -54,7 +54,6 @@ class Spectrum:
             c.sync = self.get_sync(f0_idx, dB, sync_idx)
             c.freq_idxs = [c.f0_idx + bpt // 2 + bpt * t for t in range(self.sigspec.tones_persymb)]
             c.fHz = int((c.f0_idx + bpt // 2) * self.df)
-            c.freq_idxs = [f0_idx + bpt // 2 + bpt * t for t in range(self.sigspec.tones_persymb)]
             c.last_payload_hop = c.sync['h0_idx'] + hps * 72
             c.cyclestart_str = cyclestart_str
             c.sync_idx = sync_idx
