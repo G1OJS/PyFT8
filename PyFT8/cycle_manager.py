@@ -10,7 +10,7 @@ from PyFT8.time_utils import global_time_utils
 import os
 
 class Cycle_manager():
-    def __init__(self, sigspec, on_decode, run = True, on_occupancy = None, wav_input = None,
+    def __init__(self, sigspec, on_decode, on_occupancy = None, wav_input = None,
                  input_device_keywords = None, output_device_keywords = None,
                  freq_range = [200, 3100], verbose = False):
         self.spectrum = Spectrum(sigspec, 12000, freq_range[1], 4, 2)
@@ -25,13 +25,20 @@ class Cycle_manager():
         if(self.output_device_idx):
             from PyFT8.audio import AudioOut
             self.audio_out = AudioOut
-        self.audio_started = False
-        if(run):
-            threading.Thread(target=self.manage_cycle, daemon=True).start()
+        if(self.wav_input is None):
+            self.spectrum.audio_in.start_live(self.input_device_idx)
+            delay = self.spectrum.sigspec.cycle_seconds - global_time_utils.cycle_time()
+            global_time_utils.tlog(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)\n")
+            time.sleep(delay)
+        else:
+            global_time_utils.set_global_offset(time.time()+1)
+            threading.Thread(target=self.spectrum.audio_in.load_wav, args = (self.wav_input, self.spectrum.dt, ),  daemon=True).start()
+
+        threading.Thread(target=self.manage_cycle, daemon=True).start()
 
     def analyse_hoptimes(self):
         if(self.verbose):
-            if not any(self.spectrum.audio_in.hoptimes): return
+            if not len(self.spectrum.audio_in.hoptimes)>1: return
             diffs = np.ediff1d(self.spectrum.audio_in.hoptimes)
             m = 1000*np.mean(diffs)
             s = 1000*np.std(diffs)
@@ -39,18 +46,13 @@ class Cycle_manager():
             global_time_utils.tlog(f"[Cycle manager] Hop timings: mean = {m:.2f}ms, sd = {s:.2f}ms ({pc:5.1f}% symbol)")
 
     def manage_cycle(self):
-        cycle_searched_1, cycle_searched_2 = False, False
-        cycle_time_prev = 0
+        dashes = "======================================================"
         candidates = []
         block2_cands = []
         duplicate_filter = set()
-        if(self.wav_input is None):
-            tstart = 0
-            delay = self.spectrum.sigspec.cycle_seconds - cycle_time()
-            tlog(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)\n")
-        else:
-            global_time_utils.set_time_offset(time.time()+1)
-            threading.Thread(target=self.spectrum.audio_in.load_wav, args = (self.wav_input, self.spectrum.dt, ),  daemon=True).start()
+        rollover = global_time_utils.new_ticker(0)
+        search_1 = global_time_utils.new_ticker(5)
+        search_2 = global_time_utils.new_ticker(11)
 
         def summarise_cycle():
             if(self.verbose):
@@ -62,25 +64,15 @@ class Cycle_manager():
 
         while not self.spectrum.audio_in.wav_finished:
             time.sleep(0.001)
-            ct = global_time_utils.cycle_time() 
-            rollover = ct < cycle_time_prev 
-            cycle_time_prev = ct
 
-            if(rollover):
-                if(self.verbose):
-                    global_time_utils.tlog("======================================================")
-                    global_time_utils.tlog(f"[Cycle manager] rollover detected at {global_time_utils.cycle_time():.2f}", verbose = self.verbose)
-                cycle_searched_1, cycle_searched_2 = False, False
+            if(global_time_utils.check_ticker(rollover)):
+                global_time_utils.tlog(f"{dashes}\n[Cycle manager] rollover detected at {global_time_utils.cycle_time():.2f}", verbose = self.verbose)
                 self.check_for_tx()
                 self.spectrum.audio_in.main_ptr = 0
                 self.analyse_hoptimes()
                 self.spectrum.audio_in.hoptimes = []
-                if not self.audio_started and not self.wav_input:
-                    self.audio_started = True
-                    self.spectrum.audio_in.start_live(self.input_device_idx)
 
-            if (self.spectrum.audio_in.main_ptr > self.spectrum.h_search1 and not cycle_searched_1):
-                cycle_searched_1 = True
+            if (global_time_utils.check_ticker(search_1)):
                 summarise_cycle()
                 global_time_utils.tlog(f"[Cycle manager] start first search at hop { self.spectrum.audio_in.main_ptr}", verbose = self.verbose)
                 candidates = self.spectrum.search(self.f0_idxs, global_time_utils.cyclestart_str(time.time()), 0)
@@ -88,8 +80,7 @@ class Cycle_manager():
                 if(self.on_occupancy):
                     self.on_occupancy(self.spectrum.occupancy, self.spectrum.df)
                     
-            if (self.spectrum.audio_in.main_ptr > self.spectrum.h_search2 and not cycle_searched_2):
-                cycle_searched_2 = True
+            if (global_time_utils.check_ticker(search_2)):
                 global_time_utils.tlog(f"[Cycle manager] start second search at hop { self.spectrum.audio_in.main_ptr}", verbose = self.verbose)
                 block2_cands = self.spectrum.search(self.f0_idxs, global_time_utils.cyclestart_str(time.time()), 1)
 
