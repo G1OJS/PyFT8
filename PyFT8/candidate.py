@@ -15,9 +15,12 @@ class Candidate:
 
         self.demap_started, self.decode_completed = False, False
         self.ncheck, self.ncheck0 = 99, 99
+        self.llr = []
+        self.llr_sd = 0
+        self.sync = []
+        self.sync_idx = 0
         self.ldpc = LdpcDecoder()
         self.decode_dict = {'decoder': 'PyFT8', 'cs':'000000_000000', 'f':0, 'msg_tuple':('','',''), 'msg':'',
-                           'sync_idx': 0, 'llr_sd':0,
                            'decode_path': '',
                            'ncheck0': 99,
                            'snr': -30, 'dt': 0, 'td':0}
@@ -32,7 +35,7 @@ class Candidate:
 
     def demap(self, spectrum, target_params = (3.3, 3.7)):
         self.demap_started = True
-        hops = np.array([int(self.decode_dict['sync']['h0_idx']) + spectrum.hops_persymb * s for s in spectrum.sigspec.payload_symb_idxs])
+        hops = np.array([self.sync['h0_idx'] + spectrum.hops_persymb * s for s in spectrum.sigspec.payload_symb_idxs])
         self.dB = spectrum.audio_in.dB_main[np.ix_(hops, self.freq_idxs)]
         p = np.clip(self.dB - np.max(self.dB), -80, 0)
         llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
@@ -40,13 +43,12 @@ class Candidate:
         llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
         llr = np.column_stack((llra, llrb, llrc))
         llr = llr.ravel() / 10
-        llr_sd = int(0.5+100*np.std(llr))/100.0
-        llr = target_params[0] * llr / (1e-12 + llr_sd)
+        self.llr_sd = int(0.5+100*np.std(llr))/100.0
+        llr = target_params[0] * llr / (1e-12 + self.llr_sd)
         self.llr = np.clip(llr, -target_params[1], target_params[1])
-        self.decode_dict.update({'llr_sd':llr_sd})
           
     def decode(self):
-        if(float(self.decode_dict['llr_sd']) < params['MIN_LLR_SD']):
+        if(self.llr_sd < params['MIN_LLR_SD']):
             self._record_state("I", final = True)
             return
         self.ncheck = self.ldpc.calc_ncheck(self.llr)
@@ -68,7 +70,7 @@ class Candidate:
                     self._record_state("M", final = True)
                     self.decode_dict.update({'msg_tuple':msg_tuple, 'msg': ' '.join(msg_tuple)})
 
-        self.decode_dict.update({ 'snr': np.clip(int(np.max(self.dB) - np.min(self.dB) - 58), -24, 24),
+        self.decode_dict.update({ 'llr_sd':self.llr_sd, 'snr': np.clip(int(np.max(self.dB) - np.min(self.dB) - 58), -24, 24),
                                   'ncheck0': self.ncheck0,
                                   'td': f"{time.time() %60:4.1f}"})
 

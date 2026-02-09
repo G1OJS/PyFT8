@@ -94,14 +94,14 @@ class Cycle_manager():
             for c in candidates:
                 if ptr > c.last_payload_hop and not c.demap_started:
                     c.demap(self.spectrum)
-                if float(c.decode_dict['llr_sd']) > 0 and not c.decode_completed:
+                if c.llr_sd > 0 and not c.decode_completed:
                     new_to_decode.append(c)
                 if c.decode_dict['msg'] != '':
                     key = c.decode_dict['cs'] + " " + c.decode_dict['msg']
                     if key not in duplicate_filter:
                         duplicate_filter.add(key)
                         self.on_decode(c.decode_dict)
-            new_to_decode.sort(key=lambda c: float(c.decode_dict['llr_sd']), reverse=True)
+            new_to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
             for c in new_to_decode[:25]:
                 c.decode()
 

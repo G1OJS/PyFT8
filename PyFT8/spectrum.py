@@ -50,11 +50,11 @@ class Spectrum:
         for f0_idx in f0_idxs:
             fHz = int((f0_idx + bpt // 2) * self.df)
             dB = dB_main[:, f0_idx:f0_idx + self.fbins_per_signal]
-            sync = self.get_sync(f0_idx, dB, sync_idx)
             c = Candidate()
-            c.decode_dict.update({'cs':cyclestart_str, 'f0_idx':f0_idx, 'f':fHz, 'sync_idx': sync_idx, 'sync': sync})
+            c.sync = self.get_sync(f0_idx, dB, sync_idx)
+            c.decode_dict.update({'cs':cyclestart_str, 'f0_idx':f0_idx, 'f':fHz, 'sync_idx': sync_idx})
             c.freq_idxs = [f0_idx + bpt // 2 + bpt * t for t in range(self.sigspec.tones_persymb)]
-            c.last_payload_hop = sync['h0_idx'] + hps * 72
+            c.last_payload_hop = c.sync['h0_idx'] + hps * 72
             cands.append(c)
         return cands
 
