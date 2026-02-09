@@ -27,7 +27,6 @@ class AudioIn:
         self.nFreqs = int(fft_out_len * max_freq * 2 / self.sample_rate)
         self.fft_window = fft_window=np.hanning(self.fft_len)
         self.audio_buffer = np.zeros(self.fft_len, dtype=np.float32)
-        self.hoptimes = []
         self.hops_percycle = hops_percycle
         self.wav_finished = False
         self.dB_main = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)
@@ -36,7 +35,6 @@ class AudioIn:
     def do_fft(self):
         z = np.fft.rfft(self.audio_buffer * self.fft_window)
         p = z.real*z.real + z.imag*z.imag
-        self.hoptimes.append(time.time())
         self.dB_main[self.main_ptr] = 10*np.log10(p[:self.nFreqs]+1e-12)
         self.main_ptr = (self.main_ptr + 1) % self.hops_percycle
 

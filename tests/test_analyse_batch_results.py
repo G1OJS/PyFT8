@@ -15,7 +15,6 @@ for filename in os.listdir(folder):
         with open(filepath, 'r') as f:
             lines = f.readlines()
         if(idx != ""):
-            print(filename.split("_"))
             test_no = int(filename.split("_")[1])
             data_table[idx][test_no] = {'n_decodes':len(lines), 'decodes':lines}
 

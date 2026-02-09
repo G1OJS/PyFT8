@@ -22,7 +22,8 @@ def run(dataset, freq_range):
     while not cycle_manager.spectrum.audio_in.wav_finished:
         time.sleep(0.5)
     n_decodes = len(decodes)
-    print(f"{n_decodes} decodes")
+    n_unfinished = len(cycle_manager.unprocessed)
+    print(f"{n_decodes} decodes, {n_unfinished} unfinished cands")
     
     with open(dataset + output_stub, "w") as f:
         for r in results:
