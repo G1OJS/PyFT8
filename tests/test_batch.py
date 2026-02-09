@@ -9,6 +9,11 @@ import pickle
 
 global old_baseline
 
+def get_textfile_line_count(filepath):
+    with open(filepath, 'r') as f:
+        l = f.readlines()
+    return len(l)
+
 def run_offline(dataset, output_stub, freq_range):
     spectrum = Spectrum(FT8, 12000, 3100, 4, 2)
     spectrum.audio_in.load_wav(dataset+".wav")
@@ -51,10 +56,10 @@ def run(dataset, output_stub, freq_range):
     def on_decode(dd):
         decodes.append(dd)
         row = f"000000 {dd['snr']:3d} {dd['dt']:3.1f} {dd['f']:4d} ~ {dd['msg']:<23} {dd['sync_idx']} {dd['decode_path']}"
-      #  print(row)
+        print(row)
         results.append(row)
 
-    cycle_manager = Cycle_manager(FT8, on_decode, wav_input = dataset+".wav", verbose = False)
+    cycle_manager = Cycle_manager(FT8, on_decode, wav_input = dataset+".wav", verbose = True)
     t0 = time.time()
 
     while not cycle_manager.spectrum.audio_in.wav_finished:
@@ -71,6 +76,8 @@ def run_batch(test_idxs, offline = False):
     global old_baseline
     baseline, old_baseline = [], [0] * len(test_idxs)
     n_decodes = 0
+    n_decodes_wsjtx = 0
+    n_decodes_ft8_lib = 0
     n_cycles = 0
     decoding_time = 0
     import os
@@ -88,6 +95,8 @@ def run_batch(test_idxs, offline = False):
             print(f"\n============================\nRunning cycle_manager with test_{n:02d}")
             nd, dt = run(f"{folder}/test_{n:02d}", '_cyclemgr_PyFT8.txt',  [100,3100])
         baseline.append(nd)
+        n_decodes_wsjtx += get_textfile_line_count(f"{folder}/test_{n:02d}_wsjtx_2.7.0_NORM.txt")
+        n_decodes_ft8_lib += get_textfile_line_count(f"{folder}/test_{n:02d}_ft8_lib.txt")
         
         print(f"{nd} decodes ({nd - old_baseline[n_cycles]:+2d})")
         n_decodes += nd
@@ -95,10 +104,11 @@ def run_batch(test_idxs, offline = False):
         n_cycles += 1
         print(f"Avg decodes per cycle: {n_decodes / n_cycles : 4.1f}")
         print(f"Avg time per cycle: {decoding_time / n_cycles : 4.1f}")
+        print(f"Avg percent wsjtx, ft8_lib: {n_decodes / n_decodes_wsjtx : 4.1%}, {n_decodes / n_decodes_ft8_lib : 4.1%}")
 
     with open("batch_test_baseline_new.pkl","wb") as f:
         pickle.dump(baseline,f)
 
-run_batch(range(1,39), offline = False)
+run_batch(range(1,2), offline = False)
 
 

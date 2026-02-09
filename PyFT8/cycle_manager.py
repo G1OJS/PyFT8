@@ -22,6 +22,7 @@ class Cycle_manager():
         self.on_decode = on_decode
         self.wav_input = wav_input
         self.on_occupancy = on_occupancy
+        global_time_utils.set_global_offset(0)
         if(self.output_device_idx):
             from PyFT8.audio import AudioOut
             self.audio_out = AudioOut
@@ -31,7 +32,8 @@ class Cycle_manager():
             global_time_utils.tlog(f"[Cycle manager] Waiting for cycle rollover ({delay:3.1f}s)\n")
             time.sleep(delay)
         else:
-            global_time_utils.set_global_offset(time.time()+1)
+            delay = self.spectrum.sigspec.cycle_seconds - global_time_utils.cycle_time()
+            global_time_utils.set_global_offset(delay + 1)
             threading.Thread(target=self.spectrum.audio_in.load_wav, args = (self.wav_input, self.spectrum.dt, ),  daemon=True).start()
 
         if(run):
@@ -66,9 +68,12 @@ class Cycle_manager():
         def summarise_cycle():
             
             if(self.verbose):
+                for c in candidates[:20]:
+                    print(c.decode_completed)
+                    print(c.decode_dict)
                 unprocessed = [c for c in candidates if not c.decode_completed]
-                with_message = [c for c in candidates if c.msg]
-                failed = [c for c in candidates if c.decode_completed and not c.msg]
+                with_message = [c for c in candidates if c.decode_dict['msg']]
+                failed = [c for c in candidates if c.decode_completed and not c.decode_dict['msg']]
                 ns, nf, nu = len(with_message), len(failed), len(unprocessed)
                 global_time_utils.tlog(f"[Cycle manager] Last cycle had {ns} decodes, {nf} failures and {nu} unprocessed (total = {ns+nf+nu})")   
 
@@ -79,7 +84,7 @@ class Cycle_manager():
             
             for i, c2 in enumerate(block2_cands):
                 c = candidates[i]
-                if(c.decode_completed and not c.msg):
+                if(c.decode_completed and not c.decode_dict['msg']==''):
                     if (self.spectrum.audio_in.main_ptr > c2.last_payload_hop and not c2.demap_started):
                         c2.demap(self.spectrum)
                         candidates.append(c2)
@@ -91,14 +96,14 @@ class Cycle_manager():
             for c in candidates:
                 if ptr > c.last_payload_hop and not c.demap_started:
                     c.demap(self.spectrum)
-                if c.llr_sd > 0 and not c.decode_completed:
+                if float(c.decode_dict['llr_sd']) > 0 and not c.decode_completed:
                     new_to_decode.append(c)
-                if c.msg:
-                    key = c.cyclestart_str + " " + " ".join(c.msg)
+                if c.decode_dict['msg'] != '':
+                    key = c.decode_dict['cs'] + " " + c.decode_dict['msg']
                     if key not in duplicate_filter:
                         duplicate_filter.add(key)
                         self.on_decode(c.decode_dict)
-            new_to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
+            new_to_decode.sort(key=lambda c: float(c.decode_dict['llr_sd']), reverse=True)
             for c in new_to_decode[:25]:
                 c.decode()
 
