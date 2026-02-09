@@ -75,7 +75,7 @@ def single_loopback(imposed_snr=20, amplitude = 0.5):
     t_gen = time.time()   
     
     z = np.zeros_like(cycle_manager.spectrum.audio_in.dB_main, dtype = np.complex64)
-    win = np.kaiser(fft_len, 20)
+    win = cycle_manager.spectrum.audio_in.fft_window
     for hop in range(hops_percycle):
         samp0 = hop*samps_perhop
         audio_for_fft = audio_data[samp0:samp0 + fft_len]

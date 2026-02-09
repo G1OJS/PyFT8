@@ -64,11 +64,12 @@ class Cycle_manager():
         search_2 = global_time_utils.new_ticker(11)
 
         def summarise_cycle():
-            self.unprocessed = [c for c in candidates if not c.decode_completed]
+            
             if(self.verbose):
+                unprocessed = [c for c in candidates if not c.decode_completed]
                 with_message = [c for c in candidates if c.msg]
                 failed = [c for c in candidates if c.decode_completed and not c.msg]
-                ns, nf, nu = len(with_message), len(failed), len(self.unprocessed)
+                ns, nf, nu = len(with_message), len(failed), len(unprocessed)
                 global_time_utils.tlog(f"[Cycle manager] Last cycle had {ns} decodes, {nf} failures and {nu} unprocessed (total = {ns+nf+nu})")   
 
         self.spectrum.audio_in.main_ptr = 0
