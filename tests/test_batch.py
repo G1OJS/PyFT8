@@ -109,6 +109,6 @@ def run_batch(test_idxs, offline = False):
     with open("batch_test_baseline_new.pkl","wb") as f:
         pickle.dump(baseline,f)
 
-run_batch(range(1,4), offline = False)
+run_batch(range(1,39), offline = False)
 
 
