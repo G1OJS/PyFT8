@@ -2,7 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-pattern = '_tmp_pyft8'
+pattern = '_cyclemgr_'
 data_table = {'P':{},'L':{},'W':{}}
 folder = r"C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\data\ft8_lib\20m_busy"
 for filename in os.listdir(folder):
@@ -14,9 +14,10 @@ for filename in os.listdir(folder):
         if('wsjt' in filename): idx = "W"
         with open(filepath, 'r') as f:
             lines = f.readlines()
-        test_no = int(filename.split("_")[1])
         if(idx != ""):
-                data_table[idx][test_no] = {'n_decodes':len(lines), 'decodes':lines}
+            print(filename.split("_"))
+            test_no = int(filename.split("_")[1])
+            data_table[idx][test_no] = {'n_decodes':len(lines), 'decodes':lines}
 
 def plot_snrs():
     fig, ax = plt.subplots()
@@ -38,25 +39,6 @@ def plot_snrs():
     ax.axline((-30,-30),(30,30), linewidth=4, color='r')
     plt.show()
 
-def plot_timings():
-    fig, ax = plt.subplots()
-    decoders = [d for d in data_table]
-    tests = [t for t in data_table['P']]
-    
-    wt0, pt0 = [], []
-    for t in tests:
-        py_decodes = data_table['P'][t]['decodes']
-        ws_decodes = data_table['W'][t]['decodes']
-        for w in ws_decodes:
-            m = [p for p in py_decodes if p.split()[5:] == w.split()[5:]]
-            if(len(m)==1):
-                wt0.append(float(w.split()[2]))
-                pt0.append(float(m[0].split()[2]))
-    
-    ax.scatter(wt0, pt0)
-    ax.set_xlabel("WSJT-X dt")
-    ax.axline((-1,-1),(3,3), linewidth=2, color='r')
-    plt.show()
     
 def plot_freqs():
     fig, ax = plt.subplots()
@@ -104,5 +86,4 @@ def plot_decode_counts():
 
 #plot_freqs()
 #plot_snrs()
-plot_timings()
 plot_decode_counts()   

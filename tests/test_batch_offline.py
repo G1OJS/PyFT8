@@ -30,8 +30,8 @@ def run(dataset, freq_range):
         dd = c.decode_dict
         if(dd['msg'] and not dd['msg'] in msgs):
             msgs.append(dd['msg'])
-            row = f"000000 {dd['snr']:3d} {dd['dt']:3.1f} {dd['f']:4d} ~ {dd['msg']}"
-            print(f"{time.time()-t0:5.2f} {dd['sync_score']:4.1f} {dd['llr_sd']:4.1f} {dd['ncheck0']:2d} {row:<45} {dd['sync_idx']:1d} {dd['h0_idx']:2d} {dd['decode_path']}")
+            row = f"000000 {dd['snr']:3d} {dd['dt']:3.1f} {dd['f']:4d} ~ {dd['msg']:<23} {dd['sync_idx']} {dd['decode_path']}"
+            print(row)
             results.append(row)
             n_decodes +=1
             

@@ -6,19 +6,14 @@ from PyFT8.time_utils import global_time_utils
 import time
 
 
-def tab_print(dd):
-    row = f"{dd['decoder']}, {dd['cs']} {dd['f']:4d} {dd['snr']:+04d} {dd['dt']:4.1f} {dd['td']:<4} {dd['msg']:<23} "
-    global_time_utils.tlog(f"{row}")    
-
-
 def run(dataset, freq_range):
     decodes = []
     results = []
     
     def on_decode(dd):
-        tab_print(dd)
         decodes.append(dd)
-        row = f"000000 {dd['snr']:3d} {dd['dt']:3.1f} {dd['f']:4d} ~ {dd['msg']}"
+        row = f"000000 {dd['snr']:3d} {dd['dt']:3.1f} {dd['f']:4d} ~ {dd['msg']:<23} {dd['sync_idx']} {dd['decode_path']}"
+        print(row)
         results.append(row)
 
     cycle_manager = Cycle_manager(FT8, on_decode, wav_input = dataset+".wav", verbose = True)
@@ -45,8 +40,8 @@ def run_batch():
         n_cycles += 1   
         print(f"Avg decodes per cycle: {n_decodes / n_cycles : 4.1f}")
 
+
 output_stub = '_cyclemgr_PyFT8.txt'
-input_file = r"C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\data\ft8_lib\20m_busy\test_01.wav"
 
 run_batch()
 

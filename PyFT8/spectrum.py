@@ -73,4 +73,4 @@ class Spectrum:
             cands.append(c)
         return cands
 
-            
+
