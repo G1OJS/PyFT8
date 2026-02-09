@@ -67,8 +67,8 @@ class Cycle_manager():
             
             if(self.verbose):
                 unprocessed = [c for c in candidates if not c.decode_completed]
-                with_message = [c for c in candidates if c.decode_dict['msg']]
-                failed = [c for c in candidates if c.decode_completed and not c.decode_dict['msg']]
+                with_message = [c for c in candidates if c.msg]
+                failed = [c for c in candidates if c.decode_completed and not c.msg]
                 ns, nf, nu = len(with_message), len(failed), len(unprocessed)
                 global_time_utils.tlog(f"[Cycle manager] Last cycle had {ns} decodes, {nf} failures and {nu} unprocessed (total = {ns+nf+nu})")   
 
@@ -79,7 +79,7 @@ class Cycle_manager():
             
             for i, c2 in enumerate(block2_cands):
                 c = candidates[i]
-                if(c.decode_completed and not c.decode_dict['msg']==''):
+                if(c.decode_completed and not c.msg):
                     if (self.spectrum.audio_in.main_ptr > c2.last_payload_hop and not c2.demap_started):
                         c2.demap(self.spectrum)
                         candidates.append(c2)
@@ -93,8 +93,8 @@ class Cycle_manager():
                     c.demap(self.spectrum)
                 if c.llr_sd > 0 and not c.decode_completed:
                     new_to_decode.append(c)
-                if c.decode_dict['msg'] != '':
-                    key = c.decode_dict['cs'] + " " + c.decode_dict['msg']
+                if c.msg:
+                    key = c.decode_dict['cs'] + " " + c.msg
                     if key not in duplicate_filter:
                         duplicate_filter.add(key)
                         self.on_decode(c.decode_dict)

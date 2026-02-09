@@ -19,6 +19,7 @@ class Candidate:
         self.llr_sd = 0
         self.sync = []
         self.sync_idx = 0
+        self.msg = ''
         self.ldpc = LdpcDecoder()
         self.decode_dict = {'decoder': 'PyFT8', 'cs':'000000_000000', 'f':0, 'msg_tuple':('','',''), 'msg':'',
                            'decode_path': '',
@@ -67,8 +68,9 @@ class Candidate:
             if(any(codeword_bits[:77])):
                 if check_crc_codeword_list(codeword_bits):
                     msg_tuple = FT8_unpack(codeword_bits[:77])
+                    self.msg = ' '.join(msg_tuple)
                     self._record_state("M", final = True)
-                    self.decode_dict.update({'msg_tuple':msg_tuple, 'msg': ' '.join(msg_tuple)})
+                    self.decode_dict.update({'msg_tuple':msg_tuple, 'msg': self.msg})
 
         self.decode_dict.update({ 'llr_sd':self.llr_sd, 'snr': np.clip(int(np.max(self.dB) - np.min(self.dB) - 58), -24, 24),
                                   'ncheck0': self.ncheck0,
