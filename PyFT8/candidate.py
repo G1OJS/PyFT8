@@ -17,18 +17,18 @@ class Candidate:
         self.ncheck0, self.ncheck = 99, 99
         self.llr_sd = 0
         self.sync_idx = 0
+        self.fHz = 0
+        self.decode_path = ''
+        self.decode_dict = False
+        self.cyclestart_str = ''
         self.msg = ''
+        self.msg_tuple = ('')
+        self.decode_dict = {'msg':''}
         self.ldpc = LdpcDecoder()
-        self.decode_dict = {'decoder': 'PyFT8', 'cs':'000000_000000', 'f':0, 'msg_tuple':('','',''), 'msg':'',
-                           'decode_path': '',
-                           'ncheck0': 99,
-                           'snr': -30, 'dt': 0, 'td':0}
 
     def _record_state(self, actor_code, final = False):
         finalcode = "#" if final else ""
-        decode_path = self.decode_dict['decode_path']
-        decode_path = self.decode_dict['decode_path'] + f"{actor_code}{self.ncheck:02d}{finalcode}"
-        self.decode_dict.update({'decode_path':decode_path})
+        self.decode_path = self.decode_path + f"{actor_code}{self.ncheck:02d}{finalcode}"
         if(final):
             self.decode_completed = True
 
@@ -71,9 +71,17 @@ class Candidate:
 
         self._record_state("M" if self.msg else "_", final = True)
 
-        self.decode_dict.update({ 'llr_sd':self.llr_sd, 'snr': np.clip(int(np.max(self.dB) - np.min(self.dB) - 58), -24, 24),
-                                  'ncheck0': self.ncheck0,
-                                  'td': f"{time.time() %60:4.1f}"})
-        
+        self.decode_dict = {'cs':self.cyclestart_str, 'f':self.fHz, 'msg_tuple':self.msg, 'msg':' '.join(self.msg),
+                           'llr_sd':self.llr_sd,
+                           'decoder': 'PyFT8',
+                           'decode_path':self.decode_path,
+                           'h0_idx': self.sync['h0_idx'],
+                           'ncheck0': self.ncheck0,
+                           'sync_idx': self.sync_idx, 
+                           'sync_score': self.sync['score'],
+                           'snr': np.clip(int(np.max(self.dB) - np.min(self.dB) - 58), -24, 24),
+                           'dt': int(0.5+100*self.sync['dt'])/100.0, 
+                           'td': f"{time.time() %60:4.1f}"
+                           }
         
 
