@@ -94,7 +94,7 @@ class Cycle_manager():
                 if c.llr_sd > 0 and not c.decode_completed:
                     new_to_decode.append(c)
                 if c.msg:
-                    key = c.decode_dict['cs'] + " " + c.msg
+                    key = c.decode_dict['cs'] + " " + ' '.join(c.msg)
                     if key not in duplicate_filter:
                         duplicate_filter.add(key)
                         self.on_decode(c.decode_dict)

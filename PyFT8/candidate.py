@@ -67,10 +67,9 @@ class Candidate:
             codeword_bits = (self.llr > 0).astype(int).tolist()
             if(any(codeword_bits[:77])):
                 if check_crc_codeword_list(codeword_bits):
-                    msg_tuple = FT8_unpack(codeword_bits[:77])
-                    self.msg = ' '.join(msg_tuple)
+                    self.msg = FT8_unpack(codeword_bits[:77])
                     self._record_state("M", final = True)
-                    self.decode_dict.update({'msg_tuple':msg_tuple, 'msg': self.msg})
+                    self.decode_dict.update({'msg_tuple':self.msg 'msg': ' '.join(self.msg)})
 
         self.decode_dict.update({ 'llr_sd':self.llr_sd, 'snr': np.clip(int(np.max(self.dB) - np.min(self.dB) - 58), -24, 24),
                                   'ncheck0': self.ncheck0,
