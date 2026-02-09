@@ -2,7 +2,7 @@ import threading
 import time
 from PyFT8.cycle_manager import Cycle_manager
 from PyFT8.sigspecs import FT8
-from PyFT8.time_utils import tlog
+from PyFT8.time_utils import global_time_utils
 import pickle
 
 class Wsjtx_all_tailer:
@@ -45,7 +45,7 @@ def analyse(decodes, cyc):
 
 def tab_print(dd):
     row = f"{dd['decoder']}, {dd['cs']} {dd['f']:4d} {dd['snr']:+04d} {dd['dt']:4.1f} {dd['td']:<4} {dd['msg']:<23} "
-    tlog(f"{row}")    
+    global_time_utils.tlog(f"{row}")    
 
 def run_live_test():
     from collections import Counter
@@ -55,10 +55,10 @@ def run_live_test():
     started = False
 
     def on_decode(dd):
-        if(started): tab_print(dd)
+        #if(started): tab_print(dd)
         decodes.append(dd)
 
-    cycle_manager = Cycle_manager(FT8, on_decode, input_device_keywords = ['Microphone', 'CODEC'], verbose = False)
+    cycle_manager = Cycle_manager(FT8, on_decode, input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
     wsjtx_all_tailer = Wsjtx_all_tailer(on_decode, silent = True)
     wait = 4 + 15 - time.time()%15
     time.sleep(wait)

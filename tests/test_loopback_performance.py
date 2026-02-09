@@ -74,7 +74,7 @@ def single_loopback(imposed_snr=20, amplitude = 0.5):
     audio_data = create_ft8_wave(symbols_framed, f_base = f_base, amplitude = amplitude, added_noise = -imposed_snr)
     t_gen = time.time()   
     
-    z = np.zeros_like(cycle_manager.spectrum.audio_in.pgrid_main, dtype = np.complex64)
+    z = np.zeros_like(cycle_manager.spectrum.audio_in.dB_main, dtype = np.complex64)
     win = np.kaiser(fft_len, 20)
     for hop in range(hops_percycle):
         samp0 = hop*samps_perhop
@@ -82,7 +82,7 @@ def single_loopback(imposed_snr=20, amplitude = 0.5):
         if(len(audio_for_fft) == fft_len):
             audio_for_fft = audio_for_fft * win
             z[hop,:nFreqs] = np.fft.rfft(audio_for_fft)[:nFreqs]
-    cycle_manager.spectrum.audio_in.pgrid_main = 10*np.log10(z.real*z.real + z.imag*z.imag + 1e-12)
+    cycle_manager.spectrum.audio_in.dB_main = 10*np.log10(z.real*z.real + z.imag*z.imag + 1e-12)
 
     t_spec = time.time()
 
@@ -223,6 +223,6 @@ def plot_results(run_params = "Default"):
  
 
 run_params = "default"
-test_vs_imposed_snr(run_params, ntrials = 2000)
+test_vs_imposed_snr(run_params, ntrials = 200)
 plot_results(run_params)
 
