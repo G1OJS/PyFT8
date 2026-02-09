@@ -67,10 +67,9 @@ class Candidate:
             if(any(codeword_bits[:77])):
                 if check_crc_codeword_list(codeword_bits):
                     self.msg = FT8_unpack(codeword_bits[:77])
-                    self.decode_dict.update({'msg_tuple':self.msg, 'msg': ' '.join(self.msg)})
 
         self._record_state("M" if self.msg else "_", final = True)
-
+        
         self.decode_dict = {'cs':self.cyclestart_str, 'f':self.fHz, 'msg_tuple':self.msg, 'msg':' '.join(self.msg),
                            'llr_sd':self.llr_sd,
                            'decoder': 'PyFT8',
