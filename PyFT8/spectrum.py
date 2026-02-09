@@ -48,7 +48,6 @@ class Spectrum:
         cands = []
         dB_main = self.audio_in.dB_main
         for f0_idx in f0_idxs:
-            fHz = int((f0_idx + bpt // 2) * self.df)
             dB = dB_main[:, f0_idx:f0_idx + self.fbins_per_signal]
             c = Candidate()
             c.f0_idx = f0_idx
@@ -60,16 +59,16 @@ class Spectrum:
             c.cyclestart_str = cyclestart_str
             c.sync_idx = sync_idx
             c.decode_dict = {'cs':c.cyclestart_str, 'f':c.fHz, 'msg_tuple':(''), 'msg':'',
-               'llr_sd':0, 'decode_path':'',
-               'h0_idx': c.sync['h0_idx'],
-               'f0_idx': c.f0_idx,
-               'ncheck': 99,
-               'ncheck0': 99,
-               'sync_idx': 0, 
-               'sync_score': c.sync['score'],
-               'snr': -30,
-               'dt': int(0.5+100*c.sync['dt'])/100.0, 
-               'td': 0}
+                             'llr_sd':0, 'decode_path':'',
+                             'h0_idx': c.sync['h0_idx'],
+                             'f0_idx': c.f0_idx,
+                             'ncheck': 99,
+                             'ncheck0': 99,
+                             'sync_idx': 0, 
+                             'sync_score': c.sync['score'],
+                             'snr': -30,
+                             'dt': int(0.5+100*c.sync['dt'])/100.0, 
+                             'td': 0}
 
             
             cands.append(c)
