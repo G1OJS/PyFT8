@@ -56,10 +56,9 @@ def run(dataset, output_stub, freq_range):
     def on_decode(dd):
         decodes.append(dd)
         row = f"000000 {dd['snr']:3d} {dd['dt']:3.1f} {dd['f']:4d} ~ {dd['msg']:<23} {dd['sync_idx']} {dd['decode_path']}"
-        print(row)
         results.append(row)
 
-    cycle_manager = Cycle_manager(FT8, on_decode, wav_input = dataset+".wav", verbose = True)
+    cycle_manager = Cycle_manager(FT8, on_decode, wav_input = dataset+".wav", verbose = False)
     t0 = time.time()
 
     while not cycle_manager.spectrum.audio_in.wav_finished:
