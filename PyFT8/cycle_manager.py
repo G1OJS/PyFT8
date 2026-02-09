@@ -98,10 +98,9 @@ class Cycle_manager():
                 if(c.decode_completed and not c.msg):
                     if (self.spectrum.audio_in.main_ptr > c2.last_payload_hop and not c2.demap_started):
                         c2.demap(self.spectrum)
-                        if(c2.llr_sd > c.llr_sd):
-                            candidates.append(c2)
-                            candidates.remove(c)
-                            c = None
+                        candidates.append(c2)
+                        candidates.remove(c)
+                        c = None
                 
             for c in candidates:
                 if (self.spectrum.audio_in.main_ptr > c.last_payload_hop and not c.demap_started):
