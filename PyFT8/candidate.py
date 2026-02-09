@@ -6,7 +6,7 @@ from PyFT8.FT8_crc import check_crc_codeword_list
 from PyFT8.ldpc import LdpcDecoder
 
 params = {
-'MIN_LLR_SD': 0.5,           # global minimum llr_sd
+'MIN_LLR_SD': 0.65,           # global minimum llr_sd
 'LDPC_CONTROL': (45, 12),         # max ncheck0, max iterations         
 }
 
