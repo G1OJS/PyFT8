@@ -22,7 +22,6 @@ class Cycle_manager():
         self.on_decode = on_decode
         self.wav_input = wav_input
         self.on_occupancy = on_occupancy
-        global_time_utils.set_global_offset(0)
         if(self.output_device_idx):
             from PyFT8.audio import AudioOut
             self.audio_out = AudioOut
