@@ -67,7 +67,7 @@ class Cycle_manager():
             unfinished = [c for c in candidates if not c.decode_completed]
             nu = len(unfinished)
             if(self.on_finished):
-                self.on_finished({"n_unfinished":nu})
+                self.on_finished({"n_unfinished":nu, "spec_df":self.spectrum.df})
             if(self.verbose):
                 with_message = [c for c in candidates if c.msg]
                 failed = [c for c in candidates if c.decode_completed and not c.msg]
