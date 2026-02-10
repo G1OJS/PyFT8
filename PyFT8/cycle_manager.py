@@ -61,8 +61,7 @@ class Cycle_manager():
         block2_cands = []
         duplicate_filter = set()
         rollover = global_time_utils.new_ticker(0)
-        search_1 = global_time_utils.new_ticker(5)
-        search_2 = global_time_utils.new_ticker(11)
+        search = global_time_utils.new_ticker(11)
 
         def summarise_cycle():
             unfinished = [c for c in candidates if not c.decode_completed]
@@ -79,18 +78,6 @@ class Cycle_manager():
         main_ptr_prev = 0
         while not self.spectrum.audio_in.wav_finished:
             time.sleep(0.001)
-            
-            for i, c2 in enumerate(block2_cands):
-                c = candidates[i]
-                if(c.decode_completed and not c.msg):
-                  #  if (int(c.decode_dict['sync_idx']) == 0 and self.spectrum.audio_in.main_ptr > c2.last_payload_hop and not c2.demap_started):
-                  # the if below allows 2 or more goes at resync - unclear why it adds extra decodes.
-                    if (self.spectrum.audio_in.main_ptr > c2.last_payload_hop and not c2.demap_started):
-                        c2.decode_path = c.decode_path+f"R{c.sync['h0_idx']}->{c2.sync['h0_idx']}"
-                        c2.demap(self.spectrum)
-                        candidates.append(c2)
-                        candidates.remove(c)
-                        c = None
                 
             ptr = self.spectrum.audio_in.main_ptr
             new_to_decode = []
@@ -108,21 +95,19 @@ class Cycle_manager():
             for c in new_to_decode[:35]:
                 c.decode()
 
-            if(self.spectrum.audio_in.main_ptr != main_ptr_prev):
-                main_ptr_prev = self.spectrum.audio_in.main_ptr
+            if(ptr != main_ptr_prev):
+                main_ptr_prev = ptr
 
                 if(global_time_utils.check_ticker(rollover)):
                     global_time_utils.tlog(f"{dashes}\n[Cycle manager] rollover detected at {global_time_utils.cycle_time():.2f}", verbose = self.verbose)
                     self.check_for_tx()
                     self.spectrum.audio_in.main_ptr = 0
-                if (global_time_utils.check_ticker(search_1)):
+                if (global_time_utils.check_ticker(search)):
                     summarise_cycle()
-                    global_time_utils.tlog(f"[Cycle manager] start first search at hop { self.spectrum.audio_in.main_ptr}", verbose = self.verbose)
-                    candidates = self.spectrum.search(self.f0_idxs, global_time_utils.cyclestart_str(time.time()), 0)
+                    global_time_utils.tlog(f"[Cycle manager] start search at hop { self.spectrum.audio_in.main_ptr}", verbose = self.verbose)
+                    candidates = self.spectrum.search(self.f0_idxs, global_time_utils.cyclestart_str(time.time()))
                     global_time_utils.tlog(f"[Cycle manager] New spectrum searched -> {len(candidates)} candidates", verbose = self.verbose) 
-                if (global_time_utils.check_ticker(search_2)):
-                    global_time_utils.tlog(f"[Cycle manager] start second search at hop { self.spectrum.audio_in.main_ptr}", verbose = self.verbose)
-                    block2_cands = self.spectrum.search(self.f0_idxs, global_time_utils.cyclestart_str(time.time()), 1)
+
 
         summarise_cycle() # for wav files that have just finished
 

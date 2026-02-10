@@ -43,14 +43,23 @@ class Spectrum:
                 best_sync = test_sync
         return best_sync
     
-    def search(self, f0_idxs, cyclestart_str, sync_idx):
+    def search(self, f0_idxs, cyclestart_str):
         cands = []
         dB_main = self.audio_in.dB_main
         for f0_idx in f0_idxs:
             dB = dB_main[:, f0_idx:f0_idx + self.fbins_per_signal]
+            dB = dB - np.max(dB)
             c = Candidate()
             c.f0_idx = f0_idx
-            c.sync = self.get_sync(f0_idx, dB, sync_idx)
+            """
+            c.sync = []
+            for i in [0,1]:
+                c.sync.append(self.get_sync(f0_idx, dB, i))
+            sync_idx = 0 if c.sync[0]['score'] > c.sync[1]['score'] else 1
+            c.sync = c.sync[sync_idx]
+            """
+            c.sync = self.get_sync(f0_idx, dB, 1)
+            sync_idx = 1
             hps, bpt = self.hops_persymb, self.fbins_pertone
             c.freq_idxs = [c.f0_idx + bpt // 2 + bpt * t for t in range(self.sigspec.tones_persymb)]
             c.last_payload_hop = c.sync['h0_idx'] + hps * 72

@@ -48,13 +48,12 @@ def run_offline(dataset, output_stub, freq_range):
 
 def run_cycle_manager(dataset, output_stub, freq_range):
     nu, n_decodes = 0, 0
+    decodes = []
     textfile_rows = []
     
     def on_decode(dd):
-        nonlocal n_decodes
-        n_decodes +=1
-        row = f"000000 {dd['snr']:3d} {dd['dt']:3.1f} {dd['f']:4d} ~ {dd['msg']:<23} {dd['sync_idx']} {dd['decode_path']}"
-        textfile_rows.append(row)
+        nonlocal decodes
+        decodes.append(dd)
 
     def on_finished(fd):
         nonlocal nu
@@ -64,6 +63,13 @@ def run_cycle_manager(dataset, output_stub, freq_range):
 
     while not cycle_manager.spectrum.audio_in.wav_finished:
         time.sleep(0.5)
+
+    for dd in decodes:
+        n_decodes +=1
+        row = f"000000 {dd['snr']:3d} {dd['dt']:3.1f} {dd['f']:4d} ~ {dd['msg']:<23} {dd['sync_idx']} {dd['decode_path']}"
+        print(row)
+        textfile_rows.append(row)
+
     
     with open(dataset + output_stub, "w") as f:
         for r in textfile_rows:
