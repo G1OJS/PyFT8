@@ -73,7 +73,7 @@ def run_cycle_manager(dataset, output_stub, freq_range):
 
 def run_batch(test_idxs, offline = False):
     global old_baseline
-    baseline, old_baseline = [], [{'n_decodes':0, 'n_unfinished':0}] * len(test_idxs)
+    baseline, old_baseline = [], [{'n_decodes':0, 'processing_time':0, 'n_unfinished':0}] * len(test_idxs)
     n_decodes = 0
     n_decodes_wsjtx = 0
     n_decodes_ft8_lib = 0
