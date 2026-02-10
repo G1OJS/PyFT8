@@ -16,18 +16,15 @@ I use this code for my own hobby-level reseearch into FT8 decoding and Python co
 ## Performance Compared with FT8_lib and WSJT-x
 The image below shows the number of decodes from PyFT8 and FT8_lib both as a percentage of WSJT-x V2.7.0 running in NORM mode, for a set of wav files copied from [FT8_lib's 20m_busy tests](https://github.com/kgoba/ft8_lib/tree/master/test/wav/20m_busy).
 
-<img width="640" height="480" alt="batch_tests_20m_busy" src="https://github.com/user-attachments/assets/77719d10-1853-40ca-9756-7bcb90298a3b" />
+<img width="640" height="480" alt="batch_tests_offline_20m_busy" src="https://github.com/user-attachments/assets/7d6a0b02-658c-4f74-a454-8c5767610d2f" />
 
-## Live performance compared to WSJT-x
-On a quiet band with good signals, PyFT-8 typically gets 70% or 80% and often 100% of WSJT-x decodes. On a crowded band (e.g. 20m plot below), PyFT8 performs less well. WSJT-x uses signal subtraction to improve performance with overlapping signals. PyFT8 can decode overlapping signals surprisingly well, but not as well as WSJT-x.
 
-### 40m midnight
+## Live performance compared to WSJT-x![Uploading batch_tests_offline_20m_busy.png…]()
 
-<img width="1000" height="600" alt="40m midnight" src="https://github.com/user-attachments/assets/a4e56105-f695-4822-827f-6d980cc828f8" />
+On a quiet band with good signals, PyFT-8 typically gets 70% or 80% and often 100% of WSJT-x decodes. On a crowded band (e.g. 20m plot below), PyFT8 performs less well. WSJT-x uses signal subtraction to improve performance with overlapping signals. PyFT8 can decode overlapping signals surprisingly well, but not as well as WSJT-x. Even so, this is a snapshot of performance on 20m at lunchtime in the UK winter:
 
-### 20m lunchtime
+<img width="425" height="462" alt="image" src="https://github.com/user-attachments/assets/d619f6ce-39f8-438c-8c87-3296aec61580" />
 
-<img width="1000" height="600" alt="20m lunch2" src="https://github.com/user-attachments/assets/a7923f3c-e751-4dce-a36c-181237c7a4ba" />
 
 
 ## Contents
