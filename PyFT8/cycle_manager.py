@@ -83,7 +83,10 @@ class Cycle_manager():
             for i, c2 in enumerate(block2_cands):
                 c = candidates[i]
                 if(c.decode_completed and not c.msg):
+                  #  if (int(c.decode_dict['sync_idx']) == 0 and self.spectrum.audio_in.main_ptr > c2.last_payload_hop and not c2.demap_started):
+                  # the if below allows 2 or more goes at resync - unclear why it adds extra decodes.
                     if (self.spectrum.audio_in.main_ptr > c2.last_payload_hop and not c2.demap_started):
+                        c2.decode_path = c.decode_path+f"R{c.sync['h0_idx']}->{c2.sync['h0_idx']}"
                         c2.demap(self.spectrum)
                         candidates.append(c2)
                         candidates.remove(c)
