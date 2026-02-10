@@ -16,24 +16,22 @@ class Candidate:
         self.demap_started, self.decode_completed = False, False
         self.ncheck0, self.ncheck = 99, 99
         self.llr_sd = 0
-        self.sync_idx = 0
-        self.fHz = 0
         self.decode_path = ''
         self.decode_dict = False
+        self.processing_time = 0
         self.cyclestart_str = ''
         self.msg = ''
-        self.msg_tuple = ('')
-        self.decode_dict = {'msg':''}
+        # decode_dict is set in spectrum search
         self.ldpc = LdpcDecoder()
 
     def _record_state(self, actor_code, final = False):
         finalcode = "#" if final else ""
         self.decode_path = self.decode_path + f"{actor_code}{self.ncheck:02d}{finalcode}"
         if(final):
-            self.decode_completed = True
+            self.decode_completed = time.time()
 
     def demap(self, spectrum, target_params = (3.3, 3.7)):
-        self.demap_started = True
+        self.demap_started = time.time()
         hops = np.array([self.sync['h0_idx'] + spectrum.hops_persymb * s for s in spectrum.sigspec.payload_symb_idxs])
         self.dB = spectrum.audio_in.dB_main[np.ix_(hops, self.freq_idxs)]
         p = np.clip(self.dB - np.max(self.dB), -80, 0)
@@ -48,6 +46,7 @@ class Candidate:
         self.decode_dict.update({'llr_sd':self.llr_sd})
           
     def decode(self):
+        decode_started = time.time()
         if(self.llr_sd < params['MIN_LLR_SD']):
             self._record_state("I", final = True)
             return
@@ -69,18 +68,15 @@ class Candidate:
                     self.msg = FT8_unpack(codeword_bits[:77])
 
         self._record_state("M" if self.msg else "_", final = True)
-        
-        self.decode_dict = {'cs':self.cyclestart_str, 'f':self.fHz, 'msg_tuple':self.msg, 'msg':' '.join(self.msg),
-                           'llr_sd':self.llr_sd,
-                           'decoder': 'PyFT8',
-                           'decode_path':self.decode_path,
-                           'h0_idx': self.sync['h0_idx'],
-                           'ncheck0': self.ncheck0,
-                           'sync_idx': self.sync_idx, 
-                           'sync_score': self.sync['score'],
-                           'snr': np.clip(int(np.max(self.dB) - np.min(self.dB) - 58), -24, 24),
-                           'dt': int(0.5+100*self.sync['dt'])/100.0, 
-                           'td': f"{time.time() %60:4.1f}"
-                           }
+
+        self.decode_dict.update( {
+                            'msg_tuple':self.msg,
+                            'msg':' '.join(self.msg),
+                            'llr_sd':self.llr_sd,
+                            'decode_path':self.decode_path,
+                            'ncheck0': self.ncheck0,
+                            'snr': np.clip(int(np.max(self.dB) - np.min(self.dB) - 58), -24, 24),
+                            'td': f"{time.time() %60:4.1f}"
+                           })
         
 

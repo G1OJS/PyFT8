@@ -53,20 +53,20 @@ class Spectrum:
             c.sync = self.get_sync(f0_idx, dB, sync_idx)
             hps, bpt = self.hops_persymb, self.fbins_pertone
             c.freq_idxs = [c.f0_idx + bpt // 2 + bpt * t for t in range(self.sigspec.tones_persymb)]
-            c.fHz = int((c.f0_idx + bpt // 2) * self.df)
             c.last_payload_hop = c.sync['h0_idx'] + hps * 72
             c.cyclestart_str = cyclestart_str
-            c.sync_idx = sync_idx
-            c.decode_dict = {'cs':c.cyclestart_str, 'f':c.fHz, 'msg_tuple':(''), 'msg':'',
-                             'llr_sd':0, 'decode_path':'',
-                             'h0_idx': c.sync['h0_idx'],
+            c.decode_dict = {'decoder': 'PyFT8',
+                             'cs':c.cyclestart_str,
+                             'f':int((c.f0_idx + bpt // 2) * self.df),
                              'f0_idx': c.f0_idx,
-                             'ncheck': 99,
-                             'ncheck0': 99,
-                             'sync_idx': 0, 
-                             'sync_score': c.sync['score'],
-                             'snr': -30,
+                             'sync_idx': sync_idx, 
+                             'sync': c.sync,
                              'dt': int(0.5+100*c.sync['dt'])/100.0, 
+                             'ncheck0': 99,
+                             'snr': -30,
+                             'llr_sd':0,
+                             'decode_path':'',
+                             'msg_tuple':(''), 'msg':'',
                              'td': 0}
 
             

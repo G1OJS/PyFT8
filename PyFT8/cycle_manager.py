@@ -10,7 +10,7 @@ from PyFT8.time_utils import global_time_utils
 import os
 
 class Cycle_manager():
-    def __init__(self, sigspec, on_decode, on_occupancy = None, wav_input = None, run = True,
+    def __init__(self, sigspec, on_decode, wav_input = None, run = True, on_finished = False, 
                  input_device_keywords = None, output_device_keywords = None,
                  freq_range = [200, 3100], verbose = False):
         self.spectrum = Spectrum(sigspec, 12000, freq_range[1], 4, 2)
@@ -20,8 +20,8 @@ class Cycle_manager():
         self.input_device_idx = find_device(input_device_keywords)
         self.output_device_idx = find_device(output_device_keywords)
         self.on_decode = on_decode
+        self.on_finished = on_finished
         self.wav_input = wav_input
-        self.on_occupancy = on_occupancy
         if(self.output_device_idx):
             from PyFT8.audio import AudioOut
             self.audio_out = AudioOut
@@ -65,13 +65,15 @@ class Cycle_manager():
         search_2 = global_time_utils.new_ticker(11)
 
         def summarise_cycle():
-            
+            unfinished = [c for c in candidates if not c.decode_completed]
+            nu = len(unfinished)
+            if(self.on_finished):
+                self.on_finished({"n_unfinished":nu})
             if(self.verbose):
-                unprocessed = [c for c in candidates if not c.decode_completed]
                 with_message = [c for c in candidates if c.msg]
                 failed = [c for c in candidates if c.decode_completed and not c.msg]
-                ns, nf, nu = len(with_message), len(failed), len(unprocessed)
-                global_time_utils.tlog(f"[Cycle manager] Last cycle had {ns} decodes, {nf} failures and {nu} unprocessed (total = {ns+nf+nu})")   
+                ns, nf = len(with_message), len(failed)
+                global_time_utils.tlog(f"[Cycle manager] Last cycle had {ns} decodes, {nf} failures and {nu} unfinished (total = {ns+nf+nu})")   
 
         self.spectrum.audio_in.main_ptr = 0
         main_ptr_prev = 0
@@ -115,12 +117,10 @@ class Cycle_manager():
                     global_time_utils.tlog(f"[Cycle manager] start first search at hop { self.spectrum.audio_in.main_ptr}", verbose = self.verbose)
                     candidates = self.spectrum.search(self.f0_idxs, global_time_utils.cyclestart_str(time.time()), 0)
                     global_time_utils.tlog(f"[Cycle manager] New spectrum searched -> {len(candidates)} candidates", verbose = self.verbose) 
-                    if(self.on_occupancy):
-                        self.on_occupancy(self.spectrum.occupancy, self.spectrum.df)
                 if (global_time_utils.check_ticker(search_2)):
                     global_time_utils.tlog(f"[Cycle manager] start second search at hop { self.spectrum.audio_in.main_ptr}", verbose = self.verbose)
                     block2_cands = self.spectrum.search(self.f0_idxs, global_time_utils.cyclestart_str(time.time()), 1)
 
-                    
+        summarise_cycle() # for wav files that have just finished
 
                          
