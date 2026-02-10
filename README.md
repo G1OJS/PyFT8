@@ -19,9 +19,9 @@ The image below shows the number of decodes from PyFT8 and FT8_lib both as a per
 <img width="640" height="480" alt="batch_tests_offline_20m_busy" src="https://github.com/user-attachments/assets/7d6a0b02-658c-4f74-a454-8c5767610d2f" />
 
 
-## Live performance compared to WSJT-x![Uploading batch_tests_offline_20m_busy.png…]()
+## Live performance compared to WSJT-x
 
-On a quiet band with good signals, PyFT-8 typically gets 70% or 80% and often 100% of WSJT-x decodes. On a crowded band (e.g. 20m plot below), PyFT8 performs less well. WSJT-x uses signal subtraction to improve performance with overlapping signals. PyFT8 can decode overlapping signals surprisingly well, but not as well as WSJT-x. Even so, this is a snapshot of performance on 20m at lunchtime in the UK winter:
+On a quiet band with good signals, PyFT-8 typically gets 70% or 80% and often 100% of WSJT-x decodes. On a crowded band (e.g. 20m plot below), PyFT8 performs less well. WSJT-x uses signal subtraction to improve performance with overlapping signals. PyFT8 can decode overlapping signals surprisingly well, but not as well as WSJT-x. Even so, this is a snapshot of performance on 20m at lunchtime in the UK winter (W = WSJTX, P = Pyft8, B = Both):
 
 <img width="425" height="462" alt="image" src="https://github.com/user-attachments/assets/d619f6ce-39f8-438c-8c87-3296aec61580" />
 
