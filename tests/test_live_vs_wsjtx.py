@@ -48,17 +48,19 @@ def tab_print(dd):
     global_time_utils.tlog(f"{row}")    
 
 def run_live_test():
-    from collections import Counter
+    from MiniPyFT8.MiniPyFT8_noLDPC import mini_cycle_manager
 
     decodes = []
     t_last_decode = 0
     started = False
 
     def on_decode(dd):
-        #if(started): tab_print(dd)
         decodes.append(dd)
 
-    cycle_manager = Cycle_manager(FT8, on_decode, input_device_keywords = ['Microphone', 'CODEC'], verbose = True)
+    cycle_manager = Cycle_manager(FT8, on_decode, input_device_keywords = ['Microphone', 'CODEC'], verbose = False)
+    #mini_cycle_manager(on_decode = on_decode)
+
+    
     wsjtx_all_tailer = Wsjtx_all_tailer(on_decode, silent = True)
     wait = 4 + 15 - time.time()%15
     time.sleep(wait)
@@ -67,6 +69,7 @@ def run_live_test():
         time.sleep(15)
         if(not started):
                 decoders = set([d['decoder'] for d in decodes])
+                print(f"Received decodes from {decoders}")
                 if(len(decoders) == 2):
                     decodes = []
                     started = True
