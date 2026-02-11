@@ -11,9 +11,9 @@ params = {
 
 #=========== Unpacking functions ========================================
 
-from string import ascii_uppercase as LTRS, digits as DIGS
-CALL_FIELDS = [ (' ' + DIGS + LTRS, 36*10*27**3),   (DIGS + LTRS, 10*27**3), (DIGS + ' ' * 17, 27**3),
-                (' ' + LTRS, 27**2),           (' ' + LTRS,   27), (' ' + LTRS,   1) ]
+from string import ascii_uppercase as ltrs, digits as digs
+CALL_FIELDS = [ (' ' + digs + ltrs, 36*10*27**3),   (digs + ltrs, 10*27**3), (digs + ' ' * 17, 27**3),
+                (' ' + ltrs, 27**2),           (' ' + ltrs,   27), (' ' + ltrs,   1) ]
 CALL_TOKENS = ("DE", "QRZ", "CQ")
 NCALL_TOKENS_PLUS_MAX22 = 2_063_592 + 4_194_304
 GRID_RR73s = ('', '', 'RRR', 'RR73', '73')
