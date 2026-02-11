@@ -123,6 +123,10 @@ class Spectrum:
         self.csync_flat =  csync.ravel()
         self.f0_idxs = range(int(freq_range[0]/self.df),
                     min(nFreqs - 8 * params['BPT'], int(freq_range[1]/self.df)))
+        payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
+        data_symb_idxs = list(range(7, 36)) + list(range(43, 45))
+        self.base_payload_hops = np.array([params['HPS'] * s for s in payload_symb_idxs])
+        self.base_data_hops = np.array([params['HPS'] * s for s in data_symb_idxs])
         
     def get_sync(self, f0_idx, dB, sync_idx):
         best_sync = {'h0_idx':0, 'score':0, 'dt': 0}
@@ -158,9 +162,7 @@ class Candidate:
         self.dB = dBgrid_main[:, f0_idx:f0_idx + 8 * bpt]
 
     def demap(self, spectrum, target_params = (3.3, 3.7)):
-        payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
-        data_symb_idxs = list(range(7, 36)) + list(range(43, 45))
-        hops = np.array([self.sync['h0_idx'] + params['HPS'] * s for s in payload_symb_idxs])
+        hops = self.sync['h0_idx'] + spectrum.base_data_hops
         p_dB = spectrum.audio_in.dBgrid_main[np.ix_(hops, self.freq_idxs)]
         p = np.clip(p_dB - np.max(p_dB), -80, 0)
         llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
@@ -192,7 +194,7 @@ def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3
     cands_list = []
     cands_list_1 = []
     duplicate_filter = set()
-    time.sleep(14.5 - time.time() %15)
+    time.sleep((14.5 - time.time()) %15)
     spectrum = Spectrum(input_device_keywords, freq_range)
     cycle_searched_1, cycle_searched_0  = False, False
     cycle_time_prev = 0
