@@ -32,7 +32,7 @@ class Candidate:
 
     def demap(self, spectrum, target_params = (3.3, 3.7)):
         self.demap_started = time.time()
-        hops = self.sync['h0_idx'] + spectrum.base_payload_hops
+        hops = np.clip(self.sync['h0_idx'] + spectrum.base_payload_hops, 0, spectrum.hops_percycle - 1)
         self.dB = spectrum.audio_in.dB_main[np.ix_(hops, self.freq_idxs)]
         p = np.clip(self.dB - np.max(self.dB), -80, 0)
         llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)

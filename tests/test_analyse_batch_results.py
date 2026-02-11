@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 pattern = '_cyclemgr_'
+#pattern = '_offline_'
+
 data_table = {'P':{},'L':{},'W':{}}
 folder = r"C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\data\ft8_lib\20m_busy"
 for filename in os.listdir(folder):

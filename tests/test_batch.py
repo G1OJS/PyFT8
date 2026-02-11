@@ -132,6 +132,7 @@ def run_batch(test_idxs, offline = False):
             f.write(f"{row}\n")
     
 
-run_batch(range(1,39), offline = True)
+#run_batch(range(1,39), offline = True)
+run_batch(range(1,39), offline = False)
 
 

@@ -20,8 +20,8 @@ class Spectrum:
         self.hop_idxs_Costas =  np.arange(self.sigspec.costas_len) * self.hops_persymb
         self.nhops_costas = self.sigspec.costas_len * self.hops_persymb
         self.h_search1 = int(4.6/self.dt)
-        self.h_search2 = int(10.4/self.dt)
-        self.hop_start_lattitude = int(3.48/self.dt)
+        self.h_search2 = int(11/self.dt)
+        self.search_hops_range = range(int((-1.8 + 0.7) / self.dt), int((3.8 + 0.7) / self.dt))
         self.occupancy = np.zeros(self.nFreqs)
         self.csync_flat = self.make_csync(sigspec)
         payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
@@ -32,15 +32,14 @@ class Spectrum:
     def make_csync(self, sigspec):
         csync = np.full((sigspec.costas_len, self.fbins_per_signal), -self.fbins_pertone / (self.fbins_per_signal - self.fbins_pertone), np.float32)
         for sym_idx, tone in enumerate(sigspec.costas):
-            fbins = range(tone* self.fbins_pertone, (tone+1) * self.fbins_pertone)
+            fbins = range(tone * self.fbins_pertone, (tone+1) * self.fbins_pertone)
             csync[sym_idx, fbins] = 1.0
             csync[sym_idx, sigspec.costas_len*self.fbins_pertone:] = 0
         return csync.ravel()
 
     def get_sync(self, f0_idx, pnorm, sync_idx):
         best_sync = {'h0_idx':0, 'score':0, 'dt': 0}
-        h0_min = 0 if sync_idx == 0 else -7*self.hops_persymb
-        for h0_idx in range(h0_min, self.hop_start_lattitude):
+        for h0_idx in self.search_hops_range:
             sync_score = float(np.dot(pnorm[h0_idx + self.hop_idxs_Costas + sync_idx * 36 * self.hops_persymb ,  :].ravel(), self.csync_flat))
             test_sync = {'h0_idx':h0_idx, 'score':sync_score, 'dt': h0_idx * self.dt - 0.7}
             if test_sync['score'] > best_sync['score']:
@@ -55,13 +54,6 @@ class Spectrum:
             dB = dB - np.max(dB)
             c = Candidate()
             c.f0_idx = f0_idx
-            """
-            c.sync = []
-            for i in [0,1]:
-                c.sync.append(self.get_sync(f0_idx, dB, i))
-            sync_idx = 0 if c.sync[0]['score'] > c.sync[1]['score'] else 1
-            c.sync = c.sync[sync_idx]
-            """
             c.sync = self.get_sync(f0_idx, dB, 1)
             sync_idx = 1
             hps, bpt = self.hops_persymb, self.fbins_pertone
@@ -81,8 +73,6 @@ class Spectrum:
                              'decode_path':'',
                              'msg_tuple':(''), 'msg':'',
                              'td': 0}
-
-            
             cands.append(c)
         return cands
 
