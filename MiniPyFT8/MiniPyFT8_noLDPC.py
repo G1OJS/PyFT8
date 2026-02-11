@@ -9,8 +9,59 @@ params = {
 'SAMP_RATE': 12000
 }
 
-offsets = np.geomspace(0.1,2,10)
-offsets = [0] + list(-offsets[::-1]) +  list(offsets)
+#=========== Unpacking functions ========================================
+
+from string import ascii_uppercase as LTRS, digits as DIGS
+CALL_FIELDS = [ (' ' + DIGS + LTRS, 36*10*27**3),   (DIGS + LTRS, 10*27**3), (DIGS + ' ' * 17, 27**3),
+                (' ' + LTRS, 27**2),           (' ' + LTRS,   27), (' ' + LTRS,   1) ]
+CALL_TOKENS = ("DE", "QRZ", "CQ")
+NCALL_TOKENS_PLUS_MAX22 = 2_063_592 + 4_194_304
+GRID_RR73s = ('', '', 'RRR', 'RR73', '73')
+FT8_MSG_FORMAT = (("i3", 3), ("grid", 16), ("callB",29), ("callA",29))
+
+def get_fields(bits, fmt):
+    out = {}
+    for name, n in fmt:
+        mask = (1 << n) - 1
+        out[name] = bits & mask
+        bits >>= n
+    return out
+
+def unpack(bits77):
+    fields = get_fields(bits77, FT8_MSG_FORMAT)
+    return (decode_call(fields["callA"]), decode_call(fields["callB"]), decode_grid(fields["grid"]))
+
+def decode_call(call_int):
+    call_int >>= 1
+    if call_int < 3:
+        return CALL_TOKENS[call_int]
+    call_int -= NCALL_TOKENS_PLUS_MAX22
+    if call_int == 0:
+        return '<...>'
+    chars = []
+    for alphabet, div in CALL_FIELDS:
+        idx, call_int = divmod(call_int, div)
+        chars.append(alphabet[idx])
+    call = ''.join(chars).strip()
+    portable = call_int & 1
+    return call + '/P' if portable else call
+
+def decode_grid(grid_int):
+    g15 = grid_int & 0x7FFF
+    if g15 < 32400:
+        a, nn = divmod(g15, 1800)
+        b, nn = divmod(nn, 100)
+        c, d = divmod(nn, 10)
+        return chr(65+a) + chr(65+b) + str(c) + str(d)
+    r = g15 - 32400
+    if r <= 4:
+        return GRID_RR73s[r]
+    snr = r - 35
+    ir = grid_int >> 15
+    prefix = 'R' if ir else ''
+    return prefix + f"{snr:+03d}"
+
+#============== CRC ===========================================================
 
 def check_crc(bits91_int):
     bits77_int = bits91_int >> 14
@@ -25,56 +76,7 @@ def check_crc(bits91_int):
         if(crc14_int == bits91_int & 0b11111111111111):
             return bits77_int
 
-from string import ascii_uppercase as LTRS, digits as DIGS
-CALL_FIELDS = [ (' ' + DIGS + LTRS, 36*10*27**3),   (DIGS + LTRS, 10*27**3), (DIGS + ' ' * 17, 27**3),
-                (' ' + LTRS, 27**2),           (' ' + LTRS,   27), (' ' + LTRS,   1) ]
-
-TOKENS = ("DE", "QRZ", "CQ")
-NTOKENS_PLUS_MAX22 = 2_063_592 + 4_194_304
-
-def decode_call(call_int):
-    call_int >>= 1
-    if call_int < 3:
-        return TOKENS[call_int]
-    call_int -= NTOKENS_PLUS_MAX22
-    if call_int == 0:
-        return '<...>'
-    chars = []
-    for alphabet, div in CALL_FIELDS:
-        idx, call_int = divmod(call_int, div)
-        chars.append(alphabet[idx])
-    call = ''.join(chars).strip()
-    portable = call_int & 1
-    return call + '/P' if portable else call
-
-def decode_grid(grid_int):
-    ir = grid_int >> 15
-    g15 = grid_int & 0b111111111111111
-    if g15 < 32400:
-        a, nn = divmod(g15,1800)
-        b, nn = divmod(nn,100)
-        c, d = divmod(nn,10)
-        return f"{chr(65+a)}{chr(65+b)}{c}{d}"
-    r = g15 - 32400
-    txt = ['','','RRR','RR73','73']
-    if 0 <= r <= 4: return txt[r]
-    snr = r-35
-    R = '' if (ir == 0) else 'R'
-    return f"{R}{snr:+03d}"
-
-FT8_MSG_FORMAT = (("i3", 3), ("grid", 16), ("callB",29), ("callA",29))
-
-def get_fields(bits, fmt):
-    out = {}
-    for name, n in fmt:
-        mask = (1 << n) - 1
-        out[name] = bits & mask
-        bits >>= n
-    return out
-
-def unpack(bits77):
-    fields = get_fields(bits77, FT8_MSG_FORMAT)
-    return (decode_call(fields["callA"]), decode_call(fields["callB"]), decode_grid(fields["grid"]))
+#============== AUDIO ========================================================
 
 def find_device(device_str_contains):
     pya = pyaudio.PyAudio()
@@ -114,6 +116,8 @@ class AudioIn:
         self.dBgrid_main[self.grid_main_ptr] = 10*np.log10(p[:self.nFreqs]+1e-12)
         self.grid_main_ptr = (self.grid_main_ptr + 1) % self.hops_percycle
         return (None, pyaudio.paContinue)
+
+# ============== SPECTRUM ==========================================================
 
 class Spectrum:
     def __init__(self, input_device_keywords, freq_range):
@@ -161,6 +165,8 @@ class Spectrum:
             cands.append(c)
         return cands
 
+# ================ CANDIDATE ==========================================================
+
 class Candidate:
     def __init__(self, dBgrid_main, f0_idx, df):
         self.decode_started, self.decode_completed = False, False
@@ -169,6 +175,8 @@ class Candidate:
         self.freq_idxs = [f0_idx + bpt // 2 + bpt * t for t in range(8)]
         self.fHz = int((f0_idx + bpt // 2) * df)
         self.dB = dBgrid_main[:, f0_idx:f0_idx + 8 * bpt]
+        offsets = np.geomspace(0.1,2,10)
+        self.offsets = [0] + list(-offsets[::-1]) +  list(offsets)
 
     def demap(self, spectrum, target_params = (3.3, 3.7)):
         hops = self.sync['h0_idx'] + spectrum.base_data_hops
@@ -186,7 +194,7 @@ class Candidate:
     def decode(self, spectrum):
         if self.llr_sd > params['MIN_LLR_SD']:
             llr = self.llr[:91]
-            for lev in offsets:
+            for lev in self.offsets:
                 bits91_int = 0
                 for bit in (llr > lev).astype(int).tolist():
                     bits91_int = (bits91_int << 1) | bit
@@ -196,6 +204,8 @@ class Candidate:
                     self.lev = lev
                     break
         self.decode_completed = True
+
+# ================== CYCLE MANAGER ======================================================
 
 def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3100], on_decode = None, silent = True):
     from PyFT8.time_utils import global_time_utils
@@ -256,6 +266,8 @@ def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3
                             on_decode(c.decode_dict)
                         if(not silent):
                             print(f"{time.time() %15:05.2f} {c.fHz:4d} {c.sync['dt']:+4.2f} {c.sync_idx} {c.lev:5.2f} {c.llr_sd:5.2f} {' '.join(c.msg)}")
+
+# =================== INVOCATION ===============================================
 
 def mini_cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3100], on_decode = None, silent = True):                            
     import threading
