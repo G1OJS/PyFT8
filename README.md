@@ -4,7 +4,7 @@ This repository contains Python code to decode and encode (all the way to audio)
 <img width="960" height="540" alt="Untitled presentation" src="https://github.com/user-attachments/assets/93ce8755-9d49-423c-9f35-d96eb9067740" />
 
 ## MiniPyFT8
-As well as the full PyFT8, which gets between ~70% and 100% of WSJT-x decodes (see 'Performance' below) and supports transmit as well as receive, I've also included a novelty/experimental 'MiniPyFT8_noLDPC'. This is a single-file, ~300 line, minimised Python decoder that decodes around 50% of WSJT-x decodes and might be suitable for porting into C++ for very small hardware decoders. Also, as this decoder doesn't have to wait to receive parity bits, it starts producing decodes around 8 seconds into the cycle compared with ~ 12.5 seconds for decoders using LDPC.
+As well as the full PyFT8, which gets between ~70% and 100% of WSJT-x decodes (see 'Performance' below) and supports transmit as well as receive, I've also included a novelty/experimental 'MiniPyFT8_noLDPC'. This is a single-file, ~250 line, minimised Python decoder that decodes around 50% of WSJT-x decodes and might be suitable for porting into C++ for very small hardware decoders. Also, as this decoder doesn't have to wait to receive parity bits, it starts producing decodes around 8 seconds into the cycle compared with ~ 12.5 seconds for decoders using LDPC.
 
 ## Motivation
 This started out as me thinking "How hard can it be, really?" after some frustration with Windows moving sound devices around and wanting to get a minimal decoder running that I can fully control. 
