@@ -28,15 +28,6 @@ On a quiet band with good signals, PyFT-8 typically gets 70% or 80% and often 10
 
 <img width="425" height="462" alt="image" src="https://github.com/user-attachments/assets/d619f6ce-39f8-438c-8c87-3296aec61580" />
 
-
-
-## Contents
-[being written]
-* [Overview of main code and decoding process](https://github.com/G1OJS/PyFT8/blob/main/docs/main_code.md)
-* [Testing and research code](https://github.com/G1OJS/PyFT8/blob/main/docs/testing_research.md)
-
-
-
 ## Installation
 This repository is usually a little ahead of the releases I send to PyPI, but you can pip install it from there and just use the Command Line Interface (which can also transmit individual messages) if you want to.
 
