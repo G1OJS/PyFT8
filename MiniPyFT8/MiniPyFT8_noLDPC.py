@@ -12,30 +12,22 @@ params = {
 offsets = np.geomspace(0.1,2,10)
 offsets = [0] + list(-offsets[::-1]) +  list(offsets)
 
-def check_crc(bits174):
-    bits = np.array(bits174[:91]).tolist()
-    bits91_int = 0
-    for b in bits:
-        bits91_int = (bits91_int << 1) | (b & 1)
+def check_crc(bits91_int):
     bits77_int = bits91_int >> 14
-    crc14_int = 0
-    for i in range(96):
-        inbit = ((bits77_int >> (76 - i)) & 1) if i < 77 else 0
-        bit14 = (crc14_int >> (14 - 1)) & 1
-        crc14_int = ((crc14_int << 1) & ((1 << 14) - 1)) | inbit
-        if bit14:
-            crc14_int ^= 0x2757
-    return crc14_int == bits91_int & 0b11111111111111
+    if(bits77_int > 0):
+        crc14_int = 0
+        for i in range(96):
+            inbit = ((bits77_int >> (76 - i)) & 1) if i < 77 else 0
+            bit14 = (crc14_int >> (14 - 1)) & 1
+            crc14_int = ((crc14_int << 1) & ((1 << 14) - 1)) | inbit
+            if bit14:
+                crc14_int ^= 0x2757
+        if(crc14_int == bits91_int & 0b11111111111111):
+            return bits77_int
 
-def FT8_unpack(bits):
-    i3 = 4*bits[74]+2*bits[75]+bits[76]
-    ir = int(bits[58])
-    call_a = unpack_ft8_c28(int(''.join(str(b) for b in bits[0:28]), 2), bits[28])
-    call_b = unpack_ft8_c28(int(''.join(str(b) for b in bits[29:57]), 2), bits[57])
-    grid_rpt = unpack_ft8_g15(int(''.join(str(b) for b in bits[59:74]), 2), ir)
-    return (call_a, call_b, grid_rpt)
-
-def unpack_ft8_c28(c28, p1):
+def unpack_ft8_c29(c29):
+    c28 = c29 >> 1
+    p1 = c29 & 1
     from string import ascii_uppercase as ltrs, digits as digs
     if c28<3:
         return ["DE", 'QRZ','CQ'][c28]
@@ -53,7 +45,9 @@ def unpack_ft8_c28(c28, p1):
         callsign = callsign + "/P"
     return callsign
 
-def unpack_ft8_g15(g15, ir):
+def unpack_ft8_g16(g16):
+    ir = g16 >> 15
+    g15 = g16 & 0b111111111111111
     if g15 < 32400:
         a, nn = divmod(g15,1800)
         b, nn = divmod(nn,100)
@@ -65,6 +59,13 @@ def unpack_ft8_g15(g15, ir):
     snr = r-35
     R = '' if (ir == 0) else 'R'
     return f"{R}{snr:+03d}"
+
+def unpack(bits77_int):
+    i3 = bits77_int & 0b111
+    grid_rpt = unpack_ft8_g16(bits77_int >> 3 & 0b1111111111111111)
+    call_b   = unpack_ft8_c29(bits77_int >> 19 & 0b11111111111111111111111111111)
+    call_a   = unpack_ft8_c29(bits77_int >> 48 & 0b11111111111111111111111111111)
+    return (call_a, call_b, grid_rpt)
 
 def find_device(device_str_contains):
     pya = pyaudio.PyAudio()
@@ -137,14 +138,9 @@ class Spectrum:
     def search(self, cyclestart_str, sync_idx):
         cands = []
         hps, bpt = params['HPS'], params['BPT']
-        dBgrid = self.audio_in.dBgrid_main
         for f0_idx in self.f0_idxs:
-            dB = dBgrid[:, f0_idx:f0_idx + 8 * params['BPT']]
-            c = Candidate()
-            c.f0_idx = f0_idx
-            c.sync = self.get_sync(f0_idx, dB, sync_idx)
-            c.freq_idxs = [c.f0_idx + bpt // 2 + bpt * t for t in range(8)]
-            c.fHz = int((c.f0_idx + bpt // 2) * self.df)
+            c = Candidate(self.audio_in.dBgrid_main, f0_idx, self.df)
+            c.sync = self.get_sync(f0_idx, c.dB, sync_idx)
             c.last_payload_hop = c.sync['h0_idx'] + hps * 72
             c.last_data_hop = c.sync['h0_idx'] + hps * 45
             c.cyclestart_str = cyclestart_str
@@ -153,10 +149,13 @@ class Spectrum:
         return cands
 
 class Candidate:
-    def __init__(self):
+    def __init__(self, dBgrid_main, f0_idx, df):
         self.decode_started, self.decode_completed = False, False
-        self.dt, self.td, self.fHz, self.snr, self.llr_sd = 0, 0, 0, -30, 0
-        self.msg = ''
+        self.msg, self.dt, self.td, self.fHz, self.snr, self.llr_sd, self.lev = '', 0, 0, 0, -30, 0, 0
+        bpt = params['BPT']
+        self.freq_idxs = [f0_idx + bpt // 2 + bpt * t for t in range(8)]
+        self.fHz = int((f0_idx + bpt // 2) * df)
+        self.dB = dBgrid_main[:, f0_idx:f0_idx + 8 * bpt]
 
     def demap(self, spectrum, target_params = (3.3, 3.7)):
         payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
@@ -173,18 +172,18 @@ class Candidate:
         llr = target_params[0] * llr / self.llr_sd
         self.llr = np.clip(llr, -target_params[1], target_params[1])
 
-
     def decode(self, spectrum):
         if self.llr_sd > params['MIN_LLR_SD']:
+            llr = self.llr[:91]
             for lev in offsets:
-                codeword_bits = (self.llr > lev).astype(int).tolist()
-                if(any(codeword_bits[:77])):
-                    if check_crc(codeword_bits):
-                        self.msg = FT8_unpack(codeword_bits[:77])
-                        self.dt = int(0.5+100*self.sync['dt'])/100.0
-                        self.lev = lev
-                        break
-                
+                bits91_int = 0
+                for bit in (llr > lev).astype(int).tolist():
+                    bits91_int = (bits91_int << 1) | bit
+                bits77_int = check_crc(bits91_int)
+                if(bits77_int):
+                    self.msg = unpack(bits77_int)
+                    self.lev = lev
+                    break
         self.decode_completed = True
 
 def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3100], on_decode = None, silent = True):
@@ -238,18 +237,10 @@ def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3
                     if(not c.dedupe_key in duplicate_filter):
                         duplicate_filter.add(c.dedupe_key)
                         c.decode_dict = {'decoder': 'PyFT8',
-                         'cs':global_time_utils.cyclestart_str(time.time()),
-                         'f':int((c.f0_idx + params['BPT'] // 2) * spectrum.df),
-                         'f0_idx': c.f0_idx,
-                         'sync_idx': c.sync_idx, 
-                         'sync': c.sync,
-                         'dt': int(0.5+100*c.sync['dt'])/100.0, 
-                         'ncheck0': 99,
-                         'snr': -30,
-                         'llr_sd':0,
-                         'decode_path':'',
-                         'msg_tuple':c.msg, 'msg':' '.join(c.msg),
-                         'td': 0}
+                             'cs':global_time_utils.cyclestart_str(time.time()), 'dt':c.sync['dt'], 'f':c.fHz,
+                             'sync_idx': c.sync_idx, 'sync': c.sync,
+                             'msg_tuple':c.msg, 'msg':' '.join(c.msg),
+                             'ncheck0': 99,'snr': -30,'llr_sd':0,'decode_path':'','td': 0}
                         if(on_decode):
                             on_decode(c.decode_dict)
                         if(not silent):
