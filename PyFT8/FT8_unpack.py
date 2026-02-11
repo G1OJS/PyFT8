@@ -20,6 +20,7 @@ def unpack(bits77):
     return (decode_call(fields["callA"]), decode_call(fields["callB"]), decode_grid(fields["grid"]))
 
 def decode_call(call_int):
+    portable = call_int & 1
     call_int >>= 1
     if call_int < 3:
         return CALL_TOKENS[call_int]
@@ -31,7 +32,6 @@ def decode_call(call_int):
         idx, call_int = divmod(call_int, div)
         chars.append(alphabet[idx])
     call = ''.join(chars).strip()
-    portable = call_int & 1
     return call + '/P' if portable else call
 
 def decode_grid(grid_int):

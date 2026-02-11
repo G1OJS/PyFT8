@@ -105,17 +105,12 @@ def encode_bits77(bits77_int):
     symbols = add_costas(syms)
     return symbols, bits174_int, bits91_int, bits14_int, bits83_int
 
-
-def int_to_bitsLE(n, width):
-    """Return [b(width-1), ..., b0], MSB-first."""
-    return [ (n >> (width - 1 - i)) & 1 for i in range(width) ]
-
 def loopback_test():
     msgs = [("G1OJS/P", "G1OJS/P", "IO90"),("WM3PEN","EA6VQ","-08"),("E67A/P","EA6VQ","-08"),("CQ","CT7ARQ/P","IN51")]
     for msg in msgs:
         symbols, bits77 = _pack_message(*msg)
-        from PyFT8.FT8_unpack import FT8_unpack
-        print(msg, FT8_unpack(int_to_bitsLE(bits77,77)))
+        from PyFT8.FT8_unpack import unpack
+        print(msg, unpack(bits77))
         print(''.join([str(s) for s in symbols]))
 
 #loopback_test()
