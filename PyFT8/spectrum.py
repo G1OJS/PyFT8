@@ -24,6 +24,10 @@ class Spectrum:
         self.hop_start_lattitude = int(3.48/self.dt)
         self.occupancy = np.zeros(self.nFreqs)
         self.csync_flat = self.make_csync(sigspec)
+        payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
+        data_symb_idxs = list(range(7, 36)) + list(range(43, 45))
+        self.base_payload_hops = np.array([hops_persymb * s for s in payload_symb_idxs])
+        self.base_data_hops = np.array([hops_persymb * s for s in data_symb_idxs])
 
     def make_csync(self, sigspec):
         csync = np.full((sigspec.costas_len, self.fbins_per_signal), -self.fbins_pertone / (self.fbins_per_signal - self.fbins_pertone), np.float32)

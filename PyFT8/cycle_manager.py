@@ -1,8 +1,6 @@
 import threading
 import numpy as np
 import time
-from PyFT8.FT8_unpack import FT8_unpack
-from PyFT8.FT8_crc import check_crc_codeword_list
 from PyFT8.candidate import Candidate
 from PyFT8.spectrum import Spectrum
 from PyFT8.audio import find_device

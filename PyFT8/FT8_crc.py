@@ -1,9 +1,18 @@
 
-import numpy as np
+def check_crc(bits91_int):
+    bits77_int = bits91_int >> 14
+    if(bits77_int > 0):
+        crc14_int = 0
+        for i in range(96):
+            inbit = ((bits77_int >> (76 - i)) & 1) if i < 77 else 0
+            bit14 = (crc14_int >> (14 - 1)) & 1
+            crc14_int = ((crc14_int << 1) & ((1 << 14) - 1)) | inbit
+            if bit14:
+                crc14_int ^= 0x2757
+        if(crc14_int == bits91_int & 0b11111111111111):
+            return bits77_int
 
-# put this in sigspecs.py and include as part of the FTx spec
-
-def crc14(bits77_int: int) -> int:
+def _crc14(bits77_int: int) -> int:
     # Generator polynomial (0x2757), width 14, init=0, refin=false, refout=false
     poly = 0x2757
     width = 14
@@ -22,28 +31,7 @@ def crc14(bits77_int: int) -> int:
 
 def append_crc(bits77_int):
     """Append 14-bit WSJT-X CRC to a 77-bit message, returning a 91-bit list."""
-    bits14_int = crc14(bits77_int)
+    bits14_int = _crc14(bits77_int)
     bits91_int = (bits77_int << 14) | bits14_int
     return bits91_int, bits14_int
 
-def check_crc_codeword_list(bits174):
-    lst = np.array(bits174[:91]).tolist()
-    bits91_int = bitsLE_to_int(lst)
-    return check_crc(bits91_int)
-
-def check_crc(bits91_int):
-    """Return True if the 91-bit message (77 data + 14 CRC) passes WSJT-X CRC-14."""
-    bits14_int = bits91_int & 0b11111111111111
-    bits77_int = bits91_int >> 14
-    return bits14_int == crc14(bits77_int)
-
-def int_to_bitsLE(n, width):
-    """Return [b(width-1), ..., b0], MSB-first."""
-    return [ (n >> (width - 1 - i)) & 1 for i in range(width) ]
-
-def bitsLE_to_int(bits):
-    """bits is MSB-first."""
-    n = 0
-    for b in bits:
-        n = (n << 1) | (b & 1)
-    return n

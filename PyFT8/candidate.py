@@ -1,8 +1,8 @@
 
 import numpy as np
 import time
-from PyFT8.FT8_unpack import FT8_unpack
-from PyFT8.FT8_crc import check_crc_codeword_list
+from PyFT8.FT8_unpack import unpack
+from PyFT8.FT8_crc import check_crc
 from PyFT8.ldpc import LdpcDecoder
 
 params = {
@@ -32,7 +32,7 @@ class Candidate:
 
     def demap(self, spectrum, target_params = (3.3, 3.7)):
         self.demap_started = time.time()
-        hops = np.array([self.sync['h0_idx'] + spectrum.hops_persymb * s for s in spectrum.sigspec.payload_symb_idxs])
+        hops = self.sync['h0_idx'] + spectrum.base_payload_hops
         self.dB = spectrum.audio_in.dB_main[np.ix_(hops, self.freq_idxs)]
         p = np.clip(self.dB - np.max(self.dB), -80, 0)
         llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
@@ -62,10 +62,12 @@ class Candidate:
                     if(self.ncheck == 0):
                         break                    
         if(self.ncheck == 0):
-            codeword_bits = (self.llr > 0).astype(int).tolist()
-            if(any(codeword_bits[:77])):
-                if check_crc_codeword_list(codeword_bits):
-                    self.msg = FT8_unpack(codeword_bits[:77])
+            bits91_int = 0
+            for bit in (self.llr[:91] > 0).astype(int).tolist():
+                bits91_int = (bits91_int << 1) | bit
+            bits77_int = check_crc(bits91_int)
+            if(bits77_int):
+                self.msg = unpack(bits77_int)
 
         self._record_state("M" if self.msg else "_", final = True)
 

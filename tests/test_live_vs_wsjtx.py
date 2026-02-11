@@ -59,8 +59,7 @@ def run_live_test():
 
     cycle_manager = Cycle_manager(FT8, on_decode, input_device_keywords = ['Microphone', 'CODEC'], verbose = False)
     #mini_cycle_manager(on_decode = on_decode)
-
-    
+ 
     wsjtx_all_tailer = Wsjtx_all_tailer(on_decode, silent = True)
     wait = 4 + 15 - time.time()%15
     time.sleep(wait)

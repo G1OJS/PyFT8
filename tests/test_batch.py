@@ -21,8 +21,7 @@ def run_offline(dataset, output_stub, freq_range):
                         min(spectrum.nFreqs - spectrum.fbins_per_signal, int(freq_range[1]/spectrum.df)))
     textfile_rows = []
     msgs = []
-    candidates = spectrum.search(f0_idxs, '000000_000000', 0)
-    candidates = candidates + spectrum.search(f0_idxs, '000000_000000', 1)
+    candidates = spectrum.search(f0_idxs, '000000_000000')
     
     t0 = time.time()
     for c in candidates:
@@ -133,6 +132,6 @@ def run_batch(test_idxs, offline = False):
             f.write(f"{row}\n")
     
 
-run_batch(range(1,39), offline = False)
+run_batch(range(1,39), offline = True)
 
 
