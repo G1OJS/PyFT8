@@ -66,7 +66,6 @@ def run_cycle_manager(dataset, output_stub, freq_range):
     for dd in decodes:
         n_decodes +=1
         row = f"000000 {dd['snr']:3d} {dd['dt']:3.1f} {dd['f']:4d} ~ {dd['msg']:<23} {dd['sync_idx']} {dd['decode_path']}"
-        print(row)
         textfile_rows.append(row)
 
     

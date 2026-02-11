@@ -21,7 +21,7 @@ class Spectrum:
         self.nhops_costas = self.sigspec.costas_len * self.hops_persymb
         self.h_search1 = int(4.6/self.dt)
         self.h_search2 = int(11/self.dt)
-        self.search_hops_range = range(int((-1.8 + 0.7) / self.dt), int((3.8 + 0.7) / self.dt))
+        self.search_hops_range = range(int((-1.7 + 0.7) / self.dt), int((3.2 + 0.7) / self.dt))
         self.occupancy = np.zeros(self.nFreqs)
         self.csync_flat = self.make_csync(sigspec)
         payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
@@ -49,14 +49,14 @@ class Spectrum:
     def search(self, f0_idxs, cyclestart_str):
         cands = []
         dB_main = self.audio_in.dB_main
+        hps, bpt = self.hops_persymb, self.fbins_pertone
         for f0_idx in f0_idxs:
             dB = dB_main[:, f0_idx:f0_idx + self.fbins_per_signal]
             dB = dB - np.max(dB)
             c = Candidate()
             c.f0_idx = f0_idx
-            c.sync = self.get_sync(f0_idx, dB, 1)
             sync_idx = 1
-            hps, bpt = self.hops_persymb, self.fbins_pertone
+            c.sync = self.get_sync(f0_idx, dB, sync_idx)
             c.freq_idxs = [c.f0_idx + bpt // 2 + bpt * t for t in range(self.sigspec.tones_persymb)]
             c.last_payload_hop = c.sync['h0_idx'] + hps * 72
             c.cyclestart_str = cyclestart_str
