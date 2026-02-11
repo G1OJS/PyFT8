@@ -25,29 +25,31 @@ def check_crc(bits91_int):
         if(crc14_int == bits91_int & 0b11111111111111):
             return bits77_int
 
-def unpack_ft8_c29(c29):
-    c28 = c29 >> 1
-    p1 = c29 & 1
-    from string import ascii_uppercase as ltrs, digits as digs
-    if c28<3:
-        return ["DE", 'QRZ','CQ'][c28]
-    n = c28 - 2_063_592 - 4_194_304 # NTOKENS, MAX22
-    if n == 0:
-        return '<...>'
-    charmap = [' ' + digs + ltrs, digs + ltrs, digs + ' ' * 17] + [' ' + ltrs] * 3
-    divisors = [36*10*27**3, 10*27**3, 27**3, 27**2, 27, 1]
-    indices = []
-    for d in divisors:
-        i, n = divmod(n, d)
-        indices.append(i)
-    callsign = ''.join(t[i] for t, i in zip(charmap, indices)).strip()
-    if(p1):
-        callsign = callsign + "/P"
-    return callsign
+from string import ascii_uppercase as LTRS, digits as DIGS
+CALL_FIELDS = [ (' ' + DIGS + LTRS, 36*10*27**3),   (DIGS + LTRS, 10*27**3), (DIGS + ' ' * 17, 27**3),
+                (' ' + LTRS, 27**2),           (' ' + LTRS,   27), (' ' + LTRS,   1) ]
 
-def unpack_ft8_g16(g16):
-    ir = g16 >> 15
-    g15 = g16 & 0b111111111111111
+TOKENS = ("DE", "QRZ", "CQ")
+NTOKENS_PLUS_MAX22 = 2_063_592 + 4_194_304
+
+def decode_call(call_int):
+    call_int >>= 1
+    if call_int < 3:
+        return TOKENS[call_int]
+    call_int -= NTOKENS_PLUS_MAX22
+    if call_int == 0:
+        return '<...>'
+    chars = []
+    for alphabet, div in CALL_FIELDS:
+        idx, call_int = divmod(call_int, div)
+        chars.append(alphabet[idx])
+    call = ''.join(chars).strip()
+    portable = call_int & 1
+    return call + '/P' if portable else call
+
+def decode_grid(grid_int):
+    ir = grid_int >> 15
+    g15 = grid_int & 0b111111111111111
     if g15 < 32400:
         a, nn = divmod(g15,1800)
         b, nn = divmod(nn,100)
@@ -60,12 +62,19 @@ def unpack_ft8_g16(g16):
     R = '' if (ir == 0) else 'R'
     return f"{R}{snr:+03d}"
 
-def unpack(bits77_int):
-    i3 = bits77_int & 0b111
-    grid_rpt = unpack_ft8_g16(bits77_int >> 3 & 0b1111111111111111)
-    call_b   = unpack_ft8_c29(bits77_int >> 19 & 0b11111111111111111111111111111)
-    call_a   = unpack_ft8_c29(bits77_int >> 48 & 0b11111111111111111111111111111)
-    return (call_a, call_b, grid_rpt)
+FT8_MSG_FORMAT = (("i3", 3), ("grid", 16), ("callB",29), ("callA",29))
+
+def get_fields(bits, fmt):
+    out = {}
+    for name, n in fmt:
+        mask = (1 << n) - 1
+        out[name] = bits & mask
+        bits >>= n
+    return out
+
+def unpack(bits77):
+    fields = get_fields(bits77, FT8_MSG_FORMAT)
+    return (decode_call(fields["callA"]), decode_call(fields["callB"]), decode_grid(fields["grid"]))
 
 def find_device(device_str_contains):
     pya = pyaudio.PyAudio()
