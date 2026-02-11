@@ -244,7 +244,7 @@ def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3
                         if(on_decode):
                             on_decode(c.decode_dict)
                         if(not silent):
-                            print(f"{time.time() %15:05.2f} {c.fHz:4d} {c.dt:+4.2f} {c.sync_idx} {c.lev:5.2f} {c.llr_sd:5.2f} {' '.join(c.msg)}")
+                            print(f"{time.time() %15:05.2f} {c.fHz:4d} {c.sync['dt']:+4.2f} {c.sync_idx} {c.lev:5.2f} {c.llr_sd:5.2f} {' '.join(c.msg)}")
 
 def mini_cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3100], on_decode = None, silent = True):                            
     import threading
