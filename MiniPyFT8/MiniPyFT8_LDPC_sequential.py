@@ -4,7 +4,7 @@ import pyaudio
 import threading
 
 params = {'MIN_LLR_SD': 0.0,'HPS': 4, 'BPT':2,'SYM_RATE': 6.25,'SAMP_RATE': 12000, 'T_CYC':15, 
-          'T_SEARCH_0': 4.6, 'T_SEARCH_1': 10.6,'T_DECODE': 14.8,'F_MAX': 3100}
+          'T_SEARCH_0': 4.6, 'T_SEARCH_1': 10.6,'T_DECODE': 14.9,'F_MAX': 3100, 'LDPC_CONTROL': (45, 13) }
 
 params.update({'H0_RANGE': [-7 * params['HPS'], int(3.48 * params['SYM_RATE'] * params['HPS'])]})
 print(params['H0_RANGE'])
@@ -73,6 +73,40 @@ def check_crc(bits91_int):
         if(crc14_int == bits91_int & 0b11111111111111):
             return bits77_int
 
+#============== LDPC ========================================================
+class LdpcDecoder:
+    def __init__(self):
+        self.CV6idx = np.array([[4,31,59,92,114,145],[5,23,60,93,121,150],[6,32,61,94,95,142],[5,31,63,96,125,137],[8,34,65,98,138,145],[9,35,66,99,106,125],[11,37,67,101,104,154],[12,38,68,102,148,161],[14,41,58,105,122,158],[0,32,71,105,106,156],[15,42,72,107,140,159],[10,43,74,109,120,165],[7,45,70,111,118,165],[18,37,76,103,115,162],[19,46,69,91,137,164],[1,47,73,112,127,159],[21,46,57,117,126,163],[15,38,61,111,133,157],[22,42,78,119,130,144],[19,35,62,93,135,160],[13,30,78,97,131,163],[2,43,79,123,126,168],[18,45,80,116,134,166],[11,49,60,117,118,143],[12,50,63,113,117,156],[23,51,75,128,147,148],[20,53,76,99,139,170],[34,81,132,141,170,173],[13,29,82,112,124,169],[3,28,67,119,133,172],[51,83,109,114,144,167],[6,49,80,98,131,172],[22,54,66,94,171,173],[25,40,76,108,140,147],[26,39,55,123,124,125],[17,48,54,123,140,166],[5,32,84,107,115,155],[8,53,62,130,146,154],[21,52,67,108,120,173],[2,12,47,77,94,122],[30,68,132,149,154,168],[4,38,74,101,135,166],[1,53,85,100,134,163],[14,55,86,107,118,170],[22,33,70,93,126,152],[10,48,87,91,141,156],[28,33,86,96,146,161],[21,56,84,92,139,158],[27,31,71,102,131,165],[0,25,44,79,127,146],[16,26,88,102,115,152],[50,56,97,162,164,171],[20,36,72,137,151,168],[15,46,75,129,136,153],[2,23,29,71,103,138],[8,39,89,105,133,150],[17,41,78,143,145,151],[24,37,64,98,121,159],[16,41,74,128,169,171]], dtype = np.int16)
+        self.CV7idx = np.array([[3,30,58,90,91,95,152],[7,24,62,82,92,95,147],[4,33,64,77,97,106,153],[10,36,66,86,100,138,157],[7,39,69,81,103,113,144],[13,40,70,87,101,122,155],[16,36,73,80,108,130,153],[44,54,63,110,129,160,172],[17,35,75,88,112,113,142],[20,44,77,82,116,120,150],[18,34,58,72,109,124,160],[6,48,57,89,99,104,167],[24,52,68,89,100,129,155],[19,45,64,79,119,139,169],[0,3,51,56,85,135,151],[25,50,55,90,121,136,167],[1,26,40,60,61,114,132],[27,47,69,84,104,128,157],[11,42,65,88,96,134,158],[9,43,81,90,110,143,148],[29,49,59,85,136,141,161],[9,52,65,83,111,127,164],[27,28,83,87,116,142,149],[14,57,59,73,110,149,162]], dtype = np.int16)
+        self.mC2V_prev6 = None
+        self.mC2V_prev7 = None
+        
+    def calc_ncheck(self, llr):
+        bits6 = llr[self.CV6idx] > 0
+        self.parity6 = np.sum(bits6, axis=1) & 1
+        bits7 = llr[self.CV7idx] > 0
+        self.parity7 = np.sum(bits7, axis=1) & 1
+        return int(np.sum(self.parity7) + np.sum(self.parity6))
+
+    def _pass_messages(self, llr, CVidx, mC2V_prev, update_collector):
+        if mC2V_prev is None:
+            mC2V_prev = np.zeros(CVidx.shape, dtype=np.float32)
+        mV2C = llr[CVidx] - mC2V_prev
+        tanh_mV2C = np.tanh(-mV2C)
+        tanh_mC2V = np.prod(tanh_mV2C, axis=1, keepdims=True)
+        tanh_mC2V = tanh_mC2V / (tanh_mV2C + 0.001)
+        alpha_atanh_approx = 1.18
+        mC2V_curr  = tanh_mC2V / ((tanh_mC2V - alpha_atanh_approx) * (alpha_atanh_approx + tanh_mC2V))
+        np.add.at(update_collector, CVidx, mC2V_curr - mC2V_prev)
+        return mC2V_curr
+    
+    def do_ldpc_iteration(self, llr):
+        update_collector = np.zeros_like(llr)
+        self.mC2V_prev6 = self._pass_messages(llr, self.CV6idx, self.mC2V_prev6, update_collector)
+        self.mC2V_prev7 = self._pass_messages(llr, self.CV7idx, self.mC2V_prev7, update_collector)
+        llr += update_collector
+        return llr, self.calc_ncheck(llr)
+
 #============== AUDIO ========================================================
 class AudioIn:
     def __init__(self, input_device_keywords, max_freq):
@@ -125,18 +159,16 @@ for sym_idx, tone in enumerate([3,1,4,0,6,5,2]):
     csync[sym_idx, 7 * params['BPT']:] = 0.0
 csync_flat =  csync.ravel()
 payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
-data_symb_idxs = list(range(7, 36)) + list(range(43, 45))
 base_payload_hops = np.array([params['HPS'] * s for s in payload_symb_idxs])
-base_data_hops = np.array([params['HPS'] * s for s in data_symb_idxs])
 hop_idxs_Costas =  np.arange(7) * params['HPS']
-bpt = params['BPT']
-base_freq_idxs = np.array([bpt // 2 + bpt * t for t in range(8)])
+base_freq_idxs = np.array([params['BPT'] // 2 + params['BPT'] * t for t in range(8)])
 syncs = [{}] * nFreqs
 duplicates_filter = []
+ldpc = LdpcDecoder()
 
 import matplotlib.pyplot as plt
 fig, ax = plt.subplots(figsize=(15,5))
-wf_plot = ax.imshow(audio_in.dBgrid_main, vmax = 90, vmin = 60, origin = 'lower', interpolation = 'none')
+wf_plot = ax.imshow(audio_in.dBgrid_main, vmax = 100, vmin = 70, origin = 'lower', interpolation = 'none')
 
 def wait_for_time(s):
     while (time.time() %params['T_CYC'] < s):
@@ -144,7 +176,7 @@ def wait_for_time(s):
         plt.pause(0.05)
 
 print("=================================================")
-print("Time  Freq dt    sy Offs Sigma Message")
+print("Time  Freq dt    sy nits Sigma Message")
 
 while True:
 
@@ -165,7 +197,7 @@ while True:
     audio_in.dBgrid_main_ptr = 0
     dBgrid_main = audio_in.dBgrid_main
     for fb in range(nFreqs - 8 * params['BPT']):
-        hops = syncs[fb]['h0_idx'] + base_data_hops
+        hops = syncs[fb]['h0_idx'] + base_payload_hops
         freq_idxs = fb + base_freq_idxs
         p_dB = dBgrid_main[np.ix_(hops, freq_idxs)]
         p = np.clip(p_dB - np.max(p_dB), -80, 0)
@@ -178,19 +210,28 @@ while True:
         llr = 3.5 * llr / (llr_sd + 0.01)
         llr = np.clip(llr, -3.7, 3.7)
         if llr_sd > params['MIN_LLR_SD']:
-            llr = llr[:91]
-            bits91_int = 0
-            for bit in (llr > 0).astype(int).tolist():
-                bits91_int = (bits91_int << 1) | bit
-            bits77_int = check_crc(bits91_int)
-            if(bits77_int):
-                msg = unpack(bits77_int)
-                if(msg not in duplicates_filter):
-                    duplicates_filter.append(msg)
-                    decode_dict = {'decoder': 'PyFT8', 'cs':f"{time.time() % params['T_CYC']:05.2f}", 'dt':syncs[fb]['dt'], 'f':0,
-                             'sync_idx': 1, 'sync': syncs[fb], 'msg_tuple':msg, 'msg':' '.join(msg),
-                             'ncheck0': 99,'snr': -30,'llr_sd':0,'decode_path':'','td': 0}
-                    print(f"{decode_dict['cs']} {0:4d} {decode_dict['sync']['dt']:+4.2f} {decode_dict['sync_idx']} {0} {0} {' '.join(msg)}")
+            ldpc_it = 0
+            ncheck = ldpc.calc_ncheck(llr)
+            ncheck0 = ncheck
+            if ncheck > 0:
+                if ncheck <= params['LDPC_CONTROL'][0]:
+                    for ldpc_it in range(params['LDPC_CONTROL'][1]):
+                        llr, ncheck = ldpc.do_ldpc_iteration(llr)
+                        if(ncheck == 0):
+                            break                    
+            if ncheck == 0:
+                bits91_int = 0
+                for bit in (llr[:91] > 0).astype(int).tolist():
+                    bits91_int = (bits91_int << 1) | bit
+                bits77_int = check_crc(bits91_int)
+                if(bits77_int):
+                    msg = unpack(bits77_int)
+                    if(msg not in duplicates_filter):
+                        duplicates_filter.append(msg)
+                        decode_dict = {'decoder': 'PyFT8', 'cs':f"{time.time() % params['T_CYC']:05.2f}", 'dt':syncs[fb]['dt'], 'f':0,
+                                 'sync_idx': 1, 'sync': syncs[fb], 'msg_tuple':msg, 'msg':' '.join(msg),
+                                 'ncheck0': 99,'snr': -30,'llr_sd':0,'decode_path':'','td': 0}
+                        print(f"{decode_dict['cs']} {0:4d} {decode_dict['sync']['dt']:+4.2f} {decode_dict['sync_idx']} {ldpc_it} {llr_sd} {' '.join(msg)}")
 
 if __name__ == "__main__":
     mini_cycle_manager(silent = False)
