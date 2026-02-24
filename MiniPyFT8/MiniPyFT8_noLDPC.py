@@ -91,8 +91,6 @@ class AudioIn:
             format = pyaudio.paInt16, channels=1, rate = params['SAMP_RATE'], input = True, input_device_index = indev,
             frames_per_buffer = int(params['SAMP_RATE'] / (params['SYM_RATE'] * params['HPS'])), stream_callback=self._callback,)
         self.stream.start_stream()
-        self.hoptimes = []
-        self.tlast = time.time()
 
     def find_device(self, device_str_contains):
         pya = pyaudio.PyAudio()
@@ -111,9 +109,6 @@ class AudioIn:
         self.audio_buffer[:-ns] = self.audio_buffer[ns:]
         self.audio_buffer[-ns:] = samples
         np.multiply(self.audio_buffer, self.fft_window, out=self.fft_in)
-        t = time.time()
-        self.hoptimes.append(t - self.tlast)
-        self.tlast = t
         z = np.fft.rfft(self.fft_in)[:self.nFreqs]
         self.dBgrid_main[self.dBgrid_main_ptr] = 10*np.log10(z.real*z.real + z.imag*z.imag + 1e-12)
         self.dBgrid_main_ptr = (self.dBgrid_main_ptr + 1) % self.hops_percycle
@@ -205,8 +200,6 @@ class Candidate:
 # ================== CYCLE MANAGER ======================================================
 
 def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3100], on_decode = None, silent = True):
-    from PyFT8.time_utils import global_time_utils
-    import time
     cands_list = []
     cands_list_1 = []
     duplicate_filter = set()
@@ -255,7 +248,7 @@ def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3
                     if(not c.dedupe_key in duplicate_filter):
                         duplicate_filter.add(c.dedupe_key)
                         c.decode_dict = {'decoder': 'PyFT8',
-                             'cs':global_time_utils.cyclestart_str(time.time()), 'dt':c.sync['dt'], 'f':c.fHz,
+                             'cs':'000000_000000', 'dt':c.sync['dt'], 'f':c.fHz,
                              'sync_idx': c.sync_idx, 'sync': c.sync,
                              'msg_tuple':c.msg, 'msg':' '.join(c.msg),
                              'ncheck0': 99,'snr': -30,'llr_sd':0,'decode_path':'','td': 0}

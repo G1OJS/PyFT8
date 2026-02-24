@@ -91,8 +91,6 @@ class AudioIn:
             format = pyaudio.paInt16, channels=1, rate = params['SAMP_RATE'], input = True, input_device_index = indev,
             frames_per_buffer = int(params['SAMP_RATE'] / (params['SYM_RATE'] * params['HPS'])), stream_callback=self._callback,)
         self.stream.start_stream()
-        self.hoptimes = []
-        self.tlast = time.time()
 
     def find_device(self, device_str_contains):
         pya = pyaudio.PyAudio()
@@ -111,11 +109,8 @@ class AudioIn:
         self.audio_buffer[:-ns] = self.audio_buffer[ns:]
         self.audio_buffer[-ns:] = samples
         np.multiply(self.audio_buffer, self.fft_window, out=self.fft_in)
-        t = time.time()
-        self.hoptimes.append(t - self.tlast)
-        self.tlast = t
         z = np.fft.rfft(self.fft_in)[:self.nFreqs]
-        self.dBgrid_main[self.dBgrid_main_ptr] = 10*np.log10(z.real*z.real + z.imag*z.imag + 1e-12)
+        self.dBgrid_main[self.dBgrid_main_ptr, :] = 10*np.log10(z.real*z.real + z.imag*z.imag + 1e-12)
         self.dBgrid_main_ptr = (self.dBgrid_main_ptr + 1) % self.hops_percycle
         return (None, pyaudio.paContinue)
 
@@ -127,7 +122,7 @@ csync = np.full((7, 8*params['BPT']), -1/7, np.float32)
 for sym_idx, tone in enumerate([3,1,4,0,6,5,2]):
     fbins = range(tone* params['BPT'], (tone+1) * params['BPT'])
     csync[sym_idx, fbins] = 1.0
-    csync[sym_idx, 7 * params['BPT']:] = 0
+    csync[sym_idx, 7 * params['BPT']:] = 0.0
 csync_flat =  csync.ravel()
 payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
 data_symb_idxs = list(range(7, 36)) + list(range(43, 45))
@@ -148,6 +143,9 @@ def wait_for_time(s):
         wf_plot.set_data(audio_in.dBgrid_main)
         plt.pause(0.05)
 
+print("=================================================")
+print("Time  Freq dt    sy Offs Sigma Message")
+
 while True:
 
     wait_for_time(params['T_SEARCH_1'])
@@ -163,7 +161,6 @@ while True:
                 syncs[fb] = test_sync
                 
     wait_for_time(params['T_DECODE'])
-    print(np.mean(audio_in.hoptimes), np.std(audio_in.hoptimes))
     duplicates_filter = []
     audio_in.dBgrid_main_ptr = 0
     dBgrid_main = audio_in.dBgrid_main
@@ -190,7 +187,10 @@ while True:
                 msg = unpack(bits77_int)
                 if(msg not in duplicates_filter):
                     duplicates_filter.append(msg)
-                    print(' '.join(msg))
+                    decode_dict = {'decoder': 'PyFT8', 'cs':f"{time.time() % params['T_CYC']:05.2f}", 'dt':syncs[fb]['dt'], 'f':0,
+                             'sync_idx': 1, 'sync': syncs[fb], 'msg_tuple':msg, 'msg':' '.join(msg),
+                             'ncheck0': 99,'snr': -30,'llr_sd':0,'decode_path':'','td': 0}
+                    print(f"{decode_dict['cs']} {0:4d} {decode_dict['sync']['dt']:+4.2f} {decode_dict['sync_idx']} {0} {0} {' '.join(msg)}")
 
 if __name__ == "__main__":
     mini_cycle_manager(silent = False)
