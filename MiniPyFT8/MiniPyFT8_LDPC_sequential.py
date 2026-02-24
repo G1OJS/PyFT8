@@ -2,7 +2,8 @@ import numpy as np
 import time
 import pyaudio
 import threading
-global dBgrid_main, wf_plot
+global dBgrid_main, wf_ax, wf_plot, wf_rectangles, wf_text
+
 
 params = {'MIN_LLR_SD': 0.0,'HPS': 4, 'BPT':2,'SYM_RATE': 6.25,'SAMP_RATE': 12000, 'T_CYC':15, 
           'T_SEARCH_0': 4.6, 'T_SEARCH_1': 10.6,'T_DECODE': 14.9,'F_MAX': 3100, 'LDPC_CONTROL': (45, 13) }
@@ -158,6 +159,8 @@ def cyclestart_str(t):
     return time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
 
 def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3100], on_decode = None, silent = True):
+    global dBgrid_main, wf_ax, wf_plot, wf_rectangles, wf_text
+
     audio_in = AudioIn(input_device_keywords, freq_range[1])
     nFreqs = audio_in.nFreqs
     dt = 1.0 / (params['SYM_RATE'] * params['HPS']) 
@@ -180,13 +183,16 @@ def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3
         while (time.time() %params['T_CYC'] < s):
             time.sleep(0.05)
 
-    print("=================================================")
-    print("Time  Freq dt    sy nits Sigma Message")
-
+    
+    wait_for_time(params['T_CYC'] - 0.5)
+    audio_in.dBgrid_main_ptr = 0
     while True:
 
         wait_for_time(params['T_SEARCH_1'])
         cycle = audio_in.dBgrid_main_ptr // audio_in.hops_per_cycle
+        if(cycle == 0):
+            wf_rectangles = []
+            wf_text = []
         cycle_h0 = cycle * audio_in.hops_per_cycle
         for fb in range(nFreqs - 8 * params['BPT']):
             freq_idxs = fb + base_freq_idxs
@@ -199,6 +205,8 @@ def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3
                     syncs[fb] = test_sync
                     
         wait_for_time(params['T_DECODE'])
+        print("=================================================")
+        print("Cycle         Time dt     sy nits Sigma Message")        
         duplicates_filter = []
         if(cycle == 1):
             audio_in.dBgrid_main_ptr = 0
@@ -234,25 +242,32 @@ def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3
                     if(bits77_int):
                         msg = unpack(bits77_int)
                         if(msg not in duplicates_filter):
+                            from matplotlib.patches import Rectangle
+                            rec = Rectangle(xy=(fb, syncs[fb]['h0_idx']), width = 8 * params['BPT'], height = 79*params['HPS'],
+                                            facecolor = 'blue', alpha = 0.4, edgecolor = 'lime')
+                            wf_rectangles.append(wf_ax.add_patch(rec))
+                            wf_text.append(wf_ax.text(fb+2, syncs[fb]['h0_idx'], ' '.join(msg), color = 'white', rotation = 'vertical', fontsize = 'small') )
                             duplicates_filter.append(msg)
                             decode_dict = {'decoder': 'PyFT8', 'cs':cs, 'dt':syncs[fb]['dt'], 'f':0,
                                      'sync_idx': 1, 'sync': syncs[fb], 'msg_tuple':msg, 'msg':' '.join(msg),
-                                     'ncheck0': 99,'snr': -30,'llr_sd':0,'decode_path':'','td': f"{time.time() % params['T_CYC']:05.2f}"}
+                                     'ncheck0': 99,'snr': -30,'llr_sd':0,'decode_path':'','td': time.time() % params['T_CYC']}
                             if(on_decode):
                                 on_decode(decode_dict)
                             if(not silent):
-                                print(f"{decode_dict['cs']} {0:4d} {decode_dict['sync']['dt']:+4.2f} {decode_dict['sync_idx']} {ldpc_it} {llr_sd} {' '.join(msg)}")
+                                print(f"{decode_dict['cs']} {decode_dict['td']:4.2f} {decode_dict['sync']['dt']:+4.2f} {decode_dict['sync_idx']:3d} {ldpc_it:3d} {llr_sd:5.2f}  {' '.join(msg)}")
 
 def waterfall():
     import matplotlib.pyplot as plt
     from matplotlib.animation import FuncAnimation
-    global dBgrid_main, wf_plot
-    fig, ax = plt.subplots(figsize=(10,10))
-    wf_plot = ax.imshow(dBgrid_main, vmax = 100, vmin = 70, origin = 'lower', interpolation = 'none')
+    global dBgrid_main, wf_ax, wf_plot, wf_rectangles, wf_text
+    fig, wf_ax = plt.subplots(figsize=(10,10))
+    wf_plot = wf_ax.imshow(dBgrid_main, vmax = 100, vmin = 70, origin = 'lower', interpolation = 'none')
+    wf_rectangles = []
+    wf_text = []
     def animation_callback(frame):
-        global dBgrid_main, wf_plot
+        global dBgrid_main, wf_ax, wf_plot, wf_rectangles, wf_text
         wf_plot.set_data(dBgrid_main)
-        return wf_plot,
+        return wf_plot, *wf_rectangles, *wf_text
     ani = FuncAnimation(plt.gcf(), animation_callback, interval = 30, frames = 100000,  blit = True)
     plt.show()
     
