@@ -215,20 +215,20 @@ def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3
     cands_list = []
     cands_list_1 = []
     duplicate_filter = set()
-    time.sleep((14.5 - time.time()) %15)
+    time.sleep(((params['T_CYC']-0.5) - time.time()) % params['T_CYC'])
     spectrum = Spectrum(input_device_keywords, freq_range)
     cycle_searched_1, cycle_searched_0  = False, False
     cycle_time_prev = 0
     while True:
-        time.sleep(0.001)
-        if(time.time()%15 < cycle_time_prev):
+        time.sleep(0.000001)
+        if(time.time()% params['T_CYC'] < cycle_time_prev):
             if(not silent):
                 print("=================================================")
                 print("Time  Freq dt    sy Offs Sigma Message")
             cycle_searched_1, cycle_searched_0  = False, False
             spectrum.audio_in.dBgrid_main_ptr = 0
             duplicate_filter = set()
-        cycle_time_prev = time.time()%15
+        cycle_time_prev = time.time()% params['T_CYC']
 
         ptr = spectrum.audio_in.dBgrid_main_ptr
 
@@ -267,7 +267,7 @@ def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3
                         if(on_decode):
                             on_decode(c.decode_dict)
                         if(not silent):
-                            print(f"{time.time() %15:05.2f} {c.fHz:4d} {c.sync['dt']:+4.2f} {c.sync_idx} {c.lev:5.2f} {c.llr_sd:5.2f} {' '.join(c.msg)}")
+                            print(f"{time.time() % params['T_CYC']:05.2f} {c.fHz:4d} {c.sync['dt']:+4.2f} {c.sync_idx} {c.lev:5.2f} {c.llr_sd:5.2f} {' '.join(c.msg)}")
 
 # =================== INVOCATION ===============================================
 
