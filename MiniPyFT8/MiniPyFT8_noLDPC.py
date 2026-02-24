@@ -2,15 +2,12 @@ import numpy as np
 import time
 import pyaudio
 
-params = {
-'MIN_LLR_SD': 0.5,
-'HPS': 4, 'BPT':2,
-'SYM_RATE': 6.25,
-'SAMP_RATE': 12000
-}
+params = {'MIN_LLR_SD': 0.0,'HPS': 4, 'BPT':2,'SYM_RATE': 6.25,'SAMP_RATE': 12000, 'T_CYC':15, 
+          'T_SEARCH_0': 4.6, 'T_SEARCH_1': 10.6,'T_DECODE': 14.8,'F_MAX': 3100}
+
+params.update({'H0_RANGE': [-7 * params['HPS'], int(3.48 * params['SYM_RATE'] * params['HPS'])]})
 
 #=========== Unpacking functions ========================================
-
 from string import ascii_uppercase as ltrs, digits as digs
 CALL_FIELDS = [ (' ' + digs + ltrs, 36*10*27**3),   (digs + ltrs, 10*27**3), (digs + ' ' * 17, 27**3),
                 (' ' + ltrs, 27**2),           (' ' + ltrs,   27), (' ' + ltrs,   1) ]
@@ -77,46 +74,51 @@ def check_crc(bits91_int):
             return bits77_int
 
 #============== AUDIO ========================================================
-
-def find_device(device_str_contains):
-    pya = pyaudio.PyAudio()
-    for dev_idx in range(pya.get_device_count()):
-        name = pya.get_device_info_by_index(dev_idx)['name']
-        match = True
-        for pattern in device_str_contains:
-            if (not pattern in name): match = False
-        if(match):
-            return dev_idx
-    print(f"[Audio] No audio device found matching {device_str_contains}")
-
 class AudioIn:
     def __init__(self, input_device_keywords, max_freq):
-        fft_len = int(params['BPT'] * params['SAMP_RATE'] // params['SYM_RATE'])
-        fft_out_len = int(fft_len/2) + 1
+        self.fft_len = int(params['BPT'] * params['SAMP_RATE'] // params['SYM_RATE'])
+        fft_out_len = self.fft_len // 2 + 1
         self.nFreqs = int(fft_out_len * 2 * max_freq / params['SAMP_RATE'])
-        self.fft_window = fft_window=np.hanning(fft_len)
-        self.audio_buffer = np.zeros(fft_len, dtype=np.float32)
-        self.hops_percycle = int(15 * params['SYM_RATE'] * params['HPS'])
-        self.dBgrid_main = np.zeros((self.hops_percycle, self.nFreqs), dtype = np.float32)
-        self.grid_main_ptr = 0
-        indev = find_device(input_device_keywords)
+        self.audio_buffer = np.zeros(self.fft_len, dtype=np.float32)
+        self.fft_in = np.zeros(self.fft_len, dtype=np.float32)
+        self.fft_window = fft_window=np.hanning(self.fft_len).astype(np.float32)
+        self.hops_percycle = int(params['T_CYC'] * params['SYM_RATE'] * params['HPS'])
+        self.hop_dur = 1.0 / (params['SYM_RATE']*params['HPS'])
+        self.dBgrid_main = np.ones((self.hops_percycle, self.nFreqs), dtype = np.float32)
+        self.dBgrid_main_ptr = 0
+        indev = self.find_device(input_device_keywords)
         self.stream = pyaudio.PyAudio().open(
-            format = pyaudio.paInt16, channels=1, rate = params['SAMP_RATE'],
-            input = True, input_device_index = indev,
+            format = pyaudio.paInt16, channels=1, rate = params['SAMP_RATE'], input = True, input_device_index = indev,
             frames_per_buffer = int(params['SAMP_RATE'] / (params['SYM_RATE'] * params['HPS'])), stream_callback=self._callback,)
         self.stream.start_stream()
+        self.hoptimes = []
+        self.tlast = time.time()
+
+    def find_device(self, device_str_contains):
+        pya = pyaudio.PyAudio()
+        for dev_idx in range(pya.get_device_count()):
+            name = pya.get_device_info_by_index(dev_idx)['name']
+            match = True
+            for pattern in device_str_contains:
+                if (not pattern in name): match = False
+            if(match):
+                return dev_idx
+        print(f"[Audio] No audio device found matching {device_str_contains}")
 
     def _callback(self, in_data, frame_count, time_info, status_flags):
         samples = np.frombuffer(in_data, dtype=np.int16).astype(np.float32)
         ns = len(samples)
         self.audio_buffer[:-ns] = self.audio_buffer[ns:]
         self.audio_buffer[-ns:] = samples
-        z = np.fft.rfft(self.audio_buffer * self.fft_window)
-        p = z.real*z.real + z.imag*z.imag
-        self.dBgrid_main[self.grid_main_ptr] = 10*np.log10(p[:self.nFreqs]+1e-12)
-        self.grid_main_ptr = (self.grid_main_ptr + 1) % self.hops_percycle
+        np.multiply(self.audio_buffer, self.fft_window, out=self.fft_in)
+        t = time.time()
+        self.hoptimes.append(t - self.tlast)
+        self.tlast = t
+        z = np.fft.rfft(self.fft_in)[:self.nFreqs]
+        self.dBgrid_main[self.dBgrid_main_ptr] = 10*np.log10(z.real*z.real + z.imag*z.imag + 1e-12)
+        self.dBgrid_main_ptr = (self.dBgrid_main_ptr + 1) % self.hops_percycle
         return (None, pyaudio.paContinue)
-
+    
 # ============== SPECTRUM ==========================================================
 
 class Spectrum:
@@ -225,11 +227,11 @@ def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3
                 print("=================================================")
                 print("Time  Freq dt    sy Offs Sigma Message")
             cycle_searched_1, cycle_searched_0  = False, False
-            spectrum.audio_in.grid_main_ptr = 0
+            spectrum.audio_in.dBgrid_main_ptr = 0
             duplicate_filter = set()
         cycle_time_prev = time.time()%15
 
-        ptr = spectrum.audio_in.grid_main_ptr
+        ptr = spectrum.audio_in.dBgrid_main_ptr
 
         if (ptr > spectrum.h_search_0 and not cycle_searched_0):
             cycle_searched_0 = True
