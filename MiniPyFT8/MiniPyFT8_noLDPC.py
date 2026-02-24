@@ -142,24 +142,19 @@ class Spectrum:
         data_symb_idxs = list(range(7, 36)) + list(range(43, 45))
         self.base_payload_hops = np.array([params['HPS'] * s for s in payload_symb_idxs])
         self.base_data_hops = np.array([params['HPS'] * s for s in data_symb_idxs])
-        
-    def get_sync(self, f0_idx, dB, sync_idx):
-        best_sync = {'h0_idx':0, 'score':0, 'dt': 0}
-        h0_min = 0 if sync_idx == 0 else -7*params['HPS']
-        hop_idxs_Costas =  np.arange(7) * params['HPS']
-        for h0_idx in range(h0_min, self.hop_start_lattitude):
-            sync_score = float(np.dot(dB[h0_idx + hop_idxs_Costas + sync_idx * 36 * params['HPS'] ,  :].ravel(), self.csync_flat))
-            test_sync = {'h0_idx':h0_idx, 'score':sync_score, 'dt': h0_idx * self.dt - 0.7}
-            if test_sync['score'] > best_sync['score']:
-                best_sync = test_sync
-        return best_sync
-    
+        self.hop_idxs_Costas =  np.arange(7) * params['HPS']
+
     def search(self, cyclestart_str, sync_idx):
         cands = []
         hps, bpt = params['HPS'], params['BPT']
         for f0_idx in self.f0_idxs:
             c = Candidate(self.audio_in.dBgrid_main, f0_idx, self.df)
-            c.sync = self.get_sync(f0_idx, c.dB, sync_idx)
+            c.sync = {'h0_idx':0, 'score':0, 'dt': 0}
+            for h0_idx in range(-7*params['HPS'], self.hop_start_lattitude):
+                sync_score = float(np.dot(c.dB[h0_idx + self.hop_idxs_Costas + sync_idx * 36 * params['HPS'] ,  :].ravel(), self.csync_flat))
+                test_sync = {'h0_idx':h0_idx, 'score':sync_score, 'dt': h0_idx * self.dt - 0.7}
+                if test_sync['score'] > c.sync['score']:
+                    c.sync = test_sync
             c.last_payload_hop = c.sync['h0_idx'] + hps * 72
             c.last_data_hop = c.sync['h0_idx'] + hps * 45
             c.cyclestart_str = cyclestart_str
