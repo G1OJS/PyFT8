@@ -116,9 +116,10 @@ class AudioIn:
         self.audio_buffer = np.zeros(self.fft_len, dtype=np.float32)
         self.fft_in = np.zeros(self.fft_len, dtype=np.float32)
         self.fft_window = fft_window=np.hanning(self.fft_len).astype(np.float32)
-        self.hops_percycle = int(params['T_CYC'] * params['SYM_RATE'] * params['HPS'])
+        self.hops_per_cycle = int(params['T_CYC'] * params['SYM_RATE'] * params['HPS'])
+        self.hops_per_grid = 2 * self.hops_per_cycle
         self.hop_dur = 1.0 / (params['SYM_RATE']*params['HPS'])
-        self.dBgrid_main = np.ones((self.hops_percycle, self.nFreqs), dtype = np.float32)
+        self.dBgrid_main = np.ones((self.hops_per_grid, self.nFreqs), dtype = np.float32)
         self.dBgrid_main_ptr = 0
         indev = self.find_device(input_device_keywords)
         self.stream = pyaudio.PyAudio().open(
@@ -145,7 +146,7 @@ class AudioIn:
         np.multiply(self.audio_buffer, self.fft_window, out=self.fft_in)
         z = np.fft.rfft(self.fft_in)[:self.nFreqs]
         self.dBgrid_main[self.dBgrid_main_ptr, :] = 10*np.log10(z.real*z.real + z.imag*z.imag + 1e-12)
-        self.dBgrid_main_ptr = (self.dBgrid_main_ptr + 1) % self.hops_percycle
+        self.dBgrid_main_ptr = (self.dBgrid_main_ptr + 1) % self.hops_per_grid
         return (None, pyaudio.paContinue)
 
 audio_in = AudioIn(['Mic', 'CODEC'], params['F_MAX'])
@@ -167,7 +168,7 @@ duplicates_filter = []
 ldpc = LdpcDecoder()
 
 import matplotlib.pyplot as plt
-fig, ax = plt.subplots(figsize=(15,5))
+fig, ax = plt.subplots(figsize=(10,10))
 wf_plot = ax.imshow(audio_in.dBgrid_main, vmax = 100, vmin = 70, origin = 'lower', interpolation = 'none')
 
 def wait_for_time(s):
@@ -182,11 +183,13 @@ while True:
 
     wait_for_time(params['T_SEARCH_1'])
     dBgrid_main = audio_in.dBgrid_main
+    cycle = audio_in.dBgrid_main_ptr // audio_in.hops_per_cycle
+    cycle_h0 = cycle * audio_in.hops_per_cycle
     for fb in range(nFreqs - 8 * params['BPT']):
         freq_idxs = fb + base_freq_idxs
         p_dB = dBgrid_main[:, fb:fb+8*params['BPT']]
         syncs[fb] = {'h0_idx':0, 'score':0, 'dt': 0}
-        for h0_idx in range(params['H0_RANGE'][0], params['H0_RANGE'][1]):
+        for h0_idx in range(cycle_h0 + params['H0_RANGE'][0], cycle_h0 + params['H0_RANGE'][1]):
             sync_score = float(np.dot(p_dB[h0_idx + hop_idxs_Costas + 36 * params['HPS'], :].ravel(), csync_flat))
             test_sync = {'h0_idx':h0_idx, 'score':sync_score, 'dt': h0_idx * dt - 0.7}
             if test_sync['score'] > syncs[fb]['score']:
@@ -194,7 +197,8 @@ while True:
                 
     wait_for_time(params['T_DECODE'])
     duplicates_filter = []
-    audio_in.dBgrid_main_ptr = 0
+    if(cycle == 1):
+        audio_in.dBgrid_main_ptr = 0
     dBgrid_main = audio_in.dBgrid_main
     for fb in range(nFreqs - 8 * params['BPT']):
         hops = syncs[fb]['h0_idx'] + base_payload_hops
