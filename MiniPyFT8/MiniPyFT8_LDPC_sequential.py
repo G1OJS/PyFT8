@@ -153,6 +153,10 @@ class AudioIn:
         return (None, pyaudio.paContinue)
     
 # ================== CYCLE MANAGER ======================================================
+def cyclestart_str(t):
+    cyclestart_time = params['T_CYC'] * int( t / params['T_CYC'] )
+    return time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
+
 def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3100], on_decode = None, silent = True):
     audio_in = AudioIn(input_device_keywords, freq_range[1])
     nFreqs = audio_in.nFreqs
@@ -198,6 +202,7 @@ def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3
         duplicates_filter = []
         if(cycle == 1):
             audio_in.dBgrid_main_ptr = 0
+        cs = cyclestart_str(time.time())
         for fb in range(nFreqs - 8 * params['BPT']):
             hops = syncs[fb]['h0_idx'] + base_payload_hops
             freq_idxs = fb + base_freq_idxs
@@ -230,9 +235,9 @@ def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3
                         msg = unpack(bits77_int)
                         if(msg not in duplicates_filter):
                             duplicates_filter.append(msg)
-                            decode_dict = {'decoder': 'PyFT8', 'cs':f"{time.time() % params['T_CYC']:05.2f}", 'dt':syncs[fb]['dt'], 'f':0,
+                            decode_dict = {'decoder': 'PyFT8', 'cs':cs, 'dt':syncs[fb]['dt'], 'f':0,
                                      'sync_idx': 1, 'sync': syncs[fb], 'msg_tuple':msg, 'msg':' '.join(msg),
-                                     'ncheck0': 99,'snr': -30,'llr_sd':0,'decode_path':'','td': 0}
+                                     'ncheck0': 99,'snr': -30,'llr_sd':0,'decode_path':'','td': f"{time.time() % params['T_CYC']:05.2f}"}
                             if(on_decode):
                                 on_decode(decode_dict)
                             if(not silent):

@@ -199,6 +199,10 @@ class Candidate:
 
 # ================== CYCLE MANAGER ======================================================
 
+def cyclestart_str(t):
+    cyclestart_time = params['T_CYC'] * int( t / params['T_CYC'] )
+    return time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
+
 def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3100], on_decode = None, silent = True):
     cands_list = []
     cands_list_1 = []
@@ -207,6 +211,7 @@ def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3
     spectrum = Spectrum(input_device_keywords, freq_range)
     cycle_searched_1, cycle_searched_0  = False, False
     cycle_time_prev = 0
+    cs = cyclestart_str(time.time())
     while True:
         time.sleep(0.000001)
         if(time.time()% params['T_CYC'] < cycle_time_prev):
@@ -216,6 +221,7 @@ def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3
             cycle_searched_1, cycle_searched_0  = False, False
             spectrum.audio_in.dBgrid_main_ptr = 0
             duplicate_filter = set()
+            cs = cyclestart_str(time.time())
         cycle_time_prev = time.time()% params['T_CYC']
 
         ptr = spectrum.audio_in.dBgrid_main_ptr
@@ -248,7 +254,7 @@ def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3
                     if(not c.dedupe_key in duplicate_filter):
                         duplicate_filter.add(c.dedupe_key)
                         c.decode_dict = {'decoder': 'PyFT8',
-                             'cs':'000000_000000', 'dt':c.sync['dt'], 'f':c.fHz,
+                             'cs':cs, 'dt':c.sync['dt'], 'f':c.fHz,
                              'sync_idx': c.sync_idx, 'sync': c.sync,
                              'msg_tuple':c.msg, 'msg':' '.join(c.msg),
                              'ncheck0': 99,'snr': -30,'llr_sd':0,'decode_path':'','td': 0}
