@@ -47,8 +47,7 @@ def tab_print(dd):
     row = f"{dd['decoder']}, {dd['cs']} {dd['f']:4d} {dd['snr']:+04d} {dd['dt']:4.1f} {dd['td']:<4} {dd['msg']:<23} "
     global_time_utils.tlog(f"{row}")    
 
-def run_live_test():
-    from MiniPyFT8.MiniPyFT8_noLDPC import mini_cycle_manager
+def run_live_test(mini_cycle_manager):
 
     decodes = []
     t_last_decode = 0
@@ -57,8 +56,8 @@ def run_live_test():
     def on_decode(dd):
         decodes.append(dd)
 
-    cycle_manager = Cycle_manager(FT8, on_decode, input_device_keywords = ['Microphone', 'CODEC'], verbose = False)
-    #mini_cycle_manager(on_decode = on_decode)
+   # cycle_manager = Cycle_manager(FT8, on_decode, input_device_keywords = ['Microphone', 'CODEC'], verbose = False)
+    mini_cycle_manager(on_decode = on_decode)
  
     wsjtx_all_tailer = Wsjtx_all_tailer(on_decode, silent = True)
     wait = 4 + 15 - time.time()%15
@@ -84,4 +83,9 @@ def run_live_test():
             with open("live_decodes_vs_wsjtx.pkl", "wb") as f:
                 pickle.dump(decodes,f)
 
-run_live_test()
+from MiniPyFT8.MiniPyFT8_noLDPC import mini_cycle_manager
+run_live_test(mini_cycle_manager)
+
+#from MiniPyFT8.MiniPyFT8_LDPC_sequential import mini_cycle_manager, waterfall
+#threading.Thread(target = run_live_test, args = (mini_cycle_manager, )).start()
+#waterfall()

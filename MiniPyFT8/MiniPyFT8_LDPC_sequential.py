@@ -2,6 +2,7 @@ import numpy as np
 import time
 import pyaudio
 import threading
+global dBgrid_main, wf_plot
 
 params = {'MIN_LLR_SD': 0.0,'HPS': 4, 'BPT':2,'SYM_RATE': 6.25,'SAMP_RATE': 12000, 'T_CYC':15, 
           'T_SEARCH_0': 4.6, 'T_SEARCH_1': 10.6,'T_DECODE': 14.9,'F_MAX': 3100, 'LDPC_CONTROL': (45, 13) }
@@ -110,6 +111,7 @@ class LdpcDecoder:
 #============== AUDIO ========================================================
 class AudioIn:
     def __init__(self, input_device_keywords, max_freq):
+        global dBgrid_main
         self.fft_len = int(params['BPT'] * params['SAMP_RATE'] // params['SYM_RATE'])
         fft_out_len = self.fft_len // 2 + 1
         self.nFreqs = int(fft_out_len * 2 * max_freq / params['SAMP_RATE'])
@@ -119,7 +121,7 @@ class AudioIn:
         self.hops_per_cycle = int(params['T_CYC'] * params['SYM_RATE'] * params['HPS'])
         self.hops_per_grid = 2 * self.hops_per_cycle
         self.hop_dur = 1.0 / (params['SYM_RATE']*params['HPS'])
-        self.dBgrid_main = np.ones((self.hops_per_grid, self.nFreqs), dtype = np.float32)
+        dBgrid_main = np.ones((self.hops_per_grid, self.nFreqs), dtype = np.float32)
         self.dBgrid_main_ptr = 0
         indev = self.find_device(input_device_keywords)
         self.stream = pyaudio.PyAudio().open(
@@ -139,104 +141,121 @@ class AudioIn:
         print(f"[Audio] No audio device found matching {device_str_contains}")
 
     def _callback(self, in_data, frame_count, time_info, status_flags):
+        global dBgrid_main
         samples = np.frombuffer(in_data, dtype=np.int16).astype(np.float32)
         ns = len(samples)
         self.audio_buffer[:-ns] = self.audio_buffer[ns:]
         self.audio_buffer[-ns:] = samples
         np.multiply(self.audio_buffer, self.fft_window, out=self.fft_in)
         z = np.fft.rfft(self.fft_in)[:self.nFreqs]
-        self.dBgrid_main[self.dBgrid_main_ptr, :] = 10*np.log10(z.real*z.real + z.imag*z.imag + 1e-12)
+        dBgrid_main[self.dBgrid_main_ptr, :] = 10*np.log10(z.real*z.real + z.imag*z.imag + 1e-12)
         self.dBgrid_main_ptr = (self.dBgrid_main_ptr + 1) % self.hops_per_grid
         return (None, pyaudio.paContinue)
-
-audio_in = AudioIn(['Mic', 'CODEC'], params['F_MAX'])
-nFreqs = audio_in.nFreqs
-dt = 1.0 / (params['SYM_RATE'] * params['HPS']) 
-df = params['F_MAX'] / (nFreqs -1)
-csync = np.full((7, 8*params['BPT']), -1/7, np.float32)
-for sym_idx, tone in enumerate([3,1,4,0,6,5,2]):
-    fbins = range(tone* params['BPT'], (tone+1) * params['BPT'])
-    csync[sym_idx, fbins] = 1.0
-    csync[sym_idx, 7 * params['BPT']:] = 0.0
-csync_flat =  csync.ravel()
-payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
-base_payload_hops = np.array([params['HPS'] * s for s in payload_symb_idxs])
-hop_idxs_Costas =  np.arange(7) * params['HPS']
-base_freq_idxs = np.array([params['BPT'] // 2 + params['BPT'] * t for t in range(8)])
-syncs = [{}] * nFreqs
-duplicates_filter = []
-ldpc = LdpcDecoder()
-
-import matplotlib.pyplot as plt
-fig, ax = plt.subplots(figsize=(10,10))
-wf_plot = ax.imshow(audio_in.dBgrid_main, vmax = 100, vmin = 70, origin = 'lower', interpolation = 'none')
-
-def wait_for_time(s):
-    while (time.time() %params['T_CYC'] < s):
-        wf_plot.set_data(audio_in.dBgrid_main)
-        plt.pause(0.05)
-
-print("=================================================")
-print("Time  Freq dt    sy nits Sigma Message")
-
-while True:
-
-    wait_for_time(params['T_SEARCH_1'])
-    dBgrid_main = audio_in.dBgrid_main
-    cycle = audio_in.dBgrid_main_ptr // audio_in.hops_per_cycle
-    cycle_h0 = cycle * audio_in.hops_per_cycle
-    for fb in range(nFreqs - 8 * params['BPT']):
-        freq_idxs = fb + base_freq_idxs
-        p_dB = dBgrid_main[:, fb:fb+8*params['BPT']]
-        syncs[fb] = {'h0_idx':0, 'score':0, 'dt': 0}
-        for h0_idx in range(cycle_h0 + params['H0_RANGE'][0], cycle_h0 + params['H0_RANGE'][1]):
-            sync_score = float(np.dot(p_dB[h0_idx + hop_idxs_Costas + 36 * params['HPS'], :].ravel(), csync_flat))
-            test_sync = {'h0_idx':h0_idx, 'score':sync_score, 'dt': h0_idx * dt - 0.7}
-            if test_sync['score'] > syncs[fb]['score']:
-                syncs[fb] = test_sync
-                
-    wait_for_time(params['T_DECODE'])
+    
+# ================== CYCLE MANAGER ======================================================
+def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3100], on_decode = None, silent = True):
+    audio_in = AudioIn(input_device_keywords, freq_range[1])
+    nFreqs = audio_in.nFreqs
+    dt = 1.0 / (params['SYM_RATE'] * params['HPS']) 
+    df = params['F_MAX'] / (nFreqs -1)
+    csync = np.full((7, 8*params['BPT']), -1/7, np.float32)
+    for sym_idx, tone in enumerate([3,1,4,0,6,5,2]):
+        fbins = range(tone* params['BPT'], (tone+1) * params['BPT'])
+        csync[sym_idx, fbins] = 1.0
+        csync[sym_idx, 7 * params['BPT']:] = 0.0
+    csync_flat =  csync.ravel()
+    payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
+    base_payload_hops = np.array([params['HPS'] * s for s in payload_symb_idxs])
+    hop_idxs_Costas =  np.arange(7) * params['HPS']
+    base_freq_idxs = np.array([params['BPT'] // 2 + params['BPT'] * t for t in range(8)])
+    syncs = [{}] * nFreqs
     duplicates_filter = []
-    if(cycle == 1):
-        audio_in.dBgrid_main_ptr = 0
-    dBgrid_main = audio_in.dBgrid_main
-    for fb in range(nFreqs - 8 * params['BPT']):
-        hops = syncs[fb]['h0_idx'] + base_payload_hops
-        freq_idxs = fb + base_freq_idxs
-        p_dB = dBgrid_main[np.ix_(hops, freq_idxs)]
-        p = np.clip(p_dB - np.max(p_dB), -80, 0)
-        llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
-        llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
-        llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
-        llr = np.column_stack((llra, llrb, llrc))
-        llr = llr.ravel() / 10
-        llr_sd = int(0.5+100*np.std(llr))/100.0
-        llr = 3.5 * llr / (llr_sd + 0.01)
-        llr = np.clip(llr, -3.7, 3.7)
-        if llr_sd > params['MIN_LLR_SD']:
-            ldpc_it = 0
-            ncheck = ldpc.calc_ncheck(llr)
-            ncheck0 = ncheck
-            if ncheck > 0:
-                if ncheck <= params['LDPC_CONTROL'][0]:
-                    for ldpc_it in range(params['LDPC_CONTROL'][1]):
-                        llr, ncheck = ldpc.do_ldpc_iteration(llr)
-                        if(ncheck == 0):
-                            break                    
-            if ncheck == 0:
-                bits91_int = 0
-                for bit in (llr[:91] > 0).astype(int).tolist():
-                    bits91_int = (bits91_int << 1) | bit
-                bits77_int = check_crc(bits91_int)
-                if(bits77_int):
-                    msg = unpack(bits77_int)
-                    if(msg not in duplicates_filter):
-                        duplicates_filter.append(msg)
-                        decode_dict = {'decoder': 'PyFT8', 'cs':f"{time.time() % params['T_CYC']:05.2f}", 'dt':syncs[fb]['dt'], 'f':0,
-                                 'sync_idx': 1, 'sync': syncs[fb], 'msg_tuple':msg, 'msg':' '.join(msg),
-                                 'ncheck0': 99,'snr': -30,'llr_sd':0,'decode_path':'','td': 0}
-                        print(f"{decode_dict['cs']} {0:4d} {decode_dict['sync']['dt']:+4.2f} {decode_dict['sync_idx']} {ldpc_it} {llr_sd} {' '.join(msg)}")
+    ldpc = LdpcDecoder()
 
+    def wait_for_time(s):
+        while (time.time() %params['T_CYC'] < s):
+            time.sleep(0.05)
+
+    print("=================================================")
+    print("Time  Freq dt    sy nits Sigma Message")
+
+    while True:
+
+        wait_for_time(params['T_SEARCH_1'])
+        cycle = audio_in.dBgrid_main_ptr // audio_in.hops_per_cycle
+        cycle_h0 = cycle * audio_in.hops_per_cycle
+        for fb in range(nFreqs - 8 * params['BPT']):
+            freq_idxs = fb + base_freq_idxs
+            p_dB = dBgrid_main[:, fb:fb+8*params['BPT']]
+            syncs[fb] = {'h0_idx':0, 'score':0, 'dt': 0}
+            for h0_idx in range(cycle_h0 + params['H0_RANGE'][0], cycle_h0 + params['H0_RANGE'][1]):
+                sync_score = float(np.dot(p_dB[h0_idx + hop_idxs_Costas + 36 * params['HPS'], :].ravel(), csync_flat))
+                test_sync = {'h0_idx':h0_idx, 'score':sync_score, 'dt': h0_idx * dt - 0.7}
+                if test_sync['score'] > syncs[fb]['score']:
+                    syncs[fb] = test_sync
+                    
+        wait_for_time(params['T_DECODE'])
+        duplicates_filter = []
+        if(cycle == 1):
+            audio_in.dBgrid_main_ptr = 0
+        for fb in range(nFreqs - 8 * params['BPT']):
+            hops = syncs[fb]['h0_idx'] + base_payload_hops
+            freq_idxs = fb + base_freq_idxs
+            p_dB = dBgrid_main[np.ix_(hops, freq_idxs)]
+            p = np.clip(p_dB - np.max(p_dB), -80, 0)
+            llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
+            llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
+            llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
+            llr = np.column_stack((llra, llrb, llrc))
+            llr = llr.ravel() / 10
+            llr_sd = int(0.5+100*np.std(llr))/100.0
+            llr = 3.5 * llr / (llr_sd + 0.01)
+            llr = np.clip(llr, -3.7, 3.7)
+            if llr_sd > params['MIN_LLR_SD']:
+                ldpc_it = 0
+                ncheck = ldpc.calc_ncheck(llr)
+                ncheck0 = ncheck
+                if ncheck > 0:
+                    if ncheck <= params['LDPC_CONTROL'][0]:
+                        for ldpc_it in range(params['LDPC_CONTROL'][1]):
+                            llr, ncheck = ldpc.do_ldpc_iteration(llr)
+                            if(ncheck == 0):
+                                break                    
+                if ncheck == 0:
+                    bits91_int = 0
+                    for bit in (llr[:91] > 0).astype(int).tolist():
+                        bits91_int = (bits91_int << 1) | bit
+                    bits77_int = check_crc(bits91_int)
+                    if(bits77_int):
+                        msg = unpack(bits77_int)
+                        if(msg not in duplicates_filter):
+                            duplicates_filter.append(msg)
+                            decode_dict = {'decoder': 'PyFT8', 'cs':f"{time.time() % params['T_CYC']:05.2f}", 'dt':syncs[fb]['dt'], 'f':0,
+                                     'sync_idx': 1, 'sync': syncs[fb], 'msg_tuple':msg, 'msg':' '.join(msg),
+                                     'ncheck0': 99,'snr': -30,'llr_sd':0,'decode_path':'','td': 0}
+                            if(on_decode):
+                                on_decode(decode_dict)
+                            if(not silent):
+                                print(f"{decode_dict['cs']} {0:4d} {decode_dict['sync']['dt']:+4.2f} {decode_dict['sync_idx']} {ldpc_it} {llr_sd} {' '.join(msg)}")
+
+def waterfall():
+    import matplotlib.pyplot as plt
+    from matplotlib.animation import FuncAnimation
+    global dBgrid_main, wf_plot
+    fig, ax = plt.subplots(figsize=(10,10))
+    wf_plot = ax.imshow(dBgrid_main, vmax = 100, vmin = 70, origin = 'lower', interpolation = 'none')
+    def animation_callback(frame):
+        global dBgrid_main, wf_plot
+        wf_plot.set_data(dBgrid_main)
+        return wf_plot,
+    ani = FuncAnimation(plt.gcf(), animation_callback, interval = 30, frames = 100000,  blit = True)
+    plt.show()
+    
+def mini_cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3100], on_decode = None, silent = True):                            
+    import threading
+    threading.Thread(target = cycle_manager, args =(input_device_keywords, freq_range, on_decode, silent) ).start()
+            
 if __name__ == "__main__":
     mini_cycle_manager(silent = False)
+    waterfall()
 
