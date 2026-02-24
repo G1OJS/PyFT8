@@ -246,7 +246,8 @@ def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3
                             rec = Rectangle(xy=(fb, syncs[fb]['h0_idx']), width = 8 * params['BPT'], height = 79*params['HPS'],
                                             facecolor = 'blue', alpha = 0.4, edgecolor = 'lime')
                             wf_rectangles.append(wf_ax.add_patch(rec))
-                            wf_text.append(wf_ax.text(fb+2, syncs[fb]['h0_idx'], ' '.join(msg), color = 'white', rotation = 'vertical', fontsize = 'small') )
+                            wf_text.append(wf_ax.text(fb+2, syncs[fb]['h0_idx'], ' '.join(msg), color = 'white',
+                                                      rotation = 'vertical', fontsize = 'small', fontweight = 'bold') )
                             duplicates_filter.append(msg)
                             decode_dict = {'decoder': 'PyFT8', 'cs':cs, 'dt':syncs[fb]['dt'], 'f':0,
                                      'sync_idx': 1, 'sync': syncs[fb], 'msg_tuple':msg, 'msg':' '.join(msg),
@@ -261,6 +262,7 @@ def waterfall():
     from matplotlib.animation import FuncAnimation
     global dBgrid_main, wf_ax, wf_plot, wf_rectangles, wf_text
     fig, wf_ax = plt.subplots(figsize=(10,10))
+    wf_ax.set_axis_off()
     wf_plot = wf_ax.imshow(dBgrid_main, vmax = 100, vmin = 70, origin = 'lower', interpolation = 'none')
     wf_rectangles = []
     wf_text = []
@@ -268,7 +270,7 @@ def waterfall():
         global dBgrid_main, wf_ax, wf_plot, wf_rectangles, wf_text
         wf_plot.set_data(dBgrid_main)
         return wf_plot, *wf_rectangles, *wf_text
-    ani = FuncAnimation(plt.gcf(), animation_callback, interval = 30, frames = 100000,  blit = True)
+    ani = FuncAnimation(plt.gcf(), animation_callback, interval = 40, frames = 100000,  blit = True)
     plt.show()
     
 def mini_cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3100], on_decode = None, silent = True):                            
