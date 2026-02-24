@@ -243,11 +243,11 @@ def cycle_manager(input_device_keywords = ['Mic', 'CODEC'], freq_range = [200, 3
                         msg = unpack(bits77_int)
                         if(msg not in duplicates_filter):
                             from matplotlib.patches import Rectangle
-                            rec = Rectangle(xy=(fb, syncs[fb]['h0_idx']), width = 8 * params['BPT'], height = 79*params['HPS'],
-                                            facecolor = 'blue', alpha = 0.4, edgecolor = 'lime')
+                            rec = Rectangle(xy=(syncs[fb]['h0_idx'], fb), width = 79*params['HPS'], height = 8 * params['BPT'],
+                                            facecolor = 'blue', alpha = 0.6, edgecolor = 'lime', lw=2)
                             wf_rectangles.append(wf_ax.add_patch(rec))
-                            wf_text.append(wf_ax.text(fb+2, syncs[fb]['h0_idx'], ' '.join(msg), color = 'white',
-                                                      rotation = 'vertical', fontsize = 'small', fontweight = 'bold') )
+                            wf_text.append(wf_ax.text(syncs[fb]['h0_idx'], fb+2, ' '.join(msg), color = 'white',
+                                                      rotation = 'horizontal', fontsize = 'small', fontweight = 'bold') )
                             duplicates_filter.append(msg)
                             decode_dict = {'decoder': 'PyFT8', 'cs':cs, 'dt':syncs[fb]['dt'], 'f':0,
                                      'sync_idx': 1, 'sync': syncs[fb], 'msg_tuple':msg, 'msg':' '.join(msg),
@@ -261,14 +261,17 @@ def waterfall():
     import matplotlib.pyplot as plt
     from matplotlib.animation import FuncAnimation
     global dBgrid_main, wf_ax, wf_plot, wf_rectangles, wf_text
+    import matplotlib.transforms as transforms
     fig, wf_ax = plt.subplots(figsize=(10,10))
+    fig.suptitle("G1OJS MiniPyFT8 with LDPC in < 300 lines of code")
+    plt.tight_layout()
     wf_ax.set_axis_off()
-    wf_plot = wf_ax.imshow(dBgrid_main, vmax = 100, vmin = 70, origin = 'lower', interpolation = 'none')
+    wf_plot = wf_ax.imshow(dBgrid_main.T, vmax = 100, vmin = 70, origin = 'lower', interpolation = 'none')
     wf_rectangles = []
     wf_text = []
     def animation_callback(frame):
         global dBgrid_main, wf_ax, wf_plot, wf_rectangles, wf_text
-        wf_plot.set_data(dBgrid_main)
+        wf_plot.set_data(dBgrid_main.T)
         return wf_plot, *wf_rectangles, *wf_text
     ani = FuncAnimation(plt.gcf(), animation_callback, interval = 40, frames = 100000,  blit = True)
     plt.show()
