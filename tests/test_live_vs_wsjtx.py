@@ -48,7 +48,8 @@ def tab_print(dd):
     global_time_utils.tlog(f"{row}")    
 
 def run_live_test():
-    from MiniPyFT8.MiniPyFT8_noLDPC import mini_cycle_manager
+  #  from MiniPyFT8.MiniPyFT8_noLDPC import mini_cycle_manager
+    from PyFT8.cycle_manager import Cycle_manager
 
     decodes = []
     t_last_decode = 0
