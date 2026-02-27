@@ -75,25 +75,24 @@ class Cycle_manager():
         main_ptr_prev = 0
         while not self.spectrum.audio_in.wav_finished:
             time.sleep(0.001)
-                
             ptr = self.spectrum.audio_in.main_ptr
-            new_to_decode = []
-            for c in candidates:
-                if ptr > c.last_payload_hop and not c.demap_started:
-                    c.demap(self.spectrum)
-                if c.llr_sd > 0 and not c.decode_completed:
-                    new_to_decode.append(c)
-                if c.msg:
-                    key = c.cyclestart_str + " " + " ".join(c.msg)
-                    if key not in duplicate_filter:
-                        duplicate_filter.add(key)
-                        self.on_decode(c.decode_dict)
-            new_to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
-            for c in new_to_decode[:35]:
-                c.decode()
-
             if(ptr != main_ptr_prev):
                 main_ptr_prev = ptr
+
+                new_to_decode = []
+                for c in candidates:
+                    if ptr > c.last_payload_hop and not c.demap_started:
+                        c.demap(self.spectrum)
+                    if c.llr_sd > 0 and not c.decode_completed:
+                        new_to_decode.append(c)
+                    if c.msg:
+                        key = c.cyclestart_str + " " + " ".join(c.msg)
+                        if key not in duplicate_filter:
+                            duplicate_filter.add(key)
+                            self.on_decode(c.decode_dict)
+                new_to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
+                for c in new_to_decode[:35]:
+                    c.decode()
 
                 if(global_time_utils.check_ticker(rollover)):
                     global_time_utils.tlog(f"{dashes}\n[Cycle manager] rollover detected at {global_time_utils.cycle_time():.2f}", verbose = self.verbose)
@@ -104,7 +103,6 @@ class Cycle_manager():
                     global_time_utils.tlog(f"[Cycle manager] start search at hop { self.spectrum.audio_in.main_ptr}", verbose = self.verbose)
                     candidates = self.spectrum.search(self.f0_idxs, global_time_utils.cyclestart_str(time.time()))
                     global_time_utils.tlog(f"[Cycle manager] New spectrum searched -> {len(candidates)} candidates", verbose = self.verbose) 
-
 
         summarise_cycle() # for wav files that have just finished
 
