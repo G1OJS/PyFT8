@@ -24,7 +24,6 @@ class Spectrum:
         payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
         data_symb_idxs = list(range(7, 36)) + list(range(43, 45))
         self.base_payload_hops = np.array([hops_persymb * s for s in payload_symb_idxs])
-        self.base_data_hops = np.array([hops_persymb * s for s in data_symb_idxs])
 
     def make_csync(self, sigspec):
         csync = np.full((sigspec.costas_len, self.fbins_per_signal), -self.fbins_pertone / (self.fbins_per_signal - self.fbins_pertone), np.float32)

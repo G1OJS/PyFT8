@@ -73,6 +73,7 @@ class Cycle_manager():
 
         self.spectrum.audio_in.main_ptr = 0
         main_ptr_prev = 0
+        base_pyld_hops = self.spectrum.base_payload_hops
         while not self.spectrum.audio_in.wav_finished:
             time.sleep(0.001)
             ptr = self.spectrum.audio_in.main_ptr
@@ -81,7 +82,8 @@ class Cycle_manager():
 
                 new_to_decode = []
                 for c in candidates:
-                    if ptr > c.last_payload_hop and not c.demap_started:
+                    ptr_rel_to_h0 = (ptr - c.sync['h0_idx']) % self.spectrum.hops_percycle
+                    if not (base_pyld_hops[0] <= ptr_rel_to_h0 <= base_pyld_hops[-1]) and not c.demap_started:
                         c.demap(self.spectrum)
                     if c.llr_sd > 0 and not c.decode_completed:
                         new_to_decode.append(c)
