@@ -56,7 +56,6 @@ class Cycle_manager():
     def manage_cycle(self):
         dashes = "======================================================"
         candidates = []
-        block2_cands = []
         duplicate_filter = set()
         rollover = global_time_utils.new_ticker(0)
         search = global_time_utils.new_ticker(11)
