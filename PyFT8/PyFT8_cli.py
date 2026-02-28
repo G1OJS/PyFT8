@@ -1,9 +1,10 @@
-
-from PyFT8.cycle_manager import Cycle_manager
-from PyFT8.sigspecs import FT8
 import argparse
 import time
 import signal
+import threading
+import matplotlib.pyplot as plt
+from PyFT8.receive import cycle_manager, Waterfall, AudioIn, params
+from PyFT8.transmit import AudioOut
 
 global concise
 concise = False
@@ -20,8 +21,8 @@ def cli():
     parser.add_argument('-c','--concise', action='store_true', help = 'Concise output') 
     parser.add_argument('-o','--outputcard_keywords', help = 'Comma-separated keywords to identify the output sound device') 
     parser.add_argument('-v','--verbose',  action='store_true',  help = 'Verbose: include debugging output')
-    parser.add_argument('-tx','--transmit_message', nargs='?', help = 'Transmit a message')
-    parser.add_argument('-wo','--wave_output_file', nargs='?', help = 'Wave output file', default = 'PyFT8_tx_wav.wav')
+    parser.add_argument('-m','--transmit_message', nargs='?', help = 'Transmit a message')
+    parser.add_argument('-w','--wave_output_file', nargs='?', help = 'Wave output file', default = 'PyFT8_tx_wav.wav')
     
     
     args = parser.parse_args()
@@ -33,24 +34,29 @@ def cli():
     wave_output_file = args.wave_output_file
 
     if(transmit_message):
-        if(output_device_keywords):
-            print(f"Transmitting {transmit_message} on next cycle (in {15 - time.time() % 15 :3.1f}s)")
-            tx_msg_file = 'PyFT8_tx_msg.txt'
-            with open('PyFT8_tx_msg.txt','w') as f:
-                f.write(transmit_message)
-        else:
-            from PyFT8.audio import AudioOut
             audio_out = AudioOut()
             symbols = audio_out.create_ft8_symbols(transmit_message)
-            wf = audio_out.create_ft8_wave(symbols)
-            audio_out.write_to_wave_file(wf, wave_output_file)
-            print(f"Created wave file '{wave_output_file}' with message '{transmit_message}'")
+            audio_data = audio_out.create_ft8_wave(symbols)
+            if(output_device_keywords):
+                output_device_idx = audio_out.find_device(output_device_keywords)
+                delay = 15 - time.time() % 15
+                print(f"Transmitting {transmit_message} on next cycle (in {delay :3.1f}s)")
+                time.sleep(delay)
+                print(f"Transmitting {transmit_message}")
+                audio_out.play_data_to_soundcard(audio_data, output_device_idx)
+            else:
+                audio_out.write_to_wave_file(audio_data, wave_output_file)
+                print(f"Created wave file '{wave_output_file}' with message '{transmit_message}'")
     else:
-        cycle_manager = Cycle_manager(FT8, on_decode = on_decode, input_device_keywords = input_device_keywords,
-                                  output_device_keywords = output_device_keywords, verbose = verbose) 
-        print("PyFT8 Rx running — Ctrl-C to stop")
-        try:
-            while True:
-                time.sleep(1)
-        except KeyboardInterrupt:
-            print("\nStopping PyFT8 Rx")
+        audio_in = AudioIn(input_device_keywords, 3100)
+        waterfall = Waterfall(audio_in.dBgrid_main, params)
+        threading.Thread(target = cycle_manager, args =(audio_in, [200, 3100], None, False, waterfall,), daemon=True ).start()
+        plt.show()
+
+if __name__ == "__main__":
+    import mock
+    with mock.patch('sys.argv', ['PyFT8_cli', '-i Mic, CODEC']):
+#    with mock.patch('sys.argv', ['PyFT8_cli', '-o "Speak, CODEC"', '-m CQ G1OJS IO90']):
+#    with mock.patch('sys.argv', ['PyFT8_cli', '-w PyFT8.wav', '-m CQ G1OJS IO90']):
+        cli()
+
