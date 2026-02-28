@@ -9,5 +9,6 @@
 000000 -30 1.1    0 ~ YI5PGQ/P ZZ6HJ LE28     1 
 000000 -30 1.1    0 ~ CQ R4WZ LO67            1 
 000000 -30 1.3    0 ~ CQ F1BHB JN09           1 
+000000 -30 1.3    0 ~ RU0LL F5CCX RR73        1 
 000000 -30 1.5    0 ~ CT3IQ EI8GVB IO63       1 
 000000 -30 2.4    0 ~ CT3IQ UY7IV R-10        1 

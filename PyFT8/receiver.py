@@ -118,7 +118,7 @@ class AudioIn:
         if input_device_keywords is not None:
             self.start_streamed_audio(input_device_keywords)
 
-    def load_wav(self, wav_path, hop_dt = 1 / (params['SYM_RATE'] * params['HPS']), run_on_hops = 70):
+    def load_wav(self, wav_path, hop_dt = 1 / (params['SYM_RATE'] * params['HPS']), run_on_hops = 120):
         wf = wave.open(wav_path, "rb")
         samples_perhop = int(params['SAMP_RATE'] / (params['SYM_RATE'] * params['HPS']))
         frames = wf.readframes(samples_perhop)
@@ -183,8 +183,8 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
     base_payload_hops = np.array([params['HPS'] * s for s in payload_symb_idxs])
     hop_idxs_Costas =  np.arange(7) * params['HPS']
     base_freq_idxs = np.array([params['BPT'] // 2 + params['BPT'] * t for t in range(8)])
-    syncs = [{}] * nFreqs
-    origins_for_decode = [(0, 0)] * nFreqs
+    n_origins = nFreqs - 8*params['BPT']
+    syncs = [{}] * n_origins
     csync = np.full((7, 8*params['BPT']), -1/7, np.float32)
     for sym_idx, tone in enumerate([3,1,4,0,6,5,2]):
         fbins = range(tone* params['BPT'], (tone+1) * params['BPT'])
@@ -209,70 +209,70 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
         tprint("Start search")
         cycle = int(audio_in.dBgrid_main_ptr / audio_in.hops_per_cycle)
         cycle_h0 = cycle * audio_in.hops_per_cycle
-        origins_for_decode = [(0, 0)] * nFreqs
-        for fb in range(nFreqs - 8 * params['BPT']):
+        origins_for_decode = {}
+        for fb in range(n_origins):
             freq_idxs = fb + base_freq_idxs
             p_dB = audio_in.dBgrid_main[:, fb:fb+8*params['BPT']]
-            syncs[fb] = {'h0_idx':0, 'score':0, 'dt': 0}
+            syncs[fb] = {'h0_idx':0, 'score':-1e30, 'dt': 0}
             for h0_idx in range(cycle_h0 + params['H0_RANGE'][0], cycle_h0 + params['H0_RANGE'][1]):
                 sync_score = float(np.dot(p_dB[h0_idx + hop_idxs_Costas + 36 * params['HPS'], :].ravel(), csync_flat))
                 test_sync = {'h0_idx':h0_idx, 'score':sync_score, 'dt': h0_idx * dt - 0.7}
                 if test_sync['score'] > syncs[fb]['score']:
                     syncs[fb] = test_sync
-                    origins_for_decode[fb] = (syncs[fb]['h0_idx'], fb)
+                    origins_for_decode[fb] = {'h0':syncs[fb]['h0_idx'], 'f0': fb, 'llr_sd':0, 'llr':[]}
         tprint("Search done")
             
-        # Decode
-        duplicates_filter = []
+        # Demap all
+        for origin in origins_for_decode.values():
+            time.sleep(0.001)
+            ptr_rel_to_h0 = (audio_in.dBgrid_main_ptr - origin['h0']) % audio_in.hops_per_grid
+            if 0 <=  ptr_rel_to_h0 <= params['PAYLOAD_SYMBOLS'] * params['HPS']:
+                continue
+            hops = [(origin['h0'] + h) for h in base_payload_hops]
+            freq_idxs = origin['f0'] + base_freq_idxs
+            p_dB = audio_in.dBgrid_main[np.ix_(hops, freq_idxs)]
+            p = np.clip(p_dB - np.max(p_dB), -80, 0)
+            llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
+            llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
+            llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
+            llr = np.column_stack((llra, llrb, llrc))
+            llr = llr.ravel() / 10
+            llr_sd = int(0.5+100*np.std(llr))/100.0
+            llr = 3.3 * llr / (llr_sd + 1e-12)
+            llr = np.clip(llr, -3.7, 3.7)
+            origin.update({'llr_sd': llr_sd, 'llr': llr})
+
+        # decode all
         cs = cyclestart_str(time.time())
-        origins_for_decode.sort(key = lambda o: o[0])
-        while len(origins_for_decode):
-            origins_for_decode = [o for o in origins_for_decode if o[0] is not None]
-            for idx, origin in enumerate(origins_for_decode[:10]):
-                origins_for_decode[idx] = (None, None)
-                time.sleep(0.002)
-                ptr_rel_to_h0 = (audio_in.dBgrid_main_ptr - origin[0]) % audio_in.hops_per_grid
-                if 0 <=  ptr_rel_to_h0 <= params['PAYLOAD_SYMBOLS'] * params['HPS']:
-                    continue
-                hops = [(origin[0] + h) for h in base_payload_hops]
-                freq_idxs = origin[1] + base_freq_idxs
-                p_dB = audio_in.dBgrid_main[np.ix_(hops, freq_idxs)]
-                p = np.clip(p_dB - np.max(p_dB), -80, 0)
-                llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
-                llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
-                llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
-                llr = np.column_stack((llra, llrb, llrc))
-                llr = llr.ravel() / 10
-                llr_sd = int(0.5+100*np.std(llr))/100.0
-                llr = 3.3 * llr / (llr_sd + 1e-12)
-                llr = np.clip(llr, -3.7, 3.7)
-                if llr_sd < params['MIN_LLR_SD']:
-                    origins_for_decode[idx] = (None, None)
-                else:
-                    ldpc_it = 0
-                    ncheck = ldpc.calc_ncheck(llr)
-                    ncheck0 = ncheck
-                    if ncheck > 0:
-                        if ncheck <= params['LDPC_CONTROL'][0]:
-                            for ldpc_it in range(params['LDPC_CONTROL'][1]):
-                                llr, ncheck = ldpc.do_ldpc_iteration(llr)
-                                if(ncheck == 0):
-                                    break                    
-                    if ncheck == 0:
-                        bits91_int = 0
-                        for bit in (llr[:91] > 0).astype(int).tolist():
-                            bits91_int = (bits91_int << 1) | bit
-                        bits77_int = check_crc(bits91_int)
-                        if(bits77_int):
-                            msg = unpack(bits77_int)
-                            if(msg not in duplicates_filter):
-                                fb = origin[1]
-                                waterfall.post_decode(syncs[fb]['h0_idx'], fb, ' '.join(msg))
-                                duplicates_filter.append(msg)
-                                decode_dict = {'decoder': 'PyFT8', 'cs':cs, 'dt':syncs[fb]['dt'], 'f':0, 'sync_idx': 1, 'sync': syncs[fb],
-                                               'msg_tuple':msg, 'msg':' '.join(msg), 'ncheck0': 99,'snr': -30,'llr_sd':0,'decode_path':'','td': cycle_time() }
-                                if(on_decode):
-                                    on_decode(decode_dict)
+        duplicates_filter = []
+        origins_for_decode = [o for o in origins_for_decode.values() if o['llr_sd'] > params['MIN_LLR_SD'] ]
+        origins_for_decode.sort(key = lambda o: -o['llr_sd'])
+        for idx, origin in enumerate(origins_for_decode):            
+            ldpc_it = 0
+            llr = origin['llr']
+            ncheck = ldpc.calc_ncheck(llr)
+            ncheck0 = ncheck
+            if ncheck > 0:
+                if ncheck <= params['LDPC_CONTROL'][0]:
+                    for ldpc_it in range(params['LDPC_CONTROL'][1]):
+                        llr, ncheck = ldpc.do_ldpc_iteration(llr)
+                        if(ncheck == 0):
+                            break                    
+            if ncheck == 0:
+                bits91_int = 0
+                for bit in (llr[:91] > 0).astype(int).tolist():
+                    bits91_int = (bits91_int << 1) | bit
+                bits77_int = check_crc(bits91_int)
+                if(bits77_int):
+                    msg = unpack(bits77_int)
+                    if(msg not in duplicates_filter):
+                        fb = origin['f0']
+                        waterfall.post_decode(origin['h0'], origin['f0'], ' '.join(msg))
+                        duplicates_filter.append(msg)
+                        decode_dict = {'decoder': 'PyFT8', 'cs':cs, 'dt':syncs[fb]['dt'], 'f':int(fb*df), 'sync_idx': 1, 'sync': syncs[fb],
+                                       'msg_tuple':msg, 'msg':' '.join(msg), 'ncheck0': 99,'snr': -30,'llr_sd':0,'decode_path':'','td': cycle_time() }
+                        if(on_decode):
+                            on_decode(decode_dict)
 
 #============= SIMPLE Rx-ONLY CODE =========================================================================
 

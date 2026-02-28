@@ -1,12 +1,12 @@
 000000 -30 0.0    0 ~ R4WZ UV5IW KN88         1 
 000000 -30 0.1    0 ~ ZZ2WKW 4U1A -20         1 
-000000 -30 0.7    0 ~ ZU6QUQ US5IQI KN87      1 
 000000 -30 0.7    0 ~ CQ IQ5PJ JN53           1 
 000000 -30 0.8    0 ~ YC6RMT IK3JLT JN65      1 
 000000 -30 0.8    0 ~ 8C4OMV G2RNC/P HK65     1 
 000000 -30 0.9    0 ~ CQ HB9CUZ JN47          1 
 000000 -30 0.9    0 ~ CQ IK4LZH JN54          1 
 000000 -30 0.9    0 ~ DJ1DM SV2BRA +03        1 
+000000 -30 0.9    0 ~ R4WZ PA3GAE JO21        1 
 000000 -30 0.9    0 ~ RA3TPE BD8NBG -18       1 
 000000 -30 0.9    0 ~ CQ R8AU MO05            1 
 000000 -30 1.0    0 ~ RZ9WA DH1NAS -13        1 
