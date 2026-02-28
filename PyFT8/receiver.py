@@ -123,7 +123,6 @@ class AudioIn:
         samples_perhop = int(params['SAMP_RATE'] / (params['SYM_RATE'] * params['HPS']))
         frames = wf.readframes(samples_perhop)
         th = time.time()
-       # self.dBgrid_main_ptr = 0
         while frames:
             if(hop_dt>0):
                 delay = hop_dt - (time.time()-th)
@@ -193,14 +192,18 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
     duplicates_filter = []
     cycle_prev = 0
     cycle_searched = True
+    audio_in.dBgrid_main_ptr = 0
     
     while True:
+        while audio_in.dBgrid_main_ptr % audio_in.hops_per_cycle > 0:
+            time.sleep(0.01)
+        
         #if (): print(f"WARNING: decoding taking too long, delayed search by {-delay:5.1f} seconds")
         while audio_in.dBgrid_main_ptr % audio_in.hops_per_cycle < params['H_SEARCH_1']:
             time.sleep(0.1)
             
         # Search
-        print(f"Search")
+        print(f"Search at hop {audio_in.dBgrid_main_ptr}")
         cycle = int(audio_in.dBgrid_main_ptr / audio_in.hops_per_cycle)
         cycle_h0 = cycle * audio_in.hops_per_cycle
         origins_for_decode = [(0, 0)] * nFreqs
@@ -223,7 +226,7 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
         while len(origins_for_decode):
             origins_for_decode = [o for o in origins_for_decode if o[0] is not None]
             for idx, origin in enumerate(origins_for_decode[:10]):
-                time.sleep(0.001)
+                time.sleep(0.0000001)
                 ptr_rel_to_h0 = (audio_in.dBgrid_main_ptr - origin[0]) % audio_in.hops_per_grid
                 if 0 <=  ptr_rel_to_h0 <= params['PAYLOAD_SYMBOLS'] * params['HPS']:
                     continue
