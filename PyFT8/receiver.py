@@ -153,7 +153,7 @@ def cyclestart_str(t):
     cyclestart_time = params['T_CYC'] * int( t / params['T_CYC'] )
     return time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
          
-def receiver(audio_in, freq_range, on_decode, silent, waterfall):
+def receiver(audio_in, freq_range, on_decode, waterfall):
     ldpc = LdpcDecoder()
     nFreqs = audio_in.nFreqs
     dt = 1.0 / (params['SYM_RATE'] * params['HPS']) 
@@ -179,9 +179,6 @@ def receiver(audio_in, freq_range, on_decode, silent, waterfall):
         if (delay < 0): print(f"WARNING: decoding taking too long, delayed search by {-delay:5.1f} seconds")
         cycle = audio_in.dBgrid_main_ptr // audio_in.hops_per_cycle
         cycle_h0 = cycle * audio_in.hops_per_cycle
-        if not silent:
-            print("=================================================")
-            print("Cycle         Time dt     sy nits Sigma Message")
         origins_for_decode = [(0, 0)] * nFreqs
         for fb in range(nFreqs - 8 * params['BPT']):
             freq_idxs = fb + base_freq_idxs
@@ -240,14 +237,13 @@ def receiver(audio_in, freq_range, on_decode, silent, waterfall):
                                                'msg_tuple':msg, 'msg':' '.join(msg), 'ncheck0': 99,'snr': -30,'llr_sd':0,'decode_path':'','td': cycle_time() }
                                 if(on_decode):
                                     on_decode(decode_dict)
-                                if(not silent):
-                                    print(f"{decode_dict['cs']} {decode_dict['td']:4.2f} {decode_dict['sync']['dt']:+4.2f} {decode_dict['sync_idx']:3d} {ldpc_it:3d} {llr_sd:5.2f}  {' '.join(msg)}")
                 origins_for_decode[idx] = (None, None)
 
-def start_receiver(waterfall):
-    threading.Thread(target = receiver, args =(audio_in, [200, 3100], None, False, waterfall), daemon=True ).start()
-
 #============= SIMPLE Rx-ONLY CODE =========================================================================
+
+def start_receiver(waterfall):
+    threading.Thread(target = receiver, args =(audio_in, [200, 3100], None, waterfall), daemon=True ).start()
+
 if __name__ == "__main__":
     audio_in = AudioIn(['Mic', 'CODEC'], 3100)
     waterfall = Waterfall(audio_in.dBgrid_main, params['HPS'], params['BPT'], start_receiver, lambda msg: print(msg))
