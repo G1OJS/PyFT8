@@ -1,8 +1,8 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import time, pyaudio, threading, queue
+from PyFT8.waterfall import Waterfall
 
-params = {'MIN_LLR_SD': 0.0,'HPS': 4, 'BPT':2,'SYM_RATE': 6.25,'SAMP_RATE': 12000, 'T_CYC':15, 'WFBOX_LIFETIME': 25,
+params = {'MIN_LLR_SD': 0.0,'HPS': 4, 'BPT':2,'SYM_RATE': 6.25,'SAMP_RATE': 12000, 'T_CYC':15,
           'T_SEARCH_0': 4.6, 'T_SEARCH_1': 10.6, 'PAYLOAD_SYMBOLS': 79-7, 'LDPC_CONTROL': (45, 12) }
 params.update({'H0_RANGE': [-7 * params['HPS'], int(3.48 * params['SYM_RATE'] * params['HPS'])]})
 
@@ -145,62 +145,6 @@ class AudioIn:
         self.dBgrid_main_ptr = (self.dBgrid_main_ptr + 1) % self.hops_per_grid
         return (None, pyaudio.paContinue)
 
-# ================== WATERFALL ======================================================
-class FT8Box:
-    def __init__(self, ax, tbin, fbin, text):
-        from matplotlib.patches import Rectangle
-        self.ax = ax
-        self.fbin = fbin
-        self.patch = ax.add_patch(Rectangle((tbin, fbin), width=79*params['HPS'], height=8*params['BPT'],
-                                            facecolor='blue',alpha=0.6, edgecolor='lime', lw=2))
-        self.text = ax.text(tbin, fbin+2,text, color='white', fontsize='small', fontweight='bold' )
-        self.modified = time.time()
-    def update(self, tbin, text):
-        self.patch.set_x(tbin)
-        self.text.set_x(tbin)
-        self.text.set_text(text)
-        self.modified = time.time()
-
-class Waterfall:
-    def __init__(self, dBgrid, params):
-        from matplotlib.animation import FuncAnimation
-        self.dBgrid = dBgrid
-        self.params = params
-        self.boxes = []
-        self.decode_queue = queue.Queue()
-        self.fig, self.ax = plt.subplots(figsize=(10,10))
-        self.fig.suptitle("G1OJS MiniPyFT8 with LDPC in ~ 300 lines")
-        plt.tight_layout()
-        self.ax.set_axis_off()
-        self.image = self.ax.imshow(self.dBgrid.T,vmax=120,vmin=90,origin='lower',interpolation='none')
-        self.ani = FuncAnimation(self.fig,self._animate,interval=40,frames=(100000), blit=True)
-
-    def tidy(self):
-        for b in self.boxes:
-            if (time.time() - b.modified) > params['WFBOX_LIFETIME']:
-                b.patch.set_visible(False)
-                b.text.set_visible(False)
-        self.boxes = [b for b in self.boxes if b.patch.get_visible()]
-
-    def post_decode(self, tbin, fbin, text):
-        self.decode_queue.put((tbin, fbin, text))
-
-    def _animate(self, frame):
-        self.image.set_data(self.dBgrid.T)
-        while not self.decode_queue.empty():
-            tbin, fbin, text = self.decode_queue.get()
-            self._add_or_update_box(tbin, fbin, text)
-        if (frame % 10 == 0):
-            self.tidy()
-        return [self.image, *self.ax.patches, *self.ax.texts]
-
-    def _add_or_update_box(self, tbin, fbin, text):
-        for box in self.boxes:
-            if box.fbin == fbin and abs(box.patch.get_x() - tbin) < 100:
-                box.update(tbin, text)
-                return
-        self.boxes.append(FT8Box(self.ax, tbin, fbin, text))
-                
 # ================== CYCLE MANAGER ======================================================
 def cycle_time():
     return time.time() % params['T_CYC']
@@ -209,7 +153,7 @@ def cyclestart_str(t):
     cyclestart_time = params['T_CYC'] * int( t / params['T_CYC'] )
     return time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
          
-def cycle_manager(audio_in, freq_range, on_decode, silent, waterfall):
+def receiver(audio_in, freq_range, on_decode, silent, waterfall):
     ldpc = LdpcDecoder()
     nFreqs = audio_in.nFreqs
     dt = 1.0 / (params['SYM_RATE'] * params['HPS']) 
@@ -300,9 +244,12 @@ def cycle_manager(audio_in, freq_range, on_decode, silent, waterfall):
                                     print(f"{decode_dict['cs']} {decode_dict['td']:4.2f} {decode_dict['sync']['dt']:+4.2f} {decode_dict['sync_idx']:3d} {ldpc_it:3d} {llr_sd:5.2f}  {' '.join(msg)}")
                 origins_for_decode[idx] = (None, None)
 
+def start_receiver(waterfall):
+    threading.Thread(target = receiver, args =(audio_in, [200, 3100], None, False, waterfall), daemon=True ).start()
+
+#============= SIMPLE Rx-ONLY CODE =========================================================================
 if __name__ == "__main__":
     audio_in = AudioIn(['Mic', 'CODEC'], 3100)
-    waterfall = Waterfall(audio_in.dBgrid_main, params)
-    threading.Thread(target = cycle_manager, args =(audio_in, [200, 3100], None, False, waterfall,), daemon=True ).start()
-    plt.show()  
+    waterfall = Waterfall(audio_in.dBgrid_main, params['HPS'], params['BPT'], start_receiver, lambda msg: print(msg))
+
 

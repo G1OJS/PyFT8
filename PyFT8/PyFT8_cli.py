@@ -3,7 +3,8 @@ import time
 import signal
 import threading
 import matplotlib.pyplot as plt
-from PyFT8.receive import cycle_manager, Waterfall, AudioIn, params
+from PyFT8.receive import receiver, AudioIn, params
+from PyFT8.waterfall import Waterfall
 from PyFT8.transmit import AudioOut
 
 global concise
@@ -48,10 +49,13 @@ def cli():
                 audio_out.write_to_wave_file(audio_data, wave_output_file)
                 print(f"Created wave file '{wave_output_file}' with message '{transmit_message}'")
     else:
+        def start_receiver(waterfall):
+            threading.Thread(target = receiver, args =(audio_in, [200, 3100], None, False, waterfall), daemon=True ).start()
         audio_in = AudioIn(input_device_keywords, 3100)
-        waterfall = Waterfall(audio_in.dBgrid_main, params)
-        threading.Thread(target = cycle_manager, args =(audio_in, [200, 3100], None, False, waterfall,), daemon=True ).start()
+        waterfall = Waterfall(audio_in.dBgrid_main, params['HPS'], params['BPT'], start_receiver, lambda msg: print(msg))
         plt.show()
+
+#================== TEST CODE ============================================================
 
 if __name__ == "__main__":
     import mock
