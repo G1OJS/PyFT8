@@ -25,7 +25,7 @@ def process_wav(dataset):
 
     audio_in.dBgrid_main_ptr = 0
     audio_data = audio_in.load_wav(dataset + ".wav")
-    time.sleep(5)
+  #  time.sleep(1)
     
     for dd in decodes:
         n_decodes +=1

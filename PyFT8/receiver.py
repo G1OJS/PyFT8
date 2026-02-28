@@ -192,18 +192,19 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
     duplicates_filter = []
     cycle_prev = 0
     cycle_searched = True
-    audio_in.dBgrid_main_ptr = 0
+
+    cs ="000000_000000"
+    def tprint(text):
+        print(f"{cs} {audio_in.dBgrid_main_ptr:3d}h {audio_in.dBgrid_main_ptr*dt:5.2f}s {text}")
     
     while True:
-        while audio_in.dBgrid_main_ptr % audio_in.hops_per_cycle > 0:
-            time.sleep(0.01)
-        
-        #if (): print(f"WARNING: decoding taking too long, delayed search by {-delay:5.1f} seconds")
-        while audio_in.dBgrid_main_ptr % audio_in.hops_per_cycle < params['H_SEARCH_1']:
+        tprint("Decoding finished")
+        while (audio_in.dBgrid_main_ptr % audio_in.hops_per_cycle < params['H_SEARCH_1'] or
+                 audio_in.dBgrid_main_ptr % audio_in.hops_per_cycle > params['H_SEARCH_1'] + 50):
             time.sleep(0.1)
             
         # Search
-        print(f"Search at hop {audio_in.dBgrid_main_ptr}")
+        tprint("Start search")
         cycle = int(audio_in.dBgrid_main_ptr / audio_in.hops_per_cycle)
         cycle_h0 = cycle * audio_in.hops_per_cycle
         origins_for_decode = [(0, 0)] * nFreqs
@@ -217,7 +218,7 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
                 if test_sync['score'] > syncs[fb]['score']:
                     syncs[fb] = test_sync
                     origins_for_decode[fb] = (syncs[fb]['h0_idx'], fb)
-        print("Search done")
+        tprint("Search done")
             
         # Decode
         duplicates_filter = []
@@ -226,7 +227,7 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
         while len(origins_for_decode):
             origins_for_decode = [o for o in origins_for_decode if o[0] is not None]
             for idx, origin in enumerate(origins_for_decode[:10]):
-                time.sleep(0.0000001)
+                time.sleep(0.001)
                 ptr_rel_to_h0 = (audio_in.dBgrid_main_ptr - origin[0]) % audio_in.hops_per_grid
                 if 0 <=  ptr_rel_to_h0 <= params['PAYLOAD_SYMBOLS'] * params['HPS']:
                     continue
@@ -242,7 +243,9 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
                 llr_sd = int(0.5+100*np.std(llr))/100.0
                 llr = 3.5 * llr / (llr_sd + 0.01)
                 llr = np.clip(llr, -3.7, 3.7)
-                if llr_sd > params['MIN_LLR_SD']:
+                if llr_sd < params['MIN_LLR_SD']:
+                    origins_for_decode[idx] = (None, None)
+                else:
                     ldpc_it = 0
                     ncheck = ldpc.calc_ncheck(llr)
                     ncheck0 = ncheck
