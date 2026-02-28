@@ -118,7 +118,7 @@ class AudioIn:
         if input_device_keywords is not None:
             self.start_streamed_audio(input_device_keywords)
 
-    def load_wav(self, wav_path, hop_dt = 1 / (params['SYM_RATE'] * params['HPS']), run_on_hops = 50):
+    def load_wav(self, wav_path, hop_dt = 1 / (params['SYM_RATE'] * params['HPS']), run_on_hops = 70):
         wf = wave.open(wav_path, "rb")
         samples_perhop = int(params['SAMP_RATE'] / (params['SYM_RATE'] * params['HPS']))
         frames = wf.readframes(samples_perhop)
@@ -230,7 +230,7 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
             origins_for_decode = [o for o in origins_for_decode if o[0] is not None]
             for idx, origin in enumerate(origins_for_decode[:10]):
                 origins_for_decode[idx] = (None, None)
-                time.sleep(0.001)
+                time.sleep(0.002)
                 ptr_rel_to_h0 = (audio_in.dBgrid_main_ptr - origin[0]) % audio_in.hops_per_grid
                 if 0 <=  ptr_rel_to_h0 <= params['PAYLOAD_SYMBOLS'] * params['HPS']:
                     continue
@@ -244,7 +244,7 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
                 llr = np.column_stack((llra, llrb, llrc))
                 llr = llr.ravel() / 10
                 llr_sd = int(0.5+100*np.std(llr))/100.0
-                llr = 3.5 * llr / (llr_sd + 0.01)
+                llr = 3.3 * llr / (llr_sd + 1e-12)
                 llr = np.clip(llr, -3.7, 3.7)
                 if llr_sd < params['MIN_LLR_SD']:
                     origins_for_decode[idx] = (None, None)

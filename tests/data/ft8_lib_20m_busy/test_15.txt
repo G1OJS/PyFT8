@@ -4,10 +4,10 @@
 000000 -30 0.7    0 ~ CQ IU8DMZ JN70          1 
 000000 -30 0.7    0 ~ CQ UR7HN KN79           1 
 000000 -30 0.7    0 ~ ZF1DVY/P S87JBQ/P LB12  1 
-000000 -30 0.8    0 ~ 2E0LDW OK6LZ 73         1 
 000000 -30 0.8    0 ~ RG0S IQ5PJ RRR          1 
 000000 -30 0.8    0 ~ DM2DLG F6HUK -13        1 
 000000 -30 0.8    0 ~ 8C4OMV G2RNC/P HK65     1 
+000000 -30 0.9    0 ~ ZU6QUQ DJ4TM JN47       1 
 000000 -30 0.9    0 ~ CQ DL1KDA JO30          1 
 000000 -30 0.9    0 ~ ES1KK R7NO -07          1 
 000000 -30 0.9    0 ~ CQ IK4LZH JN54          1 

@@ -6,7 +6,7 @@ params = {'MIN_LLR_SD': 0.6,
           'PAYLOAD_SYMBOLS': 79-7,
           'LDPC_CONTROL': (45, 12) }
 
-params.update({ 'H0_RANGE': [-7 * params['HPS'], 21 * params['HPS']],
+params.update({ 'H0_RANGE': [-7 * params['HPS'], 25 * params['HPS']],
                 'H_SEARCH_0': 28.75 * params['HPS'],
-                'H_SEARCH_1': 64.75 * params['HPS']
+                'H_SEARCH_1': 68.75 * params['HPS']
                })
