@@ -70,7 +70,7 @@ class Waterfall:
         self.messages[(int(tbin/self.midline), fbin)] = text
         for existing_box in self.boxes:
             if existing_box.fbin == fbin and abs(existing_box.patch.get_x() - tbin) < 100:
-                box.update(tbin, text)
+                existing_box.update(tbin, text)
                 return
         self.boxes.append(FT8Box(self.ax, tbin, fbin, 79*self.hps, 8*self.bpt, text))
                 

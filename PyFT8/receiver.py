@@ -1,10 +1,8 @@
 import numpy as np
+import wave
 import time, pyaudio, threading, queue
 from PyFT8.waterfall import Waterfall
-
-params = {'MIN_LLR_SD': 0.0,'HPS': 4, 'BPT':2,'SYM_RATE': 6.25,'SAMP_RATE': 12000, 'T_CYC':15,
-          'T_SEARCH_0': 4.6, 'T_SEARCH_1': 10.6, 'PAYLOAD_SYMBOLS': 79-7, 'LDPC_CONTROL': (45, 12) }
-params.update({'H0_RANGE': [-7 * params['HPS'], int(3.48 * params['SYM_RATE'] * params['HPS'])]})
+from PyFT8.params import params
 
 #=========== Unpacking functions ========================================
 from string import ascii_uppercase as ltrs, digits as digs
@@ -116,13 +114,35 @@ class AudioIn:
         self.hops_per_cycle = int(params['T_CYC'] * params['SYM_RATE'] * params['HPS'])
         self.hops_per_grid = 2 * self.hops_per_cycle
         self.dBgrid_main = np.ones((self.hops_per_grid, self.nFreqs), dtype = np.float32)
+        self.dBgrid_main_ptr = int(cycle_time() * params['SYM_RATE']*params['HPS'])
+        if input_device_keywords is not None:
+            self.start_streamed_audio(input_device_keywords)
+
+    def load_wav(self, wav_path, hop_dt = 1 / (params['SYM_RATE'] * params['HPS'])):
+        wf = wave.open(wav_path, "rb")
+        samples_perhop = int(params['SAMP_RATE'] / (params['SYM_RATE'] * params['HPS']))
+        frames = wf.readframes(samples_perhop)
+        th = time.time()
+       # self.dBgrid_main_ptr = 0
+        while frames:
+            if(hop_dt>0):
+                delay = hop_dt - (time.time()-th)
+                if(delay>0):
+                    time.sleep(delay)
+            self._callback(frames, None, None, None)
+            frames = wf.readframes(samples_perhop)
+            th = time.time()
+        wf.close()
+        self.wav_finished = True
+
+    def start_streamed_audio(self, input_device_keywords):
         indev = self.find_device(input_device_keywords)
         self.stream = pyaudio.PyAudio().open(
             format = pyaudio.paInt16, channels=1, rate = params['SAMP_RATE'], input = True, input_device_index = indev,
             frames_per_buffer = int(params['SAMP_RATE'] / (params['SYM_RATE'] * params['HPS'])), stream_callback=self._callback,)
         self.dBgrid_main_ptr = int(cycle_time() * params['SYM_RATE']*params['HPS'])
         self.stream.start_stream()
-
+       
     def find_device(self, device_str_contains):
         pya = pyaudio.PyAudio()
         for dev_idx in range(pya.get_device_count()):
@@ -171,13 +191,17 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
         csync[sym_idx, 7 * params['BPT']:] = 0.0
     csync_flat =  csync.ravel()
     duplicates_filter = []
+    cycle_prev = 0
+    cycle_searched = True
     
     while True:
+        #if (): print(f"WARNING: decoding taking too long, delayed search by {-delay:5.1f} seconds")
+        while audio_in.dBgrid_main_ptr % audio_in.hops_per_cycle < params['H_SEARCH_1']:
+            time.sleep(0.1)
+            
         # Search
-        delay = params['T_SEARCH_1'] - cycle_time()
-        if (delay > 0): time.sleep(delay)
-        if (delay < 0): print(f"WARNING: decoding taking too long, delayed search by {-delay:5.1f} seconds")
-        cycle = audio_in.dBgrid_main_ptr // audio_in.hops_per_cycle
+        print(f"Search")
+        cycle = int(audio_in.dBgrid_main_ptr / audio_in.hops_per_cycle)
         cycle_h0 = cycle * audio_in.hops_per_cycle
         origins_for_decode = [(0, 0)] * nFreqs
         for fb in range(nFreqs - 8 * params['BPT']):
@@ -190,6 +214,8 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
                 if test_sync['score'] > syncs[fb]['score']:
                     syncs[fb] = test_sync
                     origins_for_decode[fb] = (syncs[fb]['h0_idx'], fb)
+        print("Search done")
+            
         # Decode
         duplicates_filter = []
         cs = cyclestart_str(time.time())
@@ -197,11 +223,12 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
         while len(origins_for_decode):
             origins_for_decode = [o for o in origins_for_decode if o[0] is not None]
             for idx, origin in enumerate(origins_for_decode[:10]):
-                time.sleep(0.005)
+                time.sleep(0.001)
                 ptr_rel_to_h0 = (audio_in.dBgrid_main_ptr - origin[0]) % audio_in.hops_per_grid
                 if 0 <=  ptr_rel_to_h0 <= params['PAYLOAD_SYMBOLS'] * params['HPS']:
                     continue
-                hops, freq_idxs = origin[0] + base_payload_hops, origin[1] + base_freq_idxs
+                hops = [(origin[0] + h) % audio_in.hops_per_grid for h in base_payload_hops]
+                freq_idxs = origin[1] + base_freq_idxs
                 p_dB = audio_in.dBgrid_main[np.ix_(hops, freq_idxs)]
                 p = np.clip(p_dB - np.max(p_dB), -80, 0)
                 llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
@@ -243,6 +270,7 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
 
 def start_receiver(waterfall):
     threading.Thread(target = receiver, args =(audio_in, [200, 3100], None, waterfall), daemon=True ).start()
+    print("Start rx")
 
 if __name__ == "__main__":
     audio_in = AudioIn(['Mic', 'CODEC'], 3100)

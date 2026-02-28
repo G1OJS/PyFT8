@@ -1,18 +1,12 @@
 import argparse
 import time
 import threading
-import matplotlib.pyplot as plt
 from PyFT8.receiver import receiver, AudioIn, params
 from PyFT8.waterfall import Waterfall
 from PyFT8.transmitter import AudioOut
 
-global concise
-concise = False
 def on_decode(dd):
-    if(concise):
         print(f"{dd['cs']} {dd['snr']} {dd['dt']} {dd['f']} ~ {dd['msg']}")
-    else:
-        print(dd)
 
 def on_click_message(msg):
     print(msg)
