@@ -8,6 +8,11 @@ from PyFT8.params import params
 data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy"
 results_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/results/ft8_lib_20m_busy"
 
+cs ="000000_000000"
+def tprint(text, dt = 0.16/4):
+    print(f"{cs} {audio_in.dBgrid_main_ptr:3d}h {audio_in.dBgrid_main_ptr*dt:5.2f}s {text}")
+
+
 def on_decode(dd):
     global decodes
     decodes.append(dd)
@@ -25,12 +30,14 @@ def process_wav(dataset):
 
     audio_in.dBgrid_main_ptr = 0
     audio_data = audio_in.load_wav(dataset + ".wav")
-  #  time.sleep(1)
+    tprint("Wav file finished")
     
     for dd in decodes:
         n_decodes +=1
         row = f"000000 {dd['snr']:3d} {dd['dt']:3.1f} {dd['f']:4d} ~ {dd['msg']:<23} {dd['sync_idx']} {dd['decode_path']}"
         textfile_rows.append(row)
+
+    tprint("Counted decodes")
 
     with open(dataset + '.txt', "w") as f:
         for r in textfile_rows:

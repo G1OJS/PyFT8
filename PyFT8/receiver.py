@@ -118,7 +118,7 @@ class AudioIn:
         if input_device_keywords is not None:
             self.start_streamed_audio(input_device_keywords)
 
-    def load_wav(self, wav_path, hop_dt = 1 / (params['SYM_RATE'] * params['HPS'])):
+    def load_wav(self, wav_path, hop_dt = 1 / (params['SYM_RATE'] * params['HPS']), run_on_hops = 50):
         wf = wave.open(wav_path, "rb")
         samples_perhop = int(params['SAMP_RATE'] / (params['SYM_RATE'] * params['HPS']))
         frames = wf.readframes(samples_perhop)
@@ -132,7 +132,9 @@ class AudioIn:
             frames = wf.readframes(samples_perhop)
             th = time.time()
         wf.close()
-        self.wav_finished = True
+        for i in range(run_on_hops):
+            time.sleep(hop_dt)
+            self._callback(np.zeros(samples_perhop), None, None, None)
 
     def start_streamed_audio(self, input_device_keywords):
         indev = self.find_device(input_device_keywords)
@@ -227,11 +229,12 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
         while len(origins_for_decode):
             origins_for_decode = [o for o in origins_for_decode if o[0] is not None]
             for idx, origin in enumerate(origins_for_decode[:10]):
+                origins_for_decode[idx] = (None, None)
                 time.sleep(0.001)
                 ptr_rel_to_h0 = (audio_in.dBgrid_main_ptr - origin[0]) % audio_in.hops_per_grid
                 if 0 <=  ptr_rel_to_h0 <= params['PAYLOAD_SYMBOLS'] * params['HPS']:
                     continue
-                hops = [(origin[0] + h) % audio_in.hops_per_grid for h in base_payload_hops]
+                hops = [(origin[0] + h) for h in base_payload_hops]
                 freq_idxs = origin[1] + base_freq_idxs
                 p_dB = audio_in.dBgrid_main[np.ix_(hops, freq_idxs)]
                 p = np.clip(p_dB - np.max(p_dB), -80, 0)
@@ -270,7 +273,6 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
                                                'msg_tuple':msg, 'msg':' '.join(msg), 'ncheck0': 99,'snr': -30,'llr_sd':0,'decode_path':'','td': cycle_time() }
                                 if(on_decode):
                                     on_decode(decode_dict)
-                origins_for_decode[idx] = (None, None)
 
 #============= SIMPLE Rx-ONLY CODE =========================================================================
 
