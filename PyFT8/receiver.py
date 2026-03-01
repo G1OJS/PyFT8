@@ -11,9 +11,9 @@ T_CYC = 15
 LDPC_CONTROL = (45, 12) 
 
 t2h = HPS/0.16
-H0_RANGE = [int((-1.7 + 0.7)*t2h), int((2.9 + 0.7)*t2h)]
-H_SEARCH_0 = H0_RANGE[1] + 7 * HPS
-H_SEARCH_1 = H0_RANGE[1] + 43 * HPS
+H0_RANGE = [int((-2.2 + 0.7)*t2h), int((3.4 + 0.7)*t2h)]
+H_SEARCH_0 = H0_RANGE[1] + 7 * HPS + 10
+H_SEARCH_1 = H0_RANGE[1] + 43 * HPS + 10
 
 BASE_FREQ_IDXS = np.array([BPT // 2 + BPT * t for t in range(8)])
 symbol_idxs = list(range(7, 36)) + list(range(43, 72))
@@ -144,21 +144,22 @@ class AudioIn:
         if input_device_keywords is not None:
             self.start_streamed_audio(input_device_keywords)
 
-    def load_wav(self, wav_path, hop_dt = 1 / (SYM_RATE * HPS)):
+    def load_wav(self, wav_path, hop_dt = 1 / (SYM_RATE * HPS) - 0.001):
         wf = wave.open(wav_path, "rb")
         samples_perhop = int(SAMP_RATE / (SYM_RATE * HPS))
+        hoptimes = []
         th = time.time()
         frames = wf.readframes(samples_perhop)
-        self.dBgrid_main_ptr = 0
         while frames:
-            if(hop_dt>0):
-                delay = hop_dt - (time.time()-th)
-                if(delay>0):
-                    time.sleep(delay)
+            delay = hop_dt - (time.time()-th)
+            if(delay>0): time.sleep(delay)
+            th = time.time()
+            hoptimes.append(th)
             self._callback(frames, None, None, None)
             frames = wf.readframes(samples_perhop)
-            th = time.time()
         wf.close()
+        deltas = np.diff(hoptimes)
+        print(np.mean(deltas), np.std(deltas))
             
     def start_streamed_audio(self, input_device_keywords):
         indev = self.find_device(input_device_keywords)
@@ -182,12 +183,12 @@ class AudioIn:
     def _callback(self, in_data, frame_count, time_info, status_flags):
         samples = np.frombuffer(in_data, dtype=np.int16).astype(np.float32)
         ns = len(samples)
-        if(ns):
-            self.audio_buffer[:-ns] = self.audio_buffer[ns:]
-            self.audio_buffer[-ns:] = samples
-            np.multiply(self.audio_buffer, self.fft_window, out=self.fft_in)
-            z = np.fft.rfft(self.fft_in)[:self.nFreqs]
-            self.dBgrid_main[self.dBgrid_main_ptr, :] = 10*np.log10(z.real*z.real + z.imag*z.imag + 1e-12)
+        self.audio_buffer[:-ns] = self.audio_buffer[ns:]
+        self.audio_buffer[-ns:] = samples
+        np.multiply(self.audio_buffer, self.fft_window, out=self.fft_in)
+        z = np.fft.rfft(self.fft_in)[:self.nFreqs]
+        p = np.clip(z.real*z.real + z.imag*z.imag, 0.001, None)
+        self.dBgrid_main[self.dBgrid_main_ptr, :] = 10*np.log10(p)
         self.dBgrid_main_ptr = (self.dBgrid_main_ptr + 1) % self.hops_per_grid
         return (None, pyaudio.paContinue)
 

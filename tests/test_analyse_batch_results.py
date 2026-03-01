@@ -2,24 +2,17 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-pattern = '_cyclemgr_'
-#pattern = '_offline_'
-
 data_table = {'P':{},'L':{},'W':{}}
-folder = r"C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\results\ft8_lib_20m_busy"
-for filename in os.listdir(folder):
-    if(filename.endswith("txt")):
-        filepath = os.path.join(folder, filename)
-        idx = ""
-        if(pattern in filename): idx = "P"
-        if('ft8_lib' in filename): idx = "L"
-        if('wsjt' in filename): idx = "W"
-        with open(filepath, 'r') as f:
-            lines = f.readlines()
-        if(idx != ""):
+for code, folder, pattern in [  ('L', 'C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy/', '_ft8_lib.txt'),
+                                ('W', 'C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy/', 'wsjtx_2.7.0_NORM.txt'),
+                                ('P', 'C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/results/ft8_lib_20m_busy/', '_PyFT8.txt')]:
+    for filename in os.listdir(folder):
+        if(filename.endswith(pattern)):
+            filepath = os.path.join(folder, filename)
+            with open(filepath, 'r') as f:
+                lines = f.readlines()
             test_no = int(filename.split("_")[1])
-            data_table[idx][test_no] = {'n_decodes':len(lines), 'decodes':lines}
-
+            data_table[code][test_no] = {'n_decodes':len(lines), 'decodes':lines}
 
 fig, ax = plt.subplots()
 decoders = [d for d in data_table]

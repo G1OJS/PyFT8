@@ -9,13 +9,16 @@ results_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/results/f
 
 cs ="000000_000000"
 t0 = 0
+global total_check
+total_check = 0
 
 def tprint(text, dt = 0.16/4):
     ct = (time.time()-t0) % 15
     print(f"{cs} {audio_in.dBgrid_main_ptr:3d}h = {audio_in.dBgrid_main_ptr*dt:5.2f}s {ct:5.2f}s {text}")
 
 def on_decode(dd):
-    global decodes
+    global decodes, total_check
+    total_check +=1
     decodes.append(dd)
 
 def get_textfile_line_count(filepath):
@@ -32,7 +35,7 @@ def process_wav(wav, res):
     tprint(f"Read wav {wav}")
     audio_data = audio_in.load_wav(wav)
     tprint("Wav file finished")
-    time.sleep(5)
+
     for dd in decodes:
         n_decodes +=1
         row = f"000000 {dd['snr']:3d} {dd['dt']:3.1f} {dd['f']:4d} ~ {dd['msg']:<23} {dd['llr_sd']} {dd['n_its']}"
@@ -63,10 +66,10 @@ def run_batch(waterfall):
             old_baseline = pickle.load(f)
     
     for n in test_idxs:
-        nd, pt, nu = process_wav(f"{data_folder}/test_{n:02d}.wav", f"{results_folder}/test_{n:02d}_cyclemgr_PyFT8.txt")
+        nd, pt, nu = process_wav(f"{data_folder}/test_{n:02d}.wav", f"{results_folder}/test_{n:02d}_PyFT8.txt")
         baseline.append({'n_decodes':nd, 'processing_time':pt, 'n_unfinished':nu})
-        n_decodes_wsjtx += get_textfile_line_count(f"{results_folder}/test_{n:02d}_wsjtx_2.7.0_NORM.txt")
-        n_decodes_ft8_lib += get_textfile_line_count(f"{results_folder}/test_{n:02d}_ft8_lib.txt")
+        n_decodes_wsjtx += get_textfile_line_count(f"{data_folder}/test_{n:02d}_wsjtx_2.7.0_NORM.txt")
+        n_decodes_ft8_lib += get_textfile_line_count(f"{data_folder}/test_{n:02d}_ft8_lib.txt")
 
         cycle_row = f"Test_{n:02d}.wav {nd} decodes ({nd - old_baseline[n_cycles]['n_decodes']:+2d}) {pt:4.2f} seconds"
         cycle_row = cycle_row + f" ({pt - old_baseline[n_cycles]['processing_time']:+4.2f}), {nu} ({nu - old_baseline[n_cycles]['n_unfinished']:+d}) unfinished"
@@ -81,6 +84,7 @@ def run_batch(waterfall):
         cumulative_row = cumulative_row + f"{n_decodes / n_decodes_wsjtx : 4.1%} wsjtx, {n_decodes / n_decodes_ft8_lib : 4.1%} ft8_lib,"
         cumulative_row = cumulative_row + f" {processing_time:4.2f} decoding seconds, {n_unfinished} unfinished "
         print(cumulative_row)
+        print(f"{total_check = }")
         print("")
 
     summary_rows.append(cumulative_row)
@@ -93,8 +97,10 @@ def run_batch(waterfall):
             row = f" {r}"
             print(row)
             f.write(f"{row}\n")
+    
 
 def run_test(waterfall):
+    audio_in.dBgrid_main_ptr = -10 % audio_in.hops_per_grid
     threading.Thread(target = run_batch, args = (waterfall,)).start()
 
 audio_in = AudioIn(None, 3100)
