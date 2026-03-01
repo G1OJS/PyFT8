@@ -9,8 +9,8 @@ results_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/results/f
 
 cs ="000000_000000"
 def tprint(text, dt = 0.16/4):
-    print(f"{cs} {audio_in.dBgrid_main_ptr:3d}h {audio_in.dBgrid_main_ptr*dt:5.2f}s {text}")
-
+    ct = time.time() % 15
+    print(f"{cs} {audio_in.dBgrid_main_ptr:3d}h = {audio_in.dBgrid_main_ptr*dt:5.2f}s {ct:5.2g}s {text}")
 
 def on_decode(dd):
     global decodes
@@ -26,9 +26,9 @@ def process_wav(wav, res):
     nu, n_decodes = 0, 0
     decodes = []
     textfile_rows = []
-    audio_in.dBgrid_main_ptr = 0
     audio_data = audio_in.load_wav(wav)
     tprint("Wav file finished")
+    time.sleep(3)
     for dd in decodes:
         n_decodes +=1
         row = f"000000 {dd['snr']:3d} {dd['dt']:3.1f} {dd['f']:4d} ~ {dd['msg']:<23} {dd['llr_sd']} {dd['n_its']}"
@@ -43,7 +43,7 @@ def run_batch(waterfall):
 
     threading.Thread(target = receiver, args =(audio_in, [200, 3100], on_decode, waterfall,), daemon=True ).start()
 
-    test_idxs = range(1,2)
+    test_idxs = range(1,39)
     baseline, old_baseline = [], [{'n_decodes':0, 'processing_time':0, 'n_unfinished':0}] * len(test_idxs)
     n_decodes = 0
     n_decodes_wsjtx = 0

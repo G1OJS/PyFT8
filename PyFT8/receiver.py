@@ -129,9 +129,10 @@ class AudioIn:
         self.hops_per_cycle = int(T_CYC * SYM_RATE * HPS)
         self.hops_per_grid = 2*self.hops_per_cycle
         self.dBgrid_main = np.ones((self.hops_per_grid, self.nFreqs), dtype = np.float32)
-        self.dBgrid_main_ptr = int(cycle_time() * SYM_RATE * HPS)
+        self.dBgrid_main_ptr = 0
         if input_device_keywords is not None:
             self.start_streamed_audio(input_device_keywords)
+            self.dBgrid_main_ptr = int(cycle_time() * SYM_RATE * HPS)
 
     def load_wav(self, wav_path, hop_dt = 1 / (SYM_RATE * HPS)):
         self.stop = False
@@ -269,6 +270,8 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
             cycle = int(audio_in.dBgrid_main_ptr / audio_in.hops_per_cycle)
             cycle_h0 = cycle * audio_in.hops_per_cycle
             cs = cyclestart_str(time.time())
+            for origin in origins_for_decode:
+                origin.update({'sync_score':0, 'llr_sd':0, 'td':0, 'msg':''})
             for origin in origins_for_decode:
                 f0 = origin['f0']
                 freq_idxs = f0 + base_freq_idxs
