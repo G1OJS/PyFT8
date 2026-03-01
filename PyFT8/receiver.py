@@ -11,7 +11,7 @@ T_CYC = 15
 LDPC_CONTROL = (45, 12) 
 
 t2h = HPS/0.16
-H0_RANGE = [int((-1.7 + 0.7)*t2h), int((2.5 + 0.7)*t2h)]
+H0_RANGE = [int((-1.7 + 0.7)*t2h), int((2.9 + 0.7)*t2h)]
 H_SEARCH_0 = H0_RANGE[1] + 7 * HPS
 H_SEARCH_1 = H0_RANGE[1] + 43 * HPS
 
@@ -278,20 +278,16 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
                 if (ptr - origin['h0']) > LAST_BASE_PAYLOAD_HOP and not origin['demap_started']:
                     origin['demap_started'] = time.time()
                     origin = demap(audio_in.dBgrid_main, origin)
-                    origins_for_decode[idx] = origin
                 if float(origin['llr_sd']) > 0 and origin['td'] == 0:
                     to_decode_this_loop.append(origin)
-                if origin['msg']:
-                    key = origin['cs'] + " " + origin['msg']
-                    if key not in duplicate_filter:
-                        duplicate_filter.add(key)
-                        waterfall.post_decode(origin['h0'], origin['f0'], origin['msg'])
-                        on_decode(origin)
+                if origin['msg'] and origin['msg'] not in duplicate_filter:
+                    duplicate_filter.add(origin['msg'])
+                    waterfall.post_decode(origin['h0'], origin['f0'], origin['msg'])
+                    on_decode(origin)
 
             to_decode_this_loop.sort(key=lambda o: o['llr_sd'], reverse=True)
             for origin in to_decode_this_loop[:35]:
-                idx = origin['f0']
-                origins_for_decode[idx] = decode(origin, ldpc)
+                origin = decode(origin, ldpc)
     
             if check_ptr_alarm(search_alarm):
                 tprint("Start search")
@@ -307,7 +303,6 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
                         sync_score = float(np.dot(p_dB[h0 + BASE_COSTAS_HOPS + 36 * HPS, :].ravel(), csync_flat))
                         if sync_score > origin['sync_score']:
                             origin.update({'h0':h0, 'sync_score':sync_score, 'dt': h0*dt - 0.7})
-                            origins_for_decode[idx] = origin
                 tprint("Search done")
                         
 #============= SIMPLE Rx-ONLY CODE =========================================================================
