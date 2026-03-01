@@ -11,7 +11,7 @@ T_CYC = 15
 LDPC_CONTROL = (45, 12) 
 
 t2h = HPS/0.16
-H0_RANGE = [int((-1.7 + 0.7)*t2h), int((3.2 + 0.7)*t2h)]
+H0_RANGE = [int((-1.7 + 0.7)*t2h), int((3.5 + 0.7)*t2h)]
 H_SEARCH_0 = H0_RANGE[1] + 7 * HPS
 H_SEARCH_1 = H0_RANGE[1] + 43 * HPS
 
@@ -151,9 +151,6 @@ class AudioIn:
             frames = wf.readframes(samples_perhop)
             th = time.time()
         wf.close()
-        #while not self.stop:
-        #    time.sleep(hop_dt)
-        #    self._callback(np.zeros(samples_perhop), None, None, None)
             
     def start_streamed_audio(self, input_device_keywords):
         indev = self.find_device(input_device_keywords)
@@ -200,8 +197,9 @@ def demap(dBgrid_main, origin):
     llr = 3.3 * llr / (llr_sd + 1e-12)
     llr = np.clip(llr, -3.7, 3.7)
     origin.update({'llr_sd': llr_sd, 'llr': llr})
+    return origin
 
-def decode(origin, cs, ldpc):
+def decode(origin, ldpc):
     if origin['llr_sd'] > LLR_SD_MIN:
         llr = origin['llr']
         ncheck = ldpc.calc_ncheck(llr)
@@ -222,6 +220,7 @@ def decode(origin, cs, ldpc):
                 origin['msg_tuple'] = unpack(bits77_int)
                 origin['msg'] = ' '.join(origin['msg_tuple'])
     origin['td'] = time.time()
+    return origin
 
 # ================== CYCLE MANAGER ======================================================
 def cycle_time():
@@ -243,7 +242,7 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
         csync[sym_idx, fbins] = 1.0
         csync[sym_idx, 7 * BPT:] = 0.0
     csync_flat =  csync.ravel()
-
+    duplicate_filter = set()
     def check_ptr_alarm(ptr_alarm):
         h = (audio_in.dBgrid_main_ptr - ptr_alarm[0]) % audio_in.hops_per_cycle
         ring =  h < ptr_alarm[1]
@@ -253,54 +252,59 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
 
     origins_for_decode = []
     for f0 in range(n_origins):
-        origins_for_decode.append ({'h0':0, 'f0': f0, 'llr_sd':0, 'llr':[], 'td':0, 'n_its':0,
+        origins_for_decode.append ({'h0':0, 'f0': f0, 'llr_sd':0, 'llr':[], 'td':0, 'n_its':0, 'demap_started':0,
                 'decoder': 'PyFT8', 'cs':'', 'sync_idx': 1, 'sync_score': 0,
                 'dt':0, 'f':int(f0*df), 'msg_tuple':(''), 'msg':'', 'ncheck0': 99, 'snr': -30})
-
     cs ="000000_000000"
     def tprint(text):
         print(f"{cs} {audio_in.dBgrid_main_ptr:3d}h {audio_in.dBgrid_main_ptr*dt:5.2f}s {text}")
 
+    main_ptr_prev = 0
     while True:
         time.sleep(0.001)
-        # search
-        if check_ptr_alarm(search_alarm):
-            duplicates_filter = []
-            tprint("Start search")
-            cycle = int(audio_in.dBgrid_main_ptr / audio_in.hops_per_cycle)
-            cycle_h0 = cycle * audio_in.hops_per_cycle
-            cs = cyclestart_str(time.time())
-            for origin in origins_for_decode:
-                origin.update({'sync_score':0, 'llr_sd':0, 'td':0, 'msg':''})
-            for origin in origins_for_decode:
-                f0 = origin['f0']
-                freq_idxs = f0 + base_freq_idxs
-                p_dB = audio_in.dBgrid_main[:, f0:f0 + 8 * BPT]
-                for h0 in range(cycle_h0 + H0_RANGE[0], cycle_h0 + H0_RANGE[1]):
-                    sync_score = float(np.dot(p_dB[h0 + hop_idxs_Costas + 36 * HPS, :].ravel(), csync_flat))
-                    if sync_score > origin['sync_score']:
-                        origin.update({'h0':h0, 'sync_score':sync_score, 'dt': h0*dt - 0.7})
-            tprint("Search done")
+        ptr = audio_in.dBgrid_main_ptr
+        if(ptr != main_ptr_prev):
+            main_ptr_prev = ptr
 
-        # check if not demapped, and if possible demap and add to decode list
-        to_decode_this_loop = []
-        for origin in origins_for_decode:
-            if origin['td'] == 0:
-                if origin['llr_sd'] == 0:
-                    ptr_rel_to_h0 = (audio_in.dBgrid_main_ptr - origin['h0']) % audio_in.hops_per_grid
-                    if not (0 <=  ptr_rel_to_h0 <= payload_symb_idxs[-1] * HPS):
-                        demap(audio_in.dBgrid_main, origin)
-                to_decode_this_loop.append(origin)
+            to_decode_this_loop = []
+            for idx, origin in enumerate(origins_for_decode):
+                if ptr - origin['h0'] > H_SEARCH_1 and not origin['demap_started']:
+                    origin['demap_started'] = time.time()
+                    origin = demap(audio_in.dBgrid_main, origin)
+                    origins_for_decode[idx] = origin
+                if float(origin['llr_sd']) > 0 and origin['td'] == 0:
+                    to_decode_this_loop.append(origin)
+                if origin['msg']:
+                    key = origin['cs'] + " " + origin['msg']
+                    if key not in duplicate_filter:
+                        duplicate_filter.add(key)
+                        waterfall.post_decode(origin['h0'], origin['f0'], origin['msg'])
+                        on_decode(origin)
 
-        # decode newly demapped signals
-        to_decode_this_loop.sort(key = lambda o: -o['llr_sd'])
-        for origin in to_decode_this_loop[:35]:
-            decode(origin, cs, ldpc)
-            if(origin['msg'] and origin['msg'] not in duplicates_filter):
-                waterfall.post_decode(origin['h0'], origin['f0'], origin['msg'])
-                duplicates_filter.append(origin['msg'])
-                if(on_decode):
-                    on_decode(origin)
+            to_decode_this_loop.sort(key=lambda o: o['llr_sd'], reverse=True)
+            for origin in to_decode_this_loop[:35]:
+                idx = origin['f0']
+                origins_for_decode[idx] = decode(origin, ldpc)
+    
+            if check_ptr_alarm(search_alarm):
+                tprint("Start search")
+                cycle = int(audio_in.dBgrid_main_ptr / audio_in.hops_per_cycle)
+                cycle_h0 = cycle * audio_in.hops_per_cycle
+                cs = cyclestart_str(time.time())
+                for idx, origin in enumerate(origins_for_decode):
+                    origin.update({'sync_score':0, 'llr_sd':0, 'td':0, 'msg':'', 'cs':cs, 'demap_started':0})
+                    origins_for_decode[idx] = origin
+                for idx, origin in enumerate(origins_for_decode):
+                    f0 = origin['f0']
+                    freq_idxs = f0 + base_freq_idxs
+                    p_dB = audio_in.dBgrid_main[:, f0:f0 + 8 * BPT]
+                    for h0 in range(cycle_h0 + H0_RANGE[0], cycle_h0 + H0_RANGE[1]):
+                        sync_score = float(np.dot(p_dB[h0 + hop_idxs_Costas + 36 * HPS, :].ravel(), csync_flat))
+                        if sync_score > origin['sync_score']:
+                            origin.update({'h0':h0, 'sync_score':sync_score, 'dt': h0*dt - 0.7})
+                            origins_for_decode[idx] = origin
+                tprint("Search done")
+
         
                         
 #============= SIMPLE Rx-ONLY CODE =========================================================================

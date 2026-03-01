@@ -63,7 +63,7 @@ def run_batch(waterfall):
             old_baseline = pickle.load(f)
     
     for n in test_idxs:
-        nd, pt, nu = process_wav(f"{data_folder}/test_{n:02d}.wav", f"{results_folder}/test_{n:02d}_cyclemgr_PyFT8.txt")
+        nd, pt, nu = process_wav(f"{data_folder}/test_{n:02d}.wav", f"{results_folder}/test_{n:02d}_tmp_PyFT8.txt")
         baseline.append({'n_decodes':nd, 'processing_time':pt, 'n_unfinished':nu})
         n_decodes_wsjtx += get_textfile_line_count(f"{results_folder}/test_{n:02d}_wsjtx_2.7.0_NORM.txt")
         n_decodes_ft8_lib += get_textfile_line_count(f"{results_folder}/test_{n:02d}_ft8_lib.txt")

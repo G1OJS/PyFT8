@@ -22,18 +22,25 @@ readfiles(r"C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\results\ft8_lib
 
 
 fig, ax = plt.subplots()
-x,y = [],[]
+x,y, c = [],[],[]
+total_missing = 0
 
-for test_no in range(1,2):
-    main, curr = [],[]
-    for l in data_table[0][test_no]:
-        main.append(l[22:])
+for test_no in range(1,39):
+    main, curr_ends, curr = [],[],[]
     for l in data_table[1][test_no]:
-        curr.append(l[22:])
-    for l in set(main).difference(curr):
-        print(l)
-        
-ax.scatter(x,y)
+        curr.append(l)
+        curr_ends.append(l[22:].strip())
+   # print(curr_ends)
+    for l in data_table[0][test_no]:
+        msg = ' '.join(l.split()[5:8])
+        #print(msg, msg in curr_ends)
+        c.append('blue' if msg in curr_ends else 'red')
+        x.append(float(l[11:14]))
+        y.append(test_no)
+        total_missing += (0 if msg in curr_ends else 1)
+    print(total_missing)
+
+ax.scatter(x,y,color=c)
 
 plt.show()
 
