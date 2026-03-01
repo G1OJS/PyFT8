@@ -1,39 +1,39 @@
- Test_01.wav 14 decodes (-3) 15.00 seconds (+0.00), 0 (-177) unfinished
- Test_02.wav 19 decodes (+0) 15.00 seconds (+0.00), 0 (-102) unfinished
- Test_03.wav 10 decodes (-2) 15.00 seconds (+0.00), 0 (-111) unfinished
- Test_04.wav 15 decodes (-2) 15.00 seconds (+0.00), 0 (-94) unfinished
- Test_05.wav 18 decodes (-3) 15.00 seconds (+0.00), 0 (-148) unfinished
- Test_06.wav 15 decodes (-6) 15.00 seconds (+0.00), 0 (-102) unfinished
- Test_07.wav 16 decodes (-5) 15.00 seconds (+0.00), 0 (-458) unfinished
- Test_08.wav 15 decodes (-4) 15.00 seconds (+0.00), 0 (-121) unfinished
- Test_09.wav 12 decodes (-5) 15.00 seconds (+0.00), 0 (+0) unfinished
+ Test_01.wav 13 decodes (-4) 15.00 seconds (+0.00), 0 (-177) unfinished
+ Test_02.wav 18 decodes (-1) 15.00 seconds (+0.00), 0 (-102) unfinished
+ Test_03.wav 11 decodes (-1) 15.00 seconds (+0.00), 0 (-111) unfinished
+ Test_04.wav 16 decodes (-1) 15.00 seconds (+0.00), 0 (-94) unfinished
+ Test_05.wav 17 decodes (-4) 15.00 seconds (+0.00), 0 (-148) unfinished
+ Test_06.wav 17 decodes (-4) 15.00 seconds (+0.00), 0 (-102) unfinished
+ Test_07.wav 17 decodes (-4) 15.00 seconds (+0.00), 0 (-458) unfinished
+ Test_08.wav 17 decodes (-2) 15.00 seconds (+0.00), 0 (-121) unfinished
+ Test_09.wav 10 decodes (-7) 15.00 seconds (+0.00), 0 (+0) unfinished
  Test_10.wav 18 decodes (-1) 15.00 seconds (+0.00), 0 (-143) unfinished
- Test_11.wav 15 decodes (-3) 15.00 seconds (+0.00), 0 (-203) unfinished
+ Test_11.wav 17 decodes (-1) 15.00 seconds (+0.00), 0 (-203) unfinished
  Test_12.wav 16 decodes (-2) 15.00 seconds (+0.00), 0 (-108) unfinished
- Test_13.wav 17 decodes (-4) 15.00 seconds (+0.00), 0 (-133) unfinished
- Test_14.wav 14 decodes (-4) 15.00 seconds (+0.00), 0 (-83) unfinished
- Test_15.wav 17 decodes (-4) 15.00 seconds (+0.00), 0 (-193) unfinished
- Test_16.wav 15 decodes (-3) 15.00 seconds (+0.00), 0 (-81) unfinished
- Test_17.wav 15 decodes (-5) 15.00 seconds (+0.00), 0 (-158) unfinished
- Test_18.wav 14 decodes (-2) 15.00 seconds (+0.00), 0 (-105) unfinished
- Test_19.wav 18 decodes (-3) 15.00 seconds (+0.00), 0 (-227) unfinished
+ Test_13.wav 18 decodes (-3) 15.00 seconds (+0.00), 0 (-133) unfinished
+ Test_14.wav 12 decodes (-6) 15.00 seconds (+0.00), 0 (-83) unfinished
+ Test_15.wav 16 decodes (-5) 15.00 seconds (+0.00), 0 (-193) unfinished
+ Test_16.wav 14 decodes (-4) 15.00 seconds (+0.00), 0 (-81) unfinished
+ Test_17.wav 17 decodes (-3) 15.00 seconds (+0.00), 0 (-158) unfinished
+ Test_18.wav 15 decodes (-1) 15.00 seconds (+0.00), 0 (-105) unfinished
+ Test_19.wav 16 decodes (-5) 15.00 seconds (+0.00), 0 (-227) unfinished
  Test_20.wav 16 decodes (-3) 15.00 seconds (+0.00), 0 (-144) unfinished
- Test_21.wav 14 decodes (-5) 15.00 seconds (+0.00), 0 (-230) unfinished
- Test_22.wav 19 decodes (+0) 15.00 seconds (+0.00), 0 (-94) unfinished
- Test_23.wav 15 decodes (-2) 15.00 seconds (+0.00), 0 (-166) unfinished
- Test_24.wav 15 decodes (-5) 15.00 seconds (+0.00), 0 (-196) unfinished
- Test_25.wav 18 decodes (-1) 15.00 seconds (+0.00), 0 (-187) unfinished
+ Test_21.wav 12 decodes (-7) 15.00 seconds (+0.00), 0 (-230) unfinished
+ Test_22.wav 18 decodes (-1) 15.00 seconds (+0.00), 0 (-94) unfinished
+ Test_23.wav 16 decodes (-1) 15.00 seconds (+0.00), 0 (-166) unfinished
+ Test_24.wav 18 decodes (-2) 15.00 seconds (+0.00), 0 (-196) unfinished
+ Test_25.wav 17 decodes (-2) 15.00 seconds (+0.00), 0 (-187) unfinished
  Test_26.wav 16 decodes (-5) 15.00 seconds (+0.00), 0 (-174) unfinished
- Test_27.wav 18 decodes (-3) 15.00 seconds (+0.00), 0 (-216) unfinished
- Test_28.wav 14 decodes (-3) 15.00 seconds (+0.00), 0 (-174) unfinished
+ Test_27.wav 17 decodes (-4) 15.00 seconds (+0.00), 0 (-216) unfinished
+ Test_28.wav 13 decodes (-4) 15.00 seconds (+0.00), 0 (-174) unfinished
  Test_29.wav 15 decodes (-1) 15.00 seconds (+0.00), 0 (-139) unfinished
- Test_30.wav 16 decodes (-3) 15.00 seconds (+0.00), 0 (-138) unfinished
- Test_31.wav 14 decodes (-5) 15.00 seconds (+0.00), 0 (-196) unfinished
- Test_32.wav 16 decodes (-5) 15.00 seconds (+0.00), 0 (-218) unfinished
- Test_33.wav 15 decodes (-4) 15.00 seconds (+0.00), 0 (-172) unfinished
- Test_34.wav 15 decodes (-3) 15.00 seconds (+0.00), 0 (-209) unfinished
- Test_35.wav 15 decodes (-4) 15.00 seconds (+0.00), 0 (-210) unfinished
- Test_36.wav 14 decodes (-2) 15.00 seconds (+0.00), 0 (-129) unfinished
- Test_37.wav 16 decodes (+0) 15.00 seconds (+0.00), 0 (-196) unfinished
- Test_38.wav 11 decodes (-3) 15.00 seconds (+0.00), 0 (-184) unfinished
- Totals: 585 decodes,  15.4 decodes/cycle,  15.0 s/cycle, 58.3% wsjtx,  84.3% ft8_lib, 570.00 decoding seconds, 0 unfinished 
+ Test_30.wav 15 decodes (-4) 15.00 seconds (+0.00), 0 (-138) unfinished
+ Test_31.wav 16 decodes (-3) 15.00 seconds (+0.00), 0 (-196) unfinished
+ Test_32.wav 17 decodes (-4) 15.00 seconds (+0.00), 0 (-218) unfinished
+ Test_33.wav 17 decodes (-2) 15.00 seconds (+0.00), 0 (-172) unfinished
+ Test_34.wav 16 decodes (-2) 15.00 seconds (+0.00), 0 (-209) unfinished
+ Test_35.wav 17 decodes (-2) 15.00 seconds (+0.00), 0 (-210) unfinished
+ Test_36.wav 12 decodes (-4) 15.00 seconds (+0.00), 0 (-129) unfinished
+ Test_37.wav 15 decodes (-1) 15.00 seconds (+0.00), 0 (-196) unfinished
+ Test_38.wav 12 decodes (-2) 15.00 seconds (+0.00), 0 (-184) unfinished
+ Totals: 590 decodes,  15.5 decodes/cycle,  15.0 s/cycle, 58.8% wsjtx,  85.0% ft8_lib, 570.00 decoding seconds, 0 unfinished 

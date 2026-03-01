@@ -6,7 +6,7 @@ pattern = '_cyclemgr_'
 #pattern = '_offline_'
 
 data_table = {'P':{},'L':{},'W':{}}
-folder = r"C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\data\ft8_lib\20m_busy"
+folder = r"C:\Users\drala\Documents\Projects\GitHub\PyFT8\tests\results\ft8_lib_20m_busy"
 for filename in os.listdir(folder):
     if(filename.endswith("txt")):
         filepath = os.path.join(folder, filename)

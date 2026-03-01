@@ -29,6 +29,7 @@ def process_wav(wav, res):
     decodes = []
     textfile_rows = []
     t0 = 0
+    tprint(f"Read wav {wav}")
     audio_data = audio_in.load_wav(wav)
     tprint("Wav file finished")
     time.sleep(3)
@@ -69,7 +70,6 @@ def run_batch(waterfall):
 
         cycle_row = f"Test_{n:02d}.wav {nd} decodes ({nd - old_baseline[n_cycles]['n_decodes']:+2d}) {pt:4.2f} seconds"
         cycle_row = cycle_row + f" ({pt - old_baseline[n_cycles]['processing_time']:+4.2f}), {nu} ({nu - old_baseline[n_cycles]['n_unfinished']:+d}) unfinished"
-        print("")
         print(cycle_row)
         summary_rows.append(cycle_row)
 
@@ -81,6 +81,7 @@ def run_batch(waterfall):
         cumulative_row = cumulative_row + f"{n_decodes / n_decodes_wsjtx : 4.1%} wsjtx, {n_decodes / n_decodes_ft8_lib : 4.1%} ft8_lib,"
         cumulative_row = cumulative_row + f" {processing_time:4.2f} decoding seconds, {n_unfinished} unfinished "
         print(cumulative_row)
+        print("")
 
     summary_rows.append(cumulative_row)
 

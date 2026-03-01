@@ -10,9 +10,10 @@ SAMP_RATE = 12000
 T_CYC = 15
 LDPC_CONTROL = (45, 12) 
 
-H0_RANGE = [-14 * HPS, 30 * HPS]
-H_SEARCH_0 = 28.75 * HPS
-H_SEARCH_1 = 68 * HPS
+t2h = HPS/0.16
+H0_RANGE = [int((-1.7 + 0.7)*t2h), int((3.2 + 0.7)*t2h)]
+H_SEARCH_0 = H0_RANGE[1] + 7 * HPS
+H_SEARCH_1 = H0_RANGE[1] + 43 * HPS
 
 base_freq_idxs = np.array([BPT // 2 + BPT * t for t in range(8)])
 payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
@@ -264,7 +265,6 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
         time.sleep(0.001)
         # search
         if check_ptr_alarm(search_alarm):
-            print(search_alarm)
             duplicates_filter = []
             tprint("Start search")
             cycle = int(audio_in.dBgrid_main_ptr / audio_in.hops_per_cycle)
@@ -283,19 +283,26 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
             tprint("Search done")
 
         # check if not demapped, and if possible demap and add to decode list
+        to_decode_this_loop = []
         for origin in origins_for_decode:
             if origin['td'] == 0:
                 if origin['llr_sd'] == 0:
                     ptr_rel_to_h0 = (audio_in.dBgrid_main_ptr - origin['h0']) % audio_in.hops_per_grid
                     if not (0 <=  ptr_rel_to_h0 <= payload_symb_idxs[-1] * HPS):
                         demap(audio_in.dBgrid_main, origin)
-                        decode(origin, cs, ldpc)
-                        if(origin['msg'] and origin['msg'] not in duplicates_filter):
-                            waterfall.post_decode(origin['h0'], origin['f0'], origin['msg'])
-                            duplicates_filter.append(origin['msg'])
-                            if(on_decode):
-                                on_decode(origin)
-            
+                to_decode_this_loop.append(origin)
+
+        # decode newly demapped signals
+        to_decode_this_loop.sort(key = lambda o: -o['llr_sd'])
+        for origin in to_decode_this_loop[:35]:
+            decode(origin, cs, ldpc)
+            if(origin['msg'] and origin['msg'] not in duplicates_filter):
+                waterfall.post_decode(origin['h0'], origin['f0'], origin['msg'])
+                duplicates_filter.append(origin['msg'])
+                if(on_decode):
+                    on_decode(origin)
+        
+                        
 #============= SIMPLE Rx-ONLY CODE =========================================================================
 
 def start_receiver(waterfall):
