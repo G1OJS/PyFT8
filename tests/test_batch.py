@@ -3,7 +3,6 @@ import time
 import pickle
 import threading
 from PyFT8.receiver import receiver, AudioIn, Waterfall
-from PyFT8.params import params
 
 data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy"
 results_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/results/ft8_lib_20m_busy"
@@ -22,27 +21,22 @@ def get_textfile_line_count(filepath):
         l = f.readlines()
     return len(l)
 
-def process_wav(dataset):
+def process_wav(wav, res):
     global decodes
     nu, n_decodes = 0, 0
     decodes = []
     textfile_rows = []
-
     audio_in.dBgrid_main_ptr = 0
-    audio_data = audio_in.load_wav(dataset + ".wav")
+    audio_data = audio_in.load_wav(wav)
     tprint("Wav file finished")
-    
     for dd in decodes:
         n_decodes +=1
         row = f"000000 {dd['snr']:3d} {dd['dt']:3.1f} {dd['f']:4d} ~ {dd['msg']:<23} {dd['sync_idx']} {dd['decode_path']}"
         textfile_rows.append(row)
-
     tprint("Counted decodes")
-
-    with open(dataset + '.txt', "w") as f:
+    with open(res, "w") as f:
         for r in textfile_rows:
             f.write(f"{r}\n")
-
     return n_decodes, 15, nu
 
 def run_batch(waterfall):
@@ -65,7 +59,7 @@ def run_batch(waterfall):
             old_baseline = pickle.load(f)
     
     for n in test_idxs:
-        nd, pt, nu = process_wav(f"{data_folder}/test_{n:02d}")
+        nd, pt, nu = process_wav(f"{data_folder}/test_{n:02d}.wav", f"{results_folder}/test_{n:02d}_cyclemgr_PyFT8.txt")
         print("Test complete")
         baseline.append({'n_decodes':nd, 'processing_time':pt, 'n_unfinished':nu})
         n_decodes_wsjtx += get_textfile_line_count(f"{results_folder}/test_{n:02d}_wsjtx_2.7.0_NORM.txt")
@@ -101,7 +95,7 @@ def run_test(waterfall):
     threading.Thread(target = run_batch, args = (waterfall,)).start()
 
 audio_in = AudioIn(None, 3100)
-waterfall = Waterfall(audio_in.dBgrid_main, params['HPS'], params['BPT'], run_test, lambda msg: print(msg))
+waterfall = Waterfall(audio_in.dBgrid_main, 4, 2, run_test, lambda msg: print(msg))
 
 
 
