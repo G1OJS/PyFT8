@@ -11,9 +11,9 @@ T_CYC = 15
 LDPC_CONTROL = (45, 12) 
 
 t2h = HPS/0.16
-H0_RANGE = [int((-2.2 + 0.7)*t2h), int((3.4 + 0.7)*t2h)]
-H_SEARCH_0 = H0_RANGE[1] + 7 * HPS + 10
-H_SEARCH_1 = H0_RANGE[1] + 43 * HPS + 10
+H0_RANGE = [int(-1 *t2h), int(3.4 *t2h)]
+H_SEARCH_0 = H0_RANGE[1] + 7 * HPS
+H_SEARCH_1 = H0_RANGE[1] + 43 * HPS 
 
 BASE_FREQ_IDXS = np.array([BPT // 2 + BPT * t for t in range(8)])
 symbol_idxs = list(range(7, 36)) + list(range(43, 72))
@@ -193,7 +193,7 @@ class AudioIn:
         return (None, pyaudio.paContinue)
 
 def demap(dBgrid_main, origin):
-    hops = [(origin['h0'] + h) for h in BASE_PAYLOAD_HOPS]
+    hops = origin['h0'] + BASE_PAYLOAD_HOPS
     freq_idxs = origin['f0'] + BASE_FREQ_IDXS
     p_dB = dBgrid_main[np.ix_(hops, freq_idxs)]
     p = np.clip(p_dB - np.max(p_dB), -80, 0)

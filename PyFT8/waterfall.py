@@ -35,7 +35,7 @@ class Waterfall:
         plt.tight_layout()
         self.ax.set_axis_off()
         self.image = self.ax.imshow(self.dBgrid.T,vmax=120,vmin=90,origin='lower',interpolation='none')
-        self.ani = FuncAnimation(self.fig,self._animate,interval=320,frames=(100000), blit=True)
+        self.ani = FuncAnimation(self.fig,self._animate,interval=160,frames=(100000), blit=True)
         before_plt_show(self)
         cid = self.fig.canvas.mpl_connect('button_press_event', self.onclick)
         plt.show()
