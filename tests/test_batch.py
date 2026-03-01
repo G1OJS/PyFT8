@@ -37,10 +37,10 @@ def run_cycle_manager(wav_file):
 
     for dd in decodes:
         n_decodes +=1
-        row = f"000000 {dd['snr']:3d} {dd['dt']:3.1f} {dd['f']:4d} ~ {dd['msg']:<23} {dd['sync_idx']} {dd['decode_path']}"
+        row = f"000000 {dd['snr']:3d} {dd['dt']:+3.1f} {dd['f']:4d} ~ {dd['msg']:<23} {dd['sync_idx']} {dd['decode_path']}"
         textfile_rows.append(row)
 
-    with open(f"{output_folder}/PyFT8.txt", "w") as f:
+    with open(f"{output_folder}/{wav_file}_PyFT8.txt", "w") as f:
         for r in textfile_rows:
             f.write(f"{r}\n")
 
@@ -65,10 +65,11 @@ def run_batch(test_idxs, offline = False):
     for n in test_idxs:
         nd, pt, nu = run_cycle_manager(f"test_{n:02d}")
         baseline.append({'n_decodes':nd, 'processing_time':pt, 'n_unfinished':nu})
-        n_decodes_wsjtx += get_textfile_line_count(f"{input_folder}/test_{n:02d}_wsjtx_2.7.0_NORM.txt")
-        n_decodes_ft8_lib += get_textfile_line_count(f"{input_folder}/test_{n:02d}_ft8_lib.txt")
-
-        cycle_row = f"Test_{n:02d}.wav {nd} decodes ({nd - old_baseline[n_cycles]['n_decodes']:+2d}) {pt:4.2f} seconds"
+        l = get_textfile_line_count(f"{input_folder}/test_{n:02d}_ft8_lib.txt")
+        w = get_textfile_line_count(f"{input_folder}/test_{n:02d}_wsjtx_2.7.0_NORM.txt")
+        n_decodes_wsjtx += w
+        n_decodes_ft8_lib += l
+        cycle_row = f"Test_{n:02d}.wav {nd} decodes ({nd - old_baseline[n_cycles]['n_decodes']:+2d}, w:{w} l:{l}) {pt:4.2f} seconds "
         cycle_row = cycle_row + f" ({pt - old_baseline[n_cycles]['processing_time']:+4.2f}), {nu} ({nu - old_baseline[n_cycles]['n_unfinished']:+d}) unfinished"
         print("")
         print(cycle_row)
