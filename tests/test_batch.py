@@ -32,7 +32,7 @@ def process_wav(wav, res):
     tprint(f"Read wav {wav}")
     audio_data = audio_in.load_wav(wav)
     tprint("Wav file finished")
-    time.sleep(3)
+    time.sleep(5)
     for dd in decodes:
         n_decodes +=1
         row = f"000000 {dd['snr']:3d} {dd['dt']:3.1f} {dd['f']:4d} ~ {dd['msg']:<23} {dd['llr_sd']} {dd['n_its']}"
@@ -63,7 +63,7 @@ def run_batch(waterfall):
             old_baseline = pickle.load(f)
     
     for n in test_idxs:
-        nd, pt, nu = process_wav(f"{data_folder}/test_{n:02d}.wav", f"{results_folder}/test_{n:02d}_tmp_PyFT8.txt")
+        nd, pt, nu = process_wav(f"{data_folder}/test_{n:02d}.wav", f"{results_folder}/test_{n:02d}_cyclemgr_PyFT8.txt")
         baseline.append({'n_decodes':nd, 'processing_time':pt, 'n_unfinished':nu})
         n_decodes_wsjtx += get_textfile_line_count(f"{results_folder}/test_{n:02d}_wsjtx_2.7.0_NORM.txt")
         n_decodes_ft8_lib += get_textfile_line_count(f"{results_folder}/test_{n:02d}_ft8_lib.txt")

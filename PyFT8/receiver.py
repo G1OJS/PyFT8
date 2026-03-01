@@ -250,11 +250,12 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
         return ring
     search_alarm = [H_SEARCH_1, -1] 
 
-    origins_for_decode = []
+    origins_for_decode_empty = []
     for f0 in range(n_origins):
-        origins_for_decode.append ({'h0':0, 'f0': f0, 'llr_sd':0, 'llr':[], 'td':0, 'n_its':0, 'demap_started':0,
+        origins_for_decode_empty.append ({'h0':0, 'f0': f0, 'llr_sd':0, 'llr':[], 'td':0, 'n_its':0, 'demap_started':0,
                 'decoder': 'PyFT8', 'cs':'', 'sync_idx': 1, 'sync_score': 0,
                 'dt':0, 'f':int(f0*df), 'msg_tuple':(''), 'msg':'', 'ncheck0': 99, 'snr': -30})
+    origins_for_decode = origins_for_decode_empty.copy()
     cs ="000000_000000"
     def tprint(text):
         print(f"{cs} {audio_in.dBgrid_main_ptr:3d}h {audio_in.dBgrid_main_ptr*dt:5.2f}s {text}")
@@ -291,8 +292,9 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
                 cycle = int(audio_in.dBgrid_main_ptr / audio_in.hops_per_cycle)
                 cycle_h0 = cycle * audio_in.hops_per_cycle
                 cs = cyclestart_str(time.time())
+                origins_for_decode = origins_for_decode_empty.copy()
                 for idx, origin in enumerate(origins_for_decode):
-                    origin.update({'sync_score':0, 'llr_sd':0, 'td':0, 'msg':'', 'cs':cs, 'demap_started':0})
+                    origin.update({'cs':cs})
                     origins_for_decode[idx] = origin
                 for idx, origin in enumerate(origins_for_decode):
                     f0 = origin['f0']
