@@ -8,9 +8,11 @@ data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib
 results_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/results/ft8_lib_20m_busy"
 
 cs ="000000_000000"
+t0 = 0
+
 def tprint(text, dt = 0.16/4):
-    ct = time.time() % 15
-    print(f"{cs} {audio_in.dBgrid_main_ptr:3d}h = {audio_in.dBgrid_main_ptr*dt:5.2f}s {ct:5.2g}s {text}")
+    ct = (time.time()-t0) % 15
+    print(f"{cs} {audio_in.dBgrid_main_ptr:3d}h = {audio_in.dBgrid_main_ptr*dt:5.2f}s {ct:5.2f}s {text}")
 
 def on_decode(dd):
     global decodes
@@ -22,10 +24,11 @@ def get_textfile_line_count(filepath):
     return len(l)
 
 def process_wav(wav, res):
-    global decodes
+    global decodes, t0
     nu, n_decodes = 0, 0
     decodes = []
     textfile_rows = []
+    t0 = 0
     audio_data = audio_in.load_wav(wav)
     tprint("Wav file finished")
     time.sleep(3)
