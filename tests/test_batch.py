@@ -31,7 +31,7 @@ def process_wav(wav, res):
     tprint("Wav file finished")
     for dd in decodes:
         n_decodes +=1
-        row = f"000000 {dd['snr']:3d} {dd['dt']:3.1f} {dd['f']:4d} ~ {dd['msg']:<23} {dd['sync_idx']} {dd['decode_path']}"
+        row = f"000000 {dd['snr']:3d} {dd['dt']:3.1f} {dd['f']:4d} ~ {dd['msg']:<23} {dd['llr_sd']} {dd['n_its']}"
         textfile_rows.append(row)
     tprint("Counted decodes")
     with open(res, "w") as f:
@@ -43,7 +43,7 @@ def run_batch(waterfall):
 
     threading.Thread(target = receiver, args =(audio_in, [200, 3100], on_decode, waterfall,), daemon=True ).start()
 
-    test_idxs = range(1, 39)
+    test_idxs = range(1,2)
     baseline, old_baseline = [], [{'n_decodes':0, 'processing_time':0, 'n_unfinished':0}] * len(test_idxs)
     n_decodes = 0
     n_decodes_wsjtx = 0
@@ -60,7 +60,6 @@ def run_batch(waterfall):
     
     for n in test_idxs:
         nd, pt, nu = process_wav(f"{data_folder}/test_{n:02d}.wav", f"{results_folder}/test_{n:02d}_cyclemgr_PyFT8.txt")
-        print("Test complete")
         baseline.append({'n_decodes':nd, 'processing_time':pt, 'n_unfinished':nu})
         n_decodes_wsjtx += get_textfile_line_count(f"{results_folder}/test_{n:02d}_wsjtx_2.7.0_NORM.txt")
         n_decodes_ft8_lib += get_textfile_line_count(f"{results_folder}/test_{n:02d}_ft8_lib.txt")

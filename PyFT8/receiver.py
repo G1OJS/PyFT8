@@ -2,7 +2,7 @@ import numpy as np
 import wave
 import time, pyaudio, threading, queue
 from PyFT8.waterfall import Waterfall
-MIN_LLR_SD = 0.5
+LLR_SD_MIN = 0.5
 HPS = 4
 BPT =2
 SYM_RATE = 6.25
@@ -133,11 +133,13 @@ class AudioIn:
         if input_device_keywords is not None:
             self.start_streamed_audio(input_device_keywords)
 
-    def load_wav(self, wav_path, hop_dt = 1 / (SYM_RATE * HPS), run_on_hops = 170):
+    def load_wav(self, wav_path, hop_dt = 1 / (SYM_RATE * HPS)):
+        self.stop = False
         wf = wave.open(wav_path, "rb")
         samples_perhop = int(SAMP_RATE / (SYM_RATE * HPS))
-        frames = wf.readframes(samples_perhop)
         th = time.time()
+        frames = wf.readframes(samples_perhop)
+        self.dBgrid_main_ptr = 0
         while frames:
             if(hop_dt>0):
                 delay = hop_dt - (time.time()-th)
@@ -147,10 +149,10 @@ class AudioIn:
             frames = wf.readframes(samples_perhop)
             th = time.time()
         wf.close()
-        for i in range(run_on_hops):
-            time.sleep(hop_dt)
-            self._callback(np.zeros(samples_perhop), None, None, None)
-
+        #while not self.stop:
+        #    time.sleep(hop_dt)
+        #    self._callback(np.zeros(samples_perhop), None, None, None)
+            
     def start_streamed_audio(self, input_device_keywords):
         indev = self.find_device(input_device_keywords)
         self.stream = pyaudio.PyAudio().open(
@@ -173,11 +175,12 @@ class AudioIn:
     def _callback(self, in_data, frame_count, time_info, status_flags):
         samples = np.frombuffer(in_data, dtype=np.int16).astype(np.float32)
         ns = len(samples)
-        self.audio_buffer[:-ns] = self.audio_buffer[ns:]
-        self.audio_buffer[-ns:] = samples
-        np.multiply(self.audio_buffer, self.fft_window, out=self.fft_in)
-        z = np.fft.rfft(self.fft_in)[:self.nFreqs]
-        self.dBgrid_main[self.dBgrid_main_ptr, :] = 10*np.log10(z.real*z.real + z.imag*z.imag + 1e-12)
+        if(ns):
+            self.audio_buffer[:-ns] = self.audio_buffer[ns:]
+            self.audio_buffer[-ns:] = samples
+            np.multiply(self.audio_buffer, self.fft_window, out=self.fft_in)
+            z = np.fft.rfft(self.fft_in)[:self.nFreqs]
+            self.dBgrid_main[self.dBgrid_main_ptr, :] = 10*np.log10(z.real*z.real + z.imag*z.imag + 1e-12)
         self.dBgrid_main_ptr = (self.dBgrid_main_ptr + 1) % self.hops_per_grid
         return (None, pyaudio.paContinue)
 
@@ -197,24 +200,26 @@ def demap(dBgrid_main, origin):
     origin.update({'llr_sd': llr_sd, 'llr': llr})
 
 def decode(origin, cs, ldpc):
-    ldpc_it = 0
-    llr = origin['llr']
-    ncheck = ldpc.calc_ncheck(llr)
-    ncheck0 = ncheck
-    if ncheck > 0:
-        if ncheck <= LDPC_CONTROL[0]:
-            for ldpc_it in range(LDPC_CONTROL[1]):
-                llr, ncheck = ldpc.do_ldpc_iteration(llr)
-                if(ncheck == 0):
-                    break                    
-    if ncheck == 0:
-        bits91_int = 0
-        for bit in (llr[:91] > 0).astype(int).tolist():
-            bits91_int = (bits91_int << 1) | bit
-        bits77_int = check_crc(bits91_int)
-        if(bits77_int):
-            return unpack(bits77_int)
-
+    if origin['llr_sd'] > LLR_SD_MIN:
+        llr = origin['llr']
+        ncheck = ldpc.calc_ncheck(llr)
+        origin['ncheck0'] = ncheck
+        if ncheck > 0:
+            if ncheck <= LDPC_CONTROL[0]:
+                for ldpc_it in range(LDPC_CONTROL[1]):
+                    llr, ncheck = ldpc.do_ldpc_iteration(llr)
+                    if(ncheck == 0):
+                        break
+                    origin['n_its'] = ldpc_it
+        if ncheck == 0:
+            bits91_int = 0
+            for bit in (llr[:91] > 0).astype(int).tolist():
+                bits91_int = (bits91_int << 1) | bit
+            bits77_int = check_crc(bits91_int)
+            if(bits77_int):
+                origin['msg_tuple'] = unpack(bits77_int)
+                origin['msg'] = ' '.join(origin['msg_tuple'])
+    origin['td'] = time.time()
 
 # ================== CYCLE MANAGER ======================================================
 def cycle_time():
@@ -223,73 +228,71 @@ def cycle_time():
 def cyclestart_str(t):
     cyclestart_time = T_CYC * int( t / T_CYC )
     return time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
-         
+
 def receiver(audio_in, freq_range, on_decode, waterfall):
     ldpc = LdpcDecoder()
     nFreqs = audio_in.nFreqs
     dt = 1.0 / (SYM_RATE * HPS) 
     df = freq_range[1] / (nFreqs -1)
     n_origins = nFreqs - 8 * BPT
-    syncs = [{}] * n_origins
     csync = np.full((7, 8 * BPT), -1/7, np.float32)
     for sym_idx, tone in enumerate([3,1,4,0,6,5,2]):
         fbins = range(tone * BPT, (tone+1) * BPT)
         csync[sym_idx, fbins] = 1.0
         csync[sym_idx, 7 * BPT:] = 0.0
     csync_flat =  csync.ravel()
-    duplicates_filter = []
-    cycle_prev = 0
-    cycle_searched = True
+
+    def check_ptr_alarm(ptr_alarm):
+        h = (audio_in.dBgrid_main_ptr - ptr_alarm[0]) % audio_in.hops_per_cycle
+        ring =  h < ptr_alarm[1]
+        ptr_alarm[1] = h
+        return ring
+    search_alarm = [H_SEARCH_1, -1] 
+
+    origins_for_decode = []
+    for f0 in range(n_origins):
+        origins_for_decode.append ({'h0':0, 'f0': f0, 'llr_sd':0, 'llr':[], 'td':0, 'n_its':0,
+                'decoder': 'PyFT8', 'cs':'', 'sync_idx': 1, 'sync_score': 0,
+                'dt':0, 'f':int(f0*df), 'msg_tuple':(''), 'msg':'', 'ncheck0': 99, 'snr': -30})
 
     cs ="000000_000000"
     def tprint(text):
         print(f"{cs} {audio_in.dBgrid_main_ptr:3d}h {audio_in.dBgrid_main_ptr*dt:5.2f}s {text}")
-    
+
     while True:
-        tprint("Decoding finished")
-        while (audio_in.dBgrid_main_ptr % audio_in.hops_per_cycle < H_SEARCH_1 or
-                 audio_in.dBgrid_main_ptr % audio_in.hops_per_cycle > H_SEARCH_1 + 50):
-            time.sleep(0.1)
-            
-        # Search
-        tprint("Start search")
-        cycle = int(audio_in.dBgrid_main_ptr / audio_in.hops_per_cycle)
-        cycle_h0 = cycle * audio_in.hops_per_cycle
-        origins_for_decode = {}
-        for fb in range(n_origins):
-            freq_idxs = fb + base_freq_idxs
-            p_dB = audio_in.dBgrid_main[:, fb:fb + 8 * BPT]
-            syncs[fb] = {'h0_idx':0, 'score':-1e30, 'dt': 0}
-            for h0_idx in range(cycle_h0 + H0_RANGE[0], cycle_h0 + H0_RANGE[1]):
-                sync_score = float(np.dot(p_dB[h0_idx + hop_idxs_Costas + 36 * HPS, :].ravel(), csync_flat))
-                test_sync = {'h0_idx':h0_idx, 'score':sync_score, 'dt': h0_idx * dt - 0.7}
-                if test_sync['score'] > syncs[fb]['score']:
-                    syncs[fb] = test_sync
-                    origins_for_decode[fb] = {'h0':syncs[fb]['h0_idx'], 'f0': fb, 'llr_sd':0, 'llr':[]}
-        tprint("Search done")
-            
-        # Demap all
-        for origin in origins_for_decode.values():
-            ptr_rel_to_h0 = (audio_in.dBgrid_main_ptr - origin['h0']) % audio_in.hops_per_grid
-            if not (0 <=  ptr_rel_to_h0 <= payload_symb_idxs[-1] * HPS):
-                demap(audio_in.dBgrid_main, origin)
+        time.sleep(0.001)
+        # search
+        if check_ptr_alarm(search_alarm):
+            print(search_alarm)
+            duplicates_filter = []
+            tprint("Start search")
+            cycle = int(audio_in.dBgrid_main_ptr / audio_in.hops_per_cycle)
+            cycle_h0 = cycle * audio_in.hops_per_cycle
+            cs = cyclestart_str(time.time())
+            for origin in origins_for_decode:
+                f0 = origin['f0']
+                freq_idxs = f0 + base_freq_idxs
+                p_dB = audio_in.dBgrid_main[:, f0:f0 + 8 * BPT]
+                for h0 in range(cycle_h0 + H0_RANGE[0], cycle_h0 + H0_RANGE[1]):
+                    sync_score = float(np.dot(p_dB[h0 + hop_idxs_Costas + 36 * HPS, :].ravel(), csync_flat))
+                    if sync_score > origin['sync_score']:
+                        origin.update({'h0':h0, 'sync_score':sync_score, 'dt': h0*dt - 0.7})
+            tprint("Search done")
 
-        # decode all
-        cs = cyclestart_str(time.time())
-        duplicates_filter = []
-        origins_for_decode = [o for o in origins_for_decode.values() if o['llr_sd'] > MIN_LLR_SD ]
-        origins_for_decode.sort(key = lambda o: -o['llr_sd'])
-        for idx, origin in enumerate(origins_for_decode):
-            msg = decode(origin, cs, ldpc)
-            if(msg is not None and msg not in duplicates_filter):
-                fb = origin['f0']
-                waterfall.post_decode(origin['h0'], origin['f0'], ' '.join(msg))
-                duplicates_filter.append(msg)
-                decode_dict = {'decoder': 'PyFT8', 'cs':cs, 'dt':syncs[fb]['dt'], 'f':int(fb*df), 'sync_idx': 1, 'sync': syncs[fb],
-                               'msg_tuple':msg, 'msg':' '.join(msg), 'ncheck0': 99,'snr': -30,'llr_sd':0,'decode_path':'','td': cycle_time() }
-                if(on_decode):
-                    on_decode(decode_dict)
-
+        # check if not demapped, and if possible demap and add to decode list
+        for origin in origins_for_decode:
+            if origin['td'] == 0:
+                if origin['llr_sd'] == 0:
+                    ptr_rel_to_h0 = (audio_in.dBgrid_main_ptr - origin['h0']) % audio_in.hops_per_grid
+                    if not (0 <=  ptr_rel_to_h0 <= payload_symb_idxs[-1] * HPS):
+                        demap(audio_in.dBgrid_main, origin)
+                        decode(origin, cs, ldpc)
+                        if(origin['msg'] and origin['msg'] not in duplicates_filter):
+                            waterfall.post_decode(origin['h0'], origin['f0'], origin['msg'])
+                            duplicates_filter.append(origin['msg'])
+                            if(on_decode):
+                                on_decode(origin)
+            
 #============= SIMPLE Rx-ONLY CODE =========================================================================
 
 def start_receiver(waterfall):
