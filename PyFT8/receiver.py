@@ -11,14 +11,24 @@ T_CYC = 15
 LDPC_CONTROL = (45, 12) 
 
 t2h = HPS/0.16
-H0_RANGE = [int((-1.7 + 0.7)*t2h), int((3.5 + 0.7)*t2h)]
+H0_RANGE = [int((-1.7 + 0.7)*t2h), int((2.5 + 0.7)*t2h)]
 H_SEARCH_0 = H0_RANGE[1] + 7 * HPS
 H_SEARCH_1 = H0_RANGE[1] + 43 * HPS
 
-base_freq_idxs = np.array([BPT // 2 + BPT * t for t in range(8)])
-payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
-base_payload_hops = np.array([HPS * s for s in payload_symb_idxs])
-hop_idxs_Costas =  np.arange(7) * HPS
+BASE_FREQ_IDXS = np.array([BPT // 2 + BPT * t for t in range(8)])
+symbol_idxs = list(range(7, 36)) + list(range(43, 72))
+BASE_PAYLOAD_HOPS = np.array([HPS * s for s in symbol_idxs])
+LAST_BASE_PAYLOAD_HOP = BASE_PAYLOAD_HOPS[-1]
+BASE_COSTAS_HOPS =  np.arange(7) * HPS
+
+VERBOSE = False
+
+def cycle_time():
+    return time.time() % T_CYC
+
+def cyclestart_str(t):
+    cyclestart_time = T_CYC * int( t / T_CYC )
+    return time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
 
 #=========== Unpacking functions ========================================
 from string import ascii_uppercase as ltrs, digits as digs
@@ -133,10 +143,8 @@ class AudioIn:
         self.dBgrid_main_ptr = 0
         if input_device_keywords is not None:
             self.start_streamed_audio(input_device_keywords)
-            self.dBgrid_main_ptr = int(cycle_time() * SYM_RATE * HPS)
 
     def load_wav(self, wav_path, hop_dt = 1 / (SYM_RATE * HPS)):
-        self.stop = False
         wf = wave.open(wav_path, "rb")
         samples_perhop = int(SAMP_RATE / (SYM_RATE * HPS))
         th = time.time()
@@ -184,8 +192,8 @@ class AudioIn:
         return (None, pyaudio.paContinue)
 
 def demap(dBgrid_main, origin):
-    hops = [(origin['h0'] + h) for h in base_payload_hops]
-    freq_idxs = origin['f0'] + base_freq_idxs
+    hops = [(origin['h0'] + h) for h in BASE_PAYLOAD_HOPS]
+    freq_idxs = origin['f0'] + BASE_FREQ_IDXS
     p_dB = dBgrid_main[np.ix_(hops, freq_idxs)]
     p = np.clip(p_dB - np.max(p_dB), -80, 0)
     llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
@@ -223,12 +231,6 @@ def decode(origin, ldpc):
     return origin
 
 # ================== CYCLE MANAGER ======================================================
-def cycle_time():
-    return time.time() % T_CYC
-
-def cyclestart_str(t):
-    cyclestart_time = T_CYC * int( t / T_CYC )
-    return time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
 
 def receiver(audio_in, freq_range, on_decode, waterfall):
     ldpc = LdpcDecoder()
@@ -250,16 +252,20 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
         return ring
     search_alarm = [H_SEARCH_1, -1] 
 
-    origins_for_decode_empty = []
-    for f0 in range(n_origins):
-        origins_for_decode_empty.append ({'h0':0, 'f0': f0, 'llr_sd':0, 'llr':[], 'td':0, 'n_its':0, 'demap_started':0,
-                'decoder': 'PyFT8', 'cs':'', 'sync_idx': 1, 'sync_score': 0,
-                'dt':0, 'f':int(f0*df), 'msg_tuple':(''), 'msg':'', 'ncheck0': 99, 'snr': -30})
-    origins_for_decode = origins_for_decode_empty.copy()
-    cs ="000000_000000"
     def tprint(text):
+        if not VERBOSE: return
         print(f"{cs} {audio_in.dBgrid_main_ptr:3d}h {audio_in.dBgrid_main_ptr*dt:5.2f}s {text}")
 
+    def initialise_origins(cs):
+        origins_for_decode = []
+        for f0 in range(n_origins):
+            origins_for_decode.append ({'h0':0, 'f0': f0, 'llr_sd':0, 'llr':[], 'td':0, 'n_its':0, 'demap_started':0,
+                    'decoder': 'PyFT8', 'cs':cs, 'sync_idx': 1, 'sync_score': 0,
+                    'dt':0, 'f':int(f0*df), 'msg_tuple':(''), 'msg':'', 'ncheck0': 99, 'snr': -30})
+        return origins_for_decode
+
+    cs = "000000_000000"
+    origins_for_decode = initialise_origins(cs)
     main_ptr_prev = 0
     while True:
         time.sleep(0.001)
@@ -269,7 +275,7 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
 
             to_decode_this_loop = []
             for idx, origin in enumerate(origins_for_decode):
-                if ptr - origin['h0'] > H_SEARCH_1 and not origin['demap_started']:
+                if (ptr - origin['h0']) > LAST_BASE_PAYLOAD_HOP and not origin['demap_started']:
                     origin['demap_started'] = time.time()
                     origin = demap(audio_in.dBgrid_main, origin)
                     origins_for_decode[idx] = origin
@@ -292,27 +298,26 @@ def receiver(audio_in, freq_range, on_decode, waterfall):
                 cycle = int(audio_in.dBgrid_main_ptr / audio_in.hops_per_cycle)
                 cycle_h0 = cycle * audio_in.hops_per_cycle
                 cs = cyclestart_str(time.time())
-                origins_for_decode = origins_for_decode_empty.copy()
-                for idx, origin in enumerate(origins_for_decode):
-                    origin.update({'cs':cs})
-                    origins_for_decode[idx] = origin
+                origins_for_decode = initialise_origins(cs)
                 for idx, origin in enumerate(origins_for_decode):
                     f0 = origin['f0']
-                    freq_idxs = f0 + base_freq_idxs
+                    freq_idxs = f0 + BASE_FREQ_IDXS
                     p_dB = audio_in.dBgrid_main[:, f0:f0 + 8 * BPT]
                     for h0 in range(cycle_h0 + H0_RANGE[0], cycle_h0 + H0_RANGE[1]):
-                        sync_score = float(np.dot(p_dB[h0 + hop_idxs_Costas + 36 * HPS, :].ravel(), csync_flat))
+                        sync_score = float(np.dot(p_dB[h0 + BASE_COSTAS_HOPS + 36 * HPS, :].ravel(), csync_flat))
                         if sync_score > origin['sync_score']:
                             origin.update({'h0':h0, 'sync_score':sync_score, 'dt': h0*dt - 0.7})
                             origins_for_decode[idx] = origin
                 tprint("Search done")
-
-        
                         
 #============= SIMPLE Rx-ONLY CODE =========================================================================
 
+def on_decode(ddict):
+    ddict['llr'] = ''
+    print(ddict)
+
 def start_receiver(waterfall):
-    threading.Thread(target = receiver, args =(audio_in, [200, 3100], None, waterfall), daemon=True ).start()
+    threading.Thread(target = receiver, args =(audio_in, [200, 3100], on_decode, waterfall), daemon=True ).start()
     print("Start rx")
 
 if __name__ == "__main__":
