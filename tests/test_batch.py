@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import time
 import pickle
 import threading
-from PyFT8.cycle_manager import Receiver, AudioIn
+from PyFT8.receiver import Receiver, AudioIn
 from PyFT8.waterfall import Waterfall
 from PyFT8.utilities import tprint
 
