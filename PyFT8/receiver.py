@@ -189,6 +189,7 @@ class AudioIn:
 class Receiver():
     def __init__(self, audio_in, freq_range, on_decode, waterfall):
         self.verbose = True
+        self.waterfall = waterfall
         self.sample_rate = 12000
         self.audio_in = audio_in
         self.sigspec = FT8
@@ -288,6 +289,8 @@ class Receiver():
                         key = c.cyclestart_str + " " + " ".join(c.msg)
                         if key not in duplicate_filter:
                             duplicate_filter.add(key)
+                            if self.waterfall:
+                                self.waterfall.post_decode(c.sync['h0_idx'], c.f0_idx, c.msg)
                             self.on_decode(c.decode_dict)
                 new_to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
                 for c in new_to_decode[:35]:
