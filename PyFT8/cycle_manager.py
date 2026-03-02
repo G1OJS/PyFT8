@@ -129,14 +129,15 @@ class AudioIn:
         self.fft_window = fft_window=np.hanning(self.fft_len).astype(np.float32)
         self.hops_per_grid = 2 * HOPS_PER_CYCLE
         self.dBgrid_main = np.ones((self.hops_per_grid, self.nFreqs), dtype = np.float32)
-        self.dBgrid_main_ptr = 0
         if input_device_keywords is not None:
+            self.dBgrid_main_ptr = 0
             self.start_streamed_audio(input_device_keywords)
         elif wav_files is not None:
             threading.Thread(target = self.load_wavs, args =(wav_files,)).start()
 
     def load_wavs(self, wav_paths, hop_dt = 1 / (SYM_RATE * HPS) - 0.001):
         samples_perhop = int(SAMP_RATE / (SYM_RATE * HPS))
+        self.dBgrid_main_ptr = 0
         for wav_path in wav_paths:
             wf = wave.open(wav_path, "rb")
             hoptimes = []
@@ -294,7 +295,6 @@ class Receiver():
 
                 if(global_time_utils.check_ticker(rollover)):
                     global_time_utils.tlog(f"{dashes}\n[Cycle manager] rollover detected at {global_time_utils.cycle_time():.2f}", verbose = self.verbose)
-                    self.audio_in.dBgrid_main_ptr = 0
                 if (global_time_utils.check_ticker(search)):
                     summarise_cycle()
                     global_time_utils.tlog(f"[Cycle manager] start search at hop { self.audio_in.dBgrid_main_ptr}", verbose = self.verbose)
