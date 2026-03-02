@@ -5,7 +5,14 @@ import time
 from PyFT8.time_utils import global_time_utils
 import os
 import pyaudio
-from PyFT8.sigspecs import FT8
+
+from PyFT8.ldpc import LdpcDecoder
+
+params = {
+'MIN_LLR_SD': 0.5,           # global minimum llr_sd
+'LDPC_CONTROL': (45, 12),         # max ncheck0, max iterations         
+}
+
 from PyFT8.utilities import tprint
 
 LLR_SD_MIN = 0.5
@@ -25,8 +32,10 @@ BASE_FREQ_IDXS = np.array([BPT // 2 + BPT * t for t in range(8)])
 symbol_idxs = list(range(7, 36)) + list(range(43, 72))
 BASE_PAYLOAD_HOPS = np.array([HPS * s for s in symbol_idxs])
 LAST_BASE_PAYLOAD_HOP = BASE_PAYLOAD_HOPS[-1]
+COSTAS = [3,1,4,0,6,5,2]
 BASE_COSTAS_HOPS =  np.arange(7) * HPS
 HOPS_PER_CYCLE = int(T_CYC * SYM_RATE * HPS)
+HOPS_PER_GRID = 2 * HOPS_PER_CYCLE
 
 def cycle_time():
     return time.time() % T_CYC
@@ -36,16 +45,71 @@ def cyclestart_str(t):
     return time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
 
 
-import numpy as np
-import time
-from PyFT8.FT8_unpack import unpack
-from PyFT8.FT8_crc import check_crc
-from PyFT8.ldpc import LdpcDecoder
 
-params = {
-'MIN_LLR_SD': 0.5,           # global minimum llr_sd
-'LDPC_CONTROL': (45, 12),         # max ncheck0, max iterations         
-}
+#=========== Unpacking functions ========================================
+from string import ascii_uppercase as ltrs, digits as digs
+CALL_FIELDS = [ (' ' + digs + ltrs, 36*10*27**3),   (digs + ltrs, 10*27**3), (digs + ' ' * 17, 27**3),
+                (' ' + ltrs, 27**2),           (' ' + ltrs,   27), (' ' + ltrs,   1) ]
+CALL_TOKENS = ("DE", "QRZ", "CQ")
+NCALL_TOKENS_PLUS_MAX22 = 2_063_592 + 4_194_304
+GRID_RR73s = ('', '', 'RRR', 'RR73', '73')
+FT8_MSG_FORMAT = (("i3", 3), ("grid", 16), ("callB",29), ("callA",29))
+
+def get_fields(bits, fmt):
+    out = {}
+    for name, n in fmt:
+        mask = (1 << n) - 1
+        out[name] = bits & mask
+        bits >>= n
+    return out
+
+def unpack(bits77):
+    fields = get_fields(bits77, FT8_MSG_FORMAT)
+    return (decode_call(fields["callA"]), decode_call(fields["callB"]), decode_grid(fields["grid"]))
+
+def decode_call(call_int):
+    portable = call_int & 1
+    call_int >>= 1
+    if call_int < 3:
+        return CALL_TOKENS[call_int]
+    call_int -= NCALL_TOKENS_PLUS_MAX22
+    if call_int == 0:
+        return '<...>'
+    chars = []
+    for alphabet, div in CALL_FIELDS:
+        idx, call_int = divmod(call_int, div)
+        chars.append(alphabet[idx])
+    call = ''.join(chars).strip()
+    return call + '/P' if portable else call
+
+def decode_grid(grid_int):
+    g15 = grid_int & 0x7FFF
+    if g15 < 32400:
+        a, nn = divmod(g15, 1800)
+        b, nn = divmod(nn, 100)
+        c, d = divmod(nn, 10)
+        return chr(65+a) + chr(65+b) + str(c) + str(d)
+    r = g15 - 32400
+    if r <= 4:
+        return GRID_RR73s[r]
+    snr = r - 35
+    ir = grid_int >> 15
+    prefix = 'R' if ir else ''
+    return prefix + f"{snr:+03d}"
+#============== CRC ===========================================================
+def check_crc(bits91_int):
+    bits77_int = bits91_int >> 14
+    if(bits77_int > 0):
+        crc14_int = 0
+        for i in range(96):
+            inbit = ((bits77_int >> (76 - i)) & 1) if i < 77 else 0
+            bit14 = (crc14_int >> (14 - 1)) & 1
+            crc14_int = ((crc14_int << 1) & ((1 << 14) - 1)) | inbit
+            if bit14:
+                crc14_int ^= 0x2757
+        if(crc14_int == bits91_int & 0b11111111111111):
+            return bits77_int
+
 
 class Candidate:
     def __init__(self):
@@ -69,7 +133,7 @@ class Candidate:
 
     def demap(self, dBgrid_main, target_params = (3.3, 3.7)):
         self.demap_started = time.time()
-        hops = np.clip(self.sync['h0_idx'] + BASE_PAYLOAD_HOPS, 0, HOPS_PER_CYCLE - 1)
+        hops = (self.sync['h0_idx'] + BASE_PAYLOAD_HOPS) % HOPS_PER_GRID
         self.dB = dBgrid_main[np.ix_(hops, self.freq_idxs)]
         p = np.clip(self.dB - np.max(self.dB), -80, 0)
         llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
@@ -192,32 +256,28 @@ class Receiver():
         self.waterfall = waterfall
         self.sample_rate = 12000
         self.audio_in = audio_in
-        self.sigspec = FT8
-        self.fbins_pertone = 2
-        self.hops_persymb = 4
-        self.hops_percycle = int(self.sigspec.cycle_seconds * self.sigspec.symbols_persec * self.hops_persymb)
         self.nFreqs = self.audio_in.nFreqs
-        self.fbins_per_signal = self.sigspec.tones_persymb * self.fbins_pertone
+        self.fbins_per_signal = 8 * BPT
         self.df = freq_range[1]/(self.audio_in.nFreqs - 1)
         self.dt = 1 / (HPS * SYM_RATE)
         self.f0_idxs = range(int(freq_range[0]/self.df),
                         min(self.audio_in.nFreqs - self.fbins_per_signal, int(freq_range[1]/self.df)))
         self.on_decode = on_decode
-        self.csync_flat = self.make_csync(FT8)
+        self.csync_flat = self.make_csync()
         threading.Thread(target=self.manage_cycle, daemon=True).start()
 
-    def make_csync(self, sigspec):
-        csync = np.full((sigspec.costas_len, self.fbins_per_signal), -self.fbins_pertone / (self.fbins_per_signal - self.fbins_pertone), np.float32)
-        for sym_idx, tone in enumerate(sigspec.costas):
-            fbins = range(tone * self.fbins_pertone, (tone+1) * self.fbins_pertone)
+    def make_csync(self):
+        csync = np.full((len(COSTAS), self.fbins_per_signal), -1/7, np.float32)
+        for sym_idx, tone in enumerate(COSTAS):
+            fbins = range(tone * BPT, (tone+1) * BPT)
             csync[sym_idx, fbins] = 1.0
-            csync[sym_idx, sigspec.costas_len*self.fbins_pertone:] = 0
+            csync[sym_idx, len(COSTAS)*BPT:] = 0
         return csync.ravel()
 
-    def get_sync(self, f0_idx, dB, sync_idx):
+    def get_sync(self, f0_idx, dB, sync_idx, cycle_h0):
         best_sync = {'h0_idx':0, 'score':0, 'dt': 0}
-        for h0_idx in range(H0_RANGE[0], H0_RANGE[1]):
-            sync_score = float(np.dot(dB[h0_idx + BASE_COSTAS_HOPS + sync_idx * 36 * self.hops_persymb ,  :].ravel(), self.csync_flat))
+        for h0_idx in range(H0_RANGE[0] + cycle_h0, H0_RANGE[1] + cycle_h0):
+            sync_score = float(np.dot(dB[h0_idx + BASE_COSTAS_HOPS + sync_idx * 36 * HPS ,  :].ravel(), self.csync_flat))
             test_sync = {'h0_idx':h0_idx, 'score':sync_score, 'dt': h0_idx * self.dt - 0.7}
             if test_sync['score'] > best_sync['score']:
                 best_sync = test_sync
@@ -226,20 +286,21 @@ class Receiver():
     def search(self, f0_idxs, cyclestart_str):
         cands = []
         dBgrid_main = self.audio_in.dBgrid_main
-        hps, bpt = self.hops_persymb, self.fbins_pertone
+        cycle = int(self.audio_in.dBgrid_main_ptr / HOPS_PER_CYCLE)
+        cycle_h0 = cycle * HOPS_PER_CYCLE
         for f0_idx in f0_idxs:
-            dB = dBgrid_main[:, f0_idx:f0_idx + self.fbins_per_signal]
+            dB = dBgrid_main[:, f0_idx:f0_idx + 8 * BPT]
             dB = dB - np.max(dB)
             c = Candidate()
             c.f0_idx = f0_idx
             sync_idx = 1
-            c.sync = self.get_sync(f0_idx, dB, sync_idx)
-            c.freq_idxs = [c.f0_idx + bpt // 2 + bpt * t for t in range(self.sigspec.tones_persymb)]
-            c.last_payload_hop = c.sync['h0_idx'] + hps * 72
+            c.sync = self.get_sync(f0_idx, dB, sync_idx, cycle_h0)
+            c.freq_idxs = [c.f0_idx + BPT // 2 + BPT * t for t in range(8)]
+            c.last_payload_hop = c.sync['h0_idx'] + HPS * 72
             c.cyclestart_str = cyclestart_str
             c.decode_dict = {'decoder': 'PyFT8',
                              'cs':c.cyclestart_str,
-                             'f':int((c.f0_idx + bpt // 2) * self.df),
+                             'f':int((c.f0_idx + BPT // 2) * self.df),
                              'f0_idx': c.f0_idx,
                              'sync_idx': sync_idx, 
                              'sync': c.sync,
@@ -280,7 +341,7 @@ class Receiver():
 
                 new_to_decode = []
                 for c in candidates:
-                    ptr_rel_to_h0 = (ptr - c.sync['h0_idx']) % self.hops_percycle
+                    ptr_rel_to_h0 = (ptr - c.sync['h0_idx']) % HOPS_PER_CYCLE
                     if not (base_pyld_hops[0] <= ptr_rel_to_h0 <= base_pyld_hops[-1]) and not c.demap_started:
                         c.demap(self.audio_in.dBgrid_main)
                     if c.llr_sd > 0 and not c.decode_completed:

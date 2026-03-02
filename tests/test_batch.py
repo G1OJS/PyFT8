@@ -48,13 +48,15 @@ def run_test(i0, i1):
     wst, wsc = analyse_cumulative(i0, i1, "_wsjtx_2.7.0_NORM.txt")
     flt, flc = analyse_cumulative(i0, i1, "_ft8_lib.txt")
     fig, ax = waterfall.plt.subplots()
-    wsj = ax.plot(wst, wsc)
-    ftl = ax.plot(flt, flc)
-    pyf = ax.plot([], [])
+    wsj = ax.plot(wst, wsc, label = 'WSJT-X')
+    ftl = ax.plot(flt, flc, label = 'ft8_lib')
+    pyf = ax.plot([], [], label = 'PyFT8')
+    ax.set_xlabel("Time, seconds")
+    ax.set_ylabel("Cumulative decodes")
     
     with open('baseline.pkl', 'rb') as f:
         t, c = pickle.load(f)
-    pyf_prev = ax.plot(t, c)
+    pyf_prev = ax.plot(t, c, label = 'PyFT8 baseline')
         
     def anim(frame):
         pyf[0].set_data(times, counts)
