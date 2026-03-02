@@ -52,9 +52,9 @@ def run_test(i0, i1):
     ftl = ax.plot(flt, flc)
     pyf = ax.plot([], [])
     
- #   with open('baseline.pkl', 'rb') as f:
- #       t, c = pickle.load(f)
- #   pyf_prev = ax.plot(t, c)
+    with open('baseline.pkl', 'rb') as f:
+        t, c = pickle.load(f)
+    pyf_prev = ax.plot(t, c)
         
     def anim(frame):
         pyf[0].set_data(times, counts)
