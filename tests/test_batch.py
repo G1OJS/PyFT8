@@ -65,7 +65,7 @@ def run_test(i0, i1):
     waterfall.plt.show()
 
 
-run_test(1,5)
+run_test(1,39)
 
 
 

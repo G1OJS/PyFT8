@@ -57,7 +57,7 @@ class Candidate:
         self.decode_dict = False
         self.processing_time = 0
         self.cyclestart_str = ''
-        self.msg = ''
+        self.msg_tuple, self.msg = '',''
         # decode_dict is set in spectrum search
         self.ldpc = LdpcDecoder()
 
@@ -104,13 +104,13 @@ class Candidate:
                 bits91_int = (bits91_int << 1) | bit
             bits77_int = check_crc(bits91_int)
             if(bits77_int):
-                self.msg = unpack(bits77_int)
+                self.msg_tuple = unpack(bits77_int)
 
-        self._record_state("M" if self.msg else "_", final = True)
-
+        self._record_state("M" if self.msg_tuple else "_", final = True)
+        self.msg = ' '.join(self.msg_tuple)
         self.decode_dict.update( {
-                            'msg_tuple':self.msg,
-                            'msg':' '.join(self.msg),
+                            'msg_tuple': self.msg_tuple,
+                            'msg': self.msg,
                             'llr_sd':self.llr_sd,
                             'decode_path':self.decode_path,
                             'ncheck0': self.ncheck0,
