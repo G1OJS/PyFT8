@@ -37,27 +37,25 @@ class Wsjtx_all_tailer:
 
 
 data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy"
-results_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/results/ft8_lib_20m_busy"
 
-global times, counts, ws_times
-times, ws_times = [], []
+global decodes, py_times, ws_times, decodes
+decodes, py_times, ws_times = [], [], []
 
 def get_cumulative_from_text_files(i0, i1, postfix):
-    times, counts = [], []
-    t, count = 0, 0
+    times = []
+    t = 0
     for idx in range(i0, i1):
         with open(f"{data_folder}/test_{idx:02d}{postfix}", "r") as f:
             t += 15
             for l in f.readlines():
-                count += (1 if len(l) > 10 else 0)
-            times.append(t)
-            counts.append(count)
-    return times, counts
+                times.append(t)
+    return times
 
 def on_decode(dd):
-    global times
+    global decodes, py_times
     print(dd['msg'])
-    times.append(time.time() - t_start)
+    decodes.append(dd)
+    py_times.append(time.time() - t_start)
 
 def batch_test(i0, i1):
     from matplotlib.animation import FuncAnimation
@@ -70,25 +68,26 @@ def batch_test(i0, i1):
     t_start = time.time()
     rx = Receiver(audio_in, [200, 3100], on_decode, waterfall)
 
-    wst, wsc = get_cumulative_from_text_files(i0, i1, "_wsjtx_2.7.0_NORM.txt")
-    flt, flc = get_cumulative_from_text_files(i0, i1, "_ft8_lib.txt")
+    ws_times = get_cumulative_from_text_files(i0, i1, "_wsjtx_2.7.0_NORM.txt")
+    fl_times = get_cumulative_from_text_files(i0, i1, "_ft8_lib.txt")
     fig, ax = waterfall.plt.subplots()
-    wsj = ax.plot(wst, wsc, label = 'WSJT-X')
-    ftl = ax.plot(flt, flc, label = 'ft8_lib')
-    pyf = ax.plot([], [], label = 'PyFT8')
+    with open('baseline.pkl', 'rb') as f:
+        py_times_prev = pickle.load(f)
+    ws_line = ax.plot(ws_times, np.array(range(len(ws_times))), label = 'WSJT-X', color = 'blue')[0]
+    ft_line = ax.plot(fl_times, np.array(range(len(fl_times))), label = 'ft8_lib', color = 'orange')[0]
+    py_line = ax.plot([], [], label = 'PyFT8', color = 'green')[0]
+    pp_line = ax.plot(py_times_prev, np.array(range(len(py_times_prev))), label = 'PyFT8 baseline', color = 'darkgreen')
     ax.set_xlabel("Time, seconds")
     ax.set_ylabel("Cumulative decodes")
-    
-    with open('baseline.pkl', 'rb') as f:
-        t = pickle.load(f)
-    pyf_prev = ax.plot(t, np.array(range(len(t))), label = 'PyFT8 baseline')
     ax.legend()
         
     def anim(frame):
-        pyf[0].set_data(times, np.array(range(len(times))))
+        py_line.set_data(py_times, np.array(range(len(py_times))))
         with open('baseline_new.pkl', 'wb') as f:
-            pickle.dump(times, f)
-        return pyf,
+            pickle.dump(py_times, f)
+        with open('batch_decodes.pkl', 'wb') as f:
+            pickle.dump(decodes, f)
+        return py_line,
     ani = FuncAnimation(fig, anim, interval = 5000, frames=(100000), blit=False)
     waterfall.plt.show()
 
@@ -107,23 +106,23 @@ def live_test():
     wsjtx_all_tailer = Wsjtx_all_tailer(on_wsjtx_decode, silent = True)
 
     fig, ax = waterfall.plt.subplots()
-    wsj = ax.plot([], [], label = 'WSJT-X')
-    pyf = ax.plot([], [], label = 'PyFT8')
+    ws_line = ax.plot([], [], label = 'WSJT-X')[0]
+    py_line = ax.plot([], [], label = 'PyFT8')[0]
     ax.set_xlabel("Time, seconds")
     ax.set_ylabel("Cumulative decodes")
     ax.legend()
         
     def anim(frame):
         n_wsj = len(ws_times)
-        n_pyf = len(times)
-        wsj[0].set_data(ws_times, np.array(range(n_wsj)))
-        pyf[0].set_data(times, np.array(range(n_pyf)))
+        n_pyf = len(py_times)
+        ws_line.set_data(ws_times, np.array(range(n_wsj)))
+        py_line.set_data(py_times, np.array(range(n_pyf)))
         n_max = np.max([n_wsj, n_pyf])
         if(n_max):
             ax.set_ylim(0, n_max)
-        if any(times):
-            ax.set_xlim(0, np.max(times))
-        return wsj, pyf,
+        if any(py_times):
+            ax.set_xlim(0, np.max(py_times))
+        return ws_line, py_line,
     ani = FuncAnimation(fig, anim, interval = 5000, frames=(100000), blit=False)
     waterfall.plt.show()
 

@@ -1,6 +1,4 @@
 import argparse
-import time
-import threading
 from PyFT8.receiver import receiver, AudioIn, params
 from PyFT8.waterfall import Waterfall
 from PyFT8.transmitter import AudioOut
