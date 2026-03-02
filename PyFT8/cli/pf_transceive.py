@@ -22,15 +22,15 @@ def cli():
     input_device_keywords = args.inputcard_keywords.replace(' ','').split(',') if args.inputcard_keywords is not None else None
     output_device_keywords = args.outputcard_keywords.replace(' ','').split(',') if args.outputcard_keywords is not None else None
 
-    def start_receiver(waterfall):
-        threading.Thread(target = receiver, args =(audio_in, [200, 3100], on_decode, waterfall), daemon=True ).start()
     audio_in = AudioIn(input_device_keywords, 3100)
-    waterfall = Waterfall(audio_in.dBgrid_main, params['HPS'], params['BPT'], start_receiver, on_click_message)
+    waterfall = Waterfall(audio_in.dBgrid_main, 4, 2, on_click_message)
+    rx = Receiver(audio_in, [200, 3100], on_decode, waterfall)
+    waterfall.plt.show()
 
 #================== TEST CODE ============================================================
 
 if __name__ == "__main__":
     import mock
-    with mock.patch('sys.argv', ['PyFT8_cli', '-i Mic, CODEC', '-o Speak, CODEC']):
+    with mock.patch('sys.argv', ['pf_transceive', '-i Mic, CODEC', '-o Speak, CODEC']):
         cli()
 

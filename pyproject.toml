@@ -1,6 +1,6 @@
 [project]
 name = "PyFT8"
-version = "1.5.0"
+version = "2.0.0"
 license = "GPL-3.0-or-later"
 
 authors = [
@@ -30,4 +30,7 @@ packages = ["PyFT8", "MiniPyFT8"]
 license-files = ["LICENSE"]
 
 [project.scripts]
-pyft8_cli = "PyFT8.PyFT8_cli:cli"
+pf_make_wav = "PyFT8.PyFT8.cli.pf_make_wav:cli"
+pf_receive = "PyFT8.PyFT8.cli.pf_receive:cli"
+pf_transceive = "PyFT8.PyFT8.cli.pf_transceive:cli"
+pf_transmit = "PyFT8.PyFT8.cli.pf_transmit:cli"

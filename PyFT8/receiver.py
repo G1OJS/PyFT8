@@ -289,8 +289,8 @@ class AudioIn:
 
 #============== RECEIVER ===========================================================
 class Receiver():
-    def __init__(self, audio_in, freq_range, on_decode, waterfall):
-        self.verbose = True
+    def __init__(self, audio_in, freq_range, on_decode, waterfall, verbose = True):
+        self.verbose = verbose
         self.waterfall = waterfall
         self.sample_rate = 12000
         self.audio_in = audio_in

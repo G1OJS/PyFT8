@@ -6,7 +6,7 @@ def cli():
     parser.add_argument('-m','--transmit_message', nargs='?', help = 'Transmit a message')
     parser.add_argument('-w','--wave_output_file', nargs='?', help = 'Wave output file', default = 'PyFT8_tx_wav.wav')
     args = parser.parse_args()
-    transmit_message = args.transmit_message
+    transmit_message = args.transmit_message.strip()
     wave_output_file = args.wave_output_file
     audio_out = AudioOut()
     symbols = audio_out.create_ft8_symbols(transmit_message)
@@ -18,6 +18,6 @@ def cli():
 
 if __name__ == "__main__":
     import mock
-    with mock.patch('sys.argv', ['PyFT8_cli', '-w PyFT8.wav', '-m CQ G1OJS IO90']):
+    with mock.patch('sys.argv', ['pf_make_wav', '-w PyFT8.wav', '-m CQ G1OJS IO90']):
         cli()
 
