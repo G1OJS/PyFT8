@@ -53,7 +53,6 @@ def get_cumulative_from_text_files(i0, i1, postfix):
 
 def on_decode(dd):
     global decodes, py_times
-    print(dd['msg'])
     decodes.append(dd)
     py_times.append(time.time() - t_start)
 
@@ -65,8 +64,9 @@ def batch_test(i0, i1):
         wav_files.append(f"{data_folder}/test_{idx:02d}.wav")
     audio_in = AudioIn(None, 3100, wav_files)
     waterfall = Waterfall(audio_in.dBgrid_main, 4, 2, lambda msg: print(msg))
-    t_start = time.time()
     rx = Receiver(audio_in, [200, 3100], on_decode, waterfall)
+    audio_in.start_wav_load()
+    t_start = time.time()
 
     ws_times = get_cumulative_from_text_files(i0, i1, "_wsjtx_2.7.0_NORM.txt")
     fl_times = get_cumulative_from_text_files(i0, i1, "_ft8_lib.txt")
@@ -75,10 +75,12 @@ def batch_test(i0, i1):
         py_times_prev = pickle.load(f)
     ws_line = ax.plot(ws_times, np.array(range(len(ws_times))), label = 'WSJT-X', color = 'blue')[0]
     ft_line = ax.plot(fl_times, np.array(range(len(fl_times))), label = 'ft8_lib', color = 'orange')[0]
-    py_line = ax.plot([], [], label = 'PyFT8', color = 'green')[0]
+    py_line = ax.plot([], [], label = 'PyFT8', color = 'red')[0]
     pp_line = ax.plot(py_times_prev, np.array(range(len(py_times_prev))), label = 'PyFT8 baseline', color = 'darkgreen')
     ax.set_xlabel("Time, seconds")
     ax.set_ylabel("Cumulative decodes")
+    ax.set_xlim(0, np.max(ws_times))
+    ax.set_ylim(0, len(ws_times))
     ax.legend()
         
     def anim(frame):
@@ -128,7 +130,7 @@ def live_test():
 
 #live_test()
 
-batch_test(1,39)
+batch_test(1,10)
 
 
 

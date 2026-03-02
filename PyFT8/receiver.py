@@ -7,11 +7,6 @@ from PyFT8.time_utils import global_time_utils
 import os
 import pyaudio
 
-params = {
-'MIN_LLR_SD': 0.5,           # global minimum llr_sd
-'LDPC_CONTROL': (45, 12),         # max ncheck0, max iterations         
-}
-
 
 LLR_SD_MIN = 0.5
 HPS = 4
@@ -22,7 +17,7 @@ T_CYC = 15
 LDPC_CONTROL = (45, 12) 
 
 t2h = HPS/0.16
-H0_RANGE = [int(-1 *t2h), int(3.4 *t2h)]
+H0_RANGE = [int(-0.7 *t2h), int(2.7 *t2h)]
 H_SEARCH_0 = H0_RANGE[1] + 7 * HPS
 H_SEARCH_1 = H0_RANGE[1] + 43 * HPS 
 
@@ -186,7 +181,7 @@ class Candidate:
           
     def decode(self):
         decode_started = time.time()
-        if(self.llr_sd < params['MIN_LLR_SD']):
+        if(self.llr_sd < LLR_SD_MIN):
             self._record_state("I", final = True)
             return
         self.ncheck = self.ldpc.calc_ncheck(self.llr)
@@ -194,8 +189,8 @@ class Candidate:
         self._record_state("I")
 
         if self.ncheck > 0:
-            if self.ncheck <= params['LDPC_CONTROL'][0]:
-                for it in range(params['LDPC_CONTROL'][1]):
+            if self.ncheck <= LDPC_CONTROL[0]:
+                for it in range(LDPC_CONTROL[1]):
                     self.llr, self.ncheck = self.ldpc.do_ldpc_iteration(self.llr)
                     self._record_state("L")
                     if(self.ncheck == 0):
@@ -231,15 +226,17 @@ class AudioIn:
         self.fft_window = fft_window=np.hanning(self.fft_len).astype(np.float32)
         self.hops_per_grid = 2 * HOPS_PER_CYCLE
         self.dBgrid_main = np.ones((self.hops_per_grid, self.nFreqs), dtype = np.float32)
+        self.wav_files = wav_files
+        self.dBgrid_main_ptr = 0
         if input_device_keywords is not None:
-            self.dBgrid_main_ptr = 0
             self.start_streamed_audio(input_device_keywords)
-        elif wav_files is not None:
-            threading.Thread(target = self.load_wavs, args =(wav_files,)).start()
+
+    def start_wav_load(self):
+        threading.Thread(target = self.load_wavs, args =(self.wav_files,)).start()
+        self.dBgrid_main_ptr = 0
 
     def load_wavs(self, wav_paths, hop_dt = 1 / (SYM_RATE * HPS) - 0.001):
         samples_perhop = int(SAMP_RATE / (SYM_RATE * HPS))
-        self.dBgrid_main_ptr = 0
         for wav_path in wav_paths:
             wf = wave.open(wav_path, "rb")
             hoptimes = []
@@ -355,22 +352,11 @@ class Receiver():
     def manage_cycle(self):
         dashes = "======================================================"
         candidates = []
-        duplicate_filter = set()
-        rollover = global_time_utils.new_ticker(0)
-        search = global_time_utils.new_ticker(11)
-     
-        def summarise_cycle():
-            unfinished = [c for c in candidates if not c.decode_completed]
-            nu = len(unfinished)
-            if(self.verbose):
-                with_message = [c for c in candidates if c.msg]
-                failed = [c for c in candidates if c.decode_completed and not c.msg]
-                ns, nf = len(with_message), len(failed)
-                global_time_utils.tlog(f"[Cycle manager] Last cycle had {ns} decodes, {nf} failures and {nu} unfinished (total = {ns+nf+nu})")   
-
+        duplicate_filter = set() 
         dBgrid_main_ptr_prev = 0
         base_pyld_hops = BASE_PAYLOAD_HOPS
         print("Rx running")
+        search_last = -1e30
         while True:
             time.sleep(0.001)
             ptr = self.audio_in.dBgrid_main_ptr
@@ -392,17 +378,16 @@ class Receiver():
                                 self.waterfall.post_decode(c.sync['h0_idx'], c.f0_idx, c.msg)
                             self.on_decode(c.decode_dict)
                 new_to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
-                for c in new_to_decode[:35]:
+                for c in new_to_decode[:55]:
                     c.decode()
 
-                if(global_time_utils.check_ticker(rollover)):
-                    global_time_utils.tlog(f"{dashes}\n[Cycle manager] rollover detected at {global_time_utils.cycle_time():.2f}", verbose = self.verbose)
-                if (global_time_utils.check_ticker(search)):
-                    summarise_cycle()
+                search = (ptr - H_SEARCH_1) % HOPS_PER_CYCLE
+                if(search < search_last):
                     global_time_utils.tlog(f"[Cycle manager] start search at hop { self.audio_in.dBgrid_main_ptr}", verbose = self.verbose)
                     candidates = self.search(self.f0_idxs, global_time_utils.cyclestart_str(time.time()))
                     global_time_utils.tlog(f"[Cycle manager] New spectrum searched -> {len(candidates)} candidates", verbose = self.verbose) 
-
+                search_last = search
+                
         summarise_cycle() # for wav files that have just finished
 
 #============= SIMPLE LIVE Rx-ONLY CODE =========================================================================
