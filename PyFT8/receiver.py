@@ -370,6 +370,7 @@ class Receiver():
 
         dBgrid_main_ptr_prev = 0
         base_pyld_hops = BASE_PAYLOAD_HOPS
+        print("Rx running")
         while True:
             time.sleep(0.001)
             ptr = self.audio_in.dBgrid_main_ptr
