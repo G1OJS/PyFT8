@@ -80,14 +80,14 @@ def batch_test(i0, i1):
     ax.set_ylabel("Cumulative decodes")
     
     with open('baseline.pkl', 'rb') as f:
-        t, c = pickle.load(f)
-    pyf_prev = ax.plot(t, c, label = 'PyFT8 baseline')
+        t = pickle.load(f)
+    pyf_prev = ax.plot(t, np.array(range(len(t))), label = 'PyFT8 baseline')
     ax.legend()
         
     def anim(frame):
-        pyf[0].set_data(times, counts)
+        pyf[0].set_data(times, np.array(range(len(times))))
         with open('baseline_new.pkl', 'wb') as f:
-            pickle.dump((times, counts), f)
+            pickle.dump(times, f)
         return pyf,
     ani = FuncAnimation(fig, anim, interval = 5000, frames=(100000), blit=False)
     waterfall.plt.show()
@@ -127,9 +127,9 @@ def live_test():
     ani = FuncAnimation(fig, anim, interval = 5000, frames=(100000), blit=False)
     waterfall.plt.show()
 
-live_test()
+#live_test()
 
-#batch_test(1,39)
+batch_test(1,39)
 
 
 

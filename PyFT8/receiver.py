@@ -254,7 +254,7 @@ class AudioIn:
                 frames = wf.readframes(samples_perhop)
             wf.close()
             deltas = np.diff(hoptimes)
-            tprint(f"[Receiver] read wav file with hop mean = {1000*np.mean(deltas):6.2f}ms, sd =  {1000*np.std(deltas):6.2f}ms")
+            print(f"[Receiver] read wav file with hop mean = {1000*np.mean(deltas):6.2f}ms, sd =  {1000*np.std(deltas):6.2f}ms")
             
     def start_streamed_audio(self, input_device_keywords):
         indev = self.find_device(input_device_keywords)
