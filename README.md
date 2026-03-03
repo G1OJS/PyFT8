@@ -33,8 +33,7 @@ Otherwise, please download or browse the code, or fork the repo and play with it
 
 The image below shows the number of decodes from PyFT8, WSJT-x V2.7.0 running in NORM mode, and FT8_lib, using the same 10 minutes of busy 20m audio that is used to test ft8_lib. 
 
-<img width="640" height="480" alt="performance snapshot" src="https://github.com/user-attachments/assets/c19bd1c9-60ac-4d97-81b1-bbcea9bb821b" />
-
+<img width="844" height="562" alt="performance snapshot" src="https://github.com/user-attachments/assets/08ba1946-b816-448f-9510-7763a2f065bd" />
 
 ## Limitations
 In pursuit of tight code, I've concentrated on core standard messages, leaving out some of the less-used features. The receive part of the
