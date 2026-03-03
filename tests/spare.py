@@ -2,8 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 
-
-
 with open('batch_decodes.pkl', 'rb') as f:
     decodes = pickle.load(f)
 

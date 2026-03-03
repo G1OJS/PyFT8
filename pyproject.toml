@@ -30,7 +30,4 @@ packages = ["PyFT8"]
 license-files = ["LICENSE"]
 
 [project.scripts]
-pf_make_wav = "PyFT8.cli.pf_make_wav:cli"
-pf_receive = "PyFT8.cli.pf_receive:cli"
-pf_transceive = "PyFT8.cli.pf_transceive:cli"
-pf_transmit = "PyFT8.cli.pf_transmit:cli"
+pyft8 = "PyFT8.pyft8:cli"

@@ -17,7 +17,7 @@ T_CYC = 15
 LDPC_CONTROL = (45, 12) 
 
 t2h = HPS/0.16
-H0_RANGE = [int(-0.7 *t2h), int(2.7 *t2h)]
+H0_RANGE = [int(-1 *t2h), int(3.4 *t2h)]
 H_SEARCH_0 = H0_RANGE[1] + 7 * HPS
 H_SEARCH_1 = H0_RANGE[1] + 43 * HPS 
 

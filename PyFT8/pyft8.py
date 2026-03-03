@@ -1,6 +1,7 @@
 import argparse
-from PyFT8.receiver import Receiver, AudioIn, params
+from PyFT8.receiver import Receiver, AudioIn
 from PyFT8.waterfall import Waterfall
+from PyFT8.transmitter import AudioOut
 
 def on_decode(dd):
     print(f"{dd['cs']} {dd['snr']} {dd['dt']} {dd['f']} ~ {dd['msg']}")
@@ -13,6 +14,7 @@ def cli():
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-i', '--inputcard_keywords', help = 'Comma-separated keywords to identify the input sound device') 
     parser.add_argument('-v','--verbose',  action='store_true',  help = 'Verbose: include debugging output')    
+    parser.add_argument('-o','--outputcard_keywords', help = 'Comma-separated keywords to identify the output sound device')
     parser.add_argument('-n','--no_waterfall',  action='store_true',  help = 'Dont create a waterfall')    
     args = parser.parse_args()
     verbose = args.verbose
@@ -29,5 +31,6 @@ def cli():
 
 if __name__ == "__main__":
     import mock
-    with mock.patch('sys.argv', ['pf_receive', '-i Mic, CODEC', '-n']):
+    with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-o Speak, CODEC']):
+    with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-n']):
         cli()
