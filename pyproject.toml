@@ -1,6 +1,6 @@
 [project]
 name = "PyFT8"
-version = "1.5.0"
+version = "2.0.0"
 license = "GPL-3.0-or-later"
 
 authors = [
@@ -26,8 +26,8 @@ Homepage = "https://github.com/G1OJS/PyFT8"
 Issues = "https://github.com/G1OJS/PyFT8/issues"
 
 [tool.setuptools]
-packages = ["PyFT8", "MiniPyFT8"]
+packages = ["PyFT8"]
 license-files = ["LICENSE"]
 
 [project.scripts]
-pyft8_cli = "PyFT8.PyFT8_cli:cli"
+pyft8 = "PyFT8.pyft8:cli"
