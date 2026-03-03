@@ -1,7 +1,7 @@
 # PyFT8 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/pyft8?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/pyft8)
 # All-Python FT8 Transceiver(WIP) GUI / Command Line Modem
 
-This repository contains the source code for PyFT8, an all-Python open source FT8 transceiver that you can run as a basic GUI or from the command line to receive and transmit.
+This repository contains the source code for PyFT8, an all-Python open source FT8 transceiver that you can run as a basic GUI or from the command line to receive and transmit. Decoding performance (number of decodes) is about 70% of that achieved by WSJT-x in NORM mode, but (tbc) slightly above ft8_lib. At the time of writing (3-3-26) this new version 2.0.0 establishes the prior cli functionality plus an interesting GUI, on which I intend to build a transceiver function shortly. 
 
 <img width="714" height="968" alt="image" src="https://github.com/user-attachments/assets/be165135-d18d-42d9-848c-c455b9d99275" />
 
