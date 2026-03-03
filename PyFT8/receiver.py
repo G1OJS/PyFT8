@@ -6,7 +6,6 @@ from PyFT8.time_utils import global_time_utils
 import os
 import pyaudio
 
-
 LLR_SD_MIN = 0.5
 HPS = 4
 BPT =2
@@ -152,7 +151,6 @@ class Candidate:
         self.processing_time = 0
         self.cyclestart_str = ''
         self.msg_tuple, self.msg = '',''
-        # decode_dict is set in spectrum search
         self.ldpc = LdpcDecoder()
 
     def _record_state(self, actor_code, final = False):
