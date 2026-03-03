@@ -12,8 +12,8 @@ def wait_for_keyboard():
     except KeyboardInterrupt:
         pass
 
-def on_decode(dd):
-    print(f"{dd['cs']} {dd['snr']} {dd['dt']} {dd['f']} ~ {dd['msg']}")
+def on_decode(c):
+    print(f"{c.cyclestart_str} {c.snr} {c.dt:4.1f} {c.fHz} ~ {c.msg}")
 
 def on_click_message(msg):
     print(msg)
@@ -56,11 +56,11 @@ def cli():
             print(f"Created wave file {args.wave_output_file}")          
     else:
         if args.inputcard_keywords:
-            audio_in = AudioIn(args.inputcard_keywords, 3100)
+            audio_in = AudioIn(3100)
             input_device_idx = audio_in.find_device(args.inputcard_keywords.replace(' ','').split(','))
             if input_device_idx:
                 gui = None if args.no_gui else Gui(audio_in.dBgrid_main, 4, 2, lambda msg: print(msg))
-                rx = Receiver(audio_in, [200, 3100], on_decode, gui, args.verbose)
+                rx = Receiver(audio_in, [200, 3100], on_decode, gui)
                 audio_in.start_streamed_audio(input_device_idx)
                 if gui is not None:
                     gui.plt.show()
