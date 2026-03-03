@@ -22,7 +22,7 @@ Once installed, you can use the following commands to run it.
 |Usage | Command | Notes |
 |----------------------|----------------------|----------------------|
 |Basic Rx GUI | pyft8 -i "Keyword1, Keyword2" | Keywords identify the input sound device - partial match is fine, e.g. "Mic, CODEC"|
-|GUI with transmit (under development) | pyft8 -i "Keyword1, Keyword2" -o "Keyword1, Keyword2" | Keywords identify the input (-i) and output (-o) sound devices|
+|GUI with transmit | pyft8 -i "Keyword1, Keyword2" -o "Keyword1, Keyword2" | Keywords identify the input (-i) and output (-o) sound devices. The transmit parts are under development.|
 | Command line Rx without a GUI | pyft8 -i "Keyword1, Keyword2" -n| |
 | Command line transmit | pyft8 -o "Keyword1, Keyword2" -m "CQ G1OJS IO90"| Tx on next cycle. You supply the PTT control method.|
 | Command line create a wav file | pyft8 -w "Mywav.wav" -m "CQ G1OJS IO90"| -w "Mywav.wav" can be omitted |
