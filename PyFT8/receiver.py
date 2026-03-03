@@ -25,6 +25,7 @@ BASE_PAYLOAD_HOPS = np.array([HPS * s for s in symbol_idxs])
 LAST_BASE_PAYLOAD_HOP = BASE_PAYLOAD_HOPS[-1]
 COSTAS = [3,1,4,0,6,5,2]
 BASE_COSTAS_HOPS =  np.arange(7) * HPS
+BASE_FREQ_IDXS = np.array([BPT // 2 + BPT * t for t in range(8)])
 HOPS_PER_CYCLE = int(T_CYC * SYM_RATE * HPS)
 HOPS_PER_GRID = 2 * HOPS_PER_CYCLE
 
@@ -239,7 +240,7 @@ class Candidate:
 
     def demap(self, dBgrid_main, target_params = (3.3, 3.7)):
         self.demap_started = time.time()
-        freq_idxs = [self.f0_idx + BPT // 2 + BPT * t for t in range(8)]
+        freq_idxs = self.f0_idx + BASE_FREQ_IDXS
         hops = (self.h0_idx + BASE_PAYLOAD_HOPS) % HOPS_PER_GRID
         dBgrid = dBgrid_main[np.ix_(hops, freq_idxs)]
         p = np.clip(dBgrid - np.max(dBgrid), -80, 0)
@@ -292,11 +293,10 @@ class Receiver():
         threading.Thread(target=self.manage_cycle, daemon=True).start()
 
     def make_csync(self):
-        csync = np.full((len(COSTAS), self.fbins_per_signal), -1/7, np.float32)
+        csync = np.full((len(COSTAS), 8), -1/7, np.float32)
         for sym_idx, tone in enumerate(COSTAS):
-            fbins = range(tone * BPT, (tone+1) * BPT)
-            csync[sym_idx, fbins] = 1.0
-            csync[sym_idx, len(COSTAS)*BPT:] = 0
+            csync[sym_idx, tone] = 1.0
+            csync[sym_idx, len(COSTAS)] = 0
         return csync.ravel()
 
     def search(self, f0_idxs, cyclestart_str):
@@ -304,8 +304,9 @@ class Receiver():
         cycle = int(self.audio_in.dBgrid_main_ptr / HOPS_PER_CYCLE)
         cycle_h0 = cycle * HOPS_PER_CYCLE
         for f0_idx in f0_idxs:
+            freq_idxs = f0_idx + BASE_FREQ_IDXS
             c = Candidate(cyclestart_str = cyclestart_str, f0_idx = f0_idx)
-            dB = self.audio_in.dBgrid_main[:, f0_idx:f0_idx + 8 * BPT]
+            dB = self.audio_in.dBgrid_main[:, freq_idxs]
             dB = dB - np.max(dB)
             for h0_idx in range(H0_RANGE[0] + cycle_h0, H0_RANGE[1] + cycle_h0):
                 sync_score = float(np.dot(dB[h0_idx + BASE_COSTAS_HOPS  + 36 * HPS ,  :].ravel(), self.csync_flat))

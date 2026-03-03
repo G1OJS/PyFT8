@@ -46,7 +46,7 @@ def get_cumulative_from_text_files(i0, i1, postfix):
     t = 0
     for idx in range(i0, i1):
         with open(f"{data_folder}/test_{idx:02d}{postfix}", "r") as f:
-            t += 15
+            t += avg_cycle # approximate until real times folded in
             for l in f.readlines():
                 times.append(t)
     return times
@@ -67,12 +67,12 @@ def batch_test(i0, i1):
     rx = Receiver(audio_in, [200, 3100], on_decode, gui)
     audio_in.start_wav_load()
     t_start = time.time()
-
+    with open('baseline.pkl', 'rb') as f:
+        py_times_prev = pickle.load(f)
+        avg_cycle = np.max(py_times_prev) / (i1 - i0)
     ws_times = get_cumulative_from_text_files(i0, i1, "_wsjtx_2.7.0_NORM.txt")
     fl_times = get_cumulative_from_text_files(i0, i1, "_ft8_lib.txt")
     fig, ax = gui.plt.subplots()
-    with open('baseline.pkl', 'rb') as f:
-        py_times_prev = pickle.load(f)
     ws_line = ax.plot(ws_times, np.array(range(len(ws_times))), label = 'WSJT-X', color = 'blue')[0]
     ft_line = ax.plot(fl_times, np.array(range(len(fl_times))), label = 'ft8_lib', color = 'orange')[0]
     py_line = ax.plot([], [], label = 'PyFT8', color = 'red')[0]
