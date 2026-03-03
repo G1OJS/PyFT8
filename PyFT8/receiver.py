@@ -214,7 +214,7 @@ class Candidate:
         
 #============== AUDIO IN ===========================================================
 class AudioIn:
-    def __init__(self, input_device_keywords, max_freq, wav_files = None):
+    def __init__(self, max_freq, wav_files = None):
         self.fft_len = int(BPT * SAMP_RATE // SYM_RATE)
         fft_out_len = self.fft_len // 2 + 1
         self.nFreqs = int(fft_out_len * 2 * max_freq / SAMP_RATE)
@@ -392,9 +392,11 @@ def on_decode(ddict):
 
 if __name__ == "__main__":
     from PyFT8.gui import Gui
-    audio_in = AudioIn(['Mic', 'CODEC'], 3100)
-    gui = Gui(audio_in.dBgrid_main, HPS, BPT, lambda msg: print(msg))
+    audio_in = AudioIn(3100)
+    input_device_idx = audio_in.find_device(['Mic', 'CODEC'])
+    gui = Gui(audio_in.dBgrid_main, 4, 2, lambda msg: print(msg))
     rx = Receiver(audio_in, [200, 3100], on_decode, gui)
+    audio_in.start_streamed_audio(input_device_idx)
     print("Start rx")
     gui.plt.show()
                          
