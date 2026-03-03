@@ -16,7 +16,7 @@ class AudioOut:
                 if (not pattern in name): match = False
             if(match):
                 return dev_idx
-        print(f"[Audio] No audio device found matching {device_str_contains}")
+        print(f"[Audio] No outout audio device found matching {device_str_contains}")
 
     def create_ft8_symbols(self, tx_msg):
         c1, c2, grid_rpt = tx_msg.split()

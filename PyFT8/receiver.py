@@ -2,7 +2,6 @@ import threading
 import numpy as np
 import wave
 import time
-from PyFT8.waterfall import Waterfall
 from PyFT8.time_utils import global_time_utils
 import os
 import pyaudio
@@ -36,8 +35,6 @@ def cycle_time():
 def cyclestart_str(t):
     cyclestart_time = T_CYC * int( t / T_CYC )
     return time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
-
-
 
 #=========== Unpacking functions ========================================
 from string import ascii_uppercase as ltrs, digits as digs
@@ -228,8 +225,6 @@ class AudioIn:
         self.dBgrid_main = np.ones((self.hops_per_grid, self.nFreqs), dtype = np.float32)
         self.wav_files = wav_files
         self.dBgrid_main_ptr = 0
-        if input_device_keywords is not None:
-            self.start_streamed_audio(input_device_keywords)
 
     def start_wav_load(self):
         threading.Thread(target = self.load_wavs, args =(self.wav_files,)).start()
@@ -253,10 +248,9 @@ class AudioIn:
             deltas = np.diff(hoptimes)
             print(f"[Receiver] read wav file with hop mean = {1000*np.mean(deltas):6.2f}ms, sd =  {1000*np.std(deltas):6.2f}ms")
             
-    def start_streamed_audio(self, input_device_keywords):
-        indev = self.find_device(input_device_keywords)
+    def start_streamed_audio(self, input_device_idx):
         self.stream = pyaudio.PyAudio().open(
-            format = pyaudio.paInt16, channels=1, rate = SAMP_RATE, input = True, input_device_index = indev,
+            format = pyaudio.paInt16, channels=1, rate = SAMP_RATE, input = True, input_device_index = input_device_idx,
             frames_per_buffer = int(SAMP_RATE / (SYM_RATE * HPS)), stream_callback=self._callback,)
         self.dBgrid_main_ptr = int(cycle_time() * SYM_RATE * HPS)
         self.stream.start_stream()
@@ -270,7 +264,7 @@ class AudioIn:
                 if (not pattern in name): match = False
             if(match):
                 return dev_idx
-        print(f"[Audio] No audio device found matching {device_str_contains}")
+        print(f"[Audio] No input audio device found matching {device_str_contains}")
 
     def _callback(self, in_data, frame_count, time_info, status_flags):
         samples = np.frombuffer(in_data, dtype=np.int16).astype(np.float32)
@@ -397,9 +391,10 @@ def on_decode(ddict):
     print(ddict)
 
 if __name__ == "__main__":
+    from PyFT8.gui import Gui
     audio_in = AudioIn(['Mic', 'CODEC'], 3100)
-    waterfall = Waterfall(audio_in.dBgrid_main, HPS, BPT, lambda msg: print(msg))
-    rx = Receiver(audio_in, [200, 3100], on_decode, waterfall)
+    gui = Gui(audio_in.dBgrid_main, HPS, BPT, lambda msg: print(msg))
+    rx = Receiver(audio_in, [200, 3100], on_decode, gui)
     print("Start rx")
-    waterfall.plt.show()
+    gui.plt.show()
                          

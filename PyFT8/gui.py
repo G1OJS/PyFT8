@@ -21,7 +21,7 @@ class FT8Box:
         self.patch.set_facecolor('green' if "CQ" in text else "blue")
 
 
-class Waterfall:
+class Gui:
     def __init__(self, dBgrid, hps, bpt, on_msg_click):
         from matplotlib.animation import FuncAnimation
         self.dBgrid = dBgrid
@@ -31,7 +31,7 @@ class Waterfall:
         self.boxes, self.messages = [], {}
         self.decode_queue = queue.Queue()
         self.fig, self.ax = plt.subplots(figsize=(10,10))
-        self.fig.suptitle("G1OJS MiniPyFT8 with LDPC in ~ 300 lines")
+        self.fig.suptitle("PyFT8 by G1OJS")
         plt.tight_layout()
         self.plt = plt
         self.ax.set_axis_off()
