@@ -1,6 +1,5 @@
 # PyFT8 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/pyft8?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/pyft8)
-# All-Python FT8 Transceiver(*) GUI / Command Line Modem
-<sub> * Tx parts of GUI under development</sub>
+# All-Python FT8 Transceiver(WIP) GUI / Command Line Modem
 
 This repository contains the source code for PyFT8, an all-Python open source FT8 transceiver that you can run as a basic GUI or from the command line to receive and transmit.
 
