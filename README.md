@@ -19,7 +19,7 @@ pip install PyFT8
 
 Once installed, you can use the following commands to run it. 
 
-|Usage | Command | Notes |
+|Usage | Command example| Notes |
 |----------------------|----------------------|----------------------|
 |Basic Rx GUI | pyft8 -i "Keyword1, Keyword2" | Keywords identify the input sound device - partial match is fine, e.g. "Mic, CODEC"|
 |GUI with transmit | pyft8 -i "Keyword1, Keyword2" -o "Keyword1, Keyword2" | Keywords identify the input (-i) and output (-o) sound devices. The transmit parts are under development.|
