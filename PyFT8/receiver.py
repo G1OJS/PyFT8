@@ -143,9 +143,6 @@ class LdpcDecoder:
                 break
         return llr, ncheck, iteration 
 
-ldpc_decoder = LdpcDecoder()
-
-
 #============== AUDIO IN ===========================================================
 class AudioIn:
     def __init__(self, max_freq, wav_files = None):
@@ -259,6 +256,7 @@ class Candidate:
         if(self.llr_sd < LLR_SD_MIN):
             self.decode_completed = time.time()
             return
+        ldpc_decoder = LdpcDecoder()
         self.ncheck = ldpc_decoder.calc_ncheck(self.llr)
         self.ncheck0 = self.ncheck
         if 0 < self.ncheck <= LDPC_CONTROL[0]:
@@ -307,6 +305,7 @@ class Receiver():
         for f0_idx in f0_idxs:
             c = Candidate(cyclestart_str = cyclestart_str, f0_idx = f0_idx)
             dB = self.audio_in.dBgrid_main[:, f0_idx:f0_idx + 8 * BPT]
+            dB = dB - np.max(dB)
             for h0_idx in range(H0_RANGE[0] + cycle_h0, H0_RANGE[1] + cycle_h0):
                 sync_score = float(np.dot(dB[h0_idx + BASE_COSTAS_HOPS  + 36 * HPS ,  :].ravel(), self.csync_flat))
                 if sync_score > c.sync_score:
