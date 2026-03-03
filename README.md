@@ -1,6 +1,5 @@
-# PyFT8 V2 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/pyft8?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/pyft8)
-# All-Python FT8 Transceiver(*) GUI / Command Line Modem
-<sub> * Tx parts of GUI under development</sub>
+# PyFT8 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/pyft8?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/pyft8)
+# All-Python FT8 Transceiver(WIP) GUI / Command Line Modem
 
 This repository contains the source code for PyFT8, an all-Python open source FT8 transceiver that you can run as a basic GUI or from the command line to receive and transmit.
 
@@ -20,10 +19,10 @@ pip install PyFT8
 
 Once installed, you can use the following commands to run it. 
 
-|Usage | Command | Notes |
+|Usage | Command example| Notes |
 |----------------------|----------------------|----------------------|
 |Basic Rx GUI | pyft8 -i "Keyword1, Keyword2" | Keywords identify the input sound device - partial match is fine, e.g. "Mic, CODEC"|
-|GUI with transmit (under development) | pyft8 -i "Keyword1, Keyword2" -o "Keyword1, Keyword2" | Keywords identify the input (-i) and output (-o) sound devices|
+|GUI with transmit | pyft8 -i "Keyword1, Keyword2" -o "Keyword1, Keyword2" | Keywords identify the input (-i) and output (-o) sound devices. The transmit parts are under development.|
 | Command line Rx without a GUI | pyft8 -i "Keyword1, Keyword2" -n| |
 | Command line transmit | pyft8 -o "Keyword1, Keyword2" -m "CQ G1OJS IO90"| Tx on next cycle. You supply the PTT control method.|
 | Command line create a wav file | pyft8 -w "Mywav.wav" -m "CQ G1OJS IO90"| -w "Mywav.wav" can be omitted |
