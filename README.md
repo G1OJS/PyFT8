@@ -1,7 +1,7 @@
 # PyFT8 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/pyft8?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/pyft8)
 # All-Python FT8 Transceiver(WIP) GUI / Command Line Modem
 
-This repository contains the source code for PyFT8, an all-Python open source FT8 transceiver that you can run as a basic GUI or from the command line to receive and transmit.
+This repository contains the source code for PyFT8, an all-Python open source FT8 transceiver that you can run as a basic GUI or from the command line to receive and transmit. Decoding performance (number of decodes) is about 70% of that achieved by WSJT-x in NORM mode, but (tbc) slightly above ft8_lib. At the time of writing (3-3-26) this new version 2.0.0 establishes the prior cli functionality plus an interesting GUI, on which I intend to build a transceiver function shortly. 
 
 <img width="714" height="968" alt="image" src="https://github.com/user-attachments/assets/be165135-d18d-42d9-848c-c455b9d99275" />
 
@@ -33,12 +33,11 @@ Otherwise, please download or browse the code, or fork the repo and play with it
 
 The image below shows the number of decodes from PyFT8, WSJT-x V2.7.0 running in NORM mode, and FT8_lib, using the same 10 minutes of busy 20m audio that is used to test ft8_lib. 
 
-<img width="640" height="480" alt="performance snapshot" src="https://github.com/user-attachments/assets/c19bd1c9-60ac-4d97-81b1-bbcea9bb821b" />
-
+<img width="844" height="562" alt="performance snapshot" src="https://github.com/user-attachments/assets/08ba1946-b816-448f-9510-7763a2f065bd" />
 
 ## Limitations
 In pursuit of tight code, I've concentrated on core standard messages, leaving out some of the less-used features. The receive part of the
-code doesn't (yet) have the full capability of the advanced decoders used in WSJT-x, and so gets only about 60% of the decodes that WSJT-x gets, depending on band conditions (on a quiet band with only good signals PyFT8 will get close to 100%).
+code doesn't (yet) have the full capability of the advanced decoders used in WSJT-x, and so gets fewer decodes than WSJT-x gets, depending on band conditions (on a quiet band with only good signals PyFT8 will get close to 100%).
 
 ## Acknowledgements
 This project implements a decoder for the FT8 digital mode.
