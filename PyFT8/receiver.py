@@ -132,84 +132,20 @@ class LdpcDecoder:
         np.add.at(update_collector, CVidx, mC2V_curr - mC2V_prev)
         return mC2V_curr
     
-    def do_ldpc_iteration(self, llr):
-        update_collector = np.zeros_like(llr)
-        self.mC2V_prev6 = self._pass_messages(llr, self.CV6idx, self.mC2V_prev6, update_collector)
-        self.mC2V_prev7 = self._pass_messages(llr, self.CV7idx, self.mC2V_prev7, update_collector)
-        llr += update_collector
-        return llr, self.calc_ncheck(llr)
+    def decode(self, llr):
+        for iteration in range(LDPC_CONTROL[1]):
+            update_collector = np.zeros_like(llr)
+            self.mC2V_prev6 = self._pass_messages(llr, self.CV6idx, self.mC2V_prev6, update_collector)
+            self.mC2V_prev7 = self._pass_messages(llr, self.CV7idx, self.mC2V_prev7, update_collector)
+            llr += update_collector
+            ncheck = self.calc_ncheck(llr)
+            if(ncheck == 0):
+                break
+        return llr, ncheck, iteration 
 
-#============== CANDIDATE ===========================================================
-class Candidate:
-    def __init__(self):
+ldpc_decoder = LdpcDecoder()
 
-        self.demap_started, self.decode_completed = False, False
-        self.ncheck0, self.ncheck = 99, 99
-        self.llr_sd = 0
-        self.decode_path = ''
-        self.decode_dict = False
-        self.processing_time = 0
-        self.cyclestart_str = ''
-        self.msg_tuple, self.msg = '',''
-        self.ldpc = LdpcDecoder()
 
-    def _record_state(self, actor_code, final = False):
-        finalcode = "#" if final else ""
-        self.decode_path = self.decode_path + f"{actor_code}{self.ncheck:02d}{finalcode}"
-        if(final):
-            self.decode_completed = time.time()
-
-    def demap(self, dBgrid_main, target_params = (3.3, 3.7)):
-        self.demap_started = time.time()
-        hops = (self.sync['h0_idx'] + BASE_PAYLOAD_HOPS) % HOPS_PER_GRID
-        self.dB = dBgrid_main[np.ix_(hops, self.freq_idxs)]
-        p = np.clip(self.dB - np.max(self.dB), -80, 0)
-        llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
-        llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
-        llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
-        llr = np.column_stack((llra, llrb, llrc))
-        llr = llr.ravel() / 10
-        self.llr_sd = int(0.5+100*np.std(llr))/100.0
-        llr = target_params[0] * llr / (1e-12 + self.llr_sd)
-        self.llr = np.clip(llr, -target_params[1], target_params[1])
-        self.decode_dict.update({'llr_sd':self.llr_sd})
-          
-    def decode(self):
-        decode_started = time.time()
-        if(self.llr_sd < LLR_SD_MIN):
-            self._record_state("I", final = True)
-            return
-        self.ncheck = self.ldpc.calc_ncheck(self.llr)
-        self.ncheck0 = self.ncheck
-        self._record_state("I")
-
-        if self.ncheck > 0:
-            if self.ncheck <= LDPC_CONTROL[0]:
-                for it in range(LDPC_CONTROL[1]):
-                    self.llr, self.ncheck = self.ldpc.do_ldpc_iteration(self.llr)
-                    self._record_state("L")
-                    if(self.ncheck == 0):
-                        break                    
-        if(self.ncheck == 0):
-            bits91_int = 0
-            for bit in (self.llr[:91] > 0).astype(int).tolist():
-                bits91_int = (bits91_int << 1) | bit
-            bits77_int = check_crc(bits91_int)
-            if(bits77_int):
-                self.msg_tuple = unpack(bits77_int)
-
-        self._record_state("M" if self.msg_tuple else "_", final = True)
-        self.msg = ' '.join(self.msg_tuple)
-        self.decode_dict.update( {
-                            'msg_tuple': self.msg_tuple,
-                            'msg': self.msg,
-                            'llr_sd':self.llr_sd,
-                            'decode_path':self.decode_path,
-                            'ncheck0': self.ncheck0,
-                            'snr': np.clip(int(np.max(self.dB) - np.min(self.dB) - 58), -24, 24),
-                            'td': f"{time.time() %60:4.1f}"
-                           })
-        
 #============== AUDIO IN ===========================================================
 class AudioIn:
     def __init__(self, max_freq, wav_files = None):
@@ -276,6 +212,69 @@ class AudioIn:
         self.dBgrid_main_ptr = (self.dBgrid_main_ptr + 1) % self.hops_per_grid
         return (None, pyaudio.paContinue)
 
+
+#============== CANDIDATE ===========================================================
+
+from dataclasses import dataclass
+from dataclasses import field
+
+@dataclass(slots=True)
+class Candidate:
+    cyclestart_str: str
+    f0_idx: int
+    llr: np.ndarray = field(default_factory=lambda: np.empty(0))
+    dt: float = 0
+    h0_idx: int = 0
+    sync_score: float = 0
+    demap_started: float = 0.0
+    fHz: int = 0
+    llr_sd: float = 0.0
+    ncheck0: int = 99
+    ncheck: int = 99
+    n_its: int = 0
+    llr_sd: float = 0
+    decode_path: str = ''
+    msg_tuple: tuple = ('','','')
+    msg: str = ''
+    decode_completed: float = 0.0
+    decoder: str = "PyFT8"
+
+    def demap(self, dBgrid_main, target_params = (3.3, 3.7)):
+        self.demap_started = time.time()
+        freq_idxs = [self.f0_idx + BPT // 2 + BPT * t for t in range(8)]
+        hops = (self.h0_idx + BASE_PAYLOAD_HOPS) % HOPS_PER_GRID
+        dBgrid = dBgrid_main[np.ix_(hops, freq_idxs)]
+        p = np.clip(dBgrid - np.max(dBgrid), -80, 0)
+        llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
+        llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
+        llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
+        llr = np.column_stack((llra, llrb, llrc))
+        llr = llr.ravel() / 10
+        self.llr_sd = int(0.5+100*np.std(llr))/100.0
+        llr = target_params[0] * llr / (1e-12 + self.llr_sd)
+        self.llr = np.clip(llr, -target_params[1], target_params[1])
+          
+    def decode(self):
+        decode_started = time.time()
+        if(self.llr_sd < LLR_SD_MIN):
+            self.decode_completed = time.time()
+            return
+        self.ncheck = ldpc_decoder.calc_ncheck(self.llr)
+        self.ncheck0 = self.ncheck
+        if 0 < self.ncheck <= LDPC_CONTROL[0]:
+            self.llr, self.ncheck, self.n_its = ldpc_decoder.decode(self.llr)                   
+        if(self.ncheck == 0):
+            bits91_int = 0
+            for bit in (self.llr[:91] > 0).astype(int).tolist():
+                bits91_int = (bits91_int << 1) | bit
+            bits77_int = check_crc(bits91_int)
+            if(bits77_int):
+                self.msg_tuple = unpack(bits77_int)
+        self.msg = ' '.join(self.msg_tuple)
+        self.decode_completed = time.time()
+        
+
+
 #============== RECEIVER ===========================================================
 class Receiver():
     def __init__(self, audio_in, freq_range, on_decode, waterfall, verbose = True):
@@ -301,43 +300,19 @@ class Receiver():
             csync[sym_idx, len(COSTAS)*BPT:] = 0
         return csync.ravel()
 
-    def get_sync(self, f0_idx, dB, sync_idx, cycle_h0):
-        best_sync = {'h0_idx':0, 'score':0, 'dt': 0}
-        for h0_idx in range(H0_RANGE[0] + cycle_h0, H0_RANGE[1] + cycle_h0):
-            sync_score = float(np.dot(dB[h0_idx + BASE_COSTAS_HOPS + sync_idx * 36 * HPS ,  :].ravel(), self.csync_flat))
-            test_sync = {'h0_idx':h0_idx, 'score':sync_score, 'dt': h0_idx * self.dt - 0.7}
-            if test_sync['score'] > best_sync['score']:
-                best_sync = test_sync
-        return best_sync
-
     def search(self, f0_idxs, cyclestart_str):
         cands = []
-        dBgrid_main = self.audio_in.dBgrid_main
         cycle = int(self.audio_in.dBgrid_main_ptr / HOPS_PER_CYCLE)
         cycle_h0 = cycle * HOPS_PER_CYCLE
         for f0_idx in f0_idxs:
-            dB = dBgrid_main[:, f0_idx:f0_idx + 8 * BPT]
-            dB = dB - np.max(dB)
-            c = Candidate()
-            c.f0_idx = f0_idx
-            sync_idx = 1
-            c.sync = self.get_sync(f0_idx, dB, sync_idx, cycle_h0)
-            c.freq_idxs = [c.f0_idx + BPT // 2 + BPT * t for t in range(8)]
-            c.last_payload_hop = c.sync['h0_idx'] + HPS * 72
-            c.cyclestart_str = cyclestart_str
-            c.decode_dict = {'decoder': 'PyFT8',
-                             'cs':c.cyclestart_str,
-                             'f':int((c.f0_idx + BPT // 2) * self.df),
-                             'f0_idx': c.f0_idx,
-                             'sync_idx': sync_idx, 
-                             'sync': c.sync,
-                             'dt': int(0.5+100*c.sync['dt'])/100.0, 
-                             'ncheck0': 99,
-                             'snr': -30,
-                             'llr_sd':0,
-                             'decode_path':'',
-                             'msg_tuple':(''), 'msg':'',
-                             'td': 0}
+            c = Candidate(cyclestart_str = cyclestart_str, f0_idx = f0_idx)
+            dB = self.audio_in.dBgrid_main[:, f0_idx:f0_idx + 8 * BPT]
+            for h0_idx in range(H0_RANGE[0] + cycle_h0, H0_RANGE[1] + cycle_h0):
+                sync_score = float(np.dot(dB[h0_idx + BASE_COSTAS_HOPS  + 36 * HPS ,  :].ravel(), self.csync_flat))
+                if sync_score > c.sync_score:
+                    c.h0_idx, c.sync_score = h0_idx, sync_score
+            c.dt = c.h0_idx * self.dt - 0.7
+            c.fHz = int((f0_idx + BPT // 2) * self.df)
             cands.append(c)
         return cands
         
@@ -357,7 +332,7 @@ class Receiver():
 
                 new_to_decode = []
                 for c in candidates:
-                    ptr_rel_to_h0 = (ptr - c.sync['h0_idx']) % HOPS_PER_CYCLE
+                    ptr_rel_to_h0 = (ptr - c.h0_idx) % HOPS_PER_CYCLE
                     if not (base_pyld_hops[0] <= ptr_rel_to_h0 <= base_pyld_hops[-1]) and not c.demap_started:
                         c.demap(self.audio_in.dBgrid_main)
                     if c.llr_sd > 0 and not c.decode_completed:
@@ -367,8 +342,8 @@ class Receiver():
                         if key not in duplicate_filter:
                             duplicate_filter.add(key)
                             if self.waterfall:
-                                self.waterfall.post_decode(c.sync['h0_idx'], c.f0_idx, c.msg)
-                            self.on_decode(c.decode_dict)
+                                self.waterfall.post_decode(c.h0_idx, c.f0_idx, c.msg)
+                            self.on_decode(c)
                 new_to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
                 for c in new_to_decode[:55]:
                     c.decode()
@@ -384,9 +359,8 @@ class Receiver():
 
 #============= SIMPLE LIVE Rx-ONLY CODE =========================================================================
 
-def on_decode(ddict):
-    ddict['llr'] = ''
-    print(ddict)
+def on_decode(c):
+    print(c.msg)
 
 if __name__ == "__main__":
     from PyFT8.gui import Gui
