@@ -220,6 +220,7 @@ class Candidate:
     cyclestart_str: str
     f0_idx: int
     llr: np.ndarray = field(default_factory=lambda: np.empty(0))
+    snr: float = -30
     dt: float = 0
     h0_idx: int = 0
     sync_score: float = 0
@@ -268,7 +269,7 @@ class Candidate:
             bits77_int = check_crc(bits91_int)
             if(bits77_int):
                 self.msg_tuple = unpack(bits77_int)
-        self.msg = ' '.join(self.msg_tuple)
+                self.msg = ' '.join(self.msg_tuple)
         self.decode_completed = time.time()
         
 
