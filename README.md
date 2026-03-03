@@ -1,16 +1,13 @@
 # PyFT8 V2 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/pyft8?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/pyft8)
-# FT8 Transceiver GUI, FT8 Command Line Modem, All-Python, with test code
-This repository contains the source code for PyFT8, the all-Python open source FT8 transceiver that you can run as a basic GUI or from the command line to receive and transmit
+# All-Python FT8 Transceiver(*) GUI / Command Line Modem
+<sub> * Tx parts of GUI under development</sub>
+
+This repository contains the source code for PyFT8, an all-Python open source FT8 transceiver that you can run as a basic GUI or from the command line to receive and transmit.
 
 ## Motivation
 This started out as me thinking "How hard can it be, really?" after some frustration with Windows moving sound devices around and wanting to get a minimal decoder running that I can fully control. 
 
 I didn’t want to produce yet another port of the original Fortran / C into another language: instead I wanted to see how far I could get following audio -> spectrogram -> symbols -> bits -> error correction without resyncs and special treatments, writing my own code from scratch as far as possible. Also this has been, more than I expected, an exercise in writing Python ‘Pythonically’ for speed, which means absolutely not duplicating the big nested loops of Fortran and C. It also means writing code that is wide and short rather than thin and long, which suits my thinking style perfectly!
-
-## Performance Compared with FT8_lib and WSJT-x
-
-The image below shows the number of decodes from PyFT8 and FT8_lib both as a percentage of WSJT-x V2.7.0 running in NORM mode, for a set of wav files copied from [FT8_lib's 20m_busy tests](https://github.com/kgoba/ft8_lib/tree/master/test/wav/20m_busy).
-
 
 ## Installation
 If you want to install this software without getting into the code, you can install from PyPI using pip install, using
@@ -19,14 +16,24 @@ If you want to install this software without getting into the code, you can inst
 pip install PyFT8
 ```
 
-Once installed, you can use one of four command line programs to run it. For the basic GUI, use 
+Once installed, you can use the following commands to run it. 
 
-```
-PyFT8_cli "Keyword1, Keyword2" [-c][-v]
-```
-<sub> * where keywords identify the sound device - partial match is fine - and -c = concise, -v = verbose</sub>
+|Usage | Command | Notes |
+|----------------------|----------------------|----------------------|
+|Basic Rx GUI | pyft8 -i "Keyword1, Keyword2" | Keywords identify the input sound device - partial match is fine, e.g. "Mic, CODEC"|
+|GUI with transmit (under development) | pyft8 -i "Keyword1, Keyword2" -o "Keyword1, Keyword2" | Keywords identify the input (-i) and output (-o) sound devices|
+| Command line Rx without a GUI | pyft8 -i "Keyword1, Keyword2" -n| |
+| Command line transmit | pyft8 -o "Keyword1, Keyword2" -m "CQ G1OJS IO90"| Tx on next cycle. You supply the PTT control method.|
+| Command line create a wav file | pyft8 -w "Mywav.wav" -m "CQ G1OJS IO90"| -w "Mywav.wav" can be omitted |
 
 Otherwise, please download or browse the code, or fork the repo and play with it! If you do fork it, please check back here as I'm constantly (as of Jan 2026) rewriting and improving.
+
+## Performance Compared with FT8_lib and WSJT-x
+
+The image below shows the number of decodes from PyFT8 and FT8_lib both as a percentage of WSJT-x V2.7.0 running in NORM mode, for a set of wav files copied from 
+
+<img width="640" height="480" alt="performance snapshot" src="https://github.com/user-attachments/assets/c19bd1c9-60ac-4d97-81b1-bbcea9bb821b" />
+
 
 ## Limitations
 In pursuit of tight code, I've concentrated on core standard messages, leaving out some of the less-used features. The receive part of the
