@@ -4,7 +4,7 @@ import time
 import pickle
 import threading
 from PyFT8.receiver import Receiver, AudioIn
-from PyFT8.waterfall import Waterfall
+from PyFT8.gui import Gui
 
 class Wsjtx_all_tailer:
     
@@ -62,15 +62,15 @@ def batch_test(i0, i1):
     wav_files = []
     for idx in range(i0, i1):
         wav_files.append(f"{data_folder}/test_{idx:02d}.wav")
-    audio_in = AudioIn(None, 3100, wav_files)
-    waterfall = Waterfall(audio_in.dBgrid_main, 4, 2, lambda msg: print(msg))
-    rx = Receiver(audio_in, [200, 3100], on_decode, waterfall)
+    audio_in = AudioIn(3100, wav_files)
+    gui = Gui(audio_in.dBgrid_main, 4, 2, lambda msg: print(msg))
+    rx = Receiver(audio_in, [200, 3100], on_decode, gui)
     audio_in.start_wav_load()
     t_start = time.time()
 
     ws_times = get_cumulative_from_text_files(i0, i1, "_wsjtx_2.7.0_NORM.txt")
     fl_times = get_cumulative_from_text_files(i0, i1, "_ft8_lib.txt")
-    fig, ax = waterfall.plt.subplots()
+    fig, ax = gui.plt.subplots()
     with open('baseline.pkl', 'rb') as f:
         py_times_prev = pickle.load(f)
     ws_line = ax.plot(ws_times, np.array(range(len(ws_times))), label = 'WSJT-X', color = 'blue')[0]
@@ -91,7 +91,7 @@ def batch_test(i0, i1):
             pickle.dump(decodes, f)
         return py_line,
     ani = FuncAnimation(fig, anim, interval = 5000, frames=(100000), blit=False)
-    waterfall.plt.show()
+    gui.plt.show()
 
 def on_wsjtx_decode(dd):
     global ws_times
@@ -100,14 +100,14 @@ def on_wsjtx_decode(dd):
 def live_test():
     from matplotlib.animation import FuncAnimation
     global t_start
-    audio_in = AudioIn(["Mic", "CODEC"], 3100, None)
-    waterfall = Waterfall(audio_in.dBgrid_main, 4, 2, lambda msg: print(msg))
+    audio_in = AudioIn(3100)
+    gui = Gui(audio_in.dBgrid_main, 4, 2, lambda msg: print(msg))
     t_start = time.time()
-    rx = Receiver(audio_in, [200, 3100], on_decode, waterfall)
+    rx = Receiver(audio_in, [200, 3100], on_decode, gui)
 
     wsjtx_all_tailer = Wsjtx_all_tailer(on_wsjtx_decode, silent = True)
 
-    fig, ax = waterfall.plt.subplots()
+    fig, ax = gui.plt.subplots()
     ws_line = ax.plot([], [], label = 'WSJT-X')[0]
     py_line = ax.plot([], [], label = 'PyFT8')[0]
     ax.set_xlabel("Time, seconds")
@@ -126,7 +126,7 @@ def live_test():
             ax.set_xlim(0, np.max(py_times))
         return ws_line, py_line,
     ani = FuncAnimation(fig, anim, interval = 5000, frames=(100000), blit=False)
-    waterfall.plt.show()
+    gui.plt.show()
 
 #live_test()
 
