@@ -358,14 +358,15 @@ class Receiver():
 #============= SIMPLE LIVE Rx-ONLY CODE =========================================================================
 
 def on_decode(c):
-    print(c.msg)
+    gui.post_decode(c.h0_idx, c.f0_idx, c.msg, c.snr)
+    print(f"{c.cyclestart_str} {c.snr} {c.dt:4.1f} {c.fHz} ~ {c.msg}")
 
 if __name__ == "__main__":
     from PyFT8.gui import Gui
     audio_in = AudioIn(3100)
     input_device_idx = audio_in.find_device(['Mic', 'CODEC'])
-    gui = Gui(audio_in.dBgrid_main, 4, 2, lambda msg: print(msg))
-    rx = Receiver(audio_in, [200, 3100], on_decode, gui)
+    gui = Gui(audio_in.dBgrid_main, 4, 2,{'c':'', 'g':''}, on_decode)
+    rx = Receiver(audio_in, [200, 3100], on_decode)
     audio_in.start_streamed_audio(input_device_idx)
     print("Start rx")
     gui.plt.show()

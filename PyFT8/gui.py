@@ -68,11 +68,11 @@ class Gui:
 
     def _show_decode(self, tbin, fbin, text, snr):
         cycle = int(tbin/self.midline)
-        self.messages[(cycle, fbin)] = {'text':text, 'snr': snr, 'cycle':cycle}
+        self.messages[(cycle, fbin)] = (tbin, fbin, text, snr)
         color = 'blue'
         if 'CQ' in text: color = 'green'
         if self.mStation['c'] in text: color = 'yellow'
-        if text.startswith(self.mStation['c']): color = 'lightred'
+        if text.startswith(self.mStation['c']): color = 'red'
         
         for existing_box in self.boxes:
             if existing_box.fbin == fbin and abs(existing_box.patch.get_x() - tbin) < 100:

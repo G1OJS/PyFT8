@@ -52,6 +52,9 @@ class FT8_QSO:
                 f.write(f"<{k}:{len(v)}>{v} ")
             f.write(f"<eor>\n")
 
+def cycle_time():
+    return time.time() % 15
+
 def isReport(grid_rpt):     return "+" in grid_rpt or "-" in grid_rpt
 def isRReport(grid_rpt):   return isReport(grid_rpt) and 'R' in grid_rpt
 def isRR73(grid_rpt):       return 'RR73' in grid_rpt
@@ -59,11 +62,17 @@ def is73(grid_rpt):         return '73' in grid_rpt and not isRR73(grid_rpt)
 def isGrid(grid_rpt):        return not isReport(grid_rpt) and not is73(grid_rpt) and not isRR73(grid_rpt)
 
 def on_clicked_message(clicked_msg):
-    tx_immediate = True if time.time() %15 < 2 else False
+    tbin, fbin, text, their_snr = clicked_msg
     
-    qso = FT8_QSO()    
-    call_a, call_b, grid_rpt = clicked_msg['text'].split()
-    their_snr = clicked_msg['snr']
+    clicked_message_cycle = int(tbin / (audio_in.hops_per_grid/2))
+    clicked_cycle = int(audio_in.dBgrid_main_ptr / (audio_in.hops_per_grid/2))
+    if(clicked_cycle != clicked_message_cycle and cycle_time() > 2.5):
+        print("too late")
+        return
+    tx_immediate = True if cycle_time() < 2.5 else False
+    
+    qso = FT8_QSO()
+    call_a, call_b, grid_rpt = text.split()
     their_snr = -7
     my_station = config['mStation']
 
@@ -132,7 +141,7 @@ def on_decode(c):
     print(f"{c.cyclestart_str} {c.snr} {c.dt:4.1f} {c.fHz} ~ {c.msg}")
 
 def cli():
-    global audio_out, output_device_idx, ptt, gui
+    global audio_in, audio_out, output_device_idx, ptt, gui
     import time
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-i', '--inputcard_keywords', help = 'Comma-separated keywords to identify the input sound device') 
