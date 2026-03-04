@@ -4,22 +4,22 @@ import time, queue
 
 # ================== WATERFALL ======================================================
 class FT8Box:
-    def __init__(self, ax, tbin, fbin, width, height, text, color):
+    def __init__(self, ax, tbin, fbin, width, height, text, colors):
         from matplotlib.patches import Rectangle
         self.ax = ax
         self.fbin = fbin
         self.patch = ax.add_patch(Rectangle((tbin, fbin), width=width, height=height,
-                                            facecolor=color,alpha=0.6, edgecolor='lime', lw=2))
-        self.text = ax.text(tbin, fbin+2,text, color='white', fontsize='small', fontweight='bold' )
-        self.update(tbin, text, color)
+                                            facecolor=colors[0],alpha=0.6, edgecolor='lime', lw=2))
+        self.text = ax.text(tbin, fbin+2,text, color=colors[1], fontsize='small', fontweight='bold' )
+        self.update(tbin, text, colors)
         
-    def update(self, tbin, text, color):
-        self.color = color
+    def update(self, tbin, text, colors):
         self.patch.set_x(tbin)
         self.text.set_x(tbin)
         self.text.set_text(text)
+        self.text.set_color(colors[1])
         self.modified = time.time()
-        self.patch.set_facecolor(color)
+        self.patch.set_facecolor(colors[0])
 
 class Gui:
     def __init__(self, dBgrid, hps, bpt, mStation, on_msg_click):
@@ -69,14 +69,14 @@ class Gui:
     def _show_decode(self, tbin, fbin, text, snr):
         cycle = int(tbin/self.midline)
         self.messages[(cycle, fbin)] = (tbin, fbin, text, snr)
-        color = 'blue'
-        if 'CQ' in text: color = 'green'
-        if self.mStation['c'] in text: color = 'yellow'
-        if text.startswith(self.mStation['c']): color = 'red'
+        colors = ['blue', 'white']
+        if 'CQ' in text: colors = ['green', 'white']
+        if self.mStation['c'] in text: colors = ['yellow', 'black']
+        if text.startswith(self.mStation['c']): colors = ['red', 'white']
         
         for existing_box in self.boxes:
             if existing_box.fbin == fbin and abs(existing_box.patch.get_x() - tbin) < 100:
-                existing_box.update(tbin, text, color)
+                existing_box.update(tbin, text, colors)
                 return
-        self.boxes.append(FT8Box(self.ax, tbin, fbin, 79*self.hps, 8*self.bpt, text, color))
+        self.boxes.append(FT8Box(self.ax, tbin, fbin, 79*self.hps, 8*self.bpt, text, colors))
                 

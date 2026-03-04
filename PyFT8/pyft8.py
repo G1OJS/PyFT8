@@ -21,11 +21,11 @@ def get_config(configfile = 'PyFT8.pkl'):
         with open(configfile, 'rb') as f:
             config = pickle.load(f)
     else:
-        c = input("Please enter your callsign")
-        g = input("Please enter your level 4 grid square")
+        c = input("Please enter your callsign ")
+        g = input("Please enter your level 4 grid square ")
         config = {'mStation': {'c':c, 'g':g}}
         with open(configfile, 'wb') as f:
-            config = pickle.dump(config, f)
+            pickle.dump(config, f)
 
 class FT8_QSO:
     def __init__(self):
@@ -36,8 +36,8 @@ class FT8_QSO:
         self.rpts = {'sent': None, 'rcvd': None}
         
     def log_to_adif(logfile = "PyFT8.adif"):
-        log_dict = {'call':self.oStation['c'], 'gridsquare':self.oStation['s'], 'mode':'FT8',
-        'operator':self.mStation['c'], 'station_callsign':self.mStation['c'], 'my_gridsquare':self.mStation['s'], 
+        log_dict = {'call':self.oStation['c'], 'gridsquare':self.oStation['g'], 'mode':'FT8',
+        'operator':self.mStation['c'], 'station_callsign':self.mStation['c'], 'my_gridsquare':self.mStation['g'], 
         'rst_sent':self.rpts['sent'], 'rst_rcvd':self.rpts['rcvd'], 
         'qso_date':self.times['time_on'].strftime("%Y%m%d"), 'qso_date_off':self.times['time_off'].strftime("%Y%m%d"),
         'time_on':self.times['time_on'].strftime("%H%M%S"), 'time_off':self.times['time_on'].strftime("%H%M%S"),
@@ -56,10 +56,11 @@ def cycle_time():
     return time.time() % 15
 
 def isReport(grid_rpt):     return "+" in grid_rpt or "-" in grid_rpt
-def isRReport(grid_rpt):   return isReport(grid_rpt) and 'R' in grid_rpt
+def isRReport(grid_rpt):    return isReport(grid_rpt) and 'R' in grid_rpt
+def isRRR(grid_rpt):        return 'RRR' in grid_rpt
 def isRR73(grid_rpt):       return 'RR73' in grid_rpt
 def is73(grid_rpt):         return '73' in grid_rpt and not isRR73(grid_rpt)
-def isGrid(grid_rpt):        return not isReport(grid_rpt) and not is73(grid_rpt) and not isRR73(grid_rpt)
+def isGrid(grid_rpt):       return not isReport(grid_rpt) and not is73(grid_rpt) and not isRR73(grid_rpt) and not isRRR(grid_rpt) 
 
 def on_clicked_message(clicked_msg):
     tbin, fbin, text, their_snr = clicked_msg
@@ -73,7 +74,6 @@ def on_clicked_message(clicked_msg):
     
     qso = FT8_QSO()
     call_a, call_b, grid_rpt = text.split()
-    their_snr = -7
     my_station = config['mStation']
 
     if qso.times['time_on'] is None:
@@ -90,11 +90,12 @@ def on_clicked_message(clicked_msg):
             qso.oStation['c'] = call_b
         if isGrid(grid_rpt):
             qso.oStation = {'c': call_b, 'g': grid_rpt}
+            qso.rpts['sent'] = f"{their_snr:+03d}"
             reply = f"{qso.oStation['c']} {my_station['c']} {their_snr:+03d}"
         if isReport(grid_rpt):
             reply = f"{qso.oStation['c']} {my_station['c']} R{their_snr:+03d}"
             qso.rpts['rcvd'] = grid_rpt[-3:]
-        if isRReport(grid_rpt):
+        if isRReport(grid_rpt) or isRRR(grid_report):
             reply = f"{qso.oStation['c']} {my_station['c']} RR73"
         if isRR73(grid_rpt):
             reply = f"{qso.oStation['c']} {my_station['c']} 73"

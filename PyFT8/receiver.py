@@ -243,7 +243,9 @@ class Candidate:
         freq_idxs = self.f0_idx + BASE_FREQ_IDXS
         hops = (self.h0_idx + BASE_PAYLOAD_HOPS) % HOPS_PER_GRID
         dBgrid = dBgrid_main[np.ix_(hops, freq_idxs)]
-        p = np.clip(dBgrid - np.max(dBgrid), -80, 0)
+        pmax = np.max(dBgrid)
+        self.snr = np.clip(int(pmax - np.min(dBgrid) - 58), -24, 24)
+        p = np.clip(dBgrid - pmax, -80, 0)
         llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
         llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
         llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
