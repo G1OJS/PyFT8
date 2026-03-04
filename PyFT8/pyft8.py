@@ -1,8 +1,89 @@
 import argparse
 import time
+import os
 from PyFT8.receiver import Receiver, AudioIn
 from PyFT8.gui import Gui
 from PyFT8.transmitter import AudioOut
+
+class FT8_QSO:
+    def __init__(self):
+        self.oStation = {'c':None, 'g':None}
+        self.band = {'b':'20m', 'f':14.074}
+        self.times = {'time_on':None, 'time_off':None}
+        self.rpts = {'sent': None, 'rcvd': None}
+        
+    def log_to_adif(logfile = "PyFT8.adif"):
+        log_dict = {'call':self.oStation['c'], 'gridsquare':self.oStation['s'], 'mode':'FT8',
+        'operator':self.mStation['c'], 'station_callsign':self.mStation['c'], 'my_gridsquare':self.mStation['s'], 
+        'rst_sent':self.rpts['sent'], 'rst_rcvd':self.rpts['rcvd'], 
+        'qso_date':self.times['time_on'].strftime("%Y%m%d"), 'qso_date_off':self.times['time_off'].strftime("%Y%m%d"),
+        'time_on':self.times['time_on'].strftime("%H%M%S"), 'time_off':self.times['time_on'].strftime("%H%M%S"),
+        'band':self.band['b'], 'freq':self.band['f']}
+        if(not os.path.exists(logfile)):
+            with open(logfile, 'w') as f:
+                f.write("header <eoh>")
+        with open(logfile,'a') as f:
+            f.write(f"\n")
+            for k, v in log_dict.items():
+                v = str(v)
+                f.write(f"<{k}:{len(v)}>{v} ")
+            f.write(f"<eor>\n")
+
+def isReport(grid_rpt):     return "+" in grid_rpt or "-" in grid_rpt
+def isRReport(grid_rpt):   return isReport(grid_rpt) and 'R' in grid_rpt
+def isRR73(grid_rpt):       return 'RR73' in grid_rpt
+def is73(grid_rpt):         return '73' in grid_rpt and not isRR73(grid_rpt)
+def isGrid(grid_rpt):        return not isRpt(grid_rpt) and not is73(grid_rpt) and not isRR73(grid_rpt)
+
+def on_clicked_message(clicked_msg, my_station):
+    qso = FT8_QSO()    
+    call_a, their_call, grid_rpt = clicked_msg['text'].split()
+    their_snr = clicked_msg['snr']
+
+    if qso.times['time_on'] is None:
+        qso.times['time_on'] = time.time()
+
+    if call_a == "CQ":
+        qso.oStation = {'c': their_call, 'g': grid_rpt}
+        reply = f"{qso.oStation['c']} {my_station['c']} {my_station['g']}"
+        transmit(reply)
+
+    if call_a == my_station['c']:
+        if isGrid(grid_rpt):
+            qso.oStation = {'c': their_call, 'g': grid_rpt}
+            reply = f"{qso.oStation['c']} {my_station['c']} {their_snr:+03d}"
+        if isReport(grid_rpt):
+            reply = f"{self.their_call} {config.myCall} R{their_snr:+03d}"
+            qso.rpts['rcvd'] = grid_rpt[-3:]
+        if isRReport(grid_rpt):
+            reply = f"{qso.oStation['c']} {my_station['c']} RR73"
+        if isRR73(grid_rpt):
+            reply = f"{qso.oStation['c']} {my_station['c']} 73"
+        transmit(reply)
+        
+    if is73(grid_rpt):
+        qso.times['time_off'] = time.time()
+        qso.log_to_adif()
+
+def make_wav(msg, wave_output_file):
+    symbols = audio_out.create_ft8_symbols(msg)
+    audio_data = audio_out.create_ft8_wave(symbols)
+    audio_out.write_to_wave_file(audio_data, wave_output_file)
+    print(f"Created wave file {args.wave_output_file}")    
+
+def transmit(msg):
+    print(f"Transmit {msg}")
+    if output_device_idx is None:
+        print("No output device")
+        return
+    symbols = audio_out.create_ft8_symbols(msg)
+    audio_data = audio_out.create_ft8_wave(symbols)
+    delay = 15 - (time.time() % 15)
+    if delay > 0:
+        time.sleep(delay)
+    print("Transmitting")
+    audio_out.play_data_to_soundcard(audio_data, output_device_idx)
+    return True
 
 def wait_for_keyboard():
     import time
@@ -15,11 +96,8 @@ def wait_for_keyboard():
 def on_decode(c):
     print(f"{c.cyclestart_str} {c.snr} {c.dt:4.1f} {c.fHz} ~ {c.msg}")
 
-def on_click_message(msg):
-    print(msg)
-
 def cli():
-    global concise
+    global audio_out, output_device_idx
     import time
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-i', '--inputcard_keywords', help = 'Comma-separated keywords to identify the input sound device') 
@@ -30,50 +108,34 @@ def cli():
     parser.add_argument('-w','--wave_output_file', nargs='?', help = 'Wave output file', default = 'PyFT8.wav')
     args = parser.parse_args()
 
-    run = True
-
     output_device_idx = None
-    gui = None
-
-    if args.transmit_message:
-        run = False
+    if args.outputcard_keywords:
+        outputcard_keywords = args.outputcard_keywords.replace(' ','').split(',')
         audio_out = AudioOut()
-        symbols = audio_out.create_ft8_symbols(args.transmit_message)
-        audio_data = audio_out.create_ft8_wave(symbols)
-        if args.outputcard_keywords:
-            outputcard_keywords = args.outputcard_keywords.replace(' ','').split(',')
-            output_device_idx = audio_out.find_device(outputcard_keywords)
-            if output_device_idx is not None:
-                delay = 15 - time.time() % 15
-                print(f"Transmitting {args.transmit_message} on next cycle (in {delay :3.1f}s)")
-                time.sleep(delay)
-                print(f"Transmitting {args.transmit_message} on device index {output_device_idx}")
-                audio_out.play_data_to_soundcard(audio_data, output_device_idx)
-            else:
-                print("No output device")
-        else:
-            audio_out.write_to_wave_file(audio_data, args.wave_output_file)
-            print(f"Created wave file {args.wave_output_file}")          
+        output_device_idx = audio_out.find_device(outputcard_keywords)
+            
+    if args.transmit_message:
+        if not transmit(args.transmit_message):
+            make_wav(args.transmit_message, args.wave_output_file)      
     else:
-        if args.inputcard_keywords:
-            audio_in = AudioIn(3100)
-            input_device_idx = audio_in.find_device(args.inputcard_keywords.replace(' ','').split(','))
-            if input_device_idx:
-                gui = None if args.no_gui else Gui(audio_in.dBgrid_main, 4, 2, lambda msg: print(msg))
-                rx = Receiver(audio_in, [200, 3100], on_decode, gui)
-                audio_in.start_streamed_audio(input_device_idx)
-                if gui is not None:
-                    gui.plt.show()
-                else:
-                    wait_for_keyboard()
+        audio_in = AudioIn(3100)
+        input_device_idx = audio_in.find_device(args.inputcard_keywords.replace(' ','').split(','))
+        if not input_device_idx:
+            print("No input device")
         else:
-            print("No input device specified")
+            gui = None if args.no_gui else Gui(audio_in.dBgrid_main, 4, 2, on_clicked_message)
+            rx = Receiver(audio_in, [200, 3100], on_decode, gui)
+            audio_in.start_streamed_audio(input_device_idx)
+            if gui is not None:
+                gui.plt.show()
+            else:
+                wait_for_keyboard()
 
-    
+
 #================== TEST CODE ============================================================
 print(__name__)
 if __name__ == "__main__":
     import mock
-    #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-o Speak, CODEC']):
-    with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC']):
+    with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-o Speak, CODEC']):
+    #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC']):
         cli()

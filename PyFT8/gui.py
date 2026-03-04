@@ -24,6 +24,7 @@ class FT8Box:
 class Gui:
     def __init__(self, dBgrid, hps, bpt, on_msg_click):
         from matplotlib.animation import FuncAnimation
+        self.my_station = {'c':'G1OJS', 'g':'IO90'}
         self.dBgrid = dBgrid
         self.midline = dBgrid.shape[0]/2
         self.hps, self.bpt = hps, bpt
@@ -43,7 +44,7 @@ class Gui:
         cycle = int(event.xdata/self.midline)
         for fb in range(int(event.ydata - 8 * self.bpt), int(event.ydata)):
             if (cycle, fb) in self.messages:
-                self.on_msg_click(self.messages[(cycle, fb)])
+                self.on_msg_click(clicked_msg = self.messages[(cycle, fb)], my_station = self.my_station)
                 break
 
     def tidy(self):
@@ -53,20 +54,20 @@ class Gui:
                 b.text.set_visible(False)
         self.boxes = [b for b in self.boxes if b.patch.get_visible()]
 
-    def post_decode(self, tbin, fbin, text):
-        self.decode_queue.put((tbin, fbin, text))
+    def post_decode(self, tbin, fbin, text, snr):
+        self.decode_queue.put((tbin, fbin, text, snr))
 
     def _animate(self, frame):
         self.image.set_data(self.dBgrid.T)
         while not self.decode_queue.empty():
-            tbin, fbin, text = self.decode_queue.get()
-            self._show_decode(tbin, fbin, text)
+            tbin, fbin, text, snr = self.decode_queue.get()
+            self._show_decode(tbin, fbin, text, snr)
         if (frame % 10 == 0):
             self.tidy()
         return [self.image, *self.ax.patches, *self.ax.texts]
 
-    def _show_decode(self, tbin, fbin, text):
-        self.messages[(int(tbin/self.midline), fbin)] = text
+    def _show_decode(self, tbin, fbin, text, snr):
+        self.messages[(int(tbin/self.midline), fbin)] = {'text':text, 'snr': snr}
         for existing_box in self.boxes:
             if existing_box.fbin == fbin and abs(existing_box.patch.get_x() - tbin) < 100:
                 existing_box.update(tbin, text)

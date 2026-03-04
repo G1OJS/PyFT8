@@ -343,7 +343,7 @@ class Receiver():
                         if key not in duplicate_filter:
                             duplicate_filter.add(key)
                             if self.waterfall:
-                                self.waterfall.post_decode(c.h0_idx, c.f0_idx, c.msg)
+                                self.waterfall.post_decode(c.h0_idx, c.f0_idx, c.msg, c.snr)
                             self.on_decode(c)
                 new_to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
                 for c in new_to_decode[:55]:
