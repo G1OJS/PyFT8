@@ -4,12 +4,33 @@ import os
 from PyFT8.receiver import Receiver, AudioIn
 from PyFT8.gui import Gui
 from PyFT8.transmitter import AudioOut
-from PyFT8.IC7100 import IC_7100
-rig = IC_7100()
+
+def load_ptt():
+    try:
+        from PTT.PTT import PTT
+        print("Loaded PTT control")
+        return PTT()
+    except ImportError:
+        print("No PTT control found")
+        return None
+        
+def get_config(configfile = 'PyFT8.pkl'):
+    import pickle
+    global config
+    if os.path.exists(configfile):
+        with open(configfile, 'rb') as f:
+            config = pickle.load(f)
+    else:
+        c = input("Please enter your callsign")
+        g = input("Please enter your level 4 grid square")
+        config = {'mStation': {'c':c, 'g':g}}
+        with open(configfile, 'wb') as f:
+            config = pickle.dump(config, f)
 
 class FT8_QSO:
     def __init__(self):
         self.oStation = {'c':None, 'g':None}
+        self.mStation = config['mStation']
         self.band = {'b':'20m', 'f':14.074}
         self.times = {'time_on':None, 'time_off':None}
         self.rpts = {'sent': None, 'rcvd': None}
@@ -37,11 +58,12 @@ def isRR73(grid_rpt):       return 'RR73' in grid_rpt
 def is73(grid_rpt):         return '73' in grid_rpt and not isRR73(grid_rpt)
 def isGrid(grid_rpt):        return not isReport(grid_rpt) and not is73(grid_rpt) and not isRR73(grid_rpt)
 
-def on_clicked_message(clicked_msg, my_station):
+def on_clicked_message(clicked_msg):
     qso = FT8_QSO()    
     call_a, call_b, grid_rpt = clicked_msg['text'].split()
     their_snr = clicked_msg['snr']
     their_snr = -7
+    my_station = config['mStation']
 
     if qso.times['time_on'] is None:
         qso.times['time_on'] = time.time()
@@ -50,8 +72,9 @@ def on_clicked_message(clicked_msg, my_station):
         qso.oStation = {'c': call_b, 'g': grid_rpt}
         reply = f"{qso.oStation['c']} {my_station['c']} {my_station['g']}"
         transmit(reply)
+        return
 
-    if call_a == my_station['c']:
+    if True or call_a == my_station['c']:
         if qso.oStation['c'] is None:
             qso.oStation['c'] = call_b
         if isGrid(grid_rpt):
@@ -87,9 +110,9 @@ def transmit(msg):
     if delay > 0:
         time.sleep(delay)
     print("Transmitting")
-    rig.setPTTON()
+    ptt.on()
     audio_out.play_data_to_soundcard(audio_data, output_device_idx)
-    rig.setPTTOFF()
+    ptt.off()
     return True
 
 def wait_for_keyboard():
@@ -101,10 +124,12 @@ def wait_for_keyboard():
         pass
 
 def on_decode(c):
+    if gui:
+        gui.post_decode(c.h0_idx, c.f0_idx, c.msg, c.snr)
     print(f"{c.cyclestart_str} {c.snr} {c.dt:4.1f} {c.fHz} ~ {c.msg}")
 
 def cli():
-    global audio_out, output_device_idx
+    global audio_out, output_device_idx, ptt, gui
     import time
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-i', '--inputcard_keywords', help = 'Comma-separated keywords to identify the input sound device') 
@@ -116,10 +141,13 @@ def cli():
     args = parser.parse_args()
 
     output_device_idx = None
+    gui = None
     if args.outputcard_keywords:
         outputcard_keywords = args.outputcard_keywords.replace(' ','').split(',')
         audio_out = AudioOut()
         output_device_idx = audio_out.find_device(outputcard_keywords)
+        get_config()
+        ptt = load_ptt()
             
     if args.transmit_message:
         if not transmit(args.transmit_message):
@@ -130,8 +158,8 @@ def cli():
         if not input_device_idx:
             print("No input device")
         else:
-            gui = None if args.no_gui else Gui(audio_in.dBgrid_main, 4, 2, on_clicked_message)
-            rx = Receiver(audio_in, [200, 3100], on_decode, gui)
+            gui = None if args.no_gui else Gui(audio_in.dBgrid_main, 4, 2, config['mStation'], on_clicked_message)
+            rx = Receiver(audio_in, [200, 3100], on_decode)
             audio_in.start_streamed_audio(input_device_idx)
             if gui is not None:
                 gui.plt.show()

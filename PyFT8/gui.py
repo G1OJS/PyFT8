@@ -4,27 +4,29 @@ import time, queue
 
 # ================== WATERFALL ======================================================
 class FT8Box:
-    def __init__(self, ax, tbin, fbin, width, height, text):
+    def __init__(self, ax, tbin, fbin, width, height, text, color = 'blue'):
         from matplotlib.patches import Rectangle
         self.ax = ax
+        self.color = color
         self.fbin = fbin
         self.patch = ax.add_patch(Rectangle((tbin, fbin), width=width, height=height,
-                                            facecolor='blue',alpha=0.6, edgecolor='lime', lw=2))
+                                            facecolor=color,alpha=0.6, edgecolor='lime', lw=2))
         self.text = ax.text(tbin, fbin+2,text, color='white', fontsize='small', fontweight='bold' )
         self.update(tbin, text)
         
-    def update(self, tbin, text):
+    def update(self, tbin, text, color = 'blue'):
+        self.color = color
         self.patch.set_x(tbin)
         self.text.set_x(tbin)
         self.text.set_text(text)
         self.modified = time.time()
-        self.patch.set_facecolor('green' if "CQ" in text else "blue")
+        self.patch.set_facecolor(self.color)
 
 
 class Gui:
-    def __init__(self, dBgrid, hps, bpt, on_msg_click):
+    def __init__(self, dBgrid, hps, bpt, mStation, on_msg_click):
         from matplotlib.animation import FuncAnimation
-        self.my_station = {'c':'G1OJS', 'g':'IO90'}
+        self.mStation = mStation
         self.dBgrid = dBgrid
         self.midline = dBgrid.shape[0]/2
         self.hps, self.bpt = hps, bpt
@@ -44,7 +46,7 @@ class Gui:
         cycle = int(event.xdata/self.midline)
         for fb in range(int(event.ydata - 8 * self.bpt), int(event.ydata)):
             if (cycle, fb) in self.messages:
-                self.on_msg_click(clicked_msg = self.messages[(cycle, fb)], my_station = self.my_station)
+                self.on_msg_click(clicked_msg = self.messages[(cycle, fb)])
                 break
 
     def tidy(self):
@@ -68,9 +70,14 @@ class Gui:
 
     def _show_decode(self, tbin, fbin, text, snr):
         self.messages[(int(tbin/self.midline), fbin)] = {'text':text, 'snr': snr}
+        color = 'blue'
+        if 'CQ' in text: color = 'green'
+        if self.mStation['c'] in text: color = 'yellow'
+        if text.startswith(self.mStation['c']): color = 'lightred'
+        
         for existing_box in self.boxes:
             if existing_box.fbin == fbin and abs(existing_box.patch.get_x() - tbin) < 100:
-                existing_box.update(tbin, text)
+                existing_box.update(tbin, text, color)
                 return
-        self.boxes.append(FT8Box(self.ax, tbin, fbin, 79*self.hps, 8*self.bpt, text))
+        self.boxes.append(FT8Box(self.ax, tbin, fbin, 79*self.hps, 8*self.bpt, text, color))
                 
