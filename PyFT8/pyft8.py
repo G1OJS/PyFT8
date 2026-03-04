@@ -4,6 +4,8 @@ import os
 from PyFT8.receiver import Receiver, AudioIn
 from PyFT8.gui import Gui
 from PyFT8.transmitter import AudioOut
+from PyFT8.IC7100 import IC_7100
+rig = IC_7100()
 
 class FT8_QSO:
     def __init__(self):
@@ -33,27 +35,30 @@ def isReport(grid_rpt):     return "+" in grid_rpt or "-" in grid_rpt
 def isRReport(grid_rpt):   return isReport(grid_rpt) and 'R' in grid_rpt
 def isRR73(grid_rpt):       return 'RR73' in grid_rpt
 def is73(grid_rpt):         return '73' in grid_rpt and not isRR73(grid_rpt)
-def isGrid(grid_rpt):        return not isRpt(grid_rpt) and not is73(grid_rpt) and not isRR73(grid_rpt)
+def isGrid(grid_rpt):        return not isReport(grid_rpt) and not is73(grid_rpt) and not isRR73(grid_rpt)
 
 def on_clicked_message(clicked_msg, my_station):
     qso = FT8_QSO()    
-    call_a, their_call, grid_rpt = clicked_msg['text'].split()
+    call_a, call_b, grid_rpt = clicked_msg['text'].split()
     their_snr = clicked_msg['snr']
+    their_snr = -7
 
     if qso.times['time_on'] is None:
         qso.times['time_on'] = time.time()
 
     if call_a == "CQ":
-        qso.oStation = {'c': their_call, 'g': grid_rpt}
+        qso.oStation = {'c': call_b, 'g': grid_rpt}
         reply = f"{qso.oStation['c']} {my_station['c']} {my_station['g']}"
         transmit(reply)
 
     if call_a == my_station['c']:
+        if qso.oStation['c'] is None:
+            qso.oStation['c'] = call_b
         if isGrid(grid_rpt):
-            qso.oStation = {'c': their_call, 'g': grid_rpt}
+            qso.oStation = {'c': call_b, 'g': grid_rpt}
             reply = f"{qso.oStation['c']} {my_station['c']} {their_snr:+03d}"
         if isReport(grid_rpt):
-            reply = f"{self.their_call} {config.myCall} R{their_snr:+03d}"
+            reply = f"{qso.oStation['c']} {my_station['c']} R{their_snr:+03d}"
             qso.rpts['rcvd'] = grid_rpt[-3:]
         if isRReport(grid_rpt):
             reply = f"{qso.oStation['c']} {my_station['c']} RR73"
@@ -82,7 +87,9 @@ def transmit(msg):
     if delay > 0:
         time.sleep(delay)
     print("Transmitting")
+    rig.setPTTON()
     audio_out.play_data_to_soundcard(audio_data, output_device_idx)
+    rig.setPTTOFF()
     return True
 
 def wait_for_keyboard():

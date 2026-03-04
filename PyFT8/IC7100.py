@@ -2,7 +2,7 @@
 class IC_7100:
     import serial
 
-    def __init__(self, verbose = False, port = 'COM5', baudrate = 9600):
+    def __init__(self, verbose = False, port = 'COM4', baudrate = 9600):
         self.serial_port = False
         self.verbose = verbose
         try:
@@ -45,12 +45,12 @@ class IC_7100:
         datIdx = 1 if dat else 0
         self.sendCAT(b''.join([b'\x26\x00', bytes([mdIdx]), bytes([datIdx]), bytes([filIdx]) ]) )
 
-    def setPTTON(self, PTT_on = '1C 00 01'):
+    def setPTTON(self, PTT_on = b'\x1c\x00\x01'):
         if(self.verbose):
             print(f"[CAT] PTT On")
         self.sendCAT(PTT_on)
 
-    def setPTTOFF(self, PTT_off = '1C 00 00'):
+    def setPTTOFF(self, PTT_off = b'\x1c\x00\x00'):
         if(self.verbose):
             print(f"[CAT] PTT Off")
         self.sendCAT(PTT_off)
