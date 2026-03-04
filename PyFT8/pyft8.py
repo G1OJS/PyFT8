@@ -28,14 +28,15 @@ def get_config(configfile = 'PyFT8.pkl'):
             pickle.dump(config, f)
 
 class FT8_QSO:
-    def __init__(self):
+
+    def start(self):
         self.oStation = {'c':None, 'g':None}
         self.mStation = config['mStation']
         self.band = {'b':'20m', 'f':14.074}
         self.times = {'time_on':None, 'time_off':None}
         self.rpts = {'sent': None, 'rcvd': None}
         
-    def log_to_adif(logfile = "PyFT8.adif"):
+    def log_to_adif(self, logfile = "PyFT8.adif"):
         log_dict = {'call':self.oStation['c'], 'gridsquare':self.oStation['g'], 'mode':'FT8',
         'operator':self.mStation['c'], 'station_callsign':self.mStation['c'], 'my_gridsquare':self.mStation['g'], 
         'rst_sent':self.rpts['sent'], 'rst_rcvd':self.rpts['rcvd'], 
@@ -63,6 +64,7 @@ def is73(grid_rpt):         return '73' in grid_rpt and not isRR73(grid_rpt)
 def isGrid(grid_rpt):       return not isReport(grid_rpt) and not is73(grid_rpt) and not isRR73(grid_rpt) and not isRRR(grid_rpt) 
 
 def on_clicked_message(clicked_msg):
+    global qso
     tbin, fbin, text, their_snr = clicked_msg
     
     clicked_message_cycle = int(tbin / (audio_in.hops_per_grid/2))
@@ -72,20 +74,18 @@ def on_clicked_message(clicked_msg):
         return
     tx_immediate = True if cycle_time() < 2.5 else False
     
-    qso = FT8_QSO()
     call_a, call_b, grid_rpt = text.split()
     my_station = config['mStation']
 
-    if qso.times['time_on'] is None:
-        qso.times['time_on'] = time.time()
-
     if call_a == "CQ":
+        qso.start()
+        qso.times['time_on'] = time.time()
         qso.oStation = {'c': call_b, 'g': grid_rpt}
         reply = f"{qso.oStation['c']} {my_station['c']} {my_station['g']}"
         transmit(reply, immediate = tx_immediate)
         return
 
-    if True or call_a == my_station['c']:
+    if call_a == my_station['c']:
         if qso.oStation['c'] is None:
             qso.oStation['c'] = call_b
         if isGrid(grid_rpt):
@@ -95,13 +95,13 @@ def on_clicked_message(clicked_msg):
         if isReport(grid_rpt):
             reply = f"{qso.oStation['c']} {my_station['c']} R{their_snr:+03d}"
             qso.rpts['rcvd'] = grid_rpt[-3:]
-        if isRReport(grid_rpt) or isRRR(grid_report):
+        if isRReport(grid_rpt) or isRRR(grid_rpt):
             reply = f"{qso.oStation['c']} {my_station['c']} RR73"
         if isRR73(grid_rpt):
             reply = f"{qso.oStation['c']} {my_station['c']} 73"
         transmit(reply, immediate = tx_immediate)
         
-    if is73(grid_rpt) or " 73" in reply:
+    if is73(grid_rpt) or " 73" in reply or isRR73(grid_rpt):
         qso.times['time_off'] = time.time()
         qso.log_to_adif()
 
@@ -175,6 +175,8 @@ def cli():
             rx = Receiver(audio_in, [200, 3100], on_decode)
             audio_in.start_streamed_audio(input_device_idx)
             if gui is not None:
+                if output_device_idx:
+                    qso = FT8_QSO()
                 gui.plt.show()
             else:
                 wait_for_keyboard()
