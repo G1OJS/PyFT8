@@ -59,6 +59,8 @@ def is73(grid_rpt):         return '73' in grid_rpt and not isRR73(grid_rpt)
 def isGrid(grid_rpt):        return not isReport(grid_rpt) and not is73(grid_rpt) and not isRR73(grid_rpt)
 
 def on_clicked_message(clicked_msg):
+    tx_immediate = True if time.time() %15 < 2 else False
+    
     qso = FT8_QSO()    
     call_a, call_b, grid_rpt = clicked_msg['text'].split()
     their_snr = clicked_msg['snr']
@@ -71,7 +73,7 @@ def on_clicked_message(clicked_msg):
     if call_a == "CQ":
         qso.oStation = {'c': call_b, 'g': grid_rpt}
         reply = f"{qso.oStation['c']} {my_station['c']} {my_station['g']}"
-        transmit(reply)
+        transmit(reply, immediate = tx_immediate)
         return
 
     if True or call_a == my_station['c']:
@@ -87,7 +89,7 @@ def on_clicked_message(clicked_msg):
             reply = f"{qso.oStation['c']} {my_station['c']} RR73"
         if isRR73(grid_rpt):
             reply = f"{qso.oStation['c']} {my_station['c']} 73"
-        transmit(reply)
+        transmit(reply, immediate = tx_immediate)
         
     if is73(grid_rpt):
         qso.times['time_off'] = time.time()
@@ -99,16 +101,17 @@ def make_wav(msg, wave_output_file):
     audio_out.write_to_wave_file(audio_data, wave_output_file)
     print(f"Created wave file {args.wave_output_file}")    
 
-def transmit(msg):
+def transmit(msg, immediate = False):
     print(f"Transmit {msg}")
     if output_device_idx is None:
         print("No output device")
         return
     symbols = audio_out.create_ft8_symbols(msg)
     audio_data = audio_out.create_ft8_wave(symbols)
-    delay = 15 - (time.time() % 15)
-    if delay > 0:
-        time.sleep(delay)
+    if not immediate:
+        delay = 15 - (time.time() % 15)
+        if delay > 0:
+            time.sleep(delay)
     print("Transmitting")
     ptt.on()
     audio_out.play_data_to_soundcard(audio_data, output_device_idx)

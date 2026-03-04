@@ -4,24 +4,22 @@ import time, queue
 
 # ================== WATERFALL ======================================================
 class FT8Box:
-    def __init__(self, ax, tbin, fbin, width, height, text, color = 'blue'):
+    def __init__(self, ax, tbin, fbin, width, height, text, color):
         from matplotlib.patches import Rectangle
         self.ax = ax
-        self.color = color
         self.fbin = fbin
         self.patch = ax.add_patch(Rectangle((tbin, fbin), width=width, height=height,
                                             facecolor=color,alpha=0.6, edgecolor='lime', lw=2))
         self.text = ax.text(tbin, fbin+2,text, color='white', fontsize='small', fontweight='bold' )
-        self.update(tbin, text)
+        self.update(tbin, text, color)
         
-    def update(self, tbin, text, color = 'blue'):
+    def update(self, tbin, text, color):
         self.color = color
         self.patch.set_x(tbin)
         self.text.set_x(tbin)
         self.text.set_text(text)
         self.modified = time.time()
-        self.patch.set_facecolor(self.color)
-
+        self.patch.set_facecolor(color)
 
 class Gui:
     def __init__(self, dBgrid, hps, bpt, mStation, on_msg_click):
@@ -69,7 +67,8 @@ class Gui:
         return [self.image, *self.ax.patches, *self.ax.texts]
 
     def _show_decode(self, tbin, fbin, text, snr):
-        self.messages[(int(tbin/self.midline), fbin)] = {'text':text, 'snr': snr}
+        cycle = int(tbin/self.midline)
+        self.messages[(cycle, fbin)] = {'text':text, 'snr': snr, 'cycle':cycle}
         color = 'blue'
         if 'CQ' in text: color = 'green'
         if self.mStation['c'] in text: color = 'yellow'
