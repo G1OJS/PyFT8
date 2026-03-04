@@ -100,7 +100,7 @@ def on_clicked_message(clicked_msg):
             reply = f"{qso.oStation['c']} {my_station['c']} 73"
         transmit(reply, immediate = tx_immediate)
         
-    if is73(grid_rpt):
+    if is73(grid_rpt) or " 73" in reply:
         qso.times['time_off'] = time.time()
         qso.log_to_adif()
 
