@@ -6,13 +6,13 @@ from PyFT8.receiver import Receiver, AudioIn
 from PyFT8.gui import Gui
 from PyFT8.transmitter import AudioOut
 
-def load_ptt():
+def load_rigctrl():
     try:
-        from PTT.PTT import PTT
-        print("Loaded PTT control")
-        return PTT()
+        from Rigctrl.rig import Rig
+        print("Loaded Rig control")
+        return Rig()
     except ImportError:
-        print("No PTT control found")
+        print("No Rig control found")
         return None
         
 def get_config(configfile = 'PyFT8.pkl'):
@@ -33,7 +33,7 @@ class FT8_QSO:
     def start(self):
         self.oStation = {'c':None, 'g':None}
         self.mStation = config['mStation']
-        self.band = {'b':'20m', 'f':14.074}
+        self.band_info = {'b':'20m', 'f':14.074}
         self.times = {'time_on':None, 'time_off':None}
         self.rpts = {'sent': None, 'rcvd': None}
         
@@ -43,7 +43,7 @@ class FT8_QSO:
         'rst_sent':self.rpts['sent'], 'rst_rcvd':self.rpts['rcvd'], 
         'qso_date':time.strftime("%Y%m%d", self.times['time_on']), 'qso_date_off':time.strftime("%Y%m%d", self.times['time_off']),
         'time_on':time.strftime("%H%M%S", self.times['time_on']), 'time_off':time.strftime("%H%M%S", self.times['time_on']),
-        'band':self.band['b'], 'freq':self.band['f']}
+        'band':self.band_info['b'], 'freq':self.band_info['f']}
         if(not os.path.exists(logfile)):
             with open(logfile, 'w') as f:
                 f.write("header <eoh>")
@@ -74,7 +74,7 @@ def on_msg_click(clicked_msg, msg_origin, their_snr):
     if time.time() - cycle_started > 17.5:
         print("too late")
         return
-    call_a, call_b, grid_rpt = clicked_msg.split()
+    call_a, call_b, grid_rpt, _ = clicked_msg.split()
     my_station = config['mStation']
 
     if call_a == "CQ":
@@ -110,7 +110,10 @@ def on_control_click(btn_text, btn_origin, btn_params):
         mc, mg = config['mStation']['c'], config['mStation']['g']
         transmit_threaded(f"CQ {mc} {mg}", immediate = should_tx_immediate())
     if btn_text == "Tx off":
-        ptt.off()
+        rig.ptt_off()
+    if('m' in btn_text):
+        qso.band_info = {'b':btn_text, 'f':btn_params}
+        rig.set_freq_Hz(int(1000000*btn_params))
         
 
 def make_wav(msg, wave_output_file):
@@ -134,9 +137,9 @@ def transmit(msg, immediate = False):
         if delay > 0:
             time.sleep(delay)
     print("Transmitting")
-    ptt.on()
+    rig.ptt_on()
     audio_out.play_data_to_soundcard(audio_data, output_device_idx)
-    ptt.off()
+    rig.ptt_off()
     return True
 
 def wait_for_keyboard():
@@ -153,7 +156,7 @@ def on_decode(c):
     print(f"{c.cyclestart_str} {c.snr} {c.dt:4.1f} {c.fHz} ~ {c.msg}")
 
 def cli():
-    global audio_in, audio_out, output_device_idx, ptt, gui, qso
+    global audio_in, audio_out, output_device_idx, rig, gui, qso
     import time
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-i', '--inputcard_keywords', help = 'Comma-separated keywords to identify the input sound device') 
@@ -171,7 +174,7 @@ def cli():
         audio_out = AudioOut()
         output_device_idx = audio_out.find_device(outputcard_keywords)
         get_config()
-        ptt = load_ptt()
+        rig = load_rigctrl()
             
     if args.transmit_message:
         if not transmit(args.transmit_message):

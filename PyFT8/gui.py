@@ -52,6 +52,12 @@ class Gui:
         for i, btn in enumerate(control_buttons):
             btn = Button(self.fig, self.ax_controls, 0, wf_ylim[1] - (i+1)*16, 1, 16, btn[0], [btn[1], btn[2]], None, self.on_control_click)
             self.buttons.append(btn)
+        band_buttons = [('160m','green','white', 1.840),('80m','green','white', 3.573),('60m','green','white', 5.357), ('40m','green','white', 7.074),
+                        ('20m','green','white', 14.074),('15m','green','white', 21.074),('10m','green','white', 28.074), ('6m','green','white', 50.313),
+                        ('2m','green','white', 144.174)]
+        for i, btn in enumerate(band_buttons):
+            btn = Button(self.fig, self.ax_controls, 0, wf_ylim[1] - (i+3)*16, 1, 16, btn[0], [btn[1], btn[2]], btn[3], self.on_control_click)
+            self.buttons.append(btn)
         self.ani = FuncAnimation(self.fig, self._animate, interval = 40, frames=(100000), blit=True)
 
     def post_decode(self, tbin, fbin, text, snr):
