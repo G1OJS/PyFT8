@@ -243,7 +243,9 @@ class Candidate:
         freq_idxs = self.f0_idx + BASE_FREQ_IDXS
         hops = (self.h0_idx + BASE_PAYLOAD_HOPS) % HOPS_PER_GRID
         dBgrid = dBgrid_main[np.ix_(hops, freq_idxs)]
-        p = np.clip(dBgrid - np.max(dBgrid), -80, 0)
+        pmax = np.max(dBgrid)
+        self.snr = np.clip(int(pmax - np.min(dBgrid) - 58), -24, 24)
+        p = np.clip(dBgrid - pmax, -80, 0)
         llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
         llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
         llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
@@ -277,9 +279,8 @@ class Candidate:
 
 #============== RECEIVER ===========================================================
 class Receiver():
-    def __init__(self, audio_in, freq_range, on_decode, waterfall, verbose = True):
+    def __init__(self, audio_in, freq_range, on_decode, verbose = True):
         self.verbose = verbose
-        self.waterfall = waterfall
         self.sample_rate = 12000
         self.audio_in = audio_in
         self.nFreqs = self.audio_in.nFreqs
@@ -342,8 +343,6 @@ class Receiver():
                         key = c.cyclestart_str + " " + " ".join(c.msg)
                         if key not in duplicate_filter:
                             duplicate_filter.add(key)
-                            if self.waterfall:
-                                self.waterfall.post_decode(c.h0_idx, c.f0_idx, c.msg)
                             self.on_decode(c)
                 new_to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
                 for c in new_to_decode[:55]:
@@ -361,14 +360,15 @@ class Receiver():
 #============= SIMPLE LIVE Rx-ONLY CODE =========================================================================
 
 def on_decode(c):
-    print(c.msg)
+    gui.post_decode(c.h0_idx, c.f0_idx, c.msg, c.snr)
+    print(f"{c.cyclestart_str} {c.snr} {c.dt:4.1f} {c.fHz} ~ {c.msg}")
 
 if __name__ == "__main__":
     from PyFT8.gui import Gui
     audio_in = AudioIn(3100)
     input_device_idx = audio_in.find_device(['Mic', 'CODEC'])
-    gui = Gui(audio_in.dBgrid_main, 4, 2, lambda msg: print(msg))
-    rx = Receiver(audio_in, [200, 3100], on_decode, gui)
+    gui = Gui(audio_in.dBgrid_main, 4, 2,{'c':'', 'g':''}, on_decode)
+    rx = Receiver(audio_in, [200, 3100], on_decode)
     audio_in.start_streamed_audio(input_device_idx)
     print("Start rx")
     gui.plt.show()

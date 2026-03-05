@@ -101,10 +101,11 @@ def live_test():
     from matplotlib.animation import FuncAnimation
     global t_start
     audio_in = AudioIn(3100)
+    input_device_idx = audio_in.find_device(['Mic', 'CODEC'])
     gui = Gui(audio_in.dBgrid_main, 4, 2, lambda msg: print(msg))
     t_start = time.time()
     rx = Receiver(audio_in, [200, 3100], on_decode, gui)
-
+    audio_in.start_streamed_audio(input_device_idx)
     wsjtx_all_tailer = Wsjtx_all_tailer(on_wsjtx_decode, silent = True)
 
     fig, ax = gui.plt.subplots()
@@ -128,9 +129,9 @@ def live_test():
     ani = FuncAnimation(fig, anim, interval = 5000, frames=(100000), blit=False)
     gui.plt.show()
 
-#live_test()
+live_test()
 
-batch_test(1,39)
+#batch_test(1,39)
 
 
 
