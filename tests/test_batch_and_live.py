@@ -53,7 +53,7 @@ def get_cumulative_from_text_files(i0, i1, postfix):
 
 def on_decode(c):
     global decodes, py_times
-    gui.post_decode(c.h0_idx, c.f0_idx, c.msg, c.snr)
+    gui.post_decode(c.h0_idx, c.f0_idx, c.msg, int(c.snr))
     print(f"{c.cyclestart_str} {c.snr} {c.dt:4.1f} {c.fHz} ~ {c.msg}")
     decodes.append(c.msg)
     py_times.append(time.time() - t_start)
@@ -78,7 +78,7 @@ def batch_test(i0, i1):
     ws_line = ax.plot(ws_times, np.array(range(len(ws_times))), label = 'WSJT-X', color = 'blue')[0]
     ft_line = ax.plot(fl_times, np.array(range(len(fl_times))), label = 'ft8_lib', color = 'orange')[0]
     py_line = ax.plot([], [], label = 'PyFT8', color = 'red')[0]
-    pp_line = ax.plot(py_times_prev, np.array(range(len(py_times_prev))), label = 'PyFT8 baseline', color = 'darkgreen')
+    pp_line = ax.plot(py_times_prev, np.array(range(len(py_times_prev))), label = 'PyFT8 baseline', color = 'darkgreen', alpha = 0.3)
     ax.set_xlabel("Time, seconds")
     ax.set_ylabel("Cumulative decodes")
     ax.set_xlim(0, np.max(ws_times))

@@ -15,7 +15,7 @@ T_CYC = 15
 LDPC_CONTROL = (45, 12) 
 
 t2h = HPS/0.16
-H0_RANGE = [int(-1 *t2h), int(3.4 *t2h)]
+H0_RANGE = [int(0 *t2h), int(4 *t2h)]
 H_SEARCH_0 = H0_RANGE[1] + 7 * HPS
 H_SEARCH_1 = H0_RANGE[1] + 43 * HPS 
 
@@ -162,7 +162,7 @@ class AudioIn:
         threading.Thread(target = self.load_wavs, args =(self.wav_files,)).start()
         self.dBgrid_main_ptr = 0
 
-    def load_wavs(self, wav_paths, hop_dt = 1 / (SYM_RATE * HPS) - 0.001):
+    def load_wavs(self, wav_paths, hop_dt = 1 / (SYM_RATE * HPS) - 0.0017):
         samples_perhop = int(SAMP_RATE / (SYM_RATE * HPS))
         for wav_path in wav_paths:
             wf = wave.open(wav_path, "rb")
@@ -294,7 +294,7 @@ class Receiver():
         threading.Thread(target=self.manage_cycle, daemon=True).start()
 
     def make_csync(self):
-        csync = np.full((len(COSTAS), 8), -1/7, np.float32)
+        csync = np.full((len(COSTAS), 8), -1/6, np.float32)
         for sym_idx, tone in enumerate(COSTAS):
             csync[sym_idx, tone] = 1.0
             csync[sym_idx, len(COSTAS)] = 0
@@ -311,6 +311,8 @@ class Receiver():
             dB = dB - np.max(dB)
             for h0_idx in range(H0_RANGE[0] + cycle_h0, H0_RANGE[1] + cycle_h0):
                 sync_score = float(np.dot(dB[h0_idx + BASE_COSTAS_HOPS  + 36 * HPS ,  :].ravel(), self.csync_flat))
+                if(sync_score < 40):
+                    continue
                 if sync_score > c.sync_score:
                     c.h0_idx, c.sync_score = h0_idx, sync_score
             c.dt = c.h0_idx * self.dt - 0.7

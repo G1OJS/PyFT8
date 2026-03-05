@@ -55,7 +55,7 @@ class Gui:
         self.ani = FuncAnimation(self.fig, self._animate, interval = 40, frames=(100000), blit=True)
 
     def post_decode(self, tbin, fbin, text, snr):
-        self.decode_queue.put((tbin, fbin, text, snr))
+        self.decode_queue.put((tbin, fbin, f"{text} ({snr:+03d}dB)", snr))
 
     def _show_decode(self, tbin, fbin, text, snr):
         colors = ['blue', 'white']
