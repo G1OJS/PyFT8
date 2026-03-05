@@ -3,7 +3,7 @@
 
 This repository contains the source code for PyFT8, an all-Python open source FT8 transceiver that you can run as a basic GUI or from the command line to receive and transmit. Decoding performance (number of decodes) is about 70% of that achieved by WSJT-x in NORM mode, but (tbc) slightly above ft8_lib. At the time of writing (3-3-26) this new version 2.0.0 establishes the prior cli functionality plus an interesting GUI, on which I intend to build a transceiver function shortly. 
 
-<img width="714" height="968" alt="image" src="https://github.com/user-attachments/assets/be165135-d18d-42d9-848c-c455b9d99275" />
+https://github.com/user-attachments/assets/1a2e6b24-a6cc-4360-af50-6f810b99da33
 
 ## Motivation
 This started out as me thinking "How hard can it be, really?" after some frustration with Windows moving sound devices around and wanting to get a minimal decoder running that I can fully control. 
