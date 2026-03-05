@@ -46,25 +46,27 @@ def get_cumulative_from_text_files(i0, i1, postfix):
     t = 0
     for idx in range(i0, i1):
         with open(f"{data_folder}/test_{idx:02d}{postfix}", "r") as f:
-            t += avg_cycle # approximate until real times folded in
+            t += 15
             for l in f.readlines():
                 times.append(t)
     return times
 
-def on_decode(dd):
+def on_decode(c):
     global decodes, py_times
-    decodes.append(dd)
+    gui.post_decode(c.h0_idx, c.f0_idx, c.msg, c.snr)
+    print(f"{c.cyclestart_str} {c.snr} {c.dt:4.1f} {c.fHz} ~ {c.msg}")
+    decodes.append(c.msg)
     py_times.append(time.time() - t_start)
 
 def batch_test(i0, i1):
     from matplotlib.animation import FuncAnimation
-    global t_start
+    global t_start, gui
     wav_files = []
     for idx in range(i0, i1):
         wav_files.append(f"{data_folder}/test_{idx:02d}.wav")
     audio_in = AudioIn(3100, wav_files)
-    gui = Gui(audio_in.dBgrid_main, 4, 2, lambda msg: print(msg))
-    rx = Receiver(audio_in, [200, 3100], on_decode, gui)
+    gui = Gui(audio_in.dBgrid_main, 4, 2, {'c':'xxx', 'g':''}, None, None)
+    rx = Receiver(audio_in, [200, 3100], on_decode)
     audio_in.start_wav_load()
     t_start = time.time()
     with open('baseline.pkl', 'rb') as f:
@@ -99,12 +101,12 @@ def on_wsjtx_decode(dd):
 
 def live_test():
     from matplotlib.animation import FuncAnimation
-    global t_start
+    global t_start, gui
     audio_in = AudioIn(3100)
-    input_device_idx = audio_in.find_device(['Mic', 'CODEC'])
-    gui = Gui(audio_in.dBgrid_main, 4, 2, lambda msg: print(msg))
+    gui = Gui(audio_in.dBgrid_main, 4, 2, {'c':'xxx', 'g':''}, None, None)
+    rx = Receiver(audio_in, [200, 3100], on_decode)
     t_start = time.time()
-    rx = Receiver(audio_in, [200, 3100], on_decode, gui)
+    input_device_idx = audio_in.find_device(["Cable", "Out"])
     audio_in.start_streamed_audio(input_device_idx)
     wsjtx_all_tailer = Wsjtx_all_tailer(on_wsjtx_decode, silent = True)
 
@@ -129,9 +131,9 @@ def live_test():
     ani = FuncAnimation(fig, anim, interval = 5000, frames=(100000), blit=False)
     gui.plt.show()
 
-live_test()
+#live_test()
 
-#batch_test(1,39)
+batch_test(1,39)
 
 
 

@@ -184,8 +184,8 @@ class AudioIn:
         self.stream = pyaudio.PyAudio().open(
             format = pyaudio.paInt16, channels=1, rate = SAMP_RATE, input = True, input_device_index = input_device_idx,
             frames_per_buffer = int(SAMP_RATE / (SYM_RATE * HPS)), stream_callback=self._callback,)
-        self.dBgrid_main_ptr = int(cycle_time() * SYM_RATE * HPS)
         self.stream.start_stream()
+        self.dBgrid_main_ptr = int(cycle_time() * SYM_RATE * HPS)
        
     def find_device(self, device_str_contains):
         pya = pyaudio.PyAudio()
