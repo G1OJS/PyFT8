@@ -55,7 +55,7 @@ class Gui:
         
     def _tidy_buttons(self):
         for b in self.buttons:
-            if (time.time() - b.modified) > 25:
+            if (time.time() - b.modified) > 28:
                 b.patch.set_visible(False)
                 b.text_inst.set_visible(False)
         self.buttons = [b for b in self.buttons if b.patch.get_visible()]
