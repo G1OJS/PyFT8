@@ -185,7 +185,10 @@ class AudioIn:
             format = pyaudio.paInt16, channels=1, rate = SAMP_RATE, input = True, input_device_index = input_device_idx,
             frames_per_buffer = int(SAMP_RATE / (SYM_RATE * HPS)), stream_callback=self._callback,)
         self.stream.start_stream()
-        self.dBgrid_main_ptr = int(cycle_time() * SYM_RATE * HPS)
+        self.sync_pointer_to_wall_clock()
+
+    def sync_pointer_to_wall_clock(self):
+        self.dBgrid_main_ptr = int(time.time() * SYM_RATE * HPS) % HOPS_PER_GRID
        
     def find_device(self, device_str_contains):
         pya = pyaudio.PyAudio()
@@ -275,8 +278,6 @@ class Candidate:
                 self.msg = ' '.join(self.msg_tuple)
         self.decode_completed = time.time()
         
-
-
 #============== RECEIVER ===========================================================
 class Receiver():
     def __init__(self, audio_in, freq_range, on_decode, verbose = True):
@@ -328,50 +329,35 @@ class Receiver():
         base_pyld_hops = BASE_PAYLOAD_HOPS
         print("Rx running")
         search_last = -1e30
+        sync_ptr_last = -1e30
         while True:
-            time.sleep(0.001)
+            time.sleep(0.040)
             ptr = self.audio_in.dBgrid_main_ptr
-            if(ptr != dBgrid_main_ptr_prev):
-                dBgrid_main_ptr_prev = ptr
+            
+            sync_ptr = (ptr - 0) % HOPS_PER_CYCLE
+            if(sync_ptr < sync_ptr_last):
+                self.audio_in.sync_pointer_to_wall_clock()
+            sync_ptr_last = sync_ptr
+        
+            new_to_decode = []
+            for c in candidates:
+                ptr_rel_to_h0 = (ptr - c.h0_idx) % HOPS_PER_CYCLE
+                if not (base_pyld_hops[0] <= ptr_rel_to_h0 <= base_pyld_hops[-1]) and not c.demap_started:
+                    c.demap(self.audio_in.dBgrid_main)
+                if c.llr_sd > 0 and not c.decode_completed:
+                    new_to_decode.append(c)
+                if c.msg:
+                    key = c.cyclestart_str + " " + " ".join(c.msg)
+                    if key not in duplicate_filter:
+                        duplicate_filter.add(key)
+                        self.on_decode(c)
+            new_to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
+            for c in new_to_decode[:55]:
+                c.decode()
 
-                new_to_decode = []
-                for c in candidates:
-                    ptr_rel_to_h0 = (ptr - c.h0_idx) % HOPS_PER_CYCLE
-                    if not (base_pyld_hops[0] <= ptr_rel_to_h0 <= base_pyld_hops[-1]) and not c.demap_started:
-                        c.demap(self.audio_in.dBgrid_main)
-                    if c.llr_sd > 0 and not c.decode_completed:
-                        new_to_decode.append(c)
-                    if c.msg:
-                        key = c.cyclestart_str + " " + " ".join(c.msg)
-                        if key not in duplicate_filter:
-                            duplicate_filter.add(key)
-                            self.on_decode(c)
-                new_to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
-                for c in new_to_decode[:55]:
-                    c.decode()
-
-                search = (ptr - H_SEARCH_1) % HOPS_PER_CYCLE
-                if(search < search_last):
-                    global_time_utils.tlog(f"[Cycle manager] start search at hop { self.audio_in.dBgrid_main_ptr}", verbose = self.verbose)
-                    candidates = self.search(self.f0_idxs, global_time_utils.cyclestart_str(time.time()))
-                    global_time_utils.tlog(f"[Cycle manager] New spectrum searched -> {len(candidates)} candidates", verbose = self.verbose) 
-                search_last = search
-                
-        summarise_cycle() # for wav files that have just finished
-
-#============= SIMPLE LIVE Rx-ONLY CODE =========================================================================
-
-def on_decode(c):
-    gui.post_decode(c.h0_idx, c.f0_idx, c.msg, c.snr)
-    print(f"{c.cyclestart_str} {c.snr} {c.dt:4.1f} {c.fHz} ~ {c.msg}")
-
-if __name__ == "__main__":
-    from PyFT8.gui import Gui
-    audio_in = AudioIn(3100)
-    input_device_idx = audio_in.find_device(['Mic', 'CODEC'])
-    gui = Gui(audio_in.dBgrid_main, 4, 2,{'c':'', 'g':''}, on_decode)
-    rx = Receiver(audio_in, [200, 3100], on_decode)
-    audio_in.start_streamed_audio(input_device_idx)
-    print("Start rx")
-    gui.plt.show()
-                         
+            search = (ptr - H_SEARCH_1) % HOPS_PER_CYCLE
+            if(search < search_last):
+                global_time_utils.tlog(f"[Cycle manager] start search at hop { self.audio_in.dBgrid_main_ptr}", verbose = self.verbose)
+                candidates = self.search(self.f0_idxs, global_time_utils.cyclestart_str(time.time()))
+                global_time_utils.tlog(f"[Cycle manager] New spectrum searched -> {len(candidates)} candidates", verbose = self.verbose) 
+            search_last = search
