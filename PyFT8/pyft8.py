@@ -41,8 +41,8 @@ class FT8_QSO:
         log_dict = {'call':self.oStation['c'], 'gridsquare':self.oStation['g'], 'mode':'FT8',
         'operator':self.mStation['c'], 'station_callsign':self.mStation['c'], 'my_gridsquare':self.mStation['g'], 
         'rst_sent':self.rpts['sent'], 'rst_rcvd':self.rpts['rcvd'], 
-        'qso_date':self.times['time_on'].strftime("%Y%m%d"), 'qso_date_off':self.times['time_off'].strftime("%Y%m%d"),
-        'time_on':self.times['time_on'].strftime("%H%M%S"), 'time_off':self.times['time_on'].strftime("%H%M%S"),
+        'qso_date':time.strftime("%Y%m%d", self.times['time_on']), 'qso_date_off':time.strftime("%Y%m%d", self.times['time_off']),
+        'time_on':time.strftime("%H%M%S", self.times['time_on']), 'time_off':time.strftime("%H%M%S", self.times['time_on']),
         'band':self.band['b'], 'freq':self.band['f']}
         if(not os.path.exists(logfile)):
             with open(logfile, 'w') as f:
@@ -66,20 +66,21 @@ def isGrid(grid_rpt):       return not isReport(grid_rpt) and not is73(grid_rpt)
 
 def on_msg_click(clicked_msg, msg_origin, their_snr):
     global qso
-    
+    ct = cycle_time()
     clicked_message_cycle = int(msg_origin[0] / (audio_in.hops_per_grid/2))
-    clicked_cycle = int(audio_in.dBgrid_main_ptr / (audio_in.hops_per_grid/2))
-    if(clicked_cycle != clicked_message_cycle and cycle_time() > 2.5):
+    current_cycle = int(audio_in.dBgrid_main_ptr / (audio_in.hops_per_grid/2))
+    print(f"{clicked_message_cycle =} {current_cycle =} {ct = }")
+    if(current_cycle != clicked_message_cycle and  ct > 2.5):
         print("too late")
         return
-    tx_immediate = True if cycle_time() < 2.5 else False
+    tx_immediate = True if 0.5 < ct < 2.5 else False
     
     call_a, call_b, grid_rpt = clicked_msg.split()
     my_station = config['mStation']
 
     if call_a == "CQ":
         qso.start()
-        qso.times['time_on'] = time.time()
+        qso.times['time_on'] = time.gmtime()
         qso.oStation = {'c': call_b, 'g': grid_rpt}
         reply = f"{qso.oStation['c']} {my_station['c']} {my_station['g']}"
         transmit_threaded(reply, immediate = tx_immediate)
@@ -102,7 +103,7 @@ def on_msg_click(clicked_msg, msg_origin, their_snr):
         transmit_threaded(reply, immediate = tx_immediate)
         
     if is73(grid_rpt) or " 73" in reply or isRR73(grid_rpt):
-        qso.times['time_off'] = time.time()
+        qso.times['time_off'] = time.gmtime()
         qso.log_to_adif()
 
 def make_wav(msg, wave_output_file):
@@ -122,7 +123,7 @@ def transmit(msg, immediate = False):
     symbols = audio_out.create_ft8_symbols(msg)
     audio_data = audio_out.create_ft8_wave(symbols)
     if not immediate:
-        delay = 15 - (time.time() % 15)
+        delay = 15 - ((time.time()-0.5) % 15)
         if delay > 0:
             time.sleep(delay)
     print("Transmitting")

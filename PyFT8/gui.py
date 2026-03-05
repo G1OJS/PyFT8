@@ -48,7 +48,7 @@ class Gui:
 
     def _show_decode(self, tbin, fbin, text, snr):
         colors = ['blue', 'white']
-        if 'CQ' in text: colors = ['green', 'white']
+        if text.startswith("CQ"): colors = ['green', 'white']
         if self.mStation['c'] in text: colors = ['yellow', 'black']
         if text.startswith(self.mStation['c']): colors = ['red', 'white']
         self.buttons.append(Button(self.fig, self.ax, tbin, fbin, 79*self.hps, 8*self.bpt, text, colors, snr, onclick = self.on_msg_click))
