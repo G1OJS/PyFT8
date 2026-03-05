@@ -1,6 +1,7 @@
 import argparse
 import time
 import os
+import threading
 from PyFT8.receiver import Receiver, AudioIn
 from PyFT8.gui import Gui
 from PyFT8.transmitter import AudioOut
@@ -111,7 +112,7 @@ def make_wav(msg, wave_output_file):
     print(f"Created wave file {args.wave_output_file}")    
 
 def transmit_threaded(msg, immediate = False):
-    threading.Thread(target = transmit, args = (msg, immediate,), daemon = True).Start()
+    threading.Thread(target = transmit, args = (msg, immediate,), daemon = True).start()
 
 def transmit(msg, immediate = False):
     print(f"Transmit {msg}")

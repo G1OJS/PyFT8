@@ -57,7 +57,7 @@ class Gui:
         for b in self.buttons:
             if (time.time() - b.modified) > 25:
                 b.patch.set_visible(False)
-                b.text.set_visible(False)
+                b.text_inst.set_visible(False)
         self.buttons = [b for b in self.buttons if b.patch.get_visible()]
 
     def _animate(self, frame):
