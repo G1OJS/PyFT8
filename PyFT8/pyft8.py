@@ -63,18 +63,17 @@ def isRR73(grid_rpt):       return 'RR73' in grid_rpt
 def is73(grid_rpt):         return '73' in grid_rpt and not isRR73(grid_rpt)
 def isGrid(grid_rpt):       return not isReport(grid_rpt) and not is73(grid_rpt) and not isRR73(grid_rpt) and not isRRR(grid_rpt) 
 
-def on_clicked_message(clicked_msg):
+def on_msg_click(clicked_msg, msg_origin, their_snr):
     global qso
-    tbin, fbin, text, their_snr = clicked_msg
     
-    clicked_message_cycle = int(tbin / (audio_in.hops_per_grid/2))
+    clicked_message_cycle = int(msg_origin[0] / (audio_in.hops_per_grid/2))
     clicked_cycle = int(audio_in.dBgrid_main_ptr / (audio_in.hops_per_grid/2))
     if(clicked_cycle != clicked_message_cycle and cycle_time() > 2.5):
         print("too late")
         return
     tx_immediate = True if cycle_time() < 2.5 else False
     
-    call_a, call_b, grid_rpt = text.split()
+    call_a, call_b, grid_rpt = clicked_msg.split()
     my_station = config['mStation']
 
     if call_a == "CQ":
@@ -82,7 +81,7 @@ def on_clicked_message(clicked_msg):
         qso.times['time_on'] = time.time()
         qso.oStation = {'c': call_b, 'g': grid_rpt}
         reply = f"{qso.oStation['c']} {my_station['c']} {my_station['g']}"
-        transmit(reply, immediate = tx_immediate)
+        transmit_threaded(reply, immediate = tx_immediate)
         return
 
     if call_a == my_station['c']:
@@ -99,7 +98,7 @@ def on_clicked_message(clicked_msg):
             reply = f"{qso.oStation['c']} {my_station['c']} RR73"
         if isRR73(grid_rpt):
             reply = f"{qso.oStation['c']} {my_station['c']} 73"
-        transmit(reply, immediate = tx_immediate)
+        transmit_threaded(reply, immediate = tx_immediate)
         
     if is73(grid_rpt) or " 73" in reply or isRR73(grid_rpt):
         qso.times['time_off'] = time.time()
@@ -110,6 +109,9 @@ def make_wav(msg, wave_output_file):
     audio_data = audio_out.create_ft8_wave(symbols)
     audio_out.write_to_wave_file(audio_data, wave_output_file)
     print(f"Created wave file {args.wave_output_file}")    
+
+def transmit_threaded(msg, immediate = False):
+    threading.Thread(target = transmit, args = (msg, immediate,), daemon = True).Start()
 
 def transmit(msg, immediate = False):
     print(f"Transmit {msg}")
@@ -142,7 +144,7 @@ def on_decode(c):
     print(f"{c.cyclestart_str} {c.snr} {c.dt:4.1f} {c.fHz} ~ {c.msg}")
 
 def cli():
-    global audio_in, audio_out, output_device_idx, ptt, gui
+    global audio_in, audio_out, output_device_idx, ptt, gui, qso
     import time
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-i', '--inputcard_keywords', help = 'Comma-separated keywords to identify the input sound device') 
@@ -171,7 +173,7 @@ def cli():
         if not input_device_idx:
             print("No input device")
         else:
-            gui = None if args.no_gui else Gui(audio_in.dBgrid_main, 4, 2, config['mStation'], on_clicked_message)
+            gui = None if args.no_gui else Gui(audio_in.dBgrid_main, 4, 2, config['mStation'], on_msg_click)
             rx = Receiver(audio_in, [200, 3100], on_decode)
             audio_in.start_streamed_audio(input_device_idx)
             if gui is not None:
