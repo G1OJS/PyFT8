@@ -76,6 +76,7 @@ def on_msg_click(clicked_msg, msg_origin, their_snr):
         return
     call_a, call_b, grid_rpt, _ = clicked_msg.split()
     my_station = config['mStation']
+    reply = ""
 
     if call_a == "CQ":
         qso.start()
@@ -104,17 +105,6 @@ def on_msg_click(clicked_msg, msg_origin, their_snr):
     if is73(grid_rpt) or " 73" in reply or isRR73(grid_rpt):
         qso.times['time_off'] = time.gmtime()
         qso.log_to_adif()
-
-def on_control_click(btn_text, btn_origin, btn_params):
-    if btn_text == "CQ":
-        mc, mg = config['mStation']['c'], config['mStation']['g']
-        transmit_threaded(f"CQ {mc} {mg}", immediate = should_tx_immediate())
-    if btn_text == "Tx off":
-        rig.ptt_off()
-    if('m' in btn_text):
-        qso.band_info = {'b':btn_text, 'f':btn_params}
-        rig.set_freq_Hz(int(1000000*btn_params))
-        
 
 def make_wav(msg, wave_output_file):
     symbols = audio_out.create_ft8_symbols(msg)
@@ -150,11 +140,23 @@ def wait_for_keyboard():
     except KeyboardInterrupt:
         pass
 
+#============= Callbacks for GUI ==========================================================
 def on_decode(c):
     if gui:
         gui.post_decode(c.h0_idx, c.f0_idx, c.msg, c.snr)
     print(f"{c.cyclestart_str} {c.snr} {c.dt:4.1f} {c.fHz} ~ {c.msg}")
 
+def on_control_click(btn_text, btn_origin, btn_params):
+    if btn_text == "CQ":
+        mc, mg = config['mStation']['c'], config['mStation']['g']
+        transmit_threaded(f"CQ {mc} {mg}", immediate = should_tx_immediate())
+    if btn_text == "Tx off":
+        rig.ptt_off()
+    if('m' in btn_text):
+        qso.band_info = {'b':btn_text, 'f':btn_params}
+        rig.set_freq_Hz(int(1000000*btn_params))
+
+#=============== CLI ========================================================================        
 def cli():
     global audio_in, audio_out, output_device_idx, rig, gui, qso
     import time
