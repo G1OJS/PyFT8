@@ -124,14 +124,6 @@ def pack_ft8_g15(txt):
     v = v * 10 + int(txt[3])
     return int(v), ir
 
-def reverse_Bits(n, no_of_bits):
-    result = 0
-    for i in range(no_of_bits):
-        result <<= 1
-        result |= n & 1
-        n >>= 1
-    return result
-
 def ldpc_encode(msg_crc: int) -> int:
     msg_crc = int(msg_crc)
     parity_bits = 0
@@ -179,7 +171,7 @@ def loopback_test():
     msgs = [("G1OJS/P", "G1OJS/P", "IO90"),("WM3PEN","EA6VQ","-08"),("E67A/P","EA6VQ","-08"),("CQ","CT7ARQ/P","IN51")]
     for msg in msgs:
         symbols, bits77 = _pack_message(*msg)
-        from PyFT8.FT8_unpack import unpack
+        from PyFT8.receiver import unpack
         print(msg, unpack(bits77))
         print(''.join([str(s) for s in symbols]))
 
