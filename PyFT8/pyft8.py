@@ -57,6 +57,10 @@ class FT8_QSO:
 def cycle_time():
     return time.time() % 15
 
+def should_tx_immediate():
+    ct = cycle_time()
+    return True if 0.5 < ct < 2.5 else False
+
 def isReport(grid_rpt):     return "+" in grid_rpt or "-" in grid_rpt
 def isRReport(grid_rpt):    return isReport(grid_rpt) and 'R' in grid_rpt
 def isRRR(grid_rpt):        return 'RRR' in grid_rpt
@@ -66,15 +70,10 @@ def isGrid(grid_rpt):       return not isReport(grid_rpt) and not is73(grid_rpt)
 
 def on_msg_click(clicked_msg, msg_origin, their_snr):
     global qso
-    ct = cycle_time()
-    clicked_message_cycle = int(msg_origin[0] / (audio_in.hops_per_grid/2))
-    current_cycle = int(audio_in.dBgrid_main_ptr / (audio_in.hops_per_grid/2))
-    print(f"{clicked_message_cycle =} {current_cycle =} {ct = }")
-    if(current_cycle != clicked_message_cycle and  ct > 2.5):
+    cycle_started = time.time() - (time.time() % 15) + 15 * int(msg_origin[0] / (audio_in.hops_per_grid/2))
+    if time.time() - cycle_started > 17.5:
         print("too late")
         return
-    tx_immediate = True if 0.5 < ct < 2.5 else False
-    
     call_a, call_b, grid_rpt = clicked_msg.split()
     my_station = config['mStation']
 
@@ -83,7 +82,7 @@ def on_msg_click(clicked_msg, msg_origin, their_snr):
         qso.times['time_on'] = time.gmtime()
         qso.oStation = {'c': call_b, 'g': grid_rpt}
         reply = f"{qso.oStation['c']} {my_station['c']} {my_station['g']}"
-        transmit_threaded(reply, immediate = tx_immediate)
+        transmit_threaded(reply, immediate = should_tx_immediate())
         return
 
     if call_a == my_station['c']:
@@ -100,11 +99,19 @@ def on_msg_click(clicked_msg, msg_origin, their_snr):
             reply = f"{qso.oStation['c']} {my_station['c']} RR73"
         if isRR73(grid_rpt):
             reply = f"{qso.oStation['c']} {my_station['c']} 73"
-        transmit_threaded(reply, immediate = tx_immediate)
+        transmit_threaded(reply, immediate = should_tx_immediate())
         
     if is73(grid_rpt) or " 73" in reply or isRR73(grid_rpt):
         qso.times['time_off'] = time.gmtime()
         qso.log_to_adif()
+
+def on_control_click(btn_text, btn_origin, btn_params):
+    if btn_text == "CQ":
+        mc, mg = config['mStation']['c'], config['mStation']['g']
+        transmit_threaded(f"CQ {mc} {mg}", immediate = should_tx_immediate())
+    if btn_text == "Tx off":
+        ptt.off()
+        
 
 def make_wav(msg, wave_output_file):
     symbols = audio_out.create_ft8_symbols(msg)
@@ -175,7 +182,7 @@ def cli():
         if not input_device_idx:
             print("No input device")
         else:
-            gui = None if args.no_gui else Gui(audio_in.dBgrid_main, 4, 2, config['mStation'], on_msg_click)
+            gui = None if args.no_gui else Gui(audio_in.dBgrid_main, 4, 2, config['mStation'], on_msg_click, on_control_click)
             rx = Receiver(audio_in, [200, 3100], on_decode)
             audio_in.start_streamed_audio(input_device_idx)
             if gui is not None:
