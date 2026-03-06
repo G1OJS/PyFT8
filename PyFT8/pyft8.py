@@ -40,7 +40,7 @@ class FT8_QSO:
         self.times = {'time_on':None, 'time_off':None}
         self.rpts = {'sent': None, 'rcvd': None}
         
-    def log_to_adif(self, logfile = "PyFT8.adif"):
+    def log_to_adif(self, logfile = "PyFT8.adi"):
         log_dict = {'call':self.oStation['c'], 'gridsquare':self.oStation['g'], 'mode':'FT8',
         'operator':self.mStation['c'], 'station_callsign':self.mStation['c'], 'my_gridsquare':self.mStation['g'], 
         'rst_sent':self.rpts['sent'], 'rst_rcvd':self.rpts['rcvd'], 
