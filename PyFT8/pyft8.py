@@ -70,7 +70,7 @@ def on_msg_click(clicked_msg, msg_origin, their_snr):
     global qso
     current_cycle_started = global_time_utils.cyclestart_time(time.time())
     message_cycle_started = current_cycle_started - 15 * int(msg_origin[0] / audio_in.hops_per_cycle)
-    if time.time() - cycle_started > 17.5:
+    if time.time() - message_cycle_started > 17.5:
         print("too late")
         return
     call_a, call_b, grid_rpt, _ = clicked_msg.split()
