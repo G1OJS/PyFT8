@@ -1,37 +1,36 @@
 import time
 
-class Ticker:
-    def __init__(self, offset):
-        self.previous_ticker_time = 0
-
 class Time_utils:
+    def __init__(self):
+        self.cycle_seconds = 15
 
-    def cyclestart_str(self, t, cycle_seconds = 15):
-        cyclestart_time = cycle_seconds * int(t / cycle_seconds)
-        return time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
+    def set_cycle_length(self, dur):
+        self.cycle_seconds = dur
 
-    def cycle_time(self, cycle_seconds = 15, offset = 0):
-        return (time.time() - offset) % cycle_seconds
+    def cycle_time(self):
+        return (time.time()) % self.cycle_seconds
+
+    def cyclestart_time(self, t):
+        return self.cycle_seconds * int(t / self.cycle_seconds)
+
+    def cyclestart_str(self, t):
+        return time.strftime("%y%m%d_%H%M%S", time.gmtime(self.cyclestart_time(t)))
 
     def tlog(self, txt, verbose = True):
         if(verbose):
             print(f"{self.cyclestart_str(time.time())} {self.cycle_time():5.2f} {txt}")
 
-    def new_ticker(self, offset):
-        return Ticker(offset)
-
-    def check_ticker(self, ticker):
-        ticker_time = self.cycle_time(offset = ticker.offset)
-        ticked = ticker_time < ticker.previous_ticker_time
-        ticker.previous_ticker_time = ticker_time
-        return ticked
-
 global_time_utils = Time_utils()
 
-"""
-test = global_time_utils.new_ticker(10)
-while True:
-    time.sleep(1)
-    print(global_time_utils.cycle_time(), global_time_utils.check_ticker(test))
-"""
+class Ticker:
+    def __init__(self, trigger_time, cycle_length = global_time_utils.cycle_seconds, timing_function = global_time_utils.cycle_time):
+        self.previous_ticker_time = 0
+        self.timing_function = timing_function
+        self.trigger_time = trigger_time
+        self.cycle_length = cycle_length
 
+    def ticked(self):
+        ticker_time = (self.timing_function() - self.trigger_time) % self.cycle_length
+        ticked = ticker_time < self.previous_ticker_time
+        self.previous_ticker_time = ticker_time
+        return ticked

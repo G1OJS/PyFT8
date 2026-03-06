@@ -2,19 +2,19 @@ import threading
 import numpy as np
 import wave
 import time
-from PyFT8.time_utils import global_time_utils
+from PyFT8.time_utils import global_time_utils, Ticker
 import os
 import pyaudio
 
-LLR_SD_MIN = 0.5
+T_CYC = 15
 HPS = 4
 BPT =2
 SYM_RATE = 6.25
 SAMP_RATE = 12000
-T_CYC = 15
-LDPC_CONTROL = (45, 12) 
 
 t2h = HPS/0.16
+LLR_SD_MIN = 0.5
+LDPC_CONTROL = (45, 12) 
 H0_RANGE = [int(0 *t2h), int(4 *t2h)]
 H_SEARCH_0 = H0_RANGE[1] + 7 * HPS
 H_SEARCH_1 = H0_RANGE[1] + 43 * HPS 
@@ -29,12 +29,8 @@ BASE_FREQ_IDXS = np.array([BPT // 2 + BPT * t for t in range(8)])
 HOPS_PER_CYCLE = int(T_CYC * SYM_RATE * HPS)
 HOPS_PER_GRID = 2 * HOPS_PER_CYCLE
 
-def cycle_time():
-    return time.time() % T_CYC
+global_time_utils.set_cycle_length(T_CYC)
 
-def cyclestart_str(t):
-    cyclestart_time = T_CYC * int( t / T_CYC )
-    return time.strftime("%y%m%d_%H%M%S", time.gmtime(cyclestart_time))
 
 #=========== Unpacking functions ========================================
 from string import ascii_uppercase as ltrs, digits as digs
@@ -153,6 +149,7 @@ class AudioIn:
         self.audio_buffer = np.zeros(self.fft_len, dtype=np.float32)
         self.fft_in = np.zeros(self.fft_len, dtype=np.float32)
         self.fft_window = fft_window=np.hanning(self.fft_len).astype(np.float32)
+        self.hops_per_cycle = HOPS_PER_CYCLE
         self.hops_per_grid = 2 * HOPS_PER_CYCLE
         self.dBgrid_main = np.ones((self.hops_per_grid, self.nFreqs), dtype = np.float32)
         self.wav_files = wav_files
@@ -329,16 +326,15 @@ class Receiver():
         dBgrid_main_ptr_prev = 0
         base_pyld_hops = BASE_PAYLOAD_HOPS
         print("Rx running")
-        search_last = -1e30
-        sync_ptr_last = -1e30
+        ticker_cycle_rollover = Ticker(0)
+        ticker_search_for_syncs = Ticker(H_SEARCH_1, timing_function = lambda: self.audio_in.dBgrid_main_ptr, cycle_length = HOPS_PER_CYCLE)
+        self.audio_in.sync_pointer_to_wall_clock()
         while True:
             time.sleep(0.040)
             ptr = self.audio_in.dBgrid_main_ptr
-            
-            sync_ptr = (ptr - 0) % HOPS_PER_CYCLE
-            if(sync_ptr < sync_ptr_last):
+
+            if ticker_cycle_rollover.ticked():                
                 self.audio_in.sync_pointer_to_wall_clock()
-            sync_ptr_last = sync_ptr
         
             new_to_decode = []
             for c in candidates:
@@ -356,9 +352,9 @@ class Receiver():
             for c in new_to_decode[:55]:
                 c.decode()
 
-            search = (ptr - H_SEARCH_1) % HOPS_PER_CYCLE
-            if(search < search_last):
+            if ticker_search_for_syncs.ticked():
                 global_time_utils.tlog(f"[Cycle manager] start search at hop { self.audio_in.dBgrid_main_ptr}", verbose = self.verbose)
-                candidates = self.search(self.f0_idxs, global_time_utils.cyclestart_str(time.time()))
+                cyclestart_str = global_time_utils.cyclestart_str(time.time())
+                candidates = self.search(self.f0_idxs, cyclestart_str)
                 global_time_utils.tlog(f"[Cycle manager] New spectrum searched -> {len(candidates)} candidates", verbose = self.verbose) 
-            search_last = search
+

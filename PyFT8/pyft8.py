@@ -5,6 +5,7 @@ import threading
 from PyFT8.receiver import Receiver, AudioIn
 from PyFT8.gui import Gui
 from PyFT8.transmitter import AudioOut
+from PyFT8.time_utils import global_time_utils
 
 def load_rigctrl():
     try:
@@ -54,11 +55,8 @@ class FT8_QSO:
                 f.write(f"<{k}:{len(v)}>{v} ")
             f.write(f"<eor>\n")
 
-def cycle_time():
-    return time.time() % 15
-
 def should_tx_immediate():
-    ct = cycle_time()
+    ct = global_time_utils.cycle_time()
     return True if 0.5 < ct < 2.5 else False
 
 def isReport(grid_rpt):     return "+" in grid_rpt or "-" in grid_rpt
@@ -70,7 +68,8 @@ def isGrid(grid_rpt):       return not isReport(grid_rpt) and not is73(grid_rpt)
 
 def on_msg_click(clicked_msg, msg_origin, their_snr):
     global qso
-    cycle_started = time.time() - (time.time() % 15) + 15 * int(msg_origin[0] / (audio_in.hops_per_grid/2))
+    current_cycle_started = global_time_utils.cyclestart_time(time.time())
+    message_cycle_started = current_cycle_started - 15 * int(msg_origin[0] / audio_in.hops_per_cycle)
     if time.time() - cycle_started > 17.5:
         print("too late")
         return
@@ -106,16 +105,16 @@ def on_msg_click(clicked_msg, msg_origin, their_snr):
         qso.times['time_off'] = time.gmtime()
         qso.log_to_adif()
 
-def make_wav(msg, wave_output_file):
+def make_wav(msg, wave_output_file): # move to transmitter.py?
     symbols = audio_out.create_ft8_symbols(msg)
     audio_data = audio_out.create_ft8_wave(symbols)
     audio_out.write_to_wave_file(audio_data, wave_output_file)
     print(f"Created wave file {args.wave_output_file}")    
 
-def transmit_threaded(msg, immediate = False):
+def transmit_threaded(msg, immediate = False): # move to transmitter.py?
     threading.Thread(target = transmit, args = (msg, immediate,), daemon = True).start()
 
-def transmit(msg, immediate = False):
+def transmit(msg, immediate = False): # move to transmitter.py?
     print(f"Transmit {msg}")
     if output_device_idx is None:
         print("No output device")
@@ -123,7 +122,7 @@ def transmit(msg, immediate = False):
     symbols = audio_out.create_ft8_symbols(msg)
     audio_data = audio_out.create_ft8_wave(symbols)
     if not immediate:
-        delay = 15 - ((time.time()-0.5) % 15)
+        delay = 15.25 - global_time_utils.cycle_time()
         if delay > 0:
             time.sleep(delay)
     print("Transmitting")
