@@ -32,6 +32,8 @@ def get_config(configfile = 'PyFT8.pkl'):
             pickle.dump(config, f)
 
 class FT8_QSO:
+    def __init__(self):
+        self.start()
 
     def start(self):
         self.oStation = {'c':None, 'g':None}
@@ -71,7 +73,7 @@ def on_msg_click(clicked_msg, msg_origin, msg_params):
         print("Try next cycle")
         return
     
-    call_a, call_b, grid_rpt = clicked_msg.split()
+    call_a, call_b, grid_rpt, _ = clicked_msg.split()
     my_station = config['mStation']
     reply = ""
 
@@ -141,7 +143,8 @@ def wait_for_keyboard():
 def on_decode(c):
     if gui:
         message_cycle_started = global_time_utils.cyclestart_time(time.time())
-        gui.post_decode((c.h0_idx, c.f0_idx, c.msg, (c.snr, message_cycle_started)))
+        txt = f"{c.msg} ({c.snr:+03d})"
+        gui.post_decode((c.h0_idx, c.f0_idx, txt, (c.snr, message_cycle_started)))
     print(f"{c.cyclestart_str} {c.snr} {c.dt:4.1f} {c.fHz} ~ {c.msg}")
 
 def on_control_click(btn_text, btn_origin, btn_params):
@@ -150,6 +153,7 @@ def on_control_click(btn_text, btn_origin, btn_params):
         transmit_threaded(f"CQ {mc} {mg}")
     if btn_text == "Tx off":
         rig.ptt_off()
+      #      gui.post_decode((10, 50, "G1OJS G1OJY +05", (10, global_time_utils.cyclestart_time(time.time())))) # generate test message to reply to
     if('m' in btn_text):
         qso.band_info = {'b':btn_text, 'f':btn_params}
         rig.set_freq_Hz(int(1000000*btn_params))
