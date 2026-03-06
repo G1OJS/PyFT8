@@ -151,6 +151,7 @@ class AudioIn:
         self.fft_window = fft_window=np.hanning(self.fft_len).astype(np.float32)
         self.hops_per_cycle = HOPS_PER_CYCLE
         self.hops_per_grid = 2 * HOPS_PER_CYCLE
+        self.dt = T_CYC / HOPS_PER_CYCLE
         self.dBgrid_main = np.ones((self.hops_per_grid, self.nFreqs), dtype = np.float32)
         self.wav_files = wav_files
         self.dBgrid_main_ptr = 0

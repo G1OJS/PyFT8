@@ -7,6 +7,8 @@ from PyFT8.gui import Gui
 from PyFT8.transmitter import AudioOut
 from PyFT8.time_utils import global_time_utils
 
+MAX_TX_START_SECONDS = 2.5
+
 def load_rigctrl():
     try:
         from Rigctrl.rig import Rig
@@ -55,10 +57,6 @@ class FT8_QSO:
                 f.write(f"<{k}:{len(v)}>{v} ")
             f.write(f"<eor>\n")
 
-def should_tx_immediate():
-    ct = global_time_utils.cycle_time()
-    return True if 0.5 < ct < 2.5 else False
-
 def isReport(grid_rpt):     return "+" in grid_rpt or "-" in grid_rpt
 def isRReport(grid_rpt):    return isReport(grid_rpt) and 'R' in grid_rpt
 def isRRR(grid_rpt):        return 'RRR' in grid_rpt
@@ -66,14 +64,14 @@ def isRR73(grid_rpt):       return 'RR73' in grid_rpt
 def is73(grid_rpt):         return '73' in grid_rpt and not isRR73(grid_rpt)
 def isGrid(grid_rpt):       return not isReport(grid_rpt) and not is73(grid_rpt) and not isRR73(grid_rpt) and not isRRR(grid_rpt) 
 
-def on_msg_click(clicked_msg, msg_origin, their_snr):
+def on_msg_click(clicked_msg, msg_origin, msg_params):
     global qso
-    current_cycle_started = global_time_utils.cyclestart_time(time.time())
-    message_cycle_started = current_cycle_started - 15 * int(msg_origin[0] / audio_in.hops_per_cycle)
-    if time.time() - message_cycle_started > 17.5:
-        print("too late")
+    their_snr, their_cycle_start_time = msg_params
+    if time.time() - their_cycle_start_time > (15 + MAX_TX_START_SECONDS):
+        print("Try next cycle")
         return
-    call_a, call_b, grid_rpt, _ = clicked_msg.split()
+    
+    call_a, call_b, grid_rpt = clicked_msg.split()
     my_station = config['mStation']
     reply = ""
 
@@ -82,7 +80,7 @@ def on_msg_click(clicked_msg, msg_origin, their_snr):
         qso.times['time_on'] = time.gmtime()
         qso.oStation = {'c': call_b, 'g': grid_rpt}
         reply = f"{qso.oStation['c']} {my_station['c']} {my_station['g']}"
-        transmit_threaded(reply, immediate = should_tx_immediate())
+        transmit_threaded(reply)
         return
 
     if call_a == my_station['c']:
@@ -99,7 +97,7 @@ def on_msg_click(clicked_msg, msg_origin, their_snr):
             reply = f"{qso.oStation['c']} {my_station['c']} RR73"
         if isRR73(grid_rpt):
             reply = f"{qso.oStation['c']} {my_station['c']} 73"
-        transmit_threaded(reply, immediate = should_tx_immediate())
+        transmit_threaded(reply)
         
     if is73(grid_rpt) or " 73" in reply or isRR73(grid_rpt):
         qso.times['time_off'] = time.gmtime()
@@ -111,20 +109,20 @@ def make_wav(msg, wave_output_file): # move to transmitter.py?
     audio_out.write_to_wave_file(audio_data, wave_output_file)
     print(f"Created wave file {args.wave_output_file}")    
 
-def transmit_threaded(msg, immediate = False): # move to transmitter.py?
-    threading.Thread(target = transmit, args = (msg, immediate,), daemon = True).start()
+def transmit_threaded(msg): # move to transmitter.py?
+    threading.Thread(target = transmit, args = (msg,), daemon = True).start()
 
-def transmit(msg, immediate = False): # move to transmitter.py?
-    print(f"Transmit {msg}")
+def transmit(msg): # move to transmitter.py?
     if output_device_idx is None:
         print("No output device")
         return
+    print(f"Transmit {msg}")
     symbols = audio_out.create_ft8_symbols(msg)
     audio_data = audio_out.create_ft8_wave(symbols)
-    if not immediate:
-        delay = 15.25 - global_time_utils.cycle_time()
-        if delay > 0:
-            time.sleep(delay)
+    ct = global_time_utils.cycle_time()
+    if ct > MAX_TX_START_SECONDS:
+        delay = 15 - ct
+        time.sleep(delay)
     print("Transmitting")
     rig.ptt_on()
     audio_out.play_data_to_soundcard(audio_data, output_device_idx)
@@ -142,13 +140,14 @@ def wait_for_keyboard():
 #============= Callbacks for GUI ==========================================================
 def on_decode(c):
     if gui:
-        gui.post_decode(c.h0_idx, c.f0_idx, c.msg, c.snr)
+        message_cycle_started = global_time_utils.cyclestart_time(time.time())
+        gui.post_decode((c.h0_idx, c.f0_idx, c.msg, (c.snr, message_cycle_started)))
     print(f"{c.cyclestart_str} {c.snr} {c.dt:4.1f} {c.fHz} ~ {c.msg}")
 
 def on_control_click(btn_text, btn_origin, btn_params):
     if btn_text == "CQ":
         mc, mg = config['mStation']['c'], config['mStation']['g']
-        transmit_threaded(f"CQ {mc} {mg}", immediate = should_tx_immediate())
+        transmit_threaded(f"CQ {mc} {mg}")
     if btn_text == "Tx off":
         rig.ptt_off()
     if('m' in btn_text):

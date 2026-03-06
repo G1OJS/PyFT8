@@ -4,33 +4,39 @@ import time, queue
 from matplotlib.animation import FuncAnimation
 
 # ================== WATERFALL ======================================================
+
+
 class Button:
-    def __init__(self, fig, ax, tbin, fbin, width, height, text, colors, params, onclick, expire = None):
+    def __init__(self, fig, ax, tbin, fbin, w, h, text, colors, attached_params, onclick, expire = 0):
         from matplotlib.patches import Rectangle
         self.onclick = onclick
         self.origin = (tbin, fbin)
-        rect = Rectangle(self.origin, width=width, height=height, facecolor=colors[0], alpha=0.6, edgecolor='lime', lw=2)
+        rect = Rectangle(self.origin, width=w, height=h, alpha=0.6, edgecolor='lime', lw=2)
         self.patch = ax.add_patch(rect)
-        self.text_inst = ax.text(tbin, fbin+2, text, color=colors[1], fontsize='small', fontweight='bold' )
+        self.text_inst = ax.text(tbin, fbin+2, text, fontsize='small', fontweight='bold' )
         self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
+        self.set_properties(tbin, text, colors, attached_params, expire)
+
+    def set_properties(self, tbin, text, colors, attached_params, expire):
         self.patch.set_x(tbin)
-        self.params = params
+        self.attached_params = attached_params
         self.text_inst.set_x(tbin)
         self.text_inst.set_text(text)
         self.text_inst.set_color(colors[1])
         self.expire = expire
         self.patch.set_facecolor(colors[0])
+        self.patch.set_visible(True)
+        self.text_inst.set_visible(True)
 
-    def check_life(self):
-        if self.expire:
-            if time.time() > self.expire:
-                self.patch.set_visible(False)
-                self.text_inst.set_visible(False)
+    def hide_if_expired(self):
+        if time.time() > self.expire > 0:
+            self.patch.set_visible(False)
+            self.text_inst.set_visible(False)
 
     def _onclick(self, event):
         b, _ = self.patch.contains(event)
         if(b):
-            self.onclick(self.text_inst.get_text(), self.origin, self.params)
+            self.onclick(self.text_inst.get_text(), self.origin, self.attached_params)
 
 class Gui:
     def __init__(self, dBgrid, hps, bpt, mStation, on_msg_click, on_control_click):
@@ -39,7 +45,7 @@ class Gui:
         self.on_control_click = on_control_click
         self.dBgrid = dBgrid
         self.hps, self.bpt = hps, bpt
-        self.buttons = []
+        self.decode_buttons = {}
         self.decode_queue = queue.Queue()
         self.make_layout()
 
@@ -54,6 +60,7 @@ class Gui:
         self.ax_controls.set_ylim(wf_ylim)
         self.ax_controls.set_axis_off()
         self.ax_wf.set_axis_off()
+        self.buttons = []
         control_buttons = [('CQ','green','white'), ('Tx off','grey','white')]
         for i, btn in enumerate(control_buttons):
             btn = Button(self.fig, self.ax_controls, 0, wf_ylim[1] - (i+1)*16, 1, 16, btn[0], [btn[1], btn[2]], None, self.on_control_click)
@@ -66,51 +73,30 @@ class Gui:
             self.buttons.append(btn)
         self.ani = FuncAnimation(self.fig, self._animate, interval = 40, frames=(100000), blit=True)
 
-    def post_decode(self, tbin, fbin, text, snr):
-        self.decode_queue.put((tbin, fbin, f"{text} ({snr:+03d}dB)", snr))
+    def post_decode(self, decode):
+        self.decode_queue.put(decode)
 
-    def _show_decode(self, tbin, fbin, text, snr):
+    def _show_decode(self, queued_decode):
+        h0_idx, f0_idx, msg, attached_params = queued_decode
         colors = ['blue', 'white']
-        if text.startswith("CQ"): colors = ['green', 'white']
-        if self.mStation['c'] in text: colors = ['yellow', 'black']
-        if text.startswith(self.mStation['c']): colors = ['red', 'white']
-        btn = Button(self.fig, self.ax_wf, tbin, fbin, 79*self.hps, 8*self.bpt,
-                text, colors, snr, onclick = self.on_msg_click, expire = time.time() + 28)
-        self.buttons.append(btn)
+        if msg.startswith("CQ"): colors = ['green', 'white']
+        if self.mStation['c'] in msg: colors = ['yellow', 'black']
+        if msg.startswith(self.mStation['c']): colors = ['red', 'white']
+        if not f0_idx in self.decode_buttons:
+            btn = Button(self.fig, self.ax_wf, h0_idx, f0_idx, 79*self.hps, 8*self.bpt, msg, colors, attached_params, onclick = self.on_msg_click)
+            self.decode_buttons[f0_idx] = btn
+        self.decode_buttons[f0_idx].set_properties(h0_idx, msg, colors, attached_params, expire = time.time() + 28)
         
-    def _tidy_buttons(self):
-        for b in self.buttons:
-            b.check_life()
-        self.buttons = [b for b in self.buttons if b.patch.get_visible()]
+    def _tidy_decode_buttons(self):
+        for fb in self.decode_buttons:
+            self.decode_buttons[fb].hide_if_expired()
 
     def _animate(self, frame):
         self.image.set_data(self.dBgrid.T)
         while not self.decode_queue.empty():
-            tbin, fbin, text, snr = self.decode_queue.get()
-            self._show_decode(tbin, fbin, text, snr)
+            self._show_decode(self.decode_queue.get())
         if (frame % 10 == 0):
-            self._tidy_buttons()
+            self._tidy_decode_buttons()
         return [self.image, *self.ax_wf.patches, *self.ax_wf.texts]
 
-#============= TEST CODE =========================================================================
-
-def on_control_click(btn_text, btn_origin, btn_params):
-    print(btn_text)
-
-def on_click(txt, snr):
-    print(txt, snr)
-
-def on_decode(c):
-    gui.post_decode(c.h0_idx, c.f0_idx, c.msg, c.snr)
-    print(f"{c.cyclestart_str} {c.snr} {c.dt:4.1f} {c.fHz} ~ {c.msg}")
-
-if __name__ == "__main__":
-    from PyFT8.receiver import Receiver, AudioIn
-    audio_in = AudioIn(3100)
-    input_device_idx = audio_in.find_device(['Mic', 'CODEC'])
-    gui = Gui(audio_in.dBgrid_main, 4, 2,{'c':'', 'g':''}, on_click, on_control_click)
-    rx = Receiver(audio_in, [200, 3100], on_decode)
-    audio_in.start_streamed_audio(input_device_idx)
-    print("Start rx")
-    gui.plt.show()
-                                        
+                                    
