@@ -25,7 +25,6 @@ BASE_PAYLOAD_HOPS = np.array([HPS * s for s in symbol_idxs])
 LAST_BASE_PAYLOAD_HOP = BASE_PAYLOAD_HOPS[-1]
 COSTAS = [3,1,4,0,6,5,2]
 BASE_COSTAS_HOPS =  np.arange(7) * HPS
-BASE_FREQ_IDXS = np.array([BPT // 2 + BPT * t for t in range(8)])
 HOPS_PER_CYCLE = int(T_CYC * SYM_RATE * HPS)
 HOPS_PER_GRID = 2 * HOPS_PER_CYCLE
 
@@ -304,13 +303,13 @@ class Receiver():
         cands = []
         cycle = int(self.audio_in.dBgrid_main_ptr / HOPS_PER_CYCLE)
         cycle_h0 = cycle * HOPS_PER_CYCLE
+        costas_hops = BASE_COSTAS_HOPS  + 36 * HPS 
         for f0_idx in f0_idxs:
             freq_idxs = f0_idx + BASE_FREQ_IDXS
             c = Candidate(cyclestart_str = cyclestart_str, f0_idx = f0_idx)
             dB = self.audio_in.dBgrid_main[:, freq_idxs]
-            dB = dB - np.max(dB)
             for h0_idx in range(H0_RANGE[0] + cycle_h0, H0_RANGE[1] + cycle_h0):
-                sync_score = float(np.dot(dB[h0_idx + BASE_COSTAS_HOPS  + 36 * HPS ,  :].ravel(), self.csync_flat))
+                sync_score = float(np.dot(dB[h0_idx + costas_hops,  :].ravel(), self.csync_flat))
                 if(sync_score < 40):
                     continue
                 if sync_score > c.sync_score:
