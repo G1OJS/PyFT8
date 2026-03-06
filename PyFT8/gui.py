@@ -5,7 +5,7 @@ from matplotlib.animation import FuncAnimation
 
 # ================== WATERFALL ======================================================
 class Button:
-    def __init__(self, fig, ax, tbin, fbin, width, height, text, colors, params, onclick):
+    def __init__(self, fig, ax, tbin, fbin, width, height, text, colors, params, onclick, expire = None):
         from matplotlib.patches import Rectangle
         self.onclick = onclick
         self.origin = (tbin, fbin)
@@ -18,8 +18,14 @@ class Button:
         self.text_inst.set_x(tbin)
         self.text_inst.set_text(text)
         self.text_inst.set_color(colors[1])
-        self.modified = time.time()
+        self.expire = expire
         self.patch.set_facecolor(colors[0])
+
+    def check_life(self):
+        if self.expire:
+            if time.time() > self.expire:
+                self.patch.set_visible(False)
+                self.text_inst.set_visible(False)
 
     def _onclick(self, event):
         b, _ = self.patch.contains(event)
@@ -68,13 +74,13 @@ class Gui:
         if text.startswith("CQ"): colors = ['green', 'white']
         if self.mStation['c'] in text: colors = ['yellow', 'black']
         if text.startswith(self.mStation['c']): colors = ['red', 'white']
-        self.buttons.append(Button(self.fig, self.ax_wf, tbin, fbin, 79*self.hps, 8*self.bpt, text, colors, snr, onclick = self.on_msg_click))
+        btn = Button(self.fig, self.ax_wf, tbin, fbin, 79*self.hps, 8*self.bpt,
+                text, colors, snr, onclick = self.on_msg_click, expire = time.time() + 28)
+        self.buttons.append(btn)
         
     def _tidy_buttons(self):
         for b in self.buttons:
-            if (time.time() - b.modified) > 28:
-                b.patch.set_visible(False)
-                b.text_inst.set_visible(False)
+            b.check_life()
         self.buttons = [b for b in self.buttons if b.patch.get_visible()]
 
     def _animate(self, frame):
