@@ -50,15 +50,12 @@ class Gui:
         self.make_layout()
 
     def make_layout(self):
-        self.fig, axs = plt.subplots(1, 2, figsize=(10,10), gridspec_kw={'width_ratios': [1, 6]})
-        self.ax_controls, self.ax_wf = axs
+        self.fig, self.ax_wf = plt.subplots(figsize=(10,10))
         self.fig.suptitle("PyFT8 by G1OJS")
         self.plt = plt
         plt.tight_layout()
         self.image = self.ax_wf.imshow(self.dBgrid.T,vmax=120,vmin=90,origin='lower',interpolation='none')
         wf_ylim = self.ax_wf.get_ylim()
-        self.ax_controls.set_ylim(wf_ylim)
-        self.ax_controls.set_axis_off()
         self.ax_wf.set_axis_off()
         
         self.buttons = []
@@ -71,7 +68,7 @@ class Gui:
                            {'label':'2m','style':'band','data':144.174}]
         btn_axs = []
         for i, btn in enumerate(control_buttons):
-            btn_axs.append(plt.axes([0.1, 0.9 - 0.022 * i, 0.1, 0.02]))
+            btn_axs.append(plt.axes([0.05, 0.9 - 0.022 * i, 0.1, 0.02]))
             style = styles[btn['style']]
             btn_widg = Button(btn_axs[-1], btn['label'], color=style['fc'], hovercolor='skyblue')
             btn_widg.data = btn['data']
