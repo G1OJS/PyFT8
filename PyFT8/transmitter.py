@@ -163,13 +163,10 @@ def append_crc(bits77_int):
 
 #==================== TESTS ================================================================
 
-def loopback_test():
+if __name__ == "__main__":
     msgs = [("G1OJS/P", "G1OJS/P", "IO90"),("WM3PEN","EA6VQ","-08"),("E67A/P","EA6VQ","-08"),("CQ","CT7ARQ/P","IN51"), ("EC5A","9A5E","IN51"), ]
     for msg in msgs:
         symbols, bits77 = _pack_message(*msg)
         from PyFT8.receiver import unpack
         print(msg, unpack(bits77))
         print(''.join([str(s) for s in symbols]))
-
-#loopback_test()
-
