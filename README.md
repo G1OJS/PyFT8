@@ -51,7 +51,7 @@ and distributed under the GNU General Public License v3 (GPL-3.0), hence the use
 Also thanks to [Robert Morris](https://github.com/rtmrtmrtmrtm) for [basicft8(*1)](https://github.com/rtmrtmrtmrtm/basicft8) - the first code I properly read when I was wondering whether to start this journey. (*1 note: applies to FT8 pre V2)
 
 ## Useful resources:
-** The QEX paper **
+**The QEX paper**
  - [The FT4 and FT8 Communication Protocols](https://wsjt.sourceforge.io/FT4_FT8_QEX.pdf)
 
 **WSJTx - focussed:**
