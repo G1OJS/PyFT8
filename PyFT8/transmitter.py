@@ -76,25 +76,18 @@ def _pack_message(c1, c2, gr):
     return symbols, bits77
 
 def pack_ft8_c28(call):
-    print(call)
     first3 = ['DE','QRZ','CQ']
     if (call in first3):
         return first3.index(call), 0
-    
     p1 = 1 if call[-2:] == '/P' else 0
     call = call.replace('/P','')
     prepend_space = '' if call[2].isdigit() else ' '
     call = (prepend_space + call + '  ')[:6]
-        
     a = ' 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     b = ' ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    i1 = a.index(call[0])
-    i2 = a.index(call[1])-1
-    i3 = a.index(call[2])-1
-    i4 = b.index(call[3])
-    i5 = b.index(call[4])
-    i6 = b.index(call[5])
-    c28 =  2_063_592 + 4_194_304 + 36*10*27*27*27*i1 + 10*27*27*27*i2 + 27*27*27*i3 + 27*27*i4 + 27*i5 + i6
+    x = [a.index(call[0]),  a.index(call[1])-1, a.index(call[2])-1, b.index(call[3]),   b.index(call[4]), b.index(call[5]), 1                    ]
+    y = [36*10*27*27*27,    10*27*27*27,        27*27*27,           27*27,              27,               1,                2_063_592 + 4_194_304]
+    c28 = int(np.dot(x,y))
     return c28, p1
 
 def pack_ft8_g15(txt):
