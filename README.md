@@ -53,7 +53,7 @@ Also thanks to [Robert Morris](https://github.com/rtmrtmrtmrtm) for [basicft8(*1
 ## Useful resources:
 **The QEX paper**
  - [The FT4 and FT8 Communication Protocols](https://wsjt.sourceforge.io/FT4_FT8_QEX.pdf)
- - [Ref 14 from the above paper](http://www.arrl.org/qexfiles)
+ - [Ref 14 from the above paper at the Internet Archive]([http://www.arrl.org/qexfiles](https://web.archive.org/web/20250409140104/https://www.arrl.org/files/file/QEX%20Binaries/2020/ft4_ft8_protocols.tgz)
 
 Note - section 9 of the paper states that the above 2 resources are in the public domain, with some restrictions. All other resources including the source code are protected by copyright but licensed under Version 3 of the GNU General Public License (GPLv3).
 
