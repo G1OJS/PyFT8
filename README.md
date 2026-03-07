@@ -51,6 +51,12 @@ and distributed under the GNU General Public License v3 (GPL-3.0), hence the use
 Also thanks to [Robert Morris](https://github.com/rtmrtmrtmrtm) for [basicft8(*1)](https://github.com/rtmrtmrtmrtm/basicft8) - the first code I properly read when I was wondering whether to start this journey. (*1 note: applies to FT8 pre V2)
 
 ## Useful resources:
+**The QEX paper**
+ - [The FT4 and FT8 Communication Protocols](https://wsjt.sourceforge.io/FT4_FT8_QEX.pdf)
+ - [Ref 14 from the above paper at the Internet Archive](https://web.archive.org/web/20250409140104/https://www.arrl.org/files/file/QEX%20Binaries/2020/ft4_ft8_protocols.tgz)
+
+Note - section 9 of the paper states that the above 2 resources are in the public domain, with some restrictions. All other resources including the source code are protected by copyright but licensed under Version 3 of the GNU General Public License (GPLv3).
+
 **WSJTx - focussed:**
  - [WSJT-X on Sourceforge](https://sourceforge.net/p/wsjt)
  - [W4KEK WSJT-x git mirror](https://www.repo.radio/w4kek/WSJT-X) (searchable)
