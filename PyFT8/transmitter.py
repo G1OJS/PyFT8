@@ -76,18 +76,19 @@ def _pack_message(c1, c2, gr):
     return symbols, bits77
 
 def pack_ft8_c28(call):
-    first3 = ['DE','QRZ','CQ']
-    if (call in first3):
-        return first3.index(call), 0
-    p1 = 1 if call[-2:] == '/P' else 0
-    call = call.replace('/P','')
-    prepend_space = '' if call[2].isdigit() else ' '
-    call = (prepend_space + call + '  ')[:6]
-    a = ' 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    b = ' ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    x = [a.index(call[0]),  a.index(call[1])-1, a.index(call[2])-1, b.index(call[3]),   b.index(call[4]), b.index(call[5]), 1                    ]
-    y = [36*10*27*27*27,    10*27*27*27,        27*27*27,           27*27,              27,               1,                2_063_592 + 4_194_304]
-    c28 = int(np.dot(x,y))
+    tkns = ['DE','QRZ','CQ']
+    if (call in tkns):
+        c28, p1 = tkns.index(call), 0
+    else:
+        p1 = 1 if call[-2:] == '/P' else 0
+        call = call.replace('/P','')
+        prepend_space = '' if call[2].isdigit() else ' '
+        call = (prepend_space + call + '  ')[:6]
+        a = ' 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        b = ' ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        x = [a.index(call[0]),  a.index(call[1])-1, a.index(call[2])-1, b.index(call[3]),   b.index(call[4]), b.index(call[5]), 1                    ]
+        y = [36*10*27*27*27,    10*27*27*27,        27*27*27,           27*27,              27,               1,                2_063_592 + 4_194_304]
+        c28 = int(np.dot(x,y))
     return c28, p1
 
 def pack_ft8_g15(txt):
@@ -158,13 +159,14 @@ def append_crc(bits77_int):
 
 if __name__ == "__main__":
     OK = True
-    msgs = [("G1OJS/P", "G1OJS/P", "IO90"),("WM3PEN","EA6VQ","-08"),("E67A/P","EA6VQ","-08"),("CQ","CT7ARQ/P","IN51"), ("EC5A","9A5E","IN51"), ]
-    for msg in msgs:
-        symbols, bits77 = _pack_message(*msg)
+    msgs = [("G1OJS/P", "G1OJS/P", "IO90"),("WM3PEN","EA6VQ","+08"),("E67A/P","EA6VQ","R-08"),
+            ("CQ","CT7ARQ/P","RRR"), ("EC5A","9A5E","RR73"), ("EC5A","9A5E","73")]
+    for msg_tx in msgs:
+        symbols, bits77 = _pack_message(*msg_tx)
         from PyFT8.receiver import unpack
         msg_rx = unpack(bits77)
-        print(msg, msg_rx)
-        OK = OK and (msg == msg_rx)
+        print(f"\n{msg_tx}\n{msg_rx}")
+        OK = OK and (msg_tx == msg_rx)
         #print(''.join([str(s) for s in symbols]))
     print("\nPASSED" if OK else "\nFAILED")
         
