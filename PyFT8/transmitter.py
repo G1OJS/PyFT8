@@ -171,5 +171,5 @@ def loopback_test():
         print(msg, unpack(bits77))
         print(''.join([str(s) for s in symbols]))
 
-loopback_test()
+#loopback_test()
 
