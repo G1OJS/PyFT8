@@ -76,29 +76,25 @@ def _pack_message(c1, c2, gr):
     return symbols, bits77
 
 def pack_ft8_c28(call):
+    print(call)
     first3 = ['DE','QRZ','CQ']
     if (call in first3):
         return first3.index(call), 0
     
-    p1 = 0
-    if(call[-2:] == "/P"):
-        p1 = 1
-        call = call[:-2]
-    
-    from string import ascii_uppercase as ltrs, digits as digs
-    if(call[1].isdigit() and not call[2].isdigit()): call = ' ' + call
-    if (call[-4].isdigit()):
-        call = call + ' '
-    elif (call[-3].isdigit()):
-        call = call + '  '
-    charmap = [' ' + digs + ltrs, digs + ltrs, digs + ' ' * 17] + [' ' + ltrs] * 3
-    factors = np.array([36*10*27**3, 10*27**3, 27**3, 27**2, 27, 1])
-    try:
-        indices = np.array([cmap.index(call[i]) for i, cmap in enumerate(charmap)])
-    except:
-        print(f"Couldn't encode {call}")
-        return -1, 0 
-    c28 =  int(np.sum(factors * indices) + 2_063_592 + 4_194_304)
+    p1 = 1 if call[-2:] == '/P' else 0
+    call = call.replace('/P','')
+    prepend_space = '' if call[2].isdigit() else ' '
+    call = (prepend_space + call + '  ')[:6]
+        
+    a = ' 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    b = ' ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    i1 = a.index(call[0])
+    i2 = a.index(call[1])-1
+    i3 = a.index(call[2])-1
+    i4 = b.index(call[3])
+    i5 = b.index(call[4])
+    i6 = b.index(call[5])
+    c28 =  2_063_592 + 4_194_304 + 36*10*27*27*27*i1 + 10*27*27*27*i2 + 27*27*27*i3 + 27*27*i4 + 27*i5 + i6
     return c28, p1
 
 def pack_ft8_g15(txt):
@@ -168,12 +164,12 @@ def append_crc(bits77_int):
 #==================== TESTS ================================================================
 
 def loopback_test():
-    msgs = [("G1OJS/P", "G1OJS/P", "IO90"),("WM3PEN","EA6VQ","-08"),("E67A/P","EA6VQ","-08"),("CQ","CT7ARQ/P","IN51")]
+    msgs = [("G1OJS/P", "G1OJS/P", "IO90"),("WM3PEN","EA6VQ","-08"),("E67A/P","EA6VQ","-08"),("CQ","CT7ARQ/P","IN51"), ("EC5A","9A5E","IN51"), ]
     for msg in msgs:
         symbols, bits77 = _pack_message(*msg)
         from PyFT8.receiver import unpack
         print(msg, unpack(bits77))
         print(''.join([str(s) for s in symbols]))
 
-#loopback_test()
+loopback_test()
 
