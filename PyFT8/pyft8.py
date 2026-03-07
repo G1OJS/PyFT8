@@ -88,8 +88,7 @@ def on_msg_click(clicked_msg, msg_origin, msg_params):
     if call_a == my_station['c']:
         if qso.times['time_on'] is None:
             qso.times['time_on'] = time.gmtime()
-        if qso.oStation['c'] is None:
-            qso.oStation['c'] = call_b
+        qso.oStation['c'] = call_b
         if isGrid(grid_rpt):
             qso.oStation = {'c': call_b, 'g': grid_rpt}
             qso.rpts['sent'] = f"{their_snr:+03d}"

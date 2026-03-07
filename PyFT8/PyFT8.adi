@@ -2,3 +2,5 @@ header <eoh>
 <call:5>N8HRZ <gridsquare:4>EN91 <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:4>None <rst_rcvd:3>+03 <qso_date:8>20260305 <qso_date_off:8>20260305 <time_on:6>132600 <time_off:6>132600 <band:3>20m <freq:6>14.074 <eor>
 <call:5>SQ9SQ <gridsquare:4>KN09 <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:4>None <rst_rcvd:3>+02 <qso_date:8>20260305 <qso_date_off:8>20260305 <time_on:6>131344 <time_off:6>131344 <band:3>20m <freq:6>14.074 <eor>
 <call:5>OZ7DR <gridsquare:4>JO55 <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:4>None <rst_rcvd:3>+05 <qso_date:8>20260306 <qso_date_off:8>20260306 <time_on:6>172544 <time_off:6>172544 <band:3>20m <freq:6>14.074 <eor>
+
+<call:5>EA2DR <gridsquare:4>IN83 <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:4>None <rst_rcvd:3>-05 <qso_date:8>20260307 <qso_date_off:8>20260307 <time_on:6>001159 <time_off:6>001159 <band:3>20m <freq:6>14.074 <eor>
