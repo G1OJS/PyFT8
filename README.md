@@ -53,6 +53,8 @@ Also thanks to [Robert Morris](https://github.com/rtmrtmrtmrtm) for [basicft8(*1
 ## Useful resources:
 **The QEX paper**
  - [The FT4 and FT8 Communication Protocols](https://wsjt.sourceforge.io/FT4_FT8_QEX.pdf)
+ - [Ref 14 from the above paper](http://www.arrl.org/qexfiles)
+Note - section 9 of the paper states that the above 2 resources are in the public domain, with some restrictions. All other resources including the source code are protected by copyright.
 
 **WSJTx - focussed:**
  - [WSJT-X on Sourceforge](https://sourceforge.net/p/wsjt)
