@@ -66,7 +66,7 @@ def isRR73(grid_rpt):       return 'RR73' in grid_rpt
 def is73(grid_rpt):         return '73' in grid_rpt and not isRR73(grid_rpt)
 def isGrid(grid_rpt):       return not isReport(grid_rpt) and not is73(grid_rpt) and not isRR73(grid_rpt) and not isRRR(grid_rpt) 
 
-def on_msg_click(clicked_msg, msg_origin, msg_params):
+def progress_qso(clicked_msg, msg_params):
     global qso
     their_snr, their_cycle_start_time = msg_params
     if time.time() - their_cycle_start_time > (15 + MAX_TX_START_SECONDS):
@@ -148,7 +148,8 @@ def on_decode(c):
         gui.post_decode((c.h0_idx, c.f0_idx, txt, (c.snr, message_cycle_started)))
     print(f"{c.cyclestart_str} {c.snr} {c.dt:4.1f} {c.fHz} ~ {c.msg}")
 
-def on_control_click(btn_text, btn_origin, btn_params):
+def on_control_click(btn_widg):
+    btn_text, btn_data = btn_widg.label.get_text(), btn_widg.data
     if btn_text == "CQ":
         mc, mg = config['mStation']['c'], config['mStation']['g']
         transmit_threaded(f"CQ {mc} {mg}")
@@ -156,8 +157,11 @@ def on_control_click(btn_text, btn_origin, btn_params):
         rig.ptt_off()
       #      gui.post_decode((10, 50, "G1OJS G1OJY +05", (10, global_time_utils.cyclestart_time(time.time())))) # generate test message to reply to
     if('m' in btn_text):
-        qso.band_info = {'b':btn_text, 'f':btn_params}
-        rig.set_freq_Hz(int(1000000*btn_params))
+        qso.band_info = {'b':btn_text, 'f':btn_data}
+        rig.set_freq_Hz(int(1000000*qso.band_info['f']))
+
+def on_msg_click(clicked_msg, msg_params):
+    progress_qso(clicked_msg, msg_params)
 
 #=============== CLI ========================================================================        
 def cli():

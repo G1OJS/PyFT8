@@ -2,11 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time, queue
 from matplotlib.animation import FuncAnimation
+from matplotlib.widgets import Slider, Button
 
 # ================== WATERFALL ======================================================
 
-
-class Button:
+class Msg_box:
     def __init__(self, fig, ax, tbin, fbin, w, h, text, colors, attached_params, onclick, expire = 0):
         from matplotlib.patches import Rectangle
         self.onclick = onclick
@@ -36,7 +36,7 @@ class Button:
     def _onclick(self, event):
         b, _ = self.patch.contains(event)
         if(b):
-            self.onclick(self.text_inst.get_text(), self.origin, self.attached_params)
+            self.onclick(self.text_inst.get_text(), self.attached_params)
 
 class Gui:
     def __init__(self, dBgrid, hps, bpt, mStation, on_msg_click, on_control_click):
@@ -45,7 +45,7 @@ class Gui:
         self.on_control_click = on_control_click
         self.dBgrid = dBgrid
         self.hps, self.bpt = hps, bpt
-        self.decode_buttons = {}
+        self.msg_boxes = {}
         self.decode_queue = queue.Queue()
         self.make_layout()
 
@@ -60,17 +60,23 @@ class Gui:
         self.ax_controls.set_ylim(wf_ylim)
         self.ax_controls.set_axis_off()
         self.ax_wf.set_axis_off()
+        
         self.buttons = []
-        control_buttons = [('CQ','green','white'), ('Tx off','grey','white')]
+        styles = {'ctrl':{'fc':'grey','c':'black'}, 'band':{'fc':'green','c':'white'}}
+        control_buttons = [{'label':'CQ','style':'ctrl','data':None},{'label':'Tx off','style':'ctrl','data':None},
+                           {'label':'160m','style':'band','data':1.840}, {'label':'80m','style':'band','data':3.573},
+                           {'label':'60m','style':'band','data':5.357}, {'label':'40m','style':'band','data':7.074},
+                           {'label':'20m','style':'band','data':14.074}, {'label':'15m','style':'band','data':21.074},
+                           {'label':'10m','style':'band','data':28.074}, {'label':'6m','style':'band','data':50.313},
+                           {'label':'2m','style':'band','data':144.174}]
+        btn_axs = []
         for i, btn in enumerate(control_buttons):
-            btn = Button(self.fig, self.ax_controls, 0, wf_ylim[1] - (i+1)*16, 1, 16, btn[0], [btn[1], btn[2]], None, self.on_control_click)
-            self.buttons.append(btn)
-        band_buttons = [('160m','green','white', 1.840),('80m','green','white', 3.573),('60m','green','white', 5.357), ('40m','green','white', 7.074),
-                        ('20m','green','white', 14.074),('15m','green','white', 21.074),('10m','green','white', 28.074), ('6m','green','white', 50.313),
-                        ('2m','green','white', 144.174)]
-        for i, btn in enumerate(band_buttons):
-            btn = Button(self.fig, self.ax_controls, 0, wf_ylim[1] - (i+3)*16, 1, 16, btn[0], [btn[1], btn[2]], btn[3], self.on_control_click)
-            self.buttons.append(btn)
+            btn_axs.append(plt.axes([0.1, 0.9 - 0.022 * i, 0.1, 0.02]))
+            style = styles[btn['style']]
+            btn_widg = Button(btn_axs[-1], btn['label'], color=style['fc'], hovercolor='skyblue')
+            btn_widg.data = btn['data']
+            btn_widg.on_clicked(lambda event, btn_widg=btn_widg: self.on_control_click(btn_widg))
+            self.buttons.append(btn_widg)
         self.ani = FuncAnimation(self.fig, self._animate, interval = 40, frames=(100000), blit=True)
 
     def post_decode(self, decode):
@@ -82,21 +88,21 @@ class Gui:
         if msg.startswith("CQ"): colors = ['green', 'white']
         if self.mStation['c'] in msg: colors = ['yellow', 'black']
         if msg.startswith(self.mStation['c']): colors = ['red', 'white']
-        if not f0_idx in self.decode_buttons:
-            btn = Button(self.fig, self.ax_wf, h0_idx, f0_idx, 79*self.hps, 8*self.bpt, msg, colors, attached_params, onclick = self.on_msg_click)
-            self.decode_buttons[f0_idx] = btn
-        self.decode_buttons[f0_idx].set_properties(h0_idx, msg, colors, attached_params, expire = time.time() + 28)
+        if not f0_idx in self.msg_boxes:
+            btn = Msg_box(self.fig, self.ax_wf, h0_idx, f0_idx, 79*self.hps, 8*self.bpt, msg, colors, attached_params, onclick = self.on_msg_click)
+            self.msg_boxes[f0_idx] = btn
+        self.msg_boxes[f0_idx].set_properties(h0_idx, msg, colors, attached_params, expire = time.time() + 28)
         
-    def _tidy_decode_buttons(self):
-        for fb in self.decode_buttons:
-            self.decode_buttons[fb].hide_if_expired()
+    def _tidy_msg_boxes(self):
+        for fb in self.msg_boxes:
+            self.msg_boxes[fb].hide_if_expired()
 
     def _animate(self, frame):
         self.image.set_data(self.dBgrid.T)
         while not self.decode_queue.empty():
             self._show_decode(self.decode_queue.get())
         if (frame % 10 == 0):
-            self._tidy_decode_buttons()
+            self._tidy_msg_boxes()
         return [self.image, *self.ax_wf.patches, *self.ax_wf.texts]
 
                                     
