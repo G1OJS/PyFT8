@@ -5,6 +5,7 @@ import time
 from PyFT8.time_utils import global_time_utils, Ticker
 import os
 import pyaudio
+import pickle
 
 T_CYC = 15
 HPS = 4
@@ -17,7 +18,7 @@ LLR_SD_MIN = 0.5
 LDPC_CONTROL = (45, 12) 
 H0_RANGE = [int(0 *t2h), int(4 *t2h)]
 H_SEARCH_0 = H0_RANGE[1] + 7 * HPS
-H_SEARCH_1 = H0_RANGE[1] + 43 * HPS 
+H_SEARCH_1 = H0_RANGE[1] + 43 * HPS
 
 BASE_FREQ_IDXS = np.array([BPT // 2 + BPT * t for t in range(8)])
 symbol_idxs = list(range(7, 36)) + list(range(43, 72))
@@ -159,7 +160,7 @@ class AudioIn:
         threading.Thread(target = self.load_wavs, args =(self.wav_files,)).start()
         self.dBgrid_main_ptr = 0
 
-    def load_wavs(self, wav_paths, hop_dt = 1 / (SYM_RATE * HPS) - 0.0017):
+    def load_wavs(self, wav_paths, hop_dt = 1 / (SYM_RATE * HPS) - 0.0014):
         samples_perhop = int(SAMP_RATE / (SYM_RATE * HPS))
         for wav_path in wav_paths:
             wf = wave.open(wav_path, "rb")
@@ -293,29 +294,41 @@ class Receiver():
         threading.Thread(target=self.manage_cycle, daemon=True).start()
 
     def make_csync(self):
-        csync = np.full((len(COSTAS), 8), -1/6, np.float32)
+        csync = np.full((len(COSTAS), 7), -1/6, np.float32)
         for sym_idx, tone in enumerate(COSTAS):
             csync[sym_idx, tone] = 1.0
-            csync[sym_idx, len(COSTAS)] = 0
         return csync.ravel()
 
-    def search(self, f0_idxs, cyclestart_str):
+    def search(self, f0_idxs, cyclestart_str, sync_idx = 1):
         cands = []
         cycle = int(self.audio_in.dBgrid_main_ptr / HOPS_PER_CYCLE)
         cycle_h0 = cycle * HOPS_PER_CYCLE
-        costas_hops = BASE_COSTAS_HOPS  + 36 * HPS 
+        sync_idx_offs = sync_idx*36*HPS
+        costas_nhops = 7*HPS
+        edge_to_cent = BPT//2
+        search_hops = self.audio_in.dBgrid_main[cycle_h0 + H0_RANGE[0]+sync_idx_offs: cycle_h0 + H0_RANGE[1]+sync_idx_offs + costas_nhops , edge_to_cent:] # data needed 'costas hops' greater than max h0
+        nh, nf = search_hops.shape
+        arr = np.zeros((7, nh, nf))     # costas 'row' for a single symbol index, by main nhops, nfreqs
+        for i in range(7):
+            hopshift = i * HPS
+            arr[i, :nh-hopshift, :] = search_hops[hopshift:, :]
+        freq_stack = np.stack([np.roll(arr, -j * BPT, axis=2) for j in range(7)], axis=1) # 7x7 costas points by main nhops, nfreqs
+        rows = np.arange(7)
+        costas_vals = freq_stack[rows, COSTAS]  # 'wanted' costas points by main nhops, nfreqs
+        masked = freq_stack.copy()              # copy for punching out wanted points
+        masked[rows, COSTAS] = 0                # leave only 'unwanted' costas points by main nhops, nfreqs
+        row_sum = (1/6)*masked.sum(axis=1)      # sum of 'unwanted' by main nhops, nfreqs
+        row_scores = costas_vals - row_sum      # dB at costas index less sum(others) for each symbol in costas grid, by main nhops, nfreqs
+        scores = row_scores.sum(axis=0)         # search scores by main nhops, nfreqs
+        with open('vector_scores.pkl','wb') as f:
+            pickle.dump(scores,f)
         for f0_idx in f0_idxs:
-            freq_idxs = f0_idx + BASE_FREQ_IDXS
             c = Candidate(cyclestart_str = cyclestart_str, f0_idx = f0_idx)
-            dB = self.audio_in.dBgrid_main[:, freq_idxs]
-            for h0_idx in range(H0_RANGE[0] + cycle_h0, H0_RANGE[1] + cycle_h0):
-                sync_score = float(np.dot(dB[h0_idx + costas_hops,  :].ravel(), self.csync_flat))
-                if(sync_score < 40):
-                    continue
-                if sync_score > c.sync_score:
-                    c.h0_idx, c.sync_score = h0_idx, sync_score
-            c.dt = c.h0_idx * self.dt - 0.7
-            c.fHz = int((f0_idx + BPT // 2) * self.df)
+            h0_idx = int(np.argmax(scores[:nh-costas_nhops, f0_idx]))
+            sync_score = float(scores[h0_idx, f0_idx])
+            c.h0_idx, c.sync_score = h0_idx + cycle_h0 , sync_score
+            c.dt = (c.h0_idx - cycle_h0) * self.dt - 0.7
+            c.fHz = int(f0_idx * self.df)
             cands.append(c)
         return cands
         
