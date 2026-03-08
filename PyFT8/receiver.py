@@ -17,7 +17,7 @@ LLR_SD_MIN = 0.5
 LDPC_CONTROL = (45, 12) 
 H0_RANGE = [int(0 *t2h), int(4 *t2h)]
 H_SEARCH_0 = H0_RANGE[1] + 7 * HPS
-H_SEARCH_1 = H0_RANGE[1] + 43 * HPS 
+H_SEARCH_1 = H0_RANGE[1] + 43 * HPS
 
 BASE_FREQ_IDXS = np.array([BPT // 2 + BPT * t for t in range(8)])
 symbol_idxs = list(range(7, 36)) + list(range(43, 72))
@@ -159,7 +159,7 @@ class AudioIn:
         threading.Thread(target = self.load_wavs, args =(self.wav_files,)).start()
         self.dBgrid_main_ptr = 0
 
-    def load_wavs(self, wav_paths, hop_dt = 1 / (SYM_RATE * HPS) - 0.001):
+    def load_wavs(self, wav_paths, hop_dt = 1 / (SYM_RATE * HPS) - 0.0014):
         samples_perhop = int(SAMP_RATE / (SYM_RATE * HPS))
         for wav_path in wav_paths:
             wf = wave.open(wav_path, "rb")
@@ -293,19 +293,18 @@ class Receiver():
         threading.Thread(target=self.manage_cycle, daemon=True).start()
 
     def make_csync(self):
-        csync = np.full((len(COSTAS), 8), -1/6, np.float32)
+        csync = np.full((len(COSTAS), 7), -1/6, np.float32)
         for sym_idx, tone in enumerate(COSTAS):
             csync[sym_idx, tone] = 1.0
-            csync[sym_idx, len(COSTAS)] = 0
         return csync.ravel()
 
     def search_(self, f0_idxs, cyclestart_str):
         cands = []
         cycle = int(self.audio_in.dBgrid_main_ptr / HOPS_PER_CYCLE)
         cycle_h0 = cycle * HOPS_PER_CYCLE
-        costas_hops = BASE_COSTAS_HOPS  + 36 * HPS 
+        costas_hops = BASE_COSTAS_HOPS  + 36 * HPS
         for f0_idx in f0_idxs:
-            freq_idxs = f0_idx + BASE_FREQ_IDXS
+            freq_idxs = f0_idx + BASE_FREQ_IDXS[:-1]
             c = Candidate(cyclestart_str = cyclestart_str, f0_idx = f0_idx)
             dB = self.audio_in.dBgrid_main[:, freq_idxs]
             for h0_idx in range(H0_RANGE[0] + cycle_h0, H0_RANGE[1] + cycle_h0):
@@ -321,12 +320,13 @@ class Receiver():
         cands = []
         cycle = int(self.audio_in.dBgrid_main_ptr / HOPS_PER_CYCLE)
         cycle_h0 = cycle * HOPS_PER_CYCLE
-        search_hops = self.audio_in.dBgrid_main[cycle_h0 + H0_RANGE[0]+36*HPS: cycle_h0 + H0_RANGE[1]+36*HPS, 1:]
+        search_hops = self.audio_in.dBgrid_main[cycle_h0 + H0_RANGE[0]+36*HPS: cycle_h0 + H0_RANGE[1]+36*HPS , 1:]
         nh, nf = search_hops.shape
-        arr = np.empty((7, nh, nf))     # costas 'row' (symbol index) by main nhops, nfreqs
+        arr = np.zeros((7, nh, nf))     # costas 'row' (symbol index) by main nhops, nfreqs
         for i in range(7):
-            arr[i] = np.roll(search_hops, -i * HPS, axis=0)
-        freq_stack = np.stack([np.roll(arr, -j * BPT, axis=2) for j in range(7)], axis=1) # 7x7 costas points by main nhops, nfreqs   
+            hopshift = i * HPS
+            arr[i, :nh-hopshift, :] = search_hops[hopshift:, :]
+        freq_stack = np.stack([np.roll(arr, -j * BPT, axis=2) for j in range(7)], axis=1) # 7x7 costas points by main nhops, nfreqs
         rows = np.arange(7)
         costas_vals = freq_stack[rows, COSTAS]  # 'wanted' costas points by main nhops, nfreqs
         masked = freq_stack.copy()              # copy for punching out wanted points
@@ -336,8 +336,8 @@ class Receiver():
         scores = row_scores.sum(axis=0)         # search scores by main nhops, nfreqs
         for f0_idx in f0_idxs:
             c = Candidate(cyclestart_str = cyclestart_str, f0_idx = f0_idx)
-            h0_idx = np.argmax(scores[:, f0_idx])
-            sync_score = scores[h0_idx, f0_idx]
+            h0_idx = int(np.argmax(scores[:, f0_idx]))
+            sync_score = float(scores[h0_idx, f0_idx])
             c.h0_idx, c.sync_score = h0_idx + cycle_h0 , sync_score
             c.dt = (c.h0_idx - cycle_h0) * self.dt - 0.7
             c.fHz = int((f0_idx + BPT // 2) * self.df)
@@ -380,11 +380,13 @@ class Receiver():
             if ticker_search_for_syncs.ticked():
                 global_time_utils.tlog(f"[Cycle manager] start search at hop { self.audio_in.dBgrid_main_ptr}", verbose = self.verbose)
                 cyclestart_str = global_time_utils.cyclestart_str(time.time())
-              #  candidates = self.search(self.f0_idxs, cyclestart_str)
-              #  for c in candidates[:50]:
-              #      print(c.f0_idx, c.h0_idx)
                 candidates = self.search_(self.f0_idxs, cyclestart_str)
-               # for c in candidates[:50]:
-               #     print(c.f0_idx, c.h0_idx)
+               # origins_old = [(c.f0_idx, c.h0_idx, f"{c.sync_score:5.1f}") for c in candidates]
+               # candidates = self.search(self.f0_idxs, cyclestart_str)
+               # origins_new = [(c.f0_idx, c.h0_idx, f"{c.sync_score:5.1f}") for c in candidates]
+               # with open("origins.txt","a") as f:
+               #     for i, o in enumerate(origins_old):
+               #         if(o[1] != origins_new[i][1]):
+               #             f.write(f"{o}, {origins_new[i]}\n")
                 global_time_utils.tlog(f"[Cycle manager] New spectrum searched -> {len(candidates)} candidates", verbose = self.verbose) 
 

@@ -53,9 +53,10 @@ def get_cumulative_from_text_files(i0, i1, postfix):
 
 def on_decode(c):
     global decodes, py_times
-    gui.post_decode((c.h0_idx, c.f0_idx, c.msg, int(c.snr)))
+    decode_pack = (c.h0_idx, c.f0_idx, c.msg, int(c.snr))
+    gui.post_decode(decode_pack)
     print(f"{c.cyclestart_str} {c.snr} {c.dt:4.1f} {c.fHz} ~ {c.msg}")
-    decodes.append(c.msg)
+    decodes.append(decode_pack)
     py_times.append(time.time() - t_start)
 
 def batch_test(i0, i1):
