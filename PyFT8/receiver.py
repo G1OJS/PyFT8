@@ -159,7 +159,7 @@ class AudioIn:
         threading.Thread(target = self.load_wavs, args =(self.wav_files,)).start()
         self.dBgrid_main_ptr = 0
 
-    def load_wavs(self, wav_paths, hop_dt = 1 / (SYM_RATE * HPS) - 0.0017):
+    def load_wavs(self, wav_paths, hop_dt = 1 / (SYM_RATE * HPS) - 0.001):
         samples_perhop = int(SAMP_RATE / (SYM_RATE * HPS))
         for wav_path in wav_paths:
             wf = wave.open(wav_path, "rb")
@@ -310,11 +310,9 @@ class Receiver():
             dB = self.audio_in.dBgrid_main[:, freq_idxs]
             for h0_idx in range(H0_RANGE[0] + cycle_h0, H0_RANGE[1] + cycle_h0):
                 sync_score = float(np.dot(dB[h0_idx + costas_hops,  :].ravel(), self.csync_flat))
-               # if(sync_score < 40):
-               #     continue
                 if sync_score > c.sync_score:
                     c.h0_idx, c.sync_score = h0_idx, sync_score
-            c.dt = c.h0_idx * self.dt - 0.7
+            c.dt = (c.h0_idx - cycle_h0) * self.dt - 0.7
             c.fHz = int((f0_idx + BPT // 2) * self.df)
             cands.append(c)
         return cands
