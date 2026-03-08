@@ -299,36 +299,14 @@ class Receiver():
             csync[sym_idx, tone] = 1.0
         return csync.ravel()
 
-    def search_(self, f0_idxs, cyclestart_str, grid):
-        cands = []
-        cycle = int(self.audio_in.dBgrid_main_ptr / HOPS_PER_CYCLE)
-        cycle_h0 = cycle * HOPS_PER_CYCLE
-        costas_hops = BASE_COSTAS_HOPS  + 36 * HPS
-        scores = np.zeros((H0_RANGE[1] - H0_RANGE[0], f0_idxs[-1]+10))
-        for f0_idx in f0_idxs:
-            freq_idxs = f0_idx + BASE_FREQ_IDXS[:-1]
-            c = Candidate(cyclestart_str = cyclestart_str, f0_idx = f0_idx)
-            dB = grid[:, freq_idxs]
-            for h0_idx in range(H0_RANGE[0] + cycle_h0, H0_RANGE[1] + cycle_h0):
-                sync_score = float(np.dot(dB[h0_idx + costas_hops,  :].ravel(), self.csync_flat))
-                scores[h0_idx - (H0_RANGE[0] + cycle_h0), f0_idx] = sync_score
-                if sync_score > c.sync_score:
-                    c.h0_idx, c.sync_score = h0_idx, sync_score
-            c.dt = (c.h0_idx - cycle_h0) * self.dt - 0.7
-            c.fHz = int((f0_idx + BPT // 2) * self.df)
-            cands.append(c)
-        with open('loop_scores.pkl','wb') as f:
-            pickle.dump(scores,f)
-        return cands
-
-    def search(self, f0_idxs, cyclestart_str, grid, sync_idx = 1):
+    def search(self, f0_idxs, cyclestart_str, sync_idx = 1):
         cands = []
         cycle = int(self.audio_in.dBgrid_main_ptr / HOPS_PER_CYCLE)
         cycle_h0 = cycle * HOPS_PER_CYCLE
         sync_idx_offs = sync_idx*36*HPS
         costas_nhops = 7*HPS
         edge_to_cent = BPT//2
-        search_hops = grid[cycle_h0 + H0_RANGE[0]+sync_idx_offs: cycle_h0 + H0_RANGE[1]+sync_idx_offs + costas_nhops , edge_to_cent:] # data needed 'costas hops' greater than max h0
+        search_hops = self.audio_in.dBgrid_main[cycle_h0 + H0_RANGE[0]+sync_idx_offs: cycle_h0 + H0_RANGE[1]+sync_idx_offs + costas_nhops , edge_to_cent:] # data needed 'costas hops' greater than max h0
         nh, nf = search_hops.shape
         arr = np.zeros((7, nh, nf))     # costas 'row' for a single symbol index, by main nhops, nfreqs
         for i in range(7):
@@ -390,13 +368,6 @@ class Receiver():
             if ticker_search_for_syncs.ticked():
                 global_time_utils.tlog(f"[Cycle manager] start search at hop { self.audio_in.dBgrid_main_ptr}", verbose = self.verbose)
                 cyclestart_str = global_time_utils.cyclestart_str(time.time())
-                grid = self.audio_in.dBgrid_main.copy()
-                candidates = self.search_(self.f0_idxs, cyclestart_str, grid)
-                origins_old = [(c.f0_idx, c.h0_idx, f"{c.sync_score:5.1f}") for c in candidates]
-                candidates = self.search(self.f0_idxs, cyclestart_str, grid)
-                origins_new = [(c.f0_idx, c.h0_idx, f"{c.sync_score:5.1f}") for c in candidates]
-                with open("origins.txt","a") as f:
-                    for i, o in enumerate(origins_old):
-                        f.write(f"{o}, {origins_new[i]}\n")
+                candidates = self.search(self.f0_idxs, cyclestart_str)
                 global_time_utils.tlog(f"[Cycle manager] New spectrum searched -> {len(candidates)} candidates", verbose = self.verbose) 
 
