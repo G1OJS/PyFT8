@@ -321,11 +321,13 @@ class Receiver():
             pickle.dump(scores,f)
         return cands
 
-    def search(self, f0_idxs, cyclestart_str, grid):
+    def search(self, f0_idxs, cyclestart_str, grid, sync_idx = 1):
         cands = []
         cycle = int(self.audio_in.dBgrid_main_ptr / HOPS_PER_CYCLE)
         cycle_h0 = cycle * HOPS_PER_CYCLE
-        search_hops = grid[cycle_h0 + H0_RANGE[0]+36*HPS: cycle_h0 + H0_RANGE[1]+36*HPS + 7*HPS , 1:] # data needed 'costas hops' greater than max h0
+        sync_idx_offs = sync_idx*36*HPS
+        costas_nhops = 7*HPS
+        search_hops = grid[cycle_h0 + H0_RANGE[0]+sync_idx_offs: cycle_h0 + H0_RANGE[1]+sync_idx_offs + costas_nhops , 1:] # data needed 'costas hops' greater than max h0
         nh, nf = search_hops.shape
         arr = np.zeros((7, nh, nf))     # costas 'row' for a single symbol index, by main nhops, nfreqs
         for i in range(7):
@@ -343,7 +345,7 @@ class Receiver():
             pickle.dump(scores,f)
         for f0_idx in f0_idxs:
             c = Candidate(cyclestart_str = cyclestart_str, f0_idx = f0_idx)
-            h0_idx = int(np.argmax(scores[:nh-7*HPS, f0_idx + BPT//2]))
+            h0_idx = int(np.argmax(scores[:nh-costas_nhops, f0_idx + BPT//2]))
             sync_score = float(scores[h0_idx, f0_idx + BPT//2])
             c.h0_idx, c.sync_score = h0_idx + cycle_h0 , sync_score
             c.dt = (c.h0_idx - cycle_h0) * self.dt - 0.7
