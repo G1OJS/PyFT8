@@ -299,7 +299,7 @@ class Receiver():
             csync[sym_idx, len(COSTAS)] = 0
         return csync.ravel()
 
-    def search(self, f0_idxs, cyclestart_str):
+    def search_(self, f0_idxs, cyclestart_str):
         cands = []
         cycle = int(self.audio_in.dBgrid_main_ptr / HOPS_PER_CYCLE)
         cycle_h0 = cycle * HOPS_PER_CYCLE
@@ -310,11 +310,38 @@ class Receiver():
             dB = self.audio_in.dBgrid_main[:, freq_idxs]
             for h0_idx in range(H0_RANGE[0] + cycle_h0, H0_RANGE[1] + cycle_h0):
                 sync_score = float(np.dot(dB[h0_idx + costas_hops,  :].ravel(), self.csync_flat))
-                if(sync_score < 40):
-                    continue
+               # if(sync_score < 40):
+               #     continue
                 if sync_score > c.sync_score:
                     c.h0_idx, c.sync_score = h0_idx, sync_score
             c.dt = c.h0_idx * self.dt - 0.7
+            c.fHz = int((f0_idx + BPT // 2) * self.df)
+            cands.append(c)
+        return cands
+
+    def search(self, f0_idxs, cyclestart_str):
+        cands = []
+        cycle = int(self.audio_in.dBgrid_main_ptr / HOPS_PER_CYCLE)
+        cycle_h0 = cycle * HOPS_PER_CYCLE
+        search_hops = self.audio_in.dBgrid_main[cycle_h0 + H0_RANGE[0]+36*HPS: cycle_h0 + H0_RANGE[1]+36*HPS, 1:]
+        nh, nf = search_hops.shape
+        arr = np.empty((7, nh, nf))     # costas 'row' (symbol index) by main nhops, nfreqs
+        for i in range(7):
+            arr[i] = np.roll(search_hops, -i * HPS, axis=0)
+        freq_stack = np.stack([np.roll(arr, -j * BPT, axis=2) for j in range(7)], axis=1) # 7x7 costas points by main nhops, nfreqs   
+        rows = np.arange(7)
+        costas_vals = freq_stack[rows, COSTAS]  # 'wanted' costas points by main nhops, nfreqs
+        masked = freq_stack.copy()              # copy for punching out wanted points
+        masked[rows, COSTAS] = 0                # leave only 'unwanted' costas points by main nhops, nfreqs
+        row_sum = (1/6)*masked.sum(axis=1)      # sum of 'unwanted' by main nhops, nfreqs
+        row_scores = costas_vals - row_sum      # dB at costas index less sum(others) for each symbol in costas grid, by main nhops, nfreqs
+        scores = row_scores.sum(axis=0)         # search scores by main nhops, nfreqs
+        for f0_idx in f0_idxs:
+            c = Candidate(cyclestart_str = cyclestart_str, f0_idx = f0_idx)
+            h0_idx = np.argmax(scores[:, f0_idx])
+            sync_score = scores[h0_idx, f0_idx]
+            c.h0_idx, c.sync_score = h0_idx + cycle_h0 , sync_score
+            c.dt = (c.h0_idx - cycle_h0) * self.dt - 0.7
             c.fHz = int((f0_idx + BPT // 2) * self.df)
             cands.append(c)
         return cands
@@ -355,6 +382,11 @@ class Receiver():
             if ticker_search_for_syncs.ticked():
                 global_time_utils.tlog(f"[Cycle manager] start search at hop { self.audio_in.dBgrid_main_ptr}", verbose = self.verbose)
                 cyclestart_str = global_time_utils.cyclestart_str(time.time())
-                candidates = self.search(self.f0_idxs, cyclestart_str)
+              #  candidates = self.search(self.f0_idxs, cyclestart_str)
+              #  for c in candidates[:50]:
+              #      print(c.f0_idx, c.h0_idx)
+                candidates = self.search_(self.f0_idxs, cyclestart_str)
+               # for c in candidates[:50]:
+               #     print(c.f0_idx, c.h0_idx)
                 global_time_utils.tlog(f"[Cycle manager] New spectrum searched -> {len(candidates)} candidates", verbose = self.verbose) 
 
