@@ -33,12 +33,12 @@ def get_config(configfile = 'PyFT8.pkl'):
 
 class FT8_QSO:
     def __init__(self):
-        self.start()
+        self.mStation = config['mStation']
+        self.band_info = {'b':'20m', 'f':14.074}
+       # self.start()
 
     def start(self):
         self.oStation = {'c':None, 'g':None}
-        self.mStation = config['mStation']
-        self.band_info = {'b':'20m', 'f':14.074}
         self.times = {'time_on':None, 'time_off':None}
         self.rpts = {'sent': None, 'rcvd': None}
         
