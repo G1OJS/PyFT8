@@ -346,11 +346,11 @@ class Receiver():
             pickle.dump(scores,f)
         for f0_idx in f0_idxs:
             c = Candidate(cyclestart_str = cyclestart_str, f0_idx = f0_idx)
-            h0_idx = int(np.argmax(scores[:nh-costas_nhops, f0_idx + edge_to_cent]))
-            sync_score = float(scores[h0_idx, f0_idx + edge_to_cent])
+            h0_idx = int(np.argmax(scores[:nh-costas_nhops, f0_idx]))
+            sync_score = float(scores[h0_idx, f0_idx])
             c.h0_idx, c.sync_score = h0_idx + cycle_h0 , sync_score
             c.dt = (c.h0_idx - cycle_h0) * self.dt - 0.7
-            c.fHz = int((f0_idx + edge_to_cent) * self.df)
+            c.fHz = int(f0_idx * self.df)
             cands.append(c)
         return cands
         
@@ -397,7 +397,6 @@ class Receiver():
                 origins_new = [(c.f0_idx, c.h0_idx, f"{c.sync_score:5.1f}") for c in candidates]
                 with open("origins.txt","a") as f:
                     for i, o in enumerate(origins_old):
-                        if(o[1] != origins_new[i][1]):
-                            f.write(f"{o}, {origins_new[i]}\n")
+                        f.write(f"{o}, {origins_new[i]}\n")
                 global_time_utils.tlog(f"[Cycle manager] New spectrum searched -> {len(candidates)} candidates", verbose = self.verbose) 
 
