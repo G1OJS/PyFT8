@@ -23,6 +23,13 @@ def get_config():
     import configparser
     global config
     config = configparser.ConfigParser()
+    if not os.path.exists(ini_file):
+        config['station'] = {'call':'', 'grid':''}
+        config['bands'] = {'20m':14.074}
+        with open(ini_file, 'w') as f:
+            config.write(f)
+        print(f"Wrote default config to {ini_file}")
+    print(f"Reading config from {ini_file}")
     config.read(ini_file)
 
 class FT8_QSO:
