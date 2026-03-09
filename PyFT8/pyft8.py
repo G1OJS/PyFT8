@@ -8,6 +8,7 @@ from PyFT8.transmitter import AudioOut
 from PyFT8.time_utils import global_time_utils
 
 MAX_TX_START_SECONDS = 2.5
+T_CYC = 15
 
 def load_rigctrl():
     try:
@@ -18,26 +19,20 @@ def load_rigctrl():
         print("No Rig control found")
         return None
         
-def get_config(configfile = 'PyFT8.pkl'):
-    import pickle
+def get_config(configfile = 'PyFT8.ini'):
+    import configparser
     global config
-    if os.path.exists(configfile):
-        with open(configfile, 'rb') as f:
-            config = pickle.load(f)
-    else:
-        c = input("Please enter your callsign ")
-        g = input("Please enter your level 4 grid square ")
-        config = {'mStation': {'c':c, 'g':g}}
-        with open(configfile, 'wb') as f:
-            pickle.dump(config, f)
+    config = configparser.ConfigParser()
+    config.read('PyFT8.ini')
 
 class FT8_QSO:
     def __init__(self):
-        self.mStation = config['mStation']
+        self.mStation = {'c':config['station']['call'], 'g':config['station']['grid']}
         self.band_info = {'b':'20m', 'f':14.074}
-       # self.start()
+        self.last_tx = {'msg':None,'cycle':None}
 
     def start(self):
+        self.last_tx = {'msg':None,'cycle':None}
         self.oStation = {'c':None, 'g':None}
         self.times = {'time_on':None, 'time_off':None}
         self.rpts = {'sent': None, 'rcvd': None}
@@ -74,7 +69,7 @@ def progress_qso(clicked_msg, msg_params):
         return
     
     call_a, call_b, grid_rpt, _ = clicked_msg.split()
-    my_station = config['mStation']
+    my_station = sqo.mStation
     reply = ""
 
     if call_a == "CQ":
@@ -112,21 +107,30 @@ def make_wav(msg, wave_output_file): # move to transmitter.py?
     audio_out.write_to_wave_file(audio_data, wave_output_file)
     print(f"Created wave file {args.wave_output_file}")    
 
-def transmit_threaded(msg): # move to transmitter.py?
-    threading.Thread(target = transmit, args = (msg,), daemon = True).start()
+def transmit_threaded(msg, cycle = None): # move to transmitter.py?
+    threading.Thread(target = transmit, args = (msg, cycle,), daemon = True).start()
 
-def transmit(msg): # move to transmitter.py?
+def curr_cycle():
+    return int((time.time() % 2*T_CYC) / T_CYC)
+
+def transmit(msg, cycle = None): # move to transmitter.py?
     if output_device_idx is None:
         print("No output device")
         return
-    print(f"Transmit {msg}")
+    if msg is None:
+        return
+    print(f"Transmit {msg} cycle = {cycle}")
     symbols = audio_out.create_ft8_symbols(msg)
     audio_data = audio_out.create_ft8_wave(symbols)
+    if cycle is not None:
+        if cycle != curr_cycle() :
+            time.sleep(T_CYC)
     ct = global_time_utils.cycle_time()
     if ct > MAX_TX_START_SECONDS:
         delay = 15 - ct
         time.sleep(delay)
-    print("Transmitting")
+    qso.last_tx = {'msg':msg,'cycle':curr_cycle()}
+    print(f"Transmitting {qso.last_tx['msg']} cycle = {qso.last_tx['cycle']}")
     rig.ptt_on()
     audio_out.play_data_to_soundcard(audio_data, output_device_idx)
     rig.ptt_off()
@@ -150,15 +154,17 @@ def on_decode(c):
 
 def on_control_click(btn_widg):
     btn_text, btn_data = btn_widg.label.get_text(), btn_widg.data
+    print(btn_text, btn_data)
     if btn_text == "CQ":
         mc, mg = config['mStation']['c'], config['mStation']['g']
         transmit_threaded(f"CQ {mc} {mg}")
+    if btn_text == "Repeat last":
+        transmit_threaded(qso.last_tx['msg'], cycle =  qso.last_tx['cycle'])
     if btn_text == "Tx off":
         rig.ptt_off()
-      #      gui.post_decode((10, 50, "G1OJS G1OJY +05", (10, global_time_utils.cyclestart_time(time.time())))) # generate test message to reply to
     if('m' in btn_text):
         qso.band_info = {'b':btn_text, 'f':btn_data}
-        rig.set_freq_Hz(int(1000000*qso.band_info['f']))
+        rig.set_freq_Hz(int(1000000*float(qso.band_info['f'])))
 
 def on_msg_click(clicked_msg, msg_params):
     progress_qso(clicked_msg, msg_params)
@@ -194,7 +200,7 @@ def cli():
         if not input_device_idx:
             print("No input device")
         else:
-            gui = None if args.no_gui else Gui(audio_in.dBgrid_main, 4, 2, config['mStation'], on_msg_click, on_control_click)
+            gui = None if args.no_gui else Gui(audio_in.dBgrid_main, 4, 2, config, on_msg_click, on_control_click)
             rx = Receiver(audio_in, [200, 3100], on_decode)
             audio_in.start_streamed_audio(input_device_idx)
             if gui is not None:

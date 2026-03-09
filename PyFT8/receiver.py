@@ -290,14 +290,7 @@ class Receiver():
         self.f0_idxs = range(int(freq_range[0]/self.df),
                         min(self.audio_in.nFreqs - self.fbins_per_signal, int(freq_range[1]/self.df)))
         self.on_decode = on_decode
-        self.csync_flat = self.make_csync()
         threading.Thread(target=self.manage_cycle, daemon=True).start()
-
-    def make_csync(self):
-        csync = np.full((len(COSTAS), 7), -1/6, np.float32)
-        for sym_idx, tone in enumerate(COSTAS):
-            csync[sym_idx, tone] = 1.0
-        return csync.ravel()
 
     def search(self, f0_idxs, cyclestart_str, sync_idx = 1):
         cands = []

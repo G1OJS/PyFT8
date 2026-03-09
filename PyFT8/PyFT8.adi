@@ -6,3 +6,5 @@ header <eoh>
 <call:5>EA2DR <gridsquare:4>IN83 <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:4>None <rst_rcvd:3>-05 <qso_date:8>20260307 <qso_date_off:8>20260307 <time_on:6>001159 <time_off:6>001159 <band:3>20m <freq:6>14.074 <eor>
 
 <call:5>F1PBZ <gridsquare:4>JN26 <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:4>None <rst_rcvd:3>+03 <qso_date:8>20260307 <qso_date_off:8>20260307 <time_on:6>231246 <time_off:6>231246 <band:4>160m <freq:5>1.840 <eor>
+
+<call:6>DL1OBF <gridsquare:4>JO42 <mode:3>FT8 <operator:5>G1OJS <station_callsign:5>G1OJS <my_gridsquare:4>IO90 <rst_sent:4>None <rst_rcvd:3>-12 <qso_date:8>20260308 <qso_date_off:8>20260308 <time_on:6>235658 <time_off:6>235658 <band:3>20m <freq:6>14.074 <eor>

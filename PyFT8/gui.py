@@ -39,17 +39,17 @@ class Msg_box:
             self.onclick(self.text_inst.get_text(), self.attached_params)
 
 class Gui:
-    def __init__(self, dBgrid, hps, bpt, mStation, on_msg_click, on_control_click):
-        self.mStation = mStation
+    def __init__(self, dBgrid, hps, bpt, config, on_msg_click, on_control_click):
+        self.mStation = {'c':config['station']['call'], 'g':config['station']['grid']}
         self.on_msg_click = on_msg_click
         self.on_control_click = on_control_click
         self.dBgrid = dBgrid
         self.hps, self.bpt = hps, bpt
         self.msg_boxes = {}
         self.decode_queue = queue.Queue()
-        self.make_layout()
+        self.make_layout(config)
 
-    def make_layout(self):
+    def make_layout(self, config):
         self.fig, self.ax_wf = plt.subplots(figsize=(10,10))
         self.fig.suptitle("PyFT8 by G1OJS")
         self.plt = plt
@@ -60,12 +60,12 @@ class Gui:
         
         self.buttons = []
         styles = {'ctrl':{'fc':'grey','c':'black'}, 'band':{'fc':'green','c':'white'}}
-        control_buttons = [{'label':'CQ','style':'ctrl','data':None},{'label':'Tx off','style':'ctrl','data':None},
-                           {'label':'160m','style':'band','data':1.840}, {'label':'80m','style':'band','data':3.573},
-                           {'label':'60m','style':'band','data':5.357}, {'label':'40m','style':'band','data':7.074},
-                           {'label':'20m','style':'band','data':14.074}, {'label':'15m','style':'band','data':21.074},
-                           {'label':'10m','style':'band','data':28.074}, {'label':'6m','style':'band','data':50.313},
-                           {'label':'2m','style':'band','data':144.174}]
+        control_buttons = [{'label':'CQ','style':'ctrl','data':None}, {'label':'Repeat last','style':'ctrl','data':None},
+                           {'label':'Tx off','style':'ctrl','data':None}]
+                           #{'label':'Averaging','style':'ctrl','data':None}]
+        for band, freq in config['bands'].items():
+            control_buttons.append({'label':band,'style':'band','data':freq})
+            
         btn_axs = []
         for i, btn in enumerate(control_buttons):
             btn_axs.append(plt.axes([0.05, 0.9 - 0.022 * i, 0.1, 0.02]))
