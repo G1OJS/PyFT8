@@ -27,7 +27,7 @@ If you want to install this software without getting into the code, you can inst
 pip install PyFT8
 ```
 
-Once installed, you can use the following commands to run it. 
+Once installed, you can use the following commands to run it. Otherwise, please download or browse the code, or fork the repo and play with it! If you do fork it, please check back here as I'm constantly (as of Jan 2026) rewriting and improving.
 
 |Usage | Command example| Notes |
 |----------------------|----------------------|----------------------|
@@ -42,8 +42,6 @@ Once installed, you can use the following commands to run it.
 PyFT8 doesn't currently support CAT control for rigs in general. However, I've included the Python code that I use with my Icom IC-7100 in the file 'rigctrl.py'. You can modify this to control your own rig of course if you know Python and want to do that as a project.
 
 Alternatively, you can run PyFT8 without rig control, in which case you need to provide your own PTT method and note that the band buttons will only set the information used for logging QSOs to the PyFT8.adi file. Or you can use PyFT8 as Rx-only.
-
-Otherwise, please download or browse the code, or fork the repo and play with it! If you do fork it, please check back here as I'm constantly (as of Jan 2026) rewriting and improving.
 
 ## Performance Compared with FT8_lib and WSJT-x
 
