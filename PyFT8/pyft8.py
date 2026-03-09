@@ -25,7 +25,7 @@ def get_config():
     global config
     config = configparser.ConfigParser()
     if not os.path.exists(ini_file):
-        config['station'] = {'call':'', 'grid':''}
+        config['station'] = {'call':'station_callsign', 'grid':'station_grid'}
         config['bands'] = {'20m':14.074}
         with open(ini_file, 'w') as f:
             config.write(f)
@@ -113,7 +113,7 @@ def make_wav(msg, wave_output_file): # move to transmitter.py?
     symbols = audio_out.create_ft8_symbols(msg)
     audio_data = audio_out.create_ft8_wave(symbols)
     audio_out.write_to_wave_file(audio_data, wave_output_file)
-    print(f"Created wave file {args.wave_output_file}")    
+    print(f"Created wave file {wave_output_file}")    
 
 def transmit_threaded(msg, cycle = None): # move to transmitter.py?
     threading.Thread(target = transmit, args = (msg, cycle,), daemon = True).start()
@@ -124,18 +124,21 @@ def transmit(msg, cycle = None): # move to transmitter.py?
         return
     if msg is None:
         return
-    print(f"Transmit {msg} cycle = {cycle}")
+    ct = global_time_utils.cycle_time()
     if cycle is None:
         cycle = global_time_utils.curr_cycle_from_time()
+        if ct < MAX_TX_START_SECONDS:
+            cycle = 1-cycle
+    print(f"Transmit {msg} cycle = {cycle}")
     symbols = audio_out.create_ft8_symbols(msg)
     audio_data = audio_out.create_ft8_wave(symbols, f_base = clear_frequencies[cycle])
-    ct = global_time_utils.cycle_time()
     if ct > MAX_TX_START_SECONDS:
         delay = 15.25 - ct
         time.sleep(delay)
-    if cycle != global_time_utils.curr_cycle_from_time() :
+    if cycle != global_time_utils.curr_cycle_from_time():
         time.sleep(T_CYC)
-    qso.last_tx = {'msg':msg,'cycle':global_time_utils.curr_cycle_from_time()}
+    if qso:
+        qso.last_tx = {'msg':msg,'cycle':global_time_utils.curr_cycle_from_time()}
     print(f"Transmitting {qso.last_tx['msg']} cycle = {qso.last_tx['cycle']}")
     rig.PyFT8_ptt_on()
     audio_out.play_data_to_soundcard(audio_data, output_device_idx)
@@ -159,6 +162,8 @@ def on_decode(c):
     print(f"{c.cyclestart_str} {c.snr} {c.dt:4.1f} {c.fHz} ~ {c.msg}")
 
 def on_busy_profile(busy_profile, cycle):
+    if output_device_idx is None:
+        return
     fmax = 950 if qso.band_info['b']=='60m' else 2000
     f0_idx, fn_idx = int(500/audio_in.df), int(fmax/audio_in.df)
     idx = np.argmin(busy_profile[f0_idx:fn_idx])
@@ -191,29 +196,31 @@ def cli():
     parser.add_argument('-i', '--inputcard_keywords', help = 'Comma-separated keywords to identify the input sound device') 
     parser.add_argument('-v','--verbose',  action='store_true',  help = 'Verbose: include debugging output')    
     parser.add_argument('-o','--outputcard_keywords', help = 'Comma-separated keywords to identify the output sound device')
-    parser.add_argument('-n','--no_gui',  action='store_true',  help = 'Dont create a gui')
+    parser.add_argument('-n','--no_gui',  action='store_true',  help = "Don't create a gui")
     parser.add_argument('-m','--transmit_message', nargs='?', help = 'Transmit a message')
-    parser.add_argument('-w','--wave_output_file', nargs='?', help = 'Wave output file', default = 'PyFT8.wav')
+    parser.add_argument('-w','--wave_output_file', nargs='?', help = 'Wave output file name', default = 'PyFT8.wav')
     args = parser.parse_args()
 
     output_device_idx = None
-    gui = None
-    ini_file = f"{args.config_folder}/PyFT8.ini"
+    ini_file = f"{args.config_folder}/PyFT8.ini".strip()
+    get_config()
+    qso = FT8_QSO()
+    rig = load_rigctrl()
+
+    if args.transmit_message or args.outputcard_keywords:
+        audio_out = AudioOut()
+        clear_frequencies = [760, 760]
     
     if args.outputcard_keywords:
         outputcard_keywords = args.outputcard_keywords.replace(' ','').split(',')
-        audio_out = AudioOut()
         output_device_idx = audio_out.find_device(outputcard_keywords)
-        get_config()
         adif_log_file = f"{args.config_folder}/PyFT8.adi"
-        rig = load_rigctrl()
             
     if args.transmit_message:
         if not transmit(args.transmit_message):
-            make_wav(args.transmit_message, args.wave_output_file)      
+            make_wav(args.transmit_message, f"{args.config_folder}/{args.wave_output_file}")      
     else:
         audio_in = AudioIn(3100)
-        clear_frequencies = [760, 760]
         input_device_idx = audio_in.find_device(args.inputcard_keywords.replace(' ','').split(','))
         if not input_device_idx:
             print("No input device")
@@ -222,8 +229,6 @@ def cli():
             rx = Receiver(audio_in, [200, 3100], on_decode, on_busy_profile)
             audio_in.start_streamed_audio(input_device_idx)
             if gui is not None:
-                if output_device_idx:
-                    qso = FT8_QSO()
                 gui.plt.show()
             else:
                 wait_for_keyboard()
@@ -235,4 +240,7 @@ if __name__ == "__main__":
     import mock
     with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-o Speak, CODEC', '-cC:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
     #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC']):
+    #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-n']):
+    #with mock.patch('sys.argv', ['pyft8', '-m',  "CQ G1OJS IO90"]):
+    #with mock.patch('sys.argv', ['pyft8', '-m',  "CQ G1OJS IO90", '-o', "Speak, CODEC"]):
         cli()
