@@ -125,10 +125,12 @@ def transmit(msg, cycle = None): # move to transmitter.py?
     if msg is None:
         return
     ct = global_time_utils.cycle_time()
-    if cycle is None:
+    print(f"Cycle requested: {cycle}")
+    if cycle is None: # transmit asap
         cycle = global_time_utils.curr_cycle_from_time()
+        print(f"Cycle clicked: {cycle}")
         if ct > MAX_TX_START_SECONDS:
-            cycle = 1-cycle
+            cycle = 1-cycle # transmit next cycle
     print(f"Transmit {msg} cycle = {cycle}")
     symbols = audio_out.create_ft8_symbols(msg)
     audio_data = audio_out.create_ft8_wave(symbols, f_base = clear_frequencies[cycle])

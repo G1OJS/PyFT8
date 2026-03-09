@@ -348,7 +348,6 @@ class Receiver():
             if ticker_cycle_rollover.ticked():                
                 self.audio_in.sync_pointer_to_wall_clock()
                 self.curr_cycle = int(((self.audio_in.dBgrid_main_ptr + 1) % HOPS_PER_GRID) / HOPS_PER_CYCLE)
-                print(self.audio_in.dBgrid_main_ptr, self.curr_cycle)
         
             new_to_decode = []
             for c in candidates:
