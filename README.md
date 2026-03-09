@@ -26,6 +26,12 @@ Once installed, you can use the following commands to run it.
 | Command line Rx without a GUI | pyft8 -i "Keyword1, Keyword2" -n| |
 | Command line transmit | pyft8 -o "Keyword1, Keyword2" -m "CQ G1OJS IO90"| Tx on next cycle. You supply the PTT control method.|
 | Command line create a wav file | pyft8 -w "Mywav.wav" -m "CQ G1OJS IO90"| -w "Mywav.wav" can be omitted |
+| Launch configured GUI|pyft8 -i "Keyword1, Keyword2" -o "Keyword1, Keyword2" -c {config folder}| Config folder stores PyFT8.ini (your callsign, grid, buttons) and PyFT8.adi log file. Run this once to create default PyFT8.ini file.|
+
+### Rig control
+PyFT8 doesn't currently support CAT control for rigs in general. However, I've included the Python code that I use with my Icom IC-7100 in the file 'rigctrl.py'. You can modify this to control your own rig of course if you know Python and want to do that as a project.
+
+Alternatively, you can run PyFT8 without rig control, in which case you need to provide your own PTT method and note that the band buttons will only set the information used for logging QSOs to the PyFT8.adi file.
 
 Otherwise, please download or browse the code, or fork the repo and play with it! If you do fork it, please check back here as I'm constantly (as of Jan 2026) rewriting and improving.
 
