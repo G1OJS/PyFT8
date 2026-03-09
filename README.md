@@ -3,7 +3,7 @@
 
 This repository contains the source code for PyFT8, an all-Python open source FT8 transceiver that you can run as a basic GUI or from the command line to receive and transmit. Decoding performance (number of decodes) is about 70% of that achieved by WSJT-x in NORM mode, but (tbc) slightly above ft8_lib. At the time of writing (3-3-26) this new version 2.0.0 establishes the prior cli functionality plus an interesting GUI, on which I intend to build a transceiver function shortly. 
 
-PyFT8 is somewhat experimental, with a focus on demonstrating FT8 written in Python, but can be used as a standalone replacement for WSJT-x and other software. However, please see [rig control](#rig_control) below.
+PyFT8 is somewhat experimental, with a focus on demonstrating FT8 written in Python, but can be used as a standalone replacement for WSJT-x and other software. However, please see [rig control](#Rig control) below.
 
 https://github.com/user-attachments/assets/1a2e6b24-a6cc-4360-af50-6f810b99da33
 
@@ -31,9 +31,6 @@ Once installed, you can use the following commands to run it.
 | Launch configured GUI|pyft8 -i "Keyword1, Keyword2" -o "Keyword1, Keyword2" -c {config folder}| Config folder stores PyFT8.ini (your callsign, grid, buttons) and PyFT8.adi log file. Run this once to create default PyFT8.ini file.|
 
 ### Rig control 
-
-#a-rig_control
-
 PyFT8 doesn't currently support CAT control for rigs in general. However, I've included the Python code that I use with my Icom IC-7100 in the file 'rigctrl.py'. You can modify this to control your own rig of course if you know Python and want to do that as a project.
 
 Alternatively, you can run PyFT8 without rig control, in which case you need to provide your own PTT method and note that the band buttons will only set the information used for logging QSOs to the PyFT8.adi file. Or you can use PyFT8 as Rx-only.
