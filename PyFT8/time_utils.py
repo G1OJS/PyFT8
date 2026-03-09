@@ -10,6 +10,9 @@ class Time_utils:
     def cycle_time(self):
         return (time.time()) % self.cycle_seconds
 
+    def curr_cycle_from_time(self):
+        return int((time.time() % 2*self.cycle_seconds) / self.cycle_seconds)
+
     def cyclestart_time(self, t):
         return self.cycle_seconds * int(t / self.cycle_seconds)
 

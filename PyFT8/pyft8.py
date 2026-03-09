@@ -2,6 +2,7 @@ import argparse
 import time
 import os
 import threading
+import numpy as np
 from PyFT8.receiver import Receiver, AudioIn
 from PyFT8.gui import Gui
 from PyFT8.transmitter import AudioOut
@@ -36,7 +37,7 @@ class FT8_QSO:
     def __init__(self):
         self.mStation = {'c':config['station']['call'], 'g':config['station']['grid']}
         self.band_info = {'b':'20m', 'f':14.074}
-        self.last_tx = {'msg':None,'cycle':None}
+        self.start()
 
     def start(self):
         self.last_tx = {'msg':None,'cycle':None}
@@ -117,9 +118,6 @@ def make_wav(msg, wave_output_file): # move to transmitter.py?
 def transmit_threaded(msg, cycle = None): # move to transmitter.py?
     threading.Thread(target = transmit, args = (msg, cycle,), daemon = True).start()
 
-def curr_cycle():
-    return int((time.time() % 2*T_CYC) / T_CYC)
-
 def transmit(msg, cycle = None): # move to transmitter.py?
     if output_device_idx is None:
         print("No output device")
@@ -127,16 +125,17 @@ def transmit(msg, cycle = None): # move to transmitter.py?
     if msg is None:
         return
     print(f"Transmit {msg} cycle = {cycle}")
+    if cycle is None:
+        cycle = global_time_utils.curr_cycle_from_time()
     symbols = audio_out.create_ft8_symbols(msg)
-    audio_data = audio_out.create_ft8_wave(symbols)
-    if cycle is not None:
-        if cycle != curr_cycle() :
-            time.sleep(T_CYC)
+    audio_data = audio_out.create_ft8_wave(symbols, f_base = clear_frequencies[cycle])
     ct = global_time_utils.cycle_time()
     if ct > MAX_TX_START_SECONDS:
-        delay = 15 - ct
+        delay = 15.25 - ct
         time.sleep(delay)
-    qso.last_tx = {'msg':msg,'cycle':curr_cycle()}
+    if cycle != global_time_utils.curr_cycle_from_time() :
+        time.sleep(T_CYC)
+    qso.last_tx = {'msg':msg,'cycle':global_time_utils.curr_cycle_from_time()}
     print(f"Transmitting {qso.last_tx['msg']} cycle = {qso.last_tx['cycle']}")
     rig.PyFT8_ptt_on()
     audio_out.play_data_to_soundcard(audio_data, output_device_idx)
@@ -159,6 +158,13 @@ def on_decode(c):
         gui.post_decode((c.h0_idx, c.f0_idx, txt, (c.snr, message_cycle_started)))
     print(f"{c.cyclestart_str} {c.snr} {c.dt:4.1f} {c.fHz} ~ {c.msg}")
 
+def on_busy_profile(busy_profile, cycle):
+    fmax = 950 if qso.band_info['b']=='60m' else 2000
+    f0_idx, fn_idx = int(500/audio_in.df), int(fmax/audio_in.df)
+    idx = np.argmin(busy_profile[f0_idx:fn_idx])
+    clear_frequencies[cycle] = (f0_idx + idx) * audio_in.df
+    print(f"Set Tx freq to {clear_frequencies[cycle]:6.1f} for cycle {cycle}")
+
 def on_control_click(btn_widg):
     btn_text, btn_data = btn_widg.label.get_text(), btn_widg.data
     print(btn_text, btn_data)
@@ -168,7 +174,7 @@ def on_control_click(btn_widg):
     if btn_text == "Repeat last":
         transmit_threaded(qso.last_tx['msg'], cycle =  qso.last_tx['cycle'])
     if btn_text == "Tx off":
-        rig.ptt_off()
+        rig.PyFT8_ptt_off()
     if('m' in btn_text):
         qso.band_info = {'b':btn_text, 'f':btn_data}
         rig.PyFT8_set_freq_Hz(int(1000000*float(qso.band_info['f'])))
@@ -178,7 +184,7 @@ def on_msg_click(clicked_msg, msg_params):
 
 #=============== CLI ========================================================================        
 def cli():
-    global audio_in, audio_out, output_device_idx, rig, gui, qso, ini_file, adif_log_file
+    global audio_in, audio_out, output_device_idx, rig, gui, qso, ini_file, adif_log_file, clear_frequencies
     import time
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-c', '--config_folder', help = 'Location of config folder e.g. C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', default = './') 
@@ -207,12 +213,13 @@ def cli():
             make_wav(args.transmit_message, args.wave_output_file)      
     else:
         audio_in = AudioIn(3100)
+        clear_frequencies = [760, 760]
         input_device_idx = audio_in.find_device(args.inputcard_keywords.replace(' ','').split(','))
         if not input_device_idx:
             print("No input device")
         else:
             gui = None if args.no_gui else Gui(audio_in.dBgrid_main, 4, 2, config, on_msg_click, on_control_click)
-            rx = Receiver(audio_in, [200, 3100], on_decode)
+            rx = Receiver(audio_in, [200, 3100], on_decode, on_busy_profile)
             audio_in.start_streamed_audio(input_device_idx)
             if gui is not None:
                 if output_device_idx:

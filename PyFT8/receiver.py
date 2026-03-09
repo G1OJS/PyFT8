@@ -152,6 +152,7 @@ class AudioIn:
         self.hops_per_cycle = HOPS_PER_CYCLE
         self.hops_per_grid = 2 * HOPS_PER_CYCLE
         self.dt = T_CYC / HOPS_PER_CYCLE
+        self.df = max_freq / (self.nFreqs - 1)
         self.dBgrid_main = np.ones((self.hops_per_grid, self.nFreqs), dtype = np.float32)
         self.wav_files = wav_files
         self.dBgrid_main_ptr = 0
@@ -278,9 +279,11 @@ class Candidate:
         self.decode_completed = time.time()
         
 #============== RECEIVER ===========================================================
+        
 class Receiver():
-    def __init__(self, audio_in, freq_range, on_decode, verbose = True):
+    def __init__(self, audio_in, freq_range, on_decode, on_busy_profile = None, verbose = True):
         self.verbose = verbose
+        self.curr_cycle = 0
         self.sample_rate = 12000
         self.audio_in = audio_in
         self.nFreqs = self.audio_in.nFreqs
@@ -290,12 +293,12 @@ class Receiver():
         self.f0_idxs = range(int(freq_range[0]/self.df),
                         min(self.audio_in.nFreqs - self.fbins_per_signal, int(freq_range[1]/self.df)))
         self.on_decode = on_decode
+        self.on_busy_profile = on_busy_profile
         threading.Thread(target=self.manage_cycle, daemon=True).start()
 
     def search(self, f0_idxs, cyclestart_str, sync_idx = 1):
         cands = []
-        cycle = int(self.audio_in.dBgrid_main_ptr / HOPS_PER_CYCLE)
-        cycle_h0 = cycle * HOPS_PER_CYCLE
+        cycle_h0 = self.curr_cycle * HOPS_PER_CYCLE
         sync_idx_offs = sync_idx*36*HPS
         costas_nhops = 7*HPS
         edge_to_cent = BPT//2
@@ -323,6 +326,10 @@ class Receiver():
             c.fHz = int(f0_idx * self.df)
             cands.append(c)
         return cands
+
+    def get_busy_profile(self):
+        h0 = 0 if self.curr_cycle == 0 else HOPS_PER_CYCLE+1
+        return np.sum(self.audio_in.dBgrid_main[h0:self.audio_in.dBgrid_main_ptr, :], axis = 0), self.curr_cycle
         
     def manage_cycle(self):
         dashes = "======================================================"
@@ -340,6 +347,8 @@ class Receiver():
 
             if ticker_cycle_rollover.ticked():                
                 self.audio_in.sync_pointer_to_wall_clock()
+                self.curr_cycle = int(((self.audio_in.dBgrid_main_ptr + 1) % HOPS_PER_GRID) / HOPS_PER_CYCLE)
+                print(self.audio_in.dBgrid_main_ptr, self.curr_cycle)
         
             new_to_decode = []
             for c in candidates:
@@ -361,5 +370,7 @@ class Receiver():
                 global_time_utils.tlog(f"[Cycle manager] start search at hop { self.audio_in.dBgrid_main_ptr}", verbose = self.verbose)
                 cyclestart_str = global_time_utils.cyclestart_str(time.time())
                 candidates = self.search(self.f0_idxs, cyclestart_str)
+                if not self.on_busy_profile is None:
+                    self.on_busy_profile(*self.get_busy_profile())
                 global_time_utils.tlog(f"[Cycle manager] New spectrum searched -> {len(candidates)} candidates", verbose = self.verbose) 
 
