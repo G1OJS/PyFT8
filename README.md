@@ -10,6 +10,7 @@ PyFT8 is somewhat experimental, with a focus on demonstrating FT8 written in Pyt
  - use with or without gui (receive and send messages via command line commands)
  - GUI provides simultaneous views of odd and even cycles
  - messages overlaid on waterfall signals that produce them
+ - automatically chooses clearest Tx frequency
  - modern programming language throughout
  - finds sound cards by keywords so follows them if windows moves them ...
 
