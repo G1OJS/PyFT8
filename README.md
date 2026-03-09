@@ -3,7 +3,7 @@
 
 This repository contains the source code for PyFT8, an all-Python open source FT8 transceiver that you can run as a basic GUI or from the command line to receive and transmit. Decoding performance (number of decodes) is about 70% of that achieved by WSJT-x in NORM mode, but (tbc) slightly above ft8_lib. At the time of writing (3-3-26) this new version 2.0.0 establishes the prior cli functionality plus an interesting GUI, on which I intend to build a transceiver function shortly. 
 
-PyFT8 is somewhat experimental, with a focus on demonstrating FT8 written in Python, but can be used as a standalone replacement for WSJT-x and other software. However, please see [rig control](#Rig control) below.
+PyFT8 is somewhat experimental, with a focus on demonstrating FT8 written in Python, but can be used as a standalone replacement for WSJT-x and other software. However, please see [Rig control](https://github.com/G1OJS/PyFT8/blob/main/README.md#rig-control) below.
 
 https://github.com/user-attachments/assets/1a2e6b24-a6cc-4360-af50-6f810b99da33
 
