@@ -127,7 +127,7 @@ def transmit(msg, cycle = None): # move to transmitter.py?
     ct = global_time_utils.cycle_time()
     if cycle is None:
         cycle = global_time_utils.curr_cycle_from_time()
-        if ct < MAX_TX_START_SECONDS:
+        if ct > MAX_TX_START_SECONDS:
             cycle = 1-cycle
     print(f"Transmit {msg} cycle = {cycle}")
     symbols = audio_out.create_ft8_symbols(msg)
@@ -238,9 +238,9 @@ def cli():
 print(__name__)
 if __name__ == "__main__":
     import mock
-    with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-o Speak, CODEC', '-cC:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
+    #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-o Speak, CODEC', '-cC:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
     #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC']):
     #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-n']):
     #with mock.patch('sys.argv', ['pyft8', '-m',  "CQ G1OJS IO90"]):
-    #with mock.patch('sys.argv', ['pyft8', '-m',  "CQ G1OJS IO90", '-o', "Speak, CODEC"]):
+    with mock.patch('sys.argv', ['pyft8', '-m',  "CQ G1OJS IO90", '-o', "Speak, CODEC"]):
         cli()
