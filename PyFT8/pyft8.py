@@ -12,7 +12,7 @@ T_CYC = 15
 
 def load_rigctrl():
     try:
-        from Rigctrl.rig import Rig
+        from PyFT8.rigctrl import Rig
         print("Loaded Rig control")
         return Rig()
     except ImportError:
@@ -44,7 +44,7 @@ class FT8_QSO:
         self.times = {'time_on':None, 'time_off':None}
         self.rpts = {'sent': None, 'rcvd': None}
         
-    def log_to_adif(self, logfile = "PyFT8.adi"):
+    def log_to_adif(self):
         log_dict = {'call':self.oStation['c'], 'gridsquare':self.oStation['g'], 'mode':'FT8',
         'operator':self.mStation['c'], 'station_callsign':self.mStation['c'], 'my_gridsquare':self.mStation['g'], 
         'rst_sent':self.rpts['sent'], 'rst_rcvd':self.rpts['rcvd'], 
@@ -52,9 +52,9 @@ class FT8_QSO:
         'time_on':time.strftime("%H%M%S", self.times['time_on']), 'time_off':time.strftime("%H%M%S", self.times['time_on']),
         'band':self.band_info['b'], 'freq':self.band_info['f']}
         if(not os.path.exists(logfile)):
-            with open(logfile, 'w') as f:
+            with open(adif_log_file, 'w') as f:
                 f.write("header <eoh>")
-        with open(logfile,'a') as f:
+        with open(adif_log_file,'a') as f:
             f.write(f"\n")
             for k, v in log_dict.items():
                 v = str(v)
@@ -138,9 +138,9 @@ def transmit(msg, cycle = None): # move to transmitter.py?
         time.sleep(delay)
     qso.last_tx = {'msg':msg,'cycle':curr_cycle()}
     print(f"Transmitting {qso.last_tx['msg']} cycle = {qso.last_tx['cycle']}")
-    rig.ptt_on()
+    rig.PyFT8_ptt_on()
     audio_out.play_data_to_soundcard(audio_data, output_device_idx)
-    rig.ptt_off()
+    rig.PyFT8_ptt_off()
     return True
 
 def wait_for_keyboard():
@@ -171,17 +171,17 @@ def on_control_click(btn_widg):
         rig.ptt_off()
     if('m' in btn_text):
         qso.band_info = {'b':btn_text, 'f':btn_data}
-        rig.set_freq_Hz(int(1000000*float(qso.band_info['f'])))
+        rig.PyFT8_set_freq_Hz(int(1000000*float(qso.band_info['f'])))
 
 def on_msg_click(clicked_msg, msg_params):
     progress_qso(clicked_msg, msg_params)
 
 #=============== CLI ========================================================================        
 def cli():
-    global audio_in, audio_out, output_device_idx, rig, gui, qso, ini_file
+    global audio_in, audio_out, output_device_idx, rig, gui, qso, ini_file, adif_log_file
     import time
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
-    parser.add_argument('-c', '--ini_file', help = 'Location and name of ini file e.g. ./PyFT8.ini', default = './PyFT8.ini') 
+    parser.add_argument('-c', '--config_folder', help = 'Location of config folder e.g. C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', default = './') 
     parser.add_argument('-i', '--inputcard_keywords', help = 'Comma-separated keywords to identify the input sound device') 
     parser.add_argument('-v','--verbose',  action='store_true',  help = 'Verbose: include debugging output')    
     parser.add_argument('-o','--outputcard_keywords', help = 'Comma-separated keywords to identify the output sound device')
@@ -190,14 +190,16 @@ def cli():
     parser.add_argument('-w','--wave_output_file', nargs='?', help = 'Wave output file', default = 'PyFT8.wav')
     args = parser.parse_args()
 
-    ini_file = args.ini_file
     output_device_idx = None
     gui = None
+    ini_file = f"{args.config_folder}/PyFT8.ini"
+    
     if args.outputcard_keywords:
         outputcard_keywords = args.outputcard_keywords.replace(' ','').split(',')
         audio_out = AudioOut()
         output_device_idx = audio_out.find_device(outputcard_keywords)
         get_config()
+        adif_log_file = f"{args.config_folder}/PyFT8.adi"
         rig = load_rigctrl()
             
     if args.transmit_message:
@@ -224,6 +226,6 @@ def cli():
 print(__name__)
 if __name__ == "__main__":
     import mock
-    with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-o Speak, CODEC', '-cC:/Users/drala/Documents/Projects/GitHub/station-gui/PyFT8.ini']):
+    with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-o Speak, CODEC', '-cC:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
     #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC']):
         cli()
