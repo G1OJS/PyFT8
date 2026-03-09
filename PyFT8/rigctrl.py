@@ -70,12 +70,12 @@ class Rig:
     def getSWR(self):
         resp = False
         self.setMode("RTTY")
-        self.setPTTON()
+        self.PyFT8_ptt_on()
         self.time.sleep(0.05)
         if(self.verbose):
             print(f"CAT command: get SWR")
         resp = self._sendCAT(b'\x15\x12')
-        self.setPTTOFF()
+        self.PyFT8_ptt_off()
         self.setMode(md="USB", dat = True, filIdx = 1)
         resp_decoded = self._decode_twoBytes(resp[-3:-1])
         if(resp_decoded):

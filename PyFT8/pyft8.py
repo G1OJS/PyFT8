@@ -10,6 +10,8 @@ from PyFT8.time_utils import global_time_utils
 
 MAX_TX_START_SECONDS = 2.5
 T_CYC = 15
+global rig
+rig = None
 
 def load_rigctrl():
     try:
@@ -52,7 +54,7 @@ class FT8_QSO:
         'qso_date':time.strftime("%Y%m%d", self.times['time_on']), 'qso_date_off':time.strftime("%Y%m%d", self.times['time_off']),
         'time_on':time.strftime("%H%M%S", self.times['time_on']), 'time_off':time.strftime("%H%M%S", self.times['time_on']),
         'band':self.band_info['b'], 'freq':self.band_info['f']}
-        if(not os.path.exists(logfile)):
+        if(not os.path.exists(adif_log_file)):
             with open(adif_log_file, 'w') as f:
                 f.write("header <eoh>")
         with open(adif_log_file,'a') as f:
@@ -115,33 +117,26 @@ def make_wav(msg, wave_output_file): # move to transmitter.py?
     audio_out.write_to_wave_file(audio_data, wave_output_file)
     print(f"Created wave file {wave_output_file}")    
 
-def transmit_threaded(msg, cycle = None): # move to transmitter.py?
-    threading.Thread(target = transmit, args = (msg, cycle,), daemon = True).start()
+def transmit_threaded(msg): # move to transmitter.py?
+    threading.Thread(target = transmit, args = (msg,), daemon = True).start()
 
-def transmit(msg, cycle = None): # move to transmitter.py?
+def transmit(msg): # move to transmitter.py?
     if output_device_idx is None:
         print("No output device")
         return
     if msg is None:
         return
-    ct = global_time_utils.cycle_time()
-    print(f"Cycle requested: {cycle}")
-    if cycle is None: # transmit asap
-        cycle = global_time_utils.curr_cycle_from_time()
-        print(f"Cycle clicked: {cycle}")
-        if ct > MAX_TX_START_SECONDS:
-            cycle = 1-cycle # transmit next cycle
-    print(f"Transmit {msg} cycle = {cycle}")
+    print(f"Transmit {msg}")
     symbols = audio_out.create_ft8_symbols(msg)
-    audio_data = audio_out.create_ft8_wave(symbols, f_base = clear_frequencies[cycle])
+    curr_cycle, curr_cycle_time = global_time_utils.curr_cycle_from_time()
+    tx_cycle = curr_cycle if curr_cycle_time < MAX_TX_START_SECONDS else 1-curr_cycle
+    audio_data = audio_out.create_ft8_wave(symbols, f_base = clear_frequencies[tx_cycle])
+    ct = global_time_utils.cycle_time()
     if ct > MAX_TX_START_SECONDS:
         delay = 15.25 - ct
         time.sleep(delay)
-    if cycle != global_time_utils.curr_cycle_from_time():
-        time.sleep(T_CYC)
-    if qso:
-        qso.last_tx = {'msg':msg,'cycle':global_time_utils.curr_cycle_from_time()}
-    print(f"Transmitting {qso.last_tx['msg']} cycle = {qso.last_tx['cycle']}")
+    qso.last_tx = {'msg':msg}
+    print(f"Transmitting {qso.last_tx['msg']}")
     rig.PyFT8_ptt_on()
     audio_out.play_data_to_soundcard(audio_data, output_device_idx)
     rig.PyFT8_ptt_off()
@@ -179,7 +174,7 @@ def on_control_click(btn_widg):
         mc, mg = config['station']['call'], config['station']['grid']
         transmit_threaded(f"CQ {mc} {mg}")
     if btn_text == "Repeat last":
-        transmit_threaded(qso.last_tx['msg'], cycle =  qso.last_tx['cycle'])
+        transmit_threaded(qso.last_tx['msg'])
     if btn_text == "Tx off":
         rig.PyFT8_ptt_off()
     if('m' in btn_text):
