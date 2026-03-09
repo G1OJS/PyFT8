@@ -5,6 +5,14 @@ This repository contains the source code for PyFT8, an all-Python open source FT
 
 PyFT8 is somewhat experimental, with a focus on demonstrating FT8 written in Python, but can be used as a standalone replacement for WSJT-x and other software. However, please see [Rig control](https://github.com/G1OJS/PyFT8/blob/main/README.md#rig-control) below.
 
+## Features
+ - Doesn't try to do everything, so launches quickly (~2 seconds on my old Dell Optiplex 790)
+ - use with or without gui (receive and send messages via command line commands)
+ - GUI provides simultaneous views of odd and even cycles
+ - messages overlaid on waterfall signals that produce them
+ - modern programming language throughout
+ - finds sound cards by keywords so follows them if windows moves them ...
+
 https://github.com/user-attachments/assets/1a2e6b24-a6cc-4360-af50-6f810b99da33
 
 ## Motivation
