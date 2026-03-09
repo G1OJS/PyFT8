@@ -76,7 +76,7 @@ def progress_qso(clicked_msg, msg_params):
         return
     
     call_a, call_b, grid_rpt, _ = clicked_msg.split()
-    my_station = sqo.mStation
+    my_station = qso.mStation
     reply = ""
 
     if call_a == "CQ":
