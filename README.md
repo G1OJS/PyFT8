@@ -14,7 +14,8 @@ PyFT8 is somewhat experimental, with a focus on demonstrating FT8 written in Pyt
  - modern programming language throughout
  - finds sound cards by keywords so follows them if windows moves them ...
 
-https://github.com/user-attachments/assets/1a2e6b24-a6cc-4360-af50-6f810b99da33
+<img width="996" height="998" alt="screenshot" src="https://github.com/user-attachments/assets/abdd5029-c4dd-4f54-ad35-37808465a6ba" />
+
 
 ## Motivation
 This started out as me thinking "How hard can it be, really?" after some frustration with Windows moving sound devices around and wanting to get a minimal decoder running that I can fully control. 
@@ -70,7 +71,7 @@ Also thanks to [Robert Morris](https://github.com/rtmrtmrtmrtm) for [basicft8(*1
  - [The FT4 and FT8 Communication Protocols](https://wsjt.sourceforge.io/FT4_FT8_QEX.pdf)
  - [Ref 14 from the above paper at the Internet Archive](https://web.archive.org/web/20250409140104/https://www.arrl.org/files/file/QEX%20Binaries/2020/ft4_ft8_protocols.tgz)
 
-Note - section 9 of the paper states that the above 2 resources are in the public domain, with some restrictions. All other resources including the source code are protected by copyright but licensed under Version 3 of the GNU General Public License (GPLv3).
+Note - section 9 of the QEX paper states that the above two WSJT-X resources are in the public domain, with some restrictions. All other WSJT-X resources including the WSJT-X source code are protected by copyright but licensed under Version 3 of the GNU General Public License (GPLv3).
 
 **WSJTx - focussed:**
  - [WSJT-X on Sourceforge](https://sourceforge.net/p/wsjt)
