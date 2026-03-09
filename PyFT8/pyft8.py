@@ -19,11 +19,11 @@ def load_rigctrl():
         print("No Rig control found")
         return None
         
-def get_config(configfile = 'PyFT8.ini'):
+def get_config():
     import configparser
     global config
     config = configparser.ConfigParser()
-    config.read('PyFT8.ini')
+    config.read(ini_file)
 
 class FT8_QSO:
     def __init__(self):
@@ -156,7 +156,7 @@ def on_control_click(btn_widg):
     btn_text, btn_data = btn_widg.label.get_text(), btn_widg.data
     print(btn_text, btn_data)
     if btn_text == "CQ":
-        mc, mg = config['mStation']['c'], config['mStation']['g']
+        mc, mg = config['station']['call'], config['station']['grid']
         transmit_threaded(f"CQ {mc} {mg}")
     if btn_text == "Repeat last":
         transmit_threaded(qso.last_tx['msg'], cycle =  qso.last_tx['cycle'])
@@ -171,9 +171,10 @@ def on_msg_click(clicked_msg, msg_params):
 
 #=============== CLI ========================================================================        
 def cli():
-    global audio_in, audio_out, output_device_idx, rig, gui, qso
+    global audio_in, audio_out, output_device_idx, rig, gui, qso, ini_file
     import time
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
+    parser.add_argument('-c', '--ini_file', help = 'Location and name of ini file e.g. ./PyFT8.ini', default = './PyFT8.ini') 
     parser.add_argument('-i', '--inputcard_keywords', help = 'Comma-separated keywords to identify the input sound device') 
     parser.add_argument('-v','--verbose',  action='store_true',  help = 'Verbose: include debugging output')    
     parser.add_argument('-o','--outputcard_keywords', help = 'Comma-separated keywords to identify the output sound device')
@@ -182,6 +183,7 @@ def cli():
     parser.add_argument('-w','--wave_output_file', nargs='?', help = 'Wave output file', default = 'PyFT8.wav')
     args = parser.parse_args()
 
+    ini_file = args.ini_file
     output_device_idx = None
     gui = None
     if args.outputcard_keywords:

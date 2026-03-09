@@ -299,7 +299,8 @@ class Receiver():
         sync_idx_offs = sync_idx*36*HPS
         costas_nhops = 7*HPS
         edge_to_cent = BPT//2
-        search_hops = self.audio_in.dBgrid_main[cycle_h0 + H0_RANGE[0]+sync_idx_offs: cycle_h0 + H0_RANGE[1]+sync_idx_offs + costas_nhops , edge_to_cent:] # data needed 'costas hops' greater than max h0
+        # search_hops covers all freqs, and hops as specified by H0_RANGE. data is needed 'costas hops' greater than max h0
+        search_hops = self.audio_in.dBgrid_main[cycle_h0 + H0_RANGE[0]+sync_idx_offs: cycle_h0 + H0_RANGE[1]+sync_idx_offs + costas_nhops , edge_to_cent:]
         nh, nf = search_hops.shape
         arr = np.zeros((7, nh, nf))     # costas 'row' for a single symbol index, by main nhops, nfreqs
         for i in range(7):
@@ -313,8 +314,6 @@ class Receiver():
         row_sum = (1/6)*masked.sum(axis=1)      # sum of 'unwanted' by main nhops, nfreqs
         row_scores = costas_vals - row_sum      # dB at costas index less sum(others) for each symbol in costas grid, by main nhops, nfreqs
         scores = row_scores.sum(axis=0)         # search scores by main nhops, nfreqs
-        with open('vector_scores.pkl','wb') as f:
-            pickle.dump(scores,f)
         for f0_idx in f0_idxs:
             c = Candidate(cyclestart_str = cyclestart_str, f0_idx = f0_idx)
             h0_idx = int(np.argmax(scores[:nh-costas_nhops, f0_idx]))

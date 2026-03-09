@@ -1,9 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import time, queue
+from matplotlib import rcParams
 from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Slider, Button
 
+rcParams['toolbar'] = 'None'
 # ================== WATERFALL ======================================================
 
 class Msg_box:
@@ -50,8 +52,9 @@ class Gui:
         self.make_layout(config)
 
     def make_layout(self, config):
-        self.fig, self.ax_wf = plt.subplots(figsize=(10,10))
-        self.fig.suptitle("PyFT8 by G1OJS")
+        self.fig, self.ax_wf = plt.subplots(figsize=(10,10), frameon = False)
+        self.fig.canvas.manager.set_window_title('PyFT8 by G1OJS')
+        #self.fig.suptitle("PyFT8 by G1OJS")
         self.plt = plt
         plt.tight_layout()
         self.image = self.ax_wf.imshow(self.dBgrid.T,vmax=120,vmin=90,origin='lower',interpolation='none')
