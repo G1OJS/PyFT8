@@ -14,7 +14,8 @@ PyFT8 is somewhat experimental, with a focus on demonstrating FT8 written in Pyt
  - modern programming language throughout
  - finds sound cards by keywords so follows them if windows moves them ...
 
-https://github.com/user-attachments/assets/1a2e6b24-a6cc-4360-af50-6f810b99da33
+<img width="996" height="998" alt="screenshot" src="https://github.com/user-attachments/assets/abdd5029-c4dd-4f54-ad35-37808465a6ba" />
+
 
 ## Motivation
 This started out as me thinking "How hard can it be, really?" after some frustration with Windows moving sound devices around and wanting to get a minimal decoder running that I can fully control. 
