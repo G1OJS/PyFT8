@@ -224,6 +224,6 @@ def cli():
 print(__name__)
 if __name__ == "__main__":
     import mock
-    with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-o Speak, CODEC']):
+    with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-o Speak, CODEC', '-cC:/Users/drala/Documents/Projects/GitHub/station-gui/PyFT8.ini']):
     #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC']):
         cli()
