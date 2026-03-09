@@ -49,7 +49,15 @@ class Gui:
         self.hps, self.bpt = hps, bpt
         self.msg_boxes = {}
         self.decode_queue = queue.Queue()
+        self.simple_message_art = None
         self.make_layout(config)
+
+    def simple_message(self, text, color):
+        if self.simple_message_art:
+            self.simple_message_art.remove()
+        self.simple_message_art = self.fig.text(0.2,0.985, text, color = color)
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
 
     def make_layout(self, config):
         self.fig, self.ax_wf = plt.subplots(figsize=(10,10), frameon = False)

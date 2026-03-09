@@ -38,7 +38,7 @@ def get_config():
 class FT8_QSO:
     def __init__(self):
         self.mStation = {'c':config['station']['call'], 'g':config['station']['grid']}
-        self.band_info = {'b':'20m', 'f':14.074}
+        self.band_info = {'b':None, 'f':0}
         self.start()
 
     def start(self):
@@ -126,6 +126,9 @@ def transmit(msg): # move to transmitter.py?
         return
     if msg is None:
         return
+    if qso.band_info['b'] is None:
+        gui.simple_message("Please select a band", 'red')
+        return
     print(f"Transmit {msg}")
     symbols = audio_out.create_ft8_symbols(msg)
     curr_cycle, curr_cycle_time = global_time_utils.curr_cycle_from_time()
@@ -180,6 +183,7 @@ def on_control_click(btn_widg):
     if('m' in btn_text):
         qso.band_info = {'b':btn_text, 'f':btn_data}
         rig.PyFT8_set_freq_Hz(int(1000000*float(qso.band_info['f'])))
+        gui.simple_message(f"{qso.band_info['b']} {qso.band_info['f']}", 'black')
 
 def on_msg_click(clicked_msg, msg_params):
     progress_qso(clicked_msg, msg_params)
@@ -235,9 +239,9 @@ def cli():
 print(__name__)
 if __name__ == "__main__":
     import mock
-    #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-o Speak, CODEC', '-cC:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
+    with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-o Speak, CODEC', '-cC:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
     #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC']):
     #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-n']):
-    with mock.patch('sys.argv', ['pyft8', '-m',  "CQ G1OJS IO90", '-cC:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
+    #with mock.patch('sys.argv', ['pyft8', '-m',  "CQ G1OJS IO90", '-cC:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
     #with mock.patch('sys.argv', ['pyft8', '-m',  "CQ G1OJS IO90", '-o', "Speak, CODEC"]):
         cli()
