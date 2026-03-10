@@ -37,7 +37,6 @@ class Rig:
         
     def _sendCAT(self, cmd):
         self.connect()
-        self.connect()
         try:
             self.serial_port.reset_input_buffer()
             msg = b'\xfe\xfe\x88\xe0' + cmd + b'\xfd'
