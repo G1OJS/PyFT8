@@ -39,10 +39,13 @@ class FT8_QSO:
     def __init__(self):
         self.mStation = {'c':config['station']['call'], 'g':config['station']['grid']}
         self.band_info = {'b':None, 'f':0}
-        self.start()
+        threading.Thread(target = self._transmitter, daemon = True).start()
+        self.clear()
 
-    def start(self):
-        self.last_tx = {'msg':None,'cycle':None}
+    def clear(self):
+        self.message_to_transmit = None
+        self.last_tx = None
+        self.tx_cycle = None
         self.oStation = {'c':None, 'g':None}
         self.times = {'time_on':None, 'time_off':None}
         self.rpts = {'sent': None, 'rcvd': None}
@@ -64,6 +67,36 @@ class FT8_QSO:
                 f.write(f"<{k}:{len(v)}>{v} ")
             f.write(f"<eor>\n")
 
+    def set_tx_message(self, message):
+        if self.band_info['b'] is None:
+            gui.simple_message("Please select a band before transmitting", color = 'red')
+            return
+        print(f"Set transmit message to '{message}' with tx cycle = {self.tx_cycle}")
+        self.message_to_transmit = message
+
+    def _transmitter(self):
+        while True:
+            time.sleep(0.1)
+            if self.message_to_transmit is None:
+                continue
+            if output_device_idx is None:
+                print("No output device")
+                return
+            ct = global_time_utils.cycle_time()
+            if ct > MAX_TX_START_SECONDS:
+                delay = 15.25 - ct
+                time.sleep(delay)
+            if self.tx_cycle is None:
+                self.tx_cycle = global_time_utils.curr_cycle_from_time()
+            print(f"Transmitting {self.message_to_transmit} on cycle {self.tx_cycle}")
+            symbols = audio_out.create_ft8_symbols(self.message_to_transmit)
+            audio_data = audio_out.create_ft8_wave(symbols, f_base = clear_frequencies[self.tx_cycle])
+            rig.PyFT8_ptt_on()
+            audio_out.play_data_to_soundcard(audio_data, output_device_idx)
+            rig.PyFT8_ptt_off()
+            self.last_tx = self.message_to_transmit
+            self.message_to_transmit = None
+
 def isReport(grid_rpt):     return "+" in grid_rpt or "-" in grid_rpt
 def isRReport(grid_rpt):    return isReport(grid_rpt) and 'R' in grid_rpt
 def isRRR(grid_rpt):        return 'RRR' in grid_rpt
@@ -83,11 +116,10 @@ def progress_qso(clicked_msg, msg_params):
     reply = ""
 
     if call_a == "CQ":
-        qso.start()
+        qso.clear()
         qso.times['time_on'] = time.gmtime()
         qso.oStation = {'c': call_b, 'g': grid_rpt}
-        reply = f"{qso.oStation['c']} {my_station['c']} {my_station['g']}"
-        transmit_threaded(reply)
+        qso.set_tx_message(f"{qso.oStation['c']} {my_station['c']} {my_station['g']}")
         return
 
     if call_a == my_station['c']:
@@ -105,45 +137,18 @@ def progress_qso(clicked_msg, msg_params):
             reply = f"{qso.oStation['c']} {my_station['c']} RR73"
         if isRR73(grid_rpt):
             reply = f"{qso.oStation['c']} {my_station['c']} 73"
-        transmit_threaded(reply)
+        qso.set_tx_message(reply)
         
     if is73(grid_rpt) or " 73" in reply or isRR73(grid_rpt):
         qso.times['time_off'] = time.gmtime()
         qso.log_to_adif()
+        qso.clear()
 
 def make_wav(msg, wave_output_file): # move to transmitter.py?
     symbols = audio_out.create_ft8_symbols(msg)
     audio_data = audio_out.create_ft8_wave(symbols)
     audio_out.write_to_wave_file(audio_data, wave_output_file)
-    print(f"Created wave file {wave_output_file}")    
-
-def transmit_threaded(msg): # move to transmitter.py?
-    threading.Thread(target = transmit, args = (msg,), daemon = True).start()
-
-def transmit(msg): # move to transmitter.py?
-    if output_device_idx is None:
-        print("No output device")
-        return
-    if msg is None:
-        return
-    if qso.band_info['b'] is None:
-        gui.simple_message("Please select a band", 'red')
-        return
-    print(f"Transmit {msg}")
-    symbols = audio_out.create_ft8_symbols(msg)
-    curr_cycle, curr_cycle_time = global_time_utils.curr_cycle_from_time()
-    tx_cycle = curr_cycle if curr_cycle_time < MAX_TX_START_SECONDS else 1-curr_cycle
-    audio_data = audio_out.create_ft8_wave(symbols, f_base = clear_frequencies[tx_cycle])
-    ct = global_time_utils.cycle_time()
-    if ct > MAX_TX_START_SECONDS:
-        delay = 15.25 - ct
-        time.sleep(delay)
-    qso.last_tx = {'msg':msg}
-    print(f"Transmitting {qso.last_tx['msg']}")
-    rig.PyFT8_ptt_on()
-    audio_out.play_data_to_soundcard(audio_data, output_device_idx)
-    rig.PyFT8_ptt_off()
-    return True
+    print(f"Created wave file {wave_output_file}")
 
 def wait_for_keyboard():
     import time
@@ -172,14 +177,14 @@ def on_busy_profile(busy_profile, cycle):
 
 def on_control_click(btn_widg):
     btn_text, btn_data = btn_widg.label.get_text(), btn_widg.data
-    print(btn_text, btn_data)
     if btn_text == "CQ":
         mc, mg = config['station']['call'], config['station']['grid']
-        transmit_threaded(f"CQ {mc} {mg}")
+        qso.set_tx_message(f"CQ {mc} {mg}")
     if btn_text == "Repeat last":
-        transmit_threaded(qso.last_tx['msg'])
+        qso.set_tx_message(qso.last_tx)
     if btn_text == "Tx off":
         rig.PyFT8_ptt_off()
+        qso.clear()
     if('m' in btn_text):
         qso.band_info = {'b':btn_text, 'f':btn_data}
         rig.PyFT8_set_freq_Hz(int(1000000*float(qso.band_info['f'])))
@@ -208,6 +213,8 @@ def cli():
     qso = FT8_QSO()
     rig = load_rigctrl()
 
+    print(config['station']['call'], config['station']['grid'])
+
     if args.transmit_message or args.outputcard_keywords:
         audio_out = AudioOut()
         clear_frequencies = [760, 760]
@@ -218,7 +225,9 @@ def cli():
         adif_log_file = f"{args.config_folder}/PyFT8.adi"
             
     if args.transmit_message:
-        if not transmit(args.transmit_message):
+        if args.outputcard_keywords:
+            qso.set_tx_message(args.transmit_message)
+        else:
             make_wav(args.transmit_message, f"{args.config_folder}/{args.wave_output_file}")      
     else:
         audio_in = AudioIn(3100)

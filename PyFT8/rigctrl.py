@@ -37,16 +37,19 @@ class Rig:
         
     def _sendCAT(self, cmd):
         self.connect()
-        if(not self.serial_port): return
-        self.serial_port.reset_input_buffer()
-        msg = b'\xfe\xfe\x88\xe0' + cmd + b'\xfd'
-        self.vprint(f"[CAT] send {msg.hex(' ')}")
-        self.serial_port.write(msg)
-        resp = self.serial_port.read_until(b'\xfd')
-        resp = self.serial_port.read_until(b'\xfd')
-        self.vprint(f"[CAT] response {resp.hex(' ')}")
-        self.serial_port.close()
-        return resp
+        self.connect()
+        try:
+            self.serial_port.reset_input_buffer()
+            msg = b'\xfe\xfe\x88\xe0' + cmd + b'\xfd'
+            self.vprint(f"[CAT] send {msg.hex(' ')}")
+            self.serial_port.write(msg)
+            resp = self.serial_port.read_until(b'\xfd')
+            resp = self.serial_port.read_until(b'\xfd')
+            self.vprint(f"[CAT] response {resp.hex(' ')}")
+            self.serial_port.close()
+            return resp
+        except:
+            print("couldn't send command")
 
     def PyFT8_set_freq_Hz(self, freqHz):
         s = f"{freqHz:09d}"

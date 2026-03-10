@@ -12,7 +12,7 @@ class Time_utils:
 
     def curr_cycle_from_time(self):
         t = time.time()
-        return int((t % 2*self.cycle_seconds) / self.cycle_seconds), t % self.cycle_seconds
+        return int((t % 2*self.cycle_seconds) / self.cycle_seconds)
 
     def cyclestart_time(self, t):
         return self.cycle_seconds * int(t / self.cycle_seconds)
