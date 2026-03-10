@@ -13,13 +13,21 @@ class Rig:
 
     def __init__(self, verbose = False, port = 'COM4', baudrate = 9600):
         self.serial_port = False
+        self.port = port
+        self.baudrate = baudrate
         self.verbose = verbose
+
+    def vprint(self, text):
+        if self.verbose:
+            print(text)
+
+    def connect(self):
         try:
-            self.serial_port = self.serial.Serial(port = port, baudrate = baudrate, timeout = 0.1)
+            self.serial_port = self.serial.Serial(port = self.port, baudrate = self.baudrate, timeout = 0.1)
             if (self.serial_port):
-                print(f"Connected to {port}")
+                self.vprint(f"Connected to {self.port}")
         except IOError:
-            print(f"Couldn't connect to {port} - running without CI-V")
+            print(f"Couldn't connect to {self.port}")
 
     def _decode_twoBytes(self, twoBytes):
         if(len(twoBytes)==2):
@@ -28,64 +36,30 @@ class Rig:
             return  n1*100 + (n2//16)*10 + n2 %16
         
     def _sendCAT(self, cmd):
+        self.connect()
         if(not self.serial_port): return
         self.serial_port.reset_input_buffer()
         msg = b'\xfe\xfe\x88\xe0' + cmd + b'\xfd'
-        if(self.verbose):
-            print(f"[CAT] send {msg.hex(' ')}")
+        self.vprint(f"[CAT] send {msg.hex(' ')}")
         self.serial_port.write(msg)
         resp = self.serial_port.read_until(b'\xfd')
         resp = self.serial_port.read_until(b'\xfd')
-        if(self.verbose):
-            print(f"[CAT] response {resp.hex(' ')}")
+        self.vprint(f"[CAT] response {resp.hex(' ')}")
+        self.serial_port.close()
         return resp
 
     def PyFT8_set_freq_Hz(self, freqHz):
         s = f"{freqHz:09d}"
-        print(f"[CAT] SET frequency")
-        print(f"[CAT] {s}")
+        self.vprint(f"[CAT] SET frequency")
+        self.vprint(f"[CAT] {s}")
         fBytes = b"".join(bytes([b]) for b in [16*int(s[7])+int(s[8]),16*int(s[5])+int(s[6]),16*int(s[3])+int(s[4]),16*int(s[1])+int(s[2]), int(s[0])])
         self._sendCAT(b"".join([b'\x00', fBytes]))
 
     def PyFT8_ptt_on(self, PTT_on = b'\x1c\x00\x01'):
-        if(self.verbose):
-            print(f"[CAT] PTT On")
+        self.vprint(f"[CAT] PTT On")
         self._sendCAT(PTT_on)
 
     def PyFT8_ptt_off(self, PTT_off = b'\x1c\x00\x00'):
-        if(self.verbose):
-            print(f"[CAT] PTT Off")
+        self.vprint(f"[CAT] PTT Off")
         self._sendCAT(PTT_off)
 
-
-# =========== The functions below are not needed by PyFT8 currently ================================
-
-    def setMode(self, md='USB', dat=False, filIdx = 1 ):
-        if(self.verbose):
-            print(f"[CAT] SET mode: {md} data:{dat} filter:{filIdx}")
-        mdIdx = ['LSB','USB','AM','CW','RTTY','FM','WFM','CW-R','RTTY-R'].index(md)
-        datIdx = 1 if dat else 0
-        self._sendCAT(b''.join([b'\x26\x00', bytes([mdIdx]), bytes([datIdx]), bytes([filIdx]) ]) )
-
-    def getSWR(self):
-        resp = False
-        self.setMode("RTTY")
-        self.PyFT8_ptt_on()
-        self.time.sleep(0.05)
-        if(self.verbose):
-            print(f"CAT command: get SWR")
-        resp = self._sendCAT(b'\x15\x12')
-        self.PyFT8_ptt_off()
-        self.setMode(md="USB", dat = True, filIdx = 1)
-        resp_decoded = self._decode_twoBytes(resp[-3:-1])
-        if(resp_decoded):
-            return int(resp_decoded)
-
-    def getPWR(self):
-        resp = False
-        if(self.verbose):
-            print(f"CAT command: get PWR")
-        resp = self._sendCAT(b'\x14\x0A')
-        resp_decoded = self._decode_twoBytes(resp[-3:-1])
-        if(resp_decoded):
-            return int(resp_decoded)
