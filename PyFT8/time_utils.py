@@ -14,15 +14,21 @@ class Time_utils:
         t = time.time()
         return int((t % 2*self.cycle_seconds) / self.cycle_seconds)
 
-    def cyclestart_time(self, t):
-        return self.cycle_seconds * int(t / self.cycle_seconds)
-
-    def cyclestart_str(self, t):
-        return time.strftime("%y%m%d_%H%M%S", time.gmtime(self.cyclestart_time(t)))
+    def cyclestart(self, t):
+        cst = self.cycle_seconds * int(t / self.cycle_seconds)
+        css = time.strftime("%y%m%d_%H%M%S", time.gmtime(cst))
+        return {'time':cst, 'string':css}
 
     def tlog(self, txt, verbose = True):
         if(verbose):
-            print(f"{self.cyclestart_str(time.time())} {self.cycle_time():5.2f} {txt}")
+            print(f"{self.cyclestart(time.time())['string']} {self.cycle_time():5.2f} {txt}")
+
+    def format_duration(self, seconds):
+        intervals = ( ('yr', 314496000), ('wk', 604800), ('day', 86400), ('hr', 3600), ('min', 60), ('sec', 1) )
+        for name, count in intervals:
+            value = int(seconds / count)
+            if value:
+                return f"{value:d} {name}{'s' if value > 1 else ''}"
 
 global_time_utils = Time_utils()
 

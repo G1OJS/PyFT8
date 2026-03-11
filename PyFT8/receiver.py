@@ -221,7 +221,7 @@ from dataclasses import field
 
 @dataclass(slots=True)
 class Candidate:
-    cyclestart_str: str
+    cyclestart: tuple
     f0_idx: int
     llr: np.ndarray = field(default_factory=lambda: np.empty(0))
     snr: float = -30
@@ -296,7 +296,7 @@ class Receiver():
         self.on_busy_profile = on_busy_profile
         threading.Thread(target=self.manage_cycle, daemon=True).start()
 
-    def search(self, f0_idxs, cyclestart_str, sync_idx = 1):
+    def search(self, f0_idxs, cyclestart, sync_idx = 1):
         cands = []
         cycle_h0 = self.curr_cycle * HOPS_PER_CYCLE
         sync_idx_offs = sync_idx*36*HPS
@@ -318,7 +318,7 @@ class Receiver():
         row_scores = costas_vals - row_sum      # dB at costas index less sum(others) for each symbol in costas grid, by main nhops, nfreqs
         scores = row_scores.sum(axis=0)         # search scores by main nhops, nfreqs
         for f0_idx in f0_idxs:
-            c = Candidate(cyclestart_str = cyclestart_str, f0_idx = f0_idx)
+            c = Candidate(cyclestart = cyclestart, f0_idx = f0_idx)
             h0_idx = int(np.argmax(scores[:nh-costas_nhops, f0_idx]))
             sync_score = float(scores[h0_idx, f0_idx])
             c.h0_idx, c.sync_score = h0_idx + cycle_h0 , sync_score
@@ -357,7 +357,7 @@ class Receiver():
                 if c.llr_sd > 0 and not c.decode_completed:
                     new_to_decode.append(c)
                 if c.msg:
-                    key = c.cyclestart_str + " " + " ".join(c.msg)
+                    key = c.cyclestart['string'] + " " + " ".join(c.msg)
                     if key not in duplicate_filter:
                         duplicate_filter.add(key)
                         self.on_decode(c)
@@ -367,8 +367,8 @@ class Receiver():
 
             if ticker_search_for_syncs.ticked():
                 global_time_utils.tlog(f"[Cycle manager] start search at hop { self.audio_in.dBgrid_main_ptr}", verbose = self.verbose)
-                cyclestart_str = global_time_utils.cyclestart_str(time.time())
-                candidates = self.search(self.f0_idxs, cyclestart_str)
+                cyclestart = global_time_utils.cyclestart(time.time())
+                candidates = self.search(self.f0_idxs, cyclestart)
                 if not self.on_busy_profile is None:
                     self.on_busy_profile(*self.get_busy_profile())
                 global_time_utils.tlog(f"[Cycle manager] New spectrum searched -> {len(candidates)} candidates", verbose = self.verbose) 

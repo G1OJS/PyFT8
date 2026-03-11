@@ -9,27 +9,32 @@ rcParams['toolbar'] = 'None'
 # ================== WATERFALL ======================================================
 
 class Msg_box:
-    def __init__(self, fig, ax, tbin, fbin, w, h, text, colors, attached_params, onclick, expire = 0):
+    def __init__(self, fig, ax, tbin, fbin, w, h, onclick):
         from matplotlib.patches import Rectangle
-        self.onclick = onclick
-        self.origin = (tbin, fbin)
-        rect = Rectangle(self.origin, width=w, height=h, alpha=0.6, edgecolor='lime', lw=2)
+        self.onclick = onclick 
+        rect = Rectangle((tbin, fbin), width=w, height=h, alpha=0.6, edgecolor='lime', lw=2)
         self.patch = ax.add_patch(rect)
-        self.text_inst = ax.text(tbin, fbin+2, text, fontsize='small', fontweight='bold' )
+        self.text_inst = ax.text(tbin, fbin+2, '', fontsize='small', fontweight='bold' )
         self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
-        self.set_properties(tbin, text, colors, attached_params, expire)
+        self.expire = 0 
 
-    def set_properties(self, tbin, text, colors, attached_params, expire):
-        self.patch.set_x(tbin)
-        self.attached_params = attached_params
-        self.text_inst.set_x(tbin)
-        self.text_inst.set_text(text)
-        self.text_inst.set_color(colors[1])
-        self.expire = expire
-        self.patch.set_facecolor(colors[0])
+    def set_properties(self, message):
+        self.message = message
+        self.patch.set_x(message.h0_idx)
+        self.text_inst.set_x(message.h0_idx)
         self.patch.set_visible(True)
         self.text_inst.set_visible(True)
+        self.expire = message.expire
 
+    def set_appearance(self, message):
+        self.text_inst.set_text(message.gui_text)
+        colors = ['blue', 'white']
+        if message.is_cq: colors = ['green', 'white']
+        if message.is_from_me: colors = ['yellow', 'black']
+        if message.is_to_me: colors = ['red', 'white']
+        self.text_inst.set_color(colors[1])
+        self.patch.set_facecolor(colors[0])
+        
     def hide_if_expired(self):
         if time.time() > self.expire > 0:
             self.patch.set_visible(False)
@@ -38,7 +43,7 @@ class Msg_box:
     def _onclick(self, event):
         b, _ = self.patch.contains(event)
         if(b):
-            self.onclick(self.text_inst.get_text(), self.attached_params)
+            self.onclick(self.message)
 
 class Gui:
     def __init__(self, dBgrid, hps, bpt, config, on_msg_click, on_control_click):
@@ -62,7 +67,6 @@ class Gui:
     def make_layout(self, config):
         self.fig, self.ax_wf = plt.subplots(figsize=(10,10), frameon = False)
         self.fig.canvas.manager.set_window_title('PyFT8 by G1OJS')
-        #self.fig.suptitle("PyFT8 by G1OJS")
         self.plt = plt
         plt.tight_layout()
         self.image = self.ax_wf.imshow(self.dBgrid.T,vmax=120,vmin=90,origin='lower',interpolation='none')
@@ -87,19 +91,15 @@ class Gui:
             self.buttons.append(btn_widg)
         self.ani = FuncAnimation(self.fig, self._animate, interval = 40, frames=(100000), blit=True)
 
-    def post_decode(self, decode):
-        self.decode_queue.put(decode)
+    def add_message_box(self, message):
+        self.decode_queue.put(message)
 
-    def _show_decode(self, queued_decode):
-        h0_idx, f0_idx, msg, attached_params = queued_decode
-        colors = ['blue', 'white']
-        if msg.startswith("CQ"): colors = ['green', 'white']
-        if self.mStation['c'] in msg: colors = ['yellow', 'black']
-        if msg.startswith(self.mStation['c']): colors = ['red', 'white']
+    def _display_message_box(self, message):
+        h0_idx, f0_idx = message.h0_idx, message.f0_idx
         if not f0_idx in self.msg_boxes:
-            btn = Msg_box(self.fig, self.ax_wf, h0_idx, f0_idx, 79*self.hps, 8*self.bpt, msg, colors, attached_params, onclick = self.on_msg_click)
-            self.msg_boxes[f0_idx] = btn
-        self.msg_boxes[f0_idx].set_properties(h0_idx, msg, colors, attached_params, expire = time.time() + 28)
+            self.msg_boxes[f0_idx] = Msg_box(self.fig, self.ax_wf, h0_idx, f0_idx, 79*self.hps, 8*self.bpt, onclick = self.on_msg_click)
+        self.msg_boxes[f0_idx].set_properties(message)
+        self.msg_boxes[f0_idx].set_appearance(message)
         
     def _tidy_msg_boxes(self):
         for fb in self.msg_boxes:
@@ -108,7 +108,7 @@ class Gui:
     def _animate(self, frame):
         self.image.set_data(self.dBgrid.T)
         while not self.decode_queue.empty():
-            self._show_decode(self.decode_queue.get())
+            self._display_message_box(self.decode_queue.get())
         if (frame % 10 == 0):
             self._tidy_msg_boxes()
         return [self.image, *self.ax_wf.patches, *self.ax_wf.texts]
