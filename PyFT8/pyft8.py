@@ -111,9 +111,10 @@ class Message:
         self.is_to_me = c.msg_tuple[0] == mycall
         self.is_cq = c.msg_tuple[0].startswith('CQ')
         gui_wb_text = ''
-        if c.msg_tuple[1] in worked_before:
-            gui_wb_text = f"wb: {global_time_utils.format_duration(time.time() - worked_before[c.msg_tuple[1]])}"
-        self.gui_text = f"{c.msg} ({c.snr:+03d}) {gui_wb_text}"
+        if self.is_cq:
+            if c.msg_tuple[1] in worked_before:
+                gui_wb_text = f"wb: {global_time_utils.format_duration(time.time() - worked_before[c.msg_tuple[1]])}"
+        self.gui_text = f"{c.msg} {gui_wb_text}"
 
     def wsjtx_screen_format(self):
         return f"{self.cyclestart['string']} {self.snr} {self.dt:4.1f} {self.fHz} ~ {self.msg}"
