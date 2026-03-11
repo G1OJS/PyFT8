@@ -106,7 +106,7 @@ class Message:
         mycall = qso.mStation['c']
         self.h0_idx, self.f0_idx, self.msg_tuple, self.msg, self.snr, self.dt, self.fHz = c.h0_idx, c.f0_idx, c.msg_tuple, c.msg, c.snr, c.dt, c.fHz
         self.cyclestart = c.cyclestart
-        self.expire = c.cyclestart['time'] + 29
+        self.expire = time.time() + 29
         self.is_from_me = c.msg_tuple[1] == mycall
         self.is_to_me = c.msg_tuple[0] == mycall
         self.is_cq = c.msg_tuple[0].startswith('CQ')
@@ -125,6 +125,7 @@ class FT8_QSO:
         self.logging = logging
         self.mStation = {'c':config['station']['call'], 'g':config['station']['grid']}
         self.band_info = {'b':None, 'f':0}
+        self.tx_freq = 750
         threading.Thread(target = self._transmitter, daemon = True).start()
         self.clear()
 
@@ -135,7 +136,7 @@ class FT8_QSO:
         self.oStation = {'c':None, 'g':None}
         self.times = {'time_on':None, 'time_off':None}
         self.rpts = {'sent': None, 'rcvd': None}
-        
+
     def set_tx_message(self, message):
         if self.band_info['b'] is None:
             gui.simple_message("Please select a band before transmitting", color = 'red')
@@ -157,9 +158,10 @@ class FT8_QSO:
                 time.sleep(delay)
             if self.tx_cycle is None:
                 self.tx_cycle = global_time_utils.curr_cycle_from_time()
+                self.tx_freq = clear_frequencies[self.tx_cycle]
             print(f"Transmitting {self.message_to_transmit} on cycle {self.tx_cycle}")
             symbols = audio_out.create_ft8_symbols(self.message_to_transmit)
-            audio_data = audio_out.create_ft8_wave(symbols, f_base = clear_frequencies[self.tx_cycle])
+            audio_data = audio_out.create_ft8_wave(symbols, f_base = self.tx_freq)
             rig.PyFT8_ptt_on()
             audio_out.play_data_to_soundcard(audio_data, output_device_idx)
             rig.PyFT8_ptt_off()
@@ -213,8 +215,7 @@ def progress_qso(clicked_message):
         
     if is73(grid_rpt) or " 73" in reply or isRR73(grid_rpt):
         qso.times['time_off'] = time.gmtime()
-        qso.log()
-        qso.clear()
+        qso.log() 
 
 def make_wav(msg, wave_output_file): # move to transmitter.py?
     symbols = audio_out.create_ft8_symbols(msg)
@@ -255,7 +256,6 @@ def on_control_click(btn_widg):
         qso.set_tx_message(qso.last_tx)
     if btn_text == "Tx off":
         rig.PyFT8_ptt_off()
-        qso.clear()
     if('m' in btn_text):
         qso.band_info = {'b':btn_text, 'f':btn_data}
         rig.PyFT8_set_freq_Hz(int(1000000*float(qso.band_info['f'])))
