@@ -11,8 +11,8 @@ from PyFT8.time_utils import global_time_utils
 
 MAX_TX_START_SECONDS = 2.5
 T_CYC = 15
-global rig
 rig = None
+gui = None
 
 def load_rigctrl():
     try:
@@ -117,7 +117,7 @@ class Message:
         self.gui_text = f"{c.msg} {gui_wb_text}"
 
     def wsjtx_screen_format(self):
-        return f"{self.cyclestart['string']} {self.snr} {self.dt:4.1f} {self.fHz} ~ {self.msg}"
+        return f"{self.cyclestart['string']} {self.snr:+03d} {self.dt:4.1f} {self.fHz:4.0f} ~ {self.msg}"
 
 
 class FT8_QSO:
@@ -138,7 +138,7 @@ class FT8_QSO:
         self.rpts = {'sent': None, 'rcvd': None}
 
     def set_tx_message(self, message):
-        if self.band_info['b'] is None:
+        if gui and self.band_info['b'] is None:
             gui.simple_message("Please select a band before transmitting", color = 'red')
             return
         print(f"Set transmit message to '{message}' with tx cycle = {self.tx_cycle}")
@@ -233,8 +233,8 @@ def wait_for_keyboard():
 
 #============= Callbacks for GUI ==========================================================
 def on_decode(c):
+    message = Message(c)
     if gui:
-        message = Message(c)
         gui.add_message_box(message)
     print(message.wsjtx_screen_format())
 
@@ -286,12 +286,6 @@ def cli():
     qso = FT8_QSO(logging)
     rig = load_rigctrl()
 
- #   qso.band_info = {'b':'20m','f':14.074}
- #   qso.oStation = {'c':'T1EST', 'g':'TT11'}
- #   qso.times = {'time_on':time.gmtime(), 'time_off':time.gmtime()}
- #   qso.rpts = {'sent':-1, 'rcvd':-1}
- #   qso.log()
-
     if args.transmit_message or args.outputcard_keywords:
         audio_out = AudioOut()
         clear_frequencies = [760, 760]
@@ -321,7 +315,6 @@ def cli():
 
 
 #================== TEST CODE ============================================================
-print(__name__)
 if __name__ == "__main__":
     import mock
     with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-o Speak, CODEC', '-c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
