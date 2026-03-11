@@ -7,12 +7,13 @@ PyFT8 is somewhat experimental, with a focus on demonstrating FT8 written in Pyt
 
 ## Features
  - Doesn't try to do everything, so launches quickly (~2 seconds on my old Dell Optiplex 790)
- - use with or without gui (receive and send messages via command line commands)
+ - Use with or without gui (receive and send messages via command line commands)
  - GUI provides simultaneous views of odd and even cycles
- - messages overlaid on waterfall signals that produce them
- - automatically chooses clearest Tx frequency
- - modern programming language throughout
- - finds sound cards by keywords so follows them if windows moves them ...
+ - GUI shows worked-before info on CQ calls (not yet on PyPi)
+ - Messages overlaid on waterfall signals that produce them
+ - Automatically chooses clearest Tx frequency
+ - Modern programming language throughout
+ - Finds sound cards by keywords so follows them if windows moves them ...
 
 <img width="996" height="998" alt="screenshot" src="https://github.com/user-attachments/assets/abdd5029-c4dd-4f54-ad35-37808465a6ba" />
 
