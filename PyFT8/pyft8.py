@@ -106,7 +106,7 @@ class Message:
         mycall = qso.mStation['c']
         self.h0_idx, self.f0_idx, self.msg_tuple, self.msg, self.snr, self.dt, self.fHz = c.h0_idx, c.f0_idx, c.msg_tuple, c.msg, c.snr, c.dt, c.fHz
         self.cyclestart = c.cyclestart
-        self.expire = time.time() + 29
+        self.expire = time.time() + 29.8
         self.is_from_me = c.msg_tuple[1] == mycall
         self.is_to_me = c.msg_tuple[0] == mycall
         self.is_cq = c.msg_tuple[0].startswith('CQ')
