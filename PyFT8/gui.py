@@ -9,7 +9,7 @@ rcParams['toolbar'] = 'None'
 # ================== WATERFALL ======================================================
 
 class Msg_box:
-    def __init__(self, fig, ax, tbin, fbin, w, h, text, colors, attached_params, onclick, expire = 0):
+    def __init__(self, fig, ax, tbin, fbin, w, h, text, colors, their_snr, their_cycle_start_time, onclick, expire = 0):
         from matplotlib.patches import Rectangle
         self.onclick = onclick
         self.origin = (tbin, fbin)
@@ -17,11 +17,11 @@ class Msg_box:
         self.patch = ax.add_patch(rect)
         self.text_inst = ax.text(tbin, fbin+2, text, fontsize='small', fontweight='bold' )
         self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
-        self.set_properties(tbin, text, colors, attached_params, expire)
+        self.set_properties(tbin, text, colors, their_snr, their_cycle_start_time, expire)
 
-    def set_properties(self, tbin, text, colors, attached_params, expire):
+    def set_properties(self, tbin, text, colors, their_snr, their_cycle_start_time, expire):
         self.patch.set_x(tbin)
-        self.attached_params = attached_params
+        self.their_snr, their_cycle_start_time = their_snr, their_cycle_start_time
         self.text_inst.set_x(tbin)
         self.text_inst.set_text(text)
         self.text_inst.set_color(colors[1])
@@ -38,7 +38,7 @@ class Msg_box:
     def _onclick(self, event):
         b, _ = self.patch.contains(event)
         if(b):
-            self.onclick(self.text_inst.get_text(), self.attached_params)
+            self.onclick(self.text_inst.get_text(), self.their_snr, their_cycle_start_time)
 
 class Gui:
     def __init__(self, dBgrid, hps, bpt, config, on_msg_click, on_control_click):
@@ -91,15 +91,15 @@ class Gui:
         self.decode_queue.put(decode)
 
     def _show_decode(self, queued_decode):
-        h0_idx, f0_idx, msg, attached_params = queued_decode
+        h0_idx, f0_idx, msg, their_snr, their_cycle_start_time = queued_decode
         colors = ['blue', 'white']
         if msg.startswith("CQ"): colors = ['green', 'white']
         if self.mStation['c'] in msg: colors = ['yellow', 'black']
         if msg.startswith(self.mStation['c']): colors = ['red', 'white']
         if not f0_idx in self.msg_boxes:
-            btn = Msg_box(self.fig, self.ax_wf, h0_idx, f0_idx, 79*self.hps, 8*self.bpt, msg, colors, attached_params, onclick = self.on_msg_click)
+            btn = Msg_box(self.fig, self.ax_wf, h0_idx, f0_idx, 79*self.hps, 8*self.bpt, msg, colors, their_snr, their_cycle_start_time, onclick = self.on_msg_click)
             self.msg_boxes[f0_idx] = btn
-        self.msg_boxes[f0_idx].set_properties(h0_idx, msg, colors, attached_params, expire = time.time() + 28)
+        self.msg_boxes[f0_idx].set_properties(h0_idx, msg, colors, their_snr, their_cycle_start_time, expire = time.time() + 28)
         
     def _tidy_msg_boxes(self):
         for fb in self.msg_boxes:

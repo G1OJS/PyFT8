@@ -2,6 +2,7 @@ import argparse
 import time
 import os
 import threading
+import pickle
 import numpy as np
 from PyFT8.receiver import Receiver, AudioIn
 from PyFT8.gui import Gui
@@ -21,11 +22,12 @@ def load_rigctrl():
     except ImportError:
         print("No Rig control found")
         return None
-        
-def get_config():
+ 
+def get_config(config_folder):
     import configparser
     global config
     config = configparser.ConfigParser()
+    ini_file = f"{config_folder}/PyFT8.ini"
     if not os.path.exists(ini_file):
         config['station'] = {'call':'station_callsign', 'grid':'station_grid'}
         config['bands'] = {'20m':14.074}
@@ -35,8 +37,48 @@ def get_config():
     print(f"Reading config from {ini_file}")
     config.read(ini_file)
 
+class Logging:
+    def __init__(self, config_folder):
+        self.adif_log_file = f"{config_folder}/PyFT8.adi"
+        self.worked_before_file = f"{config_folder}/PyFT8_wb.pkl"
+        self.check_files()
+
+    def check_files(self):
+        if(not os.path.exists(self.adif_log_file)):
+            with open(self.adif_log_file, 'w') as f:
+                f.write("header <eoh>")
+        if(not os.path.exists(self.worked_before_file)):
+            with open(f"{self.worked_before_file}","wb") as f:
+                pickle.dump({'dummy':'dummy'}, f)
+
+    def update_worked_before(self, callsign, time_on):
+        with open(f"{self.worked_before_file}","rb") as f:
+            worked_before = pickle.load(f)
+        if not callsign in worked_before:
+            worked_before[callsign] = {}
+        worked_before[callsign] = {time_on}
+        with open(f"{self.worked_before_file}","wb") as f:
+            pickle.dump(worked_before, f)
+                
+    def log(self, times, band_info, mStation, oStation, rpts):
+        log_dict = {'call':oStation['c'], 'gridsquare':oStation['g'], 'mode':'FT8',
+        'operator':mStation['c'], 'station_callsign':mStation['c'], 'my_gridsquare':mStation['g'], 
+        'rst_sent':rpts['sent'], 'rst_rcvd':rpts['rcvd'], 
+        'qso_date':time.strftime("%Y%m%d", times['time_on']), 'qso_date_off':time.strftime("%Y%m%d", times['time_off']),
+        'time_on':time.strftime("%H%M%S", times['time_on']), 'time_off':time.strftime("%H%M%S", times['time_on']),
+        'band':band_info['b'], 'freq':band_info['f']}
+        with open(self.adif_log_file,'a') as f:
+            f.write(f"\n")
+            for k, v in log_dict.items():
+                v = str(v)
+                f.write(f"<{k}:{len(v)}>{v} ")
+            f.write(f"<eor>\n")
+        self.update_worked_before(oStation['c'], times['time_on'])
+
+
 class FT8_QSO:
-    def __init__(self):
+    def __init__(self, logging):
+        self.logging = logging
         self.mStation = {'c':config['station']['call'], 'g':config['station']['grid']}
         self.band_info = {'b':None, 'f':0}
         threading.Thread(target = self._transmitter, daemon = True).start()
@@ -50,23 +92,6 @@ class FT8_QSO:
         self.times = {'time_on':None, 'time_off':None}
         self.rpts = {'sent': None, 'rcvd': None}
         
-    def log_to_adif(self):
-        log_dict = {'call':self.oStation['c'], 'gridsquare':self.oStation['g'], 'mode':'FT8',
-        'operator':self.mStation['c'], 'station_callsign':self.mStation['c'], 'my_gridsquare':self.mStation['g'], 
-        'rst_sent':self.rpts['sent'], 'rst_rcvd':self.rpts['rcvd'], 
-        'qso_date':time.strftime("%Y%m%d", self.times['time_on']), 'qso_date_off':time.strftime("%Y%m%d", self.times['time_off']),
-        'time_on':time.strftime("%H%M%S", self.times['time_on']), 'time_off':time.strftime("%H%M%S", self.times['time_on']),
-        'band':self.band_info['b'], 'freq':self.band_info['f']}
-        if(not os.path.exists(adif_log_file)):
-            with open(adif_log_file, 'w') as f:
-                f.write("header <eoh>")
-        with open(adif_log_file,'a') as f:
-            f.write(f"\n")
-            for k, v in log_dict.items():
-                v = str(v)
-                f.write(f"<{k}:{len(v)}>{v} ")
-            f.write(f"<eor>\n")
-
     def set_tx_message(self, message):
         if self.band_info['b'] is None:
             gui.simple_message("Please select a band before transmitting", color = 'red')
@@ -97,6 +122,9 @@ class FT8_QSO:
             self.last_tx = self.message_to_transmit
             self.message_to_transmit = None
 
+    def log(self):
+        self.logging.log(self.times, self.band_info, self.mStation, self.oStation, self.rpts)
+
 def isReport(grid_rpt):     return "+" in grid_rpt or "-" in grid_rpt
 def isRReport(grid_rpt):    return isReport(grid_rpt) and 'R' in grid_rpt
 def isRRR(grid_rpt):        return 'RRR' in grid_rpt
@@ -104,9 +132,8 @@ def isRR73(grid_rpt):       return 'RR73' in grid_rpt
 def is73(grid_rpt):         return '73' in grid_rpt and not isRR73(grid_rpt)
 def isGrid(grid_rpt):       return not isReport(grid_rpt) and not is73(grid_rpt) and not isRR73(grid_rpt) and not isRRR(grid_rpt) 
 
-def progress_qso(clicked_msg, msg_params):
+def progress_qso(clicked_msg, their_snr, their_cycle_start_time):
     global qso
-    their_snr, their_cycle_start_time = msg_params
     if time.time() - their_cycle_start_time > (15 + MAX_TX_START_SECONDS):
         print("Try next cycle")
         return
@@ -141,7 +168,7 @@ def progress_qso(clicked_msg, msg_params):
         
     if is73(grid_rpt) or " 73" in reply or isRR73(grid_rpt):
         qso.times['time_off'] = time.gmtime()
-        qso.log_to_adif()
+        qso.log()
         qso.clear()
 
 def make_wav(msg, wave_output_file): # move to transmitter.py?
@@ -190,12 +217,12 @@ def on_control_click(btn_widg):
         rig.PyFT8_set_freq_Hz(int(1000000*float(qso.band_info['f'])))
         gui.simple_message(f"{qso.band_info['b']} {qso.band_info['f']}", 'black')
 
-def on_msg_click(clicked_msg, msg_params):
-    progress_qso(clicked_msg, msg_params)
+def on_msg_click(clicked_msg, their_snr, their_cycle_start_time):
+    progress_qso(clicked_msg, their_snr, their_cycle_start_time)
 
 #=============== CLI ========================================================================        
 def cli():
-    global audio_in, audio_out, output_device_idx, rig, gui, qso, ini_file, adif_log_file, clear_frequencies
+    global audio_in, audio_out, output_device_idx, rig, gui, qso, config, clear_frequencies
     import time
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-c', '--config_folder', help = 'Location of config folder e.g. C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', default = './') 
@@ -208,12 +235,17 @@ def cli():
     args = parser.parse_args()
 
     output_device_idx = None
-    ini_file = f"{args.config_folder}/PyFT8.ini".strip()
-    get_config()
-    qso = FT8_QSO()
+    config_folder = f"{args.config_folder}".strip()
+    get_config(config_folder)
+    logging = Logging(config_folder)
+    qso = FT8_QSO(logging)
     rig = load_rigctrl()
 
-    print(config['station']['call'], config['station']['grid'])
+ #   qso.band_info = {'b':'20m','f':14.074}
+ #   qso.oStation = {'c':'T1EST', 'g':'TT11'}
+ #   qso.times = {'time_on':time.gmtime(), 'time_off':time.gmtime()}
+ #   qso.rpts = {'sent':-1, 'rcvd':-1}
+ #   qso.log()
 
     if args.transmit_message or args.outputcard_keywords:
         audio_out = AudioOut()
@@ -222,7 +254,6 @@ def cli():
     if args.outputcard_keywords:
         outputcard_keywords = args.outputcard_keywords.replace(' ','').split(',')
         output_device_idx = audio_out.find_device(outputcard_keywords)
-        adif_log_file = f"{args.config_folder}/PyFT8.adi"
             
     if args.transmit_message:
         if args.outputcard_keywords:
@@ -248,7 +279,7 @@ def cli():
 print(__name__)
 if __name__ == "__main__":
     import mock
-    with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-o Speak, CODEC', '-cC:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
+    with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-o Speak, CODEC', '-c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
     #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC']):
     #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-n']):
     #with mock.patch('sys.argv', ['pyft8', '-m',  "CQ G1OJS IO90", '-cC:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
