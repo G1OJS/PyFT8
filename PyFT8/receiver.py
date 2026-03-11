@@ -281,7 +281,7 @@ class Candidate:
 #============== RECEIVER ===========================================================
         
 class Receiver():
-    def __init__(self, audio_in, freq_range, on_decode, on_busy_profile = None, verbose = True):
+    def __init__(self, audio_in, freq_range, on_decode, on_busy_profile = None, verbose = False):
         self.verbose = verbose
         self.curr_cycle = 0
         self.sample_rate = 12000

@@ -141,7 +141,7 @@ class FT8_QSO:
         if gui and self.band_info['b'] is None:
             gui.simple_message("Please select a band before transmitting", color = 'red')
             return
-        print(f"Set transmit message to '{message}' with tx cycle = {self.tx_cycle}")
+        print(f"[QSO] Set transmit message to '{message}' with tx cycle = {self.tx_cycle}")
         self.message_to_transmit = message
 
     def _transmitter(self):
@@ -245,7 +245,7 @@ def on_busy_profile(busy_profile, cycle):
     f0_idx, fn_idx = int(500/audio_in.df), int(fmax/audio_in.df)
     idx = np.argmin(busy_profile[f0_idx:fn_idx])
     clear_frequencies[cycle] = (f0_idx + idx) * audio_in.df
-    print(f"Set Tx freq to {clear_frequencies[cycle]:6.1f} for cycle {cycle}")
+    print(f"[on_busy] Set Tx freq to {clear_frequencies[cycle]:6.1f} for cycle {cycle}")
 
 def on_control_click(btn_widg):
     btn_text, btn_data = btn_widg.label.get_text(), btn_widg.data
@@ -271,7 +271,7 @@ def cli():
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-c', '--config_folder', help = 'Location of config folder e.g. C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', default = './') 
     parser.add_argument('-i', '--inputcard_keywords', help = 'Comma-separated keywords to identify the input sound device') 
-    parser.add_argument('-v','--verbose',  action='store_true',  help = 'Verbose: include debugging output')    
+    #parser.add_argument('-v','--verbose',  action='store_true',  help = 'Verbose: include debugging output')    
     parser.add_argument('-o','--outputcard_keywords', help = 'Comma-separated keywords to identify the output sound device')
     parser.add_argument('-n','--no_gui',  action='store_true',  help = "Don't create a gui")
     parser.add_argument('-m','--transmit_message', nargs='?', help = 'Transmit a message')

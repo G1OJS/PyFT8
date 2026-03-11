@@ -19,7 +19,7 @@ class Time_utils:
         css = time.strftime("%y%m%d_%H%M%S", time.gmtime(cst))
         return {'time':cst, 'string':css}
 
-    def tlog(self, txt, verbose = True):
+    def tlog(self, txt, verbose = False):
         if(verbose):
             print(f"{self.cyclestart(time.time())['string']} {self.cycle_time():5.2f} {txt}")
 
