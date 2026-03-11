@@ -37,26 +37,49 @@ def get_config(config_folder):
     print(f"Reading config from {ini_file}")
     config.read(ini_file)
 
+def parse_from_adif_rec(rec, field):
+    p = rec.find(field)
+    if p > 0:
+        p1, p2 = rec.find(':',p), rec.find('>',p)
+        n = int(rec[p1+1:p2])
+        return rec[p2+1: p2+1+n]
+        
 class Logging:
     def __init__(self, config_folder):
         self.adif_log_file = f"{config_folder}/PyFT8.adi"
         self.worked_before_file = f"{config_folder}/PyFT8_wb.pkl"
-        self.check_files()
-
-    def check_files(self):
         if(not os.path.exists(self.adif_log_file)):
             with open(self.adif_log_file, 'w') as f:
                 f.write("header <eoh>")
         if(not os.path.exists(self.worked_before_file)):
             with open(f"{self.worked_before_file}","wb") as f:
                 pickle.dump({'dummy':'dummy'}, f)
+        self.load_wb()
 
-    def update_worked_before(self, callsign, time_on):
+    def load_wb(self):
+        global worked_before
         with open(f"{self.worked_before_file}","rb") as f:
             worked_before = pickle.load(f)
+        #self.load_wb_from_txt()
+
+    def load_wb_from_txt(self, file = 'c:/users/drala/recent_log.adi'):
+        import datetime
+        with open(file, 'r') as f:
+            for l in f.readlines():
+                mode = parse_from_adif_rec(l, 'mode')
+                if mode == "FT8":
+                    callsign = parse_from_adif_rec(l, 'call')
+                    t = parse_from_adif_rec(l, 'time_on')
+                    d = parse_from_adif_rec(l, 'qso_date')
+                    tm = time.mktime(datetime.datetime.strptime(d+t, "%Y%m%d%H%M%S").timetuple())
+                    self.update_worked_before(callsign, tm)
+
+    def update_worked_before(self, callsign, tm):
+        global worked_before
+        #self.load_wb()
         if not callsign in worked_before:
             worked_before[callsign] = {}
-        worked_before[callsign] = {time_on}
+        worked_before[callsign] = tm
         with open(f"{self.worked_before_file}","wb") as f:
             pickle.dump(worked_before, f)
                 
@@ -73,7 +96,27 @@ class Logging:
                 v = str(v)
                 f.write(f"<{k}:{len(v)}>{v} ")
             f.write(f"<eor>\n")
-        self.update_worked_before(oStation['c'], times['time_on'])
+        self.update_worked_before(oStation['c'], time.time())
+        print(f"Logged QSO with {oStation['c']}")
+
+
+class Message:
+    def __init__(self, candidate):
+        c = candidate
+        mycall = qso.mStation['c']
+        self.h0_idx, self.f0_idx, self.msg_tuple, self.msg, self.snr, self.dt, self.fHz = c.h0_idx, c.f0_idx, c.msg_tuple, c.msg, c.snr, c.dt, c.fHz
+        self.cyclestart = c.cyclestart
+        self.expire = c.cyclestart['time'] + 29
+        self.is_from_me = c.msg_tuple[1] == mycall
+        self.is_to_me = c.msg_tuple[0] == mycall
+        self.is_cq = c.msg_tuple[0].startswith('CQ')
+        gui_wb_text = ''
+        if c.msg_tuple[1] in worked_before:
+            gui_wb_text = f"wb: {global_time_utils.format_duration(time.time() - worked_before[c.msg_tuple[1]])}"
+        self.gui_text = f"{c.msg} ({c.snr:+03d}) {gui_wb_text}"
+
+    def wsjtx_screen_format(self):
+        return f"{self.cyclestart['string']} {self.snr} {self.dt:4.1f} {self.fHz} ~ {self.msg}"
 
 
 class FT8_QSO:
@@ -132,13 +175,14 @@ def isRR73(grid_rpt):       return 'RR73' in grid_rpt
 def is73(grid_rpt):         return '73' in grid_rpt and not isRR73(grid_rpt)
 def isGrid(grid_rpt):       return not isReport(grid_rpt) and not is73(grid_rpt) and not isRR73(grid_rpt) and not isRRR(grid_rpt) 
 
-def progress_qso(clicked_msg, their_snr, their_cycle_start_time):
+def progress_qso(clicked_message):
     global qso
-    if time.time() - their_cycle_start_time > (15 + MAX_TX_START_SECONDS):
+    
+    if time.time() - clicked_message.cyclestart['time'] > (15 + MAX_TX_START_SECONDS):
         print("Try next cycle")
         return
     
-    call_a, call_b, grid_rpt, _ = clicked_msg.split()
+    call_a, call_b, grid_rpt = clicked_message.msg_tuple
     my_station = qso.mStation
     reply = ""
 
@@ -155,10 +199,10 @@ def progress_qso(clicked_msg, their_snr, their_cycle_start_time):
         qso.oStation['c'] = call_b
         if isGrid(grid_rpt):
             qso.oStation = {'c': call_b, 'g': grid_rpt}
-            qso.rpts['sent'] = f"{their_snr:+03d}"
-            reply = f"{qso.oStation['c']} {my_station['c']} {their_snr:+03d}"
+            qso.rpts['sent'] = f"{clicked_message.snr:+03d}"
+            reply = f"{qso.oStation['c']} {my_station['c']} {clicked_message.snr:+03d}"
         if isReport(grid_rpt):
-            reply = f"{qso.oStation['c']} {my_station['c']} R{their_snr:+03d}"
+            reply = f"{qso.oStation['c']} {my_station['c']} R{clicked_message.snr:+03d}"
             qso.rpts['rcvd'] = grid_rpt[-3:]
         if isRReport(grid_rpt) or isRRR(grid_rpt):
             reply = f"{qso.oStation['c']} {my_station['c']} RR73"
@@ -188,10 +232,9 @@ def wait_for_keyboard():
 #============= Callbacks for GUI ==========================================================
 def on_decode(c):
     if gui:
-        message_cycle_started = global_time_utils.cyclestart_time(time.time())
-        txt = f"{c.msg} ({c.snr:+03d})"
-        gui.post_decode((c.h0_idx, c.f0_idx, txt, (c.snr, message_cycle_started)))
-    print(f"{c.cyclestart_str} {c.snr} {c.dt:4.1f} {c.fHz} ~ {c.msg}")
+        message = Message(c)
+        gui.add_message_box(message)
+    print(message.wsjtx_screen_format())
 
 def on_busy_profile(busy_profile, cycle):
     if output_device_idx is None:
@@ -217,8 +260,8 @@ def on_control_click(btn_widg):
         rig.PyFT8_set_freq_Hz(int(1000000*float(qso.band_info['f'])))
         gui.simple_message(f"{qso.band_info['b']} {qso.band_info['f']}", 'black')
 
-def on_msg_click(clicked_msg, their_snr, their_cycle_start_time):
-    progress_qso(clicked_msg, their_snr, their_cycle_start_time)
+def on_msg_click(message):
+    progress_qso(message)
 
 #=============== CLI ========================================================================        
 def cli():
@@ -238,6 +281,7 @@ def cli():
     config_folder = f"{args.config_folder}".strip()
     get_config(config_folder)
     logging = Logging(config_folder)
+    #print(worked_before)
     qso = FT8_QSO(logging)
     rig = load_rigctrl()
 
