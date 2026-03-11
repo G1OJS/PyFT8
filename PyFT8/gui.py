@@ -47,7 +47,8 @@ class Msg_box:
 
 class Gui:
     def __init__(self, dBgrid, hps, bpt, config, on_msg_click, on_control_click):
-        self.mStation = {'c':config['station']['call'], 'g':config['station']['grid']}
+        if config is not None:
+            self.mStation = {'c':config['station']['call'], 'g':config['station']['grid']}
         self.on_msg_click = on_msg_click
         self.on_control_click = on_control_click
         self.dBgrid = dBgrid
@@ -72,23 +73,24 @@ class Gui:
         self.image = self.ax_wf.imshow(self.dBgrid.T,vmax=120,vmin=90,origin='lower',interpolation='none')
         wf_ylim = self.ax_wf.get_ylim()
         self.ax_wf.set_axis_off()
-        
-        self.buttons = []
-        styles = {'ctrl':{'fc':'grey','c':'black'}, 'band':{'fc':'green','c':'white'}}
-        control_buttons = [{'label':'CQ','style':'ctrl','data':None}, {'label':'Repeat last','style':'ctrl','data':None},
-                           {'label':'Tx off','style':'ctrl','data':None}]
-                           #{'label':'Averaging','style':'ctrl','data':None}]
-        for band, freq in config['bands'].items():
-            control_buttons.append({'label':band,'style':'band','data':freq})
+
+        if config is not None:
+            self.buttons = []
+            styles = {'ctrl':{'fc':'grey','c':'black'}, 'band':{'fc':'green','c':'white'}}
+            control_buttons = [{'label':'CQ','style':'ctrl','data':None}, {'label':'Repeat last','style':'ctrl','data':None},
+                               {'label':'Tx off','style':'ctrl','data':None}]
+                               #{'label':'Averaging','style':'ctrl','data':None}]
+            for band, freq in config['bands'].items():
+                control_buttons.append({'label':band,'style':'band','data':freq})
             
-        btn_axs = []
-        for i, btn in enumerate(control_buttons):
-            btn_axs.append(plt.axes([0.05, 0.9 - 0.022 * i, 0.1, 0.02]))
-            style = styles[btn['style']]
-            btn_widg = Button(btn_axs[-1], btn['label'], color=style['fc'], hovercolor='skyblue')
-            btn_widg.data = btn['data']
-            btn_widg.on_clicked(lambda event, btn_widg=btn_widg: self.on_control_click(btn_widg))
-            self.buttons.append(btn_widg)
+            btn_axs = []
+            for i, btn in enumerate(control_buttons):
+                btn_axs.append(plt.axes([0.05, 0.9 - 0.022 * i, 0.1, 0.02]))
+                style = styles[btn['style']]
+                btn_widg = Button(btn_axs[-1], btn['label'], color=style['fc'], hovercolor='skyblue')
+                btn_widg.data = btn['data']
+                btn_widg.on_clicked(lambda event, btn_widg=btn_widg: self.on_control_click(btn_widg))
+                self.buttons.append(btn_widg)
         self.ani = FuncAnimation(self.fig, self._animate, interval = 40, frames=(100000), blit=True)
 
     def add_message_box(self, message):

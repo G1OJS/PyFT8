@@ -11,8 +11,7 @@ from PyFT8.time_utils import global_time_utils
 
 MAX_TX_START_SECONDS = 2.5
 T_CYC = 15
-rig = None
-gui = None
+rig, gui, qso, worked_before = None, None, None, None
 
 def load_rigctrl():
     try:
@@ -103,7 +102,9 @@ class Logging:
 class Message:
     def __init__(self, candidate):
         c = candidate
-        mycall = qso.mStation['c']
+        mycall = ''
+        if qso is not None:
+            mycall = qso.mStation['c']
         self.h0_idx, self.f0_idx, self.msg_tuple, self.msg, self.snr, self.dt, self.fHz = c.h0_idx, c.f0_idx, c.msg_tuple, c.msg, c.snr, c.dt, c.fHz
         self.cyclestart = c.cyclestart
         self.expire = time.time() + 29.8
@@ -111,7 +112,7 @@ class Message:
         self.is_to_me = c.msg_tuple[0] == mycall
         self.is_cq = c.msg_tuple[0].startswith('CQ')
         gui_wb_text = ''
-        if self.is_cq:
+        if self.is_cq and worked_before is not None:
             if c.msg_tuple[1] in worked_before:
                 gui_wb_text = f"wb: {global_time_utils.format_duration(time.time() - worked_before[c.msg_tuple[1]])}"
         self.gui_text = f"{c.msg} {gui_wb_text}"
@@ -123,7 +124,8 @@ class Message:
 class FT8_QSO:
     def __init__(self, logging):
         self.logging = logging
-        self.mStation = {'c':config['station']['call'], 'g':config['station']['grid']}
+        if config is not None:
+            self.mStation = {'c':config['station']['call'], 'g':config['station']['grid']}
         self.band_info = {'b':None, 'f':0}
         self.tx_freq = 750
         threading.Thread(target = self._transmitter, daemon = True).start()
@@ -169,7 +171,8 @@ class FT8_QSO:
             self.message_to_transmit = None
 
     def log(self):
-        self.logging.log(self.times, self.band_info, self.mStation, self.oStation, self.rpts)
+        if self.logging is not None:
+            self.logging.log(self.times, self.band_info, self.mStation, self.oStation, self.rpts)
 
 def isReport(grid_rpt):     return "+" in grid_rpt or "-" in grid_rpt
 def isRReport(grid_rpt):    return isReport(grid_rpt) and 'R' in grid_rpt

@@ -5,6 +5,7 @@ import pickle
 import threading
 from PyFT8.receiver import Receiver, AudioIn
 from PyFT8.gui import Gui
+from PyFT8.pyft8 import Message
 
 class Wsjtx_all_tailer:
     
@@ -37,6 +38,7 @@ class Wsjtx_all_tailer:
 
 
 data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy"
+wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
 
 global decodes, py_times, ws_times, decodes
 decodes, py_times, ws_times = [], [], []
@@ -52,11 +54,10 @@ def get_cumulative_from_text_files(i0, i1, postfix):
     return times
 
 def on_decode(c):
-    global decodes, py_times
-    decode_pack = (c.h0_idx, c.f0_idx, c.msg, int(c.snr))
-    gui.post_decode(decode_pack)
-    print(f"{c.cyclestart_str} {c.snr} {c.dt:4.1f} {c.fHz} ~ {c.msg}")
-    decodes.append(decode_pack)
+    message = Message(c)
+    if gui:
+        gui.add_message_box(message)
+    print(message.wsjtx_screen_format())
     py_times.append(time.time() - t_start)
 
 def batch_test(i0, i1):
@@ -64,10 +65,10 @@ def batch_test(i0, i1):
     global t_start, gui
     wav_files = []
     for idx in range(i0, i1):
-        wav_files.append(f"{data_folder}/test_{idx:02d}.wav")
+        wav_files.append(f"{wav_folder}/test_{idx:02d}.wav")
     audio_in = AudioIn(3100, wav_files)
-    gui = Gui(audio_in.dBgrid_main, 4, 2, {'c':'xxx', 'g':''}, None, None)
-    rx = Receiver(audio_in, [200, 3100], on_decode)
+    gui = Gui(audio_in.dBgrid_main, 4, 2, None, None, None)
+    rx = Receiver(audio_in, [200, 3100], on_decode, None)
     audio_in.start_wav_load()
     t_start = time.time()
     with open('baseline.pkl', 'rb') as f:
@@ -104,8 +105,8 @@ def live_test():
     from matplotlib.animation import FuncAnimation
     global t_start, gui
     audio_in = AudioIn(3100)
-    gui = Gui(audio_in.dBgrid_main, 4, 2, {'c':'xxx', 'g':''}, None, None)
-    rx = Receiver(audio_in, [200, 3100], on_decode)
+    gui = Gui(audio_in.dBgrid_main, 4, 2, config, None, None)
+    rx = Receiver(audio_in, [200, 3100], on_decode, None)
     t_start = time.time()
     input_device_idx = audio_in.find_device(["Cable", "Out"])
     audio_in.start_streamed_audio(input_device_idx)
@@ -133,7 +134,6 @@ def live_test():
     gui.plt.show()
 
 #live_test()
-
 batch_test(1,39)
 
 
