@@ -15,7 +15,7 @@ PyFT8 is somewhat experimental, with a focus on demonstrating FT8 written in Pyt
  - Modern programming language throughout
  - Finds sound cards by keywords so follows them if windows moves them ...
 
-<img width="996" height="998" alt="screenshot" src="https://github.com/user-attachments/assets/abdd5029-c4dd-4f54-ad35-37808465a6ba" />
+<img width="883" height="1001" alt="image" src="https://github.com/user-attachments/assets/7a93560e-2f3c-4d8b-ac5a-3db97329bf36" />
 
 
 ## Motivation
