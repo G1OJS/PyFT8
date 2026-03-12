@@ -56,43 +56,46 @@ class Gui:
         self.msg_boxes = {}
         self.decode_queue = queue.Queue()
         self.simple_message_art = None
+        self.pmarg = 0.05
         self.make_layout(config)
+        self.ani = FuncAnimation(self.fig, self._animate, interval = 40, frames=(100000), blit=True)
 
     def simple_message(self, text, color):
         if self.simple_message_art:
             self.simple_message_art.remove()
-        self.simple_message_art = self.fig.text(0.2,0.985, text, color = color)
+        self.simple_message_art = self.ax_console.text(0.2,0.985, text, color = color)
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def make_layout(self, config):
-        self.fig, self.ax_wf = plt.subplots(figsize=(10,10), frameon = False)
-        self.fig.canvas.manager.set_window_title('PyFT8 by G1OJS')
+    def make_layout(self, config, wf_left = 0.15, wf_top = 0.8):
         self.plt = plt
-        plt.tight_layout()
-        self.image = self.ax_wf.imshow(self.dBgrid.T,vmax=120,vmin=90,origin='lower',interpolation='none')
-        wf_ylim = self.ax_wf.get_ylim()
+        self.fig = plt.figure(figsize = (10,10), facecolor=(.18, .71, .71, 0.4)) 
+        self.fig.canvas.manager.set_window_title('PyFT8 by G1OJS')
+        self.ax_wf = self.fig.add_axes([self.pmarg + wf_left, self.pmarg, 1-2*self.pmarg-wf_left, wf_top-self.pmarg])
+        self.image = self.ax_wf.imshow(self.dBgrid.T,vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self.ax_wf.set_axis_off()
+        self.ax_console = self.fig.add_axes([self.pmarg, wf_top, 1-2*self.pmarg, 1-self.pmarg-wf_top], fc='black')
+        self.ax_console.set_axis_off()
 
         if config is not None:
-            self.buttons = []
             styles = {'ctrl':{'fc':'grey','c':'black'}, 'band':{'fc':'green','c':'white'}}
-            control_buttons = [{'label':'CQ','style':'ctrl','data':None}, {'label':'Repeat last','style':'ctrl','data':None},
+            button_defs = [{'label':'CQ','style':'ctrl','data':None}, {'label':'Repeat last','style':'ctrl','data':None},
                                {'label':'Tx off','style':'ctrl','data':None}]
                                #{'label':'Averaging','style':'ctrl','data':None}]
             for band, freq in config['bands'].items():
-                control_buttons.append({'label':band,'style':'band','data':freq})
-            
-            btn_axs = []
-            for i, btn in enumerate(control_buttons):
-                btn_axs.append(plt.axes([0.05, 0.9 - 0.022 * i, 0.1, 0.02]))
-                style = styles[btn['style']]
-                btn_widg = Button(btn_axs[-1], btn['label'], color=style['fc'], hovercolor='skyblue')
-                btn_widg.data = btn['data']
-                btn_widg.on_clicked(lambda event, btn_widg=btn_widg: self.on_control_click(btn_widg))
-                self.buttons.append(btn_widg)
-        self.ani = FuncAnimation(self.fig, self._animate, interval = 40, frames=(100000), blit=True)
+                button_defs.append({'label':band,'style':'band','data':freq})
+            self._make_buttons(button_defs, styles, wf_top, 0.02, 0.1, 0.002)
 
+    def _make_buttons(self, buttons, styles, btns_top, btn_h, btn_w, sep_h):
+        self.buttons = []
+        for i, btn in enumerate(buttons):
+            btn_axs = plt.axes([self.pmarg, btns_top - (i+1) * btn_h, btn_w, btn_h-sep_h])
+            style = styles[btn['style']]
+            btn_widg = Button(btn_axs, btn['label'], color=style['fc'], hovercolor='skyblue')
+            btn_widg.data = btn['data']
+            btn_widg.on_clicked(lambda event, btn_widg=btn_widg: self.on_control_click(btn_widg))
+            self.buttons.append(btn_widg)
+        
     def add_message_box(self, message):
         self.decode_queue.put(message)
 
