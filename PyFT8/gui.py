@@ -9,27 +9,29 @@ rcParams['toolbar'] = 'None'
 # ================== WATERFALL ======================================================
 
 class Scrollbox:
-    def __init__(self, fig, ax, nlines = 5):
+    def __init__(self, fig, ax, nlines = 6):
         self.fig, self.ax = fig, ax
+        bbox = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+        self.fontsize = 0.6 * bbox.height * fig.dpi / nlines
         self.nlines = nlines
         self.line_height = 1 / nlines
         self.lines = []
+        self.clear()
+
+    def clear(self):
         self.ax.cla()
+        self.ax.set_xticks([])
+        self.ax.set_yticks([])
         self.ax.set_facecolor('black')
-        self.ax.set_axis_off()
 
     def print(self, text, color = 'white'):
-        self.ax.cla()
-        self.ax.set_facecolor('black')
-        self.ax.set_axis_off()
+        self.clear()
         self.lines = self.lines[-(self.nlines-1):]
         self.lines.append({'art':None, 'text':text, 'color':color})
-        print(self.lines)
         for i, line in enumerate(self.lines):
             if line['text'] is not None:
-                line['art'] = self.ax.text(0.2,0.995 - self.line_height * i, line['text'], color = line['color'])
+                line['art'] = self.ax.text(0.03,1 - self.line_height * (i+1), line['text'], color = line['color'], fontsize = self.fontsize)
         self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
 
 class Msg_box:
     def __init__(self, fig, ax, tbin, fbin, w, h, onclick):
@@ -78,7 +80,7 @@ class Gui:
         self.hps, self.bpt = hps, bpt
         self.msg_boxes = {}
         self.decode_queue = queue.Queue()
-        self.pmarg = 0.05
+        self.pmarg = 0.04
         self.make_layout(config)
         self.ani = FuncAnimation(self.fig, self._animate, interval = 40, frames=(100000), blit=True)
 
@@ -88,8 +90,9 @@ class Gui:
         self.fig.canvas.manager.set_window_title('PyFT8 by G1OJS')
         self.ax_wf = self.fig.add_axes([self.pmarg + wf_left, self.pmarg, 1-2*self.pmarg-wf_left, wf_top-self.pmarg])
         self.image = self.ax_wf.imshow(self.dBgrid.T,vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
-        self.ax_wf.set_axis_off()
-        self.ax_console = self.fig.add_axes([self.pmarg, wf_top, 1-2*self.pmarg, 1-self.pmarg-wf_top])
+        self.ax_wf.set_xticks([])
+        self.ax_wf.set_yticks([])
+        self.ax_console = self.fig.add_axes([self.pmarg + wf_left, wf_top, 1-2*self.pmarg - wf_left, 1-self.pmarg-wf_top])
         self.console = Scrollbox(self.fig, self.ax_console)
 
         if config is not None:

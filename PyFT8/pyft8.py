@@ -16,10 +16,10 @@ rig, gui, qso, worked_before = None, None, None, None
 def load_rigctrl():
     try:
         from PyFT8.rigctrl import Rig
-        print("Loaded Rig control")
+        console_print("Loaded Rig control")
         return Rig()
     except ImportError:
-        print("No Rig control found")
+        console_print("No Rig control found")
         return None
  
 def get_config(config_folder):
@@ -32,8 +32,8 @@ def get_config(config_folder):
         config['bands'] = {'20m':14.074}
         with open(ini_file, 'w') as f:
             config.write(f)
-        print(f"Wrote default config to {ini_file}")
-    print(f"Reading config from {ini_file}")
+        console_print(f"Wrote default config to {ini_file}")
+    console_print(f"Reading config from {ini_file}")
     config.read(ini_file)
 
 def parse_from_adif_rec(rec, field):
@@ -96,7 +96,7 @@ class Logging:
                 f.write(f"<{k}:{len(v)}>{v} ")
             f.write(f"<eor>\n")
         self.update_worked_before(oStation['c'], time.time())
-        print(f"Logged QSO with {oStation['c']}")
+        console_print(f"Logged QSO with {oStation['c']}")
 
 
 class Message:
@@ -141,9 +141,9 @@ class FT8_QSO:
 
     def set_tx_message(self, message):
         if gui and self.band_info['b'] is None:
-            gui.console.print("Please select a band before transmitting", color = 'red')
+            console_print("[PyFT8] Please select a band before transmitting", color = 'red')
             return
-        print(f"[QSO] Set transmit message to '{message}' with tx cycle = {self.tx_cycle}")
+        console_print(f"[QSO] Set transmit message to '{message}' with tx cycle = {self.tx_cycle}")
         self.message_to_transmit = message
 
     def _transmitter(self):
@@ -152,7 +152,7 @@ class FT8_QSO:
             if self.message_to_transmit is None:
                 continue
             if output_device_idx is None:
-                print("No output device")
+                console_print("No output device")
                 return
             ct = global_time_utils.cycle_time()
             if ct > MAX_TX_START_SECONDS:
@@ -161,7 +161,7 @@ class FT8_QSO:
             if self.tx_cycle is None:
                 self.tx_cycle = global_time_utils.curr_cycle_from_time()
                 self.tx_freq = clear_frequencies[self.tx_cycle]
-            print(f"Transmitting {self.message_to_transmit} on cycle {self.tx_cycle}")
+            console_print(f"Transmitting {self.message_to_transmit} on cycle {self.tx_cycle}")
             symbols = audio_out.create_ft8_symbols(self.message_to_transmit)
             audio_data = audio_out.create_ft8_wave(symbols, f_base = self.tx_freq)
             rig.PyFT8_ptt_on()
@@ -185,7 +185,7 @@ def progress_qso(clicked_message):
     global qso
     
     if time.time() - clicked_message.cyclestart['time'] > (15 + MAX_TX_START_SECONDS):
-        print("Try next cycle")
+        console_print("Try next cycle")
         return
     
     call_a, call_b, grid_rpt = clicked_message.msg_tuple
@@ -224,7 +224,7 @@ def make_wav(msg, wave_output_file): # move to transmitter.py?
     symbols = audio_out.create_ft8_symbols(msg)
     audio_data = audio_out.create_ft8_wave(symbols)
     audio_out.write_to_wave_file(audio_data, wave_output_file)
-    print(f"Created wave file {wave_output_file}")
+    console_print(f"Created wave file {wave_output_file}")
 
 def wait_for_keyboard():
     import time
@@ -248,7 +248,7 @@ def on_busy_profile(busy_profile, cycle):
     f0_idx, fn_idx = int(500/audio_in.df), int(fmax/audio_in.df)
     idx = np.argmin(busy_profile[f0_idx:fn_idx])
     clear_frequencies[cycle] = (f0_idx + idx) * audio_in.df
-    print(f"[on_busy] Set Tx freq to {clear_frequencies[cycle]:6.1f} for cycle {cycle}")
+    console_print(f"[on_busy] Set Tx freq to {clear_frequencies[cycle]:6.1f} for cycle {cycle}")
 
 def on_control_click(btn_widg):
     btn_text, btn_data = btn_widg.label.get_text(), btn_widg.data
@@ -258,16 +258,23 @@ def on_control_click(btn_widg):
     if btn_text == "Repeat last":
         qso.set_tx_message(qso.last_tx)
     if btn_text == "Tx off":
+        console_print("[PyFT8] Set PTT Off")
         rig.PyFT8_ptt_off()
     if('m' in btn_text):
         qso.band_info = {'b':btn_text, 'f':btn_data}
         rig.PyFT8_set_freq_Hz(int(1000000*float(qso.band_info['f'])))
-        gui.console.print(f"Set band: {qso.band_info['b']} {qso.band_info['f']}")
+        console_print(f"[PyFT8] Set band: {qso.band_info['b']} {qso.band_info['f']}")
 
 def on_msg_click(message):
     progress_qso(message)
 
-#=============== CLI ========================================================================        
+#=============== CLI ========================================================================
+def console_print(text, color = 'white'):
+    if gui is not None:
+        gui.console.print(text, color)
+    else:
+        print(text)
+        
 def cli():
     global audio_in, audio_out, output_device_idx, rig, gui, qso, config, clear_frequencies
     import time
@@ -285,7 +292,6 @@ def cli():
     config_folder = f"{args.config_folder}".strip()
     get_config(config_folder)
     logging = Logging(config_folder)
-    #print(worked_before)
     qso = FT8_QSO(logging)
     rig = load_rigctrl()
 
@@ -306,7 +312,7 @@ def cli():
         audio_in = AudioIn(3100)
         input_device_idx = audio_in.find_device(args.inputcard_keywords.replace(' ','').split(','))
         if not input_device_idx:
-            print("No input device")
+            console_print("No input device")
         else:
             gui = None if args.no_gui else Gui(audio_in.dBgrid_main, 4, 2, config, on_msg_click, on_control_click)
             rx = Receiver(audio_in, [200, 3100], on_decode, on_busy_profile)
