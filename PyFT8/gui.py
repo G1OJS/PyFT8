@@ -8,6 +8,29 @@ from matplotlib.widgets import Slider, Button
 rcParams['toolbar'] = 'None'
 # ================== WATERFALL ======================================================
 
+class Scrollbox:
+    def __init__(self, fig, ax, nlines = 5):
+        self.fig, self.ax = fig, ax
+        self.nlines = nlines
+        self.line_height = 1 / nlines
+        self.lines = []
+        self.ax.cla()
+        self.ax.set_facecolor('black')
+        self.ax.set_axis_off()
+
+    def print(self, text, color = 'white'):
+        self.ax.cla()
+        self.ax.set_facecolor('black')
+        self.ax.set_axis_off()
+        self.lines = self.lines[-(self.nlines-1):]
+        self.lines.append({'art':None, 'text':text, 'color':color})
+        print(self.lines)
+        for i, line in enumerate(self.lines):
+            if line['text'] is not None:
+                line['art'] = self.ax.text(0.2,0.995 - self.line_height * i, line['text'], color = line['color'])
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
 class Msg_box:
     def __init__(self, fig, ax, tbin, fbin, w, h, onclick):
         from matplotlib.patches import Rectangle
@@ -55,27 +78,19 @@ class Gui:
         self.hps, self.bpt = hps, bpt
         self.msg_boxes = {}
         self.decode_queue = queue.Queue()
-        self.simple_message_art = None
         self.pmarg = 0.05
         self.make_layout(config)
         self.ani = FuncAnimation(self.fig, self._animate, interval = 40, frames=(100000), blit=True)
 
-    def simple_message(self, text, color):
-        if self.simple_message_art:
-            self.simple_message_art.remove()
-        self.simple_message_art = self.ax_console.text(0.2,0.985, text, color = color)
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
-
-    def make_layout(self, config, wf_left = 0.15, wf_top = 0.8):
+    def make_layout(self, config, wf_left = 0.15, wf_top = 0.87):
         self.plt = plt
         self.fig = plt.figure(figsize = (10,10), facecolor=(.18, .71, .71, 0.4)) 
         self.fig.canvas.manager.set_window_title('PyFT8 by G1OJS')
         self.ax_wf = self.fig.add_axes([self.pmarg + wf_left, self.pmarg, 1-2*self.pmarg-wf_left, wf_top-self.pmarg])
         self.image = self.ax_wf.imshow(self.dBgrid.T,vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self.ax_wf.set_axis_off()
-        self.ax_console = self.fig.add_axes([self.pmarg, wf_top, 1-2*self.pmarg, 1-self.pmarg-wf_top], fc='black')
-        self.ax_console.set_axis_off()
+        self.ax_console = self.fig.add_axes([self.pmarg, wf_top, 1-2*self.pmarg, 1-self.pmarg-wf_top])
+        self.console = Scrollbox(self.fig, self.ax_console)
 
         if config is not None:
             styles = {'ctrl':{'fc':'grey','c':'black'}, 'band':{'fc':'green','c':'white'}}

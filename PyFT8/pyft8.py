@@ -141,7 +141,7 @@ class FT8_QSO:
 
     def set_tx_message(self, message):
         if gui and self.band_info['b'] is None:
-            gui.simple_message("Please select a band before transmitting", color = 'red')
+            gui.console.print("Please select a band before transmitting", color = 'red')
             return
         print(f"[QSO] Set transmit message to '{message}' with tx cycle = {self.tx_cycle}")
         self.message_to_transmit = message
@@ -262,7 +262,7 @@ def on_control_click(btn_widg):
     if('m' in btn_text):
         qso.band_info = {'b':btn_text, 'f':btn_data}
         rig.PyFT8_set_freq_Hz(int(1000000*float(qso.band_info['f'])))
-        gui.simple_message(f"{qso.band_info['b']} {qso.band_info['f']}", 'black')
+        gui.console.print(f"Set band: {qso.band_info['b']} {qso.band_info['f']}")
 
 def on_msg_click(message):
     progress_qso(message)
