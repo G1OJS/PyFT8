@@ -275,8 +275,16 @@ class Candidate:
             bits77_int = check_crc(bits91_int)
             if(bits77_int):
                 self.msg_tuple = unpack(bits77_int)
-                self.msg = ' '.join(self.msg_tuple)
+                self.msg = self.validate(self.msg_tuple)
         self.decode_completed = time.time()
+
+    def validate(self, msg_tuple):
+        mt = msg_tuple
+        e = False
+        e = e or (' ' in mt[0].strip() and not mt[0].startswith('CQ'))
+        #e = e or (' ' in mt[1].strip())
+        if not e:
+            return ' '.join(self.msg_tuple)
         
 #============== RECEIVER ===========================================================
         
