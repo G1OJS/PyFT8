@@ -15,7 +15,8 @@ PyFT8 is somewhat experimental, with a focus on demonstrating FT8 written in Pyt
  - Modern programming language throughout
  - Finds sound cards by keywords so follows them if windows moves them ...
 
-<img width="883" height="1001" alt="image" src="https://github.com/user-attachments/assets/7a93560e-2f3c-4d8b-ac5a-3db97329bf36" />
+<img width="1003" height="1020" alt="image" src="https://github.com/user-attachments/assets/bf6e3f78-531a-4c9b-ab2b-b51cc04ad980" />
+
 
 
 ## Motivation
@@ -50,9 +51,11 @@ Alternatively, you can run PyFT8 without rig control; if there is no rig found, 
 
 The image below shows the number of decodes from PyFT8, WSJT-x V2.7.0 running in NORM mode, and FT8_lib, using the same 10 minutes of busy 20m audio that is used to test ft8_lib. 
 
-<img width="844" height="562" alt="performance snapshot" src="https://github.com/user-attachments/assets/08ba1946-b816-448f-9510-7763a2f065bd" />
+<img width="640" height="480" alt="performance snapshot" src="https://github.com/user-attachments/assets/fc84702a-4d76-475b-b7fe-489f4a09deed" />
 
-## Limitations
+
+## Limitations![Uploading performance snapshot.png…]()
+
 In pursuit of tight code, I've concentrated on core standard messages, leaving out some of the less-used features. The receive part of the
 code doesn't (yet) have the full capability of the advanced decoders used in WSJT-x, and so gets fewer decodes than WSJT-x gets, depending on band conditions (on a quiet band with only good signals PyFT8 will get close to 100%).
 
