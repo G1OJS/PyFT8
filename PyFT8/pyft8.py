@@ -191,6 +191,8 @@ def progress_qso(clicked_message):
     call_a, call_b, grid_rpt = clicked_message.msg_tuple
     my_station = qso.mStation
     reply = ""
+    msg = ' '.join(clicked_message.msg_tuple)
+    console_print(f"[QSO] Clicked on message '{msg}'")
 
     if call_a == "CQ":
         qso.clear()
@@ -215,7 +217,7 @@ def progress_qso(clicked_message):
         if isRR73(grid_rpt):
             reply = f"{qso.oStation['c']} {my_station['c']} 73"
         qso.set_tx_message(reply)
-        
+
     if is73(grid_rpt) or " 73" in reply or isRR73(grid_rpt):
         qso.times['time_off'] = time.gmtime()
         qso.log() 

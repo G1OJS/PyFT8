@@ -9,12 +9,12 @@ rcParams['toolbar'] = 'None'
 # ================== WATERFALL ======================================================
 
 class Scrollbox:
-    def __init__(self, fig, ax, nlines = 6):
+    def __init__(self, fig, ax, nlines = 5):
         self.fig, self.ax = fig, ax
         bbox = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-        self.fontsize = 0.6 * bbox.height * fig.dpi / nlines
+        self.fontsize = 0.5 * bbox.height * fig.dpi / nlines
         self.nlines = nlines
-        self.line_height = 1 / nlines
+        self.line_height = 0.9 / nlines
         self.lines = []
         self.clear()
 
