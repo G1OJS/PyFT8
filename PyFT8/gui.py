@@ -16,22 +16,20 @@ class Scrollbox:
         self.nlines = nlines
         self.line_height = 0.9 / nlines
         self.lines = []
-        self.clear()
-
-    def clear(self):
-        self.ax.cla()
+        self.lineartists = []
+        for i in range(self.nlines):
+            self.lineartists.append(self.ax.text(0.03,1 - self.line_height * (i+1),
+                            '', color = 'white', fontsize = self.fontsize))
         self.ax.set_xticks([])
         self.ax.set_yticks([])
         self.ax.set_facecolor('black')
 
     def print(self, text, color = 'white'):
-        self.clear()
         self.lines = self.lines[-(self.nlines-1):]
-        self.lines.append({'art':None, 'text':text, 'color':color})
+        self.lines.append({'text':text, 'color':color})
         for i, line in enumerate(self.lines):
-            if line['text'] is not None:
-                line['art'] = self.ax.text(0.03,1 - self.line_height * (i+1), line['text'], color = line['color'], fontsize = self.fontsize)
-        self.fig.canvas.draw()
+            self.lineartists[i].set_text(line['text'])
+            self.lineartists[i].set_color(line['color'])
 
 class Msg_box:
     def __init__(self, fig, ax, tbin, fbin, w, h, onclick):
@@ -134,6 +132,6 @@ class Gui:
             self._display_message_box(self.decode_queue.get())
         if (frame % 10 == 0):
             self._tidy_msg_boxes()
-        return [self.image, *self.ax_wf.patches, *self.ax_wf.texts]
+        return [self.image, *self.ax_wf.patches, *self.ax_wf.texts, *self.console.lineartists]
 
                                     
