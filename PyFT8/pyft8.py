@@ -22,6 +22,9 @@ def get_config(config_folder):
     if not os.path.exists(ini_file):
         config['station'] = {'call':'station_callsign', 'grid':'station_grid'}
         config['bands'] = {'20m':14.074}
+        config['rig'] = {'port': 'COM4', 'baud_rate':9600,
+                         'set_freq_command':'FEFE88E0.05.0000000000.FD', 'set_freq_value':'5|5|vfBcdLU|1|0',
+                         'ptt_on_command':'FEFE88E0.1C00.01.FD', 'ptt_off_command':'FEFE88E0.1C00.00.FD'}
         with open(ini_file, 'w') as f:
             config.write(f)
         console_print(f"Wrote default config to {ini_file}")
