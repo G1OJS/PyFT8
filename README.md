@@ -43,7 +43,9 @@ Once installed, you can use the following commands to run it. Otherwise, please 
 | Launch configured GUI|pyft8 -i "Keyword1, Keyword2" -o "Keyword1, Keyword2" -c {config folder}| Config folder stores PyFT8.ini (your callsign, grid, buttons) and PyFT8.adi log file. Run this once to create default PyFT8.ini file.|
 
 ### Rig control 
-PyFT8 doesn't currently support CAT control for rigs in general. However, I've included the Python code that I use with my Icom IC-7100 in the file 'rigctrl.py'. You can modify this to control your own rig of course if you know Python.
+I'm resisting interfacing this to middleware such as Hamlib and Omnirig, because I want to keep the whole thing self-contained and simple, and losing connections to/from middleware was one motivation for writing this in the first place.
+
+However, I've included the Python code that I use with my Icom IC-7100 in the file 'rigctrl.py', and believe I've moved sufficient 'specification' for the rig protocol into the .ini file so that you can paste in your own rig specification (see for e.g. the Omnirig .ini file for your rig) and get it working with PyFT8 controlling PTT and frequency.
 
 Alternatively, you can run PyFT8 without rig control; if there is no rig found, PyFT8 defaults to running without a rig connected. In this case, you need to provide your own PTT method and note that the band buttons will only set the information used for logging QSOs to the PyFT8.adi file. Or you can use PyFT8 as Rx-only.
 
