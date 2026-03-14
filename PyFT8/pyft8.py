@@ -257,6 +257,7 @@ def on_control_click(btn_widg):
     if btn_text == "Tx off":
         console_print("[PyFT8] Set PTT Off")
         rig.ptt_off()
+        qso.tx_cycle = None
     if('m' in btn_text):
         qso.band_info = {'b':btn_text, 'f':btn_data}
         rig.set_freq_Hz(int(1000000*float(qso.band_info['f'])))
