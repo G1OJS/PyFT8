@@ -8,20 +8,12 @@ from PyFT8.receiver import Receiver, AudioIn
 from PyFT8.gui import Gui
 from PyFT8.transmitter import AudioOut
 from PyFT8.time_utils import global_time_utils
+from PyFT8.rigctrl import Rig
 
 MAX_TX_START_SECONDS = 2.5
 T_CYC = 15
 rig, gui, qso, worked_before = None, None, None, None
 
-def load_rigctrl():
-    try:
-        from PyFT8.rigctrl import Rig
-        console_print("Loaded Rig control")
-        return Rig()
-    except ImportError:
-        console_print("No Rig control found")
-        return None
- 
 def get_config(config_folder):
     import configparser
     global config
@@ -164,9 +156,9 @@ class FT8_QSO:
             console_print(f"Transmitting {self.message_to_transmit} on cycle {self.tx_cycle}")
             symbols = audio_out.create_ft8_symbols(self.message_to_transmit)
             audio_data = audio_out.create_ft8_wave(symbols, f_base = self.tx_freq)
-            rig.PyFT8_ptt_on()
+            rig.ptt_on()
             audio_out.play_data_to_soundcard(audio_data, output_device_idx)
-            rig.PyFT8_ptt_off()
+            rig.ptt_off()
             self.last_tx = self.message_to_transmit
             self.message_to_transmit = None
 
@@ -261,10 +253,10 @@ def on_control_click(btn_widg):
         qso.set_tx_message(qso.last_tx)
     if btn_text == "Tx off":
         console_print("[PyFT8] Set PTT Off")
-        rig.PyFT8_ptt_off()
+        rig.ptt_off()
     if('m' in btn_text):
         qso.band_info = {'b':btn_text, 'f':btn_data}
-        rig.PyFT8_set_freq_Hz(int(1000000*float(qso.band_info['f'])))
+        rig.set_freq_Hz(int(1000000*float(qso.band_info['f'])))
         console_print(f"[PyFT8] Set band: {qso.band_info['b']} {qso.band_info['f']}")
 
 def on_msg_click(message):
@@ -295,7 +287,7 @@ def cli():
     get_config(config_folder)
     logging = Logging(config_folder)
     qso = FT8_QSO(logging)
-    rig = load_rigctrl()
+    rig = Rig(config)
 
     if args.transmit_message or args.outputcard_keywords:
         audio_out = AudioOut()
