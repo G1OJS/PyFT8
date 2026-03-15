@@ -54,13 +54,14 @@ def unpack(bits77):
     return (decode_call(fields["callA"]), decode_call(fields["callB"]), decode_grid(fields["grid"]))
 
 def decode_call(call_int):
+    table_7 = {'DE':(0,0),'QRZ':(1,1),'CQ':(2,2), 'CQ nnn':(3,1002),'CQ x':(1004,1029),
+               'CQ xx':(1031,1731),'CQ xxxx':(21443,532443),'<....>':(2063592,2063592+4194303)}
     portable = call_int & 1
     call_int >>= 1
-    if call_int < 3:
-        return CALL_TOKENS[call_int]
+    for ct, (lo, hi) in table_7.items():
+        if lo <= call_int <= hi:
+            return ct
     call_int -= NCALL_TOKENS_PLUS_MAX22
-    if call_int == 0:
-        return '<...>'
     chars = []
     for alphabet, div in CALL_FIELDS:
         idx, call_int = divmod(call_int, div)
