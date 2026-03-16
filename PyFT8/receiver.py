@@ -39,19 +39,33 @@ CALL_FIELDS = [ (' ' + digs + ltrs, 36*10*27**3),   (digs + ltrs, 10*27**3), (di
 CALL_TOKENS = ("DE", "QRZ", "CQ")
 NCALL_TOKENS_PLUS_MAX22 = 2_063_592 + 4_194_304
 GRID_RR73s = ('', '', 'RRR', 'RR73', '73')
-FT8_MSG_FORMAT = (("i3", 3), ("grid", 16), ("callB",29), ("callA",29))
 
-def get_fields(bits, fmt):
-    out = {}
-    for name, n in fmt:
-        mask = (1 << n) - 1
-        out[name] = bits & mask
-        bits >>= n
-    return out
+def get_bits(bits, n):
+    mask = (1 << n) - 1
+    out = bits & mask
+    bits >>= n
+    return out, bits
 
-def unpack(bits77):
-    fields = get_fields(bits77, FT8_MSG_FORMAT)
-    return (decode_call(fields["callA"]), decode_call(fields["callB"]), decode_grid(fields["grid"]))
+def unpack(bits):
+    i3, bits = get_bits(bits,3)
+    if i3 == 0:
+        return ('Type0','not','implemented')
+    elif i3 == 1:
+        gr, bits = get_bits(bits,16)
+        cb, bits = get_bits(bits,29)
+        ca, bits = get_bits(bits,29)
+        return (decode_call(ca), decode_call(cb), decode_grid(gr))
+    elif i3 == 1:
+        return ('Type1','not','implemented')
+    elif i3 == 2:
+        return ('Type2','not','implemented')
+    elif i3 == 3:
+        return ('Type3','not','implemented')
+    elif i3 == 4:
+        return ('Type4','not','implemented')
+    elif i3 == 5:
+        return ('Type5','not','implemented')
+
 
 def decode_call(call_int):
     table_7 = {'DE':(0,0),'QRZ':(1,1),'CQ':(2,2), 'CQ nnn':(3,1002),'CQ x':(1004,1029),
@@ -280,9 +294,10 @@ class Candidate:
         self.decode_completed = time.time()
 
     def validate(self, msg_tuple):
-        mt = msg_tuple
         e = False
-        e = e or (' ' in mt[0].strip() and not mt[0].startswith('CQ'))
+        # checking if this is needed after adding full table_7 info
+        #mt = msg_tuple
+        #e = e or (' ' in mt[0].strip() and not mt[0].startswith('CQ'))
         #e = e or (' ' in mt[1].strip())
         if not e:
             return ' '.join(self.msg_tuple)
