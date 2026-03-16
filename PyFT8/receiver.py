@@ -337,8 +337,12 @@ class Receiver():
         return cands
 
     def get_busy_profile(self):
-        h0 = 0 if self.curr_cycle == 0 else HOPS_PER_CYCLE+1
-        return np.sum(self.audio_in.dBgrid_main[h0:self.audio_in.dBgrid_main_ptr, :], axis = 0), self.curr_cycle
+        from numpy.lib.stride_tricks import sliding_window_view
+        h0 = 0 if self.curr_cycle == 0 else HOPS_PER_CYCLE+1    
+        fbin_sum = np.sum(self.audio_in.dBgrid_main[h0:self.audio_in.dBgrid_main_ptr, :], axis = 0)
+        windows = sliding_window_view(fbin_sum, 8*BPT)
+        bp = windows.max(axis=1) 
+        return bp, self.curr_cycle
         
     def manage_cycle(self):
         dashes = "======================================================"
