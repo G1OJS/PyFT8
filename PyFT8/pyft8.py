@@ -15,7 +15,7 @@ MAX_TX_START_SECONDS = 2.5
 T_CYC = 15
 rig, gui, qso, worked_before, pskr_upload = None, None, None, None, None
 
-def get_config(config_folder):
+def get_config():
     import configparser
     global config
     config = configparser.ConfigParser()
@@ -41,7 +41,7 @@ def parse_from_adif_rec(rec, field):
         return rec[p2+1: p2+1+n]
         
 class Logging:
-    def __init__(self, config_folder):
+    def __init__(self):
         self.adif_log_file = f"{config_folder}/PyFT8.adi"
         self.worked_before_file = f"{config_folder}/PyFT8_wb.pkl"
         if(not os.path.exists(self.adif_log_file)):
@@ -116,6 +116,10 @@ class Message:
 
     def wsjtx_screen_format(self):
         return f"{self.cyclestart['string']} {self.snr:+03d} {self.dt:4.1f} {self.fHz:4.0f} ~ {self.msg}"
+
+    def wsjtx_all_txt_format(self):
+        fMHz = float(qso.band_info['fMHz']) if qso.band_info['fMHz'] is not None else 0
+        return f"{self.cyclestart['string']} {fMHz:8.3f} Rx FT8    {self.snr:+03d} {self.dt:4.1f} {self.fHz:4.0f} ~ {self.msg}"
 
 
 class FT8_QSO:
@@ -234,6 +238,13 @@ def wait_for_keyboard():
     except KeyboardInterrupt:
         pass
 
+def write_all_txt_row(message):
+    all_file = f"{config_folder}/ALL.txt"
+    mode = 'w' if not os.path.exists(all_file) else 'a'
+    row = message.wsjtx_all_txt_format()
+    with open(all_file, mode) as f:
+        f.write(f"{row}\n")
+
 #============= Callbacks for GUI ==========================================================
 def on_decode(c):
     message = Message(c)
@@ -244,6 +255,7 @@ def on_decode(c):
         if dx_call != 'not':
             pskr_upload.add_report(dx_call, int(1000000*float(qso.band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 2, int(time.time()))
     print(message.wsjtx_screen_format())
+    write_all_txt_row(message)
 
 def on_busy_profile(busy_profile, cycle):
     if output_device_idx is None:
@@ -283,7 +295,7 @@ def console_print(text, color = 'white'):
         print(text)
         
 def cli():
-    global audio_in, audio_out, output_device_idx, rig, gui, qso, config, clear_frequencies, pskr_upload
+    global audio_in, audio_out, output_device_idx, rig, gui, qso, config, config_folder, clear_frequencies, pskr_upload
     import time
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-c', '--config_folder', help = 'Location of config folder e.g. C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', default = './') 
@@ -297,8 +309,8 @@ def cli():
 
     output_device_idx = None
     config_folder = f"{args.config_folder}".strip()
-    get_config(config_folder)
-    logging = Logging(config_folder)
+    get_config()
+    logging = Logging()
     mc, mg = config['station']['call'], config['station']['grid']
     if mc is not None and 'pskreporter' in config.keys():
         if config['pskreporter']['upload'] == 'Y':
