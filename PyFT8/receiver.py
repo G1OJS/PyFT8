@@ -55,8 +55,6 @@ def unpack(bits):
         cb, bits = get_bits(bits,29)
         ca, bits = get_bits(bits,29)
         return (decode_call(ca), decode_call(cb), decode_grid(gr))
-    elif i3 == 1:
-        return ('Type1','not','implemented')
     elif i3 == 2:
         return ('Type2','not','implemented')
     elif i3 == 3:
