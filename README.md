@@ -55,7 +55,7 @@ Alternatively, you can run PyFT8 without rig control; if there is no rig found, 
 
 The image below shows the number of decodes from PyFT8, WSJT-x V2.7.0 running in NORM mode, and FT8_lib, using the same 10 minutes of busy 20m audio that is used to test ft8_lib. 
 
-<img width="640" height="480" alt="performance snapshot" src="https://github.com/user-attachments/assets/fc84702a-4d76-475b-b7fe-489f4a09deed" />
+<img width="640" height="480" alt="performance snapshot" src="https://github.com/G1OJS/PyFT8/blob/main/performance%20snapshot.png" />
 
 
 ## Limitations
