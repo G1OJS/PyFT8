@@ -1,5 +1,5 @@
 # PyFT8 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/pyft8?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/pyft8)
-# All-Python FT8 Transceiver(WIP) GUI / Command Line Modem
+# All-Python FT8 Transceiver GUI / Command Line Modem
 
 This repository contains the source code for PyFT8, an all-Python open source FT8 transceiver that you can run as a basic GUI or from the command line to receive and transmit. Decoding performance (number of decodes) is about 70% of that achieved by WSJT-x in NORM mode, but (tbc) slightly above ft8_lib. 
 
@@ -16,6 +16,14 @@ If you're interested in how this works, maybe have a look at [MiniPyFT8](https:/
  - Automatically chooses clearest Tx frequency
  - Modern programming language throughout
  - Finds sound cards by keywords so follows them if windows moves them ...
+ - Logs to ADIF file
+ - Uploads spots to pskreporter
+
+To enable uploading of spots to pskreporter, make sure that your .ini file includes
+```
+[pskreporter]
+upload = Y
+```
 
 <img width="1003" height="1020" alt="image" src="https://github.com/user-attachments/assets/bf6e3f78-531a-4c9b-ab2b-b51cc04ad980" />
 
