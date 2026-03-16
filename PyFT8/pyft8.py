@@ -5,6 +5,7 @@ import threading
 import pickle
 import numpy as np
 from PyFT8.receiver import Receiver, AudioIn
+from PyFT8.pskr_upload import PSKR_upload
 from PyFT8.gui import Gui
 from PyFT8.transmitter import AudioOut
 from PyFT8.time_utils import global_time_utils
@@ -83,7 +84,7 @@ class Logging:
         'rst_sent':rpts['sent'], 'rst_rcvd':rpts['rcvd'], 
         'qso_date':time.strftime("%Y%m%d", times['time_on']), 'qso_date_off':time.strftime("%Y%m%d", times['time_off']),
         'time_on':time.strftime("%H%M%S", times['time_on']), 'time_off':time.strftime("%H%M%S", times['time_on']),
-        'band':band_info['b'], 'freq':band_info['f']}
+        'band':band_info['b'], 'freq':band_info['fMHz']}
         with open(self.adif_log_file,'a') as f:
             f.write(f"\n")
             for k, v in log_dict.items():
@@ -121,7 +122,7 @@ class FT8_QSO:
         self.logging = logging
         if config is not None:
             self.mStation = {'c':config['station']['call'], 'g':config['station']['grid']}
-        self.band_info = {'b':None, 'f':0}
+        self.band_info = {'b':None, 'fMHz':0}
         self.tx_freq = 750
         threading.Thread(target = self._transmitter, daemon = True).start()
         self.clear()
@@ -237,6 +238,10 @@ def on_decode(c):
     message = Message(c)
     if gui:
         gui.add_message_box(message)
+    if qso.band_info['b'] is not None:
+        dx_call = c.msg_tuple[1]
+        if dx_call != 'not':
+            pskr_upload.add_report(dx_call, int(1000000*float(qso.band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 2, int(time.time()))
     print(message.wsjtx_screen_format())
 
 def on_busy_profile(busy_profile, cycle):
@@ -262,9 +267,9 @@ def on_control_click(btn_widg):
         qso.tx_cycle = None
     if(btn_action == 'SET_FREQ'):
         btn_text, freqMHz = btn_widg.label.get_text(), btn_def['data']
-        qso.band_info = {'b':btn_text, 'f':freqMHz}
-        rig.set_freq_Hz(int(1000000*float(qso.band_info['f'])))
-        console_print(f"[PyFT8] Set band: {qso.band_info['b']} {qso.band_info['f']}")
+        qso.band_info = {'b':btn_text, 'fMHz':freqMHz}
+        rig.set_freq_Hz(int(1000000*float(qso.band_info['fMHz'])))
+        console_print(f"[PyFT8] Set band: {qso.band_info['b']} {qso.band_info['fMHz']}")
 
 def on_msg_click(message):
     progress_qso(message)
@@ -277,7 +282,7 @@ def console_print(text, color = 'white'):
         print(text)
         
 def cli():
-    global audio_in, audio_out, output_device_idx, rig, gui, qso, config, clear_frequencies
+    global audio_in, audio_out, output_device_idx, rig, gui, qso, config, clear_frequencies, pskr_upload
     import time
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-c', '--config_folder', help = 'Location of config folder e.g. C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', default = './') 
@@ -293,6 +298,8 @@ def cli():
     config_folder = f"{args.config_folder}".strip()
     get_config(config_folder)
     logging = Logging(config_folder)
+    mc, mg = config['station']['call'], config['station']['grid']
+    pskr_upload = PSKR_upload(mc, mg, software = 'PyFT8 v2.3.0', tt = int(time.time())) if not mc is None else None
     qso = FT8_QSO(logging)
     rig = Rig(config)
 
