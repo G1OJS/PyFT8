@@ -16,6 +16,8 @@ If you're interested in how this works, maybe have a look at [MiniPyFT8](https:/
  - Automatically chooses clearest Tx frequency
  - Modern programming language throughout
  - Finds sound cards by keywords so follows them if windows moves them ...
+ - Logs to ADIF file
+ - Uploads spots to pskreporter
 
 <img width="1003" height="1020" alt="image" src="https://github.com/user-attachments/assets/bf6e3f78-531a-4c9b-ab2b-b51cc04ad980" />
 
