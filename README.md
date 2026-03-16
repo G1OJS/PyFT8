@@ -19,6 +19,12 @@ If you're interested in how this works, maybe have a look at [MiniPyFT8](https:/
  - Logs to ADIF file
  - Uploads spots to pskreporter
 
+To enable uploading of spots to pskreporter, make sure that your .ini file includes
+```
+[pskreporter]
+upload = Y
+```
+
 <img width="1003" height="1020" alt="image" src="https://github.com/user-attachments/assets/bf6e3f78-531a-4c9b-ab2b-b51cc04ad980" />
 
 
