@@ -248,18 +248,20 @@ def on_busy_profile(busy_profile, cycle):
     console_print(f"[on_busy] Set Tx freq to {clear_frequencies[cycle]:6.1f} for cycle {cycle}")
 
 def on_control_click(btn_widg):
-    btn_text, btn_data = btn_widg.label.get_text(), btn_widg.data
-    if btn_text == "CQ":
+    btn_def = btn_widg.user_data
+    btn_action = btn_def['action']
+    if btn_action == "CQ":
         mc, mg = config['station']['call'], config['station']['grid']
         qso.set_tx_message(f"CQ {mc} {mg}")
-    if btn_text == "Repeat last":
+    if btn_action == "RPT_LAST":
         qso.set_tx_message(qso.last_tx)
-    if btn_text == "Tx off":
+    if btn_action == "TX_OFF":
         console_print("[PyFT8] Set PTT Off")
         rig.ptt_off()
         qso.tx_cycle = None
-    if('m' in btn_text):
-        qso.band_info = {'b':btn_text, 'f':btn_data}
+    if(btn_action == 'SET_FREQ'):
+        btn_text, freqMHz = btn_widg.label.get_text(), btn_def['data']
+        qso.band_info = {'b':btn_text, 'f':freqMHz}
         rig.set_freq_Hz(int(1000000*float(qso.band_info['f'])))
         console_print(f"[PyFT8] Set band: {qso.band_info['b']} {qso.band_info['f']}")
 

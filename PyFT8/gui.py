@@ -95,20 +95,20 @@ class Gui:
 
         if config is not None:
             styles = {'ctrl':{'fc':'grey','c':'black'}, 'band':{'fc':'green','c':'white'}}
-            button_defs = [{'label':'CQ','style':'ctrl','data':None}, {'label':'Repeat last','style':'ctrl','data':None},
-                               {'label':'Tx off','style':'ctrl','data':None}]
+            button_defs = [{'label':'CQ','style':'ctrl','action':'CQ', 'data':None}, {'label':'Repeat last','style':'ctrl','action':'RPT_LAST','data':None},
+                               {'label':'Tx off','style':'ctrl','action':'TX_OFF', 'data':None}]
                                #{'label':'Averaging','style':'ctrl','data':None}]
             for band, freq in config['bands'].items():
-                button_defs.append({'label':band,'style':'band','data':freq})
+                button_defs.append({'label':band,'style':'band','action':'SET_FREQ','data':freq})
             self._make_buttons(button_defs, styles, wf_top, 0.02, 0.1, 0.002)
 
-    def _make_buttons(self, buttons, styles, btns_top, btn_h, btn_w, sep_h):
+    def _make_buttons(self, btn_defs, styles, btns_top, btn_h, btn_w, sep_h):
         self.buttons = []
-        for i, btn in enumerate(buttons):
+        for i, btn_def in enumerate(btn_defs):
             btn_axs = plt.axes([self.pmarg, btns_top - (i+1) * btn_h, btn_w, btn_h-sep_h])
-            style = styles[btn['style']]
-            btn_widg = Button(btn_axs, btn['label'], color=style['fc'], hovercolor='skyblue')
-            btn_widg.data = btn['data']
+            style = styles[btn_def['style']]
+            btn_widg = Button(btn_axs, btn_def['label'], color=style['fc'], hovercolor='skyblue')
+            btn_widg.user_data = btn_def
             btn_widg.on_clicked(lambda event, btn_widg=btn_widg: self.on_control_click(btn_widg))
             self.buttons.append(btn_widg)
         
