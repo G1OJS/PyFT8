@@ -33,13 +33,6 @@ global_time_utils.set_cycle_length(T_CYC)
 
 
 #=========== Unpacking functions ========================================
-from string import ascii_uppercase as ltrs, digits as digs
-CALL_FIELDS = [ (' ' + digs + ltrs, 36*10*27**3),   (digs + ltrs, 10*27**3), (digs + ' ' * 17, 27**3),
-                (' ' + ltrs, 27**2),           (' ' + ltrs,   27), (' ' + ltrs,   1) ]
-CALL_TOKENS = ("DE", "QRZ", "CQ")
-NCALL_TOKENS_PLUS_MAX22 = 2_063_592 + 4_194_304
-GRID_RR73s = ('', '', 'RRR', 'RR73', '73')
-
 def get_bits(bits, n):
     mask = (1 << n) - 1
     out = bits & mask
@@ -49,33 +42,39 @@ def get_bits(bits, n):
 def unpack(bits):
     i3, bits = get_bits(bits,3)
     if i3 == 0:
-        return ('Type0','not','implemented')
+        n3, bits = get_bits(bits,3)
+        if n3 == 0:
+            return ('Free text','not','implemented')
+        else:
+            return (['DXpedition','Field Day', 'Field Day', 'Telemetry'][n3-1],'not','implemented')
     elif i3 == 1:
         gr, bits = get_bits(bits,16)
         cb, bits = get_bits(bits,29)
         ca, bits = get_bits(bits,29)
         return (decode_call(ca), decode_call(cb), decode_grid(gr))
     elif i3 == 2:
-        return ('Type2','not','implemented')
+        return ('EU VHF','not','implemented')
     elif i3 == 3:
-        return ('Type3','not','implemented')
+        return ('RTTY RU','not','implemented')
     elif i3 == 4:
-        return ('Type4','not','implemented')
+        return ('Nonstd Call','not','implemented')
     elif i3 == 5:
-        return ('Type5','not','implemented')
-
+        return ('EU VHF','not','implemented')
 
 def decode_call(call_int):
+    from string import ascii_uppercase as ltrs, digits as digs
     table_7 = {'DE':(0,0),'QRZ':(1,1),'CQ':(2,2), 'CQ nnn':(3,1002),'CQ x':(1004,1029),
                'CQ xx':(1031,1731),'CQ xxxx':(21443,532443),'<....>':(2063592,2063592+4194303)}
+    call_fields = [ (' ' + digs + ltrs, 36*10*27**3),   (digs + ltrs, 10*27**3), (digs + ' ' * 17, 27**3),
+                    (' ' + ltrs, 27**2),           (' ' + ltrs,   27), (' ' + ltrs,   1) ]
     portable = call_int & 1
     call_int >>= 1
     for ct, (lo, hi) in table_7.items():
         if lo <= call_int <= hi:
             return ct
-    call_int -= NCALL_TOKENS_PLUS_MAX22
+    call_int -= (2063592 + 4194304)
     chars = []
-    for alphabet, div in CALL_FIELDS:
+    for alphabet, div in call_fields:
         idx, call_int = divmod(call_int, div)
         chars.append(alphabet[idx])
     call = ''.join(chars).strip()
@@ -90,7 +89,7 @@ def decode_grid(grid_int):
         return chr(65+a) + chr(65+b) + str(c) + str(d)
     r = g15 - 32400
     if r <= 4:
-        return GRID_RR73s[r]
+        return ('', '', 'RRR', 'RR73', '73')[r]
     snr = r - 35
     ir = grid_int >> 15
     prefix = 'R' if ir else ''
@@ -293,7 +292,7 @@ class Candidate:
 
     def validate(self, msg_tuple):
         e = False
-        # checking if this is needed after adding full table_7 info
+        # checking if this is needed after adding full table_7 info and branches on i3, n3
         #mt = msg_tuple
         #e = e or (' ' in mt[0].strip() and not mt[0].startswith('CQ'))
         #e = e or (' ' in mt[1].strip())
