@@ -156,6 +156,7 @@ class FT8_QSO:
             if self.tx_cycle is None:
                 self.tx_cycle = global_time_utils.curr_cycle_from_time()
                 self.tx_freq = clear_frequencies[self.tx_cycle]
+                console_print(f"[PyFT8] Set tx cycle = {self.tx_cycle} f = {self.tx_freq}")
             console_print(f"Transmitting {self.message_to_transmit} on cycle {self.tx_cycle}")
             symbols = audio_out.create_ft8_symbols(self.message_to_transmit)
             audio_data = audio_out.create_ft8_wave(symbols, f_base = self.tx_freq)
