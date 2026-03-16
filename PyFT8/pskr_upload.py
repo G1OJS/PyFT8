@@ -9,7 +9,7 @@ MAX_REPORTS = 90
 class PSKR_upload:
     # https://pskreporter.info/pskdev.html
     # https://pskreporter.info/cgi-bin/psk-analysis.pl
-    def __init__(self, mycall, mygrid, software, tt):
+    def __init__(self, mycall, mygrid, software, tt, console_print):
         self.RxInfoRecDescriptor_CallLocSoft = b"\x00\x03\x00\x24\x99\x92\x00\x03\x00\x01\x80\x02\xFF\xFF\x00\x00\x76\x8F\x80\x04\xFF\xFF\x00\x00\x76\x8F\x80\x08\xFF\xFF\x00\x00\x76\x8F\x00\x00"
         self.SenderInfoRecDescriptor_CallFreqSourceStart = b"\x00\x02\x00\x2C\x99\x93\x00\x05\x80\x01\xFF\xFF\x00\x00\x76\x8F\x80\x05\x00\x04\x00\x00\x76\x8F\x80\x0A\xFF\xFF\x00\x00\x76\x8F\x80\x0B\x00\x01\x00\x00\x76\x8F\x00\x96\x00\x04"
         self.SenderInfoRecDescriptor_SenderFreqSNRiMDModeSourceTime = b"\x00\x02\x00\x3C\x99\x93\x00\x07\x80\x01\xFF\xFF\x00\x00\x76\x8F\x80\x05\x00\x04\x00\x00\x76\x8F\x80\x06\x00\x01\x00\x00\x76\x8F\x80\x07\x00\x01\x00\x00\x76\x8F\x80\x0A\xFF\xFF\x00\x00\x76\x8F\x80\x0B\x00\x01\x00\x00\x76\x8F\x00\x96\x00\x04"
@@ -23,6 +23,7 @@ class PSKR_upload:
         self.reports, self.dxcalls = [], []
         rx = self._enc_str(mycall) + self._enc_str(mygrid) + self._enc_str(software)
         self.rx_block =  self._block(b"\x99\x92", rx)
+        self.console_print = console_print
 
     def _enc_str(self, s):
         b = s.encode("ascii")
@@ -47,7 +48,7 @@ class PSKR_upload:
                 self.send(includeDescriptors = (time.time() - self.includeDescriptors) > 3600)
                 self.includeDescriptors = time.time()
                 self.last_report_time = time.time()
-            #print(f"[pskr_upload] Added report {report} (now {len(self.reports)} reports)")
+            #self.console_print(f"[pskr_upload] Added report {report} (now {len(self.reports)} reports)")
 
     def send(self, includeDescriptors = False):
         if not self.reports:
@@ -64,7 +65,7 @@ class PSKR_upload:
         struct.pack_into("!H", packet, 2, len(packet))
         self.seq += len(self.reports)
         self.sock.sendto(packet, self.addr)
-        print(f"[pskr_upload] Sent packet with {len(self.reports)} reports")
+        self.console_print(f"[pskr_upload] Sent packet with {len(self.reports)} reports")
         self.reports, self.dxcalls = [], []
 
 

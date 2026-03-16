@@ -13,7 +13,7 @@ from PyFT8.rigctrl import Rig
 
 MAX_TX_START_SECONDS = 2.5
 T_CYC = 15
-rig, gui, qso, worked_before = None, None, None, None
+rig, gui, qso, worked_before, pskr_upload = None, None, None, None, None
 
 def get_config(config_folder):
     import configparser
@@ -26,6 +26,7 @@ def get_config(config_folder):
         config['rig'] = {'port': 'COM4', 'baud_rate':9600,
                          'set_freq_command':'FEFE88E0.05.0000000000.FD', 'set_freq_value':'5|5|vfBcdLU|1|0',
                          'ptt_on_command':'FEFE88E0.1C00.01.FD', 'ptt_off_command':'FEFE88E0.1C00.00.FD'}
+        config['pskreporter'] = {'upload':'N'}
         with open(ini_file, 'w') as f:
             config.write(f)
         console_print(f"Wrote default config to {ini_file}")
@@ -238,7 +239,7 @@ def on_decode(c):
     message = Message(c)
     if gui:
         gui.add_message_box(message)
-    if qso.band_info['b'] is not None:
+    if qso.band_info['b'] is not None and pskr_upload is not None:
         dx_call = c.msg_tuple[1]
         if dx_call != 'not':
             pskr_upload.add_report(dx_call, int(1000000*float(qso.band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 2, int(time.time()))
@@ -299,7 +300,10 @@ def cli():
     get_config(config_folder)
     logging = Logging(config_folder)
     mc, mg = config['station']['call'], config['station']['grid']
-    pskr_upload = PSKR_upload(mc, mg, software = 'PyFT8 v2.3.0', tt = int(time.time())) if not mc is None else None
+    if mc is not None and 'pskreporter' in config.keys():
+        if config['pskreporter']['upload'] == 'Y':
+            pskr_upload = PSKR_upload(mc, mg, software = 'PyFT8 v2.3.0', tt = int(time.time()), console_print = console_print) if not mc is None else None
+            console_print(f"[PyFT8] Spots will upload to pskreporter") 
     qso = FT8_QSO(logging)
     rig = Rig(config)
 
