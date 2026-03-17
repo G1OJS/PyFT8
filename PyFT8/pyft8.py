@@ -253,7 +253,7 @@ def on_decode(c):
     if qso.band_info['b'] is not None and pskr_upload is not None:
         dx_call = c.msg_tuple[1]
         if dx_call != 'not':
-            pskr_upload.add_report(dx_call, int(1000000*float(qso.band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 2, int(time.time()))
+            pskr_upload.add_report(dx_call, int(1000000*float(qso.band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 1, int(time.time()))
     print(message.wsjtx_screen_format())
     write_all_txt_row(message)
 
@@ -265,6 +265,8 @@ def on_busy_profile(busy_profile, cycle):
     idx = np.argmin(busy_profile[f0_idx:fn_idx])
     clear_frequencies[cycle] = (f0_idx + idx) * audio_in.df
     console_print(f"[on_busy] Set Tx freq to {clear_frequencies[cycle]:6.1f} for cycle {cycle}")
+    if qso.band_info['b'] is None:
+        console_print(f"[PyFT8] Band not set; please select a band.", color = 'red')
 
 def on_control_click(btn_widg):
     btn_def = btn_widg.user_data
