@@ -16,7 +16,7 @@ If you're interested in how this works, maybe have a look at [MiniPyFT8](https:/
  - Automatically chooses clearest Tx frequency
  - Modern programming language throughout
  - Finds sound cards by keywords so follows them if windows moves them ...
- - Logs to ADIF file
+ - Logs QSOs to ADIF file and all spots to WSJTX-style ALL.txt file
  - Uploads spots to pskreporter
 
 To enable uploading of spots to pskreporter, make sure that your .ini file includes
