@@ -101,6 +101,7 @@ Note - section 9 of the QEX paper states that the above two WSJT-X resources are
 **FT8 decoding explorations / explanations**
  - [VK3JPK's FT8 notes](https://github.com/vk3jpk/ft8-notes) including comprehensive [Python source code](https://github.com/vk3jpk/ft8-notes/blob/master/ft8.py)
  - [G4JNT notes on LDPC coding process](http://www.g4jnt.com/WSJT-X_LdpcModesCodingProcess.pdf)
+ - [Kristian Glass's 2025-05-06 Understanding the FT8 binary protocol](https://notes.doismellburning.co.uk/notebook/2025-05-06-understanding-the-ft8-binary-protocol/)
 
 **FT8 decoding in hardware**
  - [Optimizing the (Web-888) FT8 Skimmer Experience](https://www.rx-888.com/web/design/digi.html) (see also [RX-888 project](https://www.rx-888.com/) )
@@ -111,7 +112,8 @@ Note - section 9 of the QEX paper states that the above two WSJT-X resources are
  - [Post about ft8play](https://groups.io/g/FT8-Digital-Mode/topic/i_made_a_thing_ft8play/107846361)
 
 **Browser-based decoder/encoders**
- - [ft8js](https://e04.github.io/ft8js/example/browser/index.html) - source [github](https://github.com/e04/ft8js?tab=readme-ov-file), uses [FT8_lib](https://github.com/kgoba/ft8_lib)
+ - [ft8js by e04](https://e04.github.io/ft8js/example/browser/index.html) - source [github](https://github.com/e04/ft8js?tab=readme-ov-file), uses web-assembled version of [FT8_lib](https://github.com/kgoba/ft8_lib)
+ - [ft8ts by e04](https://github.com/e04/ft8ts), - pure TypeScript implementation
  - [ChromeFT8 Browser Extension](https://github.com/Transwarp8/ChromeFT8), decoder adapted from [ft8js](https://e04.github.io/ft8js/example/browser/index.html)
 
 <script data-goatcounter="https://g1ojs-github.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
