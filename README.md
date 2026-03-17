@@ -11,7 +11,7 @@ If you're interested in how this works, maybe have a look at [MiniPyFT8](https:/
  - Doesn't try to do everything, so launches quickly (~2 seconds on my old Dell Optiplex 790)
  - Use with or without gui (receive and send messages via command line commands)
  - GUI provides simultaneous views of odd and even cycles
- - GUI shows worked-before info on CQ calls (not yet on PyPi)
+ - GUI shows worked-before info on CQ calls
  - Messages overlaid on waterfall signals that produce them
  - Automatically chooses clearest Tx frequency
  - Modern programming language throughout
