@@ -47,13 +47,11 @@ def unpack(bits):
             return ('Free text','not','implemented')
         else:
             return (['DXpedition','Field Day', 'Field Day', 'Telemetry'][n3-1],'not','implemented')
-    elif i3 == 1:
+    elif i3 == 1 or i3 == 2: # 1 = Std Msg incl /R 2 = 'EU VHF' = Std Msg incl /P
         gr, bits = get_bits(bits,16)
         cb, bits = get_bits(bits,29)
         ca, bits = get_bits(bits,29)
-        return (decode_call(ca), decode_call(cb), decode_grid(gr))
-    elif i3 == 2:
-        return ('EU VHF','not','implemented')
+        return (decode_call(ca, i3), decode_call(cb, i3), decode_grid(gr))
     elif i3 == 3:
         return ('RTTY RU','not','implemented')
     elif i3 == 4:
@@ -61,13 +59,13 @@ def unpack(bits):
     elif i3 == 5:
         return ('EU VHF','not','implemented')
 
-def decode_call(call_int):
+def decode_call(call_int, i3):
     from string import ascii_uppercase as ltrs, digits as digs
     table_7 = {'DE':(0,0),'QRZ':(1,1),'CQ':(2,2), 'CQ nnn':(3,1002),'CQ x':(1004,1029),
                'CQ xx':(1031,1731),'CQ xxxx':(21443,532443),'<....>':(2063592,2063592+4194303)}
     call_fields = [ (' ' + digs + ltrs, 36*10*27**3),   (digs + ltrs, 10*27**3), (digs + ' ' * 17, 27**3),
                     (' ' + ltrs, 27**2),           (' ' + ltrs,   27), (' ' + ltrs,   1) ]
-    portable = call_int & 1
+    portable_rover = call_int & 1
     call_int >>= 1
     for ct, (lo, hi) in table_7.items():
         if lo <= call_int <= hi:
@@ -78,7 +76,9 @@ def decode_call(call_int):
         idx, call_int = divmod(call_int, div)
         chars.append(alphabet[idx])
     call = ''.join(chars).strip()
-    return call + '/P' if portable else call
+    if portable_rover:
+        call = call + ('/P' if i3 == 2 else '/R')
+    return call
 
 def decode_grid(grid_int):
     g15 = grid_int & 0x7FFF

@@ -67,7 +67,7 @@ def _pack_message(c1, c2, gr):
     c28a, p1a = pack_ft8_c28(c1)
     c28b, p1b = pack_ft8_c28(c2)
     g15, ir = pack_ft8_g15(gr)
-    i3 = 1
+    i3 = 2 if p1a or p1b else 1
     n3 = 0
     symbols, bits77 = [], 0
     if(c28a>=0 and c28b>=0):
