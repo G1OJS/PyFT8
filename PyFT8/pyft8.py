@@ -11,6 +11,8 @@ from PyFT8.transmitter import AudioOut
 from PyFT8.time_utils import global_time_utils
 from PyFT8.rigctrl import Rig
 
+VER = '2.3.1'
+
 MAX_TX_START_SECONDS = 2.5
 T_CYC = 15
 rig, gui, qso, worked_before, pskr_upload = None, None, None, None, None
@@ -316,7 +318,7 @@ def cli():
     mc, mg = config['station']['call'], config['station']['grid']
     if mc is not None and 'pskreporter' in config.keys():
         if config['pskreporter']['upload'] == 'Y':
-            pskr_upload = PSKR_upload(mc, mg, software = 'PyFT8 v2.3.0', tt = int(time.time()), console_print = console_print) if not mc is None else None
+            pskr_upload = PSKR_upload(mc, mg, software = f"PyFT8 v{VER}", tt = int(time.time()), console_print = console_print) if not mc is None else None
             console_print(f"[PyFT8] Spots will upload to pskreporter") 
     qso = FT8_QSO(logging)
     rig = Rig(config)
