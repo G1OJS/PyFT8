@@ -224,7 +224,7 @@ def progress_qso(clicked_message):
             reply = f"{qso.oStation['c']} {my_station['c']} 73"
         qso.set_tx_message(reply)
 
-    if is73(grid_rpt) or " 73" in reply or isRR73(grid_rpt):
+    if is73(grid_rpt) or " 73" in reply or "RR73" in reply or isRR73(grid_rpt):
         qso.times['time_off'] = time.gmtime()
         qso.log() 
 
