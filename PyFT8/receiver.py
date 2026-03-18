@@ -6,6 +6,7 @@ from PyFT8.time_utils import global_time_utils, Ticker
 import os
 import pyaudio
 import pickle
+from PyFT8.callhashes import call_hashes, add_call_hashes
 
 T_CYC = 15
 HPS = 4
@@ -31,7 +32,6 @@ HOPS_PER_GRID = 2 * HOPS_PER_CYCLE
 
 global_time_utils.set_cycle_length(T_CYC)
 
-
 #=========== Unpacking functions ========================================
 def get_bits(bits, n):
     mask = (1 << n) - 1
@@ -40,7 +40,9 @@ def get_bits(bits, n):
     return out, bits
 
 def unpack(bits):
+  #  print(f"{bits:77b}")
     i3, bits = get_bits(bits,3)
+   # print(i3)
     if i3 == 0:
         n3, bits = get_bits(bits,3)
         if n3 == 0:
@@ -51,25 +53,47 @@ def unpack(bits):
         gr, bits = get_bits(bits,16)
         cb, bits = get_bits(bits,29)
         ca, bits = get_bits(bits,29)
-        return (decode_call(ca, i3), decode_call(cb, i3), decode_grid(gr))
+        return (call_28(ca, i3), call_28(cb, i3), decode_grid(gr))
     elif i3 == 3:
         return ('RTTY RU','not','implemented')
     elif i3 == 4:
-        return ('Nonstd Call','not','implemented')
+        cq_, bits = get_bits(bits,1)
+        rrr, bits = get_bits(bits,2)
+        swp, bits = get_bits(bits,1)
+        c58, bits = get_bits(bits,58)
+        hsh, bits = get_bits(bits,12)
+        ca = "CQ" if cq_ else call_hashes.get((hsh,12), '<....>')
+        cb = call_58(c58)
+        (ca, cb) = (cb, ca) if swp else (ca, cb)
+        return (ca, cb, ('', 'RRR', 'RR73', '73')[rrr])
     elif i3 == 5:
         return ('EU VHF','not','implemented')
 
-def decode_call(call_int, i3):
+def call_58(call_int):
+    call = ""
+    chars = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ/"
+    for i in range(12):
+        call = chars[call_int % 38] + call
+        call_int = call_int // 38
+    call =  call.strip()
+    add_call_hashes(call)
+    return call
+
+def call_28(call_int, i3):
+    def get_table_7(call_int):
+        table_7 = {'DE':(0,0),'QRZ':(1,1),'CQ':(2,2), 'CQ nnn':(3,1002),'CQ x':(1004,1029),
+                   'CQ xx':(1031,1731),'CQ xxxx':(21443,532443),'hash':(2063592,2063592+4194303)}
+        for ct, (lo, hi) in table_7.items():
+            if lo <= call_int <= hi:
+                return ct        
     from string import ascii_uppercase as ltrs, digits as digs
-    table_7 = {'DE':(0,0),'QRZ':(1,1),'CQ':(2,2), 'CQ nnn':(3,1002),'CQ x':(1004,1029),
-               'CQ xx':(1031,1731),'CQ xxxx':(21443,532443),'<....>':(2063592,2063592+4194303)}
     call_fields = [ (' ' + digs + ltrs, 36*10*27**3),   (digs + ltrs, 10*27**3), (digs + ' ' * 17, 27**3),
                     (' ' + ltrs, 27**2),           (' ' + ltrs,   27), (' ' + ltrs,   1) ]
     portable_rover = call_int & 1
     call_int >>= 1
-    for ct, (lo, hi) in table_7.items():
-        if lo <= call_int <= hi:
-            return ct
+    t7 = get_table_7(call_int)
+    if t7 is not None:
+        return t7 if t7 != 'hash' else call_hashes.get((call_int - 2063592, 22), '<....>')
     call_int -= (2063592 + 4194304)
     chars = []
     for alphabet, div in call_fields:
@@ -78,6 +102,7 @@ def decode_call(call_int, i3):
     call = ''.join(chars).strip()
     if portable_rover:
         call = call + ('/P' if i3 == 2 else '/R')
+    add_call_hashes(call)
     return call
 
 def decode_grid(grid_int):
