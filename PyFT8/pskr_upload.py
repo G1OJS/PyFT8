@@ -60,7 +60,7 @@ class PSKR_upload:
             header = header + self.RxInfoRecDescriptor_CallLocSoft + self.SenderInfoRecDescriptor_SenderFreqSNRiMDModeSourceTime
         senders = bytearray()
         for dxcall, freq_hz, snr, mode, source, tt in self.reports.values():
-            print(f"Sending report {dxcall}, {freq_hz}, {snr}, {source}, {tt}")
+            print(f"Sending report {dxcall}, {freq_hz}, {snr}, {mode}, {source}, {tt}")
             sender = self._enc_str(dxcall) + struct.pack("!I", int(freq_hz)) + struct.pack("b", int(snr)) + struct.pack("b", 0) + self._enc_str(mode) + struct.pack("B", source) + struct.pack("!I", tt)
             senders += sender
         packet = bytearray(header + self.rx_block + self._block(b"\x99\x93", senders))
