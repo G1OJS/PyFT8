@@ -67,7 +67,9 @@ class PSKR_upload:
         struct.pack_into("!H", packet, 2, len(packet))
         self.seq += len(self.reports)
         self.sock.sendto(packet, self.addr)
-        self.console_print(f"[pskr_upload] Sent packet with {len(self.reports)} reports")
+        txt = f"[pskr_upload] Sent packet with {len(self.reports)} reports"
+        print(txt)
+        self.console_print(txt)
         self.reports = {}
 
 

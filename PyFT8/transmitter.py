@@ -2,6 +2,7 @@ import numpy as np
 import wave
 import pyaudio
 import time
+from PyFT8.callhashes import call_hashes, add_call_hashes
 
 #==================== AUDIO OUT ================================================================
 
@@ -73,7 +74,28 @@ def _pack_message(c1, c2, gr):
     if(c28a>=0 and c28b>=0):
         bits77 = (c28a<<28+1+1+1+15+3) | (p1a<<28+1+1+15+3) | (c28b<<1+1+15+3) | (p1b <<1+15+3) | (ir<<15+3) | (g15<< 3) | (i3)
         symbols  = encode_bits77(bits77)
+    if not any(symbols):
+        i3 = 4
+        full_call = c1 if c28b>0 else c2
+        hash_call = c2 if c28b>0 else c1
+        c58 = pack_ft8_c58(full_call)
+        hashes = add_call_hashes(hash_call)
+        swp = 1 if hash_call == c2 else 0
+        rrr, cq_ = 0, 0
+        if gr in ('RRR', 'RR73', '73'):
+            rrr = ('', 'RRR', 'RR73', '73').index(gr)
+        bits77 = (hashes[1]<<58+1+2+1+3) | (c58 <<1+2+1+3) | (swp<<2+1+3) | (rrr<<1+3) | (cq_<<3) | (i3)
+        symbols  = encode_bits77(bits77)
     return symbols, bits77
+
+
+def pack_ft8_c58(call):
+    chars = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ/"
+    n58=0
+    call = (call + "          ")[:11]
+    for i in range(0,11):
+        n58 = n58*38 + chars.index(call[i])
+    return n58
 
 def pack_ft8_c28(call):
     if '/' in call and not call.endswith("P") and not call.endswith("R"): return -1, 0
@@ -83,7 +105,8 @@ def pack_ft8_c28(call):
     else:
         p1 = 1 if call[-2:] == '/P' else 0
         call = call.replace('/P','')
-        if len(call) > 6: return -1, 0
+        if len(call) > 6:
+            return -1, 0
         prepend_space = '' if call[2].isdigit() else ' '
         call = (prepend_space + call + '  ')[:6]
         a = ' 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -162,7 +185,7 @@ def append_crc(bits77_int):
 if __name__ == "__main__":
     OK = True
     msgs = [("G1OJS/P", "G1OJS/P", "IO90"),("WM3PEN","EA6VQ","+08"),("E67A/P","EA6VQ","R-08"),
-            ("CQ","CT7ARQ/P","RRR"), ("EC5A","9A5E","RR73"), ("EC5A","9A5E","73"), ("EC5A/MM","9A5E","73")]
+            ("CQ","CT7ARQ/P","RRR"), ("EC5A","9A5E","RR73"), ("EC5A/P","9A5E","73"), ("EC5A/MM","9A5E","73")]
     for msg_tx in msgs:
         symbols, bits77 = _pack_message(*msg_tx)
         from PyFT8.receiver import unpack

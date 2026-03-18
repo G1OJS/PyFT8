@@ -6,6 +6,7 @@ from PyFT8.time_utils import global_time_utils, Ticker
 import os
 import pyaudio
 import pickle
+from PyFT8.callhashes import call_hashes, add_call_hashes
 
 T_CYC = 15
 HPS = 4
@@ -31,8 +32,6 @@ HOPS_PER_GRID = 2 * HOPS_PER_CYCLE
 
 global_time_utils.set_cycle_length(T_CYC)
 
-global hashes
-hashes = {}
 #=========== Unpacking functions ========================================
 def get_bits(bits, n):
     mask = (1 << n) - 1
@@ -41,7 +40,9 @@ def get_bits(bits, n):
     return out, bits
 
 def unpack(bits):
+  #  print(f"{bits:77b}")
     i3, bits = get_bits(bits,3)
+   # print(i3)
     if i3 == 0:
         n3, bits = get_bits(bits,3)
         if n3 == 0:
@@ -61,10 +62,10 @@ def unpack(bits):
         swp, bits = get_bits(bits,1)
         c58, bits = get_bits(bits,58)
         hsh, bits = get_bits(bits,12)
-        ca = "CQ" if cq_ else hashes.get((hsh,12), '<....>')
+        ca = "CQ" if cq_ else call_hashes.get((hsh,12), '<....>')
         cb = call_58(c58)
         (ca, cb) = (cb, ca) if swp else (ca, cb)
-        return (ca, cb, ('', '', 'RRR', 'RR73', '73')[rrr])
+        return (ca, cb, ('', 'RRR', 'RR73', '73')[rrr])
     elif i3 == 5:
         return ('EU VHF','not','implemented')
 
@@ -75,9 +76,7 @@ def call_58(call_int):
         call = chars[call_int % 38] + call
         call_int = call_int // 38
     call =  call.strip()
-    hashes[(ihashcall(call, 22), 22)] = call
-    hashes[(ihashcall(call, 12), 12)] = call
-    hashes[(ihashcall(call, 10), 10)] = call
+    add_call_hashes(call)
     return call
 
 def call_28(call_int, i3):
@@ -94,7 +93,7 @@ def call_28(call_int, i3):
     call_int >>= 1
     t7 = get_table_7(call_int)
     if t7 is not None:
-        return t7 if t7 != 'hash' else hashes.get((call_int - 2063592, 22), '<....>')
+        return t7 if t7 != 'hash' else call_hashes.get((call_int - 2063592, 22), '<....>')
     call_int -= (2063592 + 4194304)
     chars = []
     for alphabet, div in call_fields:
@@ -103,23 +102,8 @@ def call_28(call_int, i3):
     call = ''.join(chars).strip()
     if portable_rover:
         call = call + ('/P' if i3 == 2 else '/R')
-    hashes[(ihashcall(call, 22), 22)] = call
-    hashes[(ihashcall(call, 12), 12)] = call
-    hashes[(ihashcall(call, 10), 10)] = call
+    add_call_hashes(call)
     return call
-    
-def ihashcall(call, m):
-    chars = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ/"
-    call = (call + "          ")[:11]
-    x = 0
-    for c in call[0:11]:
-        x = 38*x + chars.find(c)
-        x = x & ((int(1) << 64) - 1)
-    x = x & ((1 << 64) - 1)
-    x = x * 47055833459
-    x = x & ((1 << 64) - 1)
-    x = x >> (64 - m)
-    return x
 
 def decode_grid(grid_int):
     g15 = grid_int & 0x7FFF
