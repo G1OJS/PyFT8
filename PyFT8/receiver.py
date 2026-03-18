@@ -31,7 +31,8 @@ HOPS_PER_GRID = 2 * HOPS_PER_CYCLE
 
 global_time_utils.set_cycle_length(T_CYC)
 
-
+global hashes
+hashes = {}
 #=========== Unpacking functions ========================================
 def get_bits(bits, n):
     mask = (1 << n) - 1
@@ -60,10 +61,9 @@ def unpack(bits):
         swp, bits = get_bits(bits,1)
         c58, bits = get_bits(bits,58)
         hsh, bits = get_bits(bits,12)
-        ca = "CQ" if cq_ else "<....>"
+        ca = "CQ" if cq_ else hashes.get((hsh,12), '<....>')
         cb = call_58(c58)
         (ca, cb) = (cb, ca) if swp else (ca, cb)
-        print(f"Type 4: {ca} {cb}")
         return (ca, cb, ('', '', 'RRR', 'RR73', '73')[rrr])
     elif i3 == 5:
         return ('EU VHF','not','implemented')
@@ -74,19 +74,27 @@ def call_58(call_int):
     for i in range(12):
         call = chars[call_int % 38] + call
         call_int = call_int // 38
-    return call.strip()
+    call =  call.strip()
+    hashes[(ihashcall(call, 22), 22)] = call
+    hashes[(ihashcall(call, 12), 12)] = call
+    hashes[(ihashcall(call, 10), 10)] = call
+    return call
 
 def call_28(call_int, i3):
+    def get_table_7(call_int):
+        table_7 = {'DE':(0,0),'QRZ':(1,1),'CQ':(2,2), 'CQ nnn':(3,1002),'CQ x':(1004,1029),
+                   'CQ xx':(1031,1731),'CQ xxxx':(21443,532443),'hash':(2063592,2063592+4194303)}
+        for ct, (lo, hi) in table_7.items():
+            if lo <= call_int <= hi:
+                return ct        
     from string import ascii_uppercase as ltrs, digits as digs
-    table_7 = {'DE':(0,0),'QRZ':(1,1),'CQ':(2,2), 'CQ nnn':(3,1002),'CQ x':(1004,1029),
-               'CQ xx':(1031,1731),'CQ xxxx':(21443,532443),'<....>':(2063592,2063592+4194303)}
     call_fields = [ (' ' + digs + ltrs, 36*10*27**3),   (digs + ltrs, 10*27**3), (digs + ' ' * 17, 27**3),
                     (' ' + ltrs, 27**2),           (' ' + ltrs,   27), (' ' + ltrs,   1) ]
     portable_rover = call_int & 1
     call_int >>= 1
-    for ct, (lo, hi) in table_7.items():
-        if lo <= call_int <= hi:
-            return ct
+    t7 = get_table_7(call_int)
+    if t7 is not None:
+        return t7 if t7 != 'hash' else hashes.get((call_int - 2063592, 22), '<....>')
     call_int -= (2063592 + 4194304)
     chars = []
     for alphabet, div in call_fields:
@@ -95,7 +103,25 @@ def call_28(call_int, i3):
     call = ''.join(chars).strip()
     if portable_rover:
         call = call + ('/P' if i3 == 2 else '/R')
+    hashes[(ihashcall(call, 22), 22)] = call
+    hashes[(ihashcall(call, 12), 12)] = call
+    hashes[(ihashcall(call, 10), 10)] = call
     return call
+    
+def ihashcall(call, m):
+    chars = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ/"
+    while len(call) < 11:
+        call = call + " "
+    x = 0
+    for c in call[0:11]:
+        j = chars.find(c)
+        x = 38*x + j
+        x = x & ((int(1) << 64) - 1)
+    x = x & ((1 << 64) - 1)
+    x = x * 47055833459
+    x = x & ((1 << 64) - 1)
+    x = x >> (64 - m)
+    return x
 
 def decode_grid(grid_int):
     g15 = grid_int & 0x7FFF
