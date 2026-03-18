@@ -14,7 +14,6 @@ from PyFT8.rigctrl import Rig
 VER = '2.3.1'
 
 MAX_TX_START_SECONDS = 2.5
-T_CYC = 15
 rig, gui, qso, worked_before, pskr_upload = None, None, None, None, None
 
 def get_config():
@@ -354,8 +353,8 @@ def cli():
 #================== TEST CODE ============================================================
 if __name__ == "__main__":
     import mock
-    with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-o Speak, CODEC', '-c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
-    #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC']):
+    #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-o Speak, CODEC', '-c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
+    with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC']):
     #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-n']):
     #with mock.patch('sys.argv', ['pyft8', '-m',  "CQ G1OJS IO90", '-cC:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
     #with mock.patch('sys.argv', ['pyft8', '-m',  "CQ G1OJS IO90", '-o', "Speak, CODEC"]):

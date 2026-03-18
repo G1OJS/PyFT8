@@ -51,15 +51,32 @@ def unpack(bits):
         gr, bits = get_bits(bits,16)
         cb, bits = get_bits(bits,29)
         ca, bits = get_bits(bits,29)
-        return (decode_call(ca, i3), decode_call(cb, i3), decode_grid(gr))
+        return (call_28(ca, i3), call_28(cb, i3), decode_grid(gr))
     elif i3 == 3:
         return ('RTTY RU','not','implemented')
     elif i3 == 4:
-        return ('Nonstd Call','not','implemented')
+        cq_, bits = get_bits(bits,1)
+        rrr, bits = get_bits(bits,2)
+        swp, bits = get_bits(bits,1)
+        c58, bits = get_bits(bits,58)
+        hsh, bits = get_bits(bits,12)
+        ca = "CQ" if cq_ else "<....>"
+        cb = call_58(c58)
+        (ca, cb) = (cb, ca) if swp else (ca, cb)
+        print(f"Type 4: {ca} {cb}")
+        return (ca, cb, ('', '', 'RRR', 'RR73', '73')[rrr])
     elif i3 == 5:
         return ('EU VHF','not','implemented')
 
-def decode_call(call_int, i3):
+def call_58(call_int):
+    call = ""
+    chars = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ/"
+    for i in range(12):
+        call = chars[call_int % 38] + call
+        call_int = call_int // 38
+    return call.strip()
+
+def call_28(call_int, i3):
     from string import ascii_uppercase as ltrs, digits as digs
     table_7 = {'DE':(0,0),'QRZ':(1,1),'CQ':(2,2), 'CQ nnn':(3,1002),'CQ x':(1004,1029),
                'CQ xx':(1031,1731),'CQ xxxx':(21443,532443),'<....>':(2063592,2063592+4194303)}
