@@ -52,6 +52,7 @@ class Logging:
             with open(f"{self.worked_before_file}","wb") as f:
                 pickle.dump({'dummy':'dummy'}, f)
         self.load_wb()
+        console_print(f"Logging to {self.adif_log_file}")
 
     def load_wb(self):
         global worked_before
@@ -178,6 +179,7 @@ class FT8_QSO:
 
     def log(self):
         if self.logging is not None:
+            self.times['time_off'] = time.gmtime()
             self.logging.log(self.times, self.band_info, self.mStation, self.oStation, self.rpts)
 
 def isReport(grid_rpt):     return "+" in grid_rpt or "-" in grid_rpt
@@ -220,13 +222,11 @@ def progress_qso(clicked_message):
             qso.rpts['rcvd'] = grid_rpt[-3:]
         if isRReport(grid_rpt) or isRRR(grid_rpt):
             reply = f"{qso.oStation['c']} {my_station['c']} RR73"
+            qso.log()
         if isRR73(grid_rpt):
             reply = f"{qso.oStation['c']} {my_station['c']} 73"
+            qso.log()
         qso.set_tx_message(reply)
-
-    if is73(grid_rpt) or " 73" in reply or "RR73" in reply or isRR73(grid_rpt):
-        qso.times['time_off'] = time.gmtime()
-        qso.log() 
 
 def make_wav(msg, wave_output_file): # move to transmitter.py?
     symbols = audio_out.create_ft8_symbols(msg)
