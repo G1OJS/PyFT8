@@ -110,12 +110,10 @@ def call_28(call_int, i3):
     
 def ihashcall(call, m):
     chars = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ/"
-    while len(call) < 11:
-        call = call + " "
+    call = (call + "          ")[:11]
     x = 0
     for c in call[0:11]:
-        j = chars.find(c)
-        x = 38*x + j
+        x = 38*x + chars.find(c)
         x = x & ((int(1) << 64) - 1)
     x = x & ((1 << 64) - 1)
     x = x * 47055833459

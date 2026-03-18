@@ -163,14 +163,17 @@ class FT8_QSO:
             if self.tx_cycle is None:
                 self.tx_cycle = global_time_utils.curr_cycle_from_time()
                 self.tx_freq = clear_frequencies[self.tx_cycle]
-                console_print(f"[PyFT8] Set tx cycle = {self.tx_cycle} f = {self.tx_freq}")
-            console_print(f"Transmitting {self.message_to_transmit} on cycle {self.tx_cycle}")
+                console_print(f"[PyFT8] Set tx cycle = {self.tx_cycle} f = {self.tx_freq:5.1f}")
             symbols = audio_out.create_ft8_symbols(self.message_to_transmit)
-            audio_data = audio_out.create_ft8_wave(symbols, f_base = self.tx_freq)
-            rig.ptt_on()
-            audio_out.play_data_to_soundcard(audio_data, output_device_idx)
-            rig.ptt_off()
-            self.last_tx = self.message_to_transmit
+            if any(symbols):
+                console_print(f"Transmitting {self.message_to_transmit} on cycle {self.tx_cycle}")
+                audio_data = audio_out.create_ft8_wave(symbols, f_base = self.tx_freq)
+                rig.ptt_on()
+                audio_out.play_data_to_soundcard(audio_data, output_device_idx)
+                rig.ptt_off()
+                self.last_tx = self.message_to_transmit
+            else:
+                console_print(f"Couldn't encode message {self.message_to_transmit}", color = 'red') # move this to earlier by setting tx symbols not tx message
             self.message_to_transmit = None
 
     def log(self):
@@ -353,8 +356,8 @@ def cli():
 #================== TEST CODE ============================================================
 if __name__ == "__main__":
     import mock
-    #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-o Speak, CODEC', '-c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
-    with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC']):
+    with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-o Speak, CODEC', '-c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
+    #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC']):
     #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-n']):
     #with mock.patch('sys.argv', ['pyft8', '-m',  "CQ G1OJS IO90", '-cC:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
     #with mock.patch('sys.argv', ['pyft8', '-m',  "CQ G1OJS IO90", '-o', "Speak, CODEC"]):
