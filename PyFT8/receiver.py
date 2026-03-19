@@ -92,9 +92,9 @@ def call_29(call_int29, i3):
     elif call_int28 < 21443:
         x, txt = call_int28 - 1003, ''
         for i in range(4):
-            txt = txt + " ABCDEFGHIJKLMNOPQRSTUVWXYZ"[int(call_int28 % 27)]
-            call_int28 //= 27
-        return f"CQ {txt}"
+            txt = " ABCDEFGHIJKLMNOPQRSTUVWXYZ"[int(x % 27)] + txt
+            x //= 27
+        return f"CQ {txt.strip()}"
     elif call_int28 < 2063592+4194303:
         return call_hashes.get((call_int28 - 2063592, 22), '<....>')
     else:

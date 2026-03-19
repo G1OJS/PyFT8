@@ -194,4 +194,6 @@ if __name__ == "__main__":
         OK = OK and (msg_tx == msg_rx) or 'implemented' in msg_rx
         #print(''.join([str(s) for s in symbols]))
     print("\nPASSED" if OK else "\nFAILED")
+
+    print(unpack(int('00000000000000000100011011110000010010000000000111000001100011111000010010001',2)))
         
