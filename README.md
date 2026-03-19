@@ -67,9 +67,22 @@ The image below shows the number of decodes from PyFT8, WSJT-x V2.7.0 running in
 
 
 ## Limitations
+PyFT8 doesn't decode / encode *all* message types. The table below shows which are handled.
 
-In pursuit of tight code, I've concentrated on core standard messages, leaving out some of the less-used features. The receive part of the
-code doesn't (yet) have the full capability of the advanced decoders used in WSJT-x, and so gets fewer decodes than WSJT-x gets, depending on band conditions (on a quiet band with only good signals PyFT8 will get close to 100%).
+|i3.n3|Known as|Rx|Tx|notes|
+|------|--------|----|----|-----|
+|0.0|Free Text  |   |   | |
+|0.1|DXpedition   |   |   | Call1 RR73; Call2 +07| 
+|0.3|Field Day  |   |   |  |
+|0.4|Field Day  |   |   |  |
+|0.5|Telemetry  |   |   |  |
+|1|Std Msg  |Y|   |Standard <=6 char callsigns plus /R  |
+|2|EU VHF  |Y|Y| Standard <=6 char callsigns plus /P |
+|3|RTTY RU   |   |   | |
+|4|NonStd Call   |Y|Y| <=11 char callsigns + hashed call|
+|5|EU VHF  |   |   | |
+
+
 
 ## Acknowledgements
 This project implements a decoder for the FT8 digital mode.
