@@ -76,8 +76,8 @@ PyFT8 doesn't decode / encode *all* message types. The table below shows which a
 |0.3|Field Day  |   |   |  |
 |0.4|Field Day  |   |   |  |
 |0.5|Telemetry  |   |   |  |
-|1|Std Msg  |Y|   |Standard <=6 char callsigns plus /R  |
-|2|EU VHF  |Y|Y| Standard <=6 char callsigns plus /P |
+|1|Std Msg  |Y|   |Standard <=6 char callsigns, can include /R  |
+|2|EU VHF  |Y|Y| Standard <=6 char callsigns,  can include /P |
 |3|RTTY RU   |   |   | |
 |4|NonStd Call   |Y|Y| <=11 char callsigns + hashed call|
 |5|EU VHF  |   |   | |
