@@ -58,9 +58,8 @@ class Logging:
         global worked_before
         with open(f"{self.worked_before_file}","rb") as f:
             worked_before = pickle.load(f)
-        #self.load_wb_from_txt()
 
-    def load_wb_from_txt(self, file = 'c:/users/drala/recent_log.adi'):
+    def merge_adif_to_wb_not_used(self, file = 'c:/users/drala/recent_log.adi'):
         import datetime
         with open(file, 'r') as f:
             for l in f.readlines():
@@ -70,6 +69,9 @@ class Logging:
                     t = parse_from_adif_rec(l, 'time_on')
                     d = parse_from_adif_rec(l, 'qso_date')
                     tm = time.mktime(datetime.datetime.strptime(d+t, "%Y%m%d%H%M%S").timetuple())
+                    if callsign in worked_before:
+                        if tm < worked_before[callsign]:
+                            continue
                     self.update_worked_before(callsign, tm)
 
     def update_worked_before(self, callsign, band, mode, tm):
