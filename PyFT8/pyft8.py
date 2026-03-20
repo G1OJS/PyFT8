@@ -50,7 +50,7 @@ class Logging:
                 f.write("header <eoh>")
         if(not os.path.exists(self.worked_before_file)):
             with open(f"{self.worked_before_file}","wb") as f:
-                pickle.dump({'dummy':'dummy'}, f)
+                pickle.dump({'dummy':0}, f)
         self.load_wb()
         console_print(f"Logging to {self.adif_log_file}")
 
@@ -72,12 +72,13 @@ class Logging:
                     tm = time.mktime(datetime.datetime.strptime(d+t, "%Y%m%d%H%M%S").timetuple())
                     self.update_worked_before(callsign, tm)
 
-    def update_worked_before(self, callsign, tm):
+    def update_worked_before(self, callsign, band, mode, tm):
         global worked_before
-        #self.load_wb()
-        if not callsign in worked_before:
-            worked_before[callsign] = {}
+        self.load_wb()
         worked_before[callsign] = tm
+        cbm = callsign + "_"+band+"_"+mode
+        worked_before[callsign] = tm
+        worked_before[cbm] = tm
         with open(f"{self.worked_before_file}","wb") as f:
             pickle.dump(worked_before, f)
                 
@@ -94,7 +95,7 @@ class Logging:
                 v = str(v)
                 f.write(f"<{k}:{len(v)}>{v} ")
             f.write(f"<eor>\n")
-        self.update_worked_before(oStation['c'], time.time())
+        self.update_worked_before(oStation['c'], band_info['b'], 'FT8', time.time())
         console_print(f"Logged QSO with {oStation['c']}")
 
 
