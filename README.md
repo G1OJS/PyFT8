@@ -8,6 +8,7 @@ PyFT8 is somewhat experimental, with a focus on demonstrating FT8 written in Pyt
 If you're interested in how this works, maybe have a look at [MiniPyFT8](https://github.com/G1OJS/MiniPyFT8) which puts all of the receive code in a single 300 line Python file.
 
 ## Features
+ - Rx and Tx of standard messages with optional /P and /R, and nonstandard calls plus hashed calls
  - Doesn't try to do everything, so launches quickly (~2 seconds on my old Dell Optiplex 790)
  - Use with or without gui (receive and send messages via command line commands)
  - GUI provides simultaneous views of odd and even cycles
