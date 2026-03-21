@@ -11,7 +11,7 @@ from PyFT8.transmitter import AudioOut
 from PyFT8.time_utils import global_time_utils
 from PyFT8.rigctrl import Rig
 
-VER = '2.4.1'
+VER = '2.4.2'
 
 MAX_TX_START_SECONDS = 2.5
 rig, gui, qso, worked_before, pskr_upload = None, None, None, None, None
