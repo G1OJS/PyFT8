@@ -68,13 +68,12 @@ def _pack_message(c1, c2, gr):
     c28a, p1a = pack_ft8_c28(c1)
     c28b, p1b = pack_ft8_c28(c2)
     g15, ir = pack_ft8_g15(gr)
-    i3 = 2 if p1a or p1b else 1
+    i3 = 2 if c1.endswith('/P') or c2.endswith('/P') else 1
     n3 = 0
-    symbols, bits77 = [], 0
     if(c28a>=0 and c28b>=0):
         bits77 = (c28a<<28+1+1+1+15+3) | (p1a<<28+1+1+15+3) | (c28b<<1+1+15+3) | (p1b <<1+15+3) | (ir<<15+3) | (g15<< 3) | (i3)
         symbols  = encode_bits77(bits77)
-    if not any(symbols):
+    else:
         i3 = 4
         full_call = c1 if c28b>0 else c2
         hash_call = c2 if c28b>0 else c1
@@ -103,8 +102,8 @@ def pack_ft8_c28(call):
     if (call in tkns):
         c28, p1 = tkns.index(call), 0
     else:
-        p1 = 1 if call[-2:] == '/P' else 0
-        call = call.replace('/P','')
+        p1 = 1 if call[-2:] in ('/P', '/R')  else 0
+        call = call.replace('/P','').replace('/R','')
         if len(call) > 6:
             return -1, 0
         prepend_space = '' if call[2].isdigit() else ' '
@@ -185,7 +184,8 @@ def append_crc(bits77_int):
 if __name__ == "__main__":
     OK = True
     msgs = [("G1OJS/P", "G1OJS/P", "IO90"),("WM3PEN","EA6VQ","+08"),("E67A/P","EA6VQ","R-08"),
-            ("CQ","CT7ARQ/P","RRR"), ("EC5A","9A5E","RR73"), ("EC5A/P","9A5E","73"), ("EC5A/MM","9A5E","73")]
+            ("CQ","CT7ARQ/P","JO03"), ("EC5A","9A5E","RR73"), ("EC5A/P","9A5E","73"), ("EC5A/MM","9A5E","73"),
+            ("CQ","CT7ARQ/R","JO03")]
     for msg_tx in msgs:
         symbols, bits77 = _pack_message(*msg_tx)
         from PyFT8.receiver import unpack
