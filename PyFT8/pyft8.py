@@ -209,16 +209,18 @@ def progress_qso(clicked_message):
         qso.clear()
         qso.times['time_on'] = time.gmtime()
         qso.oStation = {'c': call_b, 'g': grid_rpt}
+        qso.rpts['sent'] = f"{clicked_message.snr:+03d}"
         qso.set_tx_message(f"{qso.oStation['c']} {my_station['c']} {my_station['g']}")
         return
 
     if call_a == my_station['c']:
         if qso.times['time_on'] is None:
             qso.times['time_on'] = time.gmtime()
+        if qso.rpts['sent'] is None:
+            qso.rpts['sent'] = f"{clicked_message.snr:+03d}"
         qso.oStation['c'] = call_b
         if isGrid(grid_rpt):
             qso.oStation = {'c': call_b, 'g': grid_rpt}
-            qso.rpts['sent'] = f"{clicked_message.snr:+03d}"
             reply = f"{qso.oStation['c']} {my_station['c']} {clicked_message.snr:+03d}"
         if isReport(grid_rpt):
             reply = f"{qso.oStation['c']} {my_station['c']} R{clicked_message.snr:+03d}"

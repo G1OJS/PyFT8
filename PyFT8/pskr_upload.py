@@ -13,7 +13,8 @@ class PSKR_upload:
         self.RxInfoRecDescriptor_CallLocSoft = b"\x00\x03\x00\x24\x99\x92\x00\x03\x00\x01\x80\x02\xFF\xFF\x00\x00\x76\x8F\x80\x04\xFF\xFF\x00\x00\x76\x8F\x80\x08\xFF\xFF\x00\x00\x76\x8F\x00\x00"
         self.SenderInfoRecDescriptor_SenderFreqSNRiMDModeSourceTime = b"\x00\x02\x00\x3C\x99\x93\x00\x07\x80\x01\xFF\xFF\x00\x00\x76\x8F\x80\x05\x00\x04\x00\x00\x76\x8F\x80\x06\x00\x01\x00\x00\x76\x8F\x80\x07\x00\x01\x00\x00\x76\x8F\x80\x0A\xFF\xFF\x00\x00\x76\x8F\x80\x0B\x00\x01\x00\x00\x76\x8F\x00\x96\x00\x04"
         self.tt = tt
-        self.includeDescriptors = 0
+        self.last_descriptors_time = 0
+        self.descriptors_sent_count = 0
         self.last_report_time = time.time() - 300 + 60
         self.addr = ("report.pskreporter.info", 4739)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -45,11 +46,12 @@ class PSKR_upload:
         while True:
             time.sleep(60)
             with self.lock:
-                n_reports = len(self.reports)
-                if n_reports >= MAX_REPORTS or (time.time() - self.last_report_time) > 300:
-                    self._send(includeDescriptors = (time.time() - self.includeDescriptors) > 3600)
-                    self.includeDescriptors = time.time()
-                    self.last_report_time = time.time()
+                if len(self.reports) >= MAX_REPORTS or (time.time() - self.last_report_time) > 300:
+                    if (time.time() - self.last_descriptors_time) > 3600:
+                        self.descriptors_sent_count = 0
+                        self.last_descriptors_time = time.time()
+                    self._send(includeDescriptors = (self.descriptors_sent_count <4))
+                    self.descriptors_sent_count +=1
            
     def _send(self, includeDescriptors = False):
         if not self.reports:
@@ -57,10 +59,11 @@ class PSKR_upload:
         ipfx_header = struct.pack("!H", 10) + b"\x00\x00" + struct.pack("!I", self.tt) + struct.pack("!I", self.seq) + struct.pack("!I", self.session_id)
         header = ipfx_header
         if includeDescriptors:
+            print(f"[pskr_upload] Packing descriptors")
             header = header + self.RxInfoRecDescriptor_CallLocSoft + self.SenderInfoRecDescriptor_SenderFreqSNRiMDModeSourceTime
         senders = bytearray()
         for dxcall, freq_hz, snr, mode, source, tt in self.reports.values():
-            print(f"Sending report {dxcall}, {freq_hz}, {snr}, {mode}, {source}, {tt}")
+            print(f"[pskr_upload] Packing report {dxcall}, {freq_hz}, {snr}, {mode}, {source}, {tt}")
             sender = self._enc_str(dxcall) + struct.pack("!I", int(freq_hz)) + struct.pack("b", int(snr)) + struct.pack("b", 0) + self._enc_str(mode) + struct.pack("B", source) + struct.pack("!I", tt)
             senders += sender
         packet = bytearray(header + self.rx_block + self._block(b"\x99\x93", senders))
@@ -71,6 +74,7 @@ class PSKR_upload:
         print(txt)
         self.console_print(txt)
         self.reports = {}
+        self.last_report_time = time.time()
 
 
 #pskr = PSKReporter('G1OJS', 'IO90ju', software = 'PyFT8', tt = int(time.time()))
