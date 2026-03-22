@@ -79,6 +79,6 @@ class PSKR_upload:
         self.last_report_time = time.time()
 
 
-#pskr = PSKReporter('G1OJS', 'IO90ju', software = 'PyFT8', tt = int(time.time()))
+#pskr = PSKR_upload('G1OJS', 'IO90ju', software = 'PyFT8', console_print = None)
 #pskr.add_report('G1OJS', 14074000, -5, 'FT8', 2, int(time.time()))
-#pskr.send(includeDescriptors = True)
+#pskr._send(includeDescriptors = True)
