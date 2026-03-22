@@ -325,7 +325,7 @@ def cli():
     mc, mg = config['station']['call'], config['station']['grid']
     if mc is not None and 'pskreporter' in config.keys():
         if config['pskreporter']['upload'] == 'Y':
-            pskr_upload = PSKR_upload(mc, mg, software = f"PyFT8 v{VER}", tt = int(time.time()), console_print = console_print) if not mc is None else None
+            pskr_upload = PSKR_upload(mc, mg, software = f"PyFT8 v{VER}", console_print = console_print) if not mc is None else None
             console_print(f"[PyFT8] Spots will upload to pskreporter") 
     qso = FT8_QSO(logging)
     rig = Rig(config)

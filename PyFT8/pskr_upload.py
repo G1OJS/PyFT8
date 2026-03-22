@@ -9,15 +9,16 @@ MAX_REPORTS = 90
 class PSKR_upload:
     # https://pskreporter.info/pskdev.html
     # https://pskreporter.info/cgi-bin/psk-analysis.pl
-    def __init__(self, mycall, mygrid, software, tt, console_print):
+    def __init__(self, mycall, mygrid, software, console_print):
         self.RxInfoRecDescriptor_CallLocSoft = b"\x00\x03\x00\x24\x99\x92\x00\x03\x00\x01\x80\x02\xFF\xFF\x00\x00\x76\x8F\x80\x04\xFF\xFF\x00\x00\x76\x8F\x80\x08\xFF\xFF\x00\x00\x76\x8F\x00\x00"
         self.SenderInfoRecDescriptor_SenderFreqSNRiMDModeSourceTime = b"\x00\x02\x00\x3C\x99\x93\x00\x07\x80\x01\xFF\xFF\x00\x00\x76\x8F\x80\x05\x00\x04\x00\x00\x76\x8F\x80\x06\x00\x01\x00\x00\x76\x8F\x80\x07\x00\x01\x00\x00\x76\x8F\x80\x0A\xFF\xFF\x00\x00\x76\x8F\x80\x0B\x00\x01\x00\x00\x76\x8F\x00\x96\x00\x04"
-        self.tt = tt
         self.last_descriptors_time = 0
         self.descriptors_sent_count = 0
         self.last_report_time = time.time() - 300 + 60
         self.addr = ("report.pskreporter.info", 4739)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        #HOST = socket.gethostbyname(socket.gethostname())
+        #self.sock.bind((HOST, 1234))
         self.session_id = random.getrandbits(32)
         self.seq = 1
         self.reports = {}
@@ -56,7 +57,8 @@ class PSKR_upload:
     def _send(self, includeDescriptors = False):
         if not self.reports:
             return
-        ipfx_header = struct.pack("!H", 10) + b"\x00\x00" + struct.pack("!I", self.tt) + struct.pack("!I", self.seq) + struct.pack("!I", self.session_id)
+        tt = int(time.time())
+        ipfx_header = struct.pack("!H", 10) + b"\x00\x00" + struct.pack("!I", tt) + struct.pack("!I", self.seq) + struct.pack("!I", self.session_id)
         header = ipfx_header
         if includeDescriptors:
             print(f"[pskr_upload] Packing descriptors")
