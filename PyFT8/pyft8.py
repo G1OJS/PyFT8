@@ -204,7 +204,7 @@ def progress_qso(clicked_message):
         qso.times['time_on'] = time.gmtime()
         qso.oStation = {'c': call_b, 'g': grid_rpt}
         qso.rpts['sent'] = f"{clicked_message.snr:+03d}"
-        qso.set_tx_message(f"{qso.oStation['c']} {my_station['c']} {my_station['g']}")
+        qso.set_tx_message(f"{qso.oStation['c']} {my_station['c']} {my_station['g'][:4]}")
         return
 
     if call_a == my_station['c']:
