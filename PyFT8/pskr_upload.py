@@ -26,6 +26,7 @@ class PSKR_upload:
         self.rx_block =  self._block(b"\x99\x92", rx)
         self.console_print = console_print
         self.lock = threading.Lock()
+        print(f"[PSKR_upload] Spots will upload to pskreporter")
         threading.Thread(target = self._check_for_send, daemon = True).start()
 
     def _enc_str(self, s):

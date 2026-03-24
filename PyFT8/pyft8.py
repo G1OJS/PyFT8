@@ -10,11 +10,13 @@ from PyFT8.gui import Gui
 from PyFT8.transmitter import AudioOut
 from PyFT8.time_utils import global_time_utils
 from PyFT8.rigctrl import Rig
+from PyFT8.mqtt import PSKR_MQTT_listener
+from PyFT8.file_data import File_data
 
 VER = '2.4.3'
 
 MAX_TX_START_SECONDS = 2.5
-rig, gui, qso, worked_before, pskr_upload = None, None, None, None, None
+rig, gui, qso, call_data, pskr_info, pskr_upload = None, None, None, None, None, None
 
 def get_config():
     import configparser
@@ -34,56 +36,20 @@ def get_config():
     console_print(f"Reading config from {ini_file}")
     config.read(ini_file)
 
-def parse_from_adif_rec(rec, field):
-    p = rec.find(field)
-    if p > 0:
-        p1, p2 = rec.find(':',p), rec.find('>',p)
-        n = int(rec[p1+1:p2])
-        return rec[p2+1: p2+1+n]
-        
+def ensure_file_exists(path, header = None):
+    try:
+        with open(path, "x") as f:
+            if header is not None:
+                f.write(header)
+    except FileExistsError:
+        pass
+      
 class Logging:
     def __init__(self):
         self.adif_log_file = f"{config_folder}/PyFT8.adi"
-        self.worked_before_file = f"{config_folder}/PyFT8_wb.pkl"
-        if(not os.path.exists(self.adif_log_file)):
-            with open(self.adif_log_file, 'w') as f:
-                f.write("header <eoh>")
-        if(not os.path.exists(self.worked_before_file)):
-            with open(f"{self.worked_before_file}","wb") as f:
-                pickle.dump({'dummy':0}, f)
-        self.load_wb()
+        ensure_file_exists(self.adif_log_file, header = "header <eoh>\n")
         console_print(f"Logging to {self.adif_log_file}")
-
-    def load_wb(self):
-        global worked_before
-        with open(f"{self.worked_before_file}","rb") as f:
-            worked_before = pickle.load(f)
-
-    def merge_adif_to_wb_not_used(self, file = 'c:/users/drala/recent_log.adi'):
-        import datetime
-        with open(file, 'r') as f:
-            for l in f.readlines():
-                mode = parse_from_adif_rec(l, 'mode')
-                if mode == "FT8":
-                    callsign = parse_from_adif_rec(l, 'call')
-                    t = parse_from_adif_rec(l, 'time_on')
-                    d = parse_from_adif_rec(l, 'qso_date')
-                    tm = time.mktime(datetime.datetime.strptime(d+t, "%Y%m%d%H%M%S").timetuple())
-                    if callsign in worked_before:
-                        if tm < worked_before[callsign]:
-                            continue
-                    self.update_worked_before(callsign, tm)
-
-    def update_worked_before(self, callsign, band, mode, tm):
-        global worked_before
-        self.load_wb()
-        worked_before[callsign] = tm
-        cbm = callsign + "_"+band+"_"+mode
-        worked_before[callsign] = tm
-        worked_before[cbm] = tm
-        with open(f"{self.worked_before_file}","wb") as f:
-            pickle.dump(worked_before, f)
-                
+              
     def log(self, times, band_info, mStation, oStation, rpts):
         log_dict = {'call':oStation['c'], 'gridsquare':oStation['g'], 'mode':'FT8',
         'operator':mStation['c'], 'station_callsign':mStation['c'], 'my_gridsquare':mStation['g'], 
@@ -97,9 +63,7 @@ class Logging:
                 v = str(v)
                 f.write(f"<{k}:{len(v)}>{v} ")
             f.write(f"<eor>\n")
-        self.update_worked_before(oStation['c'], band_info['b'], 'FT8', time.time())
         console_print(f"Logged QSO with {oStation['c']}")
-
 
 class Message:
     def __init__(self, candidate):
@@ -113,11 +77,23 @@ class Message:
         self.is_from_me = c.msg_tuple[1] == mycall
         self.is_to_me = c.msg_tuple[0] == mycall
         self.is_cq = c.msg_tuple[0].startswith('CQ')
+        gui_wb_text = self.check_worked_before(c.msg_tuple[1])
+        qui_loc_text = self.check_pskr_info(c.msg_tuple[1])
+        self.gui_text = f"{c.msg} {gui_wb_text} {qui_loc_text}"
+
+    def check_pskr_info(self, call):
+        qui_loc_text = ''
+        if self.is_cq and pskr_info is not None:
+            if call in pskr_info.data:
+                qui_loc_text = f"loc: {pskr_info.data[call]}"
+        return qui_loc_text
+    
+    def check_worked_before(self, call):
         gui_wb_text = ''
-        if self.is_cq and worked_before is not None:
-            if c.msg_tuple[1] in worked_before:
-                gui_wb_text = f"wb: {global_time_utils.format_duration(time.time() - worked_before[c.msg_tuple[1]])}"
-        self.gui_text = f"{c.msg} {gui_wb_text}"
+        if self.is_cq and call_data is not None:
+            if call in call_data.worked_before.data:
+                gui_wb_text = f"wb: {global_time_utils.format_duration(time.time() - call_data.worked_before.data[call])}"
+        return gui_wb_text
 
     def wsjtx_screen_format(self):
         return f"{self.cyclestart['string']} {self.snr:+03d} {self.dt:4.1f} {self.fHz:4.0f} ~ {self.msg}"
@@ -126,6 +102,32 @@ class Message:
         fMHz = float(qso.band_info['fMHz']) if qso.band_info['fMHz'] is not None else 0
         return f"{self.cyclestart['string']} {fMHz:8.3f} Rx FT8    {self.snr:+03d} {self.dt:4.1f} {self.fHz:4.0f} ~ {self.msg}"
 
+        
+
+class Calldata:
+    def __init__(self):
+        self.worked_before = File_data(f"{config_folder}/PyFT8_wb.pkl")
+        
+    def build_worked_before(self, adif_file):
+        import datetime
+        def parse(rec, field):
+            p = rec.find(field)
+            if p > 0:
+                p1, p2 = rec.find(':',p), rec.find('>',p)
+                n = int(rec[p1+1:p2])
+                return rec[p2+1: p2+1+n]
+        with open(self.adif_file, 'r') as f:
+            for l in f.readlines():
+                if parse(l, 'mode') == "FT8":
+                    c, b, d, t = parse_from_adif_rec(l, 'call'), parse(l, 'band'), parse(l, 'qso_date'), parse(l, 'time_on')
+                    self.update_worked_before(c,b,'FT8',t)
+                    
+    def update_worked_before(self, callsign, band, mode, tm):
+        self.worked_before.data[callsign] = tm
+        cbm = callsign + "_"+band+"_"+mode
+        self.worked_before.data[callsign] = tm
+        self.worked_before.data[cbm] = tm
+        self.worked_before.save()
 
 class FT8_QSO:
     def __init__(self, logging):
@@ -261,7 +263,7 @@ def on_decode(c):
         gui.add_message_box(message)
     if qso.band_info['b'] is not None and pskr_upload is not None:
         dx_call = c.msg_tuple[1]
-        if dx_call != 'not':
+        if dx_call != 'not' and dx_call != config['station']['call']:
             pskr_upload.add_report(dx_call, int(1000000*float(qso.band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 1, int(time.time()))
     print(message.wsjtx_screen_format())
     write_all_txt_row(message)
@@ -281,7 +283,7 @@ def on_control_click(btn_widg):
     btn_def = btn_widg.user_data
     btn_action = btn_def['action']
     if btn_action == "CQ":
-        mc, mg = config['station']['call'], config['station']['grid']
+        mc, mg = config['station']['call'], config['station']['grid'][:4]
         qso.set_tx_message(f"CQ {mc} {mg}")
     if btn_action == "RPT_LAST":
         qso.set_tx_message(qso.last_tx)
@@ -306,7 +308,7 @@ def console_print(text, color = 'white'):
         print(text)
         
 def cli():
-    global audio_in, audio_out, output_device_idx, rig, gui, qso, config, config_folder, clear_frequencies, pskr_upload
+    global audio_in, audio_out, output_device_idx, rig, gui, qso, config, config_folder, clear_frequencies, pskr_upload, call_data, pskr_info
     import time
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-c', '--config_folder', help = 'Location of config folder e.g. C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', default = './') 
@@ -326,9 +328,11 @@ def cli():
     if mc is not None and 'pskreporter' in config.keys():
         if config['pskreporter']['upload'] == 'Y':
             pskr_upload = PSKR_upload(mc, mg, software = f"PyFT8 v{VER}", console_print = console_print) if not mc is None else None
-            console_print(f"[PyFT8] Spots will upload to pskreporter") 
+            pskr_info = File_data(f"{config_folder}/PyFT8_cd.pkl")
+            _ = PSKR_MQTT_listener(pskr_info, mg[:4])
     qso = FT8_QSO(logging)
     rig = Rig(config)
+    call_data = Calldata()
 
     if args.transmit_message or args.outputcard_keywords:
         audio_out = AudioOut()
