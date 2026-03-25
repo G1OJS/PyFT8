@@ -98,24 +98,13 @@ class Message:
         self.is_from_me = c.msg_tuple[1] == mycall
         self.is_to_me = c.msg_tuple[0] == mycall
         self.is_cq = c.msg_tuple[0].startswith('CQ')
-        gui_wb_text = self.check_worked_before(c.msg_tuple[1])
-        qui_loc_text = self.check_pskr_info(c.msg_tuple[1])
+        call = c.msg_tuple[1]
+        loc = pskr_info.cache.get(call,'')
+        qui_loc_text = f"loc: {pskr_info.cache[call]}" if loc else ''
+        wb = adif_logging.cache.get(call,'')
+        gui_wb_text = f"wb: {global_time_utils.format_duration(time.time() - adif_logging.cache[call])}" if wb else ''
         self.gui_text = f"{c.msg} {gui_wb_text} {qui_loc_text}"
-
-    def check_pskr_info(self, call):
-        qui_loc_text = ''
-        if self.is_cq and pskr_info is not None:
-            if call in pskr_info.cache:
-                qui_loc_text = f"loc: {pskr_info.cache[call]}"
-        return qui_loc_text
     
-    def check_worked_before(self, call):
-        gui_wb_text = ''
-        if self.is_cq and adif_logging is not None:
-            if call in adif_logging.cache:
-                gui_wb_text = f"wb: {global_time_utils.format_duration(time.time() - adif_logging.cache[call])}"
-        return gui_wb_text
-
     def wsjtx_screen_format(self):
         return f"{self.cyclestart['string']} {self.snr:+03d} {self.dt:4.1f} {self.fHz:4.0f} ~ {self.msg}"
 
@@ -289,6 +278,7 @@ def on_control_click(btn_widg):
         qso.band_info = {'b':btn_text, 'fMHz':freqMHz}
         rig.set_freq_Hz(int(1000000*float(qso.band_info['fMHz'])))
         console_print(f"[PyFT8] Set band: {qso.band_info['b']} {qso.band_info['fMHz']}")
+
 
 def on_msg_click(message):
     progress_qso(message)
