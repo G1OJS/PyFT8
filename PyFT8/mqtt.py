@@ -27,7 +27,7 @@ class PSKR_MQTT_listener:
             return
         sc, rc = (d['sc'], d['sl']), (d['rc'], d['rl'])
         for c in [sc, rc]:
-            #print(f"[MQTT] {len(self.cache)} {sc} - > {rc}")
+            #print(f"[MQTT] {len(self.cache)} {sc} - > {rc} on {d['b']} {d['md']}")
             if c[0] not in self.cache:
                 self.cache[c[0]]=c[1]
 

@@ -175,9 +175,9 @@ class FT8_QSO:
             self.message_to_transmit = None
 
     def log(self):
-        if self.adif_logging is not None:
+        if adif_logging is not None:
             self.times['time_off'] = time.gmtime()
-            self.adif_logging.log(self.times, self.band_info, self.mStation, self.oStation, self.rpts)
+            adif_logging.log(self.times, self.band_info, self.mStation, self.oStation, self.rpts)
 
 def isReport(grid_rpt):     return "+" in grid_rpt or "-" in grid_rpt
 def isRReport(grid_rpt):    return isReport(grid_rpt) and 'R' in grid_rpt
