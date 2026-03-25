@@ -62,8 +62,8 @@ class ADIF:
                 v = str(v)
                 f.write(f"<{k}:{len(v)}>{v} ")
             f.write(f"<eor>\n")
-        cbm = log_dic['call'] + "_" + log_dict['band'] + "_FT8"
-        cache[log_dic['call']] = tm
+        cbm = log_dict['call'] + "_" + log_dict['band'] + "_FT8"
+        cache[log_dict['call']] = tm
         cache[cbm] = tm
         console_print(f"Logged QSO with {oStation['c']}")
 
