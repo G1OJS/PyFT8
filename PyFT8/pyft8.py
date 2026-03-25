@@ -100,9 +100,9 @@ class Message:
         self.is_cq = c.msg_tuple[0].startswith('CQ')
         call = c.msg_tuple[1]
         loc = pskr_info.cache.get(call,'')
-        qui_loc_text = f"loc: {pskr_info.cache[call]}" if loc else ''
+        qui_loc_text = f"loc: {loc}" if loc else ''
         wb = adif_logging.cache.get(call,'')
-        gui_wb_text = f"wb: {global_time_utils.format_duration(time.time() - adif_logging.cache[call])}" if wb else ''
+        gui_wb_text = f"wb: {global_time_utils.format_duration(time.time() - float(wb))}" if wb else ''
         self.gui_text = f"{c.msg} {gui_wb_text} {qui_loc_text}"
     
     def wsjtx_screen_format(self):
