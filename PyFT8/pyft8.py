@@ -51,6 +51,7 @@ class ADIF:
         self.cache = self._build_cache()
               
     def log(self, times, band_info, mStation, oStation, rpts):
+        import datetime
         log_dict = {'call':oStation['c'], 'gridsquare':oStation['g'], 'mode':'FT8',
         'operator':mStation['c'], 'station_callsign':mStation['c'], 'my_gridsquare':mStation['g'], 
         'rst_sent':rpts['sent'], 'rst_rcvd':rpts['rcvd'], 
@@ -264,7 +265,13 @@ def on_busy_profile(busy_profile, cycle):
         console_print(f"[PyFT8] Band not set; please select a band.", color = 'red')
     if pskr_info is not None: 
         s = [f"{b} {cnts[0]}/{cnts[1]} " for b, cnts in pskr_info.home_activity.items()]
-        console_print(f"Tx/Rx in {config['station']['grid'][:4]}: {' '.join(s)}", color = 'yellow')
+        grd = config['station']['grid'][:4]
+        console_print(f"Tx/Rx calls in {grd}: {' '.join(s)}", color = 'yellow')
+        b = qso.band_info['b']
+        if b is not None and b in pskr_info.home_most_remotes:
+            tx_lead,  rx_lead = pskr_info.home_most_remotes[b]
+            console_print(f"Most spotted {grd} Tx on {b}: {tx_lead[0]} by {tx_lead[1]}", color = 'yellow')
+            console_print(f"Most spots by {grd} Rx on {b}: {rx_lead[1]} by {rx_lead[0]}", color = 'yellow')
 
 def on_control_click(btn_widg):
     btn_def = btn_widg.user_data

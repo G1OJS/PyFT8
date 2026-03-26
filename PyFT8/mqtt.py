@@ -12,10 +12,12 @@ class PSKR_MQTT_listener:
         mqttc.on_message = self.on_message
         mqttc.connect("mqtt.pskreporter.info", 1883, 60)
         self.cache = {}
-        self.home_call_info = {}
+        self.band_TxRx_homecall_countremotes = {}
         self.home_activity = {}
+        self.home_most_remotes = {}
         threading.Thread(target = mqttc.loop_forever, daemon = True).start()
         threading.Thread(target = self.count_activity, daemon = True).start()
+        self.lock = threading.Lock()
         
     def on_connect(self, client, userdata, flags, reason_code, properties):
         #pskr/filter/v2/{band}/{mode}/{sendercall}/{receivercall}/{senderlocator}/{receiverlocator}/{sendercountry}/{receivercountry}
@@ -36,19 +38,26 @@ class PSKR_MQTT_listener:
                 self.cache[call] = loc
             if self.home_square in loc:
                 key = f"{d['b']}_{['Tx','Rx'][i]}_{call}"
-                if not key in self.home_call_info:
-                    self.home_call_info[key] = 0
-                self.home_call_info[key] +=1
+                if not key in self.band_TxRx_homecall_countremotes:
+                    with self.lock:
+                        self.band_TxRx_homecall_countremotes[key] = 0
+                self.band_TxRx_homecall_countremotes[key] +=1
 
     def count_activity(self):
         while True:
             time.sleep(5)
-            for c_info in self.home_call_info:
-                c = c_info.split("_")[0]
-                self.home_activity[c] = [0,0]
-            for c_info in self.home_call_info:
-                c, txrx = c_info.split("_")[:2]
-                self.home_activity[c][['Tx','Rx'].index(txrx)] +=1
+            with self.lock:
+                for c_info in self.band_TxRx_homecall_countremotes:
+                    c = c_info.split("_")[0]
+                    self.home_activity[c] = [0,0]
+                for band_TxRx_homecall in self.band_TxRx_homecall_countremotes:
+                    b, tr, c = band_TxRx_homecall.split("_")
+                    nremotes = self.band_TxRx_homecall_countremotes[band_TxRx_homecall]
+                    self.home_activity[b][['Tx','Rx'].index(tr)] +=1
+                    if not b in self.home_most_remotes:
+                        self.home_most_remotes[b] = [('',0), ('',0)]
+                    if nremotes>self.home_most_remotes[b][['Tx','Rx'].index(tr)][1]:
+                        self.home_most_remotes[b][['Tx','Rx'].index(tr)] = (c, nremotes)
                 
 if __name__ == '__main__':
     pskr = PSKR_MQTT_listener("IO90")
