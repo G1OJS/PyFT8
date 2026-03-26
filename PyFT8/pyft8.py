@@ -269,8 +269,11 @@ def on_busy_profile(busy_profile, cycle):
         b = qso.band_info['b']
         if b is not None and b in pskr_info.home_most_remotes:
             tx_lead,  rx_lead = pskr_info.home_most_remotes[b]
-            console_print(f"Most spotted {grd} Tx on {b}: {tx_lead[0]} by {tx_lead[1]}", color = 'yellow')
-            console_print(f"Most spots by {grd} Rx on {b}: {rx_lead[1]} by {rx_lead[0]}", color = 'yellow')
+            call = config['station']['call']
+            n_spotted = 0 if f"{b}_Tx_{call}" not in pskr_info.band_TxRx_homecall_countremotes else pskr_info.band_TxRx_homecall_countremotes[f"{b}_Tx_{call}"]
+            n_spotting = 0 if f"{b}_Rx_{call}" not in pskr_info.band_TxRx_homecall_countremotes else pskr_info.band_TxRx_homecall_countremotes[f"{b}_Rx_{call}"]
+            console_print(f"{b}: {call} spotted by {n_spotted}. Most spotted {grd} Tx: {tx_lead[0]} by {tx_lead[1]}", color = 'yellow')
+            console_print(f"{b}: {call} spotting {n_spotting}. Most spots by {grd} Rx: {rx_lead[1]} by {rx_lead[0]}", color = 'yellow')
 
 def on_control_click(btn_widg):
     btn_def = btn_widg.user_data
