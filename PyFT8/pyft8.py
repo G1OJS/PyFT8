@@ -64,8 +64,8 @@ class ADIF:
             f.write(f"<eor>\n")
         cbm = log_dict['call'] + "_" + log_dict['band'] + "_FT8"
         tm = time.time()
-        cache[log_dict['call']] = tm
-        cache[cbm] = tm
+        self.cache[log_dict['call']] = tm
+        self.cache[cbm] = tm
         console_print(f"Logged QSO with {oStation['c']}")
 
     def _build_cache(self):
