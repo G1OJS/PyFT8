@@ -15,6 +15,7 @@ class PSKR_MQTT_listener:
         self.home_call_info = {}
         self.home_activity = {}
         threading.Thread(target = mqttc.loop_forever, daemon = True).start()
+        threading.Thread(target = self.count_activity, daemon = True).start()
         
     def on_connect(self, client, userdata, flags, reason_code, properties):
         #pskr/filter/v2/{band}/{mode}/{sendercall}/{receivercall}/{senderlocator}/{receiverlocator}/{sendercountry}/{receivercountry}
@@ -38,19 +39,22 @@ class PSKR_MQTT_listener:
                 if not key in self.home_call_info:
                     self.home_call_info[key] = 0
                 self.home_call_info[key] +=1
+
+    def count_activity(self):
+        while True:
+            time.sleep(5)
+            for c_info in self.home_call_info:
+                c = c_info.split("_")[0]
+                self.home_activity[c] = [0,0]
+            for c_info in self.home_call_info:
+                c, txrx = c_info.split("_")[:2]
+                self.home_activity[c][['Tx','Rx'].index(txrx)] +=1
                 
 if __name__ == '__main__':
     pskr = PSKR_MQTT_listener("IO90")
+        
 
-    while True:
-        time.sleep(5)
-        for c_info in pskr.home_call_info:
-            c = c_info.split("_")[0]
-            pskr.home_activity[c] = [0,0]
-        for c_info in pskr.home_call_info:
-            c, txrx = c_info.split("_")[:2]
-            pskr.home_activity[c][['Tx','Rx'].index(txrx)] +=1
-        print(pskr.home_activity)
+        
 
     
 

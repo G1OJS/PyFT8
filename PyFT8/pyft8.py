@@ -258,8 +258,13 @@ def on_busy_profile(busy_profile, cycle):
     idx = np.argmin(busy_profile[f0_idx:fn_idx])
     clear_frequencies[cycle] = (f0_idx + idx) * audio_in.df
     console_print(f"[on_busy] Set Tx freq to {clear_frequencies[cycle]:6.1f} for cycle {cycle}")
+
+    # need to move the code below out into its own loop to avoid loading receiver loop
     if qso.band_info['b'] is None:
         console_print(f"[PyFT8] Band not set; please select a band.", color = 'red')
+    if pskr_info is not None: 
+        s = [f"{b} {cnts[0]}/{cnts[1]} " for b, cnts in pskr_info.home_activity.items()]
+        console_print(f"Tx/Rx in {config['station']['grid'][:4]}: {' '.join(s)}", color = 'yellow')
 
 def on_control_click(btn_widg):
     btn_def = btn_widg.user_data
