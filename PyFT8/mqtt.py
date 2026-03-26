@@ -47,9 +47,9 @@ class PSKR_MQTT_listener:
         while True:
             time.sleep(5)
             with self.lock:
-                for c_info in self.band_TxRx_homecall_countremotes:
-                    c = c_info.split("_")[0]
-                    self.home_activity[c] = [0,0]
+                for band_TxRx_homecall in self.band_TxRx_homecall_countremotes:
+                    b = band_TxRx_homecall.split("_")[0]
+                    self.home_activity[b] = [0,0]
                 for band_TxRx_homecall in self.band_TxRx_homecall_countremotes:
                     b, tr, c = band_TxRx_homecall.split("_")
                     nremotes = self.band_TxRx_homecall_countremotes[band_TxRx_homecall]
