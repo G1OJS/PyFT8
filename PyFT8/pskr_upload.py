@@ -72,10 +72,13 @@ class PSKR_upload:
         packet = bytearray(header + self.rx_block + self._block(b"\x99\x93", senders))
         struct.pack_into("!H", packet, 2, len(packet))
         self.seq += len(self.reports)
-        self.sock.sendto(packet, self.addr)
-        txt = f"[pskr_upload] Sent packet with {len(self.reports)} reports"
+        try:
+            self.sock.sendto(packet, self.addr)
+            txt = f"[pskr_upload] Sent packet with {len(self.reports)} reports"
+        except:
+            txt = "[PSKR_UPLOAD] Connection error"
         print(txt)
-        self.console_print(txt)
+        self.console_print(txt, color = 'red')
         self.reports = {}
         self.last_report_time = time.time()
 

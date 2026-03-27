@@ -7,24 +7,27 @@ class PSKR_MQTT_listener:
 
     def __init__(self, home_square):
         self.home_square = home_square
-        mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
-        mqttc.on_connect = self.on_connect
-        mqttc.on_message = self.on_message
-        mqttc.connect("mqtt.pskreporter.info", 1883, 60)
         self.cache = {}
         self.band_TxRx_homecall_countremotes = {}
         self.home_activity = {}
         self.home_most_remotes = {}
+        self.lock = threading.Lock()
+        mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+        mqttc.on_connect = self.on_connect
+        mqttc.on_message = self.on_message
+        try:
+            mqttc.connect("mqtt.pskreporter.info", 1883, 60)
+        except:
+            print("[MQTT] connection error")
         threading.Thread(target = mqttc.loop_forever, daemon = True).start()
         threading.Thread(target = self.count_activity, daemon = True).start()
-        self.lock = threading.Lock()
-        
+
     def on_connect(self, client, userdata, flags, reason_code, properties):
         #pskr/filter/v2/{band}/{mode}/{sendercall}/{receivercall}/{senderlocator}/{receiverlocator}/{sendercountry}/{receivercountry}
-        print(f"[MQTT] Connected with result code {reason_code}")
         print(f"[MQTT] Requesting mqtt feed for {self.home_square}")
         client.subscribe(f"pskr/filter/v2/+/FT8/+/+/{self.home_square}/#")
         client.subscribe(f"pskr/filter/v2/+/FT8/+/+/+/{self.home_square}/#")
+
 
     def on_message(self, client, userdata, msg):
         try:
