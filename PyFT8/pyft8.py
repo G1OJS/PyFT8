@@ -305,6 +305,7 @@ def on_gui_control_click(btn_widg):
         qso.band_info = {'b':btn_text, 'fMHz':freqMHz}
         rig.set_freq_Hz(int(1000000*float(qso.band_info['fMHz'])))
         console_print(f"[PyFT8] Set band: {qso.band_info['b']} {qso.band_info['fMHz']}")
+        gui.band_stats.clear()
 
 def on_gui_msg_click(message):
     progress_qso(message)

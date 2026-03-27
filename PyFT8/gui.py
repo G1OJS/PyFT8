@@ -31,6 +31,10 @@ class Scrollbox:
             self.lineartists[i].set_text(line['text'])
             self.lineartists[i].set_color(line['color'])
 
+    def clear(self):
+        for i in range(self.nlines):
+            self.print("")
+
 class Msg_box:
     def __init__(self, fig, ax, tbin, fbin, w, h, onclick):
         from matplotlib.patches import Rectangle
