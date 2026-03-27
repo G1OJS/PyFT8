@@ -66,6 +66,11 @@ class PSKR_MQTT_listener:
                         self.home_most_remotes[b] = [('',0), ('',0)]
                     if nremotes>self.home_most_remotes[b][['Tx','Rx'].index(tr)][1]:
                         self.home_most_remotes[b][['Tx','Rx'].index(tr)] = (c, nremotes)
+
+    def get_spot_counts(self, band, call):
+        n_spotting = len(self.band_TxRx_homecall_report_times.get(f"{band}_Tx_{call}", []))
+        n_spotted = len(self.band_TxRx_homecall_report_times.get(f"{band}_Rx_{call}", []))
+        return n_spotted, n_spotting
                 
 if __name__ == '__main__':
     pskr = PSKR_MQTT_listener("IO90")

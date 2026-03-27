@@ -280,15 +280,11 @@ def gui_update_usermessages():
         if b is not None and b in pskr_info.home_most_remotes:
             tx_lead,  rx_lead = pskr_info.home_most_remotes[b]
             call = config['station']['call']
-            n_spotted = len(pskr_info.band_TxRx_homecall_countremotes.get(f"{b}_Tx_{call}", []))
-            n_spotting = len(pskr_info.band_TxRx_homecall_countremotes.get(f"{b}_Rx_{call}", []))
+            n_spotted, n_spotting = pskr_info.get_spot_counts(b, call)
             gui.band_stats.print(f"{call:<7} {tx_lead[0]:<7}", color = 'red')
-            gui.band_stats.print(f"{n_spotted:<7} {tx_lead[1]:<7}", color = 'red')
+            gui.band_stats.print(f"{n_spotting:<7} {tx_lead[1]:<7}", color = 'red')
             gui.band_stats.print(f"{call:<7} {rx_lead[0]:<7}", color = 'green')
-            gui.band_stats.print(f"{n_spotting:<7} {rx_lead[1]:<7}", color = 'green')
-         #   spotting_txt = f"{call} spotted by {n_spotted}. Most spotted {grd} Tx: {tx_lead[0]} by {tx_lead[1]}"
-         #   spotted_txt = f"{call} spotting {n_spotting}. Most spots by {grd} Rx: {rx_lead[1]} by {rx_lead[0]}"
-         #   console_print(f"{b} {spotting_txt} {spotted_txt}", color = 'yellow')
+            gui.band_stats.print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = 'green')
 
 def on_gui_control_click(btn_widg):
     btn_def = btn_widg.user_data
