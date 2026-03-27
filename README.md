@@ -11,14 +11,20 @@ If you're interested in how this works, maybe have a look at [MiniPyFT8](https:/
  - Rx and Tx of standard messages with optional /P and /R, and nonstandard calls plus hashed calls
  - Doesn't try to do everything, so launches quickly (~2 seconds on my old Dell Optiplex 790)
  - Use with or without gui (receive and send messages via command line commands)
- - GUI provides simultaneous views of odd and even cycles
- - GUI shows worked-before info on CQ calls
- - Messages overlaid on waterfall signals that produce them
  - Automatically chooses clearest Tx frequency
  - Modern programming language throughout
  - Finds sound cards by keywords so follows them if windows moves them ...
  - Logs QSOs to ADIF file and all spots to WSJTX-style ALL.txt file
  - Uploads spots to pskreporter
+ - Direct CAT control for some rigs drops connection when not used, allowing sharing of rig's serial port
+ - Or control rigs via Hamlib
+
+ The Gui shows:
+ - Simultaneous views of odd and even cycles
+ - Messages overlaid on waterfall signals that produce them
+ - Worked-before info and fine grid locators in the message boxes (distance and bearing coming soon)
+ - Band activity on band select buttons
+ - Number of remote stations hearing your Tx, number of remote Txs that you're hearing, plus the same info for the 'best' station in your level 4 square
 
 To enable uploading of spots to pskreporter, make sure that your .ini file includes
 ```
@@ -54,9 +60,9 @@ Once installed, you can use the following commands to run it. Otherwise, please 
 | Launch configured GUI|pyft8 -i "Keyword1, Keyword2" -o "Keyword1, Keyword2" -c {config folder}| Config folder stores PyFT8.ini (your callsign, grid, buttons) and PyFT8.adi log file. Run this once to create default PyFT8.ini file.|
 
 ### Rig control 
-I'm resisting interfacing this to middleware such as Hamlib and Omnirig, because I want to keep the whole thing self-contained and simple, and losing connections to/from middleware was one motivation for writing this in the first place.
+I've included the Python code that I use with my Icom IC-7100 in the file 'rigctrl.py', and believe I've moved sufficient 'specification' for the rig protocol into the .ini file so that you can paste in your own rig specification (see for e.g. the Omnirig .ini file for your rig) and get it working with PyFT8 controlling PTT and frequency. I designed this code to drop the serial connection when it's not required, so that the rig's serial port can be accessed by other software at the same time.
 
-However, I've included the Python code that I use with my Icom IC-7100 in the file 'rigctrl.py', and believe I've moved sufficient 'specification' for the rig protocol into the .ini file so that you can paste in your own rig specification (see for e.g. the Omnirig .ini file for your rig) and get it working with PyFT8 controlling PTT and frequency.
+I've also included a basic Hamlib interface which launches rigctld and uses that to control the rig. To use this, make sure that the hamlib section of the ini file is populated; this will then take precedence over the direct CAT control section.
 
 Alternatively, you can run PyFT8 without rig control; if there is no rig found, PyFT8 defaults to running without a rig connected. In this case, you need to provide your own PTT method and note that the band buttons will only set the information used for logging QSOs to the PyFT8.adi file. Or you can use PyFT8 as Rx-only.
 
@@ -82,8 +88,6 @@ PyFT8 doesn't decode / encode *all* message types. The table below shows which a
 |3|RTTY RU   |   |   | |
 |4|NonStd Call   |Y|Y| <=11 char callsigns + hashed call|
 |5|EU VHF  |   |   | |
-
-
 
 ## Acknowledgements
 This project implements a decoder for the FT8 digital mode.
