@@ -31,8 +31,7 @@ To enable uploading of spots to pskreporter, make sure that your .ini file inclu
 [pskreporter]
 upload = Y
 ```
-
-<img width="1003" height="1020" alt="image" src="https://github.com/user-attachments/assets/bf6e3f78-531a-4c9b-ab2b-b51cc04ad980" />
+<img width="1078" height="436" alt="Capture" src="https://github.com/user-attachments/assets/5c4b64cb-e3e6-4a2f-aa77-93fd361a4e74" />
 
 
 
