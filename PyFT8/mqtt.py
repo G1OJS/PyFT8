@@ -8,6 +8,7 @@ class PSKR_MQTT_listener:
     def __init__(self, home_square):
         self.home_square = home_square
         self.cache = {}
+        self.band_TxRx_homecall_report_times = {}
         self.band_TxRx_homecall_countremotes = {}
         self.home_activity = {}
         self.home_most_remotes = {}
@@ -41,21 +42,25 @@ class PSKR_MQTT_listener:
                 self.cache[call] = loc
             if self.home_square in loc:
                 key = f"{d['b']}_{['Tx','Rx'][i]}_{call}"
-                if not key in self.band_TxRx_homecall_countremotes:
+                if not key in self.band_TxRx_homecall_report_times:
                     with self.lock:
-                        self.band_TxRx_homecall_countremotes[key] = 0
-                self.band_TxRx_homecall_countremotes[key] +=1
+                        self.band_TxRx_homecall_report_times[key] = []
+                self.band_TxRx_homecall_report_times[key].append(time.time())
 
     def count_activity(self):
         while True:
             time.sleep(5)
+            self.band_TxRx_homecall_countremotes = {}
             with self.lock:
-                for band_TxRx_homecall in self.band_TxRx_homecall_countremotes:
+                for band_TxRx_homecall in self.band_TxRx_homecall_report_times:
                     b = band_TxRx_homecall.split("_")[0]
                     self.home_activity[b] = [0,0]
-                for band_TxRx_homecall in self.band_TxRx_homecall_countremotes:
+                for band_TxRx_homecall in self.band_TxRx_homecall_report_times:
                     b, tr, c = band_TxRx_homecall.split("_")
-                    nremotes = self.band_TxRx_homecall_countremotes[band_TxRx_homecall]
+                    report_times = self.band_TxRx_homecall_report_times[band_TxRx_homecall]
+                    report_times = [t for t in report_times if (time.time() - t) < 15*60]
+                    self.band_TxRx_homecall_report_times[band_TxRx_homecall] = report_times
+                    nremotes = len(report_times)
                     self.home_activity[b][['Tx','Rx'].index(tr)] +=1
                     if not b in self.home_most_remotes:
                         self.home_most_remotes[b] = [('',0), ('',0)]
