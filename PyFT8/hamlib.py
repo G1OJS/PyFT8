@@ -3,8 +3,13 @@ import subprocess
 import threading
 import time
 
-class Hamlib:
-    def __init__(self, host="localhost", port=4532, rigctld = "C:/WSJT/wsjtx/bin/rigctld-wsjtx", rig = 3070, com = "COM4", s=9600):
+class Rig_hamlib:
+    def __init__(self, config):
+        com = config['hamlib_rig']['port']
+        s = config['hamlib_rig']['baud_rate']
+        rigctld = config['hamlib_rig']['rigctld']
+        rig = config['hamlib_rig']['model']
+        host, port ="localhost", 4532
         cmd = f"{rigctld} -m {rig} -r /{com} -s {s}"
         threading.Thread(target = subprocess.run, args = (cmd,)).start()
         self.sock = socket.create_connection((host, port))
@@ -13,18 +18,19 @@ class Hamlib:
         self.sock.sendall((command + "\n").encode())
         return self.sock.recv(1024).decode()
 
-    def get_freq(self):
-        return int(self.cmd("f"))
-
-    def set_freq(self, hz):
+    def set_freq_Hz(self, hz):
         self.cmd(f"F {hz}")
 
-    def ptt(self, state):
-        self.cmd(f"T {1 if state else 0}")
+    def ptt_on(self):
+        self.cmd(f"T 1")
+
+    def ptt_off(self):
+        self.cmd(f"T 0")
 
 
-rig = Hamlib()
-rig.set_freq(14074000)
-rig.ptt(True)
-time.sleep(0.1)
-rig.ptt(False)
+if __name__ == '__main__':
+    rig = Rig_hamlib()
+    rig.set_freq_Hz(14074000)
+    rig.ptt_on()
+    time.sleep(0.1)
+    rig.ptt_off()

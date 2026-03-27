@@ -10,9 +10,10 @@ from PyFT8.gui import Gui
 from PyFT8.transmitter import AudioOut
 from PyFT8.time_utils import global_time_utils
 from PyFT8.rigctrl import Rig
+from PyFT8.hamlib import Rig_hamlib
 from PyFT8.mqtt import PSKR_MQTT_listener
 
-VER = '2.4.3'
+VER = '2.5.1'
 
 MAX_TX_START_SECONDS = 2.5
 rig, gui, qso, adif_logging, pskr_info, pskr_upload = None, None, None, None, None, None
@@ -25,6 +26,7 @@ def get_config():
     if not os.path.exists(ini_file):
         config['station'] = {'call':'station_callsign', 'grid':'station_grid'}
         config['bands'] = {'20m':14.074}
+        config['hamlib_rig'] = {'rigctld':'C:/WSJT/wsjtx/bin/rigctld-wsjtx', 'port': 'COM4', 'baud_rate':9600, 'model':3070}
         config['rig'] = {'port': 'COM4', 'baud_rate':9600,
                          'set_freq_command':'FEFE88E0.05.0000000000.FD', 'set_freq_value':'5|5|vfBcdLU|1|0',
                          'ptt_on_command':'FEFE88E0.1C00.01.FD', 'ptt_off_command':'FEFE88E0.1C00.00.FD'}
@@ -340,7 +342,12 @@ def cli():
             pskr_upload = PSKR_upload(mc, mg, software = f"PyFT8 v{VER}", console_print = console_print) if not mc is None else None
             pskr_info = PSKR_MQTT_listener(mg[:4])
     qso = FT8_QSO()
-    rig = Rig(config)
+    if config.has_section('hamlib_rig'):
+        console_print("Connecting to rig via Hamlib")
+        rig = Rig_hamlib(config)
+    else:
+        console_print("Connecting to rig via CAT")
+        rig = Rig(config)
 
     if args.transmit_message or args.outputcard_keywords:
         audio_out = AudioOut()
