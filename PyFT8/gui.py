@@ -19,7 +19,7 @@ class Scrollbox:
         self.lineartists = []
         for i in range(self.nlines):
             self.lineartists.append(self.ax.text(0.03,1 - self.line_height * (i+1),
-                            '', color = 'white', fontsize = self.fontsize))
+                            '', color = 'white', fontsize = self.fontsize, family="monospace"))
         self.ax.set_xticks([])
         self.ax.set_yticks([])
         self.ax.set_facecolor('black')
@@ -69,11 +69,12 @@ class Msg_box:
             self.onclick(self.message)
 
 class Gui:
-    def __init__(self, dBgrid, hps, bpt, config, on_msg_click, on_control_click):
+    def __init__(self, dBgrid, hps, bpt, config, update_usermessages, on_msg_click, on_control_click):
         if config is not None:
             self.mStation = {'c':config['station']['call'], 'g':config['station']['grid']}
         self.on_msg_click = on_msg_click
         self.on_control_click = on_control_click
+        self.update_usermessages = update_usermessages
         self.dBgrid = dBgrid
         self.hps, self.bpt = hps, bpt
         self.msg_boxes = {}
@@ -82,7 +83,7 @@ class Gui:
         self.make_layout(config)
         self.ani = FuncAnimation(self.fig, self._animate, interval = 40, frames=(100000), blit=True)
 
-    def make_layout(self, config, wf_left = 0.15, wf_top = 0.87):
+    def make_layout(self, config, wf_left = 0.15, wf_top = 0.87, left_width = 0.13):
         self.plt = plt
         self.fig = plt.figure(figsize = (10,10), facecolor=(.18, .71, .71, 0.4)) 
         self.fig.canvas.manager.set_window_title('PyFT8 by G1OJS')
@@ -90,6 +91,9 @@ class Gui:
         self.image = self.ax_wf.imshow(self.dBgrid.T,vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self.ax_wf.set_xticks([])
         self.ax_wf.set_yticks([])
+        self.sep_h = 0.002
+        self.ax_band_stats = self.fig.add_axes([self.pmarg, wf_top + self.sep_h, left_width, 1-self.pmarg - (wf_top + self.sep_h)])
+        self.band_stats = Scrollbox(self.fig, self.ax_band_stats, nlines = 4)
         self.ax_console = self.fig.add_axes([self.pmarg + wf_left, wf_top, 1-2*self.pmarg - wf_left, 1-self.pmarg-wf_top])
         self.console = Scrollbox(self.fig, self.ax_console)
 
@@ -100,7 +104,7 @@ class Gui:
                                #{'label':'Averaging','style':'ctrl','data':None}]
             for band, freq in config['bands'].items():
                 button_defs.append({'label':band,'style':'band','action':'SET_FREQ','data':freq})
-            self._make_buttons(button_defs, styles, wf_top, 0.02, 0.1, 0.002)
+            self._make_buttons(button_defs, styles, wf_top, 0.02, left_width, 0.002)
 
     def _make_buttons(self, btn_defs, styles, btns_top, btn_h, btn_w, sep_h):
         self.buttons = []
@@ -132,6 +136,8 @@ class Gui:
             self._display_message_box(self.decode_queue.get())
         if (frame % 10 == 0):
             self._tidy_msg_boxes()
-        return [self.image, *self.ax_wf.patches, *self.ax_wf.texts, *self.console.lineartists]
+        if (frame % 50 == 0):
+            self.update_usermessages()
+        return [self.image, *self.ax_wf.patches, *self.ax_wf.texts, *self.band_stats.lineartists, *self.console.lineartists, *[btn.label for btn in self.buttons]]
 
                                     

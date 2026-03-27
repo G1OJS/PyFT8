@@ -75,10 +75,12 @@ class PSKR_upload:
         try:
             self.sock.sendto(packet, self.addr)
             txt = f"[pskr_upload] Sent packet with {len(self.reports)} reports"
+            col = 'green'
         except:
             txt = "[PSKR_UPLOAD] Connection error"
+            col = 'red'
         print(txt)
-        self.console_print(txt, color = 'red')
+        self.console_print(txt, color = col)
         self.reports = {}
         self.last_report_time = time.time()
 

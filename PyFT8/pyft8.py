@@ -238,8 +238,8 @@ def write_all_txt_row(message):
     with open(all_file, mode) as f:
         f.write(f"{row}\n")
 
-#============= Callbacks for GUI ==========================================================
-def on_decode(c):
+#============= Callbacks for Receiver ==========================================================
+def on_rx_decode(c):
     message = Message(c)
     if gui:
         gui.add_message_box(message)
@@ -250,7 +250,7 @@ def on_decode(c):
     print(message.wsjtx_screen_format())
     write_all_txt_row(message)
 
-def on_busy_profile(busy_profile, cycle):
+def on_rx_busy_profile(busy_profile, cycle):
     if output_device_idx is None:
         return
     fmax = 950 if qso.band_info['b']=='60m' else 2000
@@ -259,23 +259,36 @@ def on_busy_profile(busy_profile, cycle):
     clear_frequencies[cycle] = (f0_idx + idx) * audio_in.df
     console_print(f"[on_busy] Set Tx freq to {clear_frequencies[cycle]:6.1f} for cycle {cycle}")
 
-    # need to move the code below out into its own loop to avoid loading receiver loop
+#============= Callbacks for GUI ==========================================================
+def gui_update_usermessages():
     if qso.band_info['b'] is None:
         console_print(f"[PyFT8] Band not set; please select a band.", color = 'red')
-    if pskr_info is not None: 
-        s = [f"{b} {cnts[0]}/{cnts[1]} " for b, cnts in pskr_info.home_activity.items()]
+    if pskr_info is not None and gui is not None: 
         grd = config['station']['grid'][:4]
-        console_print(f"Tx/Rx calls in {grd}: {' '.join(s)}", color = 'yellow')
+        #s = [f"{b} {cnts[0]}/{cnts[1]} " for b, cnts in pskr_info.home_activity.items()]
+        #console_print(f"Tx/Rx calls in {grd}: {' '.join(s)}", color = 'yellow')
+        for bw in gui.buttons:
+            band_text = bw.user_data['label']
+            if band_text in pskr_info.home_activity:
+                cnts = pskr_info.home_activity[band_text]
+                activity_text = f"{cnts[0]}t/{cnts[1]}r"
+                bw.label.set_text(f"{band_text} {activity_text}")
+            
         b = qso.band_info['b']
         if b is not None and b in pskr_info.home_most_remotes:
             tx_lead,  rx_lead = pskr_info.home_most_remotes[b]
             call = config['station']['call']
             n_spotted = pskr_info.band_TxRx_homecall_countremotes.get(f"{b}_Tx_{call}", 0)
             n_spotting = pskr_info.band_TxRx_homecall_countremotes.get(f"{b}_Rx_{call}", 0)
-            console_print(f"{b}: {call} spotted by {n_spotted}. Most spotted {grd} Tx: {tx_lead[0]} by {tx_lead[1]}", color = 'yellow')
-            console_print(f"{b}: {call} spotting {n_spotting}. Most spots by {grd} Rx: {rx_lead[1]} by {rx_lead[0]}", color = 'yellow')
+            gui.band_stats.print(f"{call:<7} {tx_lead[0]:<7}", color = 'red')
+            gui.band_stats.print(f"{n_spotted:<7} {tx_lead[1]:<7}", color = 'red')
+            gui.band_stats.print(f"{call:<7} {rx_lead[0]:<7}", color = 'green')
+            gui.band_stats.print(f"{n_spotting:<7} {rx_lead[1]:<7}", color = 'green')
+         #   spotting_txt = f"{call} spotted by {n_spotted}. Most spotted {grd} Tx: {tx_lead[0]} by {tx_lead[1]}"
+         #   spotted_txt = f"{call} spotting {n_spotting}. Most spots by {grd} Rx: {rx_lead[1]} by {rx_lead[0]}"
+         #   console_print(f"{b} {spotting_txt} {spotted_txt}", color = 'yellow')
 
-def on_control_click(btn_widg):
+def on_gui_control_click(btn_widg):
     btn_def = btn_widg.user_data
     btn_action = btn_def['action']
     if btn_action == "CQ":
@@ -288,13 +301,12 @@ def on_control_click(btn_widg):
         rig.ptt_off()
         qso.tx_cycle = None
     if(btn_action == 'SET_FREQ'):
-        btn_text, freqMHz = btn_widg.label.get_text(), btn_def['data']
+        btn_text, freqMHz = btn_def['label'], btn_def['data']
         qso.band_info = {'b':btn_text, 'fMHz':freqMHz}
         rig.set_freq_Hz(int(1000000*float(qso.band_info['fMHz'])))
         console_print(f"[PyFT8] Set band: {qso.band_info['b']} {qso.band_info['fMHz']}")
 
-
-def on_msg_click(message):
+def on_gui_msg_click(message):
     progress_qso(message)
 
 #=============== CLI ========================================================================
@@ -348,8 +360,8 @@ def cli():
         if not input_device_idx:
             console_print("No input device")
         else:
-            gui = None if args.no_gui else Gui(audio_in.dBgrid_main, 4, 2, config, on_msg_click, on_control_click)
-            rx = Receiver(audio_in, [200, 3100], on_decode, on_busy_profile)
+            gui = None if args.no_gui else Gui(audio_in.dBgrid_main, 4, 2, config, gui_update_usermessages, on_gui_msg_click, on_gui_control_click)
+            rx = Receiver(audio_in, [200, 3100], on_rx_decode, on_rx_busy_profile)
             audio_in.start_streamed_audio(input_device_idx)
             if gui is not None:
                 gui.plt.show()
