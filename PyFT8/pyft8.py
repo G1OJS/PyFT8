@@ -12,11 +12,13 @@ from PyFT8.time_utils import global_time_utils
 from PyFT8.rigctrl import Rig
 from PyFT8.hamlib import Rig_hamlib
 from PyFT8.mqtt import PSKR_MQTT_listener
+import PyFT8.maidenhead as maidenhead
 
 VER = '2.6.1'
 
 MAX_TX_START_SECONDS = 2.5
 rig, gui, qso, adif_logging, pskr_info, pskr_upload = None, None, None, None, None, None
+busy_profile, hearing_me = None, None
 
 def get_config():
     import configparser
@@ -101,8 +103,13 @@ class Message:
         self.is_to_me = c.msg_tuple[0] == mycall
         self.is_cq = c.msg_tuple[0].startswith('CQ')
         call = c.msg_tuple[1]
+        qui_loc_text = ''
         loc = pskr_info.cache.get(call,'')
-        qui_loc_text = f"loc: {loc}" if loc else ''
+        if loc and config['gui']['loc'] == 'km_deg':
+                loc = maidenhead.db(config['station']['grid'], loc)
+                qui_loc_text = f"[{loc[0]:.0f}km {loc[1]:.0f} deg]"
+        if loc and config['gui']['loc'] == 'loc':
+                qui_loc_text = f"loc: {loc}"
         wb = adif_logging.cache.get(call,'')
         gui_wb_text = f"wb: {global_time_utils.format_duration(time.time() - float(wb))}" if wb else ''
         self.gui_text = f"{c.msg} {gui_wb_text} {qui_loc_text}"
@@ -152,7 +159,7 @@ class FT8_QSO:
                 time.sleep(delay)
             if self.tx_cycle is None:
                 self.tx_cycle = global_time_utils.curr_cycle_from_time()
-                self.tx_freq = clear_frequencies[self.tx_cycle]
+                self.tx_freq = clearest_frequency
                 console_print(f"[PyFT8] Set tx cycle = {self.tx_cycle} f = {self.tx_freq:5.1f}")
             symbols = audio_out.create_ft8_symbols(self.message_to_transmit)
             if any(symbols):
@@ -252,14 +259,18 @@ def on_rx_decode(c):
     print(message.wsjtx_screen_format())
     write_all_txt_row(message)
 
-def on_rx_busy_profile(busy_profile, cycle):
+def on_rx_busy_profile(busy_profile_new, cycle):
+    global busy_profile
     if output_device_idx is None:
         return
-    fmax = 950 if qso.band_info['b']=='60m' else 2000
-    f0_idx, fn_idx = int(500/audio_in.df), int(fmax/audio_in.df)
-    idx = np.argmin(busy_profile[f0_idx:fn_idx])
-    clear_frequencies[cycle] = (f0_idx + idx) * audio_in.df
-    console_print(f"[on_busy] Set Tx freq to {clear_frequencies[cycle]:6.1f} for cycle {cycle}")
+    if busy_profile is not None:
+        busy_profile += busy_profile_new
+        fmax = 950 if qso.band_info['b']=='60m' else 2000
+        f0_idx, fn_idx = int(500/audio_in.df), int(fmax/audio_in.df)
+        idx = np.argmin(busy_profile[f0_idx:fn_idx])
+        clearest_frequency = (f0_idx + idx) * audio_in.df
+    busy_profile = busy_profile_new
+    #console_print(f"[on_busy] Set Tx freq to {clearest_frequency:6.1f}")
 
 #============= Callbacks for GUI ==========================================================
 def gui_update_usermessages():
@@ -267,8 +278,6 @@ def gui_update_usermessages():
         console_print(f"[PyFT8] Band not set; please select a band.", color = 'red')
     if pskr_info is not None and gui is not None: 
         grd = config['station']['grid'][:4]
-        #s = [f"{b} {cnts[0]}/{cnts[1]} " for b, cnts in pskr_info.home_activity.items()]
-        #console_print(f"Tx/Rx calls in {grd}: {' '.join(s)}", color = 'yellow')
         for bw in gui.buttons:
             band_text = bw.user_data['label']
             if band_text in pskr_info.home_activity:
@@ -281,6 +290,7 @@ def gui_update_usermessages():
             tx_lead,  rx_lead = pskr_info.home_most_remotes[b]
             call = config['station']['call']
             n_spotted, n_spotting = pskr_info.get_spot_counts(b, call)
+            # add local count here for n_spotted prior to round trip to pskreporter?
             gui.band_stats.print(f"{call:<7} {tx_lead[0]:<7}", color = '#ff756b')
             gui.band_stats.print(f"{n_spotting:<7} {tx_lead[1]:<7}", color = '#ff756b')
             gui.band_stats.print(f"{call:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
@@ -316,7 +326,7 @@ def console_print(text, color = 'white'):
         print(text)
         
 def cli():
-    global audio_in, audio_out, output_device_idx, rig, gui, qso, config, config_folder, clear_frequencies, adif_logging, pskr_upload, pskr_info
+    global audio_in, audio_out, output_device_idx, rig, gui, qso, config, config_folder, clearest_frequency, adif_logging, pskr_upload, pskr_info
     import time
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-c', '--config_folder', help = 'Location of config folder e.g. C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', default = './') 
@@ -347,7 +357,7 @@ def cli():
 
     if args.transmit_message or args.outputcard_keywords:
         audio_out = AudioOut()
-        clear_frequencies = [760, 760]
+        clearest_frequency = 760
     
     if args.outputcard_keywords:
         outputcard_keywords = args.outputcard_keywords.replace(' ','').split(',')
