@@ -98,6 +98,10 @@ class Gui:
         self.sep_h = 0.002
         self.ax_band_stats = self.fig.add_axes([self.pmarg, wf_top + self.sep_h, left_width, 1-self.pmarg - (wf_top + self.sep_h)])
         self.band_stats = Scrollbox(self.fig, self.ax_band_stats, nlines = 4)
+        self.ax_band_stats.text(-0.2,0.75,'Tx')
+        self.ax_band_stats.text(-0.2,0.25,'Rx')
+        if 'station' in config:
+            self.ax_band_stats.set_title(f"Spots to/from {config['station']['grid'][:4]}", fontsize = 10)
         self.ax_console = self.fig.add_axes([self.pmarg + wf_left, wf_top, 1-2*self.pmarg - wf_left, 1-self.pmarg-wf_top])
         self.console = Scrollbox(self.fig, self.ax_console)
 
@@ -115,8 +119,10 @@ class Gui:
         for i, btn_def in enumerate(btn_defs):
             btn_axs = plt.axes([self.pmarg, btns_top - (i+1) * btn_h, btn_w, btn_h-sep_h])
             style = styles[btn_def['style']]
-            btn_widg = Button(btn_axs, btn_def['label'], color=style['fc'], hovercolor='skyblue')
+            btn_widg = Button(btn_axs, '', color=style['fc'], hovercolor='skyblue')
             btn_widg.user_data = btn_def
+            btn_widg.label = btn_axs.text(0.05, 0.5, btn_def['label'], verticalalignment='center',  horizontalalignment='left',
+                             color = 'white', fontweight = 'bold', transform=btn_axs.transAxes)
             btn_widg.on_clicked(lambda event, btn_widg=btn_widg: self.on_control_click(btn_widg))
             self.buttons.append(btn_widg)
         

@@ -13,7 +13,7 @@ from PyFT8.rigctrl import Rig
 from PyFT8.hamlib import Rig_hamlib
 from PyFT8.mqtt import PSKR_MQTT_listener
 
-VER = '2.6.0'
+VER = '2.6.1'
 
 MAX_TX_START_SECONDS = 2.5
 rig, gui, qso, adif_logging, pskr_info, pskr_upload = None, None, None, None, None, None
@@ -281,10 +281,10 @@ def gui_update_usermessages():
             tx_lead,  rx_lead = pskr_info.home_most_remotes[b]
             call = config['station']['call']
             n_spotted, n_spotting = pskr_info.get_spot_counts(b, call)
-            gui.band_stats.print(f"{call:<7} {tx_lead[0]:<7}", color = 'red')
-            gui.band_stats.print(f"{n_spotting:<7} {tx_lead[1]:<7}", color = 'red')
-            gui.band_stats.print(f"{call:<7} {rx_lead[0]:<7}", color = 'green')
-            gui.band_stats.print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = 'green')
+            gui.band_stats.print(f"{call:<7} {tx_lead[0]:<7}", color = '#ff756b')
+            gui.band_stats.print(f"{n_spotting:<7} {tx_lead[1]:<7}", color = '#ff756b')
+            gui.band_stats.print(f"{call:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
+            gui.band_stats.print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
 
 def on_gui_control_click(btn_widg):
     btn_def = btn_widg.user_data
@@ -299,8 +299,8 @@ def on_gui_control_click(btn_widg):
         rig.ptt_off()
         qso.tx_cycle = None
     if(btn_action == 'SET_FREQ'):
-        btn_text, freqMHz = btn_def['label'], btn_def['data']
-        qso.band_info = {'b':btn_text, 'fMHz':freqMHz}
+        band, freqMHz = btn_def['label'], btn_def['data']
+        qso.band_info = {'b':band, 'fMHz':freqMHz}
         rig.set_freq_Hz(int(1000000*float(qso.band_info['fMHz'])))
         console_print(f"[PyFT8] Set band: {qso.band_info['b']} {qso.band_info['fMHz']}")
         gui.band_stats.clear()
