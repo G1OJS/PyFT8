@@ -5,7 +5,9 @@ from ast import literal_eval
 
 class PSKR_MQTT_listener:
 
-    def __init__(self, home_square):
+    def __init__(self, my_call, home_square):
+        self.my_call = my_call
+        self.hearing_me = {}
         self.home_square = home_square
         self.cache = {}
         self.band_TxRx_homecall_report_times = {}
@@ -46,7 +48,12 @@ class PSKR_MQTT_listener:
                     with self.lock:
                         self.band_TxRx_homecall_report_times[key] = []
                 self.band_TxRx_homecall_report_times[key].append(time.time())
-
+            if True or d['sc'] == self.my_call:
+                if d['b'] not in self.hearing_me:
+                    self.hearing_me[d['b']] = {}
+                if d['rc'] not in self.hearing_me[d['b']]:
+                    self.hearing_me[d['b']][d['rc']] = time.time()
+            
     def count_activity(self):
         while True:
             time.sleep(5)
@@ -66,6 +73,12 @@ class PSKR_MQTT_listener:
                         self.home_most_remotes[b] = [('',0), ('',0)]
                     if nremotes>self.home_most_remotes[b][['Tx','Rx'].index(tr)][1]:
                         self.home_most_remotes[b][['Tx','Rx'].index(tr)] = (c, nremotes)
+                for b in self.hearing_me:
+                    newdict = {}
+                    for c in self.hearing_me[b]:
+                        if (time.time() - self.hearing_me[b][c]) < 15*60:
+                            newdict[c] = self.hearing_me[b][c]
+                    self.hearing_me[b] = newdict
 
     def get_spot_counts(self, band, call):
         n_spotting = len(self.band_TxRx_homecall_report_times.get(f"{band}_Tx_{call}", []))
