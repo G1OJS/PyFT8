@@ -296,8 +296,8 @@ def gui_update_usermessages():
             gui.band_stats.print(f"{call:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
             gui.band_stats.print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
         if b is not None and b in pskr_info.hearing_me:
-            hearing_me = [c for c in pskr_info.hearing_me[b].keys()]
-            console_print(f"[PyFT8] Hearing me: {','.join(hearing_me)}")
+            hearing_me = [f"{h['c']}({h['rp']:+02d})" for h in pskr_info.hearing_me[b].values()]
+            console_print(f"[PyFT8] Hearing me: {'; '.join(hearing_me)}")
 
 def on_gui_control_click(btn_widg):
     btn_def = btn_widg.user_data

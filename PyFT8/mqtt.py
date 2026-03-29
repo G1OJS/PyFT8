@@ -52,7 +52,7 @@ class PSKR_MQTT_listener:
                 if d['b'] not in self.hearing_me:
                     self.hearing_me[d['b']] = {}
                 if d['rc'] not in self.hearing_me[d['b']]:
-                    self.hearing_me[d['b']][d['rc']] = time.time()
+                    self.hearing_me[d['b']][d['rc']] = {'t':time.time(), 'rp':d['rp'], 'c':d['rc']}
             
     def count_activity(self):
         while True:
@@ -76,7 +76,7 @@ class PSKR_MQTT_listener:
                 for b in self.hearing_me:
                     newdict = {}
                     for c in self.hearing_me[b]:
-                        if (time.time() - self.hearing_me[b][c]) < 15*60:
+                        if (time.time() - self.hearing_me[b][c]['t']) < 15*60:
                             newdict[c] = self.hearing_me[b][c]
                     self.hearing_me[b] = newdict
 
