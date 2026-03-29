@@ -278,14 +278,18 @@ def gui_update_usermessages():
         console_print(f"[PyFT8] Band not set; please select a band.", color = 'red')
     if pskr_info is not None and gui is not None: 
         grd = config['station']['grid'][:4]
-        for bw in gui.buttons:
-            band_text = bw.user_data['label']
-            if band_text in pskr_info.home_activity:
-                cnts = pskr_info.home_activity[band_text]
-                activity_text = f"{cnts[0]}t/{cnts[1]}r"
-                bw.label.set_text(f"{band_text} {activity_text}")
+        for bb in gui.button_boxes:
+            band = bb.clickargs.get('band','')
+            if band:
+                bb.active = (band == qso.band_info.get('b',''))
+                if band in pskr_info.home_activity:
+                    cnts = pskr_info.home_activity[band]
+                    bb.label2.set_text(f"{cnts[0]}Tx, {cnts[1]}Rx")
+                else:
+                    bb.label2.set_text(f"---, ---")
             
         b = qso.band_info['b']
+        gui.band_stats.print("awaiting data")
         if b is not None and b in pskr_info.home_most_remotes:
             tx_lead,  rx_lead = pskr_info.home_most_remotes[b]
             call = config['station']['call']
@@ -299,8 +303,7 @@ def gui_update_usermessages():
             hearing_me = [f"{h['c']}({h['rp']:+02d})" for h in pskr_info.hearing_me[b].values()]
             console_print(f"[PyFT8] Hearing me: {'; '.join(hearing_me)}")
 
-def on_gui_control_click(btn_widg):
-    btn_def = btn_widg.user_data
+def on_gui_control_click(btn_def):
     btn_action = btn_def['action']
     if btn_action == "CQ":
         mc, mg = config['station']['call'], config['station']['grid'][:4]
@@ -311,12 +314,15 @@ def on_gui_control_click(btn_widg):
         console_print("[PyFT8] Set PTT Off")
         rig.ptt_off()
         qso.tx_cycle = None
-    if(btn_action == 'SET_FREQ'):
-        band, freqMHz = btn_def['label'], btn_def['data']
+    if(btn_action == 'SET_BAND'):
+        band, freqMHz = btn_def['band'], btn_def['freq']
         qso.band_info = {'b':band, 'fMHz':freqMHz}
         rig.set_freq_Hz(int(1000000*float(qso.band_info['fMHz'])))
         console_print(f"[PyFT8] Set band: {qso.band_info['b']} {qso.band_info['fMHz']}")
         gui.band_stats.clear()
+        gui_update_usermessages()
+        gui.button_box_colours_need_update = True
+        
 
 def on_gui_msg_click(message):
     progress_qso(message)
