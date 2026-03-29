@@ -22,7 +22,7 @@ If you're interested in how this works, maybe have a look at [MiniPyFT8](https:/
  The Gui shows:
  - Simultaneous views of odd and even cycles
  - Messages overlaid on waterfall signals that produce them
- - Worked-before info and fine grid locators in the message boxes (distance and bearing coming soon)
+ - Worked-before info and fine grid locators / distance and bearing in the message boxes 
  - Band activity on band select buttons
  - Number of remote stations hearing your Tx, number of remote Txs that you're hearing, plus the same info for the 'best' station in your level 4 square
 
@@ -31,7 +31,8 @@ To enable uploading of spots to pskreporter, make sure that your .ini file inclu
 [pskreporter]
 upload = Y
 ```
-<img width="983" height="613" alt="screenshot" src="https://github.com/user-attachments/assets/15a49df5-6edd-4810-9bc0-a670bfc1df8d" />
+
+<img width="980" height="807" alt="screenshot" src="https://github.com/user-attachments/assets/ac393a05-277a-4d98-bd74-78bcb0ae8b03" />
 
 
 ## Motivation
