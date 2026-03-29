@@ -273,35 +273,42 @@ def on_rx_busy_profile(busy_profile_new, cycle):
     #console_print(f"[on_busy] Set Tx freq to {clearest_frequency:6.1f}")
 
 #============= Callbacks for GUI ==========================================================
-def gui_update_usermessages():
+def on_gui_sidebars_refresh():
     if qso.band_info['b'] is None:
         console_print(f"[PyFT8] Band not set; please select a band.", color = 'red')
-    if pskr_info is not None and gui is not None: 
-        grd = config['station']['grid'][:4]
-        for bb in gui.button_boxes:
-            band = bb.clickargs.get('band','')
-            if band:
-                bb.active = (band == qso.band_info.get('b',''))
-                if band in pskr_info.home_activity:
-                    cnts = pskr_info.home_activity[band]
-                    bb.label2.set_text(f"{cnts[0]}Tx, {cnts[1]}Rx")
-                else:
-                    bb.label2.set_text(f"---, ---")
-            
-        b = qso.band_info['b']
-        gui.band_stats.print("awaiting data")
-        if b is not None and b in pskr_info.home_most_remotes:
-            tx_lead,  rx_lead = pskr_info.home_most_remotes[b]
-            call = config['station']['call']
-            n_spotted, n_spotting = pskr_info.get_spot_counts(b, call)
-            # add local count here for n_spotted prior to round trip to pskreporter?
-            gui.band_stats.print(f"{call:<7} {tx_lead[0]:<7}", color = '#ff756b')
-            gui.band_stats.print(f"{n_spotting:<7} {tx_lead[1]:<7}", color = '#ff756b')
-            gui.band_stats.print(f"{call:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
-            gui.band_stats.print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
-        if b is not None and b in pskr_info.hearing_me:
-            hearing_me = [f"{h['c']}({h['rp']:+02d})" for h in pskr_info.hearing_me[b].values()]
-            console_print(f"[PyFT8] Hearing me: {'; '.join(hearing_me)}")
+    if pskr_info is None or gui is None:
+        return
+    
+    # refresh band stats
+    grd = config['station']['grid'][:4]
+    for bb in gui.button_boxes:
+        band = bb.clickargs.get('band','')
+        if band:
+            bb.active = (band == qso.band_info.get('b',''))
+            if band in pskr_info.home_activity:
+                cnts = pskr_info.home_activity[band]
+                bb.label2.set_text(f"{cnts[0]}Tx, {cnts[1]}Rx")
+            else:
+                bb.label2.set_text(f"---, ---")
+            gui.button_box_colours_need_update = True
+
+    # refresh home square counts
+    b = qso.band_info['b']
+    gui.band_stats.print("awaiting data")
+    if b is not None and b in pskr_info.home_most_remotes:
+        tx_lead,  rx_lead = pskr_info.home_most_remotes[b]
+        call = config['station']['call']
+        n_spotted, n_spotting = pskr_info.get_spot_counts(b, call)
+        # add local count here for n_spotted prior to round trip to pskreporter?
+        gui.band_stats.print(f"{call:<7} {tx_lead[0]:<7}", color = '#ff756b')
+        gui.band_stats.print(f"{n_spotting:<7} {tx_lead[1]:<7}", color = '#ff756b')
+        gui.band_stats.print(f"{call:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
+        gui.band_stats.print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
+
+    #refresh hearing me
+    if b is not None and b in pskr_info.hearing_me:
+        hearing_me = [f"{h['c']}({h['rp']:+02d})" for h in pskr_info.hearing_me[b].values()]
+        console_print(f"[PyFT8] Hearing me: {'; '.join(hearing_me)}")
 
 def on_gui_control_click(btn_def):
     btn_action = btn_def['action']
@@ -320,10 +327,8 @@ def on_gui_control_click(btn_def):
         rig.set_freq_Hz(int(1000000*float(qso.band_info['fMHz'])))
         console_print(f"[PyFT8] Set band: {qso.band_info['b']} {qso.band_info['fMHz']}")
         gui.band_stats.clear()
-        gui_update_usermessages()
-        gui.button_box_colours_need_update = True
+        on_gui_sidebars_refresh()
         
-
 def on_gui_msg_click(message):
     progress_qso(message)
 
@@ -383,7 +388,7 @@ def cli():
         if not input_device_idx:
             console_print("No input device")
         else:
-            gui = None if args.no_gui else Gui(audio_in.dBgrid_main, 4, 2, config, gui_update_usermessages, on_gui_msg_click, on_gui_control_click)
+            gui = None if args.no_gui else Gui(audio_in.dBgrid_main, 4, 2, config, on_gui_sidebars_refresh, on_gui_msg_click, on_gui_control_click)
             rx = Receiver(audio_in, [200, 3100], on_rx_decode, on_rx_busy_profile)
             audio_in.start_streamed_audio(input_device_idx)
             if gui is not None:

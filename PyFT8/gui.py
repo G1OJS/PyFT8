@@ -11,8 +11,8 @@ TEXT_BACKGROUND_COLOR = '#2a2b2b'
 INFO_TEXT_COLOR = 'white'
 BUTTONCOLOR = 'grey'
 HOVERCOLOR = 'darkgreen'
-ACTIVE_BAND_COLOR = 'yellow'
-INACTIVE_BAND_COLOR = '#edeef0'
+ACTIVE_BUTTON_COLOR = 'cyan'
+INACTIVE_BUTTON_COLOR = '#edeef0'
 
 # ================== WATERFALL ======================================================
 
@@ -99,12 +99,12 @@ class Button_box:
             self.btn_widg.on_clicked(lambda x: onclick(clickargs))
 
 class Gui:
-    def __init__(self, dBgrid, hps, bpt, config, update_usermessages, on_msg_click, on_control_click):
+    def __init__(self, dBgrid, hps, bpt, config, on_gui_sidebars_refresh, on_msg_click, on_control_click):
         if config is not None:
             self.mStation = {'c':config['station']['call'], 'g':config['station']['grid']}
         self.on_msg_click = on_msg_click
         self.on_control_click = on_control_click
-        self.update_usermessages = update_usermessages
+        self.on_gui_sidebars_refresh = on_gui_sidebars_refresh
         self.dBgrid = dBgrid
         self.hps, self.bpt = hps, bpt
         self.msg_boxes = {}
@@ -168,12 +168,12 @@ class Gui:
         if (frame % 10 == 0):
             self._tidy_msg_boxes()
         if (frame % 50 == 0 or self.button_box_colours_need_update):
-            self.update_usermessages()
             for bb in self.button_boxes:
-                color = ACTIVE_BAND_COLOR if bb.active else INACTIVE_BAND_COLOR
+                color = ACTIVE_BUTTON_COLOR if bb.active else INACTIVE_BUTTON_COLOR
                 bb.label.set_color(color)
                 bb.label2.set_color(color)
                 self.button_box_colours_need_update = False
+            self.on_gui_sidebars_refresh()
         return [self.image, *self.ax_wf.patches, *self.ax_wf.texts, *self.band_stats.lineartists,
                 *self.console.lineartists, *[bb.label  for bb in self.button_boxes], *[bb.label2  for bb in self.button_boxes]]
 
