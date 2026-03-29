@@ -16,9 +16,6 @@ import PyFT8.maidenhead as maidenhead
 
 VER = '2.6.1'
 
-ACTIVE_BAND_COLOR = '#4287f5'
-INACTIVE_BAND_COLOR = '#edeef0'
-
 MAX_TX_START_SECONDS = 2.5
 rig, gui, qso, adif_logging, pskr_info, pskr_upload = None, None, None, None, None, None
 busy_profile, hearing_me = None, None
@@ -283,13 +280,13 @@ def gui_update_usermessages():
         grd = config['station']['grid'][:4]
         for bb in gui.button_boxes:
             band = bb.clickargs.get('band','')
-            color = ACTIVE_BAND_COLOR if band == qso.band_info.get('b','') else INACTIVE_BAND_COLOR
-            bb.label2.set_color(color)
-            if band in pskr_info.home_activity:
-                cnts = pskr_info.home_activity[band]
-                bb.label2.set_text(f"{cnts[0]}Tx, {cnts[1]}Rx")
-            else:
-                bb.label2.set_text(f"---, ---")
+            if band:
+                bb.active = (band == qso.band_info.get('b',''))
+                if band in pskr_info.home_activity:
+                    cnts = pskr_info.home_activity[band]
+                    bb.label2.set_text(f"{cnts[0]}Tx, {cnts[1]}Rx")
+                else:
+                    bb.label2.set_text(f"---, ---")
             
         b = qso.band_info['b']
         gui.band_stats.print("awaiting data")
@@ -324,6 +321,8 @@ def on_gui_control_click(btn_def):
         console_print(f"[PyFT8] Set band: {qso.band_info['b']} {qso.band_info['fMHz']}")
         gui.band_stats.clear()
         gui_update_usermessages()
+        gui.button_box_colours_need_update = True
+        
 
 def on_gui_msg_click(message):
     progress_qso(message)

@@ -9,6 +9,11 @@ rcParams['toolbar'] = 'None'
 MAIN_TEXT_COLOR = '#f0f9fa'
 TEXT_BACKGROUND_COLOR = '#2a2b2b'
 INFO_TEXT_COLOR = 'white'
+BUTTONCOLOR = 'grey'
+HOVERCOLOR = 'darkgreen'
+ACTIVE_BAND_COLOR = 'yellow'
+INACTIVE_BAND_COLOR = '#edeef0'
+
 # ================== WATERFALL ======================================================
 
 class Scrollbox:
@@ -78,7 +83,7 @@ class Msg_box:
             self.onclick(self.message)
 
 class Button_box:
-        def __init__(self, left, top, bb_w, bb_h,  btn_pc = 30, onclick = None, clickargs=None, btn_label = '', btn_color = 'green'):
+        def __init__(self, left, top, bb_w, bb_h,  btn_pc = 30, onclick = None, clickargs=None, btn_label = ''):
             btn_w = bb_w * btn_pc/100
             self.btn_axs = plt.axes([left, top, btn_w, bb_h])
             self.info_axs = plt.axes([left + btn_w, top, bb_w - btn_w , bb_h])
@@ -86,9 +91,11 @@ class Button_box:
             self.info_axs.set_yticks([])
             self.info_axs.set_facecolor(TEXT_BACKGROUND_COLOR)
             self.label2 = self.info_axs.text(0.03, 0.5, '', color = INFO_TEXT_COLOR, verticalalignment = 'center')
-            self.btn_widg = Button(self.btn_axs, btn_label, color = btn_color)
-            self.btn_widg.label.set_color(MAIN_TEXT_COLOR)
+            self.btn_widg = Button(self.btn_axs, btn_label, color = BUTTONCOLOR, hovercolor = HOVERCOLOR)
+            self.label = self.btn_widg.label
+            self.label.set_color(MAIN_TEXT_COLOR)
             self.clickargs = clickargs
+            self.active = False
             self.btn_widg.on_clicked(lambda x: onclick(clickargs))
 
 class Gui:
@@ -124,22 +131,20 @@ class Gui:
         self.ax_console = self.fig.add_axes([self.pmarg + wf_left, wf_top, 1-2*self.pmarg - wf_left, 1-self.pmarg-wf_top])
         self.console = Scrollbox(self.fig, self.ax_console)
         self.button_boxes = []
+        self.button_box_colours_need_update = False
         if config is not None:
             bb = Button_box(self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002, btn_pc = 100,
-                            btn_label = "CQ", btn_color = 'grey',
-                            onclick = self.on_control_click, clickargs = {'action':'CQ'})                            
+                            btn_label = "CQ", onclick = self.on_control_click, clickargs = {'action':'CQ'})                            
             self.button_boxes.append(bb)
             bb = Button_box(self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002, btn_pc = 100,
-                            btn_label = "Repeat last", btn_color = 'grey',
-                            onclick = self.on_control_click, clickargs = {'action':'RPT_LAST'})                            
+                            btn_label = "Repeat last", onclick = self.on_control_click, clickargs = {'action':'RPT_LAST'})                            
             self.button_boxes.append(bb)
             bb = Button_box(self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002, btn_pc = 100,
-                            btn_label = "Tx off", btn_color = 'grey',
-                            onclick = self.on_control_click, clickargs = {'action':'TX_OFF'})                            
+                            btn_label = "Tx off", onclick = self.on_control_click, clickargs = {'action':'TX_OFF'})                            
             self.button_boxes.append(bb)            
             for band, freq in config['bands'].items():
                 bb = Button_box(self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002, btn_pc = 30,
-                                onclick = self.on_control_click, clickargs = {'action':'SET_BAND','band':band,'freq':freq}, btn_label = band, btn_color = 'green')
+                                btn_label = band, onclick = self.on_control_click, clickargs = {'action':'SET_BAND','band':band,'freq':freq})
                 self.button_boxes.append(bb)
         
     def add_message_box(self, message):
@@ -155,16 +160,21 @@ class Gui:
     def _tidy_msg_boxes(self):
         for fb in self.msg_boxes:
             self.msg_boxes[fb].hide_if_expired()
-
+ 
     def _animate(self, frame):
         self.image.set_data(self.dBgrid.T)
         while not self.decode_queue.empty():
             self._display_message_box(self.decode_queue.get())
         if (frame % 10 == 0):
             self._tidy_msg_boxes()
-        if (frame % 50 == 0):
+        if (frame % 50 == 0 or self.button_box_colours_need_update):
             self.update_usermessages()
+            for bb in self.button_boxes:
+                color = ACTIVE_BAND_COLOR if bb.active else INACTIVE_BAND_COLOR
+                bb.label.set_color(color)
+                bb.label2.set_color(color)
+                self.button_box_colours_need_update = False
         return [self.image, *self.ax_wf.patches, *self.ax_wf.texts, *self.band_stats.lineartists,
-                *self.console.lineartists, *[bb.label2 for bb in self.button_boxes]]
+                *self.console.lineartists, *[bb.label  for bb in self.button_boxes], *[bb.label2  for bb in self.button_boxes]]
 
                                     
