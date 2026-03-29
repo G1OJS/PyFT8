@@ -273,10 +273,10 @@ def on_rx_busy_profile(busy_profile_new, cycle):
     #console_print(f"[on_busy] Set Tx freq to {clearest_frequency:6.1f}")
 
 #============= Callbacks for GUI ==========================================================
-def on_gui_sidebars_refresh():
+def on_gui_sidebars_refresh(gui):
     if qso.band_info['b'] is None:
         console_print(f"[PyFT8] Band not set; please select a band.", color = 'red')
-    if pskr_info is None or gui is None:
+    if pskr_info is None:
         return
     
     # refresh band stats
@@ -284,13 +284,12 @@ def on_gui_sidebars_refresh():
     for bb in gui.button_boxes:
         band = bb.clickargs.get('band','')
         if band:
-            bb.active = (band == qso.band_info.get('b',''))
+            bb.set_active(band == qso.band_info.get('b',''))
             if band in pskr_info.home_activity:
                 cnts = pskr_info.home_activity[band]
-                bb.label2.set_text(f"{cnts[0]}Tx, {cnts[1]}Rx")
-            else:
-                bb.label2.set_text(f"---, ---")
-            gui.button_box_colours_need_update = True
+                new_text = f"{cnts[0]}Tx, {cnts[1]}Rx"
+                if new_text != bb.get_info_text():
+                    bb.set_info_text(new_text)
 
     # refresh home square counts
     b = qso.band_info['b']
@@ -326,8 +325,7 @@ def on_gui_control_click(btn_def):
         qso.band_info = {'b':band, 'fMHz':freqMHz}
         rig.set_freq_Hz(int(1000000*float(qso.band_info['fMHz'])))
         console_print(f"[PyFT8] Set band: {qso.band_info['b']} {qso.band_info['fMHz']}")
-        gui.band_stats.clear()
-        on_gui_sidebars_refresh()
+        gui.refresh_sidebars()
         
 def on_gui_msg_click(message):
     progress_qso(message)

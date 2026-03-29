@@ -83,20 +83,36 @@ class Msg_box:
             self.onclick(self.message)
 
 class Button_box:
-        def __init__(self, left, top, bb_w, bb_h,  btn_pc = 30, onclick = None, clickargs=None, btn_label = ''):
-            btn_w = bb_w * btn_pc/100
-            self.btn_axs = plt.axes([left, top, btn_w, bb_h])
-            self.info_axs = plt.axes([left + btn_w, top, bb_w - btn_w , bb_h])
-            self.info_axs.set_xticks([])
-            self.info_axs.set_yticks([])
-            self.info_axs.set_facecolor(TEXT_BACKGROUND_COLOR)
-            self.label2 = self.info_axs.text(0.03, 0.5, '', color = INFO_TEXT_COLOR, verticalalignment = 'center')
-            self.btn_widg = Button(self.btn_axs, btn_label, color = BUTTONCOLOR, hovercolor = HOVERCOLOR)
-            self.label = self.btn_widg.label
-            self.label.set_color(MAIN_TEXT_COLOR)
-            self.clickargs = clickargs
-            self.active = False
-            self.btn_widg.on_clicked(lambda x: onclick(clickargs))
+    def __init__(self, left, top, bb_w, bb_h,  btn_pc = 30, onclick = None, clickargs=None, btn_label = ''):
+        btn_w = bb_w * btn_pc/100
+        self.btn_axs = plt.axes([left, top, btn_w, bb_h])
+        self.info_axs = plt.axes([left + btn_w, top, bb_w - btn_w , bb_h])
+        self.info_axs.set_xticks([])
+        self.info_axs.set_yticks([])
+        self.info_axs.set_facecolor(TEXT_BACKGROUND_COLOR)
+        self.label2 = self.info_axs.text(0.03, 0.5, '', color = INFO_TEXT_COLOR, verticalalignment = 'center')
+        self.btn_widg = Button(self.btn_axs, btn_label, color = BUTTONCOLOR, hovercolor = HOVERCOLOR)
+        self.label = self.btn_widg.label
+        self.label.set_color(MAIN_TEXT_COLOR)
+        self.clickargs = clickargs
+        self.active = False
+        self.btn_widg.on_clicked(lambda x: onclick(clickargs))
+
+    def set_active(self, active: bool):
+        if self.active != active:
+            self.active = active
+            self._update_appearance()
+
+    def set_info_text(self, text):
+        self.label2.set_text(text)
+
+    def get_info_text(self):
+        return self.label2
+
+    def _update_appearance(self):
+        color = ACTIVE_BUTTON_COLOR if self.active else INACTIVE_BUTTON_COLOR
+        self.label.set_color(color)
+        self.label2.set_color(color)
 
 class Gui:
     def __init__(self, dBgrid, hps, bpt, config, on_gui_sidebars_refresh, on_msg_click, on_control_click):
@@ -146,6 +162,10 @@ class Gui:
                 bb = Button_box(self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002, btn_pc = 30,
                                 btn_label = band, onclick = self.on_control_click, clickargs = {'action':'SET_BAND','band':band,'freq':freq})
                 self.button_boxes.append(bb)
+
+    def refresh_sidebars(self):
+        self.on_gui_sidebars_refresh(self)
+        #self.fig.canvas.draw_idle()
         
     def add_message_box(self, message):
         self.decode_queue.put(message)
@@ -167,14 +187,9 @@ class Gui:
             self._display_message_box(self.decode_queue.get())
         if (frame % 10 == 0):
             self._tidy_msg_boxes()
-        if (frame % 50 == 0 or self.button_box_colours_need_update):
-            for bb in self.button_boxes:
-                color = ACTIVE_BUTTON_COLOR if bb.active else INACTIVE_BUTTON_COLOR
-                bb.label.set_color(color)
-                bb.label2.set_color(color)
-                self.button_box_colours_need_update = False
-            self.on_gui_sidebars_refresh()
-        return [self.image, *self.ax_wf.patches, *self.ax_wf.texts, *self.band_stats.lineartists,
-                *self.console.lineartists, *[bb.label  for bb in self.button_boxes], *[bb.label2  for bb in self.button_boxes]]
+        if (frame % 50 == 0):
+            self.refresh_sidebars()
+        return [self.image, *self.ax_wf.patches, *self.ax_wf.texts, *self.band_stats.lineartists, *self.console.lineartists,
+                *[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes]]
 
                                     
