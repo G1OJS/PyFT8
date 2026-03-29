@@ -48,7 +48,7 @@ class PSKR_MQTT_listener:
                     with self.lock:
                         self.band_TxRx_homecall_report_times[key] = []
                 self.band_TxRx_homecall_report_times[key].append(time.time())
-            if True or d['sc'] == self.my_call:
+            if d['sc'] == self.my_call:
                 if d['b'] not in self.hearing_me:
                     self.hearing_me[d['b']] = {}
                 if d['rc'] not in self.hearing_me[d['b']]:
