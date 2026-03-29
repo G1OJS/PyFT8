@@ -6,10 +6,13 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Slider, Button
 
 rcParams['toolbar'] = 'None'
+MAIN_TEXT_COLOR = '#f0f9fa'
+TEXT_BACKGROUND_COLOR = '#2a2b2b'
+INFO_TEXT_COLOR = 'white'
 # ================== WATERFALL ======================================================
 
 class Scrollbox:
-    def __init__(self, fig, ax, nlines = 5):
+    def __init__(self, fig, ax, nlines = 5, monospace = False):
         self.fig, self.ax = fig, ax
         bbox = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
         self.fontsize = 0.5 * bbox.height * fig.dpi / nlines
@@ -19,12 +22,14 @@ class Scrollbox:
         self.lineartists = []
         for i in range(self.nlines):
             self.lineartists.append(self.ax.text(0.03,1 - self.line_height * (i+1),
-                            '', color = 'white', fontsize = self.fontsize, family="monospace"))
+                            '', color = MAIN_TEXT_COLOR, fontsize = self.fontsize))
+            if monospace:
+                self.lineartists[-1].set_fontfamily('monospace')
         self.ax.set_xticks([])
         self.ax.set_yticks([])
-        self.ax.set_facecolor('black')
+        self.ax.set_facecolor(TEXT_BACKGROUND_COLOR)
 
-    def print(self, text, color = 'white'):
+    def print(self, text, color = MAIN_TEXT_COLOR):
         self.lines = self.lines[-(self.nlines-1):]
         self.lines.append({'text':text, 'color':color})
         for i, line in enumerate(self.lines):
@@ -57,7 +62,7 @@ class Msg_box:
         self.text_inst.set_text(message.gui_text)
         colors = ['blue', 'white']
         if message.is_cq: colors = ['green', 'white']
-        if message.is_from_me: colors = ['yellow', 'black']
+        if message.is_from_me: colors = ['yellow', 'white']
         if message.is_to_me: colors = ['red', 'white']
         self.text_inst.set_color(colors[1])
         self.patch.set_facecolor(colors[0])
@@ -73,15 +78,16 @@ class Msg_box:
             self.onclick(self.message)
 
 class Button_box:
-        def __init__(self, left, top, bb_w, bb_h,  btn_pc = 30, onclick = None, clickargs=None, btn_label = '', btn_color = 'green' ):
+        def __init__(self, left, top, bb_w, bb_h,  btn_pc = 30, onclick = None, clickargs=None, btn_label = '', btn_color = 'green'):
             btn_w = bb_w * btn_pc/100
             self.btn_axs = plt.axes([left, top, btn_w, bb_h])
             self.info_axs = plt.axes([left + btn_w, top, bb_w - btn_w , bb_h])
             self.info_axs.set_xticks([])
             self.info_axs.set_yticks([])
-            self.info_axs.set_facecolor('black')
-            self.label2 = self.info_axs.text(0.01, 0.5, '', color = 'white', verticalalignment = 'center')
+            self.info_axs.set_facecolor(TEXT_BACKGROUND_COLOR)
+            self.label2 = self.info_axs.text(0.03, 0.5, '', color = INFO_TEXT_COLOR, verticalalignment = 'center')
             self.btn_widg = Button(self.btn_axs, btn_label, color = btn_color)
+            self.btn_widg.label.set_color(MAIN_TEXT_COLOR)
             self.clickargs = clickargs
             self.btn_widg.on_clicked(lambda x: onclick(clickargs))
 
@@ -110,7 +116,7 @@ class Gui:
         self.ax_wf.set_yticks([])
         self.sep_h = 0.002
         self.ax_band_stats = self.fig.add_axes([self.pmarg, wf_top + self.sep_h, left_width, 1-self.pmarg - (wf_top + self.sep_h)])
-        self.band_stats = Scrollbox(self.fig, self.ax_band_stats, nlines = 4)
+        self.band_stats = Scrollbox(self.fig, self.ax_band_stats, nlines = 4, monospace = True)
         self.ax_band_stats.text(-0.2,0.75,'Tx')
         self.ax_band_stats.text(-0.2,0.25,'Rx')
         if 'station' in config:
@@ -119,9 +125,20 @@ class Gui:
         self.console = Scrollbox(self.fig, self.ax_console)
         self.button_boxes = []
         if config is not None:
-            for i, x in enumerate(config['bands'].items()):
-                band, freq = x
-                bb = Button_box(self.pmarg, wf_top - (i+1) * 0.02, left_width, 0.02-0.002, btn_pc = 30,
+            bb = Button_box(self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002, btn_pc = 100,
+                            btn_label = "CQ", btn_color = 'grey',
+                            onclick = self.on_control_click, clickargs = {'action':'CQ'})                            
+            self.button_boxes.append(bb)
+            bb = Button_box(self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002, btn_pc = 100,
+                            btn_label = "Repeat last", btn_color = 'grey',
+                            onclick = self.on_control_click, clickargs = {'action':'RPT_LAST'})                            
+            self.button_boxes.append(bb)
+            bb = Button_box(self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002, btn_pc = 100,
+                            btn_label = "Tx off", btn_color = 'grey',
+                            onclick = self.on_control_click, clickargs = {'action':'TX_OFF'})                            
+            self.button_boxes.append(bb)            
+            for band, freq in config['bands'].items():
+                bb = Button_box(self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002, btn_pc = 30,
                                 onclick = self.on_control_click, clickargs = {'action':'SET_BAND','band':band,'freq':freq}, btn_label = band, btn_color = 'green')
                 self.button_boxes.append(bb)
         
