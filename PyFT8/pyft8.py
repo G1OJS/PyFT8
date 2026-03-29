@@ -293,7 +293,6 @@ def on_gui_sidebars_refresh(gui):
 
     # refresh home square counts
     b = qso.band_info['b']
-    gui.band_stats.print("awaiting data")
     if b is not None and b in pskr_info.home_most_remotes:
         tx_lead,  rx_lead = pskr_info.home_most_remotes[b]
         call = config['station']['call']
@@ -325,6 +324,7 @@ def on_gui_control_click(btn_def):
         qso.band_info = {'b':band, 'fMHz':freqMHz}
         rig.set_freq_Hz(int(1000000*float(qso.band_info['fMHz'])))
         console_print(f"[PyFT8] Set band: {qso.band_info['b']} {qso.band_info['fMHz']}")
+        gui.band_stats.clear()
         gui.refresh_sidebars()
         
 def on_gui_msg_click(message):

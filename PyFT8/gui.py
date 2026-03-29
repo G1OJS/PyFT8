@@ -17,8 +17,9 @@ INACTIVE_BUTTON_COLOR = '#edeef0'
 # ================== WATERFALL ======================================================
 
 class Scrollbox:
-    def __init__(self, fig, ax, nlines = 5, monospace = False):
+    def __init__(self, fig, ax, nlines = 5, monospace = False, default_text = ''):
         self.fig, self.ax = fig, ax
+        self.default_text = default_text
         bbox = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
         self.fontsize = 0.5 * bbox.height * fig.dpi / nlines
         self.nlines = nlines
@@ -42,8 +43,9 @@ class Scrollbox:
             self.lineartists[i].set_color(line['color'])
 
     def clear(self):
+        self.lines = []
         for i in range(self.nlines):
-            self.print("")
+            self.lineartists[i].set_text(self.default_text)
 
 class Msg_box:
     def __init__(self, fig, ax, tbin, fbin, w, h, onclick):
@@ -165,7 +167,6 @@ class Gui:
 
     def refresh_sidebars(self):
         self.on_gui_sidebars_refresh(self)
-        #self.fig.canvas.draw_idle()
         
     def add_message_box(self, message):
         self.decode_queue.put(message)
