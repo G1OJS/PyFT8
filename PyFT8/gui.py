@@ -188,7 +188,6 @@ class Gui:
             self._display_message_box(self.decode_queue.get())
         if (frame % 10 == 0):
             self._tidy_msg_boxes()
-        if (frame % 50 == 0):
             self.refresh_sidebars()
         return [self.image, *self.ax_wf.patches, *self.ax_wf.texts, *self.band_stats.lineartists, *self.console.lineartists,
                 *[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes]]
