@@ -13,6 +13,7 @@ BUTTONCOLOR = 'grey'
 HOVERCOLOR = 'darkgreen'
 ACTIVE_BUTTON_COLOR = 'cyan'
 INACTIVE_BUTTON_COLOR = '#edeef0'
+MAX_FONT_SIZE_MAIN = 10
 L = {'pmargin':0.04, 'sidebar_width': 0.13, 'banner_height':0.1, 'vsep1':0.01, 'hsep1':0.02}
 
 # ================== WATERFALL ======================================================
@@ -23,7 +24,7 @@ class Scrollbox:
         self.ax = fig.add_axes(box)
         self.default_text = default_text
         bbox = self.ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-        self.fontsize = 0.5 * bbox.height * fig.dpi / nlines
+        self.fontsize = np.min([0.5 * bbox.height * fig.dpi / nlines, MAX_FONT_SIZE_MAIN])
         self.nlines = nlines
         self.line_height = 0.9 / nlines
         self.lines = []
@@ -37,7 +38,7 @@ class Scrollbox:
         self.ax.set_yticks([])
         self.ax.set_facecolor(TEXT_BACKGROUND_COLOR)
 
-    def print(self, text, color = MAIN_TEXT_COLOR):
+    def scroll_print(self, text, color = MAIN_TEXT_COLOR):
         self.lines = self.lines[-(self.nlines-1):]
         self.lines.append({'text':text, 'color':color})
         for i, line in enumerate(self.lines):
@@ -48,6 +49,12 @@ class Scrollbox:
         self.lines = []
         for i in range(self.nlines):
             self.lineartists[i].set_text(self.default_text)
+
+    def list_print(self, lst):
+        self.lines = [{'text':l, 'color':'white'} for l in lst[:self.nlines]]
+        for i, line in enumerate(self.lines):
+            self.lineartists[i].set_text(line['text'])
+            self.lineartists[i].set_color(line['color'])
 
 class Msg_box:
     def __init__(self, fig, ax, tbin, fbin, w, h, onclick):
@@ -176,7 +183,7 @@ class Gui:
             self.button_boxes.append(bb)
 
         # hearing me list
-        
+        self.hm = Scrollbox(self.fig, [L['pmargin'], L['pmargin'], L['sidebar_width'], wf_top - (len(self.button_boxes)+2) * bh + bs - L['vsep1']], nlines = 30, monospace = True)
         
 
     def refresh_sidebars(self):
@@ -203,7 +210,7 @@ class Gui:
         if (frame % 10 == 0):
             self._tidy_msg_boxes()
             self.refresh_sidebars()
-        return [self.image, *self.ax_wf.patches, *self.ax_wf.texts, *self.band_stats.lineartists, *self.console.lineartists,
+        return [self.image, *self.ax_wf.patches, *self.ax_wf.texts, *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists,
                 *[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes]]
 
                                     

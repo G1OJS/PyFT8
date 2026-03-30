@@ -104,7 +104,7 @@ class Message:
         self.is_cq = c.msg_tuple[0].startswith('CQ')
         call = c.msg_tuple[1]
         qui_loc_text = ''
-        loc = pskr_info.cache.get(call,'')
+        loc = pskr_info.callsign_cache.data.get(call,'')
         if loc and config['gui']['loc'] == 'km_deg':
                 loc = maidenhead.db(config['station']['grid'], loc)
                 qui_loc_text = f"[{loc[0]:.0f}km {loc[1]:.0f} deg]"
@@ -298,15 +298,15 @@ def on_gui_sidebars_refresh(gui):
         call = config['station']['call']
         n_spotted, n_spotting = pskr_info.get_spot_counts(b, call)
         # add local count here for n_spotted prior to round trip to pskreporter?
-        gui.band_stats.print(f"{call:<7} {tx_lead[0]:<7}", color = '#ff756b')
-        gui.band_stats.print(f"{n_spotting:<7} {tx_lead[1]:<7}", color = '#ff756b')
-        gui.band_stats.print(f"{call:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
-        gui.band_stats.print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
+        gui.band_stats.scroll_print(f"{call:<7} {tx_lead[0]:<7}", color = '#ff756b')
+        gui.band_stats.scroll_print(f"{n_spotting:<7} {tx_lead[1]:<7}", color = '#ff756b')
+        gui.band_stats.scroll_print(f"{call:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
+        gui.band_stats.scroll_print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
 
     #refresh hearing me
-    if b is not None and b in pskr_info.hearing_me:
-        hearing_me = [f"{h['c']}({h['rp']:+02d})" for h in pskr_info.hearing_me[b].values()]
-        console_print(f"[PyFT8] Hearing me: {'; '.join(hearing_me)}")
+    if b is not None and b in pskr_info.hearing_me.data:
+        hearing_me = [f"{h['c']}({h['rp']:+02d})" for h in pskr_info.hearing_me.data[b].values()]
+        gui.hm.list_print(hearing_me)
 
 def on_gui_control_click(btn_def):
     btn_action = btn_def['action']
@@ -333,7 +333,7 @@ def on_gui_msg_click(message):
 #=============== CLI ========================================================================
 def console_print(text, color = 'white'):
     if gui is not None:
-        gui.console.print(text, color)
+        gui.console.scroll_print(text, color)
     else:
         print(text)
         
@@ -358,7 +358,7 @@ def cli():
     if mc is not None and 'pskreporter' in config.keys():
         if config['pskreporter']['upload'] == 'Y':
             pskr_upload = PSKR_upload(mc, mg, software = f"PyFT8 v{VER}", console_print = console_print) if not mc is None else None
-            pskr_info = PSKR_MQTT_listener(mc, mg[:4])
+            pskr_info = PSKR_MQTT_listener(config_folder, mc, mg[:4])
     qso = FT8_QSO()
     if config.has_section('hamlib_rig'):
         console_print("Connecting to rig via Hamlib")
