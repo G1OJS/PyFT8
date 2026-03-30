@@ -2,6 +2,7 @@ import numpy as np
 
 def grid_to_latlong(grid, centre = True):
     lat, lon = -90, -180
+    grid = grid.upper()
     if centre:
         grid = grid + "LL44LL44LL44"[len(grid):]
     mults = [20, 2, 2/24, 0.2/24, 0.2/(24*24), 0.02/(24*24)]
@@ -24,7 +25,7 @@ def db(sq1, sq2):
     b = np.atan2(c_lats[1] * np.sin(dlon), c_lats[0] * s_lats[1] - s_lats[0] * c_lats[1] * np.cos(dlon))
     return (r, np.degrees(b) % 360)
 
-#grids = ['LL44LL44LL44', 'IO90', 'IO90JU', 'IO90JU44', 'IO90JU95LX', 'IO90JU96MA']
+#grids = ['LL44LL44LL44', 'IO90', 'IO90JU', 'IO90JU44', 'IO90JU95LX', 'IO90JU96MA','IN79jx55']
 #for g in grids:
 #    print(g, grid_to_latlong(g, centre = True))
 

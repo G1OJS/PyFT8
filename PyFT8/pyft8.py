@@ -113,8 +113,8 @@ class Message:
         self.is_to_me = c.msg_tuple[0] == mycall
         self.is_cq = c.msg_tuple[0].startswith('CQ')
         geo_text = get_geo_text(c.msg_tuple[1])
-        wb_time = float(adif_logging.cache.get(c.msg_tuple[1],''))
-        wb_text = f"wb: {global_time_utils.format_duration(time.time() - wb_time)}" if wb else ''
+        wb_time = adif_logging.cache.get(c.msg_tuple[1],'')
+        wb_text = f"wb: {global_time_utils.format_duration(time.time() - float(wb_time))}" if wb else ''
         self.gui_text = f"{c.msg} {wb_text} {geo_text}"
     
     def wsjtx_screen_format(self):
