@@ -13,14 +13,16 @@ BUTTONCOLOR = 'grey'
 HOVERCOLOR = 'darkgreen'
 ACTIVE_BUTTON_COLOR = 'cyan'
 INACTIVE_BUTTON_COLOR = '#edeef0'
+SEP_H = 0.002
 
 # ================== WATERFALL ======================================================
 
 class Scrollbox:
-    def __init__(self, fig, ax, nlines = 5, monospace = False, default_text = ''):
-        self.fig, self.ax = fig, ax
+    def __init__(self, fig, box, nlines = 5, monospace = False, default_text = ''):
+        self.fig = fig
+        self.ax = fig.add_axes(box)
         self.default_text = default_text
-        bbox = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+        bbox = self.ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
         self.fontsize = 0.5 * bbox.height * fig.dpi / nlines
         self.nlines = nlines
         self.line_height = 0.9 / nlines
@@ -132,6 +134,7 @@ class Gui:
         self.ani = FuncAnimation(self.fig, self._animate, interval = 40, frames=(100000), blit=True)
 
     def make_layout(self, config, wf_left = 0.15, wf_top = 0.87, left_width = 0.13):
+        # figure and waterfall
         self.plt = plt
         self.fig = plt.figure(figsize = (10,10), facecolor=(.18, .71, .71, 0.4)) 
         self.fig.canvas.manager.set_window_title('PyFT8 by G1OJS')
@@ -139,31 +142,35 @@ class Gui:
         self.image = self.ax_wf.imshow(self.dBgrid.T,vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self.ax_wf.set_xticks([])
         self.ax_wf.set_yticks([])
-        self.sep_h = 0.002
-        self.ax_band_stats = self.fig.add_axes([self.pmarg, wf_top + self.sep_h, left_width, 1-self.pmarg - (wf_top + self.sep_h)])
-        self.band_stats = Scrollbox(self.fig, self.ax_band_stats, nlines = 4, monospace = True)
-        self.ax_band_stats.text(-0.2,0.75,'Tx')
-        self.ax_band_stats.text(-0.2,0.25,'Rx')
-        if 'station' in config:
-            self.ax_band_stats.set_title(f"Spots to/from {config['station']['grid'][:4]}", fontsize = 10)
-        self.ax_console = self.fig.add_axes([self.pmarg + wf_left, wf_top, 1-2*self.pmarg - wf_left, 1-self.pmarg-wf_top])
-        self.console = Scrollbox(self.fig, self.ax_console)
+
+        # band stats
+        self.band_stats = Scrollbox(self.fig, [self.pmarg, wf_top + SEP_H, left_width, 1-self.pmarg - (wf_top + SEP_H)], nlines = 4, monospace = True)
+        self.band_stats.ax.text(-0.2,0.75,'Tx')
+        self.band_stats.ax.text(-0.2,0.25,'Rx')
+        self.band_stats.ax.set_title(f"Spots to/from {config['station']['grid'][:4]}", fontsize = 10)
+
+        # console
+        self.console = Scrollbox(self.fig, [self.pmarg + wf_left, wf_top, 1-2*self.pmarg - wf_left, 1-self.pmarg-wf_top])
+
+        # control buttons
         self.button_boxes = []
-        self.button_box_colours_need_update = False
-        if config is not None:
-            bb = Button_box(self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002, btn_pc = 100,
-                            btn_label = "CQ", onclick = self.on_control_click, clickargs = {'action':'CQ'})                            
+        bb = Button_box(self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002, btn_pc = 100,
+                        btn_label = "CQ", onclick = self.on_control_click, clickargs = {'action':'CQ'})                            
+        self.button_boxes.append(bb)
+        bb = Button_box(self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002, btn_pc = 100,
+                        btn_label = "Repeat last", onclick = self.on_control_click, clickargs = {'action':'RPT_LAST'})                            
+        self.button_boxes.append(bb)
+        bb = Button_box(self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002, btn_pc = 100,
+                        btn_label = "Tx off", onclick = self.on_control_click, clickargs = {'action':'TX_OFF'})                            
+        self.button_boxes.append(bb)            
+        for band, freq in config['bands'].items():
+            bb = Button_box(self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002, btn_pc = 30,
+                            btn_label = band, onclick = self.on_control_click, clickargs = {'action':'SET_BAND','band':band,'freq':freq})
             self.button_boxes.append(bb)
-            bb = Button_box(self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002, btn_pc = 100,
-                            btn_label = "Repeat last", onclick = self.on_control_click, clickargs = {'action':'RPT_LAST'})                            
-            self.button_boxes.append(bb)
-            bb = Button_box(self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002, btn_pc = 100,
-                            btn_label = "Tx off", onclick = self.on_control_click, clickargs = {'action':'TX_OFF'})                            
-            self.button_boxes.append(bb)            
-            for band, freq in config['bands'].items():
-                bb = Button_box(self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002, btn_pc = 30,
-                                btn_label = band, onclick = self.on_control_click, clickargs = {'action':'SET_BAND','band':band,'freq':freq})
-                self.button_boxes.append(bb)
+
+        # hearing me list
+        
+        
 
     def refresh_sidebars(self):
         self.on_gui_sidebars_refresh(self)
