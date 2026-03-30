@@ -14,17 +14,17 @@ HOVERCOLOR = 'darkgreen'
 ACTIVE_BUTTON_COLOR = 'cyan'
 INACTIVE_BUTTON_COLOR = '#edeef0'
 MAX_FONT_SIZE_MAIN = 10
-L = {'pmargin':0.04, 'sidebar_width': 0.13, 'banner_height':0.1, 'vsep1':0.01, 'hsep1':0.02}
+L = {'pmargin':0.04, 'sidebar_width': 0.16, 'banner_height':0.1, 'vsep1':0.01, 'hsep1':0.02}
 
 # ================== WATERFALL ======================================================
 
 class Scrollbox:
-    def __init__(self, fig, box, nlines = 5, monospace = False, default_text = ''):
+    def __init__(self, fig, box, nlines = 5, monospace = False, default_text = '', fontsize = None):
         self.fig = fig
         self.ax = fig.add_axes(box)
         self.default_text = default_text
         bbox = self.ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-        self.fontsize = np.min([0.5 * bbox.height * fig.dpi / nlines, MAX_FONT_SIZE_MAIN])
+        self.fontsize = np.min([0.5 * bbox.height * fig.dpi / nlines, MAX_FONT_SIZE_MAIN]) if fontsize is None else fontsize
         self.nlines = nlines
         self.line_height = 0.9 / nlines
         self.lines = []
@@ -53,8 +53,13 @@ class Scrollbox:
     def list_print(self, lst):
         self.lines = [{'text':l, 'color':'white'} for l in lst[:self.nlines]]
         for i, line in enumerate(self.lines):
-            self.lineartists[i].set_text(line['text'])
-            self.lineartists[i].set_color(line['color'])
+            if line['text'] != self.lineartists[i].get_text():
+                self.lineartists[i].set_text(line['text'])
+                self.lineartists[i].set_color(line['color'])
+        for i in range(len(lst), self.nlines):
+            if self.lineartists[i].get_text() != '':
+                self.lineartists[i].set_text('')          
+
 
 class Msg_box:
     def __init__(self, fig, ax, tbin, fbin, w, h, onclick):
@@ -183,7 +188,8 @@ class Gui:
             self.button_boxes.append(bb)
 
         # hearing me list
-        self.hm = Scrollbox(self.fig, [L['pmargin'], L['pmargin'], L['sidebar_width'], wf_top - (len(self.button_boxes)+2) * bh + bs - L['vsep1']], nlines = 30, monospace = True)
+        self.hm = Scrollbox(self.fig, [L['pmargin'], L['pmargin'], L['sidebar_width'], wf_top - (len(self.button_boxes)+2) * bh + bs - L['vsep1']],
+                            nlines = 30, monospace = True, fontsize = 8)
         
 
     def refresh_sidebars(self):

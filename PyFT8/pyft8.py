@@ -90,6 +90,16 @@ class ADIF:
                     cache[c + "_"+b+"_FT8"] = tm
         return cache
 
+def get_geo_text(call):
+    geo_text = ''
+    loc = pskr_info.callsign_cache.data.get(call,'')
+    if loc and config['gui']['loc'] == 'km_deg':
+            loc = maidenhead.db(config['station']['grid'], loc)
+            geo_text = f"{int(loc[0]):5d}k {int(loc[1]):3d}°"
+    if loc and config['gui']['loc'] == 'loc':
+            geo_text = f"loc: {loc}"
+    return geo_text
+
 class Message:
     def __init__(self, candidate):
         c = candidate
@@ -102,17 +112,10 @@ class Message:
         self.is_from_me = c.msg_tuple[1] == mycall
         self.is_to_me = c.msg_tuple[0] == mycall
         self.is_cq = c.msg_tuple[0].startswith('CQ')
-        call = c.msg_tuple[1]
-        qui_loc_text = ''
-        loc = pskr_info.callsign_cache.data.get(call,'')
-        if loc and config['gui']['loc'] == 'km_deg':
-                loc = maidenhead.db(config['station']['grid'], loc)
-                qui_loc_text = f"[{loc[0]:.0f}km {loc[1]:.0f} deg]"
-        if loc and config['gui']['loc'] == 'loc':
-                qui_loc_text = f"loc: {loc}"
-        wb = adif_logging.cache.get(call,'')
-        gui_wb_text = f"wb: {global_time_utils.format_duration(time.time() - float(wb))}" if wb else ''
-        self.gui_text = f"{c.msg} {gui_wb_text} {qui_loc_text}"
+        geo_text = get_geo_text(c.msg_tuple[1])
+        wb_time = float(adif_logging.cache.get(c.msg_tuple[1],''))
+        wb_text = f"wb: {global_time_utils.format_duration(time.time() - wb_time)}" if wb else ''
+        self.gui_text = f"{c.msg} {wb_text} {geo_text}"
     
     def wsjtx_screen_format(self):
         return f"{self.cyclestart['string']} {self.snr:+03d} {self.dt:4.1f} {self.fHz:4.0f} ~ {self.msg}"
@@ -305,8 +308,11 @@ def on_gui_sidebars_refresh(gui):
 
     #refresh hearing me
     if b is not None and b in pskr_info.hearing_me.data:
-        hearing_me = [f"{h['c']}({h['rp']:+02d})" for h in pskr_info.hearing_me.data[b].values()]
-        gui.hm.list_print(hearing_me)
+        hearing_me_text = []
+        for h in pskr_info.hearing_me.data[b].values():
+            geo_text = geo_text = get_geo_text(h['c'])
+            hearing_me_text.append(f"{h['c']:<7} {int(h['rp']):+03d} {geo_text:<12}")
+        gui.hm.list_print(hearing_me_text)
 
 def on_gui_control_click(btn_def):
     btn_action = btn_def['action']

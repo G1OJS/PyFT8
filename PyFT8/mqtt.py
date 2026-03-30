@@ -57,7 +57,6 @@ class PSKR_MQTT_listener:
         client.subscribe(f"pskr/filter/v2/+/FT8/+/+/{self.home_square}/#")
         client.subscribe(f"pskr/filter/v2/+/FT8/+/+/+/{self.home_square}/#")
 
-
     def on_message(self, client, userdata, msg):
         try:
             d = literal_eval(msg.payload.decode())
