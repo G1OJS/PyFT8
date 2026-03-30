@@ -86,11 +86,14 @@ class Msg_box:
         if(b):
             self.onclick(self.message)
 
-class Button_box:
-    def __init__(self, left, top, bb_w, bb_h,  btn_pc = 30, onclick = None, clickargs=None, btn_label = ''):
-        btn_w = bb_w * btn_pc/100
-        self.btn_axs = plt.axes([left, top, btn_w, bb_h])
-        self.info_axs = plt.axes([left + btn_w, top, bb_w - btn_w , bb_h])
+class ButtonBox:
+    def __init__(self, fig, box, btn_pc = 30, onclick = None, clickargs=None, btn_label = ''):
+        btnbox, infobox = box.copy(), box.copy()
+        btnbox[2] = box[2] * btn_pc /100
+        infobox[2] = box[2] * (100-btn_pc) /100
+        infobox[0] = box[0] + box[2] * (btn_pc /100)
+        self.btn_axs = fig.add_axes(btnbox)
+        self.info_axs = fig.add_axes(infobox)
         self.info_axs.set_xticks([])
         self.info_axs.set_yticks([])
         self.info_axs.set_facecolor(TEXT_BACKGROUND_COLOR)
@@ -134,10 +137,12 @@ class Gui:
         self.ani = FuncAnimation(self.fig, self._animate, interval = 40, frames=(100000), blit=True)
 
     def make_layout(self, config, wf_left = 0.15, wf_top = 0.87, left_width = 0.13):
-        # figure and waterfall
+        # figure
         self.plt = plt
         self.fig = plt.figure(figsize = (10,10), facecolor=(.18, .71, .71, 0.4)) 
         self.fig.canvas.manager.set_window_title('PyFT8 by G1OJS')
+
+        # waterfall
         self.ax_wf = self.fig.add_axes([self.pmarg + wf_left, self.pmarg, 1-2*self.pmarg-wf_left, wf_top-self.pmarg])
         self.image = self.ax_wf.imshow(self.dBgrid.T,vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self.ax_wf.set_xticks([])
@@ -154,17 +159,17 @@ class Gui:
 
         # control buttons
         self.button_boxes = []
-        bb = Button_box(self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002, btn_pc = 100,
+        bb = ButtonBox(self.fig, [self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002], btn_pc = 100,
                         btn_label = "CQ", onclick = self.on_control_click, clickargs = {'action':'CQ'})                            
         self.button_boxes.append(bb)
-        bb = Button_box(self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002, btn_pc = 100,
+        bb = ButtonBox(self.fig, [self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002], btn_pc = 100,
                         btn_label = "Repeat last", onclick = self.on_control_click, clickargs = {'action':'RPT_LAST'})                            
         self.button_boxes.append(bb)
-        bb = Button_box(self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002, btn_pc = 100,
+        bb = ButtonBox(self.fig, [self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002], btn_pc = 100,
                         btn_label = "Tx off", onclick = self.on_control_click, clickargs = {'action':'TX_OFF'})                            
         self.button_boxes.append(bb)            
         for band, freq in config['bands'].items():
-            bb = Button_box(self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002, btn_pc = 30,
+            bb = ButtonBox(self.fig, [self.pmarg, wf_top - (len(self.button_boxes)+1) * 0.02, left_width, 0.02-0.002], btn_pc = 30,
                             btn_label = band, onclick = self.on_control_click, clickargs = {'action':'SET_BAND','band':band,'freq':freq})
             self.button_boxes.append(bb)
 
