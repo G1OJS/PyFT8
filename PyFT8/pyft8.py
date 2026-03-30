@@ -307,12 +307,12 @@ def on_gui_sidebars_refresh(gui):
         gui.band_stats.scroll_print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
 
     #refresh hearing me
-    if b is not None and b in pskr_info.hearing_me.data:
-        hearing_me_text = []
+    hearing_me_text = []
+    if b is not None and b in pskr_info.hearing_me.data:    
         for h in pskr_info.hearing_me.data[b].values():
             geo_text = geo_text = get_geo_text(h['c'])
             hearing_me_text.append(f"{h['c']:<7} {int(h['rp']):+03d} {geo_text:<12}")
-        gui.hm.list_print(hearing_me_text)
+    gui.hm.list_print(['Hearing me:'] + hearing_me_text)
 
 def on_gui_control_click(btn_def):
     btn_action = btn_def['action']
