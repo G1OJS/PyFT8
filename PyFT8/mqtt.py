@@ -13,6 +13,7 @@ class DiskDict:
         self.file = file
         self.data = {}
         self.load()
+        self.lock = threading.Lock()
         threading.Thread(target = self._autosave, daemon = True).start()
 
     def _autosave(self, autosave_period = 15):
@@ -26,7 +27,7 @@ class DiskDict:
                 self.data = pickle.load(f)
 
     def save(self):
-        if self.data:
+        with self.lock:
             with open(f"{self.file}","wb") as f:
                 pickle.dump(self.data, f)
 
@@ -41,6 +42,7 @@ class PSKR_MQTT_listener:
         self.home_activity = {}
         self.home_most_remotes = {}
         self.lock = threading.Lock()
+        
         mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         mqttc.on_connect = self.on_connect
         mqttc.on_message = self.on_message
