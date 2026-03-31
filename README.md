@@ -9,22 +9,24 @@ If you're interested in how this works, maybe have a look at [MiniPyFT8](https:/
 
 ## Features
  - Rx and Tx of standard messages with optional /P and /R, and nonstandard calls plus hashed calls
- - Doesn't try to do everything, so launches quickly (~2 seconds on my old Dell Optiplex 790)
+ - Launches quickly (~2 seconds on my old Dell Optiplex 790)
  - Use with or without gui (receive and send messages via command line commands)
  - Automatically chooses clearest Tx frequency
  - Modern programming language throughout
  - Finds sound cards by keywords so follows them if windows moves them ...
  - Logs QSOs to ADIF file and all spots to WSJTX-style ALL.txt file
  - Uploads spots to pskreporter
- - Direct CAT control for some rigs drops connection when not used, allowing sharing of rig's serial port
+ - Direct CAT control for some rigs, designed to drop connection when not used, allowing sharing of rig's serial port
  - Or control rigs via Hamlib
 
  The Gui shows:
  - Simultaneous views of odd and even cycles
  - Messages overlaid on waterfall signals that produce them
- - Worked-before info and fine grid locators / distance and bearing in the message boxes 
- - Band activity on band select buttons
+ - Worked-before info and fine grid locators / distance and bearing in the message boxes
+ - List of stations hearing your transmissions on the selected band
+ - Band activity in your level 4 square live updated next to band select buttons
  - Number of remote stations hearing your Tx, number of remote Txs that you're hearing, plus the same info for the 'best' station in your level 4 square
+ - Data used for the above is cached to disk so is not lost when restarting the program
 
 To enable uploading of spots to pskreporter, make sure that your .ini file includes
 ```
@@ -32,8 +34,7 @@ To enable uploading of spots to pskreporter, make sure that your .ini file inclu
 upload = Y
 ```
 
-<img width="980" height="807" alt="screenshot" src="https://github.com/user-attachments/assets/ac393a05-277a-4d98-bd74-78bcb0ae8b03" />
-
+![screenshot](screenshot.png)
 
 ## Motivation
 This started out as me thinking "How hard can it be, really?" after some frustration with Windows moving sound devices around and wanting to get a minimal decoder running that I can fully control. 
@@ -69,8 +70,7 @@ Alternatively, you can run PyFT8 without rig control; if there is no rig found, 
 
 The image below shows the number of decodes from PyFT8, WSJT-x V2.7.0 running in NORM mode, and FT8_lib, using the same 10 minutes of busy 20m audio that is used to test ft8_lib. 
 
-<img width="640" height="480" alt="performance snapshot" src="https://github.com/G1OJS/PyFT8/blob/main/performance%20snapshot.png" />
-
+![performance snapshot](performance%20snapshot.png)
 
 ## Limitations
 PyFT8 doesn't decode / encode *all* message types. The table below shows which are handled.
