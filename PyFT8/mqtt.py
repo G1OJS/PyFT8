@@ -43,7 +43,7 @@ class PSKR_MQTT_listener:
         self.heard_by_me = DiskDict(f"{config_folder}/heard_by_me.pkl")
         self.home_square = home_square
         self.callsign_cache = DiskDict(f"{config_folder}/callsign_cache.pkl")
-        self.band_TxRx_homecall_report_times = DiskDict(f"{config_folder}/report_times_271.pkl")
+        self.band_TxRx_homecall_report_times = DiskDict(f"{config_folder}/report_times.pkl")
         self.band_TxRx_homecall_couniTxRxemotes = {}
         self.home_activity = {}
         self.home_most_remotes = {}

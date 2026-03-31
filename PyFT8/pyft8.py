@@ -14,7 +14,7 @@ from PyFT8.hamlib import Rig_hamlib
 from PyFT8.mqtt import PSKR_MQTT_listener
 import PyFT8.maidenhead as maidenhead
 
-VER = '2.7.2'
+VER = '2.7.3'
 
 MAX_TX_START_SECONDS = 2.5
 SPOTLIFE = 5*60
@@ -307,7 +307,7 @@ def on_gui_sidebars_refresh(gui):
         gui.band_stats.scroll_print(f"{call:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
         gui.band_stats.scroll_print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
 
-    #refresh hearing me
+    #refresh hearing me / heard by me panel
     cycle = global_time_utils.curr_cycle_from_time()
     data = pskr_info.heard_by_me.data if cycle == 1 else pskr_info.hearing_me.data
     txts, cols = ['Hearing me' if cycle==1 else 'Heard by me'], ['white']
@@ -316,7 +316,7 @@ def on_gui_sidebars_refresh(gui):
         for h in hm:
             geo_text = geo_text = get_geo_text(h['c'])
             txts.append(f"{h['c']:<7} {int(h['rp']):+03d} {geo_text:<12}")
-            cols.append('green' if h['new'] == 'new' else ('blue' if h['new'] == 'new_on_band' else 'white'))
+            cols.append('lime' if h['new'] == 'new' else ('white' if h['new'] == 'new_on_band' else 'lightgrey'))
     gui.hm.list_print(txts, cols)
 
 def on_gui_control_click(btn_def):
