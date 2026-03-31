@@ -14,7 +14,7 @@ from PyFT8.hamlib import Rig_hamlib
 from PyFT8.mqtt import PSKR_MQTT_listener
 import PyFT8.maidenhead as maidenhead
 
-VER = '2.7.4'
+VER = '2.7.5'
 
 MAX_TX_START_SECONDS = 2.5
 SPOTLIFE = 5*60
