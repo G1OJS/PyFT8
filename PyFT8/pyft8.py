@@ -310,13 +310,15 @@ def on_gui_sidebars_refresh(gui):
     #refresh hearing me / heard by me panel
     cycle = global_time_utils.curr_cycle_from_time()
     data = pskr_info.hearing_me.data if cycle == 1 else pskr_info.heard_by_me.data
-    txts, cols = ['Hearing me' if cycle==1 else 'Heard by me'], ['white']
+    new_calls = pskr_info.hearing_me_new if cycle == 1 else pskr_info.heard_by_me_new
+    txts, cols = [f"Hearing me <{SPOTLIFE/60:.0f} mins" if cycle==1 else f"Heard by me <{SPOTLIFE/60:.0f} mins"], ['white']
     if b is not None and b in data:
         hm = [h for h in data[b].values() if (time.time() - h['t']) < SPOTLIFE]
         for h in hm:
             geo_text = geo_text = get_geo_text(h['c'])
             txts.append(f"{h['c']:<7} {int(h['rp']):+03d} {geo_text:<12}")
-            cols.append('lime' if h['new'] == 'new' else ('white' if h['new'] == 'new_on_band' else 'lightgrey'))
+            col = 'white' if h['c'] in new_calls else 'lime'
+            cols.append(col)
     gui.hm.list_print(txts, cols)
 
 def on_gui_control_click(btn_def):

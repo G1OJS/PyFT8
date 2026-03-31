@@ -41,6 +41,8 @@ class PSKR_MQTT_listener:
         self.my_call = my_call
         self.hearing_me = DiskDict(f"{config_folder}/hearing_me.pkl")
         self.heard_by_me = DiskDict(f"{config_folder}/heard_by_me.pkl")
+        self.hearing_me_new = []
+        self.heard_by_me_new = []
         self.home_square = home_square
         self.callsign_cache = DiskDict(f"{config_folder}/callsign_cache.pkl")
         self.band_TxRx_homecall_report_times = DiskDict(f"{config_folder}/report_times.pkl")
@@ -74,28 +76,21 @@ class PSKR_MQTT_listener:
         for iTxRx, c in enumerate([sc, rc]):
             call, loc = c
             self.callsign_cache.data[call] = loc
+            tnow = time.time()
             if self.home_square in loc:
                 key = (d['b'], iTxRx, call)
                 self.band_TxRx_homecall_report_times.data.setdefault(key, [])
-                self.band_TxRx_homecall_report_times.data[key].append(time.time())
+                self.band_TxRx_homecall_report_times.data[key].append(tnow)
             if d['sc'] == self.my_call:
                 self.hearing_me.data.setdefault(d['b'], {})
-                new = (d['rc'] not in self.hearing_me.data)
-                new_on_band = (d['rc'] not in self.hearing_me.data[d['b']])
-                self.hearing_me.data[d['b']][d['rc']] = {'t': time.time(),'rp': d['rp'],'c': d['rc'], 'new':''}
-                if new_on_band:
-                    self.hearing_me.data[d['b']][d['rc']].update({'new':'new_on_band'})
-                if new:
-                    self.hearing_me.data[d['b']][d['rc']].update({'new':'new'})
+                if d['rc'] not in self.hearing_me.data:
+                    self.hearing_me_new.append(d['rc'])
+                self.hearing_me.data[d['b']][d['rc']] = {'t': tnow,'rp': d['rp'],'c': d['rc']}
             if d['rc'] == self.my_call:
                 self.heard_by_me.data.setdefault(d['b'], {})
-                new = (d['sc'] not in self.heard_by_me.data)
-                new_on_band = (d['sc'] not in self.heard_by_me.data[d['b']])
-                self.heard_by_me.data[d['b']][d['sc']] = {'t': time.time(),'rp': d['rp'],'c': d['sc'], 'new':''}
-                if new_on_band:
-                    self.heard_by_me.data[d['b']][d['sc']].update({'new':'new_on_band'})
-                if new:
-                    self.heard_by_me.data[d['b']][d['sc']].update({'new':'new'})
+                if d['sc'] not in self.heard_by_me.data:
+                    self.heard_by_me_new.append(d['sc'])
+                self.heard_by_me.data[d['b']][d['sc']] = {'t': tnow,'rp': d['rp'],'c': d['sc']}
                                
     def count_activity(self):
         import numpy as np

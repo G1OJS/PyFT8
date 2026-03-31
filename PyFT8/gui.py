@@ -165,7 +165,7 @@ class Gui:
         self.band_stats = Scrollbox(self.fig, [L['pmargin'], wf_top+L['vsep1'], L['sidebar_width'], L['banner_height']], nlines = 4, monospace = True)
         self.band_stats.ax.text(-0.2,0.75,'Tx')
         self.band_stats.ax.text(-0.2,0.25,'Rx')
-        self.band_stats.ax.set_title(f"Spots to/from {config['station']['grid'][:4]}", fontsize = 10)
+        self.band_stats.ax.set_title(f"Spots to/from {config['station']['grid'][:4]} <15 mins", fontsize = 10)
 
         # console
         self.console = Scrollbox(self.fig, [wf_left, wf_top+L['vsep1'], 1-wf_left-L['pmargin'], L['banner_height']])
