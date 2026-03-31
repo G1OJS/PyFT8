@@ -14,7 +14,7 @@ from PyFT8.hamlib import Rig_hamlib
 from PyFT8.mqtt import PSKR_MQTT_listener
 import PyFT8.maidenhead as maidenhead
 
-VER = '2.7.0'
+VER = '2.7.1'
 
 MAX_TX_START_SECONDS = 2.5
 rig, gui, qso, adif_logging, pskr_info, pskr_upload = None, None, None, None, None, None
@@ -308,8 +308,9 @@ def on_gui_sidebars_refresh(gui):
 
     #refresh hearing me
     hearing_me_text = []
-    if b is not None and b in pskr_info.hearing_me.data:    
-        for h in pskr_info.hearing_me.data[b].values():
+    if b is not None and b in pskr_info.hearing_me.data:
+        hm = pskr_info.hearing_me.data[b].values()
+        for h in hm:
             geo_text = geo_text = get_geo_text(h['c'])
             hearing_me_text.append(f"{h['c']:<7} {int(h['rp']):+03d} {geo_text:<12}")
     gui.hm.list_print(['Hearing me:'] + hearing_me_text)
