@@ -3,8 +3,6 @@ import threading
 import time
 from ast import literal_eval
 
-SPOTLIFE = 15*60
-
 import os
 import pickle
 
@@ -37,7 +35,8 @@ class DiskDict:
             os.replace(tmp_file, self.file)
                 
 class PSKR_MQTT_listener:
-    def __init__(self, config_folder, my_call, home_square):
+    def __init__(self, config_folder, my_call, home_square, spotlife):
+        self.spotlife = spotlife
         self.my_call = my_call
         self.hearing_me = DiskDict(f"{config_folder}/hearing_me.pkl")
         self.heard_by_me = DiskDict(f"{config_folder}/heard_by_me.pkl")
@@ -109,10 +108,10 @@ class PSKR_MQTT_listener:
                 for b in self.home_most_remotes:
                     self.home_most_remotes[b] = [('',0), ('',0)]
 
-                # keep only the remote spots that happened in the SPOTLIFE window
+                # keep only the remote spots that happened in the self.spotlife window
                 for band_TxRx_homecall in self.band_TxRx_homecall_report_times.data:
                     band_TxRx_homecall_report_times = self.band_TxRx_homecall_report_times.data[band_TxRx_homecall]
-                    band_TxRx_homecall_report_times = [t for t in band_TxRx_homecall_report_times if (time.time() - t) < SPOTLIFE]
+                    band_TxRx_homecall_report_times = [t for t in band_TxRx_homecall_report_times if (time.time() - t) < self.spotlife]
                     self.band_TxRx_homecall_report_times.data[band_TxRx_homecall] = band_TxRx_homecall_report_times
 
                 # count number of local Tx and Rx, and identify the local Tx and Rx with most remote spots

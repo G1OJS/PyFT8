@@ -147,6 +147,9 @@ class Gui:
         self.make_layout(config)
         self.ani = FuncAnimation(self.fig, self._animate, interval = 40, frames=(100000), blit=True)
 
+    def set_bandstats_title(self, txt):
+        self.band_stats.ax.set_title(txt, fontsize = 10)
+
     def make_layout(self, config):
         # figure
         self.plt = plt
@@ -165,7 +168,6 @@ class Gui:
         self.band_stats = Scrollbox(self.fig, [L['pmargin'], wf_top+L['vsep1'], L['sidebar_width'], L['banner_height']], nlines = 4, monospace = True)
         self.band_stats.ax.text(-0.2,0.75,'Tx')
         self.band_stats.ax.text(-0.2,0.25,'Rx')
-        self.band_stats.ax.set_title(f"Spots to/from {config['station']['grid'][:4]} <15 mins", fontsize = 10)
 
         # console
         self.console = Scrollbox(self.fig, [wf_left, wf_top+L['vsep1'], 1-wf_left-L['pmargin'], L['banner_height']])

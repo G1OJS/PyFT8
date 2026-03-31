@@ -14,7 +14,7 @@ from PyFT8.hamlib import Rig_hamlib
 from PyFT8.mqtt import PSKR_MQTT_listener
 import PyFT8.maidenhead as maidenhead
 
-VER = '2.7.5'
+VER = '2.7.6'
 
 MAX_TX_START_SECONDS = 2.5
 SPOTLIFE = 5*60
@@ -261,7 +261,8 @@ def on_rx_decode(c):
         if dx_call != 'not' and dx_call != config['station']['call']:
             pskr_upload.add_report(dx_call, int(1000000*float(qso.band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 1, int(time.time()))
             loc = pskr_info.callsign_cache.data.get(dx_call, dx_grid)
-            pskr_info.add_spot({'sc':dx_call, 'sl':loc, 'rc':config['station']['call'], 'rl':config['station']['grid'], 'b':qso.band_info['b'], 'rp': c.snr})
+            # can't use the next line unless I keep more info than just time in the spots data and deduplicate
+            # pskr_info.add_spot({'sc':dx_call, 'sl':loc, 'rc':config['station']['call'], 'rl':config['station']['grid'], 'b':qso.band_info['b'], 'rp': c.snr})
     print(message.wsjtx_screen_format())
     write_all_txt_row(message)
 
@@ -303,7 +304,6 @@ def on_gui_sidebars_refresh(gui):
         tx_lead,  rx_lead = pskr_info.home_most_remotes[b]
         call = config['station']['call']
         n_spotted, n_spotting = pskr_info.get_spot_counts(b, call)
-        # add local count here for n_spotted prior to round trip to pskreporter?
         gui.band_stats.scroll_print(f"{call:<7} {tx_lead[0]:<7}", color = '#ff756b')
         gui.band_stats.scroll_print(f"{n_spotting:<7} {tx_lead[1]:<7}", color = '#ff756b')
         gui.band_stats.scroll_print(f"{call:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
@@ -373,7 +373,7 @@ def cli():
     if mc is not None and 'pskreporter' in config.keys():
         if config['pskreporter']['upload'] == 'Y':
             pskr_upload = PSKR_upload(mc, mg, software = f"PyFT8 v{VER}", console_print = console_print) if not mc is None else None
-            pskr_info = PSKR_MQTT_listener(config_folder, mc, mg[:4])
+            pskr_info = PSKR_MQTT_listener(config_folder, mc, mg[:4], SPOTLIFE)
     qso = FT8_QSO()
     if config.has_section('hamlib_rig'):
         console_print("Connecting to rig via Hamlib")
@@ -405,6 +405,7 @@ def cli():
             rx = Receiver(audio_in, [200, 3100], on_rx_decode, on_rx_busy_profile)
             audio_in.start_streamed_audio(input_device_idx)
             if gui is not None:
+                gui.set_bandstats_title(f"Spots to/from {config['station']['grid'][:4]} <{SPOTLIFE/60:.0f} mins")
                 gui.plt.show()
             else:
                 wait_for_keyboard()
