@@ -72,6 +72,9 @@ class PSKR_MQTT_listener:
             d = literal_eval(msg.payload.decode())
         except:
             return
+        self.add_spot(d)
+
+    def add_spot(self, d):
         sc, rc = (d['sc'], d['sl']), (d['rc'], d['rl'])
         for iTxRx, c in enumerate([sc, rc]):
             call, loc = c
@@ -83,12 +86,12 @@ class PSKR_MQTT_listener:
                 self.band_TxRx_homecall_report_times.data[key].append(tnow)
             if d['sc'] == self.my_call:
                 self.hearing_me.data.setdefault(d['b'], {})
-                if d['rc'] not in self.hearing_me.data:
+                if d['rc'] not in self.hearing_me.data[d['b']]:
                     self.hearing_me_new.append(d['rc'])
                 self.hearing_me.data[d['b']][d['rc']] = {'t': tnow,'rp': d['rp'],'c': d['rc']}
             if d['rc'] == self.my_call:
                 self.heard_by_me.data.setdefault(d['b'], {})
-                if d['sc'] not in self.heard_by_me.data:
+                if d['sc'] not in self.heard_by_me.data[d['b']]:
                     self.heard_by_me_new.append(d['sc'])
                 self.heard_by_me.data[d['b']][d['sc']] = {'t': tnow,'rp': d['rp'],'c': d['sc']}
                                

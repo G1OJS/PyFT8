@@ -257,9 +257,11 @@ def on_rx_decode(c):
     if gui:
         gui.add_message_box(message)
     if qso.band_info['b'] is not None and pskr_upload is not None:
-        dx_call = c.msg_tuple[1]
+        _, dx_call, dx_grid = c.msg_tuple
         if dx_call != 'not' and dx_call != config['station']['call']:
             pskr_upload.add_report(dx_call, int(1000000*float(qso.band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 1, int(time.time()))
+            loc = pskr_info.callsign_cache.data.get(dx_call, dx_grid)
+            pskr_info.add_spot({'sc':dx_call, 'sl':loc, 'rc':config['station']['call'], 'rl':config['station']['grid'], 'b':qso.band_info['b'], 'rp': c.snr})
     print(message.wsjtx_screen_format())
     write_all_txt_row(message)
 
@@ -274,7 +276,7 @@ def on_rx_busy_profile(busy_profile_new, cycle):
         idx = np.argmin(busy_profile[f0_idx:fn_idx])
         clearest_frequency = (f0_idx + idx) * audio_in.df
     busy_profile = busy_profile_new
-    console_print(f"[on_busy] Set Tx freq to {clearest_frequency:6.1f}")
+    console_print(f"[on_busy] Clear Tx frequency found at {clearest_frequency:6.1f}")
 
 #============= Callbacks for GUI ==========================================================
 def on_gui_sidebars_refresh(gui):
