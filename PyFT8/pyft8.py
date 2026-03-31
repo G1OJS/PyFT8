@@ -309,7 +309,7 @@ def on_gui_sidebars_refresh(gui):
 
     #refresh hearing me / heard by me panel
     cycle = global_time_utils.curr_cycle_from_time()
-    data = pskr_info.heard_by_me.data if cycle == 1 else pskr_info.hearing_me.data
+    data = pskr_info.hearing_me.data if cycle == 1 else pskr_info.heard_by_me.data
     txts, cols = ['Hearing me' if cycle==1 else 'Heard by me'], ['white']
     if b is not None and b in data:
         hm = [h for h in data[b].values() if (time.time() - h['t']) < SPOTLIFE]
