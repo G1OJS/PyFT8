@@ -50,12 +50,12 @@ class Scrollbox:
         for i in range(self.nlines):
             self.lineartists[i].set_text(self.default_text)
 
-    def list_print(self, lst):
-        self.lines = [{'text':l, 'color':'white'} for l in lst[:self.nlines]]
-        for i, line in enumerate(self.lines):
-            if line['text'] != self.lineartists[i].get_text():
-                self.lineartists[i].set_text(line['text'])
-                self.lineartists[i].set_color(line['color'])
+    def list_print(self, lst, colors = None):
+        for i, txt in enumerate(lst[:self.nlines]):
+            if txt != self.lineartists[i].get_text():
+                self.lineartists[i].set_text(txt)
+                col = colors[i] if colors is not None and i < len(colors) else 'white'
+                self.lineartists[i].set_color(col)
         for i in range(len(lst), self.nlines):
             if self.lineartists[i].get_text() != '':
                 self.lineartists[i].set_text('')          

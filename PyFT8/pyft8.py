@@ -17,6 +17,7 @@ import PyFT8.maidenhead as maidenhead
 VER = '2.7.2'
 
 MAX_TX_START_SECONDS = 2.5
+SPOTLIFE = 5*60
 rig, gui, qso, adif_logging, pskr_info, pskr_upload = None, None, None, None, None, None
 busy_profile, hearing_me = None, None
 
@@ -263,7 +264,7 @@ def on_rx_decode(c):
     write_all_txt_row(message)
 
 def on_rx_busy_profile(busy_profile_new, cycle):
-    global busy_profile
+    global busy_profile, clearest_frequency
     if output_device_idx is None:
         return
     if busy_profile is not None:
@@ -273,7 +274,7 @@ def on_rx_busy_profile(busy_profile_new, cycle):
         idx = np.argmin(busy_profile[f0_idx:fn_idx])
         clearest_frequency = (f0_idx + idx) * audio_in.df
     busy_profile = busy_profile_new
-    #console_print(f"[on_busy] Set Tx freq to {clearest_frequency:6.1f}")
+    console_print(f"[on_busy] Set Tx freq to {clearest_frequency:6.1f}")
 
 #============= Callbacks for GUI ==========================================================
 def on_gui_sidebars_refresh(gui):
@@ -307,13 +308,16 @@ def on_gui_sidebars_refresh(gui):
         gui.band_stats.scroll_print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
 
     #refresh hearing me
-    hearing_me_text = []
-    if b is not None and b in pskr_info.hearing_me.data:
-        hm = pskr_info.hearing_me.data[b].values()
+    cycle = global_time_utils.curr_cycle_from_time()
+    data = pskr_info.heard_by_me.data if cycle == 1 else pskr_info.hearing_me.data
+    txts, cols = ['Hearing me' if cycle==1 else 'Heard by me'], ['white']
+    if b is not None and b in data:
+        hm = [h for h in data[b].values() if (time.time() - h['t']) < SPOTLIFE]
         for h in hm:
             geo_text = geo_text = get_geo_text(h['c'])
-            hearing_me_text.append(f"{h['c']:<7} {int(h['rp']):+03d} {geo_text:<12}")
-    gui.hm.list_print(['Hearing me:'] + hearing_me_text)
+            txts.append(f"{h['c']:<7} {int(h['rp']):+03d} {geo_text:<12}")
+            cols.append('green' if h['new'] == 'new' else ('blue' if h['new'] == 'new_on_band' else 'white'))
+    gui.hm.list_print(txts, cols)
 
 def on_gui_control_click(btn_def):
     btn_action = btn_def['action']

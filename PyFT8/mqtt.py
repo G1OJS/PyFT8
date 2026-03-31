@@ -10,10 +10,10 @@ import pickle
 
 class DiskDict:
     def __init__(self, file):
+        self.lock = threading.Lock()
         self.file = file
         self.data = {}
         self.load()
-        self.lock = threading.Lock()
         threading.Thread(target = self._autosave, daemon = True).start()
 
     def _autosave(self, autosave_period = 15):
@@ -22,19 +22,25 @@ class DiskDict:
             self.save()
 
     def load(self):
-        if(os.path.exists(self.file)):
-            with open(f"{self.file}","rb") as f:
-                self.data = pickle.load(f)
+        with self.lock:        
+            if(os.path.exists(self.file)):
+                with open(f"{self.file}","rb") as f:
+                    self.data = pickle.load(f)
 
     def save(self):
         with self.lock:
-            with open(f"{self.file}","wb") as f:
+            tmp_file = f"{self.file}.tmp"
+            with open(tmp_file, "wb") as f:
                 pickle.dump(self.data, f)
-
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_file, self.file)
+                
 class PSKR_MQTT_listener:
     def __init__(self, config_folder, my_call, home_square):
         self.my_call = my_call
         self.hearing_me = DiskDict(f"{config_folder}/hearing_me.pkl")
+        self.heard_by_me = DiskDict(f"{config_folder}/heard_by_me.pkl")
         self.home_square = home_square
         self.callsign_cache = DiskDict(f"{config_folder}/callsign_cache.pkl")
         self.band_TxRx_homecall_report_times = DiskDict(f"{config_folder}/report_times_271.pkl")
@@ -73,8 +79,24 @@ class PSKR_MQTT_listener:
                 self.band_TxRx_homecall_report_times.data.setdefault(key, [])
                 self.band_TxRx_homecall_report_times.data[key].append(time.time())
             if d['sc'] == self.my_call:
-                self.hearing_me.data.setdefault(d['b'], {})[d['rc']] = {'t': time.time(),'rp': d['rp'],'c': d['rc']}
-
+                self.hearing_me.data.setdefault(d['b'], {})
+                new = (d['rc'] not in self.hearing_me.data)
+                new_on_band = (d['rc'] not in self.hearing_me.data[d['b']])
+                self.hearing_me.data[d['b']][d['rc']] = {'t': time.time(),'rp': d['rp'],'c': d['rc'], 'new':''}
+                if new_on_band:
+                    self.hearing_me.data[d['b']][d['rc']].update({'new':'new_on_band'})
+                if new:
+                    self.hearing_me.data[d['b']][d['rc']].update({'new':'new'})
+            if d['rc'] == self.my_call:
+                self.heard_by_me.data.setdefault(d['b'], {})
+                new = (d['sc'] not in self.heard_by_me.data)
+                new_on_band = (d['sc'] not in self.heard_by_me.data[d['b']])
+                self.heard_by_me.data[d['b']][d['sc']] = {'t': time.time(),'rp': d['rp'],'c': d['sc'], 'new':''}
+                if new_on_band:
+                    self.heard_by_me.data[d['b']][d['sc']].update({'new':'new_on_band'})
+                if new:
+                    self.heard_by_me.data[d['b']][d['sc']].update({'new':'new'})
+                               
     def count_activity(self):
         import numpy as np
         while True:
@@ -106,14 +128,6 @@ class PSKR_MQTT_listener:
                         nremotes = len(band_TxRx_homecall_report_times)
                         if nremotes>self.home_most_remotes[b][iTxRx][1]:
                             self.home_most_remotes[b][iTxRx] = (c, nremotes)
-
-                # prune the hearing me list to <SPOTLIFE
-                for b in self.hearing_me.data:
-                    newdict = {}
-                    for c in self.hearing_me.data[b]:
-                        if (time.time() - self.hearing_me.data[b][c]['t']) < SPOTLIFE:
-                            newdict[c] = self.hearing_me.data[b][c]
-                    self.hearing_me.data[b] = newdict
 
     def get_spot_counts(self, band, call):
         tx_reports = self.band_TxRx_homecall_report_times.data.get((band, 0, call), [])
