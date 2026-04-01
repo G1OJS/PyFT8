@@ -281,7 +281,7 @@ def on_rx_busy_profile(busy_profile_new, cycle):
     console_print(f"[on_busy] Clear Tx frequency found at {clearest_frequency:6.1f}")
 
 #============= Callbacks for GUI ==========================================================
-def on_gui_sidebars_refresh(gui):
+def on_gui_sidebars_refresh(gui, display_cycle):
     if qso.band_info['b'] is None:
         console_print(f"[PyFT8] Band not set; please select a band.", color = 'red')
     if pskr_info is None:
@@ -311,23 +311,24 @@ def on_gui_sidebars_refresh(gui):
         gui.band_stats.scroll_print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
 
     #refresh hearing me / heard by me panel
-    cycle = global_time_utils.curr_cycle_from_time()
-    data = pskr_info.hearing_me.data if cycle == 1 else pskr_info.heard_by_me.data
+    data = pskr_info.hearing_me.data if display_cycle == 1 else pskr_info.heard_by_me.data
+    timewindow_str = f"<{HEARING_PANEL_LIFE_MINS:.0f} mins"
+    title_txt = f"Hearing me {timewindow_str}" if display_cycle==1 else f"Heard by me {timewindow_str}"
+    display_rows = [(title_txt, 2e40, 'white')]
     tnow = time.time()
     if b is not None and b in data:
-        band_data = data[b]
-        timewindow_str = f"<{HEARING_PANEL_LIFE_MINS:.0f} mins"
-        title_txt = f"Hearing me {timewindow_str}" if cycle==1 else f"Heard by me {timewindow_str}"
-        display_rows = [(title_txt, 1e40, 'white')]
-        new_calls = pskr_info.hearing_me_new if cycle == 1 else pskr_info.heard_by_me_new
-        for remote_call in band_data:
-            row = band_data[remote_call]
-            if (tnow - row['t']) < 60*HEARING_PANEL_LIFE_MINS:
-                call, report, geo_text, timestamp = row['c'], int(row['rp']), get_geo_text(row['c']), row['t']
-                color = 'white' if call in new_calls else 'lime'
-                display_rows.append((f"{call:<7} {report:+03d} {geo_text:<12}", timestamp, color))
-        display_rows.sort(key = lambda row: row[1], reverse = True)
-        gui.hm.list_print([row[0] for row in display_rows], [row[2] for row in display_rows])
+        band_rpts = data[b]
+        calls_now = [call for call in band_rpts if (tnow - band_rpts[call]['t']) < 60*HEARING_PANEL_LIFE_MINS]
+        subtitle_txt = f"{len(calls_now)}/{len(band_rpts)} now/ever"
+        display_rows.append((subtitle_txt, 1e40, 'white'))
+        new_calls = pskr_info.hearing_me_new if display_cycle == 1 else pskr_info.heard_by_me_new
+        for remote_call in calls_now:
+            rpt = band_rpts[remote_call]
+            call, snr, geo_text, timestamp = rpt['c'], int(rpt['rp']), get_geo_text(remote_call), rpt['t']
+            color = 'white' if remote_call in new_calls else 'lime'
+            display_rows.append((f"{remote_call:<7} {snr:+03d} {geo_text:<12}", timestamp, color))
+    display_rows.sort(key = lambda row: row[1], reverse = True)
+    gui.hm.list_print([row[0] for row in display_rows], [row[2] for row in display_rows])
 
 def on_gui_control_click(btn_def):
     btn_action = btn_def['action']

@@ -91,9 +91,9 @@ class PSKR_MQTT_listener:
             if self.home_square in loc:
                 self.add_homespots_record((d['b'], iTxRx, call), tnow)
             if d['sc'] == self.my_call:
-                self.add_myspots_record(self.hearing_me.data, d['b'], d['rc'], tnow, d['rp'])
                 if d['rc'] not in self.hearing_me.data[d['b']]:
                     self.hearing_me_new.append(d['rc'])
+                self.add_myspots_record(self.hearing_me.data, d['b'], d['rc'], tnow, d['rp'])
             if d['rc'] == self.my_call:
                 self.add_myspots_record(self.heard_by_me.data, d['b'], d['sc'], tnow, d['rp'])
                 if d['sc'] not in self.heard_by_me.data[d['b']]:
@@ -138,13 +138,3 @@ class PSKR_MQTT_listener:
         n_spotted = len(rx_reports) if rx_reports else 0
         return n_spotted, n_spotting
                 
-if __name__ == '__main__':
-    pskr = PSKR_MQTT_listener("IO90")
-        
-
-        
-
-    
-
-
-    

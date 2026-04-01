@@ -145,6 +145,7 @@ class Gui:
         self.msg_boxes = {}
         self.decode_queue = queue.Queue()
         self.make_layout(config)
+        self.display_cycle = 0
         self.ani = FuncAnimation(self.fig, self._animate, interval = 40, frames=(100000), blit=True)
 
     def set_bandstats_title(self, txt):
@@ -195,7 +196,8 @@ class Gui:
         
 
     def refresh_sidebars(self):
-        self.on_gui_sidebars_refresh(self)
+        self.display_cycle = (self.display_cycle + 1) %2
+        self.on_gui_sidebars_refresh(self, self.display_cycle)
         
     def add_message_box(self, message):
         self.decode_queue.put(message)
@@ -217,6 +219,7 @@ class Gui:
             self._display_message_box(self.decode_queue.get())
         if (frame % 10 == 0):
             self._tidy_msg_boxes()
+        if (frame % 30 == 0):
             self.refresh_sidebars()
         return [self.image, *self.ax_wf.patches, *self.ax_wf.texts, *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists,
                 *[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes]]
