@@ -81,7 +81,7 @@ class FT8_QSO:
     def __init__(self):
         if config is not None:
             self.mStation = {'c':config['station']['call'], 'g':config['station']['grid']}
-        self.band_info = {'b':None, 'fMHz':0}
+        self.band_info = {'b':None, 'fMHz':0, 'time_set':0}
         self.tx_freq = 750
         threading.Thread(target = self._transmitter, daemon = True).start()
         self.clear()
@@ -246,35 +246,55 @@ def on_gui_sidebars_refresh(gui, display_cycle):
         console_print(f"[PyFT8] Band not set; please select a band.", color = 'red')
     if calldata is None:
         return
-    
+
+    def get_leader(spots, TxRx):
+        calls = list(set([v.split("|")[2] for v in spots if f"{TxRx}|" in v]))
+        if len(calls):
+            counts = [len([v for v in spots if c in v]) for c in calls]
+            return calls[np.argmax(counts)], int(np.max(counts))
+        return '',0
+
+    def get_call(spots, TxRx, call):
+        return len([v for v in spots if call in v and f"{TxRx}|" in v])
+
+    t_cut = time.time() - 60*PSKR_REFRESH_MINS
+    t_cut = time.time() - 60
+    data = calldata.spots.dict
+    recent = [k for k in data if data[k][0] > t_cut]
+
+    # refresh home square counts
+    band = qso.band_info['b']
+    if band is not None:
+        recent_band = [k for k in recent if f"|{band}|" in k]
+        tx_lead = get_leader(recent_band, 'Tx')
+        rx_lead = get_leader(recent_band, 'Rx')
+        call = config['station']['call']
+        n_spotting = get_call(recent_band, 'Tx', call)
+        n_spotted = get_call(recent_band, 'Rx', call)
+        gui.band_stats.scroll_print(f"{call:<7} {tx_lead[0]:<7}", color = '#ff756b')
+        gui.band_stats.scroll_print(f"{n_spotting:<7} {tx_lead[1]:<7}", color = '#ff756b')
+        gui.band_stats.scroll_print(f"{call:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
+        gui.band_stats.scroll_print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
+        
     # refresh band stats
     for bb in gui.button_boxes:
         band = bb.clickargs.get('band','')
         if band:
             bb.set_active(band == qso.band_info.get('b',''))
-           # if band in calldata.home_activity:
-           #     cnts = calldata.home_activity[band]
-           #     new_text = f"{cnts[0]}Tx, {cnts[1]}Rx"
-           #     if new_text != bb.get_info_text():
-           #         bb.set_info_text(new_text)
-
-    # refresh home square counts
-    b = qso.band_info['b']
-    if b is not None and b in calldata.spots.dict:
-        tx_lead,  rx_lead = "",""
-        call = config['station']['call']
-        n_spotted, n_spotting = 0,0
-        gui.band_stats.scroll_print(f"{call:<7} {tx_lead[0]:<7}", color = '#ff756b')
-        gui.band_stats.scroll_print(f"{n_spotting:<7} {tx_lead[1]:<7}", color = '#ff756b')
-        gui.band_stats.scroll_print(f"{call:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
-        gui.band_stats.scroll_print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
-
+            band_spots = [k for k in recent if f"|{band}|" in k]
+            nRx = len(set([k.split("|")[2] for k in band_spots if 'Rx|' in k]))
+            nTx = len(set([k.split("|")[2] for k in band_spots if 'Tx|' in k]))
+            new_text = f"{nTx}Tx, {nRx}Rx"
+            if new_text != bb.get_info_text():
+                bb.set_info_text(new_text)
+                
     #refresh hearing me / heard by me panel
     timewindow_str = f"<{HEARING_PANEL_LIFE_MINS:.0f} mins"
     title_txt = f"Hearing me {timewindow_str}" if display_cycle==1 else f"Heard by me {timewindow_str}"
     display_rows = [(title_txt, 2e40, 'white')]
     tnow = time.time()
-    if b is not None and b in calldata.spots.dict:
+    band = qso.band_info['b']
+    if band is not None and band in calldata.spots.dict:
         band_rpts = {}
         calls_now = {}
         subtitle_txt = f"{len(calls_now)}/{len(band_rpts)} now/ever"

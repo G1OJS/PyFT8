@@ -10,9 +10,9 @@ class DiskDict:
         self.file = file
         self.dict = {}
         self.load()
-        threading.Thread(target = self._autosave, daemon = True).start()
+        threading.Thread(target = self._manage, daemon = True).start()
 
-    def _autosave(self, autosave_period = 15):
+    def _manage(self, autosave_period = 15):
         while True:
             time.sleep(autosave_period)
             self.save()
@@ -67,12 +67,8 @@ class CallData:
                 home_role = ['Tx','Rx'][i]
                 home_entity = [se, re][i]
                 other_entity = [se, re][1-i]
-                key = f"{band}_{home_entity[0]}_{home_role}"
-                self.spots.dict.setdefault(key, {})
-                self.spots.dict[key][other_entity[0]] = {'t': int(t), 'rp':int(rp)}
-                #self.spots.dict[key].set_default(other_entity[0], {'nspots':0})
-                #nspots = self.spots.dict[key][other_entity[0]]['nspots']
-                #self.spots.dict[key][other_entity[0]] = {'t': int(t), 'rp':int(rp), 'nspots':nspots+1}
+                key = [home_role, band, home_entity[0], other_entity[0]]
+                self.spots.dict['|'.join(key)] = [int(t), int(rp)]
 
     def save_mqtt_spot(self, spot_dict):
         d = spot_dict
