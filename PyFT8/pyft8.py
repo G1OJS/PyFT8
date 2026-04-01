@@ -291,7 +291,6 @@ def on_gui_sidebars_refresh(gui, display_cycle):
     display_rows = [(title_txt, 2e40, 'white')]
     t_cut = time.time() - 60*HEARING_PANEL_LIFE_MINS
     band = qso.band_info['b']
-    new_calls = []
     if band is not None:
         band_me = [k for k in data if f"|{band}|" in k and f"|{config['station']['call']}" in k and f"{TxRx}|" in k]
         band_me_recent = [k for k in band_me if data[k][0] > t_cut]
@@ -301,7 +300,7 @@ def on_gui_sidebars_refresh(gui, display_cycle):
             timestamp, snr = data[k]
             remote_call = k.split("|")[3]
             geo_text = get_geo_text(remote_call)
-            color = 'white' if remote_call in new_calls else 'lime'
+            color = 'white' if k in calldata.new_entries else 'lime'
             display_rows.append((f"{remote_call:<7} {snr:+03d} {geo_text:<12}", timestamp, color))
     display_rows.sort(key = lambda row: row[1], reverse = True)
     gui.hm.list_print([row[0] for row in display_rows], [row[2] for row in display_rows])

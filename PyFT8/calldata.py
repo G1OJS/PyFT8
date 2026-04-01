@@ -40,8 +40,9 @@ class CallData:
         self.callsign_cache = DiskDict(f"{config_folder}/callsign_cache.json")
         self.spots = DiskDict(f"{config_folder}/spots.json")
         self.worked_before_cache = {}
-        self.lock = threading.Lock()
+        self.new_entries = []
         self.process_existing_log(f"{config_folder}/PyFT8.adi")
+        threading.Thread(target = self._prune_spots_info, daemon = True).start()
 
     def process_existing_log(self, logfile):
         import datetime
@@ -69,10 +70,22 @@ class CallData:
                 home_entity = [se, re][i]
                 other_entity = [se, re][1-i]
                 key = [home_role, band, home_entity[0], other_entity[0]]
+                if self.my_call in key:
+                    if '|'.join(key) not in self.spots.dict:
+                        self.new_entries.append('|'.join(key))
                 self.spots.dict['|'.join(key)] = [int(t), int(rp)]
 
     def save_mqtt_spot(self, spot_dict):
         d = spot_dict
         se, re = (d['sc'], d['sl']), (d['rc'], d['rl'])
         self.add_spots_info(d['b'], se, re, time.time(), d['rp'])
-                
+
+    def _prune_spots_info(self, period = 15):
+        while True:
+            time.sleep(period)
+            t_cut = time.time() - 60*self.pskr_refresh_mins
+            with self.spots.lock:
+                data = dict(self.spots.dict)
+                keys = [k for k in data if data[k][0] > t_cut or self.my_call in k]
+                self.spots.dict = {k:data[k] for k in keys}
+
