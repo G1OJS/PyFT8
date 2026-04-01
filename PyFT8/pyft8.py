@@ -12,6 +12,8 @@ from PyFT8.time_utils import global_time_utils
 from PyFT8.rigctrl import Rig
 from PyFT8.hamlib import Rig_hamlib
 from PyFT8.mqtt import PSKR_MQTT_listener
+from PyFT8.adif import ADIFLogger
+from PyFT8.calldata import CallData
 import PyFT8.maidenhead as maidenhead
 
 VER = '2.7.7'
@@ -19,7 +21,7 @@ VER = '2.7.7'
 MAX_TX_START_SECONDS = 2.5
 HEARING_PANEL_LIFE_MINS = 5
 PSKR_REFRESH_MINS = 20
-rig, gui, qso, adif_logging, pskr_info, pskr_upload = None, None, None, None, None, None
+rig, gui, qso, adif_logging, calldata, pskr_upload = None, None, None, None, None, None
 busy_profile, hearing_me = None, None
 
 def get_config():
@@ -40,61 +42,10 @@ def get_config():
         console_print(f"Wrote default config to {ini_file}")
     console_print(f"Reading config from {ini_file}")
     config.read(ini_file)
-
-def ensure_file_exists(path, header = None):
-    try:
-        with open(path, "x") as f:
-            if header is not None:
-                f.write(header)
-    except FileExistsError:
-        pass
       
-class ADIF:
-    def __init__(self, logfile):
-        self.adif_log_file = logfile
-        ensure_file_exists(self.adif_log_file, header = "header <eoh>\n")
-        console_print(f"ADIF to {self.adif_log_file}")
-        self.cache = self._build_cache()
-              
-    def log(self, times, band_info, mStation, oStation, rpts):
-        log_dict = {'call':oStation['c'], 'gridsquare':oStation['g'], 'mode':'FT8',
-        'operator':mStation['c'], 'station_callsign':mStation['c'], 'my_gridsquare':mStation['g'], 
-        'rst_sent':rpts['sent'], 'rst_rcvd':rpts['rcvd'], 
-        'qso_date':time.strftime("%Y%m%d", times['time_on']), 'qso_date_off':time.strftime("%Y%m%d", times['time_off']),
-        'time_on':time.strftime("%H%M%S", times['time_on']), 'time_off':time.strftime("%H%M%S", times['time_on']),
-        'band':band_info['b'], 'freq':band_info['fMHz']}
-        with open(self.adif_log_file,'a') as f:
-            for k, v in log_dict.items():
-                v = str(v)
-                f.write(f"<{k}:{len(v)}>{v} ")
-            f.write(f"<eor>\n")
-        cbm = log_dict['call'] + "_" + log_dict['band'] + "_FT8"
-        tm = time.time()
-        self.cache[log_dict['call']] = tm
-        self.cache[cbm] = tm
-        console_print(f"Logged QSO with {oStation['c']}")
-
-    def _build_cache(self):
-        import datetime
-        def parse(rec, field):
-            p = rec.find(field)
-            if p > 0:
-                p1, p2 = rec.find(':',p), rec.find('>',p)
-                n = int(rec[p1+1:p2])
-                return rec[p2+1: p2+1+n]
-        cache = {}
-        with open(self.adif_log_file, 'r') as f:
-            for l in f.readlines():
-                if parse(l, 'mode') == "FT8":
-                    c, b, d, t = parse(l, 'call'), parse(l, 'band'), parse(l, 'qso_date'), parse(l, 'time_on')
-                    tm = time.mktime(datetime.datetime.strptime(d+t, "%Y%m%d%H%M%S").timetuple())
-                    cache[c] = tm
-                    cache[c + "_"+b+"_FT8"] = tm
-        return cache
-
 def get_geo_text(call):
     geo_text = ''
-    loc = pskr_info.callsign_cache.data.get(call,'')
+    loc = calldata.callsign_cache.data.get(call,'')
     if loc and config['gui']['loc'] == 'km_deg':
             loc = maidenhead.db(config['station']['grid'], loc)
             geo_text = f"{int(loc[0]):5d}k {int(loc[1]):3d}°"
@@ -115,7 +66,7 @@ class Message:
         self.is_to_me = c.msg_tuple[0] == mycall
         self.is_cq = c.msg_tuple[0].startswith('CQ')
         geo_text = get_geo_text(c.msg_tuple[1])
-        wb_time = adif_logging.cache.get(c.msg_tuple[1],'')
+        wb_time = calldata.worked_before_cache.get(c.msg_tuple[1],'')
         wb_text = f"wb: {global_time_utils.format_duration(time.time() - float(wb_time))}" if wb_time else ''
         self.gui_text = f"{c.msg} {wb_text} {geo_text}"
     
@@ -182,6 +133,7 @@ class FT8_QSO:
         if adif_logging is not None:
             self.times['time_off'] = time.gmtime()
             adif_logging.log(self.times, self.band_info, self.mStation, self.oStation, self.rpts)
+            console_print(f"Logged QSO with {self.oStation['c']}")
 
 def isReport(grid_rpt):     return "+" in grid_rpt or "-" in grid_rpt
 def isRReport(grid_rpt):    return isReport(grid_rpt) and 'R' in grid_rpt
@@ -268,11 +220,11 @@ def on_rx_decode(c):
         call_b_grid = grid_rpt if isGrid(grid_rpt) else ''
         if call_b != config['station']['call']:
             pskr_upload.add_report(call_b, int(1000000*float(qso.band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 1, int(time.time()))
-            pskr_info.store_best_location(call_b, call_b_grid)
-            pskr_info.add_myspots_record(pskr_info.heard_by_me.data, qso.band_info['b'], call_b, int(time.time()), c.snr)
-        if call_b == config['station']['call'] and (isReport(grid_rpt) or isRReport(grid_rpt)):
-            rpt = grid_rpt.replace("R","")
-            pskr_info.add_myspots_record(pskr_info.hearing_me.data, qso.band_info['b'], call_a, int(time.time()), rpt)
+  #          calldata.store_best_location(call_b, call_b_grid)
+  #          calldata.add_myspots_record(calldata.heard_by_me.data, qso.band_info['b'], call_b, int(time.time()), c.snr)
+  #      if call_b == config['station']['call'] and (isReport(grid_rpt) or isRReport(grid_rpt)):
+  #          rpt = grid_rpt.replace("R","")
+  #          calldata.add_myspots_record(calldata.hearing_me.data, qso.band_info['b'], call_a, int(time.time()), rpt)
 
 def on_rx_busy_profile(busy_profile_new, cycle):
     global busy_profile, clearest_frequency
@@ -291,34 +243,34 @@ def on_rx_busy_profile(busy_profile_new, cycle):
 def on_gui_sidebars_refresh(gui, display_cycle):
     if qso.band_info['b'] is None:
         console_print(f"[PyFT8] Band not set; please select a band.", color = 'red')
-    if pskr_info is None:
+    if calldata is None:
         return
     
     # refresh band stats
-    grd = config['station']['grid'][:4]
     for bb in gui.button_boxes:
         band = bb.clickargs.get('band','')
         if band:
             bb.set_active(band == qso.band_info.get('b',''))
-            if band in pskr_info.home_activity:
-                cnts = pskr_info.home_activity[band]
+            if band in calldata.home_activity:
+                cnts = calldata.home_activity[band]
                 new_text = f"{cnts[0]}Tx, {cnts[1]}Rx"
                 if new_text != bb.get_info_text():
                     bb.set_info_text(new_text)
 
     # refresh home square counts
     b = qso.band_info['b']
-    if b is not None and b in pskr_info.home_most_remotes:
-        tx_lead,  rx_lead = pskr_info.home_most_remotes[b]
+    if b is not None and b in calldata.home_most_remotes:
+        tx_lead,  rx_lead = calldata.home_most_remotes[b]
         call = config['station']['call']
-        n_spotted, n_spotting = pskr_info.get_spot_counts(b, call)
+        n_spotted, n_spotting = calldata.get_spot_counts(b, call)
         gui.band_stats.scroll_print(f"{call:<7} {tx_lead[0]:<7}", color = '#ff756b')
         gui.band_stats.scroll_print(f"{n_spotting:<7} {tx_lead[1]:<7}", color = '#ff756b')
         gui.band_stats.scroll_print(f"{call:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
         gui.band_stats.scroll_print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
 
     #refresh hearing me / heard by me panel
-    data = pskr_info.hearing_me.data if display_cycle == 1 else pskr_info.heard_by_me.data
+    """
+    data = calldata.hearing_me.data if display_cycle == 1 else calldata.heard_by_me.data
     timewindow_str = f"<{HEARING_PANEL_LIFE_MINS:.0f} mins"
     title_txt = f"Hearing me {timewindow_str}" if display_cycle==1 else f"Heard by me {timewindow_str}"
     display_rows = [(title_txt, 2e40, 'white')]
@@ -328,7 +280,7 @@ def on_gui_sidebars_refresh(gui, display_cycle):
         calls_now = [call for call in band_rpts if (tnow - band_rpts[call]['t']) < 60*HEARING_PANEL_LIFE_MINS]
         subtitle_txt = f"{len(calls_now)}/{len(band_rpts)} now/ever"
         display_rows.append((subtitle_txt, 1e40, 'white'))
-        new_calls = pskr_info.hearing_me_new if display_cycle == 1 else pskr_info.heard_by_me_new
+        new_calls = calldata.hearing_me_new if display_cycle == 1 else calldata.heard_by_me_new
         for remote_call in calls_now:
             rpt = band_rpts[remote_call]
             call, snr, geo_text, timestamp = rpt['c'], int(rpt['rp']), get_geo_text(remote_call), rpt['t']
@@ -336,12 +288,12 @@ def on_gui_sidebars_refresh(gui, display_cycle):
             display_rows.append((f"{remote_call:<7} {snr:+03d} {geo_text:<12}", timestamp, color))
     display_rows.sort(key = lambda row: row[1], reverse = True)
     gui.hm.list_print([row[0] for row in display_rows], [row[2] for row in display_rows])
+    """
 
 def on_gui_control_click(btn_def):
     btn_action = btn_def['action']
     if btn_action == "CQ":
-        mc, mg = config['station']['call'], config['station']['grid'][:4]
-        qso.set_tx_message(f"CQ {mc} {mg}")
+        qso.set_tx_message(f"CQ {config['station']['call']} {config['station']['grid'][:4]}")
     if btn_action == "RPT_LAST":
         qso.set_tx_message(qso.last_tx)
     if btn_action == "TX_OFF":
@@ -367,7 +319,7 @@ def console_print(text, color = 'white'):
         print(text)
         
 def cli():
-    global audio_in, audio_out, output_device_idx, rig, gui, qso, config, config_folder, clearest_frequency, adif_logging, pskr_upload, pskr_info
+    global audio_in, audio_out, output_device_idx, rig, gui, qso, config, config_folder, clearest_frequency, adif_logging, pskr_upload, calldata
     import time
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-c', '--config_folder', help = 'Location of config folder e.g. C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', default = './') 
@@ -382,12 +334,13 @@ def cli():
     output_device_idx = None
     config_folder = f"{args.config_folder}".strip()
     get_config()
-    adif_logging = ADIF(f"{config_folder}/PyFT8.adi")
+    adif_logging = ADIFLogger(f"{config_folder}/PyFT8.adi")
     mc, mg = config['station']['call'], config['station']['grid']
     if mc is not None and 'pskreporter' in config.keys():
         if config['pskreporter']['upload'] == 'Y':
             pskr_upload = PSKR_upload(mc, mg, software = f"PyFT8 v{VER}", console_print = console_print) if not mc is None else None
-            pskr_info = PSKR_MQTT_listener(config_folder, mc, mg[:4], PSKR_REFRESH_MINS)
+            calldata = CallData(config_folder, mc, mg, PSKR_REFRESH_MINS)
+            pskr_listener = PSKR_MQTT_listener(mg[:4], lambda spot: calldata.save_mqtt_spot(spot))
     qso = FT8_QSO()
     if config.has_section('hamlib_rig'):
         console_print("Connecting to rig via Hamlib")
