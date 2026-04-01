@@ -221,12 +221,12 @@ def on_rx_decode(c):
         tnow = int(time.time())
         if call_b != config['station']['call']:
             pskr_upload.add_report(call_b, int(1000000*float(qso.band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 1, tnow)
-            calldata.store_best_location((call_b, call_b_grid))
             calldata.add_spots_info(qso.band_info['b'], (call_b, call_b_grid), (config['station']['call'], config['station']['grid']), tnow, c.snr)
-  #      if call_b == config['station']['call'] and (isReport(grid_rpt) or isRReport(grid_rpt)):
-  #          rpt = grid_rpt.replace("R","")
-  #          calldata.add_myspots_record(calldata.hearing_me.data, qso.band_info['b'], call_a, int(time.time()), rpt)
-
+        if call_b == config['station']['call'] and (isReport(grid_rpt) or isRReport(grid_rpt)):
+            rpt = grid_rpt.replace("R","")
+            call_a_grid = calldata.get_best_location(call_a)
+            calldata.add_spots_info(qso.band_info['b'], (config['station']['call'], config['station']['grid']), (call_a, call_a_grid), tnow, c.snr)
+  
 def on_rx_busy_profile(busy_profile_new, cycle):
     global busy_profile, clearest_frequency
     if output_device_idx is None:
@@ -252,36 +252,34 @@ def on_gui_sidebars_refresh(gui, display_cycle):
         band = bb.clickargs.get('band','')
         if band:
             bb.set_active(band == qso.band_info.get('b',''))
-            if band in calldata.home_activity:
-                cnts = calldata.home_activity[band]
-                new_text = f"{cnts[0]}Tx, {cnts[1]}Rx"
-                if new_text != bb.get_info_text():
-                    bb.set_info_text(new_text)
+           # if band in calldata.home_activity:
+           #     cnts = calldata.home_activity[band]
+           #     new_text = f"{cnts[0]}Tx, {cnts[1]}Rx"
+           #     if new_text != bb.get_info_text():
+           #         bb.set_info_text(new_text)
 
     # refresh home square counts
     b = qso.band_info['b']
-    if b is not None and b in calldata.home_most_remotes:
-        tx_lead,  rx_lead = calldata.home_most_remotes[b]
+    if b is not None and b in calldata.spots.dict:
+        tx_lead,  rx_lead = "",""
         call = config['station']['call']
-        n_spotted, n_spotting = calldata.get_spot_counts(b, call)
+        n_spotted, n_spotting = 0,0
         gui.band_stats.scroll_print(f"{call:<7} {tx_lead[0]:<7}", color = '#ff756b')
         gui.band_stats.scroll_print(f"{n_spotting:<7} {tx_lead[1]:<7}", color = '#ff756b')
         gui.band_stats.scroll_print(f"{call:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
         gui.band_stats.scroll_print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
 
     #refresh hearing me / heard by me panel
-    """
-    data = calldata.hearing_me.data if display_cycle == 1 else calldata.heard_by_me.data
     timewindow_str = f"<{HEARING_PANEL_LIFE_MINS:.0f} mins"
     title_txt = f"Hearing me {timewindow_str}" if display_cycle==1 else f"Heard by me {timewindow_str}"
     display_rows = [(title_txt, 2e40, 'white')]
     tnow = time.time()
-    if b is not None and b in data:
-        band_rpts = data[b]
-        calls_now = [call for call in band_rpts if (tnow - band_rpts[call]['t']) < 60*HEARING_PANEL_LIFE_MINS]
+    if b is not None and b in calldata.spots.dict:
+        band_rpts = {}
+        calls_now = {}
         subtitle_txt = f"{len(calls_now)}/{len(band_rpts)} now/ever"
         display_rows.append((subtitle_txt, 1e40, 'white'))
-        new_calls = calldata.hearing_me_new if display_cycle == 1 else calldata.heard_by_me_new
+        new_calls = {}
         for remote_call in calls_now:
             rpt = band_rpts[remote_call]
             call, snr, geo_text, timestamp = rpt['c'], int(rpt['rp']), get_geo_text(remote_call), rpt['t']
@@ -289,7 +287,6 @@ def on_gui_sidebars_refresh(gui, display_cycle):
             display_rows.append((f"{remote_call:<7} {snr:+03d} {geo_text:<12}", timestamp, color))
     display_rows.sort(key = lambda row: row[1], reverse = True)
     gui.hm.list_print([row[0] for row in display_rows], [row[2] for row in display_rows])
-    """
 
 def on_gui_control_click(btn_def):
     btn_action = btn_def['action']
@@ -341,7 +338,7 @@ def cli():
         if config['pskreporter']['upload'] == 'Y':
             pskr_upload = PSKR_upload(mc, mg, software = f"PyFT8 v{VER}", console_print = console_print) if not mc is None else None
             calldata = CallData(config_folder, mc, mg, PSKR_REFRESH_MINS)
-            pskr_listener = PSKR_MQTT_listener(mg[:4], lambda spot: calldata.save_mqtt_spot(spot))
+            pskr_listener = PSKR_MQTT_listener(mg, lambda spot: calldata.save_mqtt_spot(spot))
     qso = FT8_QSO()
     if config.has_section('hamlib_rig'):
         console_print("Connecting to rig via Hamlib")
