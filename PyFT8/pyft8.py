@@ -17,7 +17,8 @@ import PyFT8.maidenhead as maidenhead
 VER = '2.7.6'
 
 MAX_TX_START_SECONDS = 2.5
-SPOTLIFE = 5*60
+HEARING_PANEL_LIFE_MINS = 5
+PSKR_REFRESH_MINS = 20
 rig, gui, qso, adif_logging, pskr_info, pskr_upload = None, None, None, None, None, None
 busy_profile, hearing_me = None, None
 
@@ -260,9 +261,8 @@ def on_rx_decode(c):
         _, dx_call, dx_grid = c.msg_tuple
         if dx_call != 'not' and dx_call != config['station']['call']:
             pskr_upload.add_report(dx_call, int(1000000*float(qso.band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 1, int(time.time()))
-            loc = pskr_info.callsign_cache.data.get(dx_call, dx_grid)
-            # can't use the next line unless I keep more info than just time in the spots data and deduplicate
-            # pskr_info.add_spot({'sc':dx_call, 'sl':loc, 'rc':config['station']['call'], 'rl':config['station']['grid'], 'b':qso.band_info['b'], 'rp': c.snr})
+            pskr_info.store_best_location(dx_call, dx_grid)
+            pskr_info.add_record(pskr_info.heard_by_me.data, qso.band_info['b'], dx_call, int(time.time()), c.snr)
     print(message.wsjtx_screen_format())
     write_all_txt_row(message)
 
@@ -315,13 +315,13 @@ def on_gui_sidebars_refresh(gui):
     tnow = time.time()
     if b is not None and b in data:
         band_data = data[b]
-        timewindow_str = f"<{SPOTLIFE/60:.0f} mins"
+        timewindow_str = f"<{HEARING_PANEL_LIFE_MINS:.0f} mins"
         title_txt = f"Hearing me {timewindow_str}" if cycle==1 else f"Heard by me {timewindow_str}"
         display_rows = [(title_txt, 1e40, 'white')]
         new_calls = pskr_info.hearing_me_new if cycle == 1 else pskr_info.heard_by_me_new
         for remote_call in band_data:
             row = band_data[remote_call]
-            if (tnow - row['t']) < SPOTLIFE:
+            if (tnow - row['t']) < 60*HEARING_PANEL_LIFE_MINS:
                 call, report, geo_text, timestamp = row['c'], int(row['rp']), get_geo_text(row['c']), row['t']
                 color = 'white' if call in new_calls else 'lime'
                 display_rows.append((f"{call:<7} {report:+03d} {geo_text:<12}", timestamp, color))
@@ -378,7 +378,7 @@ def cli():
     if mc is not None and 'pskreporter' in config.keys():
         if config['pskreporter']['upload'] == 'Y':
             pskr_upload = PSKR_upload(mc, mg, software = f"PyFT8 v{VER}", console_print = console_print) if not mc is None else None
-            pskr_info = PSKR_MQTT_listener(config_folder, mc, mg[:4], SPOTLIFE)
+            pskr_info = PSKR_MQTT_listener(config_folder, mc, mg[:4], PSKR_REFRESH_MINS)
     qso = FT8_QSO()
     if config.has_section('hamlib_rig'):
         console_print("Connecting to rig via Hamlib")
@@ -410,7 +410,7 @@ def cli():
             rx = Receiver(audio_in, [200, 3100], on_rx_decode, on_rx_busy_profile)
             audio_in.start_streamed_audio(input_device_idx)
             if gui is not None:
-                gui.set_bandstats_title(f"Spots to/from {config['station']['grid'][:4]} <{SPOTLIFE/60:.0f} mins")
+                gui.set_bandstats_title(f"Pskreporter Spots\nto/from {config['station']['grid'][:4]} <{PSKR_REFRESH_MINS:.0f} mins")
                 gui.plt.show()
             else:
                 wait_for_keyboard()

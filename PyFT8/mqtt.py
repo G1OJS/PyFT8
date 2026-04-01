@@ -35,8 +35,8 @@ class DiskDict:
             os.replace(tmp_file, self.file)
                 
 class PSKR_MQTT_listener:
-    def __init__(self, config_folder, my_call, home_square, spotlife):
-        self.spotlife = spotlife
+    def __init__(self, config_folder, my_call, home_square, pskr_refresh_mins):
+        self.pskr_refresh_mins = pskr_refresh_mins
         self.my_call = my_call
         self.hearing_me = DiskDict(f"{config_folder}/hearing_me.pkl")
         self.heard_by_me = DiskDict(f"{config_folder}/heard_by_me.pkl")
@@ -65,30 +65,37 @@ class PSKR_MQTT_listener:
         client.subscribe(f"pskr/filter/v2/+/FT8/+/+/{self.home_square}/#")
         client.subscribe(f"pskr/filter/v2/+/FT8/+/+/+/{self.home_square}/#")
 
+    def store_best_location(self, call, loc):
+        existing_loc = self.callsign_cache.data.get(call, '')
+        if len(loc) > len(existing_loc):
+            self.callsign_cache.data[call] = loc
+
+    def add_time(self, key, t):
+        self.band_TxRx_homecall_report_times.data.setdefault(key, [])
+        self.band_TxRx_homecall_report_times.data[key].append(t)
+
+    def add_record(self, data, band, call, t, rp):
+        data.setdefault(band, {})
+        data[band][call] = {'t': t,'rp':rp,'c':call}
+
     def on_message(self, client, userdata, msg):
         try:
             d = literal_eval(msg.payload.decode())
         except:
             return
-        self.add_spot(d)
-
-    def add_spot(self, d):
+        tnow = time.time()
         sc, rc = (d['sc'], d['sl']), (d['rc'], d['rl'])
-        for iTxRx, c in enumerate([sc, rc]):
-            call, loc = c
-            self.callsign_cache.data[call] = loc
-            tnow = time.time()
+        for iTxRx, call_loc in enumerate([sc, rc]):
+            call, loc = call_loc
+            self.store_best_location(call, loc)
             if self.home_square in loc:
-                key = (d['b'], iTxRx, call)
-                self.band_TxRx_homecall_report_times.data.setdefault(key, [])
-                self.band_TxRx_homecall_report_times.data[key].append(tnow)
+                self.add_time((d['b'], iTxRx, call), tnow)
             if d['sc'] == self.my_call:
-                self.hearing_me.data.setdefault(d['b'], {})
+                self.add_record(self.hearing_me.data, d['b'], d['rc'], tnow, d['rp'])
                 if d['rc'] not in self.hearing_me.data[d['b']]:
                     self.hearing_me_new.append(d['rc'])
-                self.hearing_me.data[d['b']][d['rc']] = {'t': tnow,'rp': d['rp'],'c': d['rc']}
             if d['rc'] == self.my_call:
-                self.heard_by_me.data.setdefault(d['b'], {})
+                self.add_record(self.heard_by_me.data, d['b'], d['sc'], tnow, d['rp'])
                 if d['sc'] not in self.heard_by_me.data[d['b']]:
                     self.heard_by_me_new.append(d['sc'])
                 self.heard_by_me.data[d['b']][d['sc']] = {'t': tnow,'rp': d['rp'],'c': d['sc']}
@@ -106,10 +113,10 @@ class PSKR_MQTT_listener:
                 for b in self.home_most_remotes:
                     self.home_most_remotes[b] = [('',0), ('',0)]
 
-                # keep only the remote spots that happened in the self.spotlife window
+                # keep only the remote spots that happened in the self.pskr_refresh_mins window
                 for band_TxRx_homecall in self.band_TxRx_homecall_report_times.data:
                     band_TxRx_homecall_report_times = self.band_TxRx_homecall_report_times.data[band_TxRx_homecall]
-                    band_TxRx_homecall_report_times = [t for t in band_TxRx_homecall_report_times if (time.time() - t) < self.spotlife]
+                    band_TxRx_homecall_report_times = [t for t in band_TxRx_homecall_report_times if (time.time() - t) < 60*self.pskr_refresh_mins]
                     self.band_TxRx_homecall_report_times.data[band_TxRx_homecall] = band_TxRx_homecall_report_times
 
                 # count number of local Tx and Rx, and identify the local Tx and Rx with most remote spots
