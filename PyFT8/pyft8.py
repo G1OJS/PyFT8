@@ -45,7 +45,7 @@ def get_config():
       
 def get_geo_text(call):
     geo_text = ''
-    loc = calldata.callsign_cache.data.get(call,'')
+    loc = calldata.callsign_cache.dict.get(call,'')
     if loc and config['gui']['loc'] == 'km_deg':
             loc = maidenhead.db(config['station']['grid'], loc)
             geo_text = f"{int(loc[0]):5d}k {int(loc[1]):3d}°"
@@ -218,10 +218,11 @@ def on_rx_decode(c):
         if call_b == 'not':
             return
         call_b_grid = grid_rpt if isGrid(grid_rpt) else ''
+        tnow = int(time.time())
         if call_b != config['station']['call']:
-            pskr_upload.add_report(call_b, int(1000000*float(qso.band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 1, int(time.time()))
-  #          calldata.store_best_location(call_b, call_b_grid)
-  #          calldata.add_myspots_record(calldata.heard_by_me.data, qso.band_info['b'], call_b, int(time.time()), c.snr)
+            pskr_upload.add_report(call_b, int(1000000*float(qso.band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 1, tnow)
+            calldata.store_best_location((call_b, call_b_grid))
+            calldata.add_spots_info(qso.band_info['b'], (call_b, call_b_grid), (config['station']['call'], config['station']['grid']), tnow, c.snr)
   #      if call_b == config['station']['call'] and (isReport(grid_rpt) or isRReport(grid_rpt)):
   #          rpt = grid_rpt.replace("R","")
   #          calldata.add_myspots_record(calldata.hearing_me.data, qso.band_info['b'], call_a, int(time.time()), rpt)

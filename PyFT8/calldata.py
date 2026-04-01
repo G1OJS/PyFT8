@@ -8,7 +8,7 @@ class DiskDict:
     def __init__(self, file):
         self.lock = threading.Lock()
         self.file = file
-        self.data = {}
+        self.dict = {}
         self.load()
         threading.Thread(target = self._autosave, daemon = True).start()
 
@@ -21,13 +21,13 @@ class DiskDict:
         with self.lock:        
             if(os.path.exists(self.file)):
                 with open(f"{self.file}","r") as f:
-                    self.data = json.load(f)
+                    self.dict = json.load(f)
 
     def save(self):
         with self.lock:
             tmp_file = f"{self.file}.tmp"
             with open(tmp_file, "w") as f:
-                json.dump(self.data, f)
+                json.dump(self.dict, f)
                 f.flush()
                 os.fsync(f.fileno())
             os.replace(tmp_file, self.file)
@@ -56,25 +56,25 @@ class CallData:
                     self.worked_before_cache[c + "_"+b+"_FT8"] = tm
 
     def store_best_location(self, call_loc):
-        existing_loc = self.callsign_cache.data.get(call_loc[0], '')
+        existing_loc = self.callsign_cache.dict.get(call_loc[0], '')
         if len(call_loc[1]) > len(existing_loc):
-            self.callsign_cache.data[call_loc[0]] = call_loc[1]
+            self.callsign_cache.dict[call_loc[0]] = call_loc[1]
 
-    def add_spots_info(self, band, sc, rc, t, rp):
-        for i, home_entity in enumerate([sc, rc]):
+    def add_spots_info(self, band, se, re, t, rp):
+        for i, home_entity in enumerate([se, re]):
             if self.home_square in home_entity[1]:
                 home_role = ['Tx','Rx'][i]
-                home_call = [sc, rc][i]
-                other_call = [sc, rc][1-i]
-                key = f"{band}_{home_call}_{home_role}"
-                self.spots.data.setdefault(key, {})
-                self.spots.data[key][other_call] = {'t': t, 'rp':rp}
+                home_entity = [se, re][i]
+                other_entity = [se, re][1-i]
+                key = f"{band}_{home_entity[0]}_{home_role}"
+                self.spots.dict.setdefault(key, {})
+                self.spots.dict[key][other_entity[0]] = {'t': int(t), 'rp':int(rp)}
 
     def save_mqtt_spot(self, spot_dict):
         d = spot_dict
-        sc, rc = (d['sc'], d['sl']), (d['rc'], d['rl'])
-        self.store_best_location(sc)
-        self.add_spots_info(d['b'], sc, rc, time.time(), d['rp'])
+        se, re = (d['sc'], d['sl']), (d['rc'], d['rl'])
+        self.store_best_location(se)
+        self.add_spots_info(d['b'], se, re, time.time(), d['rp'])
                 
     def count_activity(self):
         import numpy as np
@@ -115,7 +115,3 @@ class CallData:
         return n_spotted, n_spotting            
                 
 
-
-                     
-
-                
