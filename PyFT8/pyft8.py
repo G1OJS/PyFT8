@@ -254,11 +254,8 @@ def on_gui_sidebars_refresh(gui, display_cycle):
             return calls[np.argmax(counts)], int(np.max(counts))
         return '',0
 
-    def get_call(spots, TxRx, call):
-        return len([v for v in spots if call in v and f"{TxRx}|" in v])
-
     t_cut = time.time() - 60*PSKR_REFRESH_MINS
-    t_cut = time.time() - 60
+    TxRx = ['Tx','Rx'][display_cycle]
     data = calldata.spots.dict
     recent = [k for k in data if data[k][0] > t_cut]
 
@@ -269,8 +266,8 @@ def on_gui_sidebars_refresh(gui, display_cycle):
         tx_lead = get_leader(recent_band, 'Tx')
         rx_lead = get_leader(recent_band, 'Rx')
         call = config['station']['call']
-        n_spotting = get_call(recent_band, 'Tx', call)
-        n_spotted = get_call(recent_band, 'Rx', call)
+        n_spotting = len(set([v for v in recent_band if call in v and "Tx|" in v]))
+        n_spotted = len(set([v for v in recent_band if call in v and "Rx|" in v]))
         gui.band_stats.scroll_print(f"{call:<7} {tx_lead[0]:<7}", color = '#ff756b')
         gui.band_stats.scroll_print(f"{n_spotting:<7} {tx_lead[1]:<7}", color = '#ff756b')
         gui.band_stats.scroll_print(f"{call:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
@@ -290,19 +287,20 @@ def on_gui_sidebars_refresh(gui, display_cycle):
                 
     #refresh hearing me / heard by me panel
     timewindow_str = f"<{HEARING_PANEL_LIFE_MINS:.0f} mins"
-    title_txt = f"Hearing me {timewindow_str}" if display_cycle==1 else f"Heard by me {timewindow_str}"
+    title_txt = f"Hearing me {timewindow_str}" if display_cycle==0 else f"Heard by me {timewindow_str}"
     display_rows = [(title_txt, 2e40, 'white')]
-    tnow = time.time()
+    t_cut = time.time() - 60*HEARING_PANEL_LIFE_MINS
     band = qso.band_info['b']
-    if band is not None and band in calldata.spots.dict:
-        band_rpts = {}
-        calls_now = {}
-        subtitle_txt = f"{len(calls_now)}/{len(band_rpts)} now/ever"
+    new_calls = []
+    if band is not None:
+        band_me = [k for k in data if f"|{band}|" in k and f"|{config['station']['call']}" in k and f"{TxRx}|" in k]
+        band_me_recent = [k for k in band_me if data[k][0] > t_cut]
+        subtitle_txt = f"{len(band_me_recent)}/{len(band_me)} now/ever"
         display_rows.append((subtitle_txt, 1e40, 'white'))
-        new_calls = {}
-        for remote_call in calls_now:
-            rpt = band_rpts[remote_call]
-            call, snr, geo_text, timestamp = rpt['c'], int(rpt['rp']), get_geo_text(remote_call), rpt['t']
+        for k in band_me_recent:
+            timestamp, snr = data[k]
+            remote_call = k.split("|")[3]
+            geo_text = get_geo_text(remote_call)
             color = 'white' if remote_call in new_calls else 'lime'
             display_rows.append((f"{remote_call:<7} {snr:+03d} {geo_text:<12}", timestamp, color))
     display_rows.sort(key = lambda row: row[1], reverse = True)
