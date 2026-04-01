@@ -16,7 +16,7 @@ from PyFT8.adif import ADIFLogger
 from PyFT8.calldata import CallData
 import PyFT8.maidenhead as maidenhead
 
-VER = '2.7.7'
+VER = '2.8.0'
 
 MAX_TX_START_SECONDS = 2.5
 HEARING_PANEL_LIFE_MINS = 5
@@ -206,7 +206,7 @@ def write_all_txt_row(message):
 
 #============= Callbacks for Receiver ==========================================================
 def on_rx_decode(c):
-    if (c.decode_completed - qso.band_info['time_set']) < 5: # prevent bad QRG -> heard_by_me and pskreporter upload data
+    if (c.decode_completed - qso.band_info['time_set']) < 9: # prevent bad QRG -> heard_by_me and pskreporter upload data
         return
     message = Message(c)
     if gui:
