@@ -247,11 +247,11 @@ def on_gui_sidebars_refresh(gui, display_cycle):
     if calldata is None:
         return
 
-    def get_leader(spots, TxRx):
-        calls = list(set([v.split("|")[2] for v in spots if f"{TxRx}|" in v]))
-        if len(calls):
-            counts = [len([v for v in spots if c in v]) for c in calls]
-            return calls[np.argmax(counts)], int(np.max(counts))
+    def get_home_leader(spots):
+        home_calls = list([v.split("|")[2] for v in spots])
+        if len(home_calls):
+            counts = [len([v for v in spots if f"|{hc}|" in v]) for hc in home_calls]
+            return home_calls[np.argmax(counts)], int(np.max(counts))
         return '',0
 
     t_cut = time.time() - 60*PSKR_REFRESH_MINS
@@ -262,16 +262,17 @@ def on_gui_sidebars_refresh(gui, display_cycle):
     # refresh home square counts
     band = qso.band_info['b']
     if band is not None:
-        recent_band = [k for k in recent if f"|{band}|" in k]
-        tx_lead = get_leader(recent_band, 'Tx')
-        rx_lead = get_leader(recent_band, 'Rx')
-        call = config['station']['call']
-        n_spotting = len(set([v for v in recent_band if call in v and "Tx|" in v]))
-        n_spotted = len(set([v for v in recent_band if call in v and "Rx|" in v]))
-        gui.band_stats.scroll_print(f"{call:<7} {tx_lead[0]:<7}", color = '#ff756b')
-        gui.band_stats.scroll_print(f"{n_spotting:<7} {tx_lead[1]:<7}", color = '#ff756b')
-        gui.band_stats.scroll_print(f"{call:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
-        gui.band_stats.scroll_print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
+        hc = config['station']['call']
+        recent_band_Tx = [k for k in recent if f"Tx|{band}|" in k]
+        recent_band_Rx = [k for k in recent if f"Rx|{band}|" in k]
+        tx_hc = (hc, len(set([v for v in recent_band_Tx if f"|{hc}|" in v])))
+        rx_hc = (hc, len(set([v for v in recent_band_Rx if f"|{hc}|" in v])))
+        tx_lead = get_home_leader([k for k in recent_band_Tx if not f"|{hc}|" in k])
+        rx_lead = get_home_leader([k for k in recent_band_Rx if not f"|{hc}|" in k])
+        gui.band_stats.scroll_print(f"{tx_hc[0]:<7} {tx_lead[0]:<7}", color = '#ff756b')
+        gui.band_stats.scroll_print(f"{tx_hc[1]:<7} {tx_lead[1]:<7}", color = '#ff756b')
+        gui.band_stats.scroll_print(f"{rx_hc[0]:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
+        gui.band_stats.scroll_print(f"{rx_hc[1]:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
         
     # refresh band stats
     for bb in gui.button_boxes:
