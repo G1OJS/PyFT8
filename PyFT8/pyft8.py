@@ -254,6 +254,8 @@ def write_all_txt_row(message):
 
 #============= Callbacks for Receiver ==========================================================
 def on_rx_decode(c):
+    if (c.decode_completed - qso.band_info['time_set']) < 5: # prevent bad QRG -> heard_by_me and pskreporter upload data
+        return
     message = Message(c)
     if gui:
         gui.add_message_box(message)
@@ -271,7 +273,6 @@ def on_rx_decode(c):
         if call_b == config['station']['call'] and (isReport(grid_rpt) or isRReport(grid_rpt)):
             rpt = grid_rpt.replace("R","")
             pskr_info.add_myspots_record(pskr_info.hearing_me.data, qso.band_info['b'], call_a, int(time.time()), rpt)
-
 
 def on_rx_busy_profile(busy_profile_new, cycle):
     global busy_profile, clearest_frequency
@@ -349,7 +350,7 @@ def on_gui_control_click(btn_def):
         qso.tx_cycle = None
     if(btn_action == 'SET_BAND'):
         band, freqMHz = btn_def['band'], btn_def['freq']
-        qso.band_info = {'b':band, 'fMHz':freqMHz}
+        qso.band_info = {'b':band, 'fMHz':freqMHz, 'time_set':time.time()}
         rig.set_freq_Hz(int(1000000*float(qso.band_info['fMHz'])))
         console_print(f"[PyFT8] Set band: {qso.band_info['b']} {qso.band_info['fMHz']}")
         gui.band_stats.clear()
