@@ -215,7 +215,7 @@ def on_rx_decode(c):
     write_all_txt_row(message)
     if qso.band_info['b'] is not None and pskr_upload is not None:
         call_a, call_b, grid_rpt = c.msg_tuple
-        if call_b == 'not':
+        if call_b == 'not' or call_b == call_a:
             return
         call_b_grid = grid_rpt if isGrid(grid_rpt) else ''
         tnow = int(time.time())
@@ -223,9 +223,9 @@ def on_rx_decode(c):
             pskr_upload.add_report(call_b, int(1000000*float(qso.band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 1, tnow)
             calldata.add_spots_info(qso.band_info['b'], (call_b, call_b_grid), (config['station']['call'], config['station']['grid']), tnow, c.snr)
         if call_b == config['station']['call'] and (isReport(grid_rpt) or isRReport(grid_rpt)):
-            rpt = grid_rpt.replace("R","")
+            rpt = int(grid_rpt.replace("R",""))
             call_a_grid = calldata.get_best_location(call_a)
-            calldata.add_spots_info(qso.band_info['b'], (config['station']['call'], config['station']['grid']), (call_a, call_a_grid), tnow, c.snr)
+            calldata.add_spots_info(qso.band_info['b'], (config['station']['call'], config['station']['grid']), (call_a, call_a_grid), tnow, rpt)
   
 def on_rx_busy_profile(busy_profile_new, cycle):
     global busy_profile, clearest_frequency

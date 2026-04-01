@@ -25,12 +25,13 @@ class DiskDict:
 
     def save(self):
         with self.lock:
-            tmp_file = f"{self.file}.tmp"
-            with open(tmp_file, "w") as f:
-                json.dump(self.dict, f)
-                f.flush()
-                os.fsync(f.fileno())
-            os.replace(tmp_file, self.file)
+            snapshot = dict(self.dict)
+        tmp_file = f"{self.file}.tmp"
+        with open(tmp_file, "w") as f:
+            json.dump(snapshot, f)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_file, self.file)
 
 class CallData:
     def __init__(self, config_folder, my_call, home_square, pskr_refresh_mins):
