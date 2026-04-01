@@ -70,11 +70,11 @@ class PSKR_MQTT_listener:
         if len(loc) > len(existing_loc):
             self.callsign_cache.data[call] = loc
 
-    def add_time(self, key, t):
+    def add_homespots_record(self, key, t):
         self.band_TxRx_homecall_report_times.data.setdefault(key, [])
         self.band_TxRx_homecall_report_times.data[key].append(t)
 
-    def add_record(self, data, band, call, t, rp):
+    def add_myspots_record(self, data, band, call, t, rp):
         data.setdefault(band, {})
         data[band][call] = {'t': t,'rp':rp,'c':call}
 
@@ -89,13 +89,13 @@ class PSKR_MQTT_listener:
             call, loc = call_loc
             self.store_best_location(call, loc)
             if self.home_square in loc:
-                self.add_time((d['b'], iTxRx, call), tnow)
+                self.add_homespots_record((d['b'], iTxRx, call), tnow)
             if d['sc'] == self.my_call:
-                self.add_record(self.hearing_me.data, d['b'], d['rc'], tnow, d['rp'])
+                self.add_myspots_record(self.hearing_me.data, d['b'], d['rc'], tnow, d['rp'])
                 if d['rc'] not in self.hearing_me.data[d['b']]:
                     self.hearing_me_new.append(d['rc'])
             if d['rc'] == self.my_call:
-                self.add_record(self.heard_by_me.data, d['b'], d['sc'], tnow, d['rp'])
+                self.add_myspots_record(self.heard_by_me.data, d['b'], d['sc'], tnow, d['rp'])
                 if d['sc'] not in self.heard_by_me.data[d['b']]:
                     self.heard_by_me_new.append(d['sc'])
                 self.heard_by_me.data[d['b']][d['sc']] = {'t': tnow,'rp': d['rp'],'c': d['sc']}

@@ -258,11 +258,12 @@ def on_rx_decode(c):
     if gui:
         gui.add_message_box(message)
     if qso.band_info['b'] is not None and pskr_upload is not None:
-        _, dx_call, dx_grid = c.msg_tuple
+        _, dx_call, grid_rpt = c.msg_tuple
+        dx_grid = grid_rpt if isGrid(grid_rpt) else ''
         if dx_call != 'not' and dx_call != config['station']['call']:
             pskr_upload.add_report(dx_call, int(1000000*float(qso.band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 1, int(time.time()))
             pskr_info.store_best_location(dx_call, dx_grid)
-            pskr_info.add_record(pskr_info.heard_by_me.data, qso.band_info['b'], dx_call, int(time.time()), c.snr)
+            pskr_info.add_myspots_record(pskr_info.heard_by_me.data, qso.band_info['b'], dx_call, int(time.time()), c.snr)
     print(message.wsjtx_screen_format())
     write_all_txt_row(message)
 
