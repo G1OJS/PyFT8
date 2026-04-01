@@ -45,7 +45,6 @@ class PSKR_MQTT_listener:
         self.home_square = home_square
         self.callsign_cache = DiskDict(f"{config_folder}/callsign_cache.pkl")
         self.band_TxRx_homecall_report_times = DiskDict(f"{config_folder}/report_times.pkl")
-        self.band_TxRx_homecall_couniTxRxemotes = {}
         self.home_activity = {}
         self.home_most_remotes = {}
         self.lock = threading.Lock()
@@ -99,7 +98,6 @@ class PSKR_MQTT_listener:
         while True:
             time.sleep(5)
             self.home_activity = {}
-            self.band_TxRx_homecall_couniTxRxemotes = {}
             self.home_most_remotes = {}
             with self.lock:
                 # clear counters for each band
