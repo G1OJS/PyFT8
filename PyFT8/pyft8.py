@@ -257,15 +257,21 @@ def on_rx_decode(c):
     message = Message(c)
     if gui:
         gui.add_message_box(message)
-    if qso.band_info['b'] is not None and pskr_upload is not None:
-        _, dx_call, grid_rpt = c.msg_tuple
-        dx_grid = grid_rpt if isGrid(grid_rpt) else ''
-        if dx_call != 'not' and dx_call != config['station']['call']:
-            pskr_upload.add_report(dx_call, int(1000000*float(qso.band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 1, int(time.time()))
-            pskr_info.store_best_location(dx_call, dx_grid)
-            pskr_info.add_myspots_record(pskr_info.heard_by_me.data, qso.band_info['b'], dx_call, int(time.time()), c.snr)
     print(message.wsjtx_screen_format())
     write_all_txt_row(message)
+    if qso.band_info['b'] is not None and pskr_upload is not None:
+        call_a, call_b, grid_rpt = c.msg_tuple
+        if call_b == 'not':
+            return
+        call_b_grid = grid_rpt if isGrid(grid_rpt) else ''
+        if call_b != config['station']['call']:
+            pskr_upload.add_report(call_b, int(1000000*float(qso.band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 1, int(time.time()))
+            pskr_info.store_best_location(call_b, call_b_grid)
+            pskr_info.add_myspots_record(pskr_info.heard_by_me.data, qso.band_info['b'], call_b, int(time.time()), c.snr)
+        if call_b == config['station']['call'] and (isReport(grid_rpt) or isRReport(grid_rpt)):
+            rpt = grid_rpt.replace("R","")
+            pskr_info.add_myspots_record(pskr_info.hearing_me.data, qso.band_info['b'], call_a, int(time.time()), rpt)
+
 
 def on_rx_busy_profile(busy_profile_new, cycle):
     global busy_profile, clearest_frequency
