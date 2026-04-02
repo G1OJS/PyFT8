@@ -242,7 +242,7 @@ def on_rx_busy_profile(busy_profile_new, cycle):
         idx = np.argmin(busy_profile[f0_idx:fn_idx])
         clearest_frequency = (f0_idx + idx) * audio_in.df
     busy_profile = busy_profile_new
-    console_print(f"[on_busy] Clear Tx frequency found at {clearest_frequency:6.1f}")
+    #console_print(f"[on_busy] Clear Tx frequency found at {clearest_frequency:6.1f}")
 
 #============= Callbacks for GUI ==========================================================
 def on_gui_sidebars_refresh(gui, display_cycle):
@@ -251,58 +251,41 @@ def on_gui_sidebars_refresh(gui, display_cycle):
     if calldata is None:
         return
 
-    def get_home_leader(spots):
-        home_calls = list([v.split("|")[2] for v in spots])
-        if len(home_calls):
-            counts = [len([v for v in spots if f"|{hc}|" in v]) for hc in home_calls]
-            return home_calls[np.argmax(counts)], int(np.max(counts))
-        return '',0
+    spots = calldata.get_spots()
+    recent_spots = calldata.get_spots(since_time = time.time() - 60*PSKR_REFRESH_MINS)
 
-    t_cut = time.time() - 60*PSKR_REFRESH_MINS
-    TxRx = ['Tx','Rx'][display_cycle]
-    data = calldata.spots.dict
-    recent = [k for k in data if data[k][0] > t_cut]
-
-    # refresh home square counts
-    band = qso.band_info['b']
-    if band is not None:
-        hc = config['station']['call']
-        recent_band_Tx = [k for k in recent if f"Tx|{band}|" in k]
-        recent_band_Rx = [k for k in recent if f"Rx|{band}|" in k]
-        tx_hc = (hc, len(set([v for v in recent_band_Tx if f"|{hc}|" in v])))
-        rx_hc = (hc, len(set([v for v in recent_band_Rx if f"|{hc}|" in v])))
-        tx_lead = get_home_leader([k for k in recent_band_Tx if not f"|{hc}|" in k])
-        rx_lead = get_home_leader([k for k in recent_band_Rx if not f"|{hc}|" in k])
-        gui.band_stats.scroll_print(f"{tx_hc[0]:<7} {tx_lead[0]:<7}", color = '#ff756b')
-        gui.band_stats.scroll_print(f"{tx_hc[1]:<7} {tx_lead[1]:<7}", color = '#ff756b')
-        gui.band_stats.scroll_print(f"{rx_hc[0]:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
-        gui.band_stats.scroll_print(f"{rx_hc[1]:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
-        
     # refresh band stats
     for bb in gui.button_boxes:
         band = bb.clickargs.get('band','')
         if band:
             bb.set_active(band == qso.band_info.get('b',''))
-            band_spots = [k for k in recent if f"|{band}|" in k]
-            nRx = len(set([k.split("|")[2] for k in band_spots if 'Rx|' in k]))
-            nTx = len(set([k.split("|")[2] for k in band_spots if 'Tx|' in k]))
+            nTx, nRx = calldata.get_band_TxRx_count(recent_spots, band)
             new_text = f"{nTx}Tx, {nRx}Rx"
             if new_text != bb.get_info_text():
                 bb.set_info_text(new_text)
+
+    # refresh home square counts
+    band = qso.band_info['b']
+    if band is not None:
+        tx_hc, rx_hc, tx_lead, rx_lead = calldata.get_band_detail(recent_spots, band)
+        gui.band_stats.scroll_print(f"{tx_hc[0]:<7} {tx_lead[0]:<7}", color = '#ff756b')
+        gui.band_stats.scroll_print(f"{tx_hc[1]:<7} {tx_lead[1]:<7}", color = '#ff756b')
+        gui.band_stats.scroll_print(f"{rx_hc[0]:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
+        gui.band_stats.scroll_print(f"{rx_hc[1]:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
                 
     #refresh hearing me / heard by me panel
+    TxRx = ['Tx','Rx'][display_cycle]
     timewindow_str = f"<{HEARING_PANEL_LIFE_MINS:.0f} mins"
     title_txt = f"Hearing me {timewindow_str}" if display_cycle==0 else f"Heard by me {timewindow_str}"
     display_rows = [(title_txt, 2e40, 'white')]
-    t_cut = time.time() - 60*HEARING_PANEL_LIFE_MINS
     band = qso.band_info['b']
     if band is not None:
-        band_me = [k for k in data if f"|{band}|" in k and f"|{config['station']['call']}" in k and f"{TxRx}|" in k]
-        band_me_recent = [k for k in band_me if data[k][0] > t_cut]
-        subtitle_txt = f"{len(band_me_recent)}/{len(band_me)} now/ever"
+        spots_band_me = calldata.get_band_spots_for_call(spots, band, config['station']['call'], TxRx)
+        recent_spots_band_me = calldata.get_band_spots_for_call(recent_spots, band, config['station']['call'], TxRx)
+        subtitle_txt = f"{len(recent_spots_band_me)}/{len(spots_band_me)} now/ever"
         display_rows.append((subtitle_txt, 1e40, 'white'))
-        for k in band_me_recent:
-            timestamp, snr = data[k]
+        for k in recent_spots_band_me:
+            timestamp, snr = spots[k]
             remote_call = k.split("|")[3]
             geo_text = get_geo_text(remote_call)
             color = 'white' if k in calldata.new_entries else 'lime'

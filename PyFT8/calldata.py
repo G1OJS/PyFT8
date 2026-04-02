@@ -90,3 +90,36 @@ class CallData:
                 keys = [k for k in data if data[k][0] > t_cut or self.my_call in k]
                 self.spots.dict = {k:data[k] for k in keys}
 
+    def get_spots(self, since_time = None):
+        spots = self.spots.dict
+        return spots if since_time is None else [k for k in spots if spots[k][0] > since_time]
+        
+
+    def get_band_detail(self, spots, band):
+        def get_home_leader(spots):
+            from numpy import argmax
+            home_calls = list([v.split("|")[2] for v in spots])
+            if len(home_calls):
+                counts = [len([v for v in spots if f"|{hc}|" in v]) for hc in home_calls]
+                idx = argmax(counts)
+                return home_calls[idx], int(counts[idx])
+            return '',0
+        hc = self.my_call
+        recent_band_Tx = [k for k in spots if f"Tx|{band}|" in k]
+        recent_band_Rx = [k for k in spots if f"Rx|{band}|" in k]
+        tx_hc = (hc, len(set([v for v in recent_band_Tx if f"|{hc}|" in v])))
+        rx_hc = (hc, len(set([v for v in recent_band_Rx if f"|{hc}|" in v])))
+        tx_lead = get_home_leader([k for k in recent_band_Tx if not f"|{hc}|" in k])
+        rx_lead = get_home_leader([k for k in recent_band_Rx if not f"|{hc}|" in k])
+        return tx_hc, rx_hc, tx_lead, rx_lead
+
+
+    def get_band_TxRx_count(self, spots, band):
+        recent_band_Tx = [k for k in spots if f"Tx|{band}|" in k]
+        recent_band_Rx = [k for k in spots if f"Rx|{band}|" in k]
+        nRx = len(set([k.split("|")[2] for k in recent_band_Rx]))
+        nTx = len(set([k.split("|")[2] for k in recent_band_Tx]))
+        return nTx, nRx
+
+    def get_band_spots_for_call(self, spots, band, call, TxRx):
+        return [k for k in spots if f"|{band}|" in k and f"|{call}" in k and f"{TxRx}|" in k]
