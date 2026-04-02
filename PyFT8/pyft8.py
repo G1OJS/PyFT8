@@ -254,26 +254,27 @@ def on_gui_sidebars_refresh(gui, display_cycle):
 
     spots = calldata.spots.dict
     spots_band = calldata.band_filter_spots(spots, qso.band_info['b'])
-    _recent_spots = calldata.time_window_spots(spots, since_time = time.time() - 60*PSKR_REFRESH_MINS)
-    recent_spots_band = calldata.band_filter_spots(_recent_spots, qso.band_info['b'])
+    recent_spots = calldata.time_window_spots(spots, since_time = time.time() - 60*PSKR_REFRESH_MINS)
+    recent_spots_band = calldata.band_filter_spots(recent_spots, qso.band_info['b'])    
 
     # refresh band stats
     for bb in gui.button_boxes:
         band = bb.clickargs.get('band','')
         if band:
             bb.set_active(band == qso.band_info.get('b',''))
-            nTx, nRx = calldata.get_TxRx_count(recent_spots_band)
+            recent_spots_band_tmp = calldata.band_filter_spots(recent_spots, band)
+            nTx, nRx = calldata.get_TxRx_count(recent_spots_band_tmp)
             new_text = f"{nTx}Tx, {nRx}Rx"
             if new_text != bb.get_info_text():
                 bb.set_info_text(new_text)
-
+      
     # refresh home square counts
     tx_hc, rx_hc, tx_lead, rx_lead = calldata.get_band_detail(recent_spots_band)
     gui.band_stats.scroll_print(f"{tx_hc[0]:<7} {tx_lead[0]:<7}", color = '#ff756b')
     gui.band_stats.scroll_print(f"{tx_hc[1]:<7} {tx_lead[1]:<7}", color = '#ff756b')
     gui.band_stats.scroll_print(f"{rx_hc[0]:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
     gui.band_stats.scroll_print(f"{rx_hc[1]:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
-                
+
     #refresh hearing me / heard by me panel
     TxRx = ['Tx','Rx'][display_cycle]
     timewindow_str = f"<{HEARING_PANEL_LIFE_MINS:.0f} mins"
@@ -286,6 +287,7 @@ def on_gui_sidebars_refresh(gui, display_cycle):
         subtitle_txt = f"{len(recent_spots_band_me)}/{len(spots_band_me)} now/ever"
         display_rows.append((subtitle_txt, 1e40, 'white'))
         for k in recent_spots_band_me:
+            time.sleep(0.001)
             timestamp, snr = spots[k]
             remote_call = k.split("|")[3]
             geo_text = get_geo_text(remote_call)
