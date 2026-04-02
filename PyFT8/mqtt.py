@@ -91,6 +91,7 @@ class PSKR_MQTT_listener:
             if self.home_square in loc:
                 self.add_homespots_record((d['b'], iTxRx, call), tnow)
             if d['sc'] == self.my_call:
+                print(d)
                 if d['rc'] not in self.hearing_me.data[d['b']]:
                     self.hearing_me_new.append(d['rc'])
                 self.add_myspots_record(self.hearing_me.data, d['b'], d['rc'], tnow, d['rp'])
@@ -128,8 +129,10 @@ class PSKR_MQTT_listener:
                         self.home_activity[b][iTxRx] +=1
                         self.home_most_remotes.setdefault(b, [('',0), ('',0)])
                         nremotes = len(band_TxRx_homecall_report_times)
-                        if nremotes>self.home_most_remotes[b][iTxRx][1]:
-                            self.home_most_remotes[b][iTxRx] = (c, nremotes)
+                        current_winner = self.home_most_remotes[b][iTxRx]
+                        if nremotes > current_winner[1]:
+                            if c != self.my_call:
+                                self.home_most_remotes[b][iTxRx] = (c, nremotes)
 
     def get_spot_counts(self, band, call):
         tx_reports = self.band_TxRx_homecall_report_times.data.get((band, 0, call), [])

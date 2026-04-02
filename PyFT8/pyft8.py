@@ -62,7 +62,7 @@ class ADIF:
         'rst_sent':rpts['sent'], 'rst_rcvd':rpts['rcvd'], 
         'qso_date':time.strftime("%Y%m%d", times['time_on']), 'qso_date_off':time.strftime("%Y%m%d", times['time_off']),
         'time_on':time.strftime("%H%M%S", times['time_on']), 'time_off':time.strftime("%H%M%S", times['time_on']),
-        'band':band_info['b'], 'freq':band_info['fMHz'], 'time_set':0}
+        'band':band_info['b'], 'freq':band_info['fMHz']}
         with open(self.adif_log_file,'a') as f:
             for k, v in log_dict.items():
                 v = str(v)
@@ -75,7 +75,7 @@ class ADIF:
         console_print(f"Logged QSO with {oStation['c']}")
 
     def _build_cache(self):
-        import datetime
+        import calendar
         def parse(rec, field):
             p = rec.find(field)
             if p > 0:
@@ -87,7 +87,10 @@ class ADIF:
             for l in f.readlines():
                 if parse(l, 'mode') == "FT8":
                     c, b, d, t = parse(l, 'call'), parse(l, 'band'), parse(l, 'qso_date'), parse(l, 'time_on')
-                    tm = time.mktime(datetime.datetime.strptime(d+t, "%Y%m%d%H%M%S").timetuple())
+                    time_tuple = time.strptime(d+t, "%Y%m%d%H%M%S")
+                    tm = calendar.timegm(time_tuple)
+                   # if time.time()-tm < 36000:
+                   #     print(c, b, d, t, int(time.time()-tm))
                     cache[c] = tm
                     cache[c + "_"+b+"_FT8"] = tm
         return cache
@@ -130,7 +133,7 @@ class FT8_QSO:
     def __init__(self):
         if config is not None:
             self.mStation = {'c':config['station']['call'], 'g':config['station']['grid']}
-        self.band_info = {'b':None, 'fMHz':0}
+        self.band_info = {'b':None, 'fMHz':0, 'time_set':0}
         self.tx_freq = 750
         threading.Thread(target = self._transmitter, daemon = True).start()
         self.clear()
@@ -285,7 +288,7 @@ def on_rx_busy_profile(busy_profile_new, cycle):
         idx = np.argmin(busy_profile[f0_idx:fn_idx])
         clearest_frequency = (f0_idx + idx) * audio_in.df
     busy_profile = busy_profile_new
-    console_print(f"[on_busy] Clear Tx frequency found at {clearest_frequency:6.1f}")
+    #console_print(f"[on_busy] Clear Tx frequency found at {clearest_frequency:6.1f}")
 
 #============= Callbacks for GUI ==========================================================
 def on_gui_sidebars_refresh(gui, display_cycle):
