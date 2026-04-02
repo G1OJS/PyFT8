@@ -181,11 +181,12 @@ def progress_qso(clicked_message):
             qso.rpts['rcvd'] = grid_rpt[-3:]
         if isRReport(grid_rpt) or isRRR(grid_rpt):
             reply = f"{qso.oStation['c']} {my_station['c']} RR73"
-            qso.log()
         if isRR73(grid_rpt):
             reply = f"{qso.oStation['c']} {my_station['c']} 73"
-            qso.log()
         qso.set_tx_message(reply)
+        
+        if reply.endswith("73"): 
+            qso.log()
 
 def make_wav(msg, wave_output_file): # move to transmitter.py?
     symbols = audio_out.create_ft8_symbols(msg)
@@ -248,30 +249,30 @@ def on_rx_busy_profile(busy_profile_new, cycle):
 def on_gui_sidebars_refresh(gui, display_cycle):
     if qso.band_info['b'] is None:
         console_print(f"[PyFT8] Band not set; please select a band.", color = 'red')
-    if calldata is None:
+    if calldata is None or qso.band_info['b'] is None:
         return
 
-    spots = calldata.get_spots()
-    recent_spots = calldata.get_spots(since_time = time.time() - 60*PSKR_REFRESH_MINS)
+    spots = calldata.spots.dict
+    spots_band = calldata.band_filter_spots(spots, qso.band_info['b'])
+    _recent_spots = calldata.time_window_spots(spots, since_time = time.time() - 60*PSKR_REFRESH_MINS)
+    recent_spots_band = calldata.band_filter_spots(_recent_spots, qso.band_info['b'])
 
     # refresh band stats
     for bb in gui.button_boxes:
         band = bb.clickargs.get('band','')
         if band:
             bb.set_active(band == qso.band_info.get('b',''))
-            nTx, nRx = calldata.get_band_TxRx_count(recent_spots, band)
+            nTx, nRx = calldata.get_TxRx_count(recent_spots_band)
             new_text = f"{nTx}Tx, {nRx}Rx"
             if new_text != bb.get_info_text():
                 bb.set_info_text(new_text)
 
     # refresh home square counts
-    band = qso.band_info['b']
-    if band is not None:
-        tx_hc, rx_hc, tx_lead, rx_lead = calldata.get_band_detail(recent_spots, band)
-        gui.band_stats.scroll_print(f"{tx_hc[0]:<7} {tx_lead[0]:<7}", color = '#ff756b')
-        gui.band_stats.scroll_print(f"{tx_hc[1]:<7} {tx_lead[1]:<7}", color = '#ff756b')
-        gui.band_stats.scroll_print(f"{rx_hc[0]:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
-        gui.band_stats.scroll_print(f"{rx_hc[1]:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
+    tx_hc, rx_hc, tx_lead, rx_lead = calldata.get_band_detail(recent_spots_band)
+    gui.band_stats.scroll_print(f"{tx_hc[0]:<7} {tx_lead[0]:<7}", color = '#ff756b')
+    gui.band_stats.scroll_print(f"{tx_hc[1]:<7} {tx_lead[1]:<7}", color = '#ff756b')
+    gui.band_stats.scroll_print(f"{rx_hc[0]:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
+    gui.band_stats.scroll_print(f"{rx_hc[1]:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
                 
     #refresh hearing me / heard by me panel
     TxRx = ['Tx','Rx'][display_cycle]
@@ -280,8 +281,8 @@ def on_gui_sidebars_refresh(gui, display_cycle):
     display_rows = [(title_txt, 2e40, 'white')]
     band = qso.band_info['b']
     if band is not None:
-        spots_band_me = calldata.get_band_spots_for_call(spots, band, config['station']['call'], TxRx)
-        recent_spots_band_me = calldata.get_band_spots_for_call(recent_spots, band, config['station']['call'], TxRx)
+        spots_band_me = calldata.get_spots_for_call(spots_band, config['station']['call'], TxRx)
+        recent_spots_band_me = calldata.get_spots_for_call(recent_spots_band, config['station']['call'], TxRx)
         subtitle_txt = f"{len(recent_spots_band_me)}/{len(spots_band_me)} now/ever"
         display_rows.append((subtitle_txt, 1e40, 'white'))
         for k in recent_spots_band_me:
