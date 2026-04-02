@@ -62,7 +62,7 @@ class ADIF:
         'rst_sent':rpts['sent'], 'rst_rcvd':rpts['rcvd'], 
         'qso_date':time.strftime("%Y%m%d", times['time_on']), 'qso_date_off':time.strftime("%Y%m%d", times['time_off']),
         'time_on':time.strftime("%H%M%S", times['time_on']), 'time_off':time.strftime("%H%M%S", times['time_on']),
-        'band':band_info['b'], 'freq':band_info['fMHz']}
+        'band':band_info['b'], 'freq':band_info['fMHz'], 'time_set':0}
         with open(self.adif_log_file,'a') as f:
             for k, v in log_dict.items():
                 v = str(v)
@@ -254,7 +254,7 @@ def write_all_txt_row(message):
 
 #============= Callbacks for Receiver ==========================================================
 def on_rx_decode(c):
-    if (c.decode_completed - qso.band_info['time_set']) < 5: # prevent bad QRG -> heard_by_me and pskreporter upload data
+    if (c.decode_completed - qso.band_info['time_set']) < 9: # prevent bad QRG -> heard_by_me and pskreporter upload data
         return
     message = Message(c)
     if gui:
