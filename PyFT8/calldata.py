@@ -45,12 +45,13 @@ class CallData:
         threading.Thread(target = self._prune_spots_info, daemon = True).start()
 
     def process_existing_log(self, logfile):
-        import datetime
+        import calendar
         with open(logfile, 'r') as f:
             for l in f.readlines():
                 if parse_adif(l, 'mode') == "FT8":
                     c, b, d, t = parse_adif(l, 'call'), parse_adif(l, 'band'), parse_adif(l, 'qso_date'), parse_adif(l, 'time_on')
-                    tm = time.mktime(datetime.datetime.strptime(d+t, "%Y%m%d%H%M%S").timetuple())
+                    time_tuple = time.strptime(d+t, "%Y%m%d%H%M%S")
+                    tm = calendar.timegm(time_tuple)
                     self.worked_before_cache[c] = tm
                     self.worked_before_cache[c + "_"+b+"_FT8"] = tm
 

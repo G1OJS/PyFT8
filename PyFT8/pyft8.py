@@ -134,6 +134,10 @@ class FT8_QSO:
             self.times['time_off'] = time.gmtime()
             adif_logging.log(self.times, self.band_info, self.mStation, self.oStation, self.rpts)
             console_print(f"Logged QSO with {self.oStation['c']}")
+        tm = time.time()
+        cbm = self.oStation['c'] + "_" + self.band_info['b'] + "_FT8"
+        calldata.worked_before_cache[self.oStation['c']] = tm
+        calldata.worked_before_cache[cbm] = tm
 
 def isReport(grid_rpt):     return "+" in grid_rpt or "-" in grid_rpt
 def isRReport(grid_rpt):    return isReport(grid_rpt) and 'R' in grid_rpt

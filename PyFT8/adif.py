@@ -32,9 +32,6 @@ class ADIFLogger:
                 v = str(v)
                 f.write(f"<{k}:{len(v)}>{v} ")
             f.write(f"<eor>\n")
-        cbm = log_dict['call'] + "_" + log_dict['band'] + "_FT8"
-        tm = time.time()
-        self.cache[log_dict['call']] = tm
-        self.cache[cbm] = tm
+
 
 
