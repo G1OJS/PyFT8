@@ -334,7 +334,7 @@ def on_gui_sidebars_refresh(gui, display_cycle):
         new_calls = pskr_info.hearing_me_new if display_cycle == 1 else pskr_info.heard_by_me_new
         for remote_call in calls_now:
             rpt = band_rpts[remote_call]
-            call, snr, geo_text, timestamp = rpt['c'], int(rpt['rp']), get_geo_text(remote_call), rpt['t']
+            snr, geo_text, timestamp = int(rpt['rp']), get_geo_text(remote_call), rpt['t']
             color = 'white' if remote_call in new_calls else 'lime'
             display_rows.append((f"{remote_call:<7} {snr:+03d} {geo_text:<12}", timestamp, color))
     display_rows.sort(key = lambda row: row[1], reverse = True)

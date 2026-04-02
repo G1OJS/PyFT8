@@ -38,13 +38,13 @@ class PSKR_MQTT_listener:
     def __init__(self, config_folder, my_call, home_square, pskr_refresh_mins):
         self.pskr_refresh_mins = pskr_refresh_mins
         self.my_call = my_call
-        self.hearing_me = DiskDict(f"{config_folder}/hearing_me.pkl")
-        self.heard_by_me = DiskDict(f"{config_folder}/heard_by_me.pkl")
+        self.hearing_me = DiskDict(f"{config_folder}/hearing_me.pkl")   # all-time record of hearing me
+        self.heard_by_me = DiskDict(f"{config_folder}/heard_by_me.pkl") # all-time record of heard by me
         self.hearing_me_new = []
         self.heard_by_me_new = []
         self.home_square = home_square
-        self.callsign_cache = DiskDict(f"{config_folder}/callsign_cache.pkl")
-        self.band_TxRx_homecall_report_times = DiskDict(f"{config_folder}/report_times.pkl")
+        self.callsign_cache = DiskDict(f"{config_folder}/callsign_cache.pkl") # all time cache call -> fine locator
+        self.band_TxRx_homecall_report_times = DiskDict(f"{config_folder}/report_times.pkl") # last 20 mins data -> per band tx/rx & current band detail
         self.home_activity = {}
         self.home_most_remotes = {}
         self.lock = threading.Lock()
@@ -72,18 +72,18 @@ class PSKR_MQTT_listener:
 
     def add_homespots_record(self, key, t):
         self.band_TxRx_homecall_report_times.data.setdefault(key, [])
-        self.band_TxRx_homecall_report_times.data[key].append(t)
+        self.band_TxRx_homecall_report_times.data[key].append(int(t))
 
     def add_myspots_record(self, data, band, call, t, rp):
         data.setdefault(band, {})
-        data[band][call] = {'t': t,'rp':rp,'c':call}
+        data[band][call] = {'t': int(t),'rp':int(rp)}
 
     def on_message(self, client, userdata, msg):
         try:
             d = literal_eval(msg.payload.decode())
         except:
             return
-        tnow = time.time()
+        tnow = int(time.time())
         sc, rc = (d['sc'], d['sl']), (d['rc'], d['rl'])
         for iTxRx, call_loc in enumerate([sc, rc]):
             call, loc = call_loc
@@ -95,10 +95,9 @@ class PSKR_MQTT_listener:
                 self.hearing_me_new.append(d['rc'])
             self.add_myspots_record(self.hearing_me.data, d['b'], d['rc'], tnow, d['rp'])
         if d['rc'] == self.my_call:
-            self.add_myspots_record(self.heard_by_me.data, d['b'], d['sc'], tnow, d['rp'])
             if d['sc'] not in self.heard_by_me.data[d['b']]:
                 self.heard_by_me_new.append(d['sc'])
-            self.heard_by_me.data[d['b']][d['sc']] = {'t': tnow,'rp': d['rp'],'c': d['sc']}
+            self.add_myspots_record(self.heard_by_me.data, d['b'], d['sc'], tnow, d['rp'])
                                
     def count_activity(self):
         import numpy as np
