@@ -9,9 +9,8 @@ from PyFT8.pskreporter import PSKR_upload
 from PyFT8.gui import Gui
 from PyFT8.transmitter import AudioOut
 from PyFT8.time_utils import global_time_utils
-from PyFT8.rigctrl import Rig
-from PyFT8.hamlib import Rig_hamlib
-from PyFT8.history import History
+from PyFT8.rigctrl import Rig_CAT, Rig_hamlib
+from PyFT8.databases import History
 import PyFT8.maidenhead as maidenhead
 
 VER = '2.8.0'
@@ -95,16 +94,6 @@ class ADIF:
                     cache[c + "_"+b+"_FT8"] = tm
         return cache
 
-def get_geo_text(call):
-    geo_text = ''
-    loc = history.callsign_cache.data.get(call,'')
-    if loc and config['gui']['loc'] == 'km_deg':
-            loc = maidenhead.db(config['station']['grid'], loc)
-            geo_text = f"{int(loc[0]):5d}k {int(loc[1]):3d}°"
-    if loc and config['gui']['loc'] == 'loc':
-            geo_text = f"loc: {loc}"
-    return geo_text
-
 class Message:
     def __init__(self, candidate):
         c = candidate
@@ -117,10 +106,10 @@ class Message:
         self.is_from_me = c.msg_tuple[1] == mycall
         self.is_to_me = c.msg_tuple[0] == mycall
         self.is_cq = c.msg_tuple[0].startswith('CQ')
-        geo_text = get_geo_text(c.msg_tuple[1])
+        self.geo_text = history.get_geo_text(c.msg_tuple[1], config['gui']['loc'])
         wb_time = adif_logging.cache.get(c.msg_tuple[1],'')
         wb_text = f"wb: {global_time_utils.format_duration(time.time() - float(wb_time))}" if wb_time else ''
-        self.gui_text = f"{c.msg} {wb_text} {geo_text}"
+        self.gui_text = f"{c.msg} {wb_text} {self.geo_text}"
     
     def wsjtx_screen_format(self):
         return f"{self.cyclestart['string']} {self.snr:+03d} {self.dt:4.1f} {self.fHz:4.0f} ~ {self.msg}"
@@ -271,7 +260,7 @@ def on_rx_decode(c):
         call_b_grid = grid_rpt if isGrid(grid_rpt) else ''
         if call_b != config['station']['call']:
             pskr_upload.add_report(call_b, int(1000000*float(qso.band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 1, int(time.time()))
-            history.store_best_location(call_b, call_b_grid)
+            history.store_best_grid(call_b, call_b_grid)
             history.add_myspots_record(history.heard_by_me.data, qso.band_info['b'], call_b, int(time.time()), c.snr)
         if call_b == config['station']['call'] and (isReport(grid_rpt) or isRReport(grid_rpt)):
             rpt = grid_rpt.replace("R","")
@@ -334,7 +323,7 @@ def on_gui_sidebars_refresh(gui, display_cycle):
         new_calls = history.hearing_me_new if display_cycle == 1 else history.heard_by_me_new
         for remote_call in calls_now:
             rpt = band_rpts[remote_call]
-            snr, geo_text, timestamp = int(rpt['rp']), get_geo_text(remote_call), rpt['t']
+            snr, geo_text, timestamp = int(rpt['rp']), history.get_geo_text(remote_call, config['gui']['loc']), rpt['t']
             color = 'white' if remote_call in new_calls else 'lime'
             display_rows.append((f"{remote_call:<7} {snr:+03d} {geo_text:<12}", timestamp, color))
     display_rows.sort(key = lambda row: row[1], reverse = True)
@@ -390,14 +379,14 @@ def cli():
     if mc is not None and 'pskreporter' in config.keys():
         if config['pskreporter']['upload'] == 'Y':
             pskr_upload = PSKR_upload(mc, mg, software = f"PyFT8 v{VER}", console_print = console_print) if not mc is None else None
-    history = History(config_folder, mc, mg[:4], PSKR_REFRESH_MINS)
+    history = History(config_folder, mc, mg, PSKR_REFRESH_MINS)
     qso = FT8_QSO()
     if config.has_section('hamlib_rig'):
         console_print("Connecting to rig via Hamlib")
         rig = Rig_hamlib(config)
     else:
         console_print("Connecting to rig via CAT")
-        rig = Rig(config)
+        rig = Rig_CAT(config)
 
     if args.transmit_message or args.outputcard_keywords:
         audio_out = AudioOut()
