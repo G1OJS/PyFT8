@@ -14,7 +14,7 @@ HOVERCOLOR = 'darkgreen'
 ACTIVE_BUTTON_COLOR = 'cyan'
 INACTIVE_BUTTON_COLOR = '#edeef0'
 MAX_FONT_SIZE_MAIN = 10
-L = {'pmargin':0.04, 'sidebar_width': 0.16, 'banner_height':0.1, 'vsep1':0.01, 'hsep1':0.02}
+L = {'pmargin':0.04, 'sidebar_width': 0.17, 'banner_height':0.1, 'vsep1':0.01, 'hsep1':0.02}
 
 # ================== WATERFALL ======================================================
 
