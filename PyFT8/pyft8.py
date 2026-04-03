@@ -61,10 +61,6 @@ class Message:
     def wsjtx_screen_format(self):
         return f"{self.cyclestart['string']} {self.snr:+03d} {self.dt:4.1f} {self.fHz:4.0f} ~ {self.msg}"
 
-    def wsjtx_all_txt_format(self):
-        fMHz = float(qso.band_info['fMHz']) if qso.band_info['fMHz'] is not None else 0
-        return f"{self.cyclestart['string']} {fMHz:8.3f} Rx FT8    {self.snr:+03d} {self.dt:4.1f} {self.fHz:4.0f} ~ {self.msg}"
-
 class FT8_QSO:
     def __init__(self):
         if config is not None:
@@ -188,13 +184,6 @@ def wait_for_keyboard():
     except KeyboardInterrupt:
         pass
 
-def write_all_txt_row(message):
-    all_file = f"{config_folder}/ALL.txt"
-    mode = 'w' if not os.path.exists(all_file) else 'a'
-    row = message.wsjtx_all_txt_format()
-    with open(all_file, mode) as f:
-        f.write(f"{row}\n")
-
 #============= Callbacks for Receiver ==========================================================
 def on_rx_decode(c):
     if (c.decode_completed - qso.band_info['time_set']) < 9: # prevent bad QRG -> heard_by_me and pskreporter upload data
@@ -203,7 +192,8 @@ def on_rx_decode(c):
     if gui:
         gui.add_message_box(message)
     print(message.wsjtx_screen_format())
-    write_all_txt_row(message)
+    fMHz = float(qso.band_info['fMHz']) if qso.band_info['fMHz'] is not None else 0
+    history.write_all_txt_row(c.cyclestart['string'], fMHz, 'Rx', 'FT8', c.snr, c.dt, c.fHz, c.msg)
     if qso.band_info['b'] is not None and pskr_upload is not None:
         call_a, call_b, grid_rpt = c.msg_tuple
         if call_b == 'not':

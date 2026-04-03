@@ -90,8 +90,46 @@ class History:
         self.home_activity = {}
         self.home_most_remotes = {}
         self.lock = threading.Lock()
+        #self.load_all_file(f"{config_folder}/ALL.txt")
         mqtt = PSKR_MQTT_listener(self.home_square_lev4, self.add_mqtt_spot)
         threading.Thread(target = self.count_activity, daemon = True).start()
+
+    def band_from_MHz(self, fMHz): # rewrite this to use the band button defs from ini file
+        f = int(fMHz)
+        freqs = [1,3,5,7,10,14,18,21,24,28,50,144,433]
+        idx = freqs.index(f) if f in freqs else -1
+        if idx > -1:
+            return ['160m','80m','60m','30m','20m','17m','15m','12m','10m','6m','2m','70cm'][idx]
+
+    def load_all_file(self, all_file):
+        recs = self.parse_all_txt(all_file)
+        if not any(recs): return
+        for r in recs:
+            if r['md'] == 'FT8':
+                band = self.band_from_MHz(r['fMHz'])
+                if band is not None:
+                    call = r['call_b'] if r['TxRx'] == 'Rx' else r['call_a']
+                    data = self.heard_by_me.data if r['TxRx'] == 'Rx' else self.hearing_me.data
+                    self.add_myspots_record(data, None, band, call, 0, 0)
+
+    def parse_all_txt(self, all_file):
+        rows, recs = None, []
+        if os.path.exists(all_file):
+            with open(all_file, 'r') as f:
+                rows = f.readlines()
+        if rows is not None:
+            for r in rows:
+                fields = r.strip().split()
+                if len(fields) > 8:
+                    recs.append({'fMHz':float(fields[1]), 'TxRx':fields[2], 'md':fields[3], 'call_a':fields[7], 'call_b':fields[8]} )
+        return recs
+
+    def write_all_txt_row(self, cyclestart_string, fMHz, TxRx, mode, snr, dt, fHz, msg):
+        all_file = f"{config_folder}/ALL.txt"
+        filemode = 'w' if not os.path.exists(all_file) else 'a'
+        row = f"{cyclestart_string} {fMHz:8.3f} {TxRx} {mode} {snr:+03d} {dt:4.1f} {fHz:4.0f} {msg}"
+        with open(all_file, filemode) as f:
+            f.write(f"{row}\n")
 
     def add_mqtt_spot(self, d):
         tnow = int(time.time())
@@ -119,9 +157,14 @@ class History:
     def add_myspots_record(self, historic_data, new_alert_data, band, call, t, rp):
         self._update_new_alert(band, call, historic_data, new_alert_data)
         historic_data.setdefault(band, {})
+        if call in historic_data[band]:
+            if t < historic_data[band][call]['t']:
+                return
         historic_data[band][call] = {'t': int(t),'rp':int(rp)}
 
     def _update_new_alert(self, band, call, historic_data, new_alert_data):
+        if new_alert_data is None:
+            return
         new = band not in historic_data
         if not new:
             new = call not in historic_data[band]
