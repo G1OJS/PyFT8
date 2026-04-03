@@ -67,6 +67,42 @@ I've also included a basic Hamlib interface which launches rigctld and uses that
 
 Alternatively, you can run PyFT8 without rig control; if there is no rig found, PyFT8 defaults to running without a rig connected. In this case, you need to provide your own PTT method and note that the band buttons will only set the information used for logging QSOs to the PyFT8.adi file. Or you can use PyFT8 as Rx-only.
 
+## Customising
+Even if you don't want to edit the code, there's quite a bit that you can change in the .ini file. I haven't written a user guide yet, so here's my own .ini file for reference. I use CAT control so my hamlib block is disabled by adding a _ to the name of the block (I keep it there for testing only). I need to add some more switches really to catch up with recent additions.
+
+```
+[station]
+call = G1OJS
+grid = IO90******
+[gui]
+loc = km_deg
+wb = Y
+[rig]
+port = COM4
+baud_rate = 9600
+set_freq_command = FEFE88E0.05.0000000000.FD 
+set_freq_value = 5|5|vfBcdLU|1|0 
+ptt_on_command = FEFE88E0.1C00.01.FD
+ptt_off_command = FEFE88E0.1C00.00.FD
+[_hamlib_rig]
+rigctld = C:/WSJT/wsjtx/bin/rigctld-wsjtx
+port = COM4
+baud_rate = 9600
+model = 3070
+[pskreporter]
+upload = Y
+[bands]
+160m = 1.840
+80m = 3.573
+60m = 5.357
+40m = 7.074
+20m = 14.074
+15m = 21.074
+10m = 28.074
+6m = 50.313
+2m = 144.174
+```
+
 ## Performance Compared with FT8_lib and WSJT-x
 
 The image below shows the number of decodes from PyFT8, WSJT-x V2.7.0 running in NORM mode, and FT8_lib, using the same 10 minutes of busy 20m audio that is used to test ft8_lib. 
