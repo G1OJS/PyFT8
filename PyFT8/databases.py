@@ -83,8 +83,8 @@ class History:
         self.dist_brg_cache = {}
         self.hearing_me = DiskDict(f"{config_folder}/hearing_me.pkl")   # all-time record of hearing me
         self.heard_by_me = DiskDict(f"{config_folder}/heard_by_me.pkl") # all-time record of heard by me
-        self.hearing_me_new = []
-        self.heard_by_me_new = []
+        self.hearing_me_new = {}
+        self.heard_by_me_new = {}
         self.call_to_grid = DiskDict(f"{config_folder}/call_to_grid.pkl") # all time cache call -> fine locator
         self.band_TxRx_homecall_report_times = DiskDict(f"{config_folder}/report_times.pkl") # last 20 mins data -> per band tx/rx & current band detail
         self.home_activity = {}
@@ -102,13 +102,9 @@ class History:
             if self.home_square_lev4 in grid:
                 self.add_homespots_record((d['b'], iTxRx, call), tnow)
         if d['sc'] == self.my_call:
-            if d['rc'] not in self.hearing_me.data[d['b']]:
-                self.hearing_me_new.append(d['rc'])
-            self.add_myspots_record(self.hearing_me.data, d['b'], d['rc'], tnow, d['rp'])
+            self.add_myspots_record(self.hearing_me.data, self.hearing_me_new, d['b'], d['rc'], tnow, d['rp'])
         if d['rc'] == self.my_call:
-            if d['sc'] not in self.heard_by_me.data[d['b']]:
-                self.heard_by_me_new.append(d['sc'])
-            self.add_myspots_record(self.heard_by_me.data, d['b'], d['sc'], tnow, d['rp'])
+            self.add_myspots_record(self.heard_by_me.data, self.heard_by_me_new, d['b'], d['sc'], tnow, d['rp'])
 
     def store_best_grid(self, call, grid):
         if call.startswith('<'): return
@@ -120,9 +116,25 @@ class History:
         self.band_TxRx_homecall_report_times.data.setdefault(key, [])
         self.band_TxRx_homecall_report_times.data[key].append(int(t))
 
-    def add_myspots_record(self, data, band, call, t, rp):
-        data.setdefault(band, {})
-        data[band][call] = {'t': int(t),'rp':int(rp)}
+    def add_myspots_record(self, historic_data, new_alert_data, band, call, t, rp):
+        self._update_new_alert(band, call, historic_data, new_alert_data)
+        historic_data.setdefault(band, {})
+        historic_data[band][call] = {'t': int(t),'rp':int(rp)}
+
+    def _update_new_alert(self, band, call, historic_data, new_alert_data):
+        new = band not in historic_data
+        if not new:
+            new = call not in historic_data[band]
+        if new:
+            new_alert_data.setdefault(band, [])
+            new_alert_data[band].append(call)
+
+    def is_in_new_alert(self, band, call, new_alert_data):
+        result = False
+        if band in new_alert_data:
+            result = call in new_alert_data[band]
+        return result
+     
                  
     def count_activity(self):
         import numpy as np
@@ -177,3 +189,52 @@ class History:
             geo_text = f"{int(loc[0]):5d}{units_str} {int(loc[1]):3d}°"
         return geo_text
                 
+def ensure_file_exists(path, header = None):
+    try:
+        with open(path, "x") as f:
+            if header is not None:
+                f.write(header)
+    except FileExistsError:
+        pass
+      
+class ADIF:
+    def __init__(self, logfile):
+        self.adif_log_file = logfile
+        ensure_file_exists(self.adif_log_file, header = "header <eoh>\n")
+        self.cache = self._build_cache()
+              
+    def log(self, times, band_info, mStation, oStation, rpts):
+        log_dict = {'call':oStation['c'], 'gridsquare':oStation['g'], 'mode':'FT8',
+        'operator':mStation['c'], 'station_callsign':mStation['c'], 'my_gridsquare':mStation['g'], 
+        'rst_sent':rpts['sent'], 'rst_rcvd':rpts['rcvd'], 
+        'qso_date':time.strftime("%Y%m%d", times['time_on']), 'qso_date_off':time.strftime("%Y%m%d", times['time_off']),
+        'time_on':time.strftime("%H%M%S", times['time_on']), 'time_off':time.strftime("%H%M%S", times['time_on']),
+        'band':band_info['b'], 'freq':band_info['fMHz']}
+        with open(self.adif_log_file,'a') as f:
+            for k, v in log_dict.items():
+                v = str(v)
+                f.write(f"<{k}:{len(v)}>{v} ")
+            f.write(f"<eor>\n")
+        cbm = log_dict['call'] + "_" + log_dict['band'] + "_FT8"
+        tm = time.time()
+        self.cache[log_dict['call']] = tm
+        self.cache[cbm] = tm
+
+    def _build_cache(self):
+        import calendar
+        def parse(rec, field):
+            p = rec.find(field)
+            if p > 0:
+                p1, p2 = rec.find(':',p), rec.find('>',p)
+                n = int(rec[p1+1:p2])
+                return rec[p2+1: p2+1+n]
+        cache = {}
+        with open(self.adif_log_file, 'r') as f:
+            for l in f.readlines():
+                if parse(l, 'mode') == "FT8":
+                    c, b, d, t = parse(l, 'call'), parse(l, 'band'), parse(l, 'qso_date'), parse(l, 'time_on')
+                    time_tuple = time.strptime(d+t, "%Y%m%d%H%M%S")
+                    tm = calendar.timegm(time_tuple)
+                    cache[c] = tm
+                    cache[c + "_"+b+"_FT8"] = tm
+        return cache

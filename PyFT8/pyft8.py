@@ -10,8 +10,7 @@ from PyFT8.gui import Gui
 from PyFT8.transmitter import AudioOut
 from PyFT8.time_utils import global_time_utils
 from PyFT8.rigctrl import Rig_CAT, Rig_hamlib
-from PyFT8.databases import History
-import PyFT8.maidenhead as maidenhead
+from PyFT8.databases import History, ADIF
 
 VER = '2.8.0'
 
@@ -39,60 +38,6 @@ def get_config():
         console_print(f"Wrote default config to {ini_file}")
     console_print(f"Reading config from {ini_file}")
     config.read(ini_file)
-
-def ensure_file_exists(path, header = None):
-    try:
-        with open(path, "x") as f:
-            if header is not None:
-                f.write(header)
-    except FileExistsError:
-        pass
-      
-class ADIF:
-    def __init__(self, logfile):
-        self.adif_log_file = logfile
-        ensure_file_exists(self.adif_log_file, header = "header <eoh>\n")
-        console_print(f"ADIF to {self.adif_log_file}")
-        self.cache = self._build_cache()
-              
-    def log(self, times, band_info, mStation, oStation, rpts):
-        log_dict = {'call':oStation['c'], 'gridsquare':oStation['g'], 'mode':'FT8',
-        'operator':mStation['c'], 'station_callsign':mStation['c'], 'my_gridsquare':mStation['g'], 
-        'rst_sent':rpts['sent'], 'rst_rcvd':rpts['rcvd'], 
-        'qso_date':time.strftime("%Y%m%d", times['time_on']), 'qso_date_off':time.strftime("%Y%m%d", times['time_off']),
-        'time_on':time.strftime("%H%M%S", times['time_on']), 'time_off':time.strftime("%H%M%S", times['time_on']),
-        'band':band_info['b'], 'freq':band_info['fMHz']}
-        with open(self.adif_log_file,'a') as f:
-            for k, v in log_dict.items():
-                v = str(v)
-                f.write(f"<{k}:{len(v)}>{v} ")
-            f.write(f"<eor>\n")
-        cbm = log_dict['call'] + "_" + log_dict['band'] + "_FT8"
-        tm = time.time()
-        self.cache[log_dict['call']] = tm
-        self.cache[cbm] = tm
-        console_print(f"Logged QSO with {oStation['c']}")
-
-    def _build_cache(self):
-        import calendar
-        def parse(rec, field):
-            p = rec.find(field)
-            if p > 0:
-                p1, p2 = rec.find(':',p), rec.find('>',p)
-                n = int(rec[p1+1:p2])
-                return rec[p2+1: p2+1+n]
-        cache = {}
-        with open(self.adif_log_file, 'r') as f:
-            for l in f.readlines():
-                if parse(l, 'mode') == "FT8":
-                    c, b, d, t = parse(l, 'call'), parse(l, 'band'), parse(l, 'qso_date'), parse(l, 'time_on')
-                    time_tuple = time.strptime(d+t, "%Y%m%d%H%M%S")
-                    tm = calendar.timegm(time_tuple)
-                   # if time.time()-tm < 36000:
-                   #     print(c, b, d, t, int(time.time()-tm))
-                    cache[c] = tm
-                    cache[c + "_"+b+"_FT8"] = tm
-        return cache
 
 class Message:
     def __init__(self, candidate):
@@ -174,6 +119,7 @@ class FT8_QSO:
         if adif_logging is not None:
             self.times['time_off'] = time.gmtime()
             adif_logging.log(self.times, self.band_info, self.mStation, self.oStation, self.rpts)
+            console_print(f"Logged QSO with {self.oStation['c']}")
 
 def isReport(grid_rpt):     return "+" in grid_rpt or "-" in grid_rpt
 def isRReport(grid_rpt):    return isReport(grid_rpt) and 'R' in grid_rpt
@@ -209,6 +155,7 @@ def progress_qso(clicked_message):
         if qso.rpts['sent'] is None:
             qso.rpts['sent'] = f"{clicked_message.snr:+03d}"
         qso.oStation['c'] = call_b
+        
         if isGrid(grid_rpt):
             qso.oStation = {'c': call_b, 'g': grid_rpt}
             reply = f"{qso.oStation['c']} {my_station['c']} {clicked_message.snr:+03d}"
@@ -217,11 +164,13 @@ def progress_qso(clicked_message):
             qso.rpts['rcvd'] = grid_rpt[-3:]
         if isRReport(grid_rpt) or isRRR(grid_rpt):
             reply = f"{qso.oStation['c']} {my_station['c']} RR73"
-            qso.log()
         if isRR73(grid_rpt):
             reply = f"{qso.oStation['c']} {my_station['c']} 73"
-            qso.log()
+            
         qso.set_tx_message(reply)
+
+        if reply.endswith("73"): # do last so any log errors don't prevent sending 73
+            qso.log()
 
 def make_wav(msg, wave_output_file): # move to transmitter.py?
     symbols = audio_out.create_ft8_symbols(msg)
@@ -261,10 +210,10 @@ def on_rx_decode(c):
         if call_b != config['station']['call']:
             pskr_upload.add_report(call_b, int(1000000*float(qso.band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 1, int(time.time()))
             history.store_best_grid(call_b, call_b_grid)
-            history.add_myspots_record(history.heard_by_me.data, qso.band_info['b'], call_b, int(time.time()), c.snr)
+            history.add_myspots_record(history.heard_by_me.data, history.heard_by_me_new, qso.band_info['b'], call_b, int(time.time()), c.snr)
         if call_b == config['station']['call'] and (isReport(grid_rpt) or isRReport(grid_rpt)):
             rpt = grid_rpt.replace("R","")
-            history.add_myspots_record(history.hearing_me.data, qso.band_info['b'], call_a, int(time.time()), rpt)
+            history.add_myspots_record(history.hearing_me.data, history.hearing_me_new, qso.band_info['b'], call_a, int(time.time()), rpt)
 
 def on_rx_busy_profile(busy_profile_new, cycle):
     global busy_profile, clearest_frequency
@@ -310,21 +259,21 @@ def on_gui_sidebars_refresh(gui, display_cycle):
         gui.band_stats.scroll_print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
 
     #refresh hearing me / heard by me panel
-    data = history.hearing_me.data if display_cycle == 1 else history.heard_by_me.data
+    historic_data = history.hearing_me.data if display_cycle == 1 else history.heard_by_me.data
+    new_calls_data = history.hearing_me_new if display_cycle == 1 else history.heard_by_me_new
     timewindow_str = f"<{HEARING_PANEL_LIFE_MINS:.0f} mins"
     title_txt = f"Hearing me {timewindow_str}" if display_cycle==1 else f"Heard by me {timewindow_str}"
     display_rows = [(title_txt, 2e40, 'white')]
     tnow = time.time()
-    if b is not None and b in data:
-        band_rpts = data[b]
+    if b is not None and b in historic_data:
+        band_rpts = historic_data[b]
         calls_now = [call for call in band_rpts if (tnow - band_rpts[call]['t']) < 60*HEARING_PANEL_LIFE_MINS]
         subtitle_txt = f"{len(calls_now)}/{len(band_rpts)} now/ever"
         display_rows.append((subtitle_txt, 1e40, 'white'))
-        new_calls = history.hearing_me_new if display_cycle == 1 else history.heard_by_me_new
         for remote_call in calls_now:
             rpt = band_rpts[remote_call]
             snr, geo_text, timestamp = int(rpt['rp']), history.get_geo_text(remote_call, config['gui']['loc']), rpt['t']
-            color = 'white' if remote_call in new_calls else 'lime'
+            color = 'white' if history.is_in_new_alert(b, remote_call, new_calls_data) else 'lime'
             display_rows.append((f"{remote_call:<7} {snr:+03d} {geo_text:<12}", timestamp, color))
     display_rows.sort(key = lambda row: row[1], reverse = True)
     gui.hm.list_print([row[0] for row in display_rows], [row[2] for row in display_rows])
