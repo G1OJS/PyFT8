@@ -134,8 +134,14 @@ class History:
         if band in new_alert_data:
             result = call in new_alert_data[band]
         return result
-     
-                 
+
+    def is_hearing_me(self, band, call, since_seconds):
+        result = False
+        if band in self.hearing_me.data:
+            if call in self.hearing_me.data[band]:
+                result = int(self.hearing_me.data[band][call]['t']) > since_seconds
+        return result        
+      
     def count_activity(self):
         import numpy as np
         while True:

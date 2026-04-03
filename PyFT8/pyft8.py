@@ -40,7 +40,7 @@ def get_config():
     config.read(ini_file)
 
 class Message:
-    def __init__(self, candidate):
+    def __init__(self, candidate, band):
         c = candidate
         mycall = ''
         if qso is not None:
@@ -52,9 +52,11 @@ class Message:
         self.is_to_me = c.msg_tuple[0] == mycall
         self.is_cq = c.msg_tuple[0].startswith('CQ')
         self.geo_text = history.get_geo_text(c.msg_tuple[1], config['gui']['loc'])
+        tnow = time.time()
         wb_time = adif_logging.cache.get(c.msg_tuple[1],'')
-        wb_text = f"wb: {global_time_utils.format_duration(time.time() - float(wb_time))}" if wb_time else ''
-        self.gui_text = f"{c.msg} {wb_text} {self.geo_text}"
+        wb_text = f"wb: {global_time_utils.format_duration(tnow - float(wb_time))}" if wb_time else ''
+        hearing_me = '* ' if history.is_hearing_me(band, c.msg_tuple[1], tnow - 60*HEARING_PANEL_LIFE_MINS) else ' '
+        self.gui_text = f"{c.msg} {hearing_me}{wb_text} {self.geo_text}"
     
     def wsjtx_screen_format(self):
         return f"{self.cyclestart['string']} {self.snr:+03d} {self.dt:4.1f} {self.fHz:4.0f} ~ {self.msg}"
@@ -197,7 +199,7 @@ def write_all_txt_row(message):
 def on_rx_decode(c):
     if (c.decode_completed - qso.band_info['time_set']) < 9: # prevent bad QRG -> heard_by_me and pskreporter upload data
         return
-    message = Message(c)
+    message = Message(c, qso.band_info['b'])
     if gui:
         gui.add_message_box(message)
     print(message.wsjtx_screen_format())
