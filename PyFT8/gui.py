@@ -31,7 +31,7 @@ class Scrollbox:
         self.lineartists = []
         for i in range(self.nlines):
             self.lineartists.append(self.ax.text(0.03,1 - self.line_height * (i+1),
-                            '', color = MAIN_TEXT_COLOR, fontsize = self.fontsize))
+                            '', color = MAIN_TEXT_COLOR, fontsize = self.fontsize, clip_on = True))
             if monospace:
                 self.lineartists[-1].set_fontfamily('monospace')
         self.ax.set_xticks([])
@@ -67,7 +67,7 @@ class Msg_box:
         self.onclick = onclick 
         rect = Rectangle((tbin, fbin), width=w, height=h, alpha=0.6, edgecolor='lime', lw=2)
         self.patch = ax.add_patch(rect)
-        self.text_inst = ax.text(tbin, fbin+2, '', fontsize='small', fontweight='bold' )
+        self.text_inst = ax.text(tbin, fbin+2, '', fontsize='small', fontweight='bold', clip_on = True )
         self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
         self.expire = 0 
 
@@ -109,7 +109,7 @@ class ButtonBox:
         self.info_axs.set_xticks([])
         self.info_axs.set_yticks([])
         self.info_axs.set_facecolor(TEXT_BACKGROUND_COLOR)
-        self.label2 = self.info_axs.text(0.03, 0.5, '', color = INFO_TEXT_COLOR, verticalalignment = 'center')
+        self.label2 = self.info_axs.text(0.03, 0.5, '', color = INFO_TEXT_COLOR, verticalalignment = 'center', clip_on = True)
         self.btn_widg = Button(self.btn_axs, btn_label, color = BUTTONCOLOR, hovercolor = HOVERCOLOR)
         self.label = self.btn_widg.label
         self.label.set_color(MAIN_TEXT_COLOR)
