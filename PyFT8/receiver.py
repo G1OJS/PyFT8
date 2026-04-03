@@ -6,7 +6,7 @@ from PyFT8.time_utils import global_time_utils, Ticker
 import os
 import pyaudio
 import pickle
-from PyFT8.callhashes import call_hashes, add_call_hashes
+from PyFT8.databases import call_hashes, add_call_hashes
 
 T_CYC = 15
 HPS = 4

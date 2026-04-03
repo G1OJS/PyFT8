@@ -2,7 +2,7 @@ import numpy as np
 import wave
 import pyaudio
 import time
-from PyFT8.callhashes import add_call_hashes
+from PyFT8.databases import add_call_hashes
 
 #==================== AUDIO OUT ================================================================
 
