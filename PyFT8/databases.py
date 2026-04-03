@@ -75,7 +75,7 @@ class DiskDict:
             os.replace(tmp_file, self.file)
 
 class History:
-    def __init__(self, config_folder, my_call, home_square, pskr_refresh_mins):
+    def __init__(self, config_folder, my_call, home_square, pskr_refresh_mins, parse_all_file):
         self.pskr_refresh_mins = pskr_refresh_mins
         self.config_folder = config_folder
         self.my_call = my_call
@@ -91,9 +91,14 @@ class History:
         self.home_activity = {}
         self.home_most_remotes = {}
         self.lock = threading.Lock()
-        #self.load_all_file(f"{config_folder}/ALL.txt")
-        mqtt = PSKR_MQTT_listener(self.home_square_lev4, self.add_mqtt_spot)
-        threading.Thread(target = self.count_activity, daemon = True).start()
+        if parse_all_file:
+            self.load_all_file(f"{self.config_folder}/ALL.txt")
+            self.hearing_me.save()
+            self.heard_by_me.save()
+            print("All file parsed and saved to hearing_me / heard_by_me files")
+        else:
+            mqtt = PSKR_MQTT_listener(self.home_square_lev4, self.add_mqtt_spot)
+            threading.Thread(target = self.count_activity, daemon = True).start()
 
     def band_from_MHz(self, fMHz): # rewrite this to use the band button defs from ini file
         f = int(fMHz)
@@ -134,6 +139,8 @@ class History:
                     call_a_pos = 7 if fields[7] != '~' else 8
                     recs.append({'fMHz':float(fields[1]), 'TxRx':fields[2], 'md':fields[3],
                                  'call_a':fields[call_a_pos], 'call_b':fields[call_a_pos + 1]} )
+        if not any(recs):
+            print("Didn't find any records in an ALL.txt file in the config folder")
         return recs
 
     def write_all_txt_row(self, cyclestart_string, fMHz, TxRx, mode, snr, dt, fHz, msg):

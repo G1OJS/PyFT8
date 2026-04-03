@@ -310,6 +310,7 @@ def cli():
     parser.add_argument('-n','--no_gui',  action='store_true',  help = "Don't create a gui")
     parser.add_argument('-m','--transmit_message', nargs='?', help = 'Transmit a message')
     parser.add_argument('-w','--wave_output_file', nargs='?', help = 'Wave output file name', default = 'PyFT8.wav')
+    parser.add_argument('-a', '--parse_all_file', action='store_true', help = 'parse and save .../config_folder/ALL.txt to heard me / heard by me data') 
     args = parser.parse_args()
 
     output_device_idx = None
@@ -320,48 +321,52 @@ def cli():
     if mc is not None and 'pskreporter' in config.keys():
         if config['pskreporter']['upload'] == 'Y':
             pskr_upload = PSKR_upload(mc, mg, software = f"PyFT8 v{VER}", console_print = console_print) if not mc is None else None
-    history = History(config_folder, mc, mg, PSKR_REFRESH_MINS)
-    history.load_from_wb(adif_logging.cache)
-    qso = FT8_QSO()
-    if config.has_section('hamlib_rig'):
-        console_print("Connecting to rig via Hamlib")
-        rig = Rig_hamlib(config)
-    else:
-        console_print("Connecting to rig via CAT")
-        rig = Rig_CAT(config)
+    history = History(config_folder, mc, mg, PSKR_REFRESH_MINS, args.parse_all_file)
 
-    if args.transmit_message or args.outputcard_keywords:
-        audio_out = AudioOut()
-        clearest_frequency = 760
-    
-    if args.outputcard_keywords:
-        outputcard_keywords = args.outputcard_keywords.replace(' ','').split(',')
-        output_device_idx = audio_out.find_device(outputcard_keywords)
-            
-    if args.transmit_message:
+    if not args.parse_all_file:
+        
+        history.load_from_wb(adif_logging.cache)
+        qso = FT8_QSO()
+        if config.has_section('hamlib_rig'):
+            console_print("Connecting to rig via Hamlib")
+            rig = Rig_hamlib(config)
+        else:
+            console_print("Connecting to rig via CAT")
+            rig = Rig_CAT(config)
+
+        if args.transmit_message or args.outputcard_keywords:
+            audio_out = AudioOut()
+            clearest_frequency = 760
+        
         if args.outputcard_keywords:
-            qso.set_tx_message(args.transmit_message)
-        else:
-            make_wav(args.transmit_message, f"{args.config_folder}/{args.wave_output_file}")      
-    else:
-        audio_in = AudioIn(3100)
-        input_device_idx = audio_in.find_device(args.inputcard_keywords.replace(' ','').split(','))
-        if not input_device_idx:
-            console_print("No input device")
-        else:
-            gui = None if args.no_gui else Gui(audio_in.dBgrid_main, 4, 2, config, on_gui_sidebars_refresh, on_gui_msg_click, on_gui_control_click)
-            rx = Receiver(audio_in, [200, 3100], on_rx_decode, on_rx_busy_profile)
-            audio_in.start_streamed_audio(input_device_idx)
-            if gui is not None:
-                gui.set_bandstats_title(f"Pskreporter Spots\nto/from {config['station']['grid'][:4]} <{PSKR_REFRESH_MINS:.0f} mins")
-                gui.plt.show()
+            outputcard_keywords = args.outputcard_keywords.replace(' ','').split(',')
+            output_device_idx = audio_out.find_device(outputcard_keywords)
+                
+        if args.transmit_message:
+            if args.outputcard_keywords:
+                qso.set_tx_message(args.transmit_message)
             else:
-                wait_for_keyboard()
+                make_wav(args.transmit_message, f"{args.config_folder}/{args.wave_output_file}")      
+        else:
+            audio_in = AudioIn(3100)
+            input_device_idx = audio_in.find_device(args.inputcard_keywords.replace(' ','').split(','))
+            if not input_device_idx:
+                console_print("No input device")
+            else:
+                gui = None if args.no_gui else Gui(audio_in.dBgrid_main, 4, 2, config, on_gui_sidebars_refresh, on_gui_msg_click, on_gui_control_click)
+                rx = Receiver(audio_in, [200, 3100], on_rx_decode, on_rx_busy_profile)
+                audio_in.start_streamed_audio(input_device_idx)
+                if gui is not None:
+                    gui.set_bandstats_title(f"Pskreporter Spots\nto/from {config['station']['grid'][:4]} <{PSKR_REFRESH_MINS:.0f} mins")
+                    gui.plt.show()
+                else:
+                    wait_for_keyboard()
 
 
 #================== TEST CODE ============================================================
 if __name__ == "__main__":
     import mock
+    #with mock.patch('sys.argv', ['pyft8', '-c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', '-a']):
     with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-o Speak, CODEC', '-c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
     #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC']):
     #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-n']):
