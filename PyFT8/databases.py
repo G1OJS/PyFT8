@@ -77,16 +77,17 @@ class DiskDict:
 class History:
     def __init__(self, config_folder, my_call, home_square, pskr_refresh_mins):
         self.pskr_refresh_mins = pskr_refresh_mins
+        self.config_folder = config_folder
         self.my_call = my_call
         self.home_square = home_square
         self.home_square_lev4 = home_square[:4]
         self.dist_brg_cache = {}
-        self.hearing_me = DiskDict(f"{config_folder}/hearing_me.pkl")   # all-time record of hearing me
-        self.heard_by_me = DiskDict(f"{config_folder}/heard_by_me.pkl") # all-time record of heard by me
+        self.hearing_me = DiskDict(f"{self.config_folder}/hearing_me.pkl")   # all-time record of hearing me
+        self.heard_by_me = DiskDict(f"{self.config_folder}/heard_by_me.pkl") # all-time record of heard by me
         self.hearing_me_new = {}
         self.heard_by_me_new = {}
-        self.call_to_grid = DiskDict(f"{config_folder}/call_to_grid.pkl") # all time cache call -> fine locator
-        self.band_TxRx_homecall_report_times = DiskDict(f"{config_folder}/report_times.pkl") # last 20 mins data -> per band tx/rx & current band detail
+        self.call_to_grid = DiskDict(f"{self.config_folder}/call_to_grid.pkl") # all time cache call -> fine locator
+        self.band_TxRx_homecall_report_times = DiskDict(f"{self.config_folder}/report_times.pkl") # last 20 mins data -> per band tx/rx & current band detail
         self.home_activity = {}
         self.home_most_remotes = {}
         self.lock = threading.Lock()
@@ -125,7 +126,7 @@ class History:
         return recs
 
     def write_all_txt_row(self, cyclestart_string, fMHz, TxRx, mode, snr, dt, fHz, msg):
-        all_file = f"{config_folder}/ALL.txt"
+        all_file = f"{self.config_folder}/ALL.txt"
         filemode = 'w' if not os.path.exists(all_file) else 'a'
         row = f"{cyclestart_string} {fMHz:8.3f} {TxRx} {mode} {snr:+03d} {dt:4.1f} {fHz:4.0f} {msg}"
         with open(all_file, filemode) as f:
