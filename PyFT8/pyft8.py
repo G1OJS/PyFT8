@@ -321,6 +321,7 @@ def cli():
         if config['pskreporter']['upload'] == 'Y':
             pskr_upload = PSKR_upload(mc, mg, software = f"PyFT8 v{VER}", console_print = console_print) if not mc is None else None
     history = History(config_folder, mc, mg, PSKR_REFRESH_MINS)
+    history.load_from_wb(adif_logging.cache)
     qso = FT8_QSO()
     if config.has_section('hamlib_rig'):
         console_print("Connecting to rig via Hamlib")

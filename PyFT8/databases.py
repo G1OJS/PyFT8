@@ -102,6 +102,15 @@ class History:
         if idx > -1:
             return ['160m','80m','60m','30m','20m','17m','15m','12m','10m','6m','2m','70cm'][idx]
 
+    def load_from_wb(self, log_cache):
+        for key in log_cache:
+            key_parts = key.split('_')
+            if len(key_parts) > 1:
+                c, b, m = key_parts
+                if m == 'FT8':
+                    self.add_myspots_record(self.hearing_me.data, None, b, c, 0, 0)
+                    self.add_myspots_record(self.heard_by_me.data, None, b, c, 0, 0)
+
     def load_all_file(self, all_file):
         recs = self.parse_all_txt(all_file)
         if not any(recs): return
