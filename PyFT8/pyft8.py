@@ -55,7 +55,7 @@ class Message:
         tnow = time.time()
         wb_time = adif_logging.cache.get(c.msg_tuple[1],'')
         wb_text = f"wb: {global_time_utils.format_duration(tnow - float(wb_time))}" if wb_time else ''
-        hearing_me = '* ' if history.is_hearing_me(band, c.msg_tuple[1], tnow - 60*HEARING_PANEL_LIFE_MINS) else ' '
+        hearing_me = '👂 ' if history.is_hearing_me(band, c.msg_tuple[1], tnow - 60*HEARING_PANEL_LIFE_MINS) else ' '
         self.gui_text = f"{c.msg} {hearing_me}{wb_text} {self.geo_text}"
     
     def wsjtx_screen_format(self):
