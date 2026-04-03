@@ -122,7 +122,9 @@ class History:
             for r in rows:
                 fields = r.strip().split()
                 if len(fields) > 8:
-                    recs.append({'fMHz':float(fields[1]), 'TxRx':fields[2], 'md':fields[3], 'call_a':fields[7], 'call_b':fields[8]} )
+                    call_a_pos = 7 if fields[7] != '~' else 8
+                    recs.append({'fMHz':float(fields[1]), 'TxRx':fields[2], 'md':fields[3],
+                                 'call_a':fields[call_a_pos], 'call_b':fields[call_a_pos + 1]} )
         return recs
 
     def write_all_txt_row(self, cyclestart_string, fMHz, TxRx, mode, snr, dt, fHz, msg):
