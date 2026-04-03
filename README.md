@@ -24,6 +24,7 @@ If you're interested in how this works, maybe have a look at [MiniPyFT8](https:/
  - Messages overlaid on waterfall signals that produce them
  - Worked-before info and fine grid locators / distance and bearing in the message boxes
  - List of stations hearing your transmissions on the selected band
+ - Marker on message if 2nd call is hearing you
  - Band activity in your level 4 square live updated next to band select buttons
  - Number of remote stations hearing your Tx, number of remote Txs that you're hearing, plus the same info for the 'best' station in your level 4 square
  - Data used for the above is cached to disk so is not lost when restarting the program
