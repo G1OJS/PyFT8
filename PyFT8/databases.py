@@ -245,8 +245,8 @@ class History:
                                 self.home_most_remotes[b][iTxRx] = (c, nremotes)
 
     def get_spot_counts(self, band, call):
-        tx_reports = self.band_TxRx_homecall_report_times.data.get((band, 0, call), [])
-        rx_reports = self.band_TxRx_homecall_report_times.data.get((band, 1, call), [])
+        tx_reports = self.band_TxRx_homecall_report_times.data.get(f"{band}_0_{call}", [])
+        rx_reports = self.band_TxRx_homecall_report_times.data.get(f"{band}_1_{call}", [])
         n_spotting = len(tx_reports) if tx_reports else 0
         n_spotted = len(rx_reports) if rx_reports else 0
         return n_spotted, n_spotting
