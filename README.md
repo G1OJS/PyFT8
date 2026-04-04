@@ -56,8 +56,8 @@ Once installed, you can use the following commands to run it. Otherwise, please 
 
 |Usage | Command example| Notes |
 |----------------------|----------------------|----------------------|
-|Full GUI without Tx | pyft8 "Keyword1, Keyword2" -c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg| Keywords identify the input sound device - partial match is fine, e.g. "Mic, CODEC"|
-|Rx only without GUI | pyft8 "Keyword1, Keyword2" -c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg| Keywords identify the input sound device - partial match is fine, e.g. "Mic, CODEC"|
+|Full GUI without Tx | pyft8 -i "Keyword1, Keyword2" -c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg| Keywords identify the input sound device - partial match is fine, e.g. "Mic, CODEC"|
+|Rx only without GUI | pyft8 -i "Keyword1, Keyword2" -c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg| Keywords identify the input sound device - partial match is fine, e.g. "Mic, CODEC"|
 |Full GUI with Tx| pyft8 -i "Keyword1, Keyword2" -c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg| Keywords identify the input (-i) and output (-o) sound devices.|
 |Parse an 'ALL.txt' file in the specified config folder, save as json files, and exit| pyft8 -c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg -a||
 | Command line transmit | pyft8 -o "Keyword1, Keyword2" -m "CQ G1OJS IO90"| Tx on next cycle. You supply the PTT control method.|
