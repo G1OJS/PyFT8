@@ -68,17 +68,16 @@ class DiskDict:
 
     def save(self):
         with self.lock:
-            t = time.time()
             tmp_file = f"{self.file}.tmp"
             with open(tmp_file, "w") as f:
                 json.dump(self.data, f)
                 f.flush()
                 os.fsync(f.fileno())
             os.replace(tmp_file, self.file)
-            print(f"json save {(time.time()-t)*1000:.0f}ms")
 
 class History:
     def __init__(self, config_folder, my_call, home_square, pskr_refresh_mins, parse_all_file):
+        self.t0 = time.time()
         self.pskr_refresh_mins = pskr_refresh_mins
         self.config_folder = config_folder
         self.my_call = my_call
@@ -177,7 +176,7 @@ class History:
         
     def add_homespots_record(self, key, t):
         self.band_TxRx_homecall_report_times.data.setdefault(key, [])
-        self.band_TxRx_homecall_report_times.data[key].append(int(t))
+        self.band_TxRx_homecall_report_times.data[key].append(int(t-self.t0))
 
     def add_myspots_record(self, historic_data, new_alert_data, band, call, t, rp):
         self._update_new_alert(band, call, historic_data, new_alert_data)
@@ -221,12 +220,12 @@ class History:
                 for b in self.home_activity:
                     self.home_activity[b] = [0, 0]
                 for b in self.home_most_remotes:
-                    self.home_most_remotes[b] = [('',0), ('',0)]
+                    self.home_most_remotes[b] = [('Nobody',0), ('Nobody',0)]
 
                 # keep only the remote spots that happened in the self.pskr_refresh_mins window
                 for band_TxRx_homecall in self.band_TxRx_homecall_report_times.data:
                     band_TxRx_homecall_report_times = self.band_TxRx_homecall_report_times.data[band_TxRx_homecall]
-                    band_TxRx_homecall_report_times = [t for t in band_TxRx_homecall_report_times if (time.time() - t) < 60*self.pskr_refresh_mins]
+                    band_TxRx_homecall_report_times = [t for t in band_TxRx_homecall_report_times if (time.time() - self.t0 - t) < 60*self.pskr_refresh_mins]
                     self.band_TxRx_homecall_report_times.data[band_TxRx_homecall] = band_TxRx_homecall_report_times
 
                 # count number of local Tx and Rx, and identify the local Tx and Rx with most remote spots
@@ -237,7 +236,7 @@ class History:
                         iTxRx = int(iTxRx)
                         self.home_activity.setdefault(b, [0, 0])
                         self.home_activity[b][iTxRx] +=1
-                        self.home_most_remotes.setdefault(b, [('',0), ('',0)])
+                        self.home_most_remotes.setdefault(b, [('Nobody',0), ('Nobody',0)])
                         nremotes = len(band_TxRx_homecall_report_times)
                         current_winner = self.home_most_remotes[b][iTxRx]
                         if nremotes > current_winner[1]:
