@@ -60,8 +60,8 @@ Once installed, you can use the following commands to run it. Otherwise, please 
 |Rx only without GUI | pyft8 -i "Keyword1, Keyword2" -c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg| Keywords identify the input sound device - partial match is fine, e.g. "Mic, CODEC"|
 |Full GUI with Tx| pyft8 -i "Keyword1, Keyword2" -o "Keyword1, Keyword2" -c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg| Keywords identify the input (-i) and output (-o) sound devices.|
 |Parse an 'ALL.txt' file in the specified config folder, save as json files, and exit| pyft8 -c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg -a||
-| Command line transmit | pyft8 -o "Keyword1, Keyword2" -m "CQ G1OJS IO90"| Tx on next cycle. You supply the PTT control method.|
-| Command line create a wav file | pyft8 -w "Mywav.wav" -m "CQ G1OJS IO90"|  |
+| Command line transmit | pyft8 -o "Keyword1, Keyword2" -m "CQ G1OJS IO90" -c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg| Tx on next cycle. Config file is required to specify the rig control method. |
+| Command line create a wav file | pyft8 -w "Mywav.wav" -m "CQ G1OJS IO90"| No config folder / .ini file required |
 
 ### Rig control 
 I've included the Python code that I use with my Icom IC-7100 in the file 'rigctrl.py', and believe I've moved sufficient 'specification' for the rig protocol into the .ini file so that you can paste in your own rig specification (see for e.g. the Omnirig .ini file for your rig) and get it working with PyFT8 controlling PTT and frequency. I designed this code to drop the serial connection when it's not required, so that the rig's serial port can be accessed by other software at the same time (assuming that the other software returns the favour and doesn't permanently hog the serial port).
