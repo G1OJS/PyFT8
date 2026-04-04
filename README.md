@@ -1,8 +1,6 @@
 # PyFT8 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/pyft8?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/pyft8) [![PyPI Downloads](https://static.pepy.tech/personalized-badge/pyft8?period=weekly&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads/wk)](https://pepy.tech/projects/pyft8)
 # All-Python FT8 Transceiver GUI / Command Line Modem
 
-## Note - my recent additions to the GUI have caused issues with the non-GUI based command line processing. I'm working on fixing this. V2.11.0 addresses this somewhat but I need to complete the revision and check the notes below for the command line options ##
-
 This repository contains the source code for PyFT8, an all-Python open source FT8 transceiver that you can run as a basic GUI or from the command line to receive and transmit. Decoding performance (number of decodes) is about 70% of that achieved by WSJT-x in NORM mode, but (tbc) slightly above ft8_lib. 
 
 PyFT8 is somewhat experimental, with a focus on demonstrating FT8 written in Python, but can be used as a standalone replacement for WSJT-x and other software.
@@ -52,15 +50,18 @@ pip install PyFT8
 ```
 
 Once installed, you can use the following commands to run it. Otherwise, please download or browse the code, or fork the repo and play with it! If you do fork it, please check back here as I'm constantly (as of Jan 2026) rewriting and improving.
+    #with mock.patch('sys.argv', ['pyft8', '-m',  "CQ G1OJS IO90", "-w", "PyFT8.wav"]):
+    #with mock.patch('sys.argv', ['pyft8', '-m',  "CQ G1OJS IO90", '-o', "Speak, CODEC", '-c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
+
 
 |Usage | Command example| Notes |
 |----------------------|----------------------|----------------------|
-|Basic Rx GUI | pyft8 -i "Keyword1, Keyword2" | Keywords identify the input sound device - partial match is fine, e.g. "Mic, CODEC"|
-|GUI with transmit | pyft8 -i "Keyword1, Keyword2" -o "Keyword1, Keyword2" | Keywords identify the input (-i) and output (-o) sound devices. The transmit parts are under development.|
-| Command line Rx without a GUI | pyft8 -i "Keyword1, Keyword2" -n| |
+|Full GUI without Tx | pyft8 "Keyword1, Keyword2" -c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg| Keywords identify the input sound device - partial match is fine, e.g. "Mic, CODEC"|
+|Rx only without GUI | pyft8 "Keyword1, Keyword2" -c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg| Keywords identify the input sound device - partial match is fine, e.g. "Mic, CODEC"|
+|Full GUI with Tx| pyft8 -i "Keyword1, Keyword2" -c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg| Keywords identify the input (-i) and output (-o) sound devices.|
+|Parse an 'ALL.txt' file in the specified config folder, save as json files, and exit| pyft8 -c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg -a||
 | Command line transmit | pyft8 -o "Keyword1, Keyword2" -m "CQ G1OJS IO90"| Tx on next cycle. You supply the PTT control method.|
-| Command line create a wav file | pyft8 -w "Mywav.wav" -m "CQ G1OJS IO90"| -w "Mywav.wav" can be omitted |
-| Launch configured GUI|pyft8 -i "Keyword1, Keyword2" -o "Keyword1, Keyword2" -c {config folder}| Config folder stores PyFT8.ini (your callsign, grid, buttons) and PyFT8.adi log file. Run this once to create default PyFT8.ini file.|
+| Command line create a wav file | pyft8 -w "Mywav.wav" -m "CQ G1OJS IO90"|  |
 
 ### Rig control 
 I've included the Python code that I use with my Icom IC-7100 in the file 'rigctrl.py', and believe I've moved sufficient 'specification' for the rig protocol into the .ini file so that you can paste in your own rig specification (see for e.g. the Omnirig .ini file for your rig) and get it working with PyFT8 controlling PTT and frequency. I designed this code to drop the serial connection when it's not required, so that the rig's serial port can be accessed by other software at the same time (assuming that the other software returns the favour and doesn't permanently hog the serial port).
