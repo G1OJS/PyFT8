@@ -1,6 +1,6 @@
 [project]
 name = "PyFT8"
-version = "2.12.1"
+version = "2.12.2"
 license = "GPL-3.0-or-later"
 
 authors = [

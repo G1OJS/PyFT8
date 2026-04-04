@@ -12,7 +12,7 @@ from PyFT8.time_utils import global_time_utils
 from PyFT8.rigctrl import Rig_CAT, Rig_hamlib
 from PyFT8.databases import History, ADIF
 
-VER = '2.12.1'
+VER = '2.12.2'
 
 MAX_TX_START_SECONDS = 2.5
 HEARING_PANEL_LIFE_MINS = 5

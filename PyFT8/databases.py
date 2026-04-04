@@ -77,7 +77,7 @@ class DiskDict:
 
 class History:
     def __init__(self, config_folder, my_call, home_square, pskr_refresh_mins, parse_all_file):
-        self.t0 = time.time()
+        self.t0 = 1775324204
         self.pskr_refresh_mins = pskr_refresh_mins
         self.config_folder = config_folder
         self.my_call = my_call
