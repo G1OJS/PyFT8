@@ -50,9 +50,8 @@ pip install PyFT8
 ```
 
 Once installed, you can use the following commands to run it. Otherwise, please download or browse the code, or fork the repo and play with it! If you do fork it, please check back here as I'm constantly (as of Jan 2026) rewriting and improving.
-    #with mock.patch('sys.argv', ['pyft8', '-m',  "CQ G1OJS IO90", "-w", "PyFT8.wav"]):
-    #with mock.patch('sys.argv', ['pyft8', '-m',  "CQ G1OJS IO90", '-o', "Speak, CODEC", '-c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
 
+The use cases below are the ones held in the test cases at the bottom of the main pyft8.py file. Where a config folder and .ini file is required, if you leave off the '-c {folder}' option, you'll be asked if you want to create a .ini file in the current directory.
 
 |Usage | Command example| Notes |
 |----------------------|----------------------|----------------------|
