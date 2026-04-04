@@ -1,5 +1,5 @@
 from PyFT8.pskreporter import PSKR_MQTT_listener
-import threading, time, os, pickle
+import threading, time, os, pickle, json
 
 call_hashes = {}
 def add_call_hashes(call):
@@ -47,14 +47,15 @@ def grids_to_dist_brg(sq1, sq2, units):
     return (r, degrees(b) % 360)
 
 class DiskDict:
-    def __init__(self, file):
+    def __init__(self, file, autosave_t0):
         self.lock = threading.Lock()
         self.file = file
         self.data = {}
         self.load()
-        threading.Thread(target = self._autosave, daemon = True).start()
+        threading.Thread(target = self._autosave, args=(autosave_t0,),  daemon = True).start()
 
-    def _autosave(self, autosave_period = 15):
+    def _autosave(self, autosave_t0, autosave_period = 15):
+        time.sleep(autosave_t0)
         while True:
             time.sleep(autosave_period)
             self.save()
@@ -63,16 +64,18 @@ class DiskDict:
         with self.lock:        
             if(os.path.exists(self.file)):
                 with open(f"{self.file}","rb") as f:
-                    self.data = pickle.load(f)
+                    self.data = json.load(f)
 
     def save(self):
         with self.lock:
+            t = time.time()
             tmp_file = f"{self.file}.tmp"
-            with open(tmp_file, "wb") as f:
-                pickle.dump(self.data, f)
+            with open(tmp_file, "w") as f:
+                json.dump(self.data, f)
                 f.flush()
                 os.fsync(f.fileno())
             os.replace(tmp_file, self.file)
+            print(f"json save {(time.time()-t)*1000:.0f}ms")
 
 class History:
     def __init__(self, config_folder, my_call, home_square, pskr_refresh_mins, parse_all_file):
@@ -82,12 +85,12 @@ class History:
         self.home_square = home_square
         self.home_square_lev4 = home_square[:4]
         self.dist_brg_cache = {}
-        self.hearing_me = DiskDict(f"{self.config_folder}/hearing_me.pkl")   # all-time record of hearing me
-        self.heard_by_me = DiskDict(f"{self.config_folder}/heard_by_me.pkl") # all-time record of heard by me
+        self.hearing_me = DiskDict(f"{self.config_folder}/hearing_me.json", 3)   # all-time record of hearing me
+        self.heard_by_me = DiskDict(f"{self.config_folder}/heard_by_me.json", 5) # all-time record of heard by me
         self.hearing_me_new = {}
         self.heard_by_me_new = {}
-        self.call_to_grid = DiskDict(f"{self.config_folder}/call_to_grid.pkl") # all time cache call -> fine locator
-        self.band_TxRx_homecall_report_times = DiskDict(f"{self.config_folder}/report_times.pkl") # last 20 mins data -> per band tx/rx & current band detail
+        self.call_to_grid = DiskDict(f"{self.config_folder}/call_to_grid.json", 7) # all time cache call -> fine locator
+        self.band_TxRx_homecall_report_times = DiskDict(f"{self.config_folder}/report_times.json", 9) # last 20 mins data -> per band tx/rx & current band detail
         self.home_activity = {}
         self.home_most_remotes = {}
         self.lock = threading.Lock()
@@ -160,7 +163,7 @@ class History:
             call, grid = call_grid
             self.store_best_grid(call, grid)
             if self.home_square_lev4 in grid:
-                self.add_homespots_record((d['b'], iTxRx, call), tnow)
+                self.add_homespots_record(f"{d['b']}_{iTxRx}_{call}", tnow)
         if d['sc'] == self.my_call:
             self.add_myspots_record(self.hearing_me.data, self.hearing_me_new, d['b'], d['rc'], tnow, d['rp'])
         if d['rc'] == self.my_call:
@@ -230,7 +233,8 @@ class History:
                 for band_TxRx_homecall in self.band_TxRx_homecall_report_times.data:
                     band_TxRx_homecall_report_times = self.band_TxRx_homecall_report_times.data[band_TxRx_homecall]
                     if len(band_TxRx_homecall_report_times):
-                        b, iTxRx, c = band_TxRx_homecall
+                        b, iTxRx, c = band_TxRx_homecall.split('_')
+                        iTxRx = int(iTxRx)
                         self.home_activity.setdefault(b, [0, 0])
                         self.home_activity[b][iTxRx] +=1
                         self.home_most_remotes.setdefault(b, [('',0), ('',0)])
