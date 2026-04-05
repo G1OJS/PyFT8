@@ -110,14 +110,17 @@ class History:
             if idx > -1:
                 return ['160m','80m','60m','40m','30m','20m','17m','15m','12m','10m','6m','2m','70cm'][idx]
 
-    def load_from_wb(self, log_cache):
+    def load_hearing_heard_from_adif(self, log_cache):
         for key in log_cache:
             key_parts = key.split('_')
             if len(key_parts) > 1:
                 c, b, m = key_parts
                 if m == 'FT8':
+                    #print(f"Parsing adif log: Add hearing & heard by {c} on {b}")
                     self.add_myspots_record(self.hearing_me.data, None, b, c, 0, 0)
                     self.add_myspots_record(self.heard_by_me.data, None, b, c, 0, 0)
+                else:
+                    print(m)
 
     def load_all_file(self, all_file):
         recs = self.parse_all_txt(all_file)
@@ -297,6 +300,7 @@ class ADIF:
     def _build_cache(self):
         import calendar
         def parse(rec, field):
+            rec, field = rec.upper(), field.upper()
             p = rec.find(field)
             if p > 0:
                 p1, p2 = rec.find(':',p), rec.find('>',p)
@@ -307,8 +311,9 @@ class ADIF:
             for l in f.readlines():
                 if parse(l, 'mode') == "FT8":
                     c, b, d, t = parse(l, 'call'), parse(l, 'band'), parse(l, 'qso_date'), parse(l, 'time_on')
-                    time_tuple = time.strptime(d+t, "%Y%m%d%H%M%S")
-                    tm = calendar.timegm(time_tuple)
-                    cache[c] = tm
-                    cache[c + "_"+b+"_FT8"] = tm
+                    if c and b and d and t:
+                        time_tuple = time.strptime(d+t, "%Y%m%d%H%M%S")
+                        tm = calendar.timegm(time_tuple)
+                        cache[c] = tm
+                        cache[c + "_"+b+"_FT8"] = tm
         return cache

@@ -379,7 +379,7 @@ def cli():
         gui = Gui(audio_in.dBgrid_main, 4, 2, config, on_gui_sidebars_refresh, on_gui_msg_click, on_gui_control_click)
         history = History(config_folder, mc, mg, PSKR_REFRESH_MINS, args.parse_all_file)
         adif_logging = ADIF(f"{config_folder}/PyFT8.adi")
-        history.load_from_wb(adif_logging.cache)
+        history.load_hearing_heard_from_adif(adif_logging.cache)
 
     if mc is not None and 'pskreporter' in config.keys():
         if config['pskreporter']['upload'] == 'Y':
