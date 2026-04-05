@@ -29,13 +29,8 @@ If you're interested in how this works, maybe have a look at [MiniPyFT8](https:/
  - Number of remote stations hearing your Tx, number of remote Txs that you're hearing, plus the same info for the 'best' station in your level 4 square
  - Data used for the above is cached to disk so is not lost when restarting the program
 
-To enable uploading of spots to pskreporter, make sure that your .ini file includes
-```
-[pskreporter]
-upload = Y
-```
+<img width="997" height="1025" alt="screenshot" src="https://github.com/user-attachments/assets/88228f65-c39e-45ee-9f73-1d85138563f3" />
 
-![screenshot](screenshot.png)
 
 ## Motivation
 This started out as me thinking "How hard can it be, really?" after some frustration with Windows moving sound devices around and wanting to get a minimal decoder running that I can fully control. 
@@ -109,7 +104,8 @@ upload = Y
 
 The image below shows the number of decodes from PyFT8, WSJT-x V2.7.0 running in NORM mode, and FT8_lib, using the same 10 minutes of busy 20m audio that is used to test ft8_lib. 
 
-![performance snapshot](performance%20snapshot.png)
+<img width="640" height="480" alt="performance snapshot" src="https://github.com/user-attachments/assets/b62221ec-2d74-4fbc-9c61-34b2bbc0e963" />
+
 
 ## Limitations
 PyFT8 doesn't decode / encode *all* message types. The table below shows which are handled.
