@@ -9,13 +9,13 @@ from PyFT8.pskreporter import PSKR_upload
 from PyFT8.gui import Gui
 from PyFT8.transmitter import AudioOut
 from PyFT8.time_utils import global_time_utils
-from PyFT8.rigctrl import Rig_CAT, Rig_hamlib
+from PyFT8.rigctrl import Rig_hamlib
 from PyFT8.databases import History, ADIF
 
-VER = '2.12.3'
+VER = '3.0.0'
 
 MAX_TX_START_SECONDS = 2.5
-HEARING_PANEL_LIFE_MINS = 5
+HEARING_PANEL_LIFE_MINS = 20
 PSKR_REFRESH_MINS = 20
 config_folder, rig, gui, qso, adif_logging, history, pskr_upload, output_device_idx = None, None, None, None, None, None, None, None
 busy_profile, hearing_me = None, None
@@ -38,9 +38,6 @@ def get_config():
         config['bands'] = {'20m':14.074}
         config['gui'] = {'loc':'km_deg', 'wb':'Y'}
         config['hamlib_rig'] = {'rigctld':'C:/WSJT/wsjtx/bin/rigctld-wsjtx', 'port': 'COM4', 'baud_rate':9600, 'model':3070}
-        config['rig'] = {'port': 'COM4', 'baud_rate':9600,
-                         'set_freq_command':'FEFE88E0.05.0000000000.FD', 'set_freq_value':'5|5|vfBcdLU|1|0',
-                         'ptt_on_command':'FEFE88E0.1C00.01.FD', 'ptt_off_command':'FEFE88E0.1C00.00.FD'}
         config['pskreporter'] = {'upload':'Y'}
         with open(ini_file, 'w') as f:
             config.write(f)
@@ -351,9 +348,6 @@ def cli():
     if config.has_section('hamlib_rig'):
         console_print("Connecting to rig via Hamlib")
         rig = Rig_hamlib(config)
-    else:
-        console_print("Connecting to rig via CAT")
-        rig = Rig_CAT(config)
 
     if args.outputcard_keywords:
         outputcard_keywords = args.outputcard_keywords.replace(' ','').split(',')

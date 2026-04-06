@@ -80,7 +80,6 @@ class DiskDict:
 
 class History:
     def __init__(self, config_folder, my_call, home_square, pskr_refresh_mins, parse_all_file):
-        self.t0 = 1775324204
         self.pskr_refresh_mins = pskr_refresh_mins
         self.config_folder = config_folder
         self.my_call = my_call
@@ -93,12 +92,12 @@ class History:
         self.hearing_me_new = {}
         self.heard_by_me_new = {}
         self.call_to_grid = DiskDict(f"{self.config_folder}/call_to_grid.json", 7) # all time cache call -> fine locator
-        self.band_TxRx_homecall_report_times = DiskDict(f"{self.config_folder}/report_times.json", 9) # last 20 mins data -> per band tx/rx & current band detail
+        self.band_TxRx_homecall_recent_l4grid = DiskDict(f"{self.config_folder}/recent_l4grid.json", 9) # last 20 mins data -> per band tx/rx & current band detail
         self.home_activity = {}
         self.home_most_remotes = {}
         self.lock = threading.Lock()
         if parse_all_file:
-            self.load_all_file(f"{self.config_folder}/ALL.txt")
+            self.load_hearing_heard_from_all_file(f"{self.config_folder}/ALL.txt")
             self.hearing_me.save()
             self.heard_by_me.save()
             print("All file parsed and saved to hearing_me / heard_by_me files")
@@ -123,7 +122,7 @@ class History:
                 else:
                     print(m)
 
-    def load_all_file(self, all_file):
+    def load_hearing_heard_from_all_file(self, all_file):
         recs = self.parse_all_txt(all_file)
         if not any(recs): return
         for r in recs:
@@ -179,8 +178,8 @@ class History:
             self.call_to_grid.data[call] = grid
         
     def add_homespots_record(self, key, t):
-        self.band_TxRx_homecall_report_times.data.setdefault(key, [])
-        self.band_TxRx_homecall_report_times.data[key].append(int(t-self.t0))
+        self.band_TxRx_homecall_recent_l4grid.data.setdefault(key, [])
+        self.band_TxRx_homecall_recent_l4grid.data[key].append(int(t))
 
     def add_myspots_record(self, historic_data, new_alert_data, band, call, t, rp):
         self._update_new_alert(band, call, historic_data, new_alert_data)
@@ -227,29 +226,29 @@ class History:
                     self.home_most_remotes[b] = [('Nobody',0), ('Nobody',0)]
 
                 # keep only the remote spots that happened in the self.pskr_refresh_mins window
-                for band_TxRx_homecall in self.band_TxRx_homecall_report_times.data:
-                    band_TxRx_homecall_report_times = self.band_TxRx_homecall_report_times.data[band_TxRx_homecall]
-                    band_TxRx_homecall_report_times = [t for t in band_TxRx_homecall_report_times if (time.time() - self.t0 - t) < 60*self.pskr_refresh_mins]
-                    self.band_TxRx_homecall_report_times.data[band_TxRx_homecall] = band_TxRx_homecall_report_times
+                for band_TxRx_homecall in self.band_TxRx_homecall_recent_l4grid.data:
+                    band_TxRx_homecall_recent_l4grid = self.band_TxRx_homecall_recent_l4grid.data[band_TxRx_homecall]
+                    band_TxRx_homecall_recent_l4grid = [t for t in band_TxRx_homecall_recent_l4grid if (time.time() - t) < 60*self.pskr_refresh_mins]
+                    self.band_TxRx_homecall_recent_l4grid.data[band_TxRx_homecall] = band_TxRx_homecall_recent_l4grid
 
                 # count number of local Tx and Rx, and identify the local Tx and Rx with most remote spots
-                for band_TxRx_homecall in self.band_TxRx_homecall_report_times.data:
-                    band_TxRx_homecall_report_times = self.band_TxRx_homecall_report_times.data[band_TxRx_homecall]
-                    if len(band_TxRx_homecall_report_times):
+                for band_TxRx_homecall in self.band_TxRx_homecall_recent_l4grid.data:
+                    band_TxRx_homecall_recent_l4grid = self.band_TxRx_homecall_recent_l4grid.data[band_TxRx_homecall]
+                    if len(band_TxRx_homecall_recent_l4grid):
                         b, iTxRx, c = band_TxRx_homecall.split('_')
                         iTxRx = int(iTxRx)
                         self.home_activity.setdefault(b, [0, 0])
                         self.home_activity[b][iTxRx] +=1
                         self.home_most_remotes.setdefault(b, [('Nobody',0), ('Nobody',0)])
-                        nremotes = len(band_TxRx_homecall_report_times)
+                        nremotes = len(band_TxRx_homecall_recent_l4grid)
                         current_winner = self.home_most_remotes[b][iTxRx]
                         if nremotes > current_winner[1]:
                             if c != self.my_call:
                                 self.home_most_remotes[b][iTxRx] = (c, nremotes)
 
     def get_spot_counts(self, band, call):
-        tx_reports = self.band_TxRx_homecall_report_times.data.get(f"{band}_0_{call}", [])
-        rx_reports = self.band_TxRx_homecall_report_times.data.get(f"{band}_1_{call}", [])
+        tx_reports = self.band_TxRx_homecall_recent_l4grid.data.get(f"{band}_0_{call}", [])
+        rx_reports = self.band_TxRx_homecall_recent_l4grid.data.get(f"{band}_1_{call}", [])
         n_spotting = len(tx_reports) if tx_reports else 0
         n_spotted = len(rx_reports) if rx_reports else 0
         return n_spotted, n_spotting
