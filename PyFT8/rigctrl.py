@@ -12,7 +12,7 @@ class Rig_hamlib:
         if not self.create_socket(host, port):
             threading.Thread(target = subprocess.run, args = (cmd,)).start()
             time.sleep(0.5)
-            if not self.create_socket(host, port)
+            if not self.create_socket(host, port):
                 print(f"Couldn't create socket for hamlib on {host}:{port}")
         self.set_mode("PKTUSB")
 
