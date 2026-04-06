@@ -12,7 +12,7 @@ from PyFT8.time_utils import global_time_utils
 from PyFT8.rigctrl import Rig_CAT, Rig_hamlib
 from PyFT8.databases import History, ADIF
 
-VER = '2.12.2'
+VER = '2.12.3'
 
 MAX_TX_START_SECONDS = 2.5
 HEARING_PANEL_LIFE_MINS = 5
@@ -57,7 +57,7 @@ class Message:
             mycall = qso.mStation['c']
         self.h0_idx, self.f0_idx, self.msg_tuple, self.msg, self.snr, self.dt, self.fHz = c.h0_idx, c.f0_idx, c.msg_tuple, c.msg, c.snr, c.dt, c.fHz
         self.cyclestart = c.cyclestart
-        self.expire = time.time() + 29.8
+        self.expire = time.time() + 29.25
         self.is_from_me = c.msg_tuple[1] == mycall
         self.is_to_me = c.msg_tuple[0] == mycall
         self.is_cq = c.msg_tuple[0].startswith('CQ')
