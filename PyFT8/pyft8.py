@@ -378,6 +378,7 @@ def cli():
     if not args.no_gui:
         gui = Gui(audio_in.dBgrid_main, 4, 2, config, on_gui_sidebars_refresh, on_gui_msg_click, on_gui_control_click)
         history = History(config_folder, mc, mg, PSKR_REFRESH_MINS, args.parse_all_file)
+        history.set_bands(config['bands'])
         adif_logging = ADIF(f"{config_folder}/PyFT8.adi")
         history.load_hearing_heard_from_adif(adif_logging.cache)
 

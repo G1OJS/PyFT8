@@ -2,6 +2,7 @@ from PyFT8.pskreporter import PSKR_MQTT_listener
 import threading, time, os, pickle, json
 
 call_hashes = {}
+
 def add_call_hashes(call):
     global call_hashes
     chars = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ/"
@@ -64,16 +65,18 @@ class DiskDict:
         with self.lock:        
             if(os.path.exists(self.file)):
                 with open(f"{self.file}","rb") as f:
-                    self.data = json.load(f)
+                    try:
+                        self.data = json.load(f)
+                    except:
+                        pass
 
     def save(self):
         with self.lock:
-            tmp_file = f"{self.file}.tmp"
-            with open(tmp_file, "w") as f:
-                json.dump(self.data, f)
-                f.flush()
-                os.fsync(f.fileno())
-            os.replace(tmp_file, self.file)
+            with open(self.file, "w") as f:
+                try:
+                    json.dump(self.data, f)
+                except:
+                    pass
 
 class History:
     def __init__(self, config_folder, my_call, home_square, pskr_refresh_mins, parse_all_file):
@@ -83,6 +86,7 @@ class History:
         self.my_call = my_call
         self.home_square = home_square
         self.home_square_lev4 = home_square[:4]
+        self.freqs_to_bands = {}
         self.dist_brg_cache = {}
         self.hearing_me = DiskDict(f"{self.config_folder}/hearing_me.json", 3)   # all-time record of hearing me
         self.heard_by_me = DiskDict(f"{self.config_folder}/heard_by_me.json", 5) # all-time record of heard by me
@@ -102,14 +106,11 @@ class History:
             mqtt = PSKR_MQTT_listener(self.home_square_lev4, self.add_mqtt_spot)
             threading.Thread(target = self.count_activity, daemon = True).start()
 
-    def band_from_MHz(self, fMHz): # rewrite this to use the band button defs from ini file
-        f = int(fMHz)
-        if f > 0:
-            freqs = [1,3,5,7,10,14,18,21,24,28,50,144,433]
-            idx = freqs.index(f) if f in freqs else -1
-            if idx > -1:
-                return ['160m','80m','60m','40m','30m','20m','17m','15m','12m','10m','6m','2m','70cm'][idx]
-
+    def set_bands(self, bands):
+        for b in bands:
+            f = float(bands[b])
+            self.freqs_to_bands[round(f,1)] = b
+            
     def load_hearing_heard_from_adif(self, log_cache):
         for key in log_cache:
             key_parts = key.split('_')
@@ -127,7 +128,7 @@ class History:
         if not any(recs): return
         for r in recs:
             if r['md'] == 'FT8':
-                band = self.band_from_MHz(r['fMHz'])
+                band = self.freqs_to_bands.get(round(r['fMHz'], 1), None)
                 if band is not None:
                     TxRx = 'Tx' if (r['TxRx'] == 'Tx' or r['call_b'] == self.my_call) else 'Rx'
                     call = r['call_b'] if TxRx == 'Rx' else r['call_a']
@@ -300,8 +301,11 @@ class ADIF:
     def _build_cache(self):
         import calendar
         def parse(rec, field):
-            rec, field = rec.upper(), field.upper()
             p = rec.find(field)
+            if p<0:
+                p = rec.find(field.upper())
+            if p<0:
+                p = rec.find(field.lower())
             if p > 0:
                 p1, p2 = rec.find(':',p), rec.find('>',p)
                 n = int(rec[p1+1:p2])
