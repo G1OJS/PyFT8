@@ -60,23 +60,16 @@ The use cases below are the ones held in the test cases at the bottom of the mai
 I designed PyFT8 to be minimal as far as possible, and it needs very limited control of the rig in order to transmit. However, whilst previous versions used direct CAT control and Hamlib as a fallback, Version 3.0.0 moves to Hamlib as the only interface.
 
 ## Customising
-Even if you don't want to edit the code, there's quite a bit that you can change in the .ini file. I haven't written a user guide yet, so here's my own .ini file for reference. I use CAT control so my hamlib block is disabled by adding a _ to the name of the block (I keep it there for testing only). I need to add some more switches really to catch up with recent additions.
+Even if you don't want to edit the code, there's quite a bit that you can change in the .ini file. I haven't written a user guide yet, so here's my own .ini file for reference. You'll note that my instance of rigctld is in C:/WSJT/wsjtx/bin/rigctld-wsjtx, but any rigctld should also work. PyFT8 launches this if it's not already running (to be precise, it launches it if it can't open a socket on localhost:4532).
 
 ```
 [station]
 call = G1OJS
-grid = IO90******
+grid = IO******
 [gui]
 loc = km_deg
 wb = Y
-[rig]
-port = COM4
-baud_rate = 9600
-set_freq_command = FEFE88E0.05.0000000000.FD 
-set_freq_value = 5|5|vfBcdLU|1|0 
-ptt_on_command = FEFE88E0.1C00.01.FD
-ptt_off_command = FEFE88E0.1C00.00.FD
-[_hamlib_rig]
+[hamlib_rig]
 rigctld = C:/WSJT/wsjtx/bin/rigctld-wsjtx
 port = COM4
 baud_rate = 9600
