@@ -8,10 +8,12 @@ class Rig_hamlib:
         rig = config['hamlib_rig']['model']
         host, port ="localhost", 4532
         cmd = f"{rigctld} -m {rig} -r {com} -s {s}"
+        self.sock = None
         if not self.create_socket(host, port):
             threading.Thread(target = subprocess.run, args = (cmd,)).start()
             time.sleep(0.5)
-            self.create_socket(host, port)
+            if not self.create_socket(host, port)
+                print(f"Couldn't create socket for hamlib on {host}:{port}")
         self.set_mode("PKTUSB")
 
     def create_socket(self, host, port):
@@ -22,8 +24,9 @@ class Rig_hamlib:
         return True
 
     def cmd(self, command):
-        self.sock.sendall((command + "\n").encode())
-        return self.sock.recv(1024).decode()
+        if self.sock:
+            self.sock.sendall((command + "\n").encode())
+            return self.sock.recv(1024).decode()
 
     def set_mode(self, mode):
         self.cmd(f"M {mode} 0")
