@@ -16,8 +16,7 @@ If you're interested in how this works, maybe have a look at [MiniPyFT8](https:/
  - Finds sound cards by keywords so follows them if windows moves them ...
  - Logs QSOs to ADIF file and all spots to WSJTX-style ALL.txt file
  - Uploads spots to pskreporter
- - Direct CAT control for some rigs, designed to drop connection when not used, allowing sharing of rig's serial port
- - Or control rigs via Hamlib
+ - Control rigs via Hamlib
 
  The Gui shows:
  - Simultaneous views of odd and even cycles
@@ -44,7 +43,7 @@ If you want to install this software without getting into the code, you can inst
 pip install PyFT8
 ```
 
-Once installed, you can use the following commands to run it. Otherwise, please download or browse the code, or fork the repo and play with it! If you do fork it, please check back here as I'm constantly (as of Jan 2026) rewriting and improving.
+Once installed, you can use the following commands to run it. Otherwise, please download or browse the code, or fork the repo and play with it! If you do fork it, please check back here as I'm constantly (as of April 2026) rewriting and improving.
 
 The use cases below are the ones held in the test cases at the bottom of the main pyft8.py file. Where a config folder and .ini file is required, if you leave off the '-c {folder}' option, you'll be asked if you want to create a .ini file in the current directory.
 
@@ -58,11 +57,7 @@ The use cases below are the ones held in the test cases at the bottom of the mai
 | Command line create a wav file | pyft8 -w "Mywav.wav" -m "CQ G1OJS IO90"| No config folder / .ini file required |
 
 ### Rig control 
-I've included the Python code that I use with my Icom IC-7100 in the file 'rigctrl.py', and believe I've moved sufficient 'specification' for the rig protocol into the .ini file so that you can paste in your own rig specification (see for e.g. the Omnirig .ini file for your rig) and get it working with PyFT8 controlling PTT and frequency. I designed this code to drop the serial connection when it's not required, so that the rig's serial port can be accessed by other software at the same time (assuming that the other software returns the favour and doesn't permanently hog the serial port).
-
-I've also included a basic Hamlib interface which launches rigctld and uses that to control the rig. To use this, make sure that the hamlib section of the ini file is populated; this will then take precedence over the direct CAT control section.
-
-Alternatively, you can run PyFT8 without rig control; if there is no rig found, PyFT8 defaults to running without a rig connected. In this case, you need to provide your own PTT method and note that the band buttons will only set the information used for logging QSOs to the PyFT8.adi file. Or you can use PyFT8 as Rx-only.
+I designed PyFT8 to be minimal as far as possible, and it needs very limited control of the rig in order to transmit. However, whilst previous versions used direct CAT control and Hamlib as a fallback, Version 3.0.0 moves to Hamlib as the only interface.
 
 ## Customising
 Even if you don't want to edit the code, there's quite a bit that you can change in the .ini file. I haven't written a user guide yet, so here's my own .ini file for reference. I use CAT control so my hamlib block is disabled by adding a _ to the name of the block (I keep it there for testing only). I need to add some more switches really to catch up with recent additions.
