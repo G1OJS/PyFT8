@@ -22,7 +22,7 @@ If you're interested in how this works, maybe have a look at [MiniPyFT8](https:/
  - Simultaneous views of odd and even cycles
  - Messages overlaid on waterfall signals that produce them
  - Worked-before info and fine grid locators / distance and bearing in the message boxes
- - List of stations hearing your transmissions on the selected band
+ - List of stations hearing your transmissions on the selected band, alternating with list of stations you're hearing. On these lists, 'new' callsigns (first heard since program launch) are in white font.
  - Marker on message if 2nd call is hearing you
  - Band activity in your level 4 square live updated next to band select buttons
  - Number of remote stations hearing your Tx, number of remote Txs that you're hearing, plus the same info for the 'best' station in your level 4 square
