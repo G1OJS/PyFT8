@@ -12,6 +12,7 @@ class Rig_hamlib:
             threading.Thread(target = subprocess.run, args = (cmd,)).start()
             time.sleep(0.5)
             self.create_socket(host, port)
+        self.set_mode("PKTUSB")
 
     def create_socket(self, host, port):
         try:
@@ -23,6 +24,9 @@ class Rig_hamlib:
     def cmd(self, command):
         self.sock.sendall((command + "\n").encode())
         return self.sock.recv(1024).decode()
+
+    def set_mode(self, mode):
+        self.cmd(f"M {mode} 0")
 
     def set_freq_Hz(self, hz):
         self.cmd(f"F {hz}")
