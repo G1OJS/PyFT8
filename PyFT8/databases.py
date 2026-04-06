@@ -98,7 +98,7 @@ class History:
         self.home_most_remotes = {}
         self.lock = threading.Lock()
         if parse_all_file:
-            self.load_all_file(f"{self.config_folder}/ALL.txt")
+            self.load_hearing_heard_from_all_file(f"{self.config_folder}/ALL.txt")
             self.hearing_me.save()
             self.heard_by_me.save()
             print("All file parsed and saved to hearing_me / heard_by_me files")
@@ -123,7 +123,7 @@ class History:
                 else:
                     print(m)
 
-    def load_all_file(self, all_file):
+    def load_hearing_heard_from_all_file(self, all_file):
         recs = self.parse_all_txt(all_file)
         if not any(recs): return
         for r in recs:
