@@ -76,13 +76,18 @@ def _pack_message(c1, c2, gr):
         bits77 = (c28a<<28+1+1+1+15+3) | (p1a<<28+1+1+15+3) | (c28b<<1+1+15+3) | (p1b <<1+15+3) | (ir<<15+3) | (g15<< 3) | (i3)
         symbols  = encode_bits77(bits77)
     else:
-        i3 = 4
-        full_call = c1 if c29b else c2
-        hash_call = c2 if c29b else c1
-        c58 = pack_ft8_c58(full_call)
-        hashes = add_call_hashes(hash_call)
-        swp = 1 if hash_call == c2 else 0
-        cq_ = 0
+        i3, swp = 4, 0
+        cq_ = 1 if c1 == 'CQ' else 0
+        if cq_:
+            gr = ''
+            c58 = pack_ft8_c58(c2)
+            hashes = add_call_hashes(c2)
+        else:
+            full_call = c1 if c29b else c2
+            hash_call = c2 if c29b else c1
+            swp = 1 if hash_call == c2 else 0
+            c58 = pack_ft8_c58(full_call)
+            hashes = add_call_hashes(hash_call)
         rrr = ifindex(['', 'RRR', 'RR73', '73'], gr, 0)
         bits77 = (hashes[1]<<58+1+2+1+3) | (c58 <<1+2+1+3) | (swp<<2+1+3) | (rrr<<1+3) | (cq_<<3) | (i3)
         symbols  = encode_bits77(bits77)
@@ -204,14 +209,20 @@ if __name__ == "__main__":
 
     print("\nTest non-standard calls")
     OK = True
-    msgs = [("SX200M","G1OJS",""), ("G1OJS","SX200M","")]
-    for msg_tx in msgs:
+    msgs = [("SX200M","G1OJS",""),
+            ("G1OJS","SX200M",""),
+            ("CQ","SX200M","")]
+    expected_symbols = ["3140652203407700750145313654745000003140652276403052651370607066332604363140652",
+                        "",
+                        "3140652564261623472565070174400214333140652601351750040163007617513443213140652"]
+    for i, msg_tx in enumerate(msgs):
         symbols, bits77 = _pack_message(*msg_tx)
         from PyFT8.receiver import unpack
         msg_rx = unpack(bits77)
         print(f"\n{msg_tx}\n{msg_rx}")
         OK = OK and (msg_tx == msg_rx) or 'implemented' in msg_rx
-        #print(''.join([str(s) for s in symbols]))
+        print(f"exp: {expected_symbols[i]}")
+        print(f"gen: {''.join([str(s) for s in symbols])}")
     print("\nPASSED" if OK else "\nFAILED")
 
     print("\nUnpack 'CQ DX G1OJS IO90'")
