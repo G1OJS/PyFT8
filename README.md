@@ -8,7 +8,8 @@ PyFT8 is somewhat experimental, with a focus on demonstrating FT8 written in Pyt
 If you're interested in how this works, maybe have a look at [MiniPyFT8](https://github.com/G1OJS/MiniPyFT8) which puts all of the receive code in a single 300 line Python file.
 
 ## Features
- - Rx and Tx of standard messages with optional /P and /R, and nonstandard calls plus hashed calls
+ - Rx and Tx of standard messages with optional /P and /R
+ - RX of nonstandard calls plus hashed calls
  - Launches quickly (~2 seconds on my old Dell Optiplex 790)
  - Use with or without gui (receive and send messages via command line commands)
  - Automatically chooses clearest Tx frequency
@@ -108,7 +109,7 @@ PyFT8 doesn't decode / encode *all* message types. The table below shows which a
 |1|Std Msg  |Y| Y  |Standard <=6 char callsigns, can include /R  |
 |2|EU VHF  |Y|Y| Standard <=6 char callsigns,  can include /P |
 |3|RTTY RU   |   |   | |
-|4|NonStd Call   |Y|Y| <=11 char callsigns + hashed call|
+|4|NonStd Call   |Y|N| <=11 char callsigns + hashed call|
 |5|EU VHF  |   |   | |
 
 ## Acknowledgements
