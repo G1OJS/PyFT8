@@ -1,7 +1,7 @@
 from PyFT8.pskreporter import PSKR_MQTT_listener
 import threading, time, os, pickle, json
 
-call_hashes = {}
+call_hashes, hashes_for_calls = {}, {}
 
 def add_call_hashes(call):
     global call_hashes
@@ -17,9 +17,9 @@ def add_call_hashes(call):
         x = x * 47055833459
         x = x & ((1 << 64) - 1)
         x = x >> (64 - m)
-        hashes.append(x)
+        hashes.append((x, m))
         call_hashes[(x, m)] = call
-    return hashes
+    hashes_for_calls[call] = hashes
 
 def grid_to_latlong(grid, centre = True):
     lat, lon = -90, -180

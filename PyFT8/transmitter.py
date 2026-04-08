@@ -2,7 +2,7 @@ import numpy as np
 import wave
 import pyaudio
 import time
-from PyFT8.databases import add_call_hashes
+from PyFT8.databases import hashes_for_calls, add_call_hashes
 
 #==================== AUDIO OUT ================================================================
 
@@ -68,29 +68,30 @@ def pack_message(c1, c2, gr):
 def _pack_message(c1, c2, gr):
     c29a, c29b = pack_ft8_c29(c1), pack_ft8_c29(c2)
     g15, ir = pack_ft8_g15(gr)
-    if(c29a and c29b):
+    if c29a and c29b:
         c28a, p1a = c29a
         c28b, p1b = c29b
         i3 = 2 if c1.endswith('/P') or c2.endswith('/P') else 1
         n3 = 0    
         bits77 = (c28a<<28+1+1+1+15+3) | (p1a<<28+1+1+15+3) | (c28b<<1+1+15+3) | (p1b <<1+15+3) | (ir<<15+3) | (g15<< 3) | (i3)
         symbols  = encode_bits77(bits77)
-    else:
-        i3, swp = 4, 0
-        cq_ = 1 if c1 == 'CQ' else 0
-        if cq_:
-            gr = ''
-            c58 = pack_ft8_c58(c2)
-            hashes = add_call_hashes(c2)
-        else:
-            full_call = c1 if c29b else c2
-            hash_call = c2 if c29b else c1
-            swp = 1 if hash_call == c2 else 0
-            c58 = pack_ft8_c58(full_call)
-            hashes = add_call_hashes(hash_call)
-        rrr = ifindex(['', 'RRR', 'RR73', '73'], gr, 0)
-        bits77 = (hashes[1]<<58+1+2+1+3) | (c58 <<1+2+1+3) | (swp<<2+1+3) | (rrr<<1+3) | (cq_<<3) | (i3)
+    if c29b and not c29a:
+        add_call_hashes(c1)
+        c28a, p1a = hashes_for_calls[c1][2][0], 0
+        c28b, p1b = c29b
+        i3 = 2 if c2.endswith('/P') else 1
+        n3 = 0    
+        bits77 = (c28a<<28+1+1+1+15+3) | (p1a<<28+1+1+15+3) | (c28b<<1+1+15+3) | (p1b <<1+15+3) | (ir<<15+3) | (g15<< 3) | (i3)
         symbols  = encode_bits77(bits77)
+    if c29a and not c29b:
+        add_call_hashes(c2)
+        c28b, p1b = hashes_for_calls[c2][2][0], 0
+        c28a, p1a = c29a
+        i3 = 2 if c1.endswith('/P') else 1
+        n3 = 0    
+        bits77 = (c28a<<28+1+1+1+15+3) | (p1a<<28+1+1+15+3) | (c28b<<1+1+15+3) | (p1b <<1+15+3) | (ir<<15+3) | (g15<< 3) | (i3)
+        symbols  = encode_bits77(bits77)
+
     return symbols, bits77
 
 
@@ -209,9 +210,9 @@ if __name__ == "__main__":
 
     print("\nTest non-standard calls")
     OK = True
-    msgs = [("SX200M","G1OJS",""),
-            ("G1OJS","SX200M",""),
-            ("CQ","SX200M","")]
+    msgs = [("SX200M","G1OJS","IO90"),
+            ("G1OJS","SX200M","CB21"),
+            ("CQ","SX200M","CB21")]
     expected_symbols = ["3140652203407700750145313654745000003140652276403052651370607066332604363140652",
                         "",
                         "3140652564261623472565070174400214333140652601351750040163007617513443213140652"]
