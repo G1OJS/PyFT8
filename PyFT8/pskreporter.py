@@ -9,7 +9,8 @@ class PSKR_MQTT_listener:
     def __init__(self, home_square, on_spot):
         self.home_square = home_square
         self.on_spot = on_spot
-        mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+        client_id = "PyFT8_" + ''.join(random.choice('0123456789ABCDEF') for i in range(16))
+        mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id)
         mqttc.on_connect = self.on_connect
         mqttc.on_message = self.on_message
         try:
