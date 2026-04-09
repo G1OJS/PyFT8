@@ -77,7 +77,7 @@ def _pack_message(c1, c2, gr):
         symbols  = encode_bits77(bits77)
     if c29b and not c29a:
         add_call_hashes(c1)
-        c28a, p1a = hashes_for_calls[c1][2][0], 0
+        c28a, p1a = 2063592 + hashes_for_calls[c1][2][0], 0
         c28b, p1b = c29b
         i3 = 2 if c2.endswith('/P') else 1
         n3 = 0    
@@ -85,7 +85,7 @@ def _pack_message(c1, c2, gr):
         symbols  = encode_bits77(bits77)
     if c29a and not c29b:
         add_call_hashes(c2)
-        c28b, p1b = hashes_for_calls[c2][2][0], 0
+        c28b, p1b = 2063592 + hashes_for_calls[c2][2][0], 0
         c28a, p1a = c29a
         i3 = 2 if c1.endswith('/P') else 1
         n3 = 0    
