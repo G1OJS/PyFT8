@@ -309,17 +309,9 @@ class Candidate:
             bits77_int = check_crc(bits91_int)
             if(bits77_int):
                 self.msg_tuple = unpack(bits77_int)
-                self.msg = self.validate(self.msg_tuple)
+                self.msg = ' '.join(self.msg_tuple)
         self.decode_completed = time.time()
 
-    def validate(self, msg_tuple):
-        e = False
-        # checking if this is needed after adding full table_7 info and branches on i3, n3
-        #mt = msg_tuple
-        #e = e or (' ' in mt[0].strip() and not mt[0].startswith('CQ'))
-        #e = e or (' ' in mt[1].strip())
-        if not e:
-            return ' '.join(self.msg_tuple)
         
 #============== RECEIVER ===========================================================
         
@@ -388,11 +380,15 @@ class Receiver():
         ticker_cycle_rollover = Ticker(0)
         ticker_search_for_syncs = Ticker(H_SEARCH_1, timing_function = lambda: self.audio_in.dBgrid_main_ptr, cycle_length = HOPS_PER_CYCLE)
         self.audio_in.sync_pointer_to_wall_clock()
+        self.dBgrid_main_copy = self.audio_in.dBgrid_main.copy()
         while True:
             time.sleep(0.040)
             ptr = self.audio_in.dBgrid_main_ptr
 
             if ticker_cycle_rollover.ticked():                
+                if self.curr_cycle == 1:
+                    print("Copy")
+                    self.dBgrid_main_copy = self.audio_in.dBgrid_main.copy()
                 self.audio_in.sync_pointer_to_wall_clock()
                 self.curr_cycle = int(((self.audio_in.dBgrid_main_ptr + 1) % HOPS_PER_GRID) / HOPS_PER_CYCLE)
         
@@ -411,6 +407,12 @@ class Receiver():
             new_to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
             for c in new_to_decode[:55]:
                 c.decode()
+                if True and not c.msg:
+                    sd0 = c.llr_sd
+                    c.demap(self.audio_in.dBgrid_main + self.dBgrid_main_copy)
+                    c.decode()
+                    if c.msg:
+                        print(f"Decode on second pass {c.msg} llr_sd = {sd0:.1f}, {c.llr_sd:.1f}")
 
             if ticker_search_for_syncs.ticked():
                 global_time_utils.tlog(f"[Cycle manager] start search at hop { self.audio_in.dBgrid_main_ptr}", verbose = self.verbose)

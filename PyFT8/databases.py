@@ -185,7 +185,7 @@ class History:
         self._update_new_alert(band, call, historic_data, new_alert_data)
         historic_data.setdefault(band, {})
         if call in historic_data[band]:
-            if t < historic_data[band][call]['t']:
+            if int(t) < int(historic_data[band][call]['t']):
                 return
         historic_data[band][call] = {'t': int(t),'rp':int(rp)}
 

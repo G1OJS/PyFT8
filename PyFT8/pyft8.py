@@ -47,7 +47,7 @@ def get_config():
     config.read(ini_file)
 
 class Message:
-    def __init__(self, candidate, band):
+    def __init__(self, candidate, band = None):
         c = candidate
         mycall = ''
         if qso is not None:
@@ -63,7 +63,7 @@ class Message:
         wb_time = adif_logging.cache.get(c.msg_tuple[1],'') if adif_logging else 0
         wb_text = f"wb: {global_time_utils.format_duration(tnow - float(wb_time))}" if wb_time else ''
         hearing_me = ''
-        if history:
+        if history and band:
             hearing_me = '# ' if history.is_hearing_me(band, c.msg_tuple[1], tnow - 60*HEARING_PANEL_LIFE_MINS) else ' '
         self.gui_text = f"{c.msg} {hearing_me}{wb_text} {self.geo_text}"
     
@@ -391,6 +391,7 @@ def cli():
 if __name__ == "__main__":
     import mock
     with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-o Speak, CODEC', '-c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
+    #with mock.patch('sys.argv', ['pyft8', '-i CABLE, Output', '-o CABLE, Input', '-c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
     #with mock.patch('sys.argv', ['pyft8', '-c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', '-a']):
     #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):
     #with mock.patch('sys.argv', ['pyft8', '-i Mic, CODEC', '-n', '-c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg']):

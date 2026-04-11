@@ -184,11 +184,12 @@ class Gui:
         self.button_boxes.append(bb)
         bb = ButtonBox(self.fig, [L['pmargin'], wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
                         btn_label = "Tx off", onclick = self.on_control_click, clickargs = {'action':'TX_OFF'})                            
-        self.button_boxes.append(bb)            
-        for band, freq in config['bands'].items():
-            bb = ButtonBox(self.fig, [L['pmargin'], wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 30,
-                            btn_label = band, onclick = self.on_control_click, clickargs = {'action':'SET_BAND','band':band,'freq':freq})
-            self.button_boxes.append(bb)
+        self.button_boxes.append(bb)
+        if config is not None:
+            for band, freq in config['bands'].items():
+                bb = ButtonBox(self.fig, [L['pmargin'], wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 30,
+                                btn_label = band, onclick = self.on_control_click, clickargs = {'action':'SET_BAND','band':band,'freq':freq})
+                self.button_boxes.append(bb)
 
         # hearing me list
         self.hm = Scrollbox(self.fig, [L['pmargin'], L['pmargin'], L['sidebar_width'], wf_top - (len(self.button_boxes)+2) * bh + bs - L['vsep1']],
@@ -219,7 +220,7 @@ class Gui:
             self._display_message_box(self.decode_queue.get())
         if (frame % 10 == 0):
             self._tidy_msg_boxes()
-        if (frame % 30 == 0):
+        if (self.on_gui_sidebars_refresh is not None and frame % 30 == 0):
             self.refresh_sidebars()
         return [self.image, *self.ax_wf.patches, *self.ax_wf.texts, *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists,
                 *[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes]]

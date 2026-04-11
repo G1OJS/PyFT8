@@ -68,6 +68,7 @@ def pack_message(c1, c2, gr):
 def _pack_message(c1, c2, gr):
     c29a, c29b = pack_ft8_c29(c1), pack_ft8_c29(c2)
     g15, ir = pack_ft8_g15(gr)
+    symbols, bits77 = [], []
     if c29a and c29b:
         c28a, p1a = c29a
         c28b, p1b = c29b

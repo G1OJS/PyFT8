@@ -67,7 +67,7 @@ def batch_test(i0, i1):
     for idx in range(i0, i1):
         wav_files.append(f"{wav_folder}/test_{idx:02d}.wav")
     audio_in = AudioIn(3100, wav_files)
-    gui = Gui(audio_in.dBgrid_main, 4, 2, None, None, None)
+    gui = Gui(audio_in.dBgrid_main, 4, 2, None, None, None, None)
     rx = Receiver(audio_in, [200, 3100], on_decode, None)
     audio_in.start_wav_load()
     t_start = time.time()
@@ -105,10 +105,10 @@ def live_test():
     from matplotlib.animation import FuncAnimation
     global t_start, gui
     audio_in = AudioIn(3100)
-    gui = Gui(audio_in.dBgrid_main, 4, 2, config, None, None)
+    gui = Gui(audio_in.dBgrid_main, 4, 2, None, None, None, None)
     rx = Receiver(audio_in, [200, 3100], on_decode, None)
     t_start = time.time()
-    input_device_idx = audio_in.find_device(["Cable", "Out"])
+    input_device_idx = audio_in.find_device(["Mic", "CODEC"])
     audio_in.start_streamed_audio(input_device_idx)
     wsjtx_all_tailer = Wsjtx_all_tailer(on_wsjtx_decode, silent = True)
 
@@ -127,14 +127,16 @@ def live_test():
         n_max = np.max([n_wsj, n_pyf])
         if(n_max):
             ax.set_ylim(0, n_max)
-        if any(py_times):
+        if n_pyf:
             ax.set_xlim(0, np.max(py_times))
+        if n_wsj:
+            ax.set_title(f"PyFT8 / WSJT-X = {n_pyf/n_wsj:.0%}")
         return ws_line, py_line,
     ani = FuncAnimation(fig, anim, interval = 5000, frames=(100000), blit=False)
     gui.plt.show()
 
-#live_test()
-batch_test(1,39)
+live_test()
+#batch_test(1,10)
 
 
 
