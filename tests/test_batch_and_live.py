@@ -99,14 +99,20 @@ def batch_test(i0, i1):
 
 def on_wsjtx_decode(dd):
     global ws_times
-    ws_times.append(time.time() - t_start)
+    if frange[1] > int(dd['f']) > frange[0]:
+        ws_times.append(time.time() - t_start)
 
 def live_test():
     from matplotlib.animation import FuncAnimation
     global t_start, gui
     audio_in = AudioIn(3100)
+<<<<<<< Updated upstream
     gui = Gui(audio_in.dBgrid_main, 4, 2, config, None, None)
     rx = Receiver(audio_in, [200, 3100], on_decode, None)
+=======
+    gui = Gui(audio_in.dBgrid_main, 4, 2, None, None, None, None)
+    rx = Receiver(audio_in, frange, on_decode, None)
+>>>>>>> Stashed changes
     t_start = time.time()
     input_device_idx = audio_in.find_device(["Cable", "Out"])
     audio_in.start_streamed_audio(input_device_idx)
@@ -133,8 +139,14 @@ def live_test():
     ani = FuncAnimation(fig, anim, interval = 5000, frames=(100000), blit=False)
     gui.plt.show()
 
+<<<<<<< Updated upstream
 #live_test()
 batch_test(1,39)
+=======
+frange = [200,3100]
+#live_test()
+batch_test(1,10)
+>>>>>>> Stashed changes
 
 
 
