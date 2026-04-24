@@ -71,12 +71,14 @@ class DiskDict:
                         pass
 
     def save(self):
-        with self.lock:
-            with open(self.file, "w") as f:
-                try:
-                    json.dump(self.data, f)
-                except:
-                    pass
+        if self.data != {}:
+            with self.lock:
+                with open('tmp.json', "w") as f:
+                    try:
+                        json.dump(self.data, f)
+                    except:
+                        return
+            os.replace('tmp.json', self.file)
 
 class History:
     def __init__(self, config_folder, my_call, home_square, pskr_refresh_mins, parse_all_file):
@@ -185,7 +187,7 @@ class History:
         self._update_new_alert(band, call, historic_data, new_alert_data)
         historic_data.setdefault(band, {})
         if call in historic_data[band]:
-            if t < historic_data[band][call]['t']:
+            if int(t) < int(historic_data[band][call]['t']):
                 return
         historic_data[band][call] = {'t': int(t),'rp':int(rp)}
 

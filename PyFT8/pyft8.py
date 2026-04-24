@@ -9,7 +9,7 @@ from PyFT8.pskreporter import PSKR_upload
 from PyFT8.gui import Gui
 from PyFT8.transmitter import AudioOut
 from PyFT8.time_utils import global_time_utils
-from PyFT8.rigctrl import Rig_hamlib
+from PyFT8.rigctrl import Rig_hamlib, Rig_CAT
 from PyFT8.databases import History, ADIF
 
 VER = '3.0.2'
@@ -348,6 +348,9 @@ def cli():
     if config.has_section('hamlib_rig'):
         console_print("Connecting to rig via Hamlib")
         rig = Rig_hamlib(config)
+    else:
+        console_print("Connecting to rig via CAT")
+        rig = Rig_CAT(config)
 
     if args.outputcard_keywords:
         outputcard_keywords = args.outputcard_keywords.replace(' ','').split(',')
