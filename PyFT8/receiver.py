@@ -45,10 +45,10 @@ def unpack(bits):
     i3, bits74 = get_bitfields(bits,[3])
     if i3 == 0:
         n3, bits71 = get_bitfields(bits74,[3])
-        if n3 == 0:
-            return ('Free text','not','implemented')
+        if n3 <= 4:
+            return (['Free text', 'DXpedition','Field Day', 'Field Day', 'Telemetry'][n3],'not','implemented')
         else:
-            return (['DXpedition','Field Day', 'Field Day', 'Telemetry'][n3-1],'not','implemented')
+            return ('Unknown mode','not','implemented')
     elif i3 == 1 or i3 == 2: # 1 = Std Msg incl /R 2 = 'EU VHF' = Std Msg incl /P
         return unpack_std(bits74, i3)
     elif i3 == 3:

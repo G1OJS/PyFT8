@@ -12,7 +12,7 @@ from PyFT8.time_utils import global_time_utils
 from PyFT8.rigctrl import Rig_hamlib, Rig_CAT
 from PyFT8.databases import History, ADIF
 
-VER = '3.0.2'
+VER = '3.1.0'
 
 MAX_TX_START_SECONDS = 2.5
 HEARING_PANEL_LIFE_MINS = 20
@@ -315,8 +315,7 @@ def cli():
     import time, sys
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-c', '--config_folder', help = 'Location of config folder e.g. C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', default = './') 
-    parser.add_argument('-i', '--inputcard_keywords', help = 'Comma-separated keywords to identify the input sound device') 
-    #parser.add_argument('-v','--verbose',  action='store_true',  help = 'Verbose: include debugging output')    
+    parser.add_argument('-i', '--inputcard_keywords', help = 'Comma-separated keywords to identify the input sound device')  
     parser.add_argument('-o','--outputcard_keywords', help = 'Comma-separated keywords to identify the output sound device')
     parser.add_argument('-n','--no_gui',  action='store_true',  help = "Don't create a gui")
     parser.add_argument('-m','--transmit_message', nargs='?', help = 'Transmit a message')
@@ -351,6 +350,9 @@ def cli():
     else:
         console_print("Connecting to rig via CAT")
         rig = Rig_CAT(config)
+
+    if config.has_section('launch'):
+        os.system(config['launch']['app'])
 
     if args.outputcard_keywords:
         outputcard_keywords = args.outputcard_keywords.replace(' ','').split(',')

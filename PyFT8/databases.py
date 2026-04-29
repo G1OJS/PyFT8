@@ -73,12 +73,15 @@ class DiskDict:
     def save(self):
         if self.data != {}:
             with self.lock:
-                with open('tmp.json', "w") as f:
+                with open(f"{self.file}_tmp", "w") as f:
                     try:
                         json.dump(self.data, f)
                     except:
                         return
-            os.replace('tmp.json', self.file)
+            try:
+                os.replace(f"{self.file}_tmp", self.file)
+            except:
+                return
 
 class History:
     def __init__(self, config_folder, my_call, home_square, pskr_refresh_mins, parse_all_file):
