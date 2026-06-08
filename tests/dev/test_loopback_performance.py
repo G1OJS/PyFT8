@@ -1,18 +1,10 @@
 import numpy as np
-from PyFT8.cycle_manager import Cycle_manager
-from PyFT8.candidate import Candidate, params
-from PyFT8.spectrum import Spectrum
-from PyFT8.sigspecs import FT8
-from PyFT8.FT8_unpack import FT8_unpack
-from PyFT8.ldpc import LdpcDecoder
-from PyFT8.FT8_encoder import encode_bits77, pack_message
-from PyFT8.FT8_crc import bitsLE_to_int
+from PyFT8.receiver import Receiver, Candidate
+from PyFT8.transmitter import encode_bits77, pack_message
 import time
 
 global test_messages
 test_messages = []
-
-params.update({'MIN_LLR_SD': 0})
 
 gray_seq = [0,1,3,2,5,6,4,7]
 num_symbols = 79

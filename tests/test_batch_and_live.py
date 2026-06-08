@@ -137,7 +137,7 @@ def live_test():
     gui.plt.show()
 
 #live_test()
-batch_test(1,3)
+batch_test(1,39)
 
 
 
