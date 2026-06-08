@@ -54,11 +54,14 @@ def get_cumulative_from_text_files(i0, i1, postfix):
     return times
 
 def on_decode(c):
-    message = Message(c)
+    message = Message(c,'20m')
     if gui:
         gui.add_message_box(message)
     print(message.wsjtx_screen_format())
     py_times.append(time.time() - t_start)
+
+def donothing(*args):
+    return
 
 def batch_test(i0, i1):
     from matplotlib.animation import FuncAnimation
@@ -67,7 +70,7 @@ def batch_test(i0, i1):
     for idx in range(i0, i1):
         wav_files.append(f"{wav_folder}/test_{idx:02d}.wav")
     audio_in = AudioIn(3100, wav_files)
-    gui = Gui(audio_in.dBgrid_main, 4, 2, None, None, None)
+    gui = Gui(audio_in.dBgrid_main, 4, 2, {'bands':{'20m':14.074},'station':{'call':'G1OJS','grid':'IO90'}}, donothing, donothing, donothing)
     rx = Receiver(audio_in, [200, 3100], on_decode, None)
     audio_in.start_wav_load()
     t_start = time.time()
@@ -105,7 +108,7 @@ def live_test():
     from matplotlib.animation import FuncAnimation
     global t_start, gui
     audio_in = AudioIn(3100)
-    gui = Gui(audio_in.dBgrid_main, 4, 2, config, None, None)
+    gui = Gui(audio_in.dBgrid_main, 4, 2, config, None, None, None)
     rx = Receiver(audio_in, [200, 3100], on_decode, None)
     t_start = time.time()
     input_device_idx = audio_in.find_device(["Cable", "Out"])
@@ -134,7 +137,7 @@ def live_test():
     gui.plt.show()
 
 #live_test()
-batch_test(1,39)
+batch_test(1,3)
 
 
 
