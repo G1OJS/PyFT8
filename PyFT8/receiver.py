@@ -186,7 +186,7 @@ class AudioIn:
         self.hops_per_cycle = HOPS_PER_CYCLE
         self.hops_per_grid = 2 * HOPS_PER_CYCLE
         self.dt = T_CYC / HOPS_PER_CYCLE
-        self.df = max_freq / (self.nFreqs - 1)
+        self.df = max_freq / self.nFreqs
         self.dBgrid_main = np.ones((self.hops_per_grid, self.nFreqs), dtype = np.float32)
         self.wav_files = wav_files
         self.dBgrid_main_ptr = 0
