@@ -101,7 +101,7 @@ def spectrum(audio, max_freq = 300):
     spec_phase = np.zeros((HOPS_PER_CYCLE, nFreqs), dtype = np.float32)
     for hop in range(79*HPS):
         s0 = hop*samps_perhop
-        #aw = audio[s0: s0+fft_len] * fft_window
+        aw = audio[s0: s0+fft_len] * fft_window
         aw = audio[s0: s0+fft_len]
         #aw = aw * np.exp(1j * fft_phase)
         z = np.fft.fft(aw)[:nFreqs]
@@ -144,13 +144,24 @@ def show_spectrum(dBgrid_main, phase, f0, fn):
     axs[1].set_title("Signal phase")
     axs[1].imshow(phase, origin = 'lower', aspect = 'auto', interpolation = 'nearest')
 
-def show_llr(encoded_bits174_str, llr, target_params = (3.3, 3.7)):
+def show_llr(encoded_bits174_str, llr, llr_hard, target_params = (3.3, 3.7)):
     fig, ax = plt.subplots(figsize=(15,4))
     encoded_bits174 = [-target_params[1]+2*target_params[1]*int(b) for b in encoded_bits174_str]
-    ax.set_title("Demapped LLR overlaid on transmitted payload bits")
-    ax.plot(encoded_bits174)
-    ax.plot(llr)
+    ax.set_title(f"Demapped LLR overlaid on transmitted payload bits with {added_noise}dB added noise")
+    ax.plot(encoded_bits174, label = 'Encoded bits')
+    ax.plot(llr, label = f"llr ({assess_llr(transmitted_payload_bits, llr)} bit errors)")
+    ax.plot(llr_hard, label = f"llr_hard ({assess_llr(transmitted_payload_bits, llr_hard)} bit errors)")
+    plt.legend()
 
+def assess_llr(transmitted_payload_bits, llr):
+    recovered_payload_bits_unGrayed_str = ''.join([f"{b}" for b in (np.array(llr) > 0).astype(int)])
+    #print(f"{recovered_payload_bits_unGrayed_str=         }")
+    recovered_payload_symbols_unGrayed_str = ''.join([f"{int('0b'+s,2)}" for s in [recovered_payload_bits_unGrayed_str[i*3:i*3+3] for i in range(58)] ] )
+    inferred_payload_symbols_str = ''.join([str(GRAY[int(s)]) for s in recovered_payload_symbols_unGrayed_str])
+    #print(f"{inferred_payload_symbols_str=                }")
+    bit_errors = [1 if a!=recovered_payload_bits_unGrayed_str[i] else 0 for i, a in enumerate(transmitted_payload_bits)]
+    #print(f"Bit errors {np.sum(bit_errors)}")
+    return np.sum(bit_errors)
 
 #============== Main ========================================================
 
@@ -160,6 +171,7 @@ print("**Could strip out the faithful bits174_int generation and use random**\n"
 
 bits77_int = 0b00000000000000000000000000100000010010000000000111000001100011111000010010001
 f_base = 40*6.25
+added_noise = 25
 
 bits91_int, bits14_int = append_crc(bits77_int)
 bits174_int, bits83_int = ldpc_encode(bits91_int)
@@ -173,7 +185,7 @@ print(f"{transmitted_payload_bits =                   }")
 transmitted_payload_symbols_str = ''.join([str(s) for s in channel_payload_symbols])
 print(f"{transmitted_payload_symbols_str=             }")
 
-audio = create_ft8_wave(channel_symbols, f_base = f_base, added_noise = 0)
+audio = create_ft8_wave(channel_symbols, f_base = f_base, added_noise = added_noise)
 power, phase, df = spectrum(audio, max_freq = 3000)
 f0_idx = int(f_base / df) 
 
@@ -182,18 +194,9 @@ dBgrid_main = np.clip(dBgrid_main, np.max(dBgrid_main)-20, None)
 show_spectrum(power, phase, f0_idx, f0_idx + 8*BPT)
 
 llr = demap(power, 0, f0_idx, df)
-#llr = demap_argmax(dBgrid_main, 0, f0_idx, df)
-show_llr(transmitted_payload_bits, llr)
-recovered_payload_bits_unGrayed_str = ''.join([f"{b}" for b in (np.array(llr) > 0).astype(int)])
+llr_hard = demap_argmax(dBgrid_main, 0, f0_idx, df)
+show_llr(transmitted_payload_bits, llr, llr_hard)
 
-print(f"{recovered_payload_bits_unGrayed_str=         }")
-
-recovered_payload_symbols_unGrayed_str = ''.join([f"{int('0b'+s,2)}" for s in [recovered_payload_bits_unGrayed_str[i*3:i*3+3] for i in range(58)] ] )
-inferred_payload_symbols_str = ''.join([str(GRAY[int(s)]) for s in recovered_payload_symbols_unGrayed_str])
-print(f"{inferred_payload_symbols_str=                }")
-
-bit_errors = [1 if a!=recovered_payload_bits_unGrayed_str[i] else 0 for i, a in enumerate(transmitted_payload_bits)]
-print(f"Bit errors {np.sum(bit_errors)}")
 
 plt.show()
 
