@@ -10,8 +10,6 @@ HOPS_PER_CYCLE = int(T_CYC*SYM_RATE*HPS)
 BASE_FREQ_IDXS = np.array([BPT * t for t in range(8)])
 PAYLOAD_SYMBOL_INDEXES = list(range(7, 36)) + list(range(43, 72))
 BASE_PAYLOAD_HOPS = np.array([HPS * s for s in PAYLOAD_SYMBOL_INDEXES])
-GRAY = [0,1,3,2,5,6,4,7]
-#GRAY = [0,1,2,3,4,5,6,7]
 #GRAY CODE
 # Tone  Bits
 #   0   000 (0)
@@ -22,6 +20,8 @@ GRAY = [0,1,3,2,5,6,4,7]
 #   5   100 (*4)
 #   6   101 (*5)
 #   7   111 (7)
+GRAY = [0,1,3,2,5,6,4,7]
+unGRAY = [0,1,3,2,6,4,5,7]
 
 #============== Transmitter ========================================================
 
@@ -156,14 +156,13 @@ class LdpcDecoder:
         llr += update_collector
         return llr, self.calc_ncheck(llr)
 
-def demap_pmax(dBgrid_main, h0_idx, f0_idx, df):
-    unGray=['000','001','011','010','101','110','100','111']
+def demap_argmax(dBgrid_main, h0_idx, f0_idx, df):
     hops = [i*HPS for i in range(79)]
     freq_idxs = f0_idx + BASE_FREQ_IDXS
     hops = h0_idx + BASE_PAYLOAD_HOPS
     dBgrid = dBgrid_main[np.ix_(hops, freq_idxs)]
     tones = np.argmax(dBgrid, axis = 1)
-    bits_decoded_str = ''.join([unGray[t] for t in tones])
+    bits_decoded_str = ''.join([f"{unGRAY[t]:03b}" for t in tones])
     return bits_decoded_str
 
 def demap(dBgrid_main, h0_idx, f0_idx, df, target_params = (3.3, 3.7)):
@@ -172,10 +171,6 @@ def demap(dBgrid_main, h0_idx, f0_idx, df, target_params = (3.3, 3.7)):
     p = dBgrid_main[np.ix_(hops, freq_idxs)]
     pmax = np.max(p)
     snr = np.clip(int(pmax - np.min(p) - 58), -24, 24)
-    #GRAY = [0,1,3,2,5,6,4,7]
-    #bit2 = [0,0,0,0,1,1,1,1]
-    #bit1 = [0,0,1,1,0,0,1,1]
-    #bit0 = [0,1,0,1,0,1,0,1]
     llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
     llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
     llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
@@ -231,7 +226,7 @@ show_spectrum(power, phase, f0_idx, f0_idx + 8*BPT)
 llr = demap(power, 0, f0_idx, df)
 show_llr(transmitted_payload_bits, llr)
 recovered_payload_bits_unGrayed_str = ''.join([f"{b}" for b in (np.array(llr) > 0).astype(int)])
-#recovered_payload_bits_unGrayed_str = demap_pmax(dBgrid_main, 0, f0_idx, df)
+#recovered_payload_bits_unGrayed_str = demap_argmax(dBgrid_main, 0, f0_idx, df)
 print(f"{recovered_payload_bits_unGrayed_str=         }")
 
 recovered_payload_symbols_unGrayed_str = ''.join([f"{int('0b'+s,2)}" for s in [recovered_payload_bits_unGrayed_str[i*3:i*3+3] for i in range(58)] ] )
