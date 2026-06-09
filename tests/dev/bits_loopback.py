@@ -11,6 +11,17 @@ BASE_FREQ_IDXS = np.array([BPT * t for t in range(8)])
 PAYLOAD_SYMBOL_INDEXES = list(range(7, 36)) + list(range(43, 72))
 BASE_PAYLOAD_HOPS = np.array([HPS * s for s in PAYLOAD_SYMBOL_INDEXES])
 GRAY = [0,1,3,2,5,6,4,7]
+#GRAY = [0,1,2,3,4,5,6,7]
+#GRAY CODE
+# Tone  Bits
+#   0   000 (0)
+#   1   001 (1)
+#   2   011 (*3)
+#   3   010 (*2)
+#   4   110 (*6)
+#   5   100 (*4)
+#   6   101 (*5)
+#   7   111 (7)
 
 #============== Transmitter ========================================================
 
@@ -33,13 +44,6 @@ def gray_encode(bits: int) -> list[int]:
         bits >>= 3
     return syms
 
-def encode_bits77(bits77_int):
-    bits91_int, bits14_int = append_crc(bits77_int)
-    bits174_int, bits83_int = ldpc_encode(bits91_int)
-    syms = gray_encode(bits174_int)
-    costas=[3,1,4,0,6,5,2]
-    return costas + syms[:29] + costas + syms[29:] + costas
-
 def append_crc(bits77_int):
     poly = 0x2757
     width = 14
@@ -57,12 +61,14 @@ def append_crc(bits77_int):
     bits91_int = (bits77_int << 14) | bits14_int
     return bits91_int, bits14_int
 
-def create_ft8_wave(symbols, fs=12000, f_base=100.0, f_step=6.25, amplitude = 0.5, added_noise = -50):
+def create_ft8_wave(channel_symbols, fs=12000, f_base=100.0, f_step=6.25, amplitude = 0.5, added_noise = -50):
     symbol_len = int(fs * 0.160)
     t = np.arange(symbol_len) / fs
+    start_sample = int(fs*0.0)
     phase = 0
     waveform = []
-    for s in symbols:
+    for s in channel_symbols:
+      #  s=4
         f = f_base + s * f_step 
         phase_inc = 2 * np.pi * f / fs 
         w = np.sin(phase + phase_inc * np.arange(symbol_len))
@@ -78,33 +84,32 @@ def create_ft8_wave(symbols, fs=12000, f_base=100.0, f_step=6.25, amplitude = 0.
         noise *= noise_rms / np.sqrt(np.mean(noise**2))
         waveform += noise
     outframe = np.zeros(int(T_CYC*SAMP_RATE))
-    outframe[:len(waveform)] = waveform
+    outframe[start_sample:start_sample+len(waveform)] = waveform
     return outframe
+#============== Receiver ========================================================
 
 def spectrum(audio, max_freq = 300):
     fft_len = int(BPT * SAMP_RATE // SYM_RATE)
     fft_out_len = fft_len // 2 + 1
     nFreqs = int(fft_out_len * 2 * max_freq / SAMP_RATE)
     fft_window = np.hanning(fft_len).astype(np.float32)
+    fft_phase = np.linspace(0, np.pi, fft_len)
     dt = T_CYC / HOPS_PER_CYCLE
     df = max_freq / nFreqs
     samps_perhop = int(SAMP_RATE // (HPS*SYM_RATE))
-    print(HOPS_PER_CYCLE, nFreqs)
     spec_pwr = np.ones((HOPS_PER_CYCLE, nFreqs), dtype = np.float32)
     spec_phase = np.zeros((HOPS_PER_CYCLE, nFreqs), dtype = np.float32)
     for hop in range(79*HPS):
         s0 = hop*samps_perhop
-       # aw = audio[s0: s0+fft_len] * fft_window
+        #aw = audio[s0: s0+fft_len] * fft_window
         aw = audio[s0: s0+fft_len]
-        z = np.fft.rfft(aw)[:nFreqs]
+        #aw = aw * np.exp(1j * fft_phase)
+        z = np.fft.fft(aw)[:nFreqs]
         p = np.clip(z.real*z.real + z.imag*z.imag, 0.001, None)
         spec_pwr[hop, :] = p
         spec_phase[hop, :] = np.atan2(z.imag, z.real)
     return spec_pwr, spec_phase, df
 
-
-
-#============== Receiver ========================================================
 def check_crc(bits91_int):
     bits77_int = bits91_int >> 14
     if(bits77_int > 0):
@@ -151,19 +156,31 @@ class LdpcDecoder:
         llr += update_collector
         return llr, self.calc_ncheck(llr)
 
-def demap(dBgrid_main, h0_idx = 0, f0_idx = 0, df = 0.1, target_params = (3.3, 3.7)):
+def demap_pmax(dBgrid_main, h0_idx, f0_idx, df):
+    unGray=['000','001','011','010','101','110','100','111']
     hops = [i*HPS for i in range(79)]
     freq_idxs = f0_idx + BASE_FREQ_IDXS
     hops = h0_idx + BASE_PAYLOAD_HOPS
     dBgrid = dBgrid_main[np.ix_(hops, freq_idxs)]
-    pmax = np.max(dBgrid)
-    snr = np.clip(int(pmax - np.min(dBgrid) - 58), -24, 24)
-    p = np.clip(dBgrid - pmax, -80, 0)
+    tones = np.argmax(dBgrid, axis = 1)
+    bits_decoded_str = ''.join([unGray[t] for t in tones])
+    return bits_decoded_str
+
+def demap(dBgrid_main, h0_idx, f0_idx, df, target_params = (3.3, 3.7)):
+    freq_idxs = f0_idx + BASE_FREQ_IDXS
+    hops = h0_idx + BASE_PAYLOAD_HOPS
+    p = dBgrid_main[np.ix_(hops, freq_idxs)]
+    pmax = np.max(p)
+    snr = np.clip(int(pmax - np.min(p) - 58), -24, 24)
+    #GRAY = [0,1,3,2,5,6,4,7]
+    #bit2 = [0,0,0,0,1,1,1,1]
+    #bit1 = [0,0,1,1,0,0,1,1]
+    #bit0 = [0,1,0,1,0,1,0,1]
     llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
     llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
     llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
     llr = np.column_stack((llra, llrb, llrc))
-    llr = llr.ravel() / 10
+    llr = llr.ravel() 
     llr_sd = int(0.5+100*np.std(llr))/100.0
     llr = target_params[0] * llr / (1e-12 + llr_sd)
     llr = np.clip(llr, -target_params[1], target_params[1])
@@ -190,30 +207,39 @@ def show_llr(encoded_bits174_str, llr):
 bits77_int = 0b00000000000000000000000000100000010010000000000111000001100011111000010010001
 f_base = 40*6.25
 
-symbols  = encode_bits77(bits77_int)
-payload_symbols = [symbols[idx] for idx in PAYLOAD_SYMBOL_INDEXES]
-encoded_bits174_str = ''.join([f"{GRAY[s]:03b}" for s in payload_symbols])
+bits91_int, bits14_int = append_crc(bits77_int)
+bits174_int, bits83_int = ldpc_encode(bits91_int)
+channel_payload_symbols = gray_encode(bits174_int)
+costas=[3,1,4,0,6,5,2]
+channel_symbols = costas + channel_payload_symbols[:29] + costas + channel_payload_symbols[29:] + costas
 
-audio = create_ft8_wave(symbols, f_base = f_base, added_noise = -20)
+transmitted_payload_bits = "0"*174
+bits = f"{bits174_int:03b}"
+transmitted_payload_bits = "0"*(174-len(bits)) + bits 
+print(f"{transmitted_payload_bits =                   }")
+transmitted_payload_symbols_str = ''.join([str(s) for s in channel_payload_symbols])
+print(f"{transmitted_payload_symbols_str=             }")
+
+audio = create_ft8_wave(channel_symbols, f_base = f_base, added_noise = -20)
 power, phase, df = spectrum(audio, max_freq = 3000)
-f0_idx = int(f_base / df)
-
-
-print(f_base, f0_idx, df)
+f0_idx = int(f_base / df) 
 
 dBgrid_main = 20*np.log10(power)
-dBgrid_main = np.clip(dBgrid_main, np.max(dBgrid_main)-80, None)
-show_spectrum(dBgrid_main, phase, f0_idx, f0_idx + 8*BPT)
+dBgrid_main = np.clip(dBgrid_main, np.max(dBgrid_main)-20, None)
+show_spectrum(power, phase, f0_idx, f0_idx + 8*BPT)
 
-llr = demap(dBgrid_main, 0, f0_idx, df)
-show_llr(encoded_bits174_str, llr)
+llr = demap(power, 0, f0_idx, df)
+show_llr(transmitted_payload_bits, llr)
+recovered_payload_bits_unGrayed_str = ''.join([f"{b}" for b in (np.array(llr) > 0).astype(int)])
+#recovered_payload_bits_unGrayed_str = demap_pmax(dBgrid_main, 0, f0_idx, df)
+print(f"{recovered_payload_bits_unGrayed_str=         }")
 
-bits_decoded_str = ''.join([f"{b}" for b in (np.array(llr) > 0).astype(int)])
-print(encoded_bits174_str)
-print(bits_decoded_str)
-bit_errors = [1 if a!=encoded_bits174_str[i] else 0 for i, a in enumerate(bits_decoded_str)]
+recovered_payload_symbols_unGrayed_str = ''.join([f"{int('0b'+s,2)}" for s in [recovered_payload_bits_unGrayed_str[i*3:i*3+3] for i in range(58)] ] )
+inferred_payload_symbols_str = ''.join([str(GRAY[int(s)]) for s in recovered_payload_symbols_unGrayed_str])
+print(f"{inferred_payload_symbols_str=                }")
+
+bit_errors = [1 if a!=recovered_payload_bits_unGrayed_str[i] else 0 for i, a in enumerate(transmitted_payload_bits)]
 print(f"Bit errors {np.sum(bit_errors)}")
-
 
 plt.show()
 
