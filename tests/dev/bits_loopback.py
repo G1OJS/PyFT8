@@ -155,7 +155,8 @@ def show_llr(encoded_bits174_str, llr, target_params = (3.3, 3.7)):
 #============== Main ========================================================
 
 print("**Now internally consistent and ready to test alternative demappers e.g. correlated**")
-print("**Also worth looking at refactoring to allow montecarlo tests against added noise levels**\n")
+print("**Also worth looking at refactoring to allow montecarlo tests against added noise levels**")
+print("**Could strip out the faithful bits174_int generation and use random**\n")
 
 bits77_int = 0b00000000000000000000000000100000010010000000000111000001100011111000010010001
 f_base = 40*6.25
