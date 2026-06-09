@@ -156,14 +156,15 @@ class LdpcDecoder:
         llr += update_collector
         return llr, self.calc_ncheck(llr)
 
-def demap_argmax(dBgrid_main, h0_idx, f0_idx, df):
+def demap_argmax(dBgrid_main, h0_idx, f0_idx, df, target_params = (3.3, 3.7)):
     hops = [i*HPS for i in range(79)]
     freq_idxs = f0_idx + BASE_FREQ_IDXS
     hops = h0_idx + BASE_PAYLOAD_HOPS
     dBgrid = dBgrid_main[np.ix_(hops, freq_idxs)]
     tones = np.argmax(dBgrid, axis = 1)
     bits_decoded_str = ''.join([f"{unGRAY[t]:03b}" for t in tones])
-    return bits_decoded_str
+    llr = [-target_params[1]+2*target_params[1]*int(b) for b in bits_decoded_str]
+    return llr
 
 def demap(dBgrid_main, h0_idx, f0_idx, df, target_params = (3.3, 3.7)):
     freq_idxs = f0_idx + BASE_FREQ_IDXS
@@ -179,7 +180,7 @@ def demap(dBgrid_main, h0_idx, f0_idx, df, target_params = (3.3, 3.7)):
     llr_sd = int(0.5+100*np.std(llr))/100.0
     llr = target_params[0] * llr / (1e-12 + llr_sd)
     llr = np.clip(llr, -target_params[1], target_params[1])
-    return [l/target_params[1] for l in llr]
+    return [l for l in llr]
 
 #============== Charts ========================================================
 def show_spectrum(dBgrid_main, phase, f0, fn):
@@ -189,9 +190,9 @@ def show_spectrum(dBgrid_main, phase, f0, fn):
     axs[1].set_title("Signal phase")
     axs[1].imshow(phase, origin = 'lower', aspect = 'auto', interpolation = 'nearest')
 
-def show_llr(encoded_bits174_str, llr):
+def show_llr(encoded_bits174_str, llr, target_params = (3.3, 3.7)):
     fig, ax = plt.subplots(figsize=(15,4))
-    encoded_bits174 = [-1+2*int(b) for b in encoded_bits174_str]
+    encoded_bits174 = [-target_params[1]+2*target_params[1]*int(b) for b in encoded_bits174_str]
     ax.set_title("Demapped LLR overlaid on transmitted payload bits")
     ax.plot(encoded_bits174)
     ax.plot(llr)
@@ -215,7 +216,7 @@ print(f"{transmitted_payload_bits =                   }")
 transmitted_payload_symbols_str = ''.join([str(s) for s in channel_payload_symbols])
 print(f"{transmitted_payload_symbols_str=             }")
 
-audio = create_ft8_wave(channel_symbols, f_base = f_base, added_noise = -20)
+audio = create_ft8_wave(channel_symbols, f_base = f_base, added_noise = 0)
 power, phase, df = spectrum(audio, max_freq = 3000)
 f0_idx = int(f_base / df) 
 
@@ -224,9 +225,10 @@ dBgrid_main = np.clip(dBgrid_main, np.max(dBgrid_main)-20, None)
 show_spectrum(power, phase, f0_idx, f0_idx + 8*BPT)
 
 llr = demap(power, 0, f0_idx, df)
+#llr = demap_argmax(dBgrid_main, 0, f0_idx, df)
 show_llr(transmitted_payload_bits, llr)
 recovered_payload_bits_unGrayed_str = ''.join([f"{b}" for b in (np.array(llr) > 0).astype(int)])
-#recovered_payload_bits_unGrayed_str = demap_argmax(dBgrid_main, 0, f0_idx, df)
+
 print(f"{recovered_payload_bits_unGrayed_str=         }")
 
 recovered_payload_symbols_unGrayed_str = ''.join([f"{int('0b'+s,2)}" for s in [recovered_payload_bits_unGrayed_str[i*3:i*3+3] for i in range(58)] ] )
