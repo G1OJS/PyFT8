@@ -11,11 +11,8 @@ def on_decode(c):
     msg = getattr(c, 'msg', None)
     if msg is not None:
         nDecodes += 1
-        print(f"{nDecodes:03d}:{msg} {c.h0_idx, c.f0_idx}")
+        print(f"{nDecodes:03d}:{msg} {c.h0_idx * 0.16/4, c.f0_idx * 6.25/2}")
    
-def donothing(*args):
-    return
-
 wav_file = os.path.join('./', 'test_01.wav')
 audio_in = AudioIn(3100, [wav_file])
 rx = Receiver(audio_in, [200, 3100], on_decode, None)
