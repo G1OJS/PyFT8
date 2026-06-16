@@ -150,56 +150,42 @@ class LdpcDecoder:
         llr += update_collector
         return llr, self.calc_ncheck(llr)
 
-#============== AUDIO ========================================================
-class AudioIn:
-    def __init__(self, wav_path, freq_range=[00, 3100]):
-        self.fft_len = int(SAMP_RATE // SYM_RATE)
-        fft_out_len = self.fft_len // 2 + 1
-        max_freq = freq_range[1]
-        self.nFreqs = int(fft_out_len * 2 * max_freq / SAMP_RATE)
-        self.fft_window = fft_window=np.hanning(self.fft_len).astype(np.float32)
-        self.dBgrid_main = np.ones((HPS, BPT, SYMBOLS_PER_CYCLE * 2, self.nFreqs), dtype = np.float32) 
-        self.dBgrid_main_ptr = 0
-
-        for subfreq in range(BPT):
-            for subhop in range(HPS):
-                self.dBgrid_main_ptr = 0
-                wf = wave.open(wav_path, "rb")
-                frames_discard = wf.readframes(int(self.fft_len * subhop / HPS))
-                frames = wf.readframes(self.fft_len)
-                self.phase = np.exp(1j * np.linspace(0,np.pi*2*subfreq/BPT,self.fft_len))
-                while frames:
-                    samples = np.frombuffer(frames, dtype=np.int16).astype(np.complex64)
-                    if len(samples) == self.fft_len:
-                        #np.multiply(samples, self.fft_window, out=samples)
-                        np.multiply(samples, self.phase, out=samples)
-                        z = np.fft.fft(samples)[:self.nFreqs]
-                        self.dBgrid_main[subhop, subfreq, self.dBgrid_main_ptr, :] = 10*np.log10(z.real*z.real + z.imag*z.imag + 1e-12)
-                        self.dBgrid_main_ptr +=1
-                    frames = wf.readframes(self.fft_len)
-                wf.close()    
-                                   
-        
 
 def run():
     print("start")
-    
-    audio_in = AudioIn("test_01.wav")
-    print("created instances")
-    nFreqs = audio_in.nFreqs
-    dt = 1.0 / (SYM_RATE)
-    origins_for_decode = [(0, 0)] * nFreqs
+    fft_len = int(SAMP_RATE // SYM_RATE)
+    fft_out_len = fft_len // 2 + 1
+    max_freq = 3000
+    nFreqs = int(fft_out_len * 2 * max_freq / SAMP_RATE)
+    fft_window = fft_window=np.hanning(fft_len).astype(np.float32)
+    dBgrid_main = np.ones((HPS, BPT, SYMBOLS_PER_CYCLE * 2, nFreqs), dtype = np.float32) 
+    for subfreq in range(BPT):
+        for subhop in range(HPS):
+            dBgrid_main_ptr = 0
+            wf = wave.open('test_01.wav', "rb")
+            frames_discard = wf.readframes(int(fft_len * subhop / HPS))
+            frames = wf.readframes(fft_len)
+            phase = np.exp(1j * np.linspace(0,np.pi*2*subfreq/BPT, fft_len))
+            while frames:
+                samples = np.frombuffer(frames, dtype=np.int16).astype(np.complex64)
+                if len(samples) == fft_len:
+                    #np.multiply(samples, fft_window, out=samples)
+                    np.multiply(samples, phase, out=samples)
+                    z = np.fft.fft(samples)[:nFreqs]
+                    dBgrid_main[subhop, subfreq, dBgrid_main_ptr, :] = 10*np.log10(z.real*z.real + z.imag*z.imag + 1e-12)
+                    dBgrid_main_ptr +=1
+                frames = wf.readframes(fft_len)
+            wf.close()
     csync = np.full((7, 7), -1/6, np.float32)
     for sym_idx, tone in enumerate([3,1,4,0,6,5,2]):
         csync[sym_idx, tone] = 1.0
     csync_flat =  csync.ravel()
     
-    # Search
     origins_for_decode = [(0, 0, 0, 0)] * nFreqs
     for fb in range(nFreqs - 8):
         score = 0
         for subfreq in range(BPT):
-          p_dB = audio_in.dBgrid_main[:, subfreq, :, fb:fb+7]
+          p_dB = dBgrid_main[:, subfreq, :, fb:fb+7]
           for h0_idx in range(H0_RANGE[0], H0_RANGE[1]):
               for subhop in range(HPS):
                   c0 = h0_idx + 36
@@ -216,12 +202,8 @@ def run():
     target_params = [3.5, 3.7]
     for origin in origins_for_decode:    
         hops, freq_idxs, subhop, subfreq = origin[0] + SYMBOL_IDXS, origin[1] + np.arange(8), origin[2], origin[3]
-        dBgrid = audio_in.dBgrid_main[np.ix_([subhop], [subfreq],
-        hops, freq_idxs)][0,0,:,:]
-        
-        pmax = np.max(dBgrid)
-        snr = np.clip(int(pmax - np.min(dBgrid) - 58), -24, 24)
-        p = dBgrid - pmax
+        dBgrid = dBgrid_main[np.ix_([subhop], [subfreq], hops, freq_idxs)][0,0,:,:]
+        p = dBgrid - np.max(dBgrid)
         llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
         llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
         llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
