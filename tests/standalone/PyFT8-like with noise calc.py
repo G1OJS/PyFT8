@@ -5,21 +5,26 @@ import numpy as np
 import wave
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
-#repo_root = os.path.dirname(script_dir)
-#files_root = os.path.dirname('⁨On My iPhone⁩/⁨Chrome⁩')
-#sys.path.insert(0, files_root)
+repo_root = os.path.dirname(script_dir)
+sys.path.insert(0, repo_root)
 
-HPS=2
+HPS=4
 BPT=2
 SYM_RATE =6.25
 SAMP_RATE=12000
 T_CYC=15
-MIN_LLR_SD= 0.5
-LDPC_CONTROL = (55, 100) 
-H0_RANGE = [0, 25]
-SYMBOL_IDXS = np.array( list(range(7, 36)) + list(range(43, 72)))
+t2h = HPS/0.16
+MIN_LLR_SD= 0.0
+LDPC_CONTROL = (45, 12) 
+H0_RANGE = [int(0 *t2h), int(5*t2h)]
+
+BASE_FREQ_IDXS = np.array([BPT // 2 + BPT * t for t in range(8)])
+symbol_idxs = list(range(7, 36)) + list(range(43, 72))
+BASE_PAYLOAD_HOPS = np.array([HPS * s for s in symbol_idxs])
+LAST_BASE_PAYLOAD_HOP = BASE_PAYLOAD_HOPS[-1]
 COSTAS = [3,1,4,0,6,5,2]
-SYMBOLS_PER_CYCLE = int(T_CYC * SYM_RATE)
+BASE_COSTAS_HOPS =  np.arange(7) * HPS
+HOPS_PER_CYCLE = int(T_CYC * SYM_RATE * HPS)
 
 #=========== Unpacking functions ========================================
 def get_bitfields(bits, lengths):
@@ -150,66 +155,81 @@ class LdpcDecoder:
         llr += update_collector
         return llr, self.calc_ncheck(llr)
 
+#============== AUDIO ========================================================
+class AudioIn:
+    def __init__(self, wav_path, freq_range=[00, 3100]):
+        self.fft_len = int( BPT * SAMP_RATE // SYM_RATE)
+        fft_out_len = self.fft_len // 2 + 1
+        max_freq = freq_range[1]
+        self.nFreqs = int(fft_out_len * 2 * max_freq / SAMP_RATE)
+        self.audio_buffer = np.zeros(self.fft_len, dtype=np.float32)
+        self.fft_in = np.zeros(self.fft_len, dtype=np.float32)
+        self.fft_window = fft_window=np.hanning(self.fft_len).astype(np.float32)
+        self.dBgrid_main = np.ones((HOPS_PER_CYCLE * 2, self.nFreqs), dtype = np.float32) 
+        samples_perhop = int(SAMP_RATE / (SYM_RATE * HPS))
+        self.dBgrid_main_ptr = 0
+
+        wf = wave.open(wav_path, "rb")
+        frames = wf.readframes(samples_perhop)
+        while frames:
+            self.process_hop(frames)
+            frames = wf.readframes(samples_perhop)
+        wf.close()    
+                                   
+    def process_hop(self, in_data):
+        samples = np.frombuffer(in_data, dtype=np.int16).astype(np.float32)
+        ns = len(samples)
+        self.audio_buffer[:-ns] = self.audio_buffer[ns:]
+        self.audio_buffer[-ns:] = samples
+        np.multiply(self.audio_buffer, self.fft_window, out=self.fft_in)
+        z = np.fft.rfft(self.fft_in)[:self.nFreqs]
+        self.dBgrid_main[self.dBgrid_main_ptr, :] = 10*np.log10(z.real*z.real + z.imag*z.imag + 1e-12)
+        self.dBgrid_main_ptr +=1
 
 def run():
     print("start")
-    fft_len = int(SAMP_RATE // SYM_RATE)
-    fft_out_len = fft_len // 2 + 1
-    max_freq = 3000
-    nFreqs = int(fft_out_len * 2 * max_freq / SAMP_RATE)
-    fft_window = fft_window=np.hanning(fft_len).astype(np.float32)
-    dBgrid_main = np.ones((HPS, BPT, SYMBOLS_PER_CYCLE * 2, nFreqs), dtype = np.float32) 
-    for subfreq in range(BPT):
-        for subhop in range(HPS):
-            dBgrid_main_ptr = 0
-            wf = wave.open('test_01.wav', "rb")
-            frames_discard = wf.readframes(int(fft_len * subhop / HPS))
-            frames = wf.readframes(fft_len)
-            phase = np.exp(1j * np.linspace(0,-np.pi*2*subfreq/BPT, fft_len))
-            while frames:
-                samples = np.frombuffer(frames, dtype=np.int16).astype(np.complex64)
-                if len(samples) == fft_len:
-                    #np.multiply(samples, fft_window, out=samples)
-                    np.multiply(samples, phase, out=samples)
-                    z = np.fft.fft(samples)[:nFreqs]
-                    dBgrid_main[subhop, subfreq, dBgrid_main_ptr, :] = 10*np.log10(z.real*z.real + z.imag*z.imag + 1e-12)
-                    dBgrid_main_ptr +=1
-                frames = wf.readframes(fft_len)
-            wf.close()
-    csync = np.full((7, 7), -1/6, np.float32)
+    audio_in = AudioIn("test_01.wav")
+    print("created instances")
+    nFreqs = audio_in.nFreqs
+    dt = 1.0 / (SYM_RATE * HPS)
+    syncs = [{}] * nFreqs
+    origins_for_decode = [(0, 0)] * nFreqs
+    csync = np.full((7, 7 * BPT), -1/6, np.float32)
     for sym_idx, tone in enumerate([3,1,4,0,6,5,2]):
-        csync[sym_idx, tone] = 1.0
+        fbins = range(tone * BPT, (tone+1) * BPT)
+        csync[sym_idx, fbins] = 1.0
     csync_flat =  csync.ravel()
     
-    origins_for_decode = [(0, 0, 0, 0)] * nFreqs
-    for fb in range(nFreqs - 8):
-        score = 0
-        for subfreq in range(BPT):
-            for sync_block in range(2):
-              p_dB = dBgrid_main[:, subfreq, :, fb:fb+7]
-              for h0_idx in range(H0_RANGE[0], H0_RANGE[1]):
-                  for subhop in range(HPS):
-                      c0 = h0_idx + 36 * sync_block
-                      sync_score = float(np.dot(p_dB[subhop, c0:c0+7, :].ravel(), csync_flat))
-                      if sync_score > score:
-                          score = sync_score
-                          origins_for_decode[fb] = (h0_idx, fb, subhop, subfreq)
+    # Search
+    origins_for_decode = [(0, 0)] * nFreqs
+    for fb in range(nFreqs - 8 * BPT):
+        freq_idxs = fb + BASE_FREQ_IDXS
+        p_dB = audio_in.dBgrid_main[:, fb:fb+7*BPT]
+        syncs[fb] = {'h0_idx':0, 'score':0, 'dt': 0}
+        for h0_idx in range(H0_RANGE[0], H0_RANGE[1]):
+            sync_score = float(np.dot(p_dB[h0_idx + BASE_COSTAS_HOPS + 36 * HPS, :].ravel(), csync_flat))
+            test_sync = {'h0_idx':h0_idx, 'score':sync_score, 'dt': h0_idx * dt - 0.7}
+            if test_sync['score'] > syncs[fb]['score']:
+                syncs[fb] = test_sync
+                origins_for_decode[fb] = (syncs[fb]['h0_idx'], fb)
     print("finished search")
     
     # Decode
     duplicates_filter = []
     nMsgs = 0
-    origins_for_decode = [o for o in origins_for_decode if o[0] is not None]
-    sample_noise = np.median(dBgrid_main[0,0,:,:], axis = 1)
+
     for origin in origins_for_decode:    
-        hops, freq_idxs, subhop, subfreq = origin[0] + SYMBOL_IDXS, origin[1] + np.arange(8), origin[2], origin[3]
-        dBgrid = dBgrid_main[np.ix_([subhop], [subfreq], hops, freq_idxs)][0,0,:,:]
-        p = dBgrid - sample_noise[hops, None]
+        hops, freq_idxs = origin[0] + BASE_PAYLOAD_HOPS, origin[1] + BASE_FREQ_IDXS
+        dBnoise = np.median(audio_in.dBgrid_main[hops], axis = 1)
+        dBgrid = audio_in.dBgrid_main[np.ix_(hops, freq_idxs)]
+        pmax = np.max(dBgrid)
+        snr = np.clip(int(pmax - np.min(dBgrid) - 58), -24, 24)
+        p = dBgrid - dBnoise[:, None]
         llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
         llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
         llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
         llr = np.column_stack((llra, llrb, llrc))
-        llr = llr.ravel() / 1
+        llr = llr.ravel() / 3.8
         llr_sd = int(0.5+100*np.std(llr))/100.0
         if llr_sd > MIN_LLR_SD:
             ldpc = LdpcDecoder()
@@ -228,10 +248,12 @@ def run():
                 bits77_int = check_crc(bits91_int)
                 if(bits77_int):
                     msg = unpack(bits77_int)
+                    info = f"{1+len(duplicates_filter):03d}:{msg}{(6.25*fb, 0.16*h0_idx)} {llr_sd}"
                     if(msg not in duplicates_filter):
                         duplicates_filter.append(msg)
-                        nMsgs +=1
-                        print(f"{nMsgs:03d}:{msg}{origin} [{np.min(llr):4.1f},{np.max(llr):4.1f}] {llr_sd}")
+                        with open('test.txt','a') as f:
+                            f.write(f"{info}\n")
+                    print(info)
 
 if __name__ == "__main__":
     run()

@@ -199,7 +199,6 @@ def run():
         fbins = range(tone * BPT, (tone+1) * BPT)
         csync[sym_idx, fbins] = 1.0
     csync_flat =  csync.ravel()
-    duplicates_filter = []
     
     # Search
     origins_for_decode = [(0, 0)] * nFreqs
@@ -216,7 +215,7 @@ def run():
     print("finished search")
     
     # Decode
-    duplicate_filter = []
+    duplicates_filter = []
     nMsgs = 0
     origins_for_decode = [o for o in origins_for_decode if o[0] is not None]
     target_params = [3.5, 3.7]
@@ -251,10 +250,12 @@ def run():
                 bits77_int = check_crc(bits91_int)
                 if(bits77_int):
                     msg = unpack(bits77_int)
+                    info = f"{1+len(duplicates_filter):03d}:{msg}{(6.25*fb, 0.16*h0_idx)} {llr_sd}"
                     if(msg not in duplicates_filter):
                         duplicates_filter.append(msg)
-                        nMsgs +=1
-                        print(f"{nMsgs:03d}:{msg}{origin[0]*0.16/HPS}, {origin[1]*6.25/BPT}")
+                        with open('test.txt','a') as f:
+                            f.write(f"{info}\n")
+                    print(info)
 
 if __name__ == "__main__":
     run()

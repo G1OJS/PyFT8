@@ -9,14 +9,13 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 #files_root = os.path.dirname('⁨On My iPhone⁩/⁨Chrome⁩')
 #sys.path.insert(0, files_root)
 
-HPS=2
+HPS=4
 BPT=2
 SYM_RATE =6.25
 SAMP_RATE=12000
 T_CYC=15
-MIN_LLR_SD= 0.5
-LDPC_CONTROL = (55, 100) 
-H0_RANGE = [0, 25]
+LDPC_CONTROL = (50, 60) 
+H0_RANGE = [0, 20]
 SYMBOL_IDXS = np.array( list(range(7, 36)) + list(range(43, 72)))
 COSTAS = [3,1,4,0,6,5,2]
 SYMBOLS_PER_CYCLE = int(T_CYC * SYM_RATE)
@@ -152,6 +151,8 @@ class LdpcDecoder:
 
 
 def run():
+    with open('test.txt','w') as f:
+        f.write('')
     print("start")
     fft_len = int(SAMP_RATE // SYM_RATE)
     fft_out_len = fft_len // 2 + 1
@@ -176,62 +177,49 @@ def run():
                     dBgrid_main_ptr +=1
                 frames = wf.readframes(fft_len)
             wf.close()
-    csync = np.full((7, 7), -1/6, np.float32)
-    for sym_idx, tone in enumerate([3,1,4,0,6,5,2]):
-        csync[sym_idx, tone] = 1.0
-    csync_flat =  csync.ravel()
-    
-    origins_for_decode = [(0, 0, 0, 0)] * nFreqs
-    for fb in range(nFreqs - 8):
+
+    duplicates_filter = []
+
+    for fb in range(0, nFreqs - 8):
+        print(fb)
+        freq_idxs = fb + np.arange(8)
         score = 0
         for subfreq in range(BPT):
-            for sync_block in range(2):
-              p_dB = dBgrid_main[:, subfreq, :, fb:fb+7]
-              for h0_idx in range(H0_RANGE[0], H0_RANGE[1]):
-                  for subhop in range(HPS):
-                      c0 = h0_idx + 36 * sync_block
-                      sync_score = float(np.dot(p_dB[subhop, c0:c0+7, :].ravel(), csync_flat))
-                      if sync_score > score:
-                          score = sync_score
-                          origins_for_decode[fb] = (h0_idx, fb, subhop, subfreq)
-    print("finished search")
-    
-    # Decode
-    duplicates_filter = []
-    nMsgs = 0
-    origins_for_decode = [o for o in origins_for_decode if o[0] is not None]
-    sample_noise = np.median(dBgrid_main[0,0,:,:], axis = 1)
-    for origin in origins_for_decode:    
-        hops, freq_idxs, subhop, subfreq = origin[0] + SYMBOL_IDXS, origin[1] + np.arange(8), origin[2], origin[3]
-        dBgrid = dBgrid_main[np.ix_([subhop], [subfreq], hops, freq_idxs)][0,0,:,:]
-        p = dBgrid - sample_noise[hops, None]
-        llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
-        llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
-        llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
-        llr = np.column_stack((llra, llrb, llrc))
-        llr = llr.ravel() / 1
-        llr_sd = int(0.5+100*np.std(llr))/100.0
-        if llr_sd > MIN_LLR_SD:
-            ldpc = LdpcDecoder()
-            ncheck = ldpc.calc_ncheck(llr)
-            ncheck0 = ncheck
-            if ncheck > 0:
-                if ncheck <= LDPC_CONTROL[0]:
-                    for ldpc_it in range(LDPC_CONTROL[1]):
-                        llr, ncheck = ldpc.do_ldpc_iteration(llr)
-                        if(ncheck == 0):
-                            break                    
-            if ncheck == 0:
-                bits91_int = 0
-                for bit in (llr[:91] > 0).astype(int).tolist():
-                    bits91_int = (bits91_int << 1) | bit
-                bits77_int = check_crc(bits91_int)
-                if(bits77_int):
-                    msg = unpack(bits77_int)
-                    if(msg not in duplicates_filter):
-                        duplicates_filter.append(msg)
-                        nMsgs +=1
-                        print(f"{nMsgs:03d}:{msg}{origin} [{np.min(llr):4.1f},{np.max(llr):4.1f}] {llr_sd}")
+            for h0_idx in range(H0_RANGE[0], H0_RANGE[1]):
+                hops = h0_idx + SYMBOL_IDXS
+                for subhop in range(HPS):
+                    dBgrid = dBgrid_main[np.ix_([subhop], [subfreq], hops, freq_idxs)][0,0,:,:]
+                    dBnoise = np.median(dBgrid, axis = 1)
+                    p = dBgrid - dBnoise[:, None]
+                    llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
+                    llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
+                    llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
+                    llr = np.column_stack((llra, llrb, llrc))
+                    llr = llr.ravel() / 3.5
+                    llr_sd = int(0.5+100*np.std(llr))/100.0
+                    ldpc = LdpcDecoder()
+                    ncheck = ldpc.calc_ncheck(llr)
+                    ncheck0 = ncheck
+                    if ncheck > 0:
+                        if ncheck <= LDPC_CONTROL[0]:
+                            for ldpc_it in range(LDPC_CONTROL[1]):
+                                llr, ncheck = ldpc.do_ldpc_iteration(llr)
+                                if(ncheck == 0):
+                                    break                    
+                    if ncheck == 0:
+                        bits91_int = 0
+                        for bit in (llr[:91] > 0).astype(int).tolist():
+                            bits91_int = (bits91_int << 1) | bit
+                        bits77_int = check_crc(bits91_int)
+                        if(bits77_int):
+                            msg = unpack(bits77_int)
+                            info = f"{1+len(duplicates_filter):03d}:{msg}{(6.25*(fb + subfreq / BPT), 0.16*(h0_idx + subhop / HPS))} {llr_sd}"
+                            if(msg not in duplicates_filter):
+                                duplicates_filter.append(msg)
+                                with open('test.txt','a') as f:
+                                    f.write(f"{info}\n")
+                            print(info)
+
 
 if __name__ == "__main__":
     run()
