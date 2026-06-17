@@ -197,7 +197,7 @@ def run():
     print("finished search")
     
     # Decode
-    duplicates_filter = []
+    messages = {}
     nMsgs = 0
     origins_for_decode = [o for o in origins_for_decode if o[0] is not None]
     sample_noise = np.median(dBgrid_main[0,0,:,:], axis = 1)
@@ -228,10 +228,13 @@ def run():
                 bits77_int = check_crc(bits91_int)
                 if(bits77_int):
                     msg = unpack(bits77_int)
-                    if(msg not in duplicates_filter):
-                        duplicates_filter.append(msg)
-                        nMsgs +=1
-                        print(f"{nMsgs:03d}:{msg}{origin} [{np.min(llr):4.1f},{np.max(llr):4.1f}] {llr_sd}")
+                    if(msg not in messages):
+                        messages[msg] = f"{1+len(messages):03d}:{msg}{(6.25*(fb + subfreq / BPT), 0.16*(h0_idx + subhop / HPS))} {llr_sd}"
+
+    with open('test.txt','a') as f:    
+        for msg in messages:
+            f.write(f"{messages[msg]}\n")
+            print(messages[msg])
 
 if __name__ == "__main__":
     run()

@@ -187,6 +187,8 @@ class AudioIn:
         self.dBgrid_main_ptr +=1
 
 def run():
+    with open('test.txt','w') as f:
+        f.write('')
     print("start")
     audio_in = AudioIn("test_01.wav")
     print("created instances")
@@ -215,8 +217,7 @@ def run():
     print("finished search")
     
     # Decode
-    duplicates_filter = []
-    nMsgs = 0
+    messages = {}
     origins_for_decode = [o for o in origins_for_decode if o[0] is not None]
     target_params = [3.5, 3.7]
     for origin in origins_for_decode:    
@@ -250,12 +251,14 @@ def run():
                 bits77_int = check_crc(bits91_int)
                 if(bits77_int):
                     msg = unpack(bits77_int)
-                    info = f"{1+len(duplicates_filter):03d}:{msg}{(6.25*fb, 0.16*h0_idx)} {llr_sd}"
-                    if(msg not in duplicates_filter):
-                        duplicates_filter.append(msg)
-                        with open('test.txt','a') as f:
-                            f.write(f"{info}\n")
-                    print(info)
+                    fb, h0_idx = origin
+                    if(msg not in messages):
+                        messages[msg] = f"{1+len(messages):03d}:{msg}{(6.25*fb, 0.16*h0_idx)} {llr_sd}"
+
+    with open('test.txt','a') as f:    
+        for msg in messages:
+            f.write(f"{messages[msg]}\n")
+            print(messages[msg])
 
 if __name__ == "__main__":
     run()
