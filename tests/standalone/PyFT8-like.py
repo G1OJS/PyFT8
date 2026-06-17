@@ -251,9 +251,9 @@ def run():
                 bits77_int = check_crc(bits91_int)
                 if(bits77_int):
                     msg = unpack(bits77_int)
-                    fb, h0_idx = origin
+                    h0_idx, fb = origin
                     if(msg not in messages):
-                        messages[msg] = f"{1+len(messages):03d}:{msg}{(6.25*fb, 0.16*h0_idx)} {llr_sd}"
+                        messages[msg] = f"{1+len(messages):03d}:{msg}{(6.25*fb/BPT, 0.16*h0_idx/HPS)} {llr_sd}"
 
     with open('test.txt','a') as f:    
         for msg in messages:

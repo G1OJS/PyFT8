@@ -15,7 +15,7 @@ SYM_RATE =6.25
 SAMP_RATE=12000
 T_CYC=15
 MIN_LLR_SD= 0.5
-LDPC_CONTROL = (55, 100) 
+LDPC_CONTROL = (45, 12) 
 H0_RANGE = [0, 25]
 SYMBOL_IDXS = np.array( list(range(7, 36)) + list(range(43, 72)))
 COSTAS = [3,1,4,0,6,5,2]
@@ -209,7 +209,7 @@ def run():
         llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
         llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
         llr = np.column_stack((llra, llrb, llrc))
-        llr = llr.ravel() / 1
+        llr = llr.ravel() / 3.8
         llr_sd = int(0.5+100*np.std(llr))/100.0
         if llr_sd > MIN_LLR_SD:
             ldpc = LdpcDecoder()
