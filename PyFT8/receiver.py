@@ -390,15 +390,13 @@ class Receiver():
         self.audio_in.sync_pointer_to_wall_clock()
         while True:
             time.sleep(0.040)
-            ptr = self.audio_in.dBgrid_main_ptr
-
             if ticker_cycle_rollover.ticked():                
                 self.audio_in.sync_pointer_to_wall_clock()
-                self.curr_cycle = int(((self.audio_in.dBgrid_main_ptr + 1) % HOPS_PER_GRID) / HOPS_PER_CYCLE)
+            self.curr_cycle = int((self.audio_in.dBgrid_main_ptr) / HOPS_PER_CYCLE)
         
             new_to_decode = []
             for c in candidates:
-                ptr_rel_to_h0 = (ptr - c.h0_idx) % HOPS_PER_CYCLE
+                ptr_rel_to_h0 = (self.audio_in.dBgrid_main_ptr - c.h0_idx) % HOPS_PER_CYCLE
                 if not (base_pyld_hops[0] <= ptr_rel_to_h0 <= base_pyld_hops[-1]) and not c.demap_started:
                     c.demap(self.audio_in.dBgrid_main)
                 if c.llr_sd > 0 and not c.decode_completed:
@@ -413,7 +411,7 @@ class Receiver():
                 c.decode()
 
             if ticker_search_for_syncs.ticked():
-                global_time_utils.tlog(f"[Cycle manager] start search at hop { self.audio_in.dBgrid_main_ptr}", verbose = self.verbose)
+                global_time_utils.tlog(f"[Cycle manager] start search at hop { self.audio_in.dBgrid_main_ptr}", verbose = True)
                 cyclestart = global_time_utils.cyclestart(time.time())
                 candidates = self.search(self.f0_idxs, cyclestart)
                 if not self.on_busy_profile is None:
