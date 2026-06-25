@@ -10,7 +10,7 @@ from PyFT8.databases import call_hashes, add_call_hashes
 
 T_CYC = 15
 HPS = 4
-BPT =2
+BPT = 2
 SYM_RATE = 6.25
 SAMP_RATE = 12000
 
@@ -177,7 +177,7 @@ class LdpcDecoder:
 #============== AUDIO IN ===========================================================
 class AudioIn:
     def __init__(self, max_freq, wav_files = None):
-        self.fft_len = int(BPT * SAMP_RATE // SYM_RATE)
+        self.fft_len = 1 + int(BPT * SAMP_RATE // SYM_RATE)
         fft_out_len = self.fft_len // 2 + 1
         self.nFreqs = int(fft_out_len * 2 * max_freq / SAMP_RATE)
         self.audio_buffer = np.zeros(self.fft_len, dtype=np.float32)
@@ -190,6 +190,7 @@ class AudioIn:
         self.dBgrid_main = np.ones((self.hops_per_grid, self.nFreqs), dtype = np.float32)
         self.wav_files = wav_files
         self.dBgrid_main_ptr = 0
+        self.oversample = {'hps':HPS, 'bpt':BPT}
 
     def start_wav_load(self):
         threading.Thread(target = self.load_wavs, args =(self.wav_files,)).start()
