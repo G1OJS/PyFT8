@@ -8,7 +8,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 repo_root = os.path.dirname(script_dir)
 sys.path.insert(0, repo_root)
 
-HPS=4
+HPS=6
 BPT=2
 SYM_RATE =6.25
 SAMP_RATE=12000
