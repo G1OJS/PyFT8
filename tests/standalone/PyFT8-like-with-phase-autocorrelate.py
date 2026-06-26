@@ -16,7 +16,7 @@ T_CYC=15
 t2h = HPS/0.16
 MIN_LLR_SD= 0.0
 LDPC_CONTROL = (45, 25) 
-H0_RANGE = [int(0 *t2h), int(5*t2h)]
+H0_RANGE = [int(-2 *t2h), int(5*t2h)]
 
 BASE_FREQ_IDXS = np.array([BPT // 2 + BPT * t for t in range(8)])
 symbol_idxs = list(range(7, 36)) + list(range(43, 72))
@@ -205,9 +205,11 @@ def get_messages(wav_file):
 
     for fb in range(nFreqs - 8 * BPT):
         zstrip = audio_in.zgrid_main[:, fb: fb+8*BPT]
-        tsum = np.sum(zstrip[:,BASE_FREQ_IDXS], axis = 1)
-        zstrip = zstrip * (np.abs(tsum) / tsum)[:,None]
-        dBgrid = 20*np.log10(np.abs(zstrip.real) + 1e-12)
+       # tsum = np.sum(zstrip[:,BASE_FREQ_IDXS], axis = 1)
+       # zstrip = zstrip * (np.abs(tsum) / tsum)[:,None]
+       # dBgrid = 20*np.log10(np.abs(zstrip.real) + 1e-12)
+
+        dBgrid = 20*np.log10(np.abs(zstrip) + 1e-12)
 
         sync = {'h0_idx':0, 'score':0}
         for h0_idx in range(H0_RANGE[0], H0_RANGE[1]):
@@ -263,7 +265,7 @@ for i in range(1,39):
     nw += nwsjtx
     nt += len(messages)
     pc = nt / nw
-    print(f"{test_id} WSJTX: {nwsjtx: 3d}  This: {len(messages): 3d} Cumulative: {pc:.0%}")
+    print(f"{test_id} WSJTX: {nwsjtx: 03d}  This: {len(messages): 03d} Cumulative: {nw: 04d} {nt: 04d} {pc:.0%}")
 
 
     
