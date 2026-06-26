@@ -21,7 +21,6 @@ H0_RANGE = [int(0 *t2h), int(4 *t2h)]
 H_SEARCH_0 = H0_RANGE[1] + 7 * HPS
 H_SEARCH_1 = H0_RANGE[1] + 43 * HPS
 
-BASE_FREQ_IDXS = np.array([BPT // 2 + BPT * t for t in range(8)])
 symbol_idxs = list(range(7, 36)) + list(range(43, 72))
 BASE_PAYLOAD_HOPS = np.array([HPS * s for s in symbol_idxs])
 LAST_BASE_PAYLOAD_HOP = BASE_PAYLOAD_HOPS[-1]
@@ -29,6 +28,14 @@ COSTAS = [3,1,4,0,6,5,2]
 BASE_COSTAS_HOPS =  np.arange(7) * HPS
 HOPS_PER_CYCLE = int(T_CYC * SYM_RATE * HPS)
 HOPS_PER_GRID = 2 * HOPS_PER_CYCLE
+
+c = BPT//2
+A1 = [a * BPT +c for a in [4,5,6,7]]
+A0 = [a * BPT +c for a in [0,1,2,3]]
+B1 = [a * BPT +c for a in [2,3,4,7]]
+B0 = [a * BPT +c for a in [0,1,5,6]]
+C1 = [a * BPT +c for a in [1,2,6,7]]
+C0 = [a * BPT +c for a in [0,3,4,5]]
 
 global_time_utils.set_cycle_length(T_CYC)
 
@@ -278,15 +285,15 @@ class Candidate:
 
     def demap(self, dBgrid_main, target_params = (3.3, 3.7)):
         self.demap_started = time.time()
-        freq_idxs = self.f0_idx + BASE_FREQ_IDXS
         hops = (self.h0_idx + BASE_PAYLOAD_HOPS) % HOPS_PER_GRID
-        dBgrid = dBgrid_main[np.ix_(hops, freq_idxs)]
+        freqs = self.f0_idx + np.array(range(8*BPT))
+        dBgrid = dBgrid_main[np.ix_(hops, freqs)]
         pmax = np.max(dBgrid)
         self.snr = np.clip(int(pmax - np.min(dBgrid) - 58), -24, 24)
         p = np.clip(dBgrid - pmax, -80, 0)
-        llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
-        llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
-        llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
+        llra = np.max(p[:, A1], axis=1) - np.max(p[:, A0], axis=1)
+        llrb = np.max(p[:, B1], axis=1) - np.max(p[:, B0], axis=1)
+        llrc = np.max(p[:, C1], axis=1) - np.max(p[:, C0], axis=1)
         llr = np.column_stack((llra, llrb, llrc))
         llr = llr.ravel() / 10
         self.llr_sd = int(0.5+100*np.std(llr))/100.0
@@ -303,14 +310,13 @@ class Candidate:
         self.ncheck0 = self.ncheck
         if 0 < self.ncheck <= LDPC_CONTROL[0]:
             self.llr, self.ncheck, self.n_its = ldpc_decoder.decode(self.llr)                   
-        if(self.ncheck == 0):
-            bits91_int = 0
-            for bit in (self.llr[:91] > 0).astype(int).tolist():
-                bits91_int = (bits91_int << 1) | bit
-            bits77_int = check_crc(bits91_int)
-            if(bits77_int):
-                self.msg_tuple = unpack(bits77_int)
-                self.msg = self.validate(self.msg_tuple)
+        bits91_int = 0
+        for bit in (self.llr[:91] > 0).astype(int).tolist():
+            bits91_int = (bits91_int << 1) | bit
+        bits77_int = check_crc(bits91_int)
+        if(bits77_int):
+            self.msg_tuple = unpack(bits77_int)
+            self.msg = self.validate(self.msg_tuple)
         self.decode_completed = time.time()
 
     def validate(self, msg_tuple):
