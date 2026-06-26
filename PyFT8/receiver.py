@@ -316,7 +316,8 @@ class Candidate:
         bits77_int = check_crc(bits91_int)
         if(bits77_int):
             self.msg_tuple = unpack(bits77_int)
-            self.msg = self.validate(self.msg_tuple)
+            if self.msg_tuple:
+                self.msg = ' '.join(self.msg_tuple)
         self.decode_completed = time.time()
 
     def validate(self, msg_tuple):
