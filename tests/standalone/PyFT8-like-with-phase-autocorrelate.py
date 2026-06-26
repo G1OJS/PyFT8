@@ -204,21 +204,20 @@ def get_messages():
     target_params = [3.5, 3.7]
 
     for fb in range(nFreqs - 8 * BPT):
-        freq_idxs = fb + BASE_FREQ_IDXS
-        p_dB = z2dB(audio_in.zgrid_main[:, fb:fb+7*BPT])
+        zstrip = audio_in.zgrid_main[:, fb: fb+8*BPT]
+        tsum = np.sum(zstrip[:,BASE_FREQ_IDXS], axis = 1)
+        zstrip = zstrip * (np.abs(tsum) / tsum)[:,None]
+        dBgrid = 20*np.log10(np.abs(zstrip.real) + 1e-12)
+
         sync = {'h0_idx':0, 'score':0}
         for h0_idx in range(H0_RANGE[0], H0_RANGE[1]):
-            sync_score = float(np.dot(p_dB[h0_idx + BASE_COSTAS_HOPS + 36 * HPS, :].ravel(), csync_flat))
+            sync_score = float(np.dot(dBgrid[h0_idx + BASE_COSTAS_HOPS + 36 * HPS, :7*BPT].ravel(), csync_flat))
             test_sync = {'h0_idx':h0_idx, 'score':sync_score}
             if test_sync['score'] > sync['score']:
                 sync = test_sync
+        dBgrid = dBgrid[sync['h0_idx'] + BASE_PAYLOAD_HOPS, :]
+        dBgrid = dBgrid[:, BASE_FREQ_IDXS]
 
-        hops, freq_idxs = sync['h0_idx'] + BASE_PAYLOAD_HOPS, freq_idxs
-        cand_z = audio_in.zgrid_main[np.ix_(hops, freq_idxs)]
-        for i in range(58):
-            tsum = np.sum(cand_z[i,:])
-            cand_z[i,:] = cand_z[i,:] * np.abs(tsum) / tsum
-        dBgrid = 20*np.log10(np.abs(cand_z.real) + 1e-12)
         pmax = np.max(dBgrid)
         snr = np.clip(int(pmax - np.min(dBgrid) - 58), -24, 24)
         p = np.clip(dBgrid - pmax, -80, 0)
