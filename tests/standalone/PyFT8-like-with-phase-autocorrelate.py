@@ -15,7 +15,7 @@ SAMP_RATE=12000
 T_CYC=15
 t2h = HPS/0.16
 MIN_LLR_SD= 0.0
-LDPC_CONTROL = (45, 25) 
+LDPC_CONTROL = (55, 25) 
 H0_RANGE = [int(-2 *t2h), int(5*t2h)]
 
 BASE_FREQ_IDXS = np.array([BPT // 2 + BPT * t for t in range(8)])
