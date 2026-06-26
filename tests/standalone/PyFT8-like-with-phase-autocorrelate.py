@@ -15,7 +15,7 @@ SAMP_RATE=12000
 T_CYC=15
 t2h = HPS/0.16
 MIN_LLR_SD= 0.0
-LDPC_CONTROL = (45, 12) 
+LDPC_CONTROL = (45, 25) 
 H0_RANGE = [int(0 *t2h), int(5*t2h)]
 
 BASE_FREQ_IDXS = np.array([BPT // 2 + BPT * t for t in range(8)])
@@ -174,7 +174,7 @@ class AudioIn:
         while frames:
             self.process_hop(frames)
             frames = wf.readframes(samples_perhop)
-        wf.close()    
+        wf.close()
                                    
     def process_hop(self, in_data):
         samples = np.frombuffer(in_data, dtype=np.int16).astype(np.float32)
@@ -188,8 +188,8 @@ class AudioIn:
 def z2dB(z):
     return 10*np.log10(z.real*z.real + z.imag*z.imag + 1e-12)
 
-def get_messages():
-    audio_in = AudioIn("test_01.wav")
+def get_messages(wav_file):
+    audio_in = AudioIn(wav_file)
 
     nFreqs = audio_in.nFreqs
     dt = 1.0 / (SYM_RATE * HPS)
@@ -231,28 +231,39 @@ def get_messages():
         llr = np.clip(llr, -target_params[1], target_params[1])
         if llr_sd > MIN_LLR_SD:
             ldpc = LdpcDecoder()
-            ncheck = ldpc.calc_ncheck(llr)
-            ncheck0 = ncheck
-            if ncheck > 0:
-                if ncheck <= LDPC_CONTROL[0]:
-                    for ldpc_it in range(LDPC_CONTROL[1]):
-                        llr, ncheck = ldpc.do_ldpc_iteration(llr)
-                        if(ncheck == 0):
-                            break                    
-            if ncheck == 0:
-                bits91_int = 0
-                for bit in (llr[:91] > 0).astype(int).tolist():
-                    bits91_int = (bits91_int << 1) | bit
-                bits77_int = check_crc(bits91_int)
-                if(bits77_int):
-                    msg = unpack(bits77_int)
+            ncheck, nits = ldpc.calc_ncheck(llr), 0
+            if 0 < ncheck <= LDPC_CONTROL[0]:
+                for ldpc_it in range(LDPC_CONTROL[1]):
+                    llr, ncheck = ldpc.do_ldpc_iteration(llr)
+                    if(ncheck == 0):
+                        nits = ldpc_it
+                        break
+            bits91_int = 0
+            for bit in (llr[:91] > 0).astype(int).tolist():
+                bits91_int = (bits91_int << 1) | bit
+            bits77_int = check_crc(bits91_int)
+            if(bits77_int):
+                msg = unpack(bits77_int)
+                if msg:
+                    msg = ' '.join(msg)
                     if(msg not in messages):
-                        messages[msg] = f"{1+len(messages):03d}:{msg}{(6.25*fb/BPT, 0.16*h0_idx/HPS)} {llr_sd}"
-                        print(messages[msg])
+                        h0_idx = sync['h0_idx']
+                        messages[msg] = f"{1+len(messages):03d}:{msg:25s}{6.25*fb/BPT:7.1f}, {0.16*h0_idx/HPS - 0.5:5.1f} {llr_sd:5.1f} {nits:03d}"
+    return messages
 
+data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy"
+wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
 
-
-get_messages()
+nw, nt = 0, 0
+for i in range(1,39):
+    test_id = f"test_{i:02d}"
+    with open(f"{data_folder}/{test_id}_wsjtx_2.7.0_NORM.txt", "r") as f:
+        nwsjtx = len(f.readlines())
+    messages = get_messages(f"{wav_folder}/{test_id}.wav")
+    nw += nwsjtx
+    nt += len(messages)
+    pc = nt / nw
+    print(f"{test_id} WSJTX: {nwsjtx: 3d}  This: {len(messages): 3d} Cumulative: {pc:.0%}")
 
 
     
