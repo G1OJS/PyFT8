@@ -8,14 +8,14 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 repo_root = os.path.dirname(script_dir)
 sys.path.insert(0, repo_root)
 
-HPS=8
+HPS=4
 BPT=2
 SYM_RATE =6.25
 SAMP_RATE=12000
 T_CYC=15
 t2h = HPS/0.16
 MIN_LLR_SD= 0.0
-LDPC_CONTROL = (55, 15) 
+LDPC_CONTROL = (50, 14) 
 H0_RANGE = [int(-2 *t2h), int(5*t2h)]
 
 symbol_idxs = list(range(7, 36)) + list(range(43, 72))
@@ -163,7 +163,7 @@ class LdpcDecoder:
 
 fft_len = int( BPT * SAMP_RATE // SYM_RATE)
 fft_out_len = fft_len // 2 + 1
-max_freq = 3500
+max_freq = 2900
 nFreqs = int(fft_out_len * 2 * max_freq / SAMP_RATE)
 audio_buffer = np.zeros(fft_len, dtype=np.float32)
 fft_in = np.zeros(fft_len, dtype=np.float32)
