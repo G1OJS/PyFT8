@@ -191,6 +191,7 @@ def get_candidate_tfgrid(all_audio_frames, origin):
         i0 = int(((origin['t0'])/dt) + s * 32)
         zsymb = candidate_zsig[i0:i0+32]
         if(zsymb.shape[0] == 32):
+            # HARDWIRE: fft grid is off by 3 bins
             candidate_tf_zgrid[s, :] = np.fft.fft(zsymb)[3:11]
 
     db_grid = 20*np.log10(np.abs(candidate_tf_zgrid))
@@ -254,6 +255,7 @@ def get_messages(wav_file):
         if origin['score'] > 250:
             origins.append(origin)
 
+# HARDWIRE: code above doesn't get f0 precisely (gets ~871)
     origins = [{'h0_idx':0, 't0':0.0, 'f0_idx':0, 'f0':873, 'score':100}]
     print(origins)
 
