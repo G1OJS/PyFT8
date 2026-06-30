@@ -3,6 +3,7 @@
 import os, sys
 import numpy as np
 import wave
+import matplotlib.pyplot as plt
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 repo_root = os.path.dirname(script_dir)
@@ -156,32 +157,46 @@ class LdpcDecoder:
 
 
 def get_candidate_tfgrid(all_audio_frames, origin):
+    
     # get full audio spectrum (later - move outside and do once on wav load)
-    fft_len = 192000
-    samples = np.zeros(fft_len)
+    fft1_len = 192000
+    samples = np.zeros(fft1_len)
     samps_in = np.frombuffer(all_audio_frames, dtype=np.int16).astype(np.float32)
     samples[:len(samps_in)] = samps_in 
     all_audio_spectrum = np.fft.fft(samples)
 
-    # downsample to 32 samples per symbol
-    df = SAMP_RATE/fft_len
+    # downsample to 32 samples per symbol / 200 samples per sec
+    df = SAMP_RATE / fft1_len
+    baud = SAMP_RATE / 1920
     fb_0 = int(0.5 + origin['f0'] / df )
-    fb_top = int(0.5 + (origin['f0'] + 8.5*SAMP_RATE/fft_len) / df )
-    fb_bot = int(0.5 + (origin['f0'] - 1.5*SAMP_RATE/fft_len) / df )
-    fft_len = 3200
-    candidate_spectrum = np.zeros(fft_len, dtype = np.complex64)
+    fb_top = int(0.5 + (origin['f0'] + 8.5*baud) / df )
+    fb_bot = int(0.5 + (origin['f0'] - 1.5*baud) / df )
+    fft2_len = 3200
+    candidate_spectrum = np.zeros(fft2_len, dtype = np.complex64)
     candidate_spectrum[:(fb_top - fb_bot)] = all_audio_spectrum[fb_bot:fb_top]
-    np.roll(candidate_spectrum, fb_0 - fb_bot)
-    candidate_zsig = np.fft.fft(candidate_spectrum)
+    candidate_spectrum = np.roll(candidate_spectrum, (fb_0 - fb_bot))
+    candidate_zsig = np.fft.fft(candidate_spectrum)[::-1]
+    print(df)
+    print(fb_0, fb_bot, fb_top)
+    #ax.plot(np.abs(all_audio_spectrum[13000:15000]))
+    #ax.plot(np.abs(candidate_spectrum))
+    
 
     # get candidate symbol spectra x79 with df = 1 tone spacing
-    candidate_tf_zgrid = np.zeros((N_SYMS, 8), dtype = np.complex64)
+    candidate_tf_zgrid = np.ones((N_SYMS, 8), dtype = np.complex64)
+    
+    dt = (1 / SAMP_RATE) * fft1_len / fft2_len
+    #ax.plot(np.linspace(0,dt*len(candidate_zsig),len(candidate_zsig)), np.abs(candidate_zsig))
     for s in range(N_SYMS):
-        i0 = int(origin['t0'] * 32 * SYM_RATE + s * 32)
+        i0 = int(((origin['t0'])/dt) + s * 32)
         zsymb = candidate_zsig[i0:i0+32]
         if(zsymb.shape[0] == 32):
-            candidate_tf_zgrid[s, :] = np.fft.fft(zsymb)[:8]
+            candidate_tf_zgrid[s, :] = np.fft.fft(zsymb)[3:11]
 
+    db_grid = 20*np.log10(np.abs(candidate_tf_zgrid))
+    #ax.imshow(np.clip(db_grid, np.max(db_grid)-30,None), origin = 'lower')
+    
+            
     return candidate_tf_zgrid        
 
 def get_messages(wav_file):
@@ -236,8 +251,11 @@ def get_messages(wav_file):
             test_sync = {'h0_idx':h0_idx, 't0':h0_idx/(HPS * SYM_RATE), 'f0_idx':fb, 'f0':SYM_RATE * fb / BPT, 'score':sync_score}
             if test_sync['score'] > origin['score']:
                 origin = test_sync
-        if origin['score'] > MIN_SYNC_SCORE:
+        if origin['score'] > 250:
             origins.append(origin)
+
+    origins = [{'h0_idx':0, 't0':0.0, 'f0_idx':0, 'f0':873, 'score':100}]
+    print(origins)
 
 # Open wav file again and store all samples 
     wf = wave.open(wav_file, "rb")
@@ -248,6 +266,8 @@ def get_messages(wav_file):
     for origin in origins:
         zcand = get_candidate_tfgrid(all_audio_frames, origin)
         dBgrid = 20*np.log10(np.abs(zcand[PAYLOAD_SYMBOLS, :]))
+        ax.imshow(np.clip(dBgrid, np.max(dBgrid)-30,None), origin = 'lower')
+    
         pmax = np.max(dBgrid)
         snr = np.clip(int(pmax - np.min(dBgrid) - 58), -24, 24)
         p = np.clip(dBgrid - pmax, -80, 0)
@@ -283,17 +303,20 @@ def get_messages(wav_file):
 
 data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy"
 wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
-
+wav_folder = './'
 nw, nt = 0, 0
-for i in range(1,39):
+fig, ax = plt.subplots()
+for i in range(1,2):
     test_id = f"test_{i:02d}"
-    with open(f"{data_folder}/{test_id}_wsjtx_2.7.0_NORM.txt", "r") as f:
-        nwsjtx = len(f.readlines())
+    test_id = "PyFT8_873"
+    nwsjtx=1
+    #with open(f"{data_folder}/{test_id}_wsjtx_2.7.0_NORM.txt", "r") as f:
+    #    nwsjtx = len(f.readlines())
     messages = get_messages(f"{wav_folder}/{test_id}.wav")
     nw += nwsjtx
     nt += len(messages)
     pc = nt / nw
     print(f"{test_id} WSJTX: {nwsjtx: 03d}  This: {len(messages): 03d} Cumulative: {nw: 04d} {nt: 04d} {pc:.0%}")
-
+    plt.show()
 
     
