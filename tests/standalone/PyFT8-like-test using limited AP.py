@@ -204,10 +204,6 @@ def get_messages(wav_file):
 
     for fb in range(nFreqs - 8 * BPT):
         zstrip = zgrid_main[:, fb: fb+8*BPT]
-       # tsum = np.sum(zstrip[:,BASE_FREQ_IDXS], axis = 1)
-       # zstrip = zstrip * (np.abs(tsum) / tsum)[:,None]
-       # dBgrid = 20*np.log10(np.abs(zstrip.real) + 1e-12)
-
         dBgrid = 20*np.log10(np.abs(zstrip) + 1e-12)
 
         sync = {'h0_idx':0, 'score':0}
