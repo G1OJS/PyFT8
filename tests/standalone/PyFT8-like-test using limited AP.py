@@ -228,15 +228,19 @@ def get_messages(wav_file):
         llr0 = np.clip(llr, -target_params[1], target_params[1])
         apmag = np.max(np.abs(llr0))*1.01
 
-        ipass, msg = 0, None
-        while not msg:
+        ap_patterns = [
+                        [0, []],                                                            # no AP
+                        [0, [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0]],   # CQ
+                        [58,[0,1,1,1,1,1,1,0,0,1,1,1,0,1,0,1,0,0,1]],                       # RR73
+                        [58,[0,1,1,1,1,1,1,0,1,0,0,1,0,1,0,0,0,0,1]],                       # 73
+                        [58,[0,1,1,1,1,1,1,0,1,0,0,1,0,0,1,0,0,0,1]],                       # RRR
+                      ]
+        msg, ipass = None, 0
+        while (not msg) and ipass < len(ap_patterns):
             llr = llr0
-            if ipass == 1:
-                llr[:26] = -apmag
-                llr[26] = apmag
-                llr[27:29] = -apmag
-            if ipass == 2:
-                break
+            b0, ap_pattern = ap_patterns[ipass]
+            for b, bval in enumerate(ap_pattern):
+                llr[b0 + b] = (bval*2-1) * apmag
             ipass += 1
             ldpc = LdpcDecoder()
             ncheck, nits = ldpc.calc_ncheck(llr), 0
