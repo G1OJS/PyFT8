@@ -4,12 +4,7 @@ import os, sys
 import numpy as np
 import wave
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-#repo_root = os.path.dirname(script_dir)
-#files_root = os.path.dirname('⁨On My iPhone⁩/⁨Chrome⁩')
-#sys.path.insert(0, files_root)
-
-NSUBHOPS =32
+NSUBHOPS =4
 NSUBFREQS=2
 SYM_RATE =6.25
 SAMP_RATE=12000
@@ -21,9 +16,8 @@ COSTAS = [3,1,4,0,6,5,2]
 SYMBOLS_PER_CYCLE = int(T_CYC * SYM_RATE)
 
 from PyFT8.receiver import unpack, LdpcDecoder, check_crc
+wav_file = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy/test_01.wav"
 
-with open('test.txt','w') as f:
-    f.write('')
 print("start")
 fft_len = int(SAMP_RATE // SYM_RATE)
 fft_out_len = fft_len // 2 + 1
@@ -35,7 +29,7 @@ dBgrid_main = np.ones((NSUBHOPS, NSUBFREQS, SYMBOLS_PER_CYCLE, nFreqs), dtype = 
 for subfreq in range(NSUBFREQS):
     for subhop in range(NSUBHOPS):
         dBgrid_main_ptr = 0
-        wf = wave.open('test_01.wav', "rb")
+        wf = wave.open(wav_file, "rb")
         frames_discard = wf.readframes(int(fft_len * subhop / NSUBHOPS))
         frames = wf.readframes(fft_len)
         phase = np.exp(1j * np.linspace(0,-np.pi*2*subfreq/NSUBFREQS, fft_len))
