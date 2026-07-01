@@ -16,18 +16,22 @@ def get_cumulative_from_text_files(i0, i1, postfix):
                 times.append(t)
     return times
 
-with open('baseline.pkl', 'rb') as f:
-    py_times_prev = pickle.load(f)
-avg_cycle = np.max(py_times_prev) / (i1 - i0)
-print(avg_cycle)
+avg_cycle = 15.1
 
 ws_times = get_cumulative_from_text_files(i0, i1, "_wsjtx_2.7.0_NORM.txt")
 fl_times = get_cumulative_from_text_files(i0, i1, "_ft8_lib.txt")
     
 fig, ax = plt.subplots()
-ws_line = ax.plot(ws_times, np.array(range(len(ws_times))), label = 'WSJT-X', color = 'blue')[0]
-ft_line = ax.plot(fl_times, np.array(range(len(fl_times))), label = 'ft8_lib', color = 'red')[0]
-pp_line = ax.plot(py_times_prev, np.array(range(len(py_times_prev))), label = 'PyFT8', color = 'darkgreen')
+ws_line = ax.plot(ws_times, np.array(range(len(ws_times))), label = 'WSJT-X', color = 'lightgray')[0]
+ft_line = ax.plot(fl_times, np.array(range(len(fl_times))), label = 'ft8_lib', color = 'lightgray')[0]
+
+
+
+for filename in ['baseline_noAP.pkl','baseline_cq_only.pkl','baseline_5xAP.pkl']:
+    with open(filename, 'rb') as f:
+        py_times = pickle.load(f)
+        ax.plot(py_times, np.array(range(len(py_times))), label = filename)
+        
 ax.set_xlabel("Time, seconds")
 ax.set_ylabel("Cumulative decodes (raw CRC passes)")
 fig.suptitle("Cumulative decode count against time")

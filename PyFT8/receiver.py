@@ -17,7 +17,7 @@ SAMP_RATE = 12000
 t2h = HPS/0.16
 SYNC_SCORE_MIN = 10
 LLR_SD_MIN = 5
-LDPC_CONTROL = (45, 12) 
+LDPC_CONTROL = (55, 15) 
 H0_RANGE = [int(-1.5 *t2h), int(5 *t2h)]
 #H0_RANGE = [int(0 *t2h), int(4 *t2h)]
 H_SEARCH_0 = H0_RANGE[1] + 7 * HPS
@@ -146,14 +146,17 @@ CV7idx = np.array([[3,30,58,90,91,95,152],[7,24,62,82,92,95,147],[4,33,64,77,97,
 import warnings
 warnings.filterwarnings("error")
 
+def safe_divide(num, den):
+    try:
+        return num / den
+    except:
+        return num / (den + 0.001)
+
 def pass_ldpc_messages(llr, CVidx, mC2V_prev, update_collector):
     mV2C = llr[CVidx] - mC2V_prev
     tanh_mV2C = np.tanh(-mV2C)
     tanh_mC2V = np.prod(tanh_mV2C, axis=1, keepdims=True)
-    try:
-        tanh_mC2V = tanh_mC2V / tanh_mV2C
-    except:
-        tanh_mC2V = tanh_mC2V / (tanh_mV2C + 0.001)
+    tanh_mC2V = safe_divide(tanh_mC2V, tanh_mV2C)
     alpha_atanh_approx = 1.18
     mC2V_curr  = tanh_mC2V / ((tanh_mC2V - alpha_atanh_approx) * (alpha_atanh_approx + tanh_mC2V))
     np.add.at(update_collector, CVidx, mC2V_curr - mC2V_prev)
@@ -161,15 +164,14 @@ def pass_ldpc_messages(llr, CVidx, mC2V_prev, update_collector):
 
 def ldpc_decode(llr, max_ncheck):
     mC2V_prev6, mC2V_prev7 = np.zeros(CV6idx.shape, dtype=np.float32), np.zeros(CV7idx.shape, dtype=np.float32)
-    ncheck0 = None
     for iteration in range(LDPC_CONTROL[1]):
         bits6, bits7 = llr[CV6idx] > 0, llr[CV7idx] > 0
         parity6, parity7 = np.sum(bits6, axis=1) & 1, np.sum(bits7, axis=1) & 1
         ncheck = int(np.sum(parity7) + np.sum(parity6))
-        if ncheck0 is None:
-            ncheck0 = ncheck
-        if ncheck > max_ncheck:
-            return None, max_ncheck
+        if iteration==0:
+             ncheck0 = ncheck
+        if ncheck0 > max_ncheck:
+            return None, ncheck0
         if ncheck == 0:
             bits91_int = 0
             for bit in (llr[:91] > 0).astype(int).tolist():
@@ -184,7 +186,7 @@ def ldpc_decode(llr, max_ncheck):
             mC2V_prev6 = pass_ldpc_messages(llr, CV6idx, mC2V_prev6, update_collector)
             mC2V_prev7 = pass_ldpc_messages(llr, CV7idx, mC2V_prev7, update_collector)
             llr += update_collector
-    return None, max_ncheck
+    return None, ncheck0
 
 #============== AUDIO IN ===========================================================
 class AudioIn:
@@ -264,11 +266,11 @@ class AudioIn:
 #============== CANDIDATE ===========================================================
 
 ap_patterns = [
-                [0, []],                                                            # no AP
-                [0, [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0]],   # CQ
-                [58,[0,1,1,1,1,1,1,0,0,1,1,1,0,1,0,1,0,0,1]],                       # RR73
-                [58,[0,1,1,1,1,1,1,0,1,0,0,1,0,1,0,0,0,0,1]],                       # 73
-                [58,[0,1,1,1,1,1,1,0,1,0,0,1,0,0,1,0,0,0,1]],                       # RRR
+                [0, []],                                                                # no AP
+                [0, [0,0,0,0,0 ,0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,1,0,0]],  # CQ
+                [58,[0,1, 1,1,1,1,1, 0,0,1,1,1, 0,1,0,1,0, 0,1]],                       # RR73
+                [58,[0,1, 1,1,1,1,1, 0,1,0,0,1, 0,1,0,0,0, 0,1]],                       # 73
+                [58,[0,1, 1,1,1,1,1, 0,1,0,0,1, 0,0,1,0,0, 0,1]],                       # RRR
               ]
 
 from dataclasses import dataclass
@@ -288,6 +290,7 @@ class Candidate:
     llr_sd: float = 0.0
     max_ncheck: int = LDPC_CONTROL[0]
     n_its: int = 0
+    ipass: int = 0
     llr_sd: float = 0
     msg_tuple: tuple = ('','','')
     msg: str = ''
@@ -312,14 +315,18 @@ class Candidate:
         decode_started = time.time()
         if(self.llr_sd >= LLR_SD_MIN):
             apmag = np.max(np.abs(self.llr))*1.01
-            for b0, ap_pattern in ap_patterns:
-                llr = self.llr
+            for ipass, (b0, ap_pattern) in enumerate(ap_patterns):
+                llr = self.llr.copy()
                 for b, bval in enumerate(ap_pattern):
                     llr[b0 + b] = (bval*2-1) * apmag
+                if ipass == 1:
+                    llr[74:76] = -apmag
+                    llr[76] = apmag
                 # max ncheck here shortcuts ap patterns that make ncheck worse than previous best
                 self.msg_tuple, self.max_ncheck = ldpc_decode(llr, self.max_ncheck)
                 if self.msg_tuple and self.msg_tuple != ('','',''):
                     self.msg = ' '.join(self.msg_tuple)
+                    self.ipass = ipass
                     break 
         self.decode_completed = time.time()
         
