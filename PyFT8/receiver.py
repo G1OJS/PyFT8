@@ -157,14 +157,17 @@ def pass_ldpc_messages(llr, CVidx, mC2V_prev, update_collector):
     np.add.at(update_collector, CVidx, mC2V_curr - mC2V_prev)
     return mC2V_curr
 
-def ldpc_decode(llr):
+def ldpc_decode(llr, max_ncheck):
     mC2V_prev6, mC2V_prev7 = np.zeros(CV6idx.shape, dtype=np.float32), np.zeros(CV7idx.shape, dtype=np.float32)
+    ncheck0 = None
     for iteration in range(LDPC_CONTROL[1]):
         bits6, bits7 = llr[CV6idx] > 0, llr[CV7idx] > 0
         parity6, parity7 = np.sum(bits6, axis=1) & 1, np.sum(bits7, axis=1) & 1
         ncheck = int(np.sum(parity7) + np.sum(parity6))
-        if ncheck > LDPC_CONTROL[0]:
-            return
+        if ncheck0 is None:
+            ncheck0 = ncheck
+        if ncheck > max_ncheck:
+            return None, max_ncheck
         if ncheck == 0:
             bits91_int = 0
             for bit in (llr[:91] > 0).astype(int).tolist():
@@ -173,12 +176,13 @@ def ldpc_decode(llr):
             if(bits77_int):
                 msg_tuple = unpack(bits77_int)
                 if msg_tuple:
-                    return msg_tuple
+                    return msg_tuple, ncheck0
         else:
             update_collector = np.zeros_like(llr)
             mC2V_prev6 = pass_ldpc_messages(llr, CV6idx, mC2V_prev6, update_collector)
             mC2V_prev7 = pass_ldpc_messages(llr, CV7idx, mC2V_prev7, update_collector)
             llr += update_collector
+    return None, max_ncheck
 
 #============== AUDIO IN ===========================================================
 class AudioIn:
@@ -272,7 +276,7 @@ class Candidate:
     demap_started: float = 0.0
     fHz: int = 0
     llr_sd: float = 0.0
-    ncheck: int = 99
+    max_ncheck: int = LDPC_CONTROL[0]
     n_its: int = 0
     llr_sd: float = 0
     msg_tuple: tuple = ('','','')
@@ -307,16 +311,15 @@ class Candidate:
                         [58,[0,1,1,1,1,1,1,0,1,0,0,1,0,1,0,0,0,0,1]],                       # 73
                         [58,[0,1,1,1,1,1,1,0,1,0,0,1,0,0,1,0,0,0,1]],                       # RRR
                       ]
-        self.msg, ipass = None, 0
-        while (not self.msg) and ipass < len(ap_patterns):
+        for b0, ap_pattern in ap_patterns:
             llr = self.llr
-            b0, ap_pattern = ap_patterns[ipass]
             for b, bval in enumerate(ap_pattern):
                 llr[b0 + b] = (bval*2-1) * apmag
-            ipass += 1
-            self.msg_tuple = ldpc_decode(llr)
+            # max ncheck here shortcuts ap patterns that make ncheck worse than previous best
+            self.msg_tuple, self.max_ncheck = ldpc_decode(llr, self.max_ncheck)
             if self.msg_tuple and self.msg_tuple != ('','',''):
                 self.msg = ' '.join(self.msg_tuple)
+                break
                 
         self.decode_completed = time.time()
         

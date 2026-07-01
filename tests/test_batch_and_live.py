@@ -85,8 +85,8 @@ def batch_test(i0, i1):
     py_line = ax.plot([], [], label = 'PyFT8', color = 'red')[0]
     pp_line = ax.plot(py_times_prev, np.array(range(len(py_times_prev))), label = 'PyFT8 baseline', color = 'darkgreen', alpha = 0.3)
     ax.set_xlabel("Time, seconds")
-    ax.set_ylabel("Cumulative decodes")
-    ax.set_xlim(0, np.max(ws_times))
+    ax.set_ylabel("Cumulative decodes") 
+    ax.set_xlim(0, ws_times[-1] if py_times == [] else np.max([ws_times, py_times[-1]]))
     ax.set_ylim(0, len(ws_times))
     ax.legend()
         
