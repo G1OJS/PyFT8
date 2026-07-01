@@ -94,8 +94,6 @@ def batch_test(i0, i1):
         py_line.set_data(py_times, np.array(range(len(py_times))))
         with open('baseline_new.pkl', 'wb') as f:
             pickle.dump(py_times, f)
-        with open('batch_decodes.pkl', 'wb') as f:
-            pickle.dump(decodes, f)
         return py_line,
     ani = FuncAnimation(fig, anim, interval = 5000, frames=(100000), blit=False)
     gui.plt.show()
