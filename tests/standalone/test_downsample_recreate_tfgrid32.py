@@ -19,9 +19,9 @@ def get_initial_origins(wav_file ):
     global zgrid_main, HPS, BPT
     HPS=4
     BPT=2
-    H0_RANGE = [int(-2*HPS/0.16), int(5*HPS/0.16)]
     COSTAS = [3,1,4,0,6,5,2]
-    BASE_COSTAS_HOPS =  np.arange(7) * HPS
+    HOPDELAY = HPS
+    BASE_COSTAS_HOPS =  np.arange(7) * HPS + HOPDELAY
     fft_len = int( BPT * SAMP_RATE // SYM_RATE)
     fft_out_len = fft_len // 2 + 1
     max_freq = 2900
@@ -64,12 +64,12 @@ def get_initial_origins(wav_file ):
         dBgrid = 20*np.log10(np.abs(zstrip) + 1e-12)
 
         origin = {'score':0}
-        for h0_idx in range(H0_RANGE[0], H0_RANGE[1]):
-            sync_score = float(np.dot(dBgrid[h0_idx + BASE_COSTAS_HOPS + 36 * HPS, :7*BPT].ravel(), csync_flat))
+        for h0_idx in range(0, int(5*HPS/0.16)):
+            sync_score = float(np.dot(dBgrid[h0_idx + BASE_COSTAS_HOPS, :7*BPT].ravel(), csync_flat))
             test_sync = {'t0':h0_idx/(HPS * SYM_RATE), 'f0':SYM_RATE * fb / BPT, 'score':sync_score}
             if test_sync['score'] > origin['score']:
                 origin = test_sync
-        if origin['score'] > 20:
+        if origin['score'] > 200:
             origins.append(origin)
 
     return origins
@@ -95,8 +95,8 @@ def get_candidate_tfgrid(all_audio_frames, origin):
     candidate_spectrum[:(fb_top - fb_bot)] = all_audio_spectrum[fb_bot:fb_top]
     candidate_spectrum = np.roll(candidate_spectrum, (fb_0 - fb_bot))
     candidate_zsig = np.fft.ifft(candidate_spectrum)
-    print(df)
-    print(fb_0, fb_bot, fb_top)
+    #print(df)
+    #print(fb_0, fb_bot, fb_top)
     #ax.plot(np.abs(all_audio_spectrum[13000:15000]))
     #ax.plot(np.abs(candidate_spectrum))
     
@@ -116,15 +116,10 @@ def get_candidate_tfgrid(all_audio_frames, origin):
     db_grid = 20*np.log10(np.abs(candidate_tf_zgrid))
     #ax.imshow(np.clip(db_grid, np.max(db_grid)-30,None), origin = 'lower')
     
-            
     return candidate_tf_zgrid        
 
 def get_messages(wav_file):
     origins = get_initial_origins(wav_file)
-
-# HARDWIRE: code above doesn't get f0 precisely (gets ~871)
-    origins = [{'h0_idx':0, 't0':0.0, 'f0_idx':0, 'f0':873, 'score':100}]
-    print(origins)
 
     LDPC_CONTROL = (55, 15) 
     PAYLOAD_SYMBOLS = list(range(7, 36)) + list(range(43, 72))
@@ -132,11 +127,52 @@ def get_messages(wav_file):
     all_audio_frames = wf.readframes(SAMP_RATE * T_CYC)
     wf.close()
     messages = {}
+
+    csync = np.full((7, 7), -1/6, np.float32)
+    for sym_idx, tone in enumerate([3,1,4,0,6,5,2]):
+        csync[sym_idx, tone] = 1.0
+    csync_flat =  csync.ravel()
     for origin in origins:
+        print("\nNew coarse origin")
+
         zcand = get_candidate_tfgrid(all_audio_frames, origin)
-        dBgrid = 20*np.log10(np.abs(zcand[PAYLOAD_SYMBOLS, :]))
+        score = float(np.dot(np.abs(zcand[:7, :7]).ravel(), csync_flat))
+        origin = {'t0':origin['t0'], 'f0':origin['f0'], 'score':float(score)}
+        print(origin)
+                      
+        ttweaks = np.arange(-250, 51, 10)/1000
+        scores = []
+        for ttweak in ttweaks:
+            tmp_origin = {'t0':origin['t0']+ttweak, 'f0':origin['f0'], 'score':0}
+            zcand = get_candidate_tfgrid(all_audio_frames, tmp_origin)
+            score = float(np.dot(np.abs(zcand[:7, :7]).ravel(), csync_flat))
+            scores.append(score)
+            #ax.imshow(np.abs(zcand), origin = 'lower')
+            #plt.pause(0.5)
+            #print(ttweak, score)
+        ttweak = float(ttweaks[np.argmax(scores)])
+        origin = {'t0':origin['t0']+ttweak, 'f0':origin['f0'], 'score':np.max(scores)}
+        print(origin)
+        
+        ftweaks = np.arange(-2.5, 3.6, 0.5)
+        scores = []
+        for ftweak in ftweaks:
+            tmp_origin = {'t0':origin['t0'], 'f0':origin['f0']+ftweak, 'score':0}
+            zcand = get_candidate_tfgrid(all_audio_frames, tmp_origin)
+            score = float(np.dot(np.abs(zcand[:7, :7]).ravel(), csync_flat))
+            scores.append(score)
+            #ax.imshow(np.abs(zcand), origin = 'lower')
+            #plt.pause(0.5)
+            #print(ftweak, score)
+        ftweak = float(ftweaks[np.argmax(scores)])
+        origin = {'t0':origin['t0'], 'f0':origin['f0']+ftweak, 'score':np.max(scores)}
+        print(origin)
+
+        
+        zcand = get_candidate_tfgrid(all_audio_frames, origin)
+        dBgrid = 20*np.log10(np.abs(zcand[PAYLOAD_SYMBOLS, :]))        
         ax.imshow(np.clip(dBgrid, np.max(dBgrid)-30,None), origin = 'lower')
-    
+        plt.pause(0.5)
         pmax = np.max(dBgrid)
         snr = np.clip(int(pmax - np.min(dBgrid) - 58), -24, 24)
         p = np.clip(dBgrid - pmax, -80, 0)
@@ -160,28 +196,10 @@ def get_messages(wav_file):
             msg = unpack(bits77_int)
             if msg:
                 msg = ' '.join(msg)
-                if(msg not in messages):
-                    h0_idx = origin['h0_idx']
-                    messages[msg] = f"{1+len(messages):03d}:{msg:25s}{origin['f0']:7.1f}, {origin['t0']:5.1f} {llr_sd:5.1f} {nits:03d}"
-                    print(messages[msg])
-    return messages
+                print(msg)
 
-data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy"
-wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
-wav_folder = './'
-nw, nt = 0, 0
 fig, ax = plt.subplots()
-for i in range(1,2):
-    test_id = f"test_{i:02d}"
-    test_id = "PyFT8_873"
-    nwsjtx=1
-    #with open(f"{data_folder}/{test_id}_wsjtx_2.7.0_NORM.txt", "r") as f:
-    #    nwsjtx = len(f.readlines())
-    messages = get_messages(f"{wav_folder}/{test_id}.wav")
-    nw += nwsjtx
-    nt += len(messages)
-    pc = nt / nw
-    print(f"{test_id} WSJTX: {nwsjtx: 03d}  This: {len(messages): 03d} Cumulative: {nw: 04d} {nt: 04d} {pc:.0%}")
-    plt.show()
+get_messages(f"PyFT8_873.wav")
+
 
     
