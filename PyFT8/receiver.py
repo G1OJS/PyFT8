@@ -15,9 +15,11 @@ SYM_RATE = 6.25
 SAMP_RATE = 12000
 
 t2h = HPS/0.16
-LLR_SD_MIN = 0.5
+SYNC_SCORE_MIN = 20
+LLR_SD_MIN = 5
 LDPC_CONTROL = (45, 12) 
-H0_RANGE = [int(0 *t2h), int(4 *t2h)]
+H0_RANGE = [int(-2 *t2h), int(5 *t2h)]
+#H0_RANGE = [int(0 *t2h), int(4 *t2h)]
 H_SEARCH_0 = H0_RANGE[1] + 7 * HPS
 H_SEARCH_1 = H0_RANGE[1] + 43 * HPS
 
@@ -347,13 +349,14 @@ class Receiver():
         sync_idx_offs = sync_idx*36*HPS
         costas_nhops = 7*HPS
         edge_to_cent = BPT//2
-        # search_hops covers all freqs, and hops as specified by H0_RANGE. data is needed 'costas hops' greater than max h0
-        search_hops = self.audio_in.dBgrid_main[cycle_h0 + H0_RANGE[0]+sync_idx_offs: cycle_h0 + H0_RANGE[1]+sync_idx_offs + costas_nhops , edge_to_cent:]
-        nh, nf = search_hops.shape
+        # search_band covers all freqs, and hops as specified by H0_RANGE. data is needed 'costas hops' greater than max h0
+        search_hops = np.array(range(cycle_h0 + H0_RANGE[0] + sync_idx_offs, cycle_h0 + H0_RANGE[1] + sync_idx_offs)) % HOPS_PER_GRID
+        search_band = self.audio_in.dBgrid_main[search_hops][:, edge_to_cent:]
+        nh, nf = search_band.shape
         arr = np.zeros((7, nh, nf))     # costas 'row' for a single symbol index, by main nhops, nfreqs
         for i in range(7):
             hopshift = i * HPS
-            arr[i, :nh-hopshift, :] = search_hops[hopshift:, :]
+            arr[i, :nh-hopshift, :] = search_band[hopshift:, :]
         freq_stack = np.stack([np.roll(arr, -j * BPT, axis=2) for j in range(7)], axis=1) # 7x7 costas points by main nhops, nfreqs
         rows = np.arange(7)
         costas_vals = freq_stack[rows, COSTAS]  # 'wanted' costas points by main nhops, nfreqs
@@ -370,6 +373,7 @@ class Receiver():
             c.dt = (c.h0_idx - cycle_h0) * self.dt - 0.7
             c.fHz = int(f0_idx * self.df)
             cands.append(c)
+                cands.append(c)
         return cands
 
     def get_busy_profile(self):
@@ -418,5 +422,5 @@ class Receiver():
                 candidates = self.search(self.f0_idxs, cyclestart)
                 if not self.on_busy_profile is None:
                     self.on_busy_profile(*self.get_busy_profile())
-                global_time_utils.tlog(f"[Cycle manager] New spectrum searched -> {len(candidates)} candidates", verbose = self.verbose) 
+                global_time_utils.tlog(f"[Cycle manager] New spectrum searched -> {len(candidates)} candidates", verbose = True) 
 
