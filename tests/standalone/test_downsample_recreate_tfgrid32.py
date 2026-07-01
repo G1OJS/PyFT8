@@ -86,10 +86,9 @@ def get_candidate_tfgrid(all_audio_frames, origin):
 
     # downsample to 32 samples per symbol / 200 samples per sec
     df = SAMP_RATE / fft1_len
-    baud = SAMP_RATE / 1920
     fb_0 = int(0.5 + origin['f0'] / df )
-    fb_top = int(0.5 + (origin['f0'] + 8.5*baud) / df )
-    fb_bot = int(0.5 + (origin['f0'] - 1.5*baud) / df )
+    fb_top = int(0.5 + (origin['f0'] + 8.5*SYM_RATE) / df )
+    fb_bot = int(0.5 + (origin['f0'] - 1.5*SYM_RATE) / df )
     fft2_len = 3200
     candidate_spectrum = np.zeros(fft2_len, dtype = np.complex64)
     candidate_spectrum[:(fb_top - fb_bot)] = all_audio_spectrum[fb_bot:fb_top]
@@ -129,7 +128,7 @@ def get_messages(wav_file):
         origin = {'t0':origin['t0'], 'f0':origin['f0'], 'score':float(score)}
         print(origin)
                       
-        ttweaks = np.arange(-250, 51, 10)/1000
+        ttweaks = np.arange(-50, 51, 10)/1000
         scores = []
         for ttweak in ttweaks:
             tmp_origin = {'t0':origin['t0']+ttweak, 'f0':origin['f0'], 'score':0}
@@ -143,7 +142,7 @@ def get_messages(wav_file):
         origin = {'t0':origin['t0']+ttweak, 'f0':origin['f0'], 'score':np.max(scores)}
         print(origin)
         
-        ftweaks = np.arange(-2.5, 3.6, 0.5)
+        ftweaks = np.arange(-2.5, 2.6, 0.5)
         scores = []
         for ftweak in ftweaks:
             tmp_origin = {'t0':origin['t0'], 'f0':origin['f0']+ftweak, 'score':0}
