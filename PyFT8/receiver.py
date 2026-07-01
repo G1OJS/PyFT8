@@ -366,13 +366,14 @@ class Receiver():
         row_scores = costas_vals - row_sum      # dB at costas index less sum(others) for each symbol in costas grid, by main nhops, nfreqs
         scores = row_scores.sum(axis=0)         # search scores by main nhops, nfreqs
         for f0_idx in f0_idxs:
-            c = Candidate(cyclestart = cyclestart, f0_idx = f0_idx)
-            h0_idx = int(np.argmax(scores[:nh-costas_nhops, f0_idx]))
-            sync_score = float(scores[h0_idx, f0_idx])
-            c.h0_idx, c.sync_score = h0_idx + cycle_h0 , sync_score
-            c.dt = (c.h0_idx - cycle_h0) * self.dt - 0.7
-            c.fHz = int(f0_idx * self.df)
-            cands.append(c)
+            searched_h0_idx = int(np.argmax(scores[:nh-costas_nhops, f0_idx]))
+            sync_score = float(scores[searched_h0_idx, f0_idx])
+            h0_idx = searched_h0_idx + H0_RANGE[0]
+            if sync_score > SYNC_SCORE_MIN:
+                c = Candidate(cyclestart = cyclestart, f0_idx = f0_idx)
+                c.h0_idx, c.sync_score = h0_idx + cycle_h0 , sync_score
+                c.dt = (c.h0_idx - cycle_h0) * self.dt - 0.7
+                c.fHz = int(f0_idx * self.df)
                 cands.append(c)
         return cands
 
