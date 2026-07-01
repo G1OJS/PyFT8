@@ -263,6 +263,14 @@ class AudioIn:
 
 #============== CANDIDATE ===========================================================
 
+ap_patterns = [
+                [0, []],                                                            # no AP
+                [0, [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0]],   # CQ
+                [58,[0,1,1,1,1,1,1,0,0,1,1,1,0,1,0,1,0,0,1]],                       # RR73
+                [58,[0,1,1,1,1,1,1,0,1,0,0,1,0,1,0,0,0,0,1]],                       # 73
+                [58,[0,1,1,1,1,1,1,0,1,0,0,1,0,0,1,0,0,0,1]],                       # RRR
+              ]
+
 from dataclasses import dataclass
 from dataclasses import field
 
@@ -302,27 +310,17 @@ class Candidate:
           
     def decode(self):
         decode_started = time.time()
-        if(self.llr_sd < LLR_SD_MIN):
-            self.decode_completed = time.time()
-            return
-        apmag = np.max(np.abs(self.llr))*1.01
-        ap_patterns = [
-                        [0, []],                                                            # no AP
-                        [0, [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0]],   # CQ
-                        [58,[0,1,1,1,1,1,1,0,0,1,1,1,0,1,0,1,0,0,1]],                       # RR73
-                        [58,[0,1,1,1,1,1,1,0,1,0,0,1,0,1,0,0,0,0,1]],                       # 73
-                        [58,[0,1,1,1,1,1,1,0,1,0,0,1,0,0,1,0,0,0,1]],                       # RRR
-                      ]
-        for b0, ap_pattern in ap_patterns:
-            llr = self.llr
-            for b, bval in enumerate(ap_pattern):
-                llr[b0 + b] = (bval*2-1) * apmag
-            # max ncheck here shortcuts ap patterns that make ncheck worse than previous best
-            self.msg_tuple, self.max_ncheck = ldpc_decode(llr, self.max_ncheck)
-            if self.msg_tuple and self.msg_tuple != ('','',''):
-                self.msg = ' '.join(self.msg_tuple)
-                break
-                
+        if(self.llr_sd >= LLR_SD_MIN):
+            apmag = np.max(np.abs(self.llr))*1.01
+            for b0, ap_pattern in ap_patterns:
+                llr = self.llr
+                for b, bval in enumerate(ap_pattern):
+                    llr[b0 + b] = (bval*2-1) * apmag
+                # max ncheck here shortcuts ap patterns that make ncheck worse than previous best
+                self.msg_tuple, self.max_ncheck = ldpc_decode(llr, self.max_ncheck)
+                if self.msg_tuple and self.msg_tuple != ('','',''):
+                    self.msg = ' '.join(self.msg_tuple)
+                    break 
         self.decode_completed = time.time()
         
 #============== RECEIVER ===========================================================
