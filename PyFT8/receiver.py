@@ -171,7 +171,7 @@ def ldpc_decode(llr, max_ncheck):
         if iteration==0:
              ncheck0 = ncheck
         if ncheck0 > max_ncheck:
-            return None, ncheck0
+            return None, ncheck0, iteration
         if ncheck == 0:
             bits91_int = 0
             for bit in (llr[:91] > 0).astype(int).tolist():
@@ -180,13 +180,13 @@ def ldpc_decode(llr, max_ncheck):
             if(bits77_int):
                 msg_tuple = unpack(bits77_int)
                 if msg_tuple:
-                    return msg_tuple, ncheck0
+                    return msg_tuple, ncheck0, iteration
         else:
             update_collector = np.zeros_like(llr)
             mC2V_prev6 = pass_ldpc_messages(llr, CV6idx, mC2V_prev6, update_collector)
             mC2V_prev7 = pass_ldpc_messages(llr, CV7idx, mC2V_prev7, update_collector)
             llr += update_collector
-    return None, ncheck0
+    return None, ncheck0, iteration
 
 #============== AUDIO IN ===========================================================
 class AudioIn:
@@ -323,7 +323,7 @@ class Candidate:
                     llr[74:76] = -apmag
                     llr[76] = apmag
                 # max ncheck here shortcuts ap patterns that make ncheck worse than previous best
-                self.msg_tuple, self.max_ncheck = ldpc_decode(llr, self.max_ncheck)
+                self.msg_tuple, self.max_ncheck, self.n_its = ldpc_decode(llr, self.max_ncheck)
                 if self.msg_tuple and self.msg_tuple != ('','',''):
                     self.msg = ' '.join(self.msg_tuple)
                     self.ipass = ipass
@@ -417,7 +417,10 @@ class Receiver():
                     key = c.cyclestart['string'] + " " + " ".join(c.msg)
                     if key not in duplicate_filter:
                         duplicate_filter.add(key)
+                       # for candidate_index in range(c.f0_idx + 1, c.f0_idx + 3 * BPT):
+                       #     candidates[candidate_index].decode_completed = time.time()
                         self.on_decode(c)
+            #new_to_decode = [c for c in new_to_decode if not c.decode_completed]
             new_to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
             for c in new_to_decode[:55]:
                 c.decode()

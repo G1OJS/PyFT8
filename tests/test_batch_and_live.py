@@ -57,7 +57,7 @@ def on_decode(c):
     message = Message(c,'20m')
     if gui:
         gui.add_message_box(message)
-    print(f" {message.wsjtx_screen_format():60s} Pattern: {c.ipass}")
+    print(f" {message.wsjtx_screen_format():60s} Pattern: {c.ipass:2d} n_its: {c.n_its:3d}")
     py_times.append(time.time() - t_start)
 
 def donothing(*args):
