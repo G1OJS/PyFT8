@@ -305,29 +305,36 @@ class Candidate:
         if(self.llr_sd < LLR_SD_MIN):
             self.decode_completed = time.time()
             return
-        ldpc_decoder = LdpcDecoder()
-        self.ncheck = ldpc_decoder.calc_ncheck(self.llr)
-        self.ncheck0 = self.ncheck
-        if 0 < self.ncheck <= LDPC_CONTROL[0]:
-            self.llr, self.ncheck, self.n_its = ldpc_decoder.decode(self.llr)                   
-        bits91_int = 0
-        for bit in (self.llr[:91] > 0).astype(int).tolist():
-            bits91_int = (bits91_int << 1) | bit
-        bits77_int = check_crc(bits91_int)
-        if(bits77_int):
-            self.msg_tuple = unpack(bits77_int)
-            if self.msg_tuple:
-                self.msg = ' '.join(self.msg_tuple)
+        apmag = np.max(np.abs(self.llr))*1.01
+        ap_patterns = [
+                        [0, []],                                                            # no AP
+                        [0, [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0]],   # CQ
+                        [58,[0,1,1,1,1,1,1,0,0,1,1,1,0,1,0,1,0,0,1]],                       # RR73
+                        [58,[0,1,1,1,1,1,1,0,1,0,0,1,0,1,0,0,0,0,1]],                       # 73
+                        [58,[0,1,1,1,1,1,1,0,1,0,0,1,0,0,1,0,0,0,1]],                       # RRR
+                      ]
+        self.msg, ipass = None, 0
+        while (not self.msg) and ipass < len(ap_patterns):
+            llr = self.llr
+            b0, ap_pattern = ap_patterns[ipass]
+            for b, bval in enumerate(ap_pattern):
+                llr[b0 + b] = (bval*2-1) * apmag
+            ipass += 1
+            ldpc = LdpcDecoder()
+            nits = 0
+            ncheck = ldpc.calc_ncheck(llr)
+            if 0 < ncheck <= LDPC_CONTROL[0]:
+                llr, ncheck, nits = ldpc.decode(llr)
+            if ncheck == 0:
+                bits91_int = 0
+                for bit in (llr[:91] > 0).astype(int).tolist():
+                    bits91_int = (bits91_int << 1) | bit
+                bits77_int = check_crc(bits91_int)
+                if(bits77_int):
+                    self.msg_tuple = unpack(bits77_int)
+                if self.msg_tuple and self.msg_tuple != ('','',''):
+                    self.msg = ' '.join(self.msg_tuple)
         self.decode_completed = time.time()
-
-    def validate(self, msg_tuple):
-        e = False
-        # checking if this is needed after adding full table_7 info and branches on i3, n3
-        #mt = msg_tuple
-        #e = e or (' ' in mt[0].strip() and not mt[0].startswith('CQ'))
-        #e = e or (' ' in mt[1].strip())
-        if not e:
-            return ' '.join(self.msg_tuple)
         
 #============== RECEIVER ===========================================================
         
