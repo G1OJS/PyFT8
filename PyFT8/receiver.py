@@ -138,48 +138,44 @@ def check_crc(bits91_int):
             return bits77_int
 
 #============== LDPC ===========================================================
+CV6idx = np.array([[4,31,59,92,114,145],[5,23,60,93,121,150],[6,32,61,94,95,142],[5,31,63,96,125,137],[8,34,65,98,138,145],[9,35,66,99,106,125],[11,37,67,101,104,154],[12,38,68,102,148,161],[14,41,58,105,122,158],[0,32,71,105,106,156],[15,42,72,107,140,159],[10,43,74,109,120,165],[7,45,70,111,118,165],[18,37,76,103,115,162],[19,46,69,91,137,164],[1,47,73,112,127,159],[21,46,57,117,126,163],[15,38,61,111,133,157],[22,42,78,119,130,144],[19,35,62,93,135,160],[13,30,78,97,131,163],[2,43,79,123,126,168],[18,45,80,116,134,166],[11,49,60,117,118,143],[12,50,63,113,117,156],[23,51,75,128,147,148],[20,53,76,99,139,170],[34,81,132,141,170,173],[13,29,82,112,124,169],[3,28,67,119,133,172],[51,83,109,114,144,167],[6,49,80,98,131,172],[22,54,66,94,171,173],[25,40,76,108,140,147],[26,39,55,123,124,125],[17,48,54,123,140,166],[5,32,84,107,115,155],[8,53,62,130,146,154],[21,52,67,108,120,173],[2,12,47,77,94,122],[30,68,132,149,154,168],[4,38,74,101,135,166],[1,53,85,100,134,163],[14,55,86,107,118,170],[22,33,70,93,126,152],[10,48,87,91,141,156],[28,33,86,96,146,161],[21,56,84,92,139,158],[27,31,71,102,131,165],[0,25,44,79,127,146],[16,26,88,102,115,152],[50,56,97,162,164,171],[20,36,72,137,151,168],[15,46,75,129,136,153],[2,23,29,71,103,138],[8,39,89,105,133,150],[17,41,78,143,145,151],[24,37,64,98,121,159],[16,41,74,128,169,171]], dtype = np.int16)
+CV7idx = np.array([[3,30,58,90,91,95,152],[7,24,62,82,92,95,147],[4,33,64,77,97,106,153],[10,36,66,86,100,138,157],[7,39,69,81,103,113,144],[13,40,70,87,101,122,155],[16,36,73,80,108,130,153],[44,54,63,110,129,160,172],[17,35,75,88,112,113,142],[20,44,77,82,116,120,150],[18,34,58,72,109,124,160],[6,48,57,89,99,104,167],[24,52,68,89,100,129,155],[19,45,64,79,119,139,169],[0,3,51,56,85,135,151],[25,50,55,90,121,136,167],[1,26,40,60,61,114,132],[27,47,69,84,104,128,157],[11,42,65,88,96,134,158],[9,43,81,90,110,143,148],[29,49,59,85,136,141,161],[9,52,65,83,111,127,164],[27,28,83,87,116,142,149],[14,57,59,73,110,149,162]], dtype = np.int16)
+print(CV6idx.shape)
+print(CV7idx.shape)
 import warnings
 warnings.filterwarnings("error")
 
-class LdpcDecoder:
-    def __init__(self):
-        self.CV6idx = np.array([[4,31,59,92,114,145],[5,23,60,93,121,150],[6,32,61,94,95,142],[5,31,63,96,125,137],[8,34,65,98,138,145],[9,35,66,99,106,125],[11,37,67,101,104,154],[12,38,68,102,148,161],[14,41,58,105,122,158],[0,32,71,105,106,156],[15,42,72,107,140,159],[10,43,74,109,120,165],[7,45,70,111,118,165],[18,37,76,103,115,162],[19,46,69,91,137,164],[1,47,73,112,127,159],[21,46,57,117,126,163],[15,38,61,111,133,157],[22,42,78,119,130,144],[19,35,62,93,135,160],[13,30,78,97,131,163],[2,43,79,123,126,168],[18,45,80,116,134,166],[11,49,60,117,118,143],[12,50,63,113,117,156],[23,51,75,128,147,148],[20,53,76,99,139,170],[34,81,132,141,170,173],[13,29,82,112,124,169],[3,28,67,119,133,172],[51,83,109,114,144,167],[6,49,80,98,131,172],[22,54,66,94,171,173],[25,40,76,108,140,147],[26,39,55,123,124,125],[17,48,54,123,140,166],[5,32,84,107,115,155],[8,53,62,130,146,154],[21,52,67,108,120,173],[2,12,47,77,94,122],[30,68,132,149,154,168],[4,38,74,101,135,166],[1,53,85,100,134,163],[14,55,86,107,118,170],[22,33,70,93,126,152],[10,48,87,91,141,156],[28,33,86,96,146,161],[21,56,84,92,139,158],[27,31,71,102,131,165],[0,25,44,79,127,146],[16,26,88,102,115,152],[50,56,97,162,164,171],[20,36,72,137,151,168],[15,46,75,129,136,153],[2,23,29,71,103,138],[8,39,89,105,133,150],[17,41,78,143,145,151],[24,37,64,98,121,159],[16,41,74,128,169,171]], dtype = np.int16)
-        self.CV7idx = np.array([[3,30,58,90,91,95,152],[7,24,62,82,92,95,147],[4,33,64,77,97,106,153],[10,36,66,86,100,138,157],[7,39,69,81,103,113,144],[13,40,70,87,101,122,155],[16,36,73,80,108,130,153],[44,54,63,110,129,160,172],[17,35,75,88,112,113,142],[20,44,77,82,116,120,150],[18,34,58,72,109,124,160],[6,48,57,89,99,104,167],[24,52,68,89,100,129,155],[19,45,64,79,119,139,169],[0,3,51,56,85,135,151],[25,50,55,90,121,136,167],[1,26,40,60,61,114,132],[27,47,69,84,104,128,157],[11,42,65,88,96,134,158],[9,43,81,90,110,143,148],[29,49,59,85,136,141,161],[9,52,65,83,111,127,164],[27,28,83,87,116,142,149],[14,57,59,73,110,149,162]], dtype = np.int16)
-        self.mC2V_prev6 = None
-        self.mC2V_prev7 = None
-        
-    def calc_ncheck(self, llr):
-        bits6 = llr[self.CV6idx] > 0
-        self.parity6 = np.sum(bits6, axis=1) & 1
-        bits7 = llr[self.CV7idx] > 0
-        self.parity7 = np.sum(bits7, axis=1) & 1
-        return int(np.sum(self.parity7) + np.sum(self.parity6))
+def calc_ncheck(llr):
+    bits6, bits7 = llr[CV6idx] > 0, llr[CV7idx] > 0
+    parity6, parity7 = np.sum(bits6, axis=1) & 1, np.sum(bits7, axis=1) & 1
+    return int(np.sum(parity7) + np.sum(parity6))
 
-    def _pass_messages(self, llr, CVidx, mC2V_prev, update_collector):
-        if mC2V_prev is None:
-            mC2V_prev = np.zeros(CVidx.shape, dtype=np.float32)
-        mV2C = llr[CVidx] - mC2V_prev
-        tanh_mV2C = np.tanh(-mV2C)
-        tanh_mC2V = np.prod(tanh_mV2C, axis=1, keepdims=True)
-        try:
-            tanh_mC2V = tanh_mC2V / tanh_mV2C
-        except:
-            tanh_mC2V = tanh_mC2V / (tanh_mV2C + 0.001)
-        alpha_atanh_approx = 1.18
-        mC2V_curr  = tanh_mC2V / ((tanh_mC2V - alpha_atanh_approx) * (alpha_atanh_approx + tanh_mC2V))
-        np.add.at(update_collector, CVidx, mC2V_curr - mC2V_prev)
-        return mC2V_curr
-    
-    def decode(self, llr):
-        for iteration in range(LDPC_CONTROL[1]):
+def pass_ldpc_messages(llr, CVidx, mC2V_prev, update_collector):
+    mV2C = llr[CVidx] - mC2V_prev
+    tanh_mV2C = np.tanh(-mV2C)
+    tanh_mC2V = np.prod(tanh_mV2C, axis=1, keepdims=True)
+    try:
+        tanh_mC2V = tanh_mC2V / tanh_mV2C
+    except:
+        tanh_mC2V = tanh_mC2V / (tanh_mV2C + 0.001)
+    alpha_atanh_approx = 1.18
+    mC2V_curr  = tanh_mC2V / ((tanh_mC2V - alpha_atanh_approx) * (alpha_atanh_approx + tanh_mC2V))
+    np.add.at(update_collector, CVidx, mC2V_curr - mC2V_prev)
+    return mC2V_curr
+
+def ldpc_decode(llr):
+    ncheck = calc_ncheck(llr)
+    iteration = 0
+    if 0 < ncheck <= LDPC_CONTROL[0]:
+        mC2V_prev6, mC2V_prev7 = np.zeros(CV6idx.shape, dtype=np.float32), np.zeros(CV7idx.shape, dtype=np.float32)
+        while ncheck > 0 and iteration < LDPC_CONTROL[1]:
             update_collector = np.zeros_like(llr)
-            self.mC2V_prev6 = self._pass_messages(llr, self.CV6idx, self.mC2V_prev6, update_collector)
-            self.mC2V_prev7 = self._pass_messages(llr, self.CV7idx, self.mC2V_prev7, update_collector)
+            mC2V_prev6 = pass_ldpc_messages(llr, CV6idx, mC2V_prev6, update_collector)
+            mC2V_prev7 = pass_ldpc_messages(llr, CV7idx, mC2V_prev7, update_collector)
             llr += update_collector
-            ncheck = self.calc_ncheck(llr)
-            if(ncheck == 0):
-                break
-        return llr, ncheck, iteration 
+            ncheck = calc_ncheck(llr)
+            iteration +=1
+    return llr, ncheck, iteration 
 
 #============== AUDIO IN ===========================================================
 class AudioIn:
@@ -273,11 +269,9 @@ class Candidate:
     demap_started: float = 0.0
     fHz: int = 0
     llr_sd: float = 0.0
-    ncheck0: int = 99
     ncheck: int = 99
     n_its: int = 0
     llr_sd: float = 0
-    decode_path: str = ''
     msg_tuple: tuple = ('','','')
     msg: str = ''
     decode_completed: float = 0.0
@@ -287,16 +281,13 @@ class Candidate:
         self.demap_started = time.time()
         hops = (self.h0_idx + BASE_PAYLOAD_HOPS) % HOPS_PER_GRID
         freqs = self.f0_idx + np.array(range(8*BPT))
-        dBgrid = dBgrid_main[np.ix_(hops, freqs)]
-        pmax = np.max(dBgrid)
-        self.snr = np.clip(int(pmax - np.min(dBgrid) - 58), -24, 24)
-        p = np.clip(dBgrid - pmax, -80, 0)
+        p = dBgrid_main[np.ix_(hops, freqs)]
+        self.snr = np.clip(int(np.max(p) - np.min(p) - 58), -24, 24)
         llra = np.max(p[:, A1], axis=1) - np.max(p[:, A0], axis=1)
         llrb = np.max(p[:, B1], axis=1) - np.max(p[:, B0], axis=1)
         llrc = np.max(p[:, C1], axis=1) - np.max(p[:, C0], axis=1)
-        llr = np.column_stack((llra, llrb, llrc))
-        llr = llr.ravel() / 10
-        self.llr_sd = int(0.5+100*np.std(llr))/100.0
+        llr = np.column_stack((llra, llrb, llrc)).ravel()
+        self.llr_sd = np.std(llr)
         llr = target_params[0] * llr / (1e-12 + self.llr_sd)
         self.llr = np.clip(llr, -target_params[1], target_params[1])
           
@@ -320,11 +311,7 @@ class Candidate:
             for b, bval in enumerate(ap_pattern):
                 llr[b0 + b] = (bval*2-1) * apmag
             ipass += 1
-            ldpc = LdpcDecoder()
-            nits = 0
-            ncheck = ldpc.calc_ncheck(llr)
-            if 0 < ncheck <= LDPC_CONTROL[0]:
-                llr, ncheck, nits = ldpc.decode(llr)
+            llr, ncheck, nits = ldpc_decode(llr)
             if ncheck == 0:
                 bits91_int = 0
                 for bit in (llr[:91] > 0).astype(int).tolist():
