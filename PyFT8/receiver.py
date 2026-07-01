@@ -15,10 +15,10 @@ SYM_RATE = 6.25
 SAMP_RATE = 12000
 
 t2h = HPS/0.16
-SYNC_SCORE_MIN = 20
+SYNC_SCORE_MIN = 10
 LLR_SD_MIN = 5
 LDPC_CONTROL = (45, 12) 
-H0_RANGE = [int(-2 *t2h), int(5 *t2h)]
+H0_RANGE = [int(-1.5 *t2h), int(5 *t2h)]
 #H0_RANGE = [int(0 *t2h), int(4 *t2h)]
 H_SEARCH_0 = H0_RANGE[1] + 7 * HPS
 H_SEARCH_1 = H0_RANGE[1] + 43 * HPS
