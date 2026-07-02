@@ -176,6 +176,7 @@ class AudioIn:
         self.search_grid_ptr = 0
         self.search_audio_buffer = np.zeros(self.search_fft_len, dtype=np.float32)
         self.search_fft_in = np.zeros(self.search_fft_len, dtype=np.float32)
+        self.search_costas_hops =  np.arange(7) * self.search_hps
         self.cycle_audio_buffer = np.zeros(192000, dtype=np.float32)
         self.cycle_audio_buffer_ptr = 0
         
@@ -246,28 +247,12 @@ ap_patterns = [
                 [58,[0,1, 1,1,1,1,1, 0,1,0,0,1, 0,0,1,0,0, 0,1]],                       # RRR
               ]
 
-from dataclasses import dataclass
-from dataclasses import field
-
-@dataclass(slots=True)
 class Candidate:
-    cyclestart: tuple
-    f0_idx: int
-    llr: np.ndarray = field(default_factory=lambda: np.empty(0))
-    snr: float = -30
-    dt: float = 0
-    h0_idx: int = 0
-    sync_score: float = 0
-    demap_started: float = 0.0
-    fHz: int = 0
-    llr_sd: float = 0.0
-    n_its: int = 0
-    ipass: int = 0
-    llr_sd: float = 0
-    msg_tuple: tuple = ('','','')
-    msg: str = ''
-    decode_completed: float = 0.0
-    decoder: str = "PyFT8"
+    def __init__(self, cyclestart, origin):
+        self.cyclestart, self.origin = cyclestart, origin
+        self.demap_started, self.decode_completed = None, None
+        self.msg_tuple, self.msg = ('','',''), None
+        self.llr_sd, self.ipass, self.n_its, self.snr = 0, 0, 0, -30
 
     def demap(self, candidate_grid, target_params = (3.3, 3.7)):
         self.demap_started = time.time()
@@ -285,7 +270,7 @@ class Candidate:
         decode_started = time.time()
         if(self.llr_sd >= llr_sd_min):
             apmag = np.max(np.abs(self.llr))*1.01
-            max_ncheck, max_iters = 55, 15
+            max_ncheck, max_iters = 55, 20
             for ipass, (b0, ap_pattern) in enumerate(ap_patterns):
                 llr = self.llr.copy()
                 for b, bval in enumerate(ap_pattern):
@@ -294,8 +279,9 @@ class Candidate:
                     llr[74:76] = -apmag
                     llr[76] = apmag
                 # max ncheck here shortcuts ap patterns that make ncheck worse than previous best
-                self.msg_tuple, max_ncheck, self.n_its = ldpc_decode(llr, max_ncheck, max_iters)
-                if self.msg_tuple and self.msg_tuple != ('','',''):
+                msg_tuple, max_ncheck, self.n_its = ldpc_decode(llr, max_ncheck, max_iters)
+                if msg_tuple:
+                    self.msg_tuple = msg_tuple
                     self.msg = ' '.join(self.msg_tuple)
                     self.ipass = ipass
                     break 
@@ -310,39 +296,41 @@ class Receiver():
         self.on_busy_profile = on_busy_profile
         self.verbose = verbose
         self.curr_cycle = 0
-        self.search_hoprange = (np.array([-1.5, 5]) * SYM_RATE * self.audio_in.search_hps).astype(np.int16)
+        self.search_timerange = [-2, 5]
+        self.search_hoprange = [int(t*self.audio_in.search_hps*SYM_RATE) for t in self.search_timerange]
         self.search_start_hop = self.search_hoprange[1] + 43 * self.audio_in.search_hps
         global_time_utils.set_cycle_length(T_CYC)
         threading.Thread(target=self.manage_cycle, daemon=True).start()
 
-    def search(self, cyclestart, sync_score_min = 10):
+    def get_cgrid(self, origin):
+        cand_abs_h0_idx = int(origin['cycle'] * T_CYC * SYM_RATE * self.audio_in.search_hps + origin['t0'] * SYM_RATE * self.audio_in.search_hps)
+        f0_idx = int(origin['f0']*self.audio_in.search_bpt / SYM_RATE)
+        hops = [ (cand_abs_h0_idx + s*self.audio_in.search_hps) % self.audio_in.search_hops_per_grid for s in PAYLOAD_SYMB_IDXS] 
+        freqs =[ f0_idx + self.audio_in.search_bpt//2 + f*self.audio_in.search_bpt for f in range(8)]
+        cgrid = self.audio_in.search_grid[np.ix_(hops, freqs)]
+        return cgrid
+
+    def search(self, cyclestart, sync_score_min = 30):
         cands = []
-        cycle_h0 = int(self.curr_cycle * T_CYC * SYM_RATE * self.audio_in.search_hps)
         sync_idx_offs = int(36*self.audio_in.search_hps)
-        search_hops = np.array(range(cycle_h0 + self.search_hoprange[0] + sync_idx_offs, cycle_h0 + self.search_hoprange[1] + sync_idx_offs)) % self.audio_in.search_hops_per_grid
-        search_band = self.audio_in.search_grid[search_hops][:, self.audio_in.search_bpt//2:]
-        nh, nf = search_band.shape
-        arr = np.zeros((7, nh, nf))     # costas 'row' for a single symbol index, by main nhops, nfreqs
-        for i in range(7):
-            hopshift = i * self.audio_in.search_hps
-            arr[i, :nh-hopshift, :] = search_band[hopshift:, :]
-        freq_stack = np.stack([np.roll(arr, -j * self.audio_in.search_bpt, axis=2) for j in range(7)], axis=1) # 7x7 costas points by main nhops, nfreqs
-        rows = np.arange(7)
-        costas_vals = freq_stack[rows, COSTAS]  # 'wanted' costas points by main nhops, nfreqs
-        masked = freq_stack.copy()              # copy for punching out wanted points
-        masked[rows, COSTAS] = 0                # leave only 'unwanted' costas points by main nhops, nfreqs
-        row_sum = (1/6)*masked.sum(axis=1)      # sum of 'unwanted' by main nhops, nfreqs
-        row_scores = costas_vals - row_sum      # dB at costas index less sum(others) for each symbol in costas grid, by main nhops, nfreqs
-        scores = row_scores.sum(axis=0)         # search scores by main nhops, nfreqs
+
+        dt = 1.0 / (SYM_RATE * self.audio_in.search_hps)
+        csync = np.full((7, 7 * self.audio_in.search_bpt), -1/6, np.float32)
+        for sym_idx, tone in enumerate([3,1,4,0,6,5,2]):
+            fbins = range(tone * self.audio_in.search_bpt, (tone+1) * self.audio_in.search_bpt)
+            csync[sym_idx, fbins] = 1.0
+        csync_flat =  csync.ravel()
+
         for f0_idx in range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1]):
-            searched_h0_idx = int(np.argmax(scores[:nh-7*self.audio_in.search_hps, f0_idx]))
-            sync_score = float(scores[searched_h0_idx, f0_idx])
-            h0_idx = searched_h0_idx + self.search_hoprange[0]
-            if sync_score > sync_score_min:
-                c = Candidate(cyclestart = cyclestart, f0_idx = f0_idx)
-                c.h0_idx, c.sync_score = h0_idx + cycle_h0 , sync_score
-                c.dt = (c.h0_idx - cycle_h0) * self.audio_in.dt - 0.7
-                c.fHz = int(f0_idx * self.audio_in.df)
+            p = self.audio_in.search_grid[:, f0_idx: f0_idx+8*self.audio_in.search_bpt]
+            origin = {'score':0}
+            for h0_idx in range(self.search_hoprange[0],self.search_hoprange[1]):
+                score = float(np.dot(p[h0_idx + self.cycle_h0 + sync_idx_offs + self.audio_in.search_costas_hops, :7*self.audio_in.search_bpt].ravel(), csync_flat))
+                test_sync = {'cycle':self.curr_cycle, 't0':h0_idx/(self.audio_in.search_hps * SYM_RATE), 'f0':SYM_RATE * f0_idx / self.audio_in.search_bpt, 'score':score}
+                if test_sync['score'] > origin['score']:
+                    origin = test_sync
+            if origin['score'] > sync_score_min:
+                c = Candidate(cyclestart, origin)
                 cands.append(c)
         return cands
 
@@ -368,15 +356,16 @@ class Receiver():
             if ticker_cycle_rollover.ticked():                
                 self.audio_in.sync_pointer_to_wall_clock()
             self.curr_cycle = int((self.audio_in.search_grid_ptr) / self.audio_in.search_hops_per_cycle)
+            self.cycle_h0 = int(self.curr_cycle * T_CYC * SYM_RATE * self.audio_in.search_hps)
         
             new_to_decode = []
             for c in candidates:
-                curr_sym = int((self.audio_in.search_grid_ptr - c.h0_idx) / self.audio_in.search_hps)
-                if not (curr_sym < PAYLOAD_SYMB_IDXS[-1]) and not c.demap_started:
-                    hops = [ c.h0_idx + s*self.audio_in.search_hps for s in PAYLOAD_SYMB_IDXS]
-                    freqs =[ c.f0_idx + self.audio_in.search_bpt//2 + f*self.audio_in.search_bpt for f in range(8)]
-                    cgrid = self.audio_in.search_grid[np.ix_(hops, freqs)]
-                    c.demap(cgrid)
+                if not c.demap_started:
+                    cand_abs_h0_idx = c.origin['cycle'] * T_CYC * SYM_RATE * self.audio_in.search_hps + c.origin['t0'] * SYM_RATE * self.audio_in.search_hps
+                    cand_abs_hf_idx = cand_abs_h0_idx + PAYLOAD_SYMB_IDXS[-1] * self.audio_in.search_hps
+                    if not (cand_abs_h0_idx < self.audio_in.search_grid_ptr < cand_abs_hf_idx):
+                        cgrid = self.get_cgrid(c.origin)
+                        c.demap(cgrid)
                 if c.llr_sd > 0 and not c.decode_completed:
                     new_to_decode.append(c)
                 if c.msg:

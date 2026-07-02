@@ -52,7 +52,8 @@ class Message:
         mycall = ''
         if qso is not None:
             mycall = qso.mStation['c']
-        self.h0_idx, self.f0_idx, self.msg_tuple, self.msg, self.snr, self.dt, self.fHz = c.h0_idx, c.f0_idx, c.msg_tuple, c.msg, c.snr, c.dt, c.fHz
+        self.origin, self.msg_tuple, self.msg, self.snr, = c.origin, c.msg_tuple, c.msg, c.snr
+        self.dt, self.fHz = self.origin['t0'], self.origin['f0']
         self.cyclestart = c.cyclestart
         self.expire = time.time() + 29.25
         self.is_from_me = c.msg_tuple[1] == mycall

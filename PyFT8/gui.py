@@ -141,6 +141,7 @@ class Gui:
         self.on_control_click = on_control_click
         self.on_gui_sidebars_refresh = on_gui_sidebars_refresh
         self.dBgrid = dBgrid
+        self.hops_per_cycle = int(dBgrid.shape[0]//2)
         self.hps, self.bpt = hps, bpt
         self.msg_boxes = {}
         self.decode_queue = queue.Queue()
@@ -203,11 +204,12 @@ class Gui:
         self.decode_queue.put(message)
 
     def _display_message_box(self, message):
-        h0_idx, f0_idx = message.h0_idx, message.f0_idx
-        if not f0_idx in self.msg_boxes:
-            self.msg_boxes[f0_idx] = Msg_box(self.fig, self.ax_wf, h0_idx, f0_idx, 79*self.hps, 8*self.bpt, onclick = self.on_msg_click)
-        self.msg_boxes[f0_idx].set_properties(message)
-        self.msg_boxes[f0_idx].set_appearance(message)
+        message.h0_idx = message.origin['t0']*self.hps/0.16 + message.origin['cycle']*self.hops_per_cycle
+        message.f0_idx = message.origin['f0']*self.bpt/6.25
+        if not message.f0_idx in self.msg_boxes:
+            self.msg_boxes[message.f0_idx] = Msg_box(self.fig, self.ax_wf, message.h0_idx, message.f0_idx, 79*self.hps, 8*self.bpt, onclick = self.on_msg_click)
+        self.msg_boxes[message.f0_idx].set_properties(message)
+        self.msg_boxes[message.f0_idx].set_appearance(message)
         
     def _tidy_msg_boxes(self):
         for fb in self.msg_boxes:

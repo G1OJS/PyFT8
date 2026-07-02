@@ -31,7 +31,7 @@ class Wsjtx_all_tailer:
                 cs, freq, dt, snr = ls[0], int(ls[6]), float(ls[5]), int(ls[4])
                 msg = f"{ls[7]} {ls[8]} {ls[9]}"
                 td = f"{time.time() %60:4.1f}"
-                self.on_decode({'cs':cs, 'decoder':'WSJTX', 'f':int(freq), 'msg':msg, 'dt':dt, 'snr':snr, 'td':td})
+                self.on_decode({'cs':cs, 'decoder':'WSJTX', 'origin':{'f0':int(freq), 't0':dt, 'score':0}, 'msg':msg, 'snr':snr, 'td':td})
             except:
                 if(not self.silent):
                     print(f"Wsjtx_tailer error in line '{line}'")
@@ -57,7 +57,7 @@ def on_decode(c):
     message = Message(c,'20m')
     if gui:
         gui.add_message_box(message)
-    print(f" {message.wsjtx_screen_format():60s} Sync score: {c.sync_score:3.0f} LLR_SD: {c.llr_sd:5.1f} Pattern: {c.ipass:2d} n_its: {c.n_its:3d}")
+    print(f" {message.wsjtx_screen_format():60s} Sync score: {c.origin['score']:3.0f} LLR_SD: {c.llr_sd:5.1f} Pattern: {c.ipass:2d} n_its: {c.n_its:3d}")
     py_times.append(time.time() - t_start)
 
 def donothing(*args):
