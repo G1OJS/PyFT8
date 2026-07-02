@@ -167,7 +167,7 @@ def get_messages(wav_file):
             if ipass == 1:
                 llr[74:76] = -apmag
                 llr[76] = apmag
-            msg_tuple, max_ncheck, n_its = ldpc_decode(llr, max_ncheck)
+            msg_tuple, max_ncheck, n_its = ldpc_decode(llr, max_ncheck, LDPC_CONTROL[1])
             if msg_tuple:
                 msg = ' '.join(msg_tuple)
                 if not msg in messages:

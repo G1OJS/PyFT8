@@ -69,7 +69,7 @@ def batch_test(i0, i1):
     wav_files = []
     for idx in range(i0, i1):
         wav_files.append(f"{wav_folder}/test_{idx:02d}.wav")
-    audio_in = AudioIn([100,2900], wav_files)
+    audio_in = AudioIn([0,3100], wav_files)
     gui = Gui(audio_in.search_grid, 4, 2, {'bands':{'20m':14.074},'station':{'call':'G1OJS','grid':'IO90'}}, donothing, donothing, donothing)
     rx = Receiver(audio_in, on_decode, None)
     audio_in.start_wav_load()
