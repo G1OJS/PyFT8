@@ -119,19 +119,17 @@ CV7idx = np.array([[3,30,58,90,91,95,152],[7,24,62,82,92,95,147],[4,33,64,77,97,
 import warnings
 warnings.filterwarnings("error")
 
-def safe_divide(num, den):
-    try:
-        return num / den
-    except:
-        return num / (den + 0.001)
 
 def pass_ldpc_messages(llr, CVidx, mC2V_prev, update_collector):
     mV2C = llr[CVidx] - mC2V_prev
-    tanh_mV2C = np.tanh(-mV2C)
+    tanh_mV2C = np.tanh(-mV2C/2)
     tanh_mC2V = np.prod(tanh_mV2C, axis=1, keepdims=True)
-    tanh_mC2V = safe_divide(tanh_mC2V, tanh_mV2C)
+    orig_err = np.geterr()
+    np.seterr(all = 'ignore')
+    tanh_mC2V = np.divide(tanh_mC2V, tanh_mV2C)
+    np.seterr(**orig_err)
     alpha_atanh_approx = 1.18
-    mC2V_curr  = tanh_mC2V / ((tanh_mC2V - alpha_atanh_approx) * (alpha_atanh_approx + tanh_mC2V))
+    mC2V_curr  = 2*tanh_mC2V / ((tanh_mC2V - alpha_atanh_approx) * (alpha_atanh_approx + tanh_mC2V))
     np.add.at(update_collector, CVidx, mC2V_curr - mC2V_prev)
     return mC2V_curr
 
@@ -172,11 +170,12 @@ class AudioIn:
         self.search_f0_idx_range = [int(self.search_freq_range[0] / self.df), int(self.search_freq_range[1] / self.df)]
         self.search_fft_window = np.hanning(self.search_fft_len).astype(np.float32)
         self.search_hops_per_cycle = int(T_CYC * SYM_RATE * self.search_hps)
-        self.search_hops_per_grid = int(2 * T_CYC * SYM_RATE * self.search_hps)
+        self.search_hops_per_grid = 2*self.search_hops_per_cycle
         self.dt = T_CYC / self.search_hops_per_cycle
         self.search_grid = np.ones((self.search_hops_per_grid, self.search_f0_idx_range[1]+8*self.search_bpt), dtype = np.float32)
         self.search_grid_ptr = 0
         self.search_audio_buffer = np.zeros(self.search_fft_len, dtype=np.float32)
+        self.search_fft_in = np.zeros(self.search_fft_len, dtype=np.float32)
         self.cycle_audio_buffer = np.zeros(192000, dtype=np.float32)
         self.cycle_audio_buffer_ptr = 0
         
@@ -185,7 +184,7 @@ class AudioIn:
         self.search_grid_ptr = 0
 
     def load_wavs(self, wav_paths):
-        hop_dt = 1 / (SYM_RATE * self.search_hps) - 0.0014
+        hop_dt = 1 / (SYM_RATE * self.search_hps) - 0.0024
         samples_perhop = int(SAMP_RATE / (SYM_RATE * self.search_hps))
         for wav_path in wav_paths:
             wf = wave.open(wav_path, "rb")
@@ -230,7 +229,8 @@ class AudioIn:
         ns = len(samples)
         self.search_audio_buffer[:-ns] = self.search_audio_buffer[ns:]
         self.search_audio_buffer[-ns:] = samples
-        search_hop_spectrum = np.fft.rfft(self.search_audio_buffer * self.search_fft_window)[:self.search_grid.shape[1]]
+        np.multiply(self.search_audio_buffer, self.search_fft_window, out = self.search_fft_in)
+        search_hop_spectrum = np.fft.rfft(self.search_fft_in)[:self.search_grid.shape[1]]
         self.search_grid[self.search_grid_ptr, :] = 20*np.log10(np.abs(search_hop_spectrum))
         self.search_grid_ptr = (self.search_grid_ptr + 1) % self.search_hops_per_grid
         return (None, pyaudio.paContinue)
@@ -239,8 +239,8 @@ class AudioIn:
 #============== CANDIDATE ===========================================================
 
 ap_patterns = [
-                [0, []],                                                                # no AP
                 [0, [0,0,0,0,0 ,0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,1,0,0]],  # CQ
+                [0, []],                                                                # no AP
                 [58,[0,1, 1,1,1,1,1, 0,0,1,1,1, 0,1,0,1,0, 0,1]],                       # RR73
                 [58,[0,1, 1,1,1,1,1, 0,1,0,0,1, 0,1,0,0,0, 0,1]],                       # 73
                 [58,[0,1, 1,1,1,1,1, 0,1,0,0,1, 0,0,1,0,0, 0,1]],                       # RRR
@@ -281,7 +281,7 @@ class Candidate:
         llr = target_params[0] * llr / (1e-12 + self.llr_sd)
         self.llr = np.clip(llr, -target_params[1], target_params[1])
           
-    def decode(self, llr_sd_min = 1):
+    def decode(self, llr_sd_min = 5):
         decode_started = time.time()
         if(self.llr_sd >= llr_sd_min):
             apmag = np.max(np.abs(self.llr))*1.01
@@ -290,9 +290,9 @@ class Candidate:
                 llr = self.llr.copy()
                 for b, bval in enumerate(ap_pattern):
                     llr[b0 + b] = (bval*2-1) * apmag
-                if ipass == 1:
-                    llr[74:76] = -apmag
-                    llr[76] = apmag
+                #if ipass == 1:
+                #    llr[74:76] = -apmag
+                #    llr[76] = apmag
                 # max ncheck here shortcuts ap patterns that make ncheck worse than previous best
                 self.msg_tuple, max_ncheck, self.n_its = ldpc_decode(llr, max_ncheck, max_iters)
                 if self.msg_tuple and self.msg_tuple != ('','',''):
@@ -310,12 +310,12 @@ class Receiver():
         self.on_busy_profile = on_busy_profile
         self.verbose = verbose
         self.curr_cycle = 0
-        self.search_hoprange = (np.array([-1.5, 6]) * SYM_RATE * self.audio_in.search_hps).astype(np.int16)
+        self.search_hoprange = (np.array([-1.5, 5]) * SYM_RATE * self.audio_in.search_hps).astype(np.int16)
         self.search_start_hop = self.search_hoprange[1] + 43 * self.audio_in.search_hps
         global_time_utils.set_cycle_length(T_CYC)
         threading.Thread(target=self.manage_cycle, daemon=True).start()
 
-    def search(self, cyclestart, sync_score_min = 5):
+    def search(self, cyclestart, sync_score_min = 10):
         cands = []
         cycle_h0 = int(self.curr_cycle * T_CYC * SYM_RATE * self.audio_in.search_hps)
         sync_idx_offs = int(36*self.audio_in.search_hps)
@@ -372,7 +372,7 @@ class Receiver():
             new_to_decode = []
             for c in candidates:
                 curr_sym = int((self.audio_in.search_grid_ptr - c.h0_idx) / self.audio_in.search_hps)
-                if not (PAYLOAD_SYMB_IDXS[0] < curr_sym < PAYLOAD_SYMB_IDXS[-1]) and not c.demap_started:
+                if not (curr_sym < PAYLOAD_SYMB_IDXS[-1]) and not c.demap_started:
                     hops = [(c.h0_idx + s*self.audio_in.search_hps) % self.audio_in.search_hops_per_grid for s in PAYLOAD_SYMB_IDXS]
                     freqs =[ c.f0_idx + f*self.audio_in.search_bpt for f in range(8)]
                     cgrid = self.audio_in.search_grid[np.ix_(hops, freqs)]
