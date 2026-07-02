@@ -122,14 +122,14 @@ warnings.filterwarnings("error")
 
 def pass_ldpc_messages(llr, CVidx, mC2V_prev, update_collector):
     mV2C = llr[CVidx] - mC2V_prev
-    tanh_mV2C = np.tanh(-mV2C/2)
+    tanh_mV2C = np.tanh(-mV2C)
     tanh_mC2V = np.prod(tanh_mV2C, axis=1, keepdims=True)
     orig_err = np.geterr()
     np.seterr(all = 'ignore')
     tanh_mC2V = np.divide(tanh_mC2V, tanh_mV2C)
     np.seterr(**orig_err)
     alpha_atanh_approx = 1.18
-    mC2V_curr  = 2*tanh_mC2V / ((tanh_mC2V - alpha_atanh_approx) * (alpha_atanh_approx + tanh_mC2V))
+    mC2V_curr  = tanh_mC2V / ((tanh_mC2V - alpha_atanh_approx) * (alpha_atanh_approx + tanh_mC2V))
     np.add.at(update_collector, CVidx, mC2V_curr - mC2V_prev)
     return mC2V_curr
 
@@ -184,7 +184,7 @@ class AudioIn:
         self.search_grid_ptr = 0
 
     def load_wavs(self, wav_paths):
-        hop_dt = 1 / (SYM_RATE * self.search_hps) - 0.0024
+        hop_dt = 1 / (SYM_RATE * self.search_hps) - 0.0014
         samples_perhop = int(SAMP_RATE / (SYM_RATE * self.search_hps))
         for wav_path in wav_paths:
             wf = wave.open(wav_path, "rb")
@@ -239,8 +239,8 @@ class AudioIn:
 #============== CANDIDATE ===========================================================
 
 ap_patterns = [
-                [0, [0,0,0,0,0 ,0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,1,0,0]],  # CQ
                 [0, []],                                                                # no AP
+                [0, [0,0,0,0,0 ,0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,1,0,0]],  # CQ
                 [58,[0,1, 1,1,1,1,1, 0,0,1,1,1, 0,1,0,1,0, 0,1]],                       # RR73
                 [58,[0,1, 1,1,1,1,1, 0,1,0,0,1, 0,1,0,0,0, 0,1]],                       # 73
                 [58,[0,1, 1,1,1,1,1, 0,1,0,0,1, 0,0,1,0,0, 0,1]],                       # RRR
@@ -290,9 +290,9 @@ class Candidate:
                 llr = self.llr.copy()
                 for b, bval in enumerate(ap_pattern):
                     llr[b0 + b] = (bval*2-1) * apmag
-                #if ipass == 1:
-                #    llr[74:76] = -apmag
-                #    llr[76] = apmag
+                if ipass == 1:
+                    llr[74:76] = -apmag
+                    llr[76] = apmag
                 # max ncheck here shortcuts ap patterns that make ncheck worse than previous best
                 self.msg_tuple, max_ncheck, self.n_its = ldpc_decode(llr, max_ncheck, max_iters)
                 if self.msg_tuple and self.msg_tuple != ('','',''):
@@ -373,8 +373,8 @@ class Receiver():
             for c in candidates:
                 curr_sym = int((self.audio_in.search_grid_ptr - c.h0_idx) / self.audio_in.search_hps)
                 if not (curr_sym < PAYLOAD_SYMB_IDXS[-1]) and not c.demap_started:
-                    hops = [(c.h0_idx + s*self.audio_in.search_hps) % self.audio_in.search_hops_per_grid for s in PAYLOAD_SYMB_IDXS]
-                    freqs =[ c.f0_idx + f*self.audio_in.search_bpt for f in range(8)]
+                    hops = [ c.h0_idx + s*self.audio_in.search_hps for s in PAYLOAD_SYMB_IDXS]
+                    freqs =[ c.f0_idx + self.audio_in.search_bpt//2 + f*self.audio_in.search_bpt for f in range(8)]
                     cgrid = self.audio_in.search_grid[np.ix_(hops, freqs)]
                     c.demap(cgrid)
                 if c.llr_sd > 0 and not c.decode_completed:
