@@ -57,7 +57,7 @@ def on_decode(c):
     message = Message(c,'20m')
     if gui:
         gui.add_message_box(message)
-    print(f" {message.wsjtx_screen_format():60s} Pattern: {c.ipass:2d} n_its: {c.n_its:3d}")
+    print(f" {message.wsjtx_screen_format():60s} Sync score: {c.sync_score:3.0f} Pattern: {c.ipass:2d} n_its: {c.n_its:3d}")
     py_times.append(time.time() - t_start)
 
 def donothing(*args):
@@ -69,9 +69,9 @@ def batch_test(i0, i1):
     wav_files = []
     for idx in range(i0, i1):
         wav_files.append(f"{wav_folder}/test_{idx:02d}.wav")
-    audio_in = AudioIn(3100, wav_files)
-    gui = Gui(audio_in.dBgrid_main, 4, 2, {'bands':{'20m':14.074},'station':{'call':'G1OJS','grid':'IO90'}}, donothing, donothing, donothing)
-    rx = Receiver(audio_in, [200, 3100], on_decode, None)
+    audio_in = AudioIn([100,2900], wav_files)
+    gui = Gui(audio_in.search_grid, 4, 2, {'bands':{'20m':14.074},'station':{'call':'G1OJS','grid':'IO90'}}, donothing, donothing, donothing)
+    rx = Receiver(audio_in, on_decode, None)
     audio_in.start_wav_load()
     t_start = time.time()
     with open('baseline.pkl', 'rb') as f:
