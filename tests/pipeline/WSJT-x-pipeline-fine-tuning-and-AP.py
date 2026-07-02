@@ -66,7 +66,7 @@ def get_initial_origins(wav_file ):
             test_sync = {'t0':h0_idx/(HPS * SYM_RATE), 'f0':SYM_RATE * fb / BPT, 'score':sync_score}
             if test_sync['score'] > origin['score']:
                 origin = test_sync
-        if origin['score'] > 100:
+        if origin['score'] > 80:
             origins.append(origin)
 
     return origins
@@ -160,12 +160,13 @@ def get_messages(wav_file):
                       ]
         msg, ipass = None, 0
         max_ncheck = LDPC_CONTROL[0]
-        while (not msg) and ipass < len(ap_patterns):
+        for ipass, (b0, ap_pattern) in enumerate(ap_patterns):
             llr = llr0.copy()
-            b0, ap_pattern = ap_patterns[ipass]
             for b, bval in enumerate(ap_pattern):
                 llr[b0 + b] = (bval*2-1) * apmag
-            ipass += 1
+            if ipass == 1:
+                llr[74:76] = -apmag
+                llr[76] = apmag
             msg_tuple, max_ncheck, n_its = ldpc_decode(llr, max_ncheck)
             if msg_tuple:
                 msg = ' '.join(msg_tuple)
