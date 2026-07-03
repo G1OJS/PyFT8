@@ -204,7 +204,6 @@ class AudioIn:
         self.dBgrid_main = np.ones((self.hops_per_grid, self.nFreqs), dtype = np.float32)
         self.wav_files = wav_files
         self.dBgrid_main_ptr = 0
-        self.oversample = {'hps':HPS, 'bpt':BPT}
 
     def start_wav_load(self):
         threading.Thread(target = self.load_wavs, args =(self.wav_files,)).start()

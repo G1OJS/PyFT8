@@ -57,7 +57,7 @@ def on_decode(c):
     message = Message(c,'20m')
     if gui:
         gui.add_message_box(message)
-    print(f" {message.wsjtx_screen_format():60s} Pattern: {c.ipass:2d} n_its: {c.n_its:3d}")
+    print(f"{len(py_times):03d}: {message.wsjtx_screen_format():60s} Pattern: {c.ipass:2d} n_its: {c.n_its:3d}")
     py_times.append(time.time() - t_start)
 
 def donothing(*args):
@@ -79,7 +79,7 @@ def batch_test(i0, i1):
         avg_cycle = np.max(py_times_prev) / (i1 - i0)
     ws_times = get_cumulative_from_text_files(i0, i1, "_wsjtx_2.7.0_NORM.txt")
     fl_times = get_cumulative_from_text_files(i0, i1, "_ft8_lib.txt")
-    fig, ax = gui.plt.subplots()
+    fig, ax = gui.plt.subplots(figsize=(10,10))
     ws_line = ax.plot(ws_times, np.array(range(len(ws_times))), label = 'WSJT-X', color = 'blue')[0]
     ft_line = ax.plot(fl_times, np.array(range(len(fl_times))), label = 'ft8_lib', color = 'orange')[0]
     py_line = ax.plot([], [], label = 'PyFT8', color = 'red')[0]
@@ -113,7 +113,7 @@ def live_test():
     audio_in.start_streamed_audio(input_device_idx)
     wsjtx_all_tailer = Wsjtx_all_tailer(on_wsjtx_decode, silent = True)
 
-    fig, ax = gui.plt.subplots()
+    fig, ax = gui.plt.subplots(figsize=(10,10))
     ws_line = ax.plot([], [], label = 'WSJT-X')[0]
     py_line = ax.plot([], [], label = 'PyFT8')[0]
     ax.set_xlabel("Time, seconds")
