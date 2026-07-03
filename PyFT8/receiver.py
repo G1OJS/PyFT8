@@ -196,7 +196,7 @@ class AudioIn:
         self.nFreqs = int(fft_out_len * 2 * max_freq / SAMP_RATE)
         self.audio_buffer = np.zeros(self.fft_len, dtype=np.float32)
         self.fft_in = np.zeros(self.fft_len, dtype=np.float32)
-        self.fft_window = fft_window=np.hanning(self.fft_len).astype(np.float32)
+        self.fft_window = np.hanning(self.fft_len).astype(np.float32)
         self.hops_per_cycle = HOPS_PER_CYCLE
         self.hops_per_grid = 2 * HOPS_PER_CYCLE
         self.dt = T_CYC / HOPS_PER_CYCLE
