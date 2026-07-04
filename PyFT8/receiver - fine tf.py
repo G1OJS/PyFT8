@@ -214,7 +214,7 @@ class AudioIn:
 
     def sync_pointer_to_wall_clock(self):
         if self.wav_files is None:
-            self.search_grid_ptr = int(time.time() * SYM_RATE * self.search_hps) % self.search_hops_per_grid
+            self.search_grid_ptr = int(time.time() * SYM_RATE * self.search_hps) % search_hops_per_grid
        
     def find_device(self, device_str_contains):
         pya = pyaudio.PyAudio()

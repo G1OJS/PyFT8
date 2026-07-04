@@ -197,7 +197,8 @@ class Gui:
 
     def refresh_sidebars(self):
         self.display_cycle = (self.display_cycle + 1) %2
-        self.on_gui_sidebars_refresh(self, self.display_cycle)
+        if self.on_gui_sidebars_refresh is not None:
+            self.on_gui_sidebars_refresh(self, self.display_cycle)
         
     def add_message_box(self, message):
         self.decode_queue.put(message)

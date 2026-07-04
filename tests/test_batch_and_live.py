@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import time
-import pickle
-import threading
+import time, pickle, threading
+from matplotlib.animation import FuncAnimation
+
 from PyFT8.receiver import Receiver, AudioIn
 from PyFT8.gui import Gui
 from PyFT8.pyft8 import Message
@@ -31,17 +31,10 @@ class Wsjtx_all_tailer:
                 cs, freq, dt, snr = ls[0], int(ls[6]), float(ls[5]), int(ls[4])
                 msg = f"{ls[7]} {ls[8]} {ls[9]}"
                 td = f"{time.time() %60:4.1f}"
-                self.on_decode({'cs':cs, 'decoder':'WSJTX', 'f':int(freq), 'msg':msg, 'dt':dt, 'snr':snr, 'td':td})
+                self.on_decode({'cs':cs, 'decoder':'WSJTX', 'origin':{'f0':int(freq), 't0':dt, 'score':0}, 'msg':msg, 'snr':snr, 'td':td})
             except:
                 if(not self.silent):
                     print(f"Wsjtx_tailer error in line '{line}'")
-
-
-data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy"
-wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
-
-global decodes, py_times, ws_times, decodes
-decodes, py_times, ws_times = [], [], []
 
 def get_cumulative_from_text_files(i0, i1, postfix):
     times = []
@@ -57,21 +50,28 @@ def on_decode(c):
     message = Message(c,'20m')
     if gui:
         gui.add_message_box(message)
-    print(f"{len(py_times):03d}: {message.wsjtx_screen_format():60s} Pattern: {c.ipass:2d} n_its: {c.n_its:3d}")
+    print(f"{len(py_times):03d}: {message.wsjtx_screen_format():60s} DM start: {c.demap_started:03d} Sync score: {c.origin['score']:3.0f} LLR_SD: {c.llr_sd:5.1f} Pass: {c.ipass:2d} n_its: {c.n_its:3d}")
     py_times.append(time.time() - t_start)
 
-def donothing(*args):
-    return
+def on_wsjtx_decode(dd):
+    global ws_times
+    ws_times.append(time.time() - t_start)
+
+def test_common(wav_files = None):
+    global audio_in, gui, rx, t_start
+    global decodes, py_times, ws_times, decodes
+    decodes, py_times, ws_times = [], [], []
+    
+    audio_in = AudioIn([100,3100], wav_files)
+    gui = Gui(audio_in.search_grid, 4, 2, {'bands':{'20m':14.074},'station':{'call':'G1OJS','grid':'IO90'}}, None, None, None)
+    rx = Receiver(audio_in, on_decode, None)
+    t_start = time.time()
 
 def batch_test(i0, i1):
-    from matplotlib.animation import FuncAnimation
-    global t_start, gui
     wav_files = []
     for idx in range(i0, i1):
         wav_files.append(f"{wav_folder}/test_{idx:02d}.wav")
-    audio_in = AudioIn(3100, wav_files)
-    gui = Gui(audio_in.dBgrid_main, 4, 2, {'bands':{'20m':14.074},'station':{'call':'G1OJS','grid':'IO90'}}, donothing, donothing, donothing)
-    rx = Receiver(audio_in, [200, 3100], on_decode, None)
+    test_common(wav_files)
     audio_in.start_wav_load()
     t_start = time.time()
     with open('baseline.pkl', 'rb') as f:
@@ -89,31 +89,23 @@ def batch_test(i0, i1):
     ax.set_xlim(0, ws_times[-1] + 10)
     ax.set_ylim(0, len(ws_times) + 10)
     ax.legend()
-        
+ 
     def anim(frame):
         py_line.set_data(py_times, np.array(range(len(py_times))))
         with open('baseline_new.pkl', 'wb') as f:
             pickle.dump(py_times, f)
         return py_line,
+    
     ani = FuncAnimation(fig, anim, interval = 5000, frames=(100000), blit=False)
     gui.plt.show()
 
-def on_wsjtx_decode(dd):
-    global ws_times
-    ws_times.append(time.time() - t_start)
 
 def live_test():
-    from matplotlib.animation import FuncAnimation
-    global t_start, gui
-    audio_in = AudioIn(3100)
-    gui = Gui(audio_in.dBgrid_main, 4, 2, config, None, None, None)
-    rx = Receiver(audio_in, [200, 3100], on_decode, None)
-    t_start = time.time()
+    test_common()
     input_device_idx = audio_in.find_device(["Cable", "Out"])
     audio_in.start_streamed_audio(input_device_idx)
     wsjtx_all_tailer = Wsjtx_all_tailer(on_wsjtx_decode, silent = True)
-
-    fig, ax = gui.plt.subplots(figsize=(10,10))
+    
     ws_line = ax.plot([], [], label = 'WSJT-X')[0]
     py_line = ax.plot([], [], label = 'PyFT8')[0]
     ax.set_xlabel("Time, seconds")
@@ -133,6 +125,9 @@ def live_test():
         return ws_line, py_line,
     ani = FuncAnimation(fig, anim, interval = 5000, frames=(100000), blit=False)
     gui.plt.show()
+
+data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy"
+wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
 
 #live_test()
 batch_test(1,39)
