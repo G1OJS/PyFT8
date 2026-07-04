@@ -376,14 +376,14 @@ class Receiver():
         self.base_search_hops = sync_idx_offs + self.audio_in.search_costas_hops + self.audio_in.search_hps
         
         global_time_utils.set_cycle_length(T_CYC)
-        threading.Thread(target=self.manage_cycle, daemon=True).start()
         if wav_files is not None:
             t = time.time()
-            delay = 15*(1+int(t/15)) - t
-            if delay > 0.1:
+            delay = 15*(1+int(t/15)) - t - 0.5
+            if delay > 0.5:
                 print(f"Waiting for next cycle start {delay:5.1f}s")
-            time.sleep(delay)
+                time.sleep(delay)
             self.audio_in.start_wav_load()
+        threading.Thread(target=self.manage_cycle, daemon=True).start()
 
     def search(self, cyclestart, sync_score_min = 90):
         cands = []
