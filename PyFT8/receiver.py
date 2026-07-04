@@ -15,9 +15,9 @@ SYM_RATE = 6.25
 SAMP_RATE = 12000
 
 t2h = HPS/0.16
-SYNC_SCORE_MIN = 10
+SYNC_SCORE_MIN = 50
 LLR_SD_MIN = 5
-LDPC_CONTROL = (55, 15) 
+LDPC_CONTROL = (35, 10) 
 H0_RANGE = [int(-1.5 *t2h), int(5 *t2h)]
 #H0_RANGE = [int(0 *t2h), int(4 *t2h)]
 H_SEARCH_0 = H0_RANGE[1] + 7 * HPS
@@ -296,7 +296,7 @@ class Candidate:
     decode_completed: float = 0.0
     decoder: str = "PyFT8"
 
-    def demap(self, dBgrid_main, target_params = (3.3, 3.7)):
+    def demap(self, dBgrid_main):
         self.demap_started = time.time()
         hops = (self.h0_idx + BASE_PAYLOAD_HOPS) % HOPS_PER_GRID
         freqs = self.f0_idx + np.array(range(8*BPT))
@@ -307,8 +307,7 @@ class Candidate:
         llrc = np.max(p[:, C1], axis=1) - np.max(p[:, C0], axis=1)
         llr = np.column_stack((llra, llrb, llrc)).ravel()
         self.llr_sd = np.std(llr)
-        llr = target_params[0] * llr / (1e-12 + self.llr_sd)
-        self.llr = np.clip(llr, -target_params[1], target_params[1])
+        self.llr = 3 * llr / (1e-12 + self.llr_sd)
           
     def decode(self):
         decode_started = time.time()
