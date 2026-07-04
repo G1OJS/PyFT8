@@ -57,7 +57,11 @@ def on_decode(c):
         py_times.append(time.time() - t_start)
 
 def on_wsjtx_decode(dd):
-    global ws_times
+    global ws_times, both_started
+    if not both_started:
+        if len(py_times):
+            ws_times = [wt for wt in ws_times if py_times[0]-wt < 3]
+            both_started = True
     ws_times.append(time.time() - t_start)
 
 def test_common(input_source):
@@ -105,6 +109,8 @@ def batch_test(i0, i1):
 
 
 def live_test():
+    global both_started
+    both_started = False
     test_common(["Mic", "CODEC"])
     wsjtx_all_tailer = Wsjtx_all_tailer(on_wsjtx_decode, silent = True)
     
@@ -131,8 +137,8 @@ def live_test():
 data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy"
 wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
 
-#live_test()
-batch_test(1,39)
+live_test()
+#batch_test(1,39)
 
 
 

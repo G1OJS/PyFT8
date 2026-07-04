@@ -223,8 +223,13 @@ class AudioIn:
     def sync_pointer_to_wall_clock(self):
         if True or self.wav_files is None:
             t = time.time()
-            self.search_grid_ptr = int(t * SYM_RATE * self.search_hps) % self.search_hops_per_grid
-            self.cycle_audio_buffer_ptr = int(t * SAMP_RATE) % (SAMP_RATE * T_CYC)
+            search_grid_ptr = int(t * SYM_RATE * self.search_hps) % self.search_hops_per_grid
+            cycle_audio_buffer_ptr = int(t * SAMP_RATE) % (SAMP_RATE * T_CYC)
+            delta = search_grid_ptr - self.search_grid_ptr
+            delta = (cycle_audio_buffer_ptr - self.cycle_audio_buffer_ptr)/12000
+            if np.abs(delta) > 0.005:
+                print(f"Sync grid pointers (delta = {delta*1000:6.1f})ms")
+                self.search_grid_ptr, self.cycle_audio_buffer_ptr = search_grid_ptr, cycle_audio_buffer_ptr
        
     def find_device(self, device_str_contains):
         pya = pyaudio.PyAudio()
@@ -329,30 +334,30 @@ class Candidate:
         self.llr = 2.83 * llr / self.llr_sd
         #print(ttweak, ftweak, np.max(scores), self.llr_sd, self.snr)
           
-    def decode(self, llr_sd_min = 5):
+    def decode(self):
         decode_started = time.time()
-        if(self.llr_sd >= llr_sd_min):
-            max_ncheck, max_iters = 50, 15
-            for ipass, (b0, ap_pattern) in enumerate(ap_patterns):
-                llr = self.llr.copy()
-                for b, bval in enumerate(ap_pattern):
-                    llr[b0 + b] = (bval*2-1) * 5
-                if ipass == 1:
-                    llr[74:76] = -5
-                    llr[76] = 5
-                # max ncheck here shortcuts ap patterns that make ncheck worse than previous best
-                msg_tuple, max_ncheck, self.n_its = ldpc_decode(llr, max_ncheck, max_iters)
-                if msg_tuple:
-                    self.msg_tuple = msg_tuple
-                    self.ipass = ipass
-                    break 
+        max_ncheck, max_iters = 50, 15
+        for ipass, (b0, ap_pattern) in enumerate(ap_patterns):
+            llr = self.llr.copy()
+            for b, bval in enumerate(ap_pattern):
+                llr[b0 + b] = (bval*2-1) * 5
+            if ipass == 1:
+                llr[74:76] = -5
+                llr[76] = 5
+            # max ncheck here shortcuts ap patterns that make ncheck worse than previous best
+            msg_tuple, max_ncheck, self.n_its = ldpc_decode(llr, max_ncheck, max_iters)
+            if msg_tuple:
+                self.msg_tuple = msg_tuple
+                self.ipass = ipass
+                break 
         self.decode_completed = time.time()
         
 #============== RECEIVER ===========================================================
         
 class Receiver():
-    def __init__(self, search_freq_range, input_device_keywords, wav_files, on_decode, on_busy_profile = None, verbose = False):
+    def __init__(self, search_freq_range, input_device_keywords, wav_files, on_decode, on_busy_profile = None, llr_sd_min = 5.5, verbose = False):
         self.audio_in = AudioIn(search_freq_range, wav_files)
+        self.llr_sd_min = llr_sd_min
         if input_device_keywords is not None:
             self.input_device_idx = self.audio_in.find_device(input_device_keywords)
             if not self.input_device_idx:
@@ -374,7 +379,7 @@ class Receiver():
         self.csync_flat =  csync.ravel()
         sync_idx_offs = int(36*self.audio_in.search_hps)
         self.base_search_hops = sync_idx_offs + self.audio_in.search_costas_hops + self.audio_in.search_hps
-        
+
         global_time_utils.set_cycle_length(T_CYC)
         if wav_files is not None:
             t = time.time()
@@ -384,6 +389,7 @@ class Receiver():
                 time.sleep(delay)
             self.audio_in.start_wav_load()
         threading.Thread(target=self.manage_cycle, daemon=True).start()
+        
 
     def search(self, cyclestart, sync_score_min = 90):
         cands = []
@@ -416,7 +422,6 @@ class Receiver():
         print("Rx running")
         ticker_cycle_rollover = Ticker(0)
         ticker_search_for_syncs = Ticker(self.search_start_hop, timing_function = lambda: self.audio_in.search_grid_ptr, cycle_length = self.audio_in.search_hops_per_cycle)
-        self.audio_in.sync_pointer_to_wall_clock()
         debug_print_all = False
         while True:
             time.sleep(0.040)
@@ -434,17 +439,18 @@ class Receiver():
                         all_audio_spectrum = np.fft.rfft(self.audio_in.cycle_audio_buffer)
                         c.demap(all_audio_spectrum)
                         c.demap_started = self.audio_in.search_grid_ptr
-                if c.llr_sd > 0 and not c.decode_completed:
+                if c.llr_sd > self.llr_sd_min and not c.decode_completed:
                     new_to_decode.append(c)
+
+
+            new_to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
+            for c in new_to_decode[:55]:
+                c.decode()
                 if c.msg_tuple:
                     key = c.cyclestart['string'] + ''.join(c.msg_tuple)
                     if (key not in duplicate_filter):
                         duplicate_filter.add(key)
                         self.on_decode(c)
-
-            new_to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
-            for c in new_to_decode[:55]:
-                c.decode()
 
             if ticker_search_for_syncs.ticked():
                 hstart = self.audio_in.search_grid_ptr
