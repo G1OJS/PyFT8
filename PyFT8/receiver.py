@@ -422,7 +422,7 @@ class Receiver():
         print("Rx running")
         ticker_cycle_rollover = Ticker(0)
         ticker_search_for_syncs = Ticker(self.search_start_hop, timing_function = lambda: self.audio_in.search_grid_ptr, cycle_length = self.audio_in.search_hops_per_cycle)
-        to_decode = []
+        
         while True:
             time.sleep(0.040)
             if ticker_cycle_rollover.ticked():                
@@ -430,7 +430,7 @@ class Receiver():
             self.curr_cycle = int((self.audio_in.search_grid_ptr) / self.audio_in.search_hops_per_cycle)
             self.cycle_h0 = int(self.curr_cycle * T_CYC * SYM_RATE * self.audio_in.search_hps)
         
-            
+            to_decode = []
             for c in candidates:
                 if not c.demap_started:
                     cand_abs_h0_idx = c.origin['cycle'] * T_CYC * SYM_RATE * self.audio_in.search_hps + c.origin['t0'] * SYM_RATE * self.audio_in.search_hps
@@ -440,11 +440,10 @@ class Receiver():
                         c.demap(all_audio_spectrum)
                         c.demap_started = self.audio_in.search_grid_ptr
                 if c.llr_sd > self.llr_sd_min and not c.decode_completed:
-                    if not c in to_decode:
-                        to_decode.append(c)
+                    to_decode.append(c)
 
             to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
-            for c in to_decode[:55]:
+            for c in to_decode[:10]:
                 c.decode()
                 if c.msg_tuple:
                     key = c.cyclestart['string'] + ''.join(c.msg_tuple)
@@ -458,7 +457,6 @@ class Receiver():
                 global_time_utils.tlog(f"[Cycle manager] start search at hop {hstart} ({tstart:6.2f}s)", verbose = True)
                 cyclestart = global_time_utils.cyclestart(time.time())
                 candidates = self.search(cyclestart)
-                to_decode = []
                 hstop = self.audio_in.search_grid_ptr
                 if not self.on_busy_profile is None:
                    self.on_busy_profile(*self.get_busy_profile())
