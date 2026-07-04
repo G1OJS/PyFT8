@@ -192,7 +192,7 @@ class AudioIn:
         self.cycle_audio_buffer_ptr = 0
 
     def load_wavs(self, wav_paths):
-        hop_dt = 1 / (SYM_RATE * self.search_hps) - 0.003
+        hop_dt = 1 / (SYM_RATE * self.search_hps) - 0.0017
         samples_perhop = int(SAMP_RATE / (SYM_RATE * self.search_hps))
         for wav_path in wav_paths:
             wf = wave.open(wav_path, "rb")
@@ -209,6 +209,9 @@ class AudioIn:
             wf.close()
             deltas = np.diff(hoptimes)
             print(f"[Receiver] read wav file with hop mean = {1000*np.mean(deltas):6.2f}ms, sd =  {1000*np.std(deltas):6.2f}ms")
+        for run_on in range(1 * self.search_hops_per_cycle):
+            time.sleep(hop_dt)
+            self.search_grid_ptr = (self.search_grid_ptr + 1) % self.search_hops_per_grid
             
     def start_streamed_audio(self, input_device_idx):
         self.stream = pyaudio.PyAudio().open(
@@ -218,7 +221,7 @@ class AudioIn:
         self.sync_pointer_to_wall_clock()
 
     def sync_pointer_to_wall_clock(self):
-        if self.wav_files is None:
+        if True or self.wav_files is None:
             t = time.time()
             self.search_grid_ptr = int(t * SYM_RATE * self.search_hps) % self.search_hops_per_grid
             self.cycle_audio_buffer_ptr = int(t * SAMP_RATE) % (SAMP_RATE * T_CYC)
@@ -375,6 +378,11 @@ class Receiver():
         global_time_utils.set_cycle_length(T_CYC)
         threading.Thread(target=self.manage_cycle, daemon=True).start()
         if wav_files is not None:
+            t = time.time()
+            delay = 15*(1+int(t/15)) - t
+            if delay > 0.1:
+                print(f"Waiting for next cycle start {delay:5.1f}s")
+            time.sleep(delay)
             self.audio_in.start_wav_load()
 
     def search(self, cyclestart, sync_score_min = 90):

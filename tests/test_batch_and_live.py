@@ -53,6 +53,7 @@ def on_decode(c):
         gui.add_message_box(message)
     print(f"{len(py_times):03d}: {message.wsjtx_screen_format():60s} DM start: {c.demap_started:03d} Sync score: {c.origin['score']:3.0f} LLR_SD: {c.llr_sd:5.1f} Pass: {c.ipass:2d} n_its: {c.n_its:3d}")
     if c.msg_tuple is not None:
+        #icycle = int(time.time() - tstart)/15
         py_times.append(time.time() - t_start)
 
 def on_wsjtx_decode(dd):
