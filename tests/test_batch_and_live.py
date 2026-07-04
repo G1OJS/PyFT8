@@ -16,6 +16,7 @@ class Wsjtx_all_tailer:
         threading.Thread(target = self.run).start()
 
     def run(self):
+        print("WSJT-x ALL Tailer running")
         def follow():
             with open(self.all_file, "r") as f:
                 f.seek(0, 2)
@@ -51,20 +52,24 @@ def on_decode(c):
     if gui:
         gui.add_message_box(message)
     print(f"{len(py_times):03d}: {message.wsjtx_screen_format():60s} DM start: {c.demap_started:03d} Sync score: {c.origin['score']:3.0f} LLR_SD: {c.llr_sd:5.1f} Pass: {c.ipass:2d} n_its: {c.n_its:3d}")
-    py_times.append(time.time() - t_start)
+    if c.msg_tuple is not None:
+        py_times.append(time.time() - t_start)
 
 def on_wsjtx_decode(dd):
     global ws_times
     ws_times.append(time.time() - t_start)
 
-def test_common(wav_files = None):
-    global audio_in, gui, rx, t_start
+def test_common(input_source):
+    global gui, rx, t_start
     global decodes, py_times, ws_times, decodes
+    global fig, ax
     decodes, py_times, ws_times = [], [], []
-    
-    audio_in = AudioIn([100,3100], wav_files)
-    gui = Gui(audio_in.search_grid, 4, 2, {'bands':{'20m':14.074},'station':{'call':'G1OJS','grid':'IO90'}}, None, None, None)
-    rx = Receiver(audio_in, on_decode, None)
+    using_wav_files = input_source[0].endswith('.wav')
+    input_device_keywords = input_source if not using_wav_files else None
+    wav_files = input_source if using_wav_files else None
+    rx = Receiver([200, 3100], input_device_keywords, wav_files, on_decode, None)
+    gui = Gui(rx, {'bands':{'20m':14.074},'station':{'call':'G1OJS','grid':'IO90'}}, None, None, None)
+    fig, ax = gui.plt.subplots(figsize=(10,10))
     t_start = time.time()
 
 def batch_test(i0, i1):
@@ -72,14 +77,12 @@ def batch_test(i0, i1):
     for idx in range(i0, i1):
         wav_files.append(f"{wav_folder}/test_{idx:02d}.wav")
     test_common(wav_files)
-    audio_in.start_wav_load()
     t_start = time.time()
     with open('baseline.pkl', 'rb') as f:
         py_times_prev = pickle.load(f)
         avg_cycle = np.max(py_times_prev) / (i1 - i0)
     ws_times = get_cumulative_from_text_files(i0, i1, "_wsjtx_2.7.0_NORM.txt")
     fl_times = get_cumulative_from_text_files(i0, i1, "_ft8_lib.txt")
-    fig, ax = gui.plt.subplots(figsize=(10,10))
     ws_line = ax.plot(ws_times, np.array(range(len(ws_times))), label = 'WSJT-X', color = 'blue')[0]
     ft_line = ax.plot(fl_times, np.array(range(len(fl_times))), label = 'ft8_lib', color = 'orange')[0]
     py_line = ax.plot([], [], label = 'PyFT8', color = 'red')[0]
@@ -101,9 +104,7 @@ def batch_test(i0, i1):
 
 
 def live_test():
-    test_common()
-    input_device_idx = audio_in.find_device(["Cable", "Out"])
-    audio_in.start_streamed_audio(input_device_idx)
+    test_common(["Mic", "CODEC"])
     wsjtx_all_tailer = Wsjtx_all_tailer(on_wsjtx_decode, silent = True)
     
     ws_line = ax.plot([], [], label = 'WSJT-X')[0]
@@ -129,8 +130,8 @@ def live_test():
 data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy"
 wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
 
-#live_test()
-batch_test(1,39)
+live_test()
+#batch_test(1,39)
 
 
 

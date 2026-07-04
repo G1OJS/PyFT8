@@ -4,7 +4,7 @@ import os
 import threading
 import pickle
 import numpy as np
-from PyFT8.receiver import Receiver, AudioIn
+from PyFT8.receiver import Receiver
 from PyFT8.pskreporter import PSKR_upload
 from PyFT8.gui import Gui
 from PyFT8.transmitter import AudioOut
@@ -52,7 +52,8 @@ class Message:
         mycall = ''
         if qso is not None:
             mycall = qso.mStation['c']
-        self.h0_idx, self.f0_idx, self.msg_tuple, self.msg, self.snr, self.dt, self.fHz = c.h0_idx, c.f0_idx, c.msg_tuple, c.msg, c.snr, c.dt, c.fHz
+        self.origin, self.msg_tuple, self.snr, = c.origin, c.msg_tuple, c.snr
+        self.dt, self.fHz = self.origin['t0'], self.origin['f0']
         self.cyclestart = c.cyclestart
         self.expire = time.time() + 29.25
         self.is_from_me = c.msg_tuple[1] == mycall
@@ -65,10 +66,10 @@ class Message:
         hearing_me = ''
         if history:
             hearing_me = '# ' if history.is_hearing_me(band, c.msg_tuple[1], tnow - 60*HEARING_PANEL_LIFE_MINS) else ' '
-        self.gui_text = f"{c.msg} {hearing_me}{wb_text} {self.geo_text}"
+        self.gui_text = f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {self.geo_text}"
     
     def wsjtx_screen_format(self):
-        return f"{self.cyclestart['string']} {self.snr:+03d} {self.dt:4.1f} {self.fHz:4.0f} ~ {self.msg}"
+        return f"{self.cyclestart['string']} {self.snr:+03d} {self.dt:4.1f} {self.fHz:4.0f} ~ {' '.join(self.msg_tuple)}"
 
 class FT8_QSO:
     def __init__(self):
@@ -203,7 +204,7 @@ def on_rx_decode(c):
     print(message.wsjtx_screen_format())
     fMHz = float(qso.band_info['fMHz']) if qso.band_info['fMHz'] is not None else 0
     if history:
-        history.write_all_txt_row(c.cyclestart['string'], fMHz, 'Rx', 'FT8', c.snr, c.dt, c.fHz, c.msg)
+        history.write_all_txt_row(c.cyclestart['string'], fMHz, 'Rx', 'FT8', c.snr, c.dt, c.fHz, ' '.join(c.msg_tuple))
     if qso.band_info['b'] is not None and pskr_upload is not None:
         call_a, call_b, grid_rpt = c.msg_tuple
         if call_b == 'not':
@@ -218,16 +219,16 @@ def on_rx_decode(c):
             rpt = grid_rpt.replace("R","")
             history.add_myspots_record(history.hearing_me.data, history.hearing_me_new, qso.band_info['b'], call_a, int(time.time()), rpt)
 
-def on_rx_busy_profile(busy_profile_new, cycle):
+def on_rx_busy_profile(busy_profile_new, df, cycle):
     global busy_profile, clearest_frequency
     if output_device_idx is None:
         return
     if busy_profile is not None:
         busy_profile += busy_profile_new
         fmax = 950 if qso.band_info['b']=='60m' else 2000
-        f0_idx, fn_idx = int(500/audio_in.df), int(fmax/audio_in.df)
+        f0_idx, fn_idx = int(500/df), int(fmax/df)
         idx = np.argmin(busy_profile[f0_idx:fn_idx])
-        clearest_frequency = (f0_idx + idx) * audio_in.df
+        clearest_frequency = (f0_idx + idx) * df
     busy_profile = busy_profile_new
     #console_print(f"[on_busy] Clear Tx frequency found at {clearest_frequency:6.1f}")
 
@@ -366,16 +367,11 @@ def cli():
         print("No input device specified")
         sys.exit(1)
     else:
-        audio_in = AudioIn(3100)
-        input_device_idx = audio_in.find_device(args.inputcard_keywords.replace(' ','').split(','))
-        if not input_device_idx:
-            console_print("No input device")
-            sys.exit(1)
-        rx = Receiver(audio_in, [200, 3100], on_rx_decode, on_rx_busy_profile)
-        audio_in.start_streamed_audio(input_device_idx)
+        input_device_keywords = args.inputcard_keywords.replace(' ','').split(',')
+        rx = Receiver([200, 3100], input_device_keywords, None, on_rx_decode, on_rx_busy_profile)
 
     if not args.no_gui:
-        gui = Gui(audio_in.dBgrid_main, 4, 2, config, on_gui_sidebars_refresh, on_gui_msg_click, on_gui_control_click)
+        gui = Gui(rx, config, on_gui_sidebars_refresh, on_gui_msg_click, on_gui_control_click)
         history = History(config_folder, mc, mg, PSKR_REFRESH_MINS, args.parse_all_file)
         history.set_bands(config['bands'])
         adif_logging = ADIF(f"{config_folder}/PyFT8.adi")

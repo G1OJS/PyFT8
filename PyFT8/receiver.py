@@ -24,6 +24,9 @@ def get_bitfields(bits, lengths):
     return *fields, bits
 
 def unpack(bits):
+    if not bits:
+        return None
+    
     i3, bits74 = get_bitfields(bits,[3])
     if i3 == 0:
         n3, bits71 = get_bitfields(bits74,[3])
@@ -62,7 +65,9 @@ def unpack_std(bits74, i3):
     else:
         prefix = 'R' if (g16 >> 15) else ''
         grid_rpt = prefix + f"{(g15 - 32435):+03d}"
-    return (call_29(ca29, i3), call_29(cb29, i3), grid_rpt)
+    msg_tuple = (call_29(ca29, i3), call_29(cb29, i3), grid_rpt)
+    if msg_tuple != ('','',''):
+        return msg_tuple
 
 def call_29(call_int29, i3):    
     portable_rover = call_int29 & 1
@@ -148,10 +153,9 @@ def ldpc_decode(llr, max_ncheck, max_iters):
             for bit in (llr[:91] > 0).astype(int).tolist():
                 bits91_int = (bits91_int << 1) | bit
             bits77_int = check_crc(bits91_int)
-            if(bits77_int):
-                msg_tuple = unpack(bits77_int)
-                if msg_tuple:
-                    return msg_tuple, ncheck0, iteration
+            msg_tuple = unpack(bits77_int)
+            if msg_tuple:
+                return msg_tuple, ncheck0, iteration
         else:
             update_collector = np.zeros_like(llr)
             mC2V_prev6 = pass_ldpc_messages(llr, CV6idx, mC2V_prev6, update_collector)
@@ -173,6 +177,7 @@ class AudioIn:
         self.search_hops_per_grid = 2*self.search_hops_per_cycle
         self.dt = T_CYC / self.search_hops_per_cycle
         self.search_grid = np.ones((self.search_hops_per_grid, self.search_f0_idx_range[1]+8*self.search_bpt), dtype = np.float32)
+        self.waterfall_data = self.search_grid
         self.search_grid_ptr = 0
         self.search_audio_buffer = np.zeros(self.search_fft_len, dtype=np.float32)
         self.search_fft_in = np.zeros(self.search_fft_len, dtype=np.float32)
@@ -214,7 +219,9 @@ class AudioIn:
 
     def sync_pointer_to_wall_clock(self):
         if self.wav_files is None:
-            self.search_grid_ptr = int(time.time() * SYM_RATE * self.search_hps) % self.search_hops_per_grid
+            t = time.time()
+            self.search_grid_ptr = int(t * SYM_RATE * self.search_hps) % self.search_hops_per_grid
+            self.cycle_audio_buffer_ptr = int(t * SAMP_RATE) % (SAMP_RATE * T_CYC)
        
     def find_device(self, device_str_contains):
         pya = pyaudio.PyAudio()
@@ -255,8 +262,8 @@ ap_patterns = [
 class Candidate:
     def __init__(self, cyclestart, origin):
         self.cyclestart, self.origin = cyclestart, origin
-        self.demap_started, self.decode_completed = None, None
-        self.msg_tuple, self.msg = ('','',''), None
+        self.demap_started, self.decode_completed = 0, 0
+        self.msg_tuple = None
         self.llr_sd, self.ipass, self.n_its, self.snr = 0, 0, 0, -30
         csync = np.full((7, 7), -1/6, np.float32)
         for sym_idx, tone in enumerate([3,1,4,0,6,5,2]):
@@ -271,17 +278,18 @@ class Candidate:
         candidate_spectrum = np.roll(candidate_spectrum, -(fb_0 - fb_bot))
         candidate_zsig = np.fft.ifft(candidate_spectrum)
         # get candidate symbol spectra x79 with df = 1 tone spacing
-        candidate_tf_grid = np.ones((N_SYMS, 8), dtype = np.float32)
+        cgrid = np.ones((N_SYMS, 8), dtype = np.float32)
         
         for s in range(N_SYMS):
             i0 = tb_0 + s * 32
             zsymb = candidate_zsig[i0:i0+32]
             if(zsymb.shape[0] == 32):
-                candidate_tf_grid[s, :] = np.abs(np.fft.fft(zsymb))[:8]
-        return candidate_tf_grid  
+                cgrid[s, :] = np.abs(np.fft.fft(zsymb))[:8]
 
-    def demap(self, cycle_audio_buffer, target_params = (3.3, 3.7)):
-        self.demap_started = time.time()
+        score = float(np.dot(cgrid[36:43, :7].ravel(), self.csync_flat))
+        return cgrid, score
+
+    def demap(self, all_audio_spectrum):
         df = SAMP_RATE / 192000
         f0, t0 = self.origin['f0'], self.origin['t0']
         fb_0 = int(0.5 + f0 / df )
@@ -289,26 +297,25 @@ class Candidate:
         fb_bot = int(0.5 + (f0 - 1.5*SYM_RATE) / df )
         dt = 0.005
         tb_0 = int(t0/dt)
-        all_audio_spectrum = np.fft.rfft(cycle_audio_buffer)
+        ftweak, ttweak = 0, 0
 
         ttweaks = range(-15, 5, 4) # 4 steps = 20ms = 1/8 sample
         scores = []
         for ttweak in ttweaks:
-            cgrid = self.get_tfgrid(all_audio_spectrum, fb_0, fb_bot, fb_top, tb_0+ttweak)
-            score = float(np.dot(cgrid[36:43, :7].ravel(), self.csync_flat))
+            cgrid, score = self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
             scores.append(score)
         ttweak = ttweaks[np.argmax(scores)]
 
         ftweaks = range(-32, 45, 16) # 16 steps = 1Hz, 6.25Hz = 100 steps
         scores = []
         for ftweak in ftweaks:
-            cgrid = self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
-            score = float(np.dot(cgrid[36:43, :7].ravel(), self.csync_flat))
+            cgrid, score = self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
             scores.append(score)
         ftweak = ftweaks[np.argmax(scores)]
 
         self.ftweak, self.ttweak = ftweak, ttweak
-        cgrid = self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
+        cgrid, score = self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
+        
         p = 20*np.log10(cgrid[PAYLOAD_SYMB_IDXS, :])
         self.snr = np.clip(int(np.max(p) - np.min(p) - 58), -240, 240)
         llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
@@ -316,8 +323,7 @@ class Candidate:
         llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
         llr = np.column_stack((llra, llrb, llrc)).ravel()
         self.llr_sd = np.std(llr)
-        llr = target_params[0] * llr / (1e-12 + self.llr_sd)
-        self.llr = np.clip(llr, -target_params[1], target_params[1])
+        self.llr = 2.83 * llr / self.llr_sd
         #print(ttweak, ftweak, np.max(scores), self.llr_sd, self.snr)
           
     def decode(self, llr_sd_min = 5):
@@ -335,7 +341,6 @@ class Candidate:
                 msg_tuple, max_ncheck, self.n_its = ldpc_decode(llr, max_ncheck, max_iters)
                 if msg_tuple:
                     self.msg_tuple = msg_tuple
-                    self.msg = ' '.join(self.msg_tuple)
                     self.ipass = ipass
                     break 
         self.decode_completed = time.time()
@@ -343,8 +348,14 @@ class Candidate:
 #============== RECEIVER ===========================================================
         
 class Receiver():
-    def __init__(self, audio_in, on_decode, on_busy_profile = None, verbose = False):
-        self.audio_in = audio_in
+    def __init__(self, search_freq_range, input_device_keywords, wav_files, on_decode, on_busy_profile = None, verbose = False):
+        self.audio_in = AudioIn(search_freq_range, wav_files)
+        if input_device_keywords is not None:
+            self.input_device_idx = self.audio_in.find_device(input_device_keywords)
+            if not self.input_device_idx:
+                print("[Receiver] No input device")
+                sys.exit(1)
+            self.audio_in.start_streamed_audio(self.input_device_idx)
         self.on_decode = on_decode
         self.on_busy_profile = on_busy_profile
         self.verbose = verbose
@@ -363,6 +374,8 @@ class Receiver():
         
         global_time_utils.set_cycle_length(T_CYC)
         threading.Thread(target=self.manage_cycle, daemon=True).start()
+        if wav_files is not None:
+            self.audio_in.start_wav_load()
 
     def search(self, cyclestart, sync_score_min = 90):
         cands = []
@@ -385,7 +398,7 @@ class Receiver():
         fbin_sum = np.sum(self.audio_in.search_grid[h0:self.audio_in.search_grid_ptr, :], axis = 0)
         windows = sliding_window_view(fbin_sum, 8*self.audio_in.search_bpt)
         bp = windows.max(axis=1) 
-        return bp, self.curr_cycle
+        return bp, self.audio_in.df, self.curr_cycle
         
     def manage_cycle(self):
         dashes = "======================================================"
@@ -396,6 +409,7 @@ class Receiver():
         ticker_cycle_rollover = Ticker(0)
         ticker_search_for_syncs = Ticker(self.search_start_hop, timing_function = lambda: self.audio_in.search_grid_ptr, cycle_length = self.audio_in.search_hops_per_cycle)
         self.audio_in.sync_pointer_to_wall_clock()
+        debug_print_all = False
         while True:
             time.sleep(0.040)
             if ticker_cycle_rollover.ticked():                
@@ -409,13 +423,14 @@ class Receiver():
                     cand_abs_h0_idx = c.origin['cycle'] * T_CYC * SYM_RATE * self.audio_in.search_hps + c.origin['t0'] * SYM_RATE * self.audio_in.search_hps
                     cand_abs_hf_idx = cand_abs_h0_idx + PAYLOAD_SYMB_IDXS[-1] * self.audio_in.search_hps
                     if not (cand_abs_h0_idx < self.audio_in.search_grid_ptr < cand_abs_hf_idx):
-                        c.demap(self.audio_in.cycle_audio_buffer)
+                        all_audio_spectrum = np.fft.rfft(self.audio_in.cycle_audio_buffer)
+                        c.demap(all_audio_spectrum)
                         c.demap_started = self.audio_in.search_grid_ptr
                 if c.llr_sd > 0 and not c.decode_completed:
                     new_to_decode.append(c)
-                if c.msg:
-                    key = c.cyclestart['string'] + " " + " ".join(c.msg)
-                    if key not in duplicate_filter:
+                if c.msg_tuple:
+                    key = c.cyclestart['string'] + ''.join(c.msg_tuple)
+                    if (key not in duplicate_filter):
                         duplicate_filter.add(key)
                         self.on_decode(c)
 

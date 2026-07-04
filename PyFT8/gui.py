@@ -134,14 +134,17 @@ class ButtonBox:
         self.label2.set_color(color)
 
 class Gui:
-    def __init__(self, dBgrid, hps, bpt, config, on_gui_sidebars_refresh, on_msg_click, on_control_click):
+    def __init__(self, receiver, config, on_gui_sidebars_refresh, on_msg_click, on_control_click):
         if config is not None:
             self.mStation = {'c':config['station']['call'], 'g':config['station']['grid']}
         self.on_msg_click = on_msg_click
         self.on_control_click = on_control_click
         self.on_gui_sidebars_refresh = on_gui_sidebars_refresh
-        self.dBgrid = dBgrid
-        self.hps, self.bpt = hps, bpt
+        
+        self.waterfall_data = receiver.audio_in.waterfall_data
+        self.hops_per_cycle = int(self.waterfall_data.shape[0]//2)
+        self.hps, self.bpt = receiver.audio_in.search_hps, receiver.audio_in.search_bpt
+        
         self.msg_boxes = {}
         self.decode_queue = queue.Queue()
         self.make_layout(config)
@@ -161,7 +164,7 @@ class Gui:
 
         # waterfall
         self.ax_wf = self.fig.add_axes([wf_left, L['pmargin'], 1-wf_left-L['pmargin'], wf_top-L['pmargin']])
-        self.image = self.ax_wf.imshow(self.dBgrid.T,vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
+        self.image = self.ax_wf.imshow(self.waterfall_data.T,vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self.ax_wf.set_xticks([])
         self.ax_wf.set_yticks([])
 
@@ -204,18 +207,19 @@ class Gui:
         self.decode_queue.put(message)
 
     def _display_message_box(self, message):
-        h0_idx, f0_idx = message.h0_idx, message.f0_idx
-        if not f0_idx in self.msg_boxes:
-            self.msg_boxes[f0_idx] = Msg_box(self.fig, self.ax_wf, h0_idx, f0_idx, 79*self.hps, 8*self.bpt, onclick = self.on_msg_click)
-        self.msg_boxes[f0_idx].set_properties(message)
-        self.msg_boxes[f0_idx].set_appearance(message)
+        message.h0_idx = message.origin['t0']*self.hps/0.16 + message.origin['cycle']*self.hops_per_cycle
+        message.f0_idx = message.origin['f0']*self.bpt/6.25
+        if not message.f0_idx in self.msg_boxes:
+            self.msg_boxes[message.f0_idx] = Msg_box(self.fig, self.ax_wf, message.h0_idx, message.f0_idx, 79*self.hps, 8*self.bpt, onclick = self.on_msg_click)
+        self.msg_boxes[message.f0_idx].set_properties(message)
+        self.msg_boxes[message.f0_idx].set_appearance(message)
         
     def _tidy_msg_boxes(self):
         for fb in self.msg_boxes:
             self.msg_boxes[fb].hide_if_expired()
  
     def _animate(self, frame):
-        self.image.set_data(self.dBgrid.T)
+        self.image.set_data(self.waterfall_data.T)
         while not self.decode_queue.empty():
             self._display_message_box(self.decode_queue.get())
         if (frame % 10 == 0):
