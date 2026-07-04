@@ -53,7 +53,7 @@ class Message:
         if qso is not None:
             mycall = qso.mStation['c']
         self.origin, self.msg_tuple, self.snr, = c.origin, c.msg_tuple, c.snr
-        self.dt, self.fHz = self.origin['t0'], self.origin['f0']
+        self.dt, self.fHz = self.origin['t0'] - 0.5, self.origin['f0']
         self.cyclestart = c.cyclestart
         self.expire = time.time() + 29.25
         self.is_from_me = c.msg_tuple[1] == mycall
@@ -204,14 +204,14 @@ def on_rx_decode(c):
     print(message.wsjtx_screen_format())
     fMHz = float(qso.band_info['fMHz']) if qso.band_info['fMHz'] is not None else 0
     if history:
-        history.write_all_txt_row(c.cyclestart['string'], fMHz, 'Rx', 'FT8', c.snr, c.dt, c.fHz, ' '.join(c.msg_tuple))
+        history.write_all_txt_row(c.cyclestart['string'], fMHz, 'Rx', 'FT8', c.snr, message.dt, message.fHz, ' '.join(c.msg_tuple))
     if qso.band_info['b'] is not None and pskr_upload is not None:
         call_a, call_b, grid_rpt = c.msg_tuple
         if call_b == 'not':
             return
         call_b_grid = grid_rpt if isGrid(grid_rpt) else ''
         if call_b != config['station']['call']:
-            pskr_upload.add_report(call_b, int(1000000*float(qso.band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 1, int(time.time()))
+            pskr_upload.add_report(call_b, int(1000000*float(qso.band_info['fMHz'])) + message.fHz, c.snr, 'FT8', 1, int(time.time()))
             if history:
                 history.store_best_grid(call_b, call_b_grid)
                 history.add_myspots_record(history.heard_by_me.data, history.heard_by_me_new, qso.band_info['b'], call_b, int(time.time()), c.snr)
