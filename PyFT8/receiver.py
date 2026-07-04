@@ -307,14 +307,14 @@ class Candidate:
         tb_0 = int(t0/dt)
         ftweak, ttweak = 0, 0
 
-        ttweaks = range(-15, 5, 4) # 4 steps = 20ms = 1/8 sample
+        ttweaks = range(-15, 5, 2) # 4 steps = 20ms = 1/8 sample
         scores = []
         for ttweak in ttweaks:
             cgrid, score = self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
             scores.append(score)
         ttweak = ttweaks[np.argmax(scores)]
 
-        ftweaks = range(-32, 45, 16) # 16 steps = 1Hz, 6.25Hz = 100 steps
+        ftweaks = range(-32, 45, 8) # 16 steps = 1Hz, 6.25Hz = 100 steps
         scores = []
         for ftweak in ftweaks:
             cgrid, score = self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
@@ -368,6 +368,7 @@ class Receiver():
         self.on_busy_profile = on_busy_profile
         self.verbose = verbose
         self.curr_cycle = 0
+        self.last_spectrum_calc = -1
         self.search_timerange = [-0.5, 4.7]
         self.search_hoprange = [int(t*self.audio_in.search_hps*SYM_RATE) for t in self.search_timerange]
         self.search_start_hop = self.search_hoprange[1] + 43 * self.audio_in.search_hps
@@ -391,7 +392,7 @@ class Receiver():
         threading.Thread(target=self.manage_cycle, daemon=True).start()
         
 
-    def search(self, cyclestart, sync_score_min = 90):
+    def search(self, cyclestart, sync_score_min = 70):
         cands = []
         for f0_idx in range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 2):
             p = self.audio_in.search_grid[:, f0_idx: f0_idx+8*self.audio_in.search_bpt]
@@ -436,7 +437,9 @@ class Receiver():
                     cand_abs_h0_idx = c.origin['cycle'] * T_CYC * SYM_RATE * self.audio_in.search_hps + c.origin['t0'] * SYM_RATE * self.audio_in.search_hps
                     cand_abs_hf_idx = cand_abs_h0_idx + PAYLOAD_SYMB_IDXS[-1] * self.audio_in.search_hps
                     if not (cand_abs_h0_idx < self.audio_in.search_grid_ptr < cand_abs_hf_idx):
-                        all_audio_spectrum = np.fft.rfft(self.audio_in.cycle_audio_buffer)
+                        if self.audio_in.search_grid_ptr != self.last_spectrum_calc: # only calc full spectrum if more samples received
+                            all_audio_spectrum = np.fft.rfft(self.audio_in.cycle_audio_buffer)
+                            self.last_spectrum_calc = self.audio_in.search_grid_ptr
                         c.demap(all_audio_spectrum)
                         c.demap_started = self.audio_in.search_grid_ptr
                 if c.llr_sd > self.llr_sd_min and not c.decode_completed:

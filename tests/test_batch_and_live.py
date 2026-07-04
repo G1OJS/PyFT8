@@ -60,7 +60,7 @@ def on_wsjtx_decode(dd):
     global ws_times, both_started
     if not both_started:
         if len(py_times):
-            ws_times = [wt for wt in ws_times if py_times[0]-wt < 3]
+            ws_times = [wt for wt in ws_times if py_times[0]-wt < 5]
             both_started = True
     ws_times.append(time.time() - t_start)
 
