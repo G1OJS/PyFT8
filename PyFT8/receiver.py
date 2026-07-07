@@ -221,6 +221,7 @@ class AudioIn:
 
     def sync_pointer_to_wall_clock(self, tolerance = 0.01):
         t = time_utils.time()
+        self.odd_even = int((t % 2*T_CYC)/T_CYC)
         search_grid_ptr = int(t * SYM_RATE * self.search_hps) % self.search_hops_per_grid
         cycle_audio_buffer_ptr = int(t * SAMP_RATE) % (SAMP_RATE * T_CYC)
         delta1 = np.abs(cycle_audio_buffer_ptr - self.cycle_audio_buffer_ptr) / SAMP_RATE 
@@ -377,7 +378,7 @@ class Receiver():
         self.on_decode = on_decode
         self.on_busy_profile = on_busy_profile
         self.verbose = verbose
-        search_timerange = [-2, 4]
+        search_timerange = [-1, 3]
         self.search_h0_range = [int((t+0.5)*self.audio_in.search_hps*SYM_RATE) for t in search_timerange]
         self.search_start_hop = self.search_h0_range[1] + 43 * self.audio_in.search_hps
         dt = 1.0 / (SYM_RATE * self.audio_in.search_hps)
@@ -390,7 +391,7 @@ class Receiver():
         time_utils.sleep(0.5)
         threading.Thread(target=self.manage_cycle, daemon=True).start()
         
-    def search(self, cyclestart, odd_even, sync_score_min = 90):
+    def search(self, cyclestart, odd_even, sync_score_min = 100):
         cands = []
         cycle_h0 = int(odd_even * T_CYC * SYM_RATE * self.audio_in.search_hps)
         base_search_hops = 36 * self.audio_in.search_hps + np.arange(7) * self.audio_in.search_hps + self.audio_in.search_hps
@@ -416,11 +417,11 @@ class Receiver():
 
     def get_busy_profile(self):
         from numpy.lib.stride_tricks import sliding_window_view
-        h0 = 0 if self.odd_even == 0 else self.audio_in.search_hops_per_cycle+1    
+        h0 = 0 if self.audio_in.odd_even == 0 else self.audio_in.search_hops_per_cycle+1    
         fbin_sum = np.sum(self.audio_in.search_grid[h0:self.audio_in.search_grid_ptr, :], axis = 0)
         windows = sliding_window_view(fbin_sum, 8*self.audio_in.search_bpt)
         bp = windows.max(axis=1) 
-        return bp, self.audio_in.df, self.odd_even
+        return bp, self.audio_in.df, self.audio_in.odd_even
         
     def manage_cycle(self):
         dashes = "======================================================"
@@ -438,11 +439,11 @@ class Receiver():
         while True:
             time_utils.sleep(0.040)
             if self.wav_files is None and ticker_cycle_rollover.ticked():                
-                self.audio_in.sync_pointer_to_wall_clock(0.5)
-            odd_even = int((self.audio_in.search_grid_ptr) / self.audio_in.search_hops_per_cycle)
+                self.audio_in.sync_pointer_to_wall_clock(0.25)
             
             to_decode = []
             for c in candidates:
+                time_utils.sleep(0.001)
                 if not c.demap_started:
                     odd_even_offset = c.origin['cycle'] * self.audio_in.search_hops_per_cycle
                     cand_abs_h0_idx = (c.origin['h0_idx'] + PAYLOAD_SYMB_IDXS[0] - 1) * hopspersym + odd_even_offset
@@ -459,7 +460,8 @@ class Receiver():
                     to_decode.append(c)
 
             to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
-            for c in to_decode[:15]:
+            for c in to_decode[:40]:
+                time_utils.sleep(0.001)
                 c.decode()
                 if c.msg_tuple:
                     key = c.cyclestart['string'] + ''.join(c.msg_tuple)
@@ -475,7 +477,7 @@ class Receiver():
                 timeouts = len([c for c in candidates if not c.decode_completed])
                 if timeouts:
                     print(f"Warning - {timeouts} candidates ran out of decoding time")
-                candidates = self.search(cyclestart, odd_even)
+                candidates = self.search(cyclestart, self.audio_in.odd_even)
                 hstop = self.audio_in.search_grid_ptr
                 if not self.on_busy_profile is None:
                    self.on_busy_profile(*self.get_busy_profile())

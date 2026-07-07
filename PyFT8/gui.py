@@ -150,7 +150,7 @@ class Gui:
         self.decode_queue = queue.Queue()
         self.make_layout(config)
         self.display_cycle = 0
-        self.ani = FuncAnimation(self.fig, self._animate, interval = 320, frames=(100000), blit=True)
+        self.ani = FuncAnimation(self.fig, self._animate, interval = 160, frames=(100000), blit=True)
 
     def set_bandstats_title(self, txt):
         self.band_stats.ax.set_title(txt, fontsize = 10)
