@@ -166,12 +166,13 @@ class AudioIn:
         self.wav_files = wav_files
         self.search_fft_len = int(self.search_bpt * SAMP_RATE // SYM_RATE)
         self.df = SYM_RATE / self.search_bpt
-        self.search_f0_idx_range = [int(self.search_freq_range[0] / self.df), int(self.search_freq_range[1] / self.df) - 8 * self.search_bpt ]
+        self.search_f0_idx_range = [int(self.search_freq_range[0] / self.df),
+                                    int((self.search_freq_range[1]) / self.df)]
         self.search_fft_window = np.hanning(self.search_fft_len).astype(np.float32)
         self.search_hops_per_cycle = int(T_CYC * SYM_RATE * self.search_hps)
         self.search_hops_per_grid = 2*self.search_hops_per_cycle
         self.dt = T_CYC / self.search_hops_per_cycle
-        self.search_grid = np.ones((self.search_hops_per_grid, self.search_f0_idx_range[1]), dtype = np.float32)
+        self.search_grid = np.ones((self.search_hops_per_grid, self.search_f0_idx_range[1]  + 8 * self.search_bpt ), dtype = np.float32)
         self.waterfall_data = self.search_grid
         self.search_grid_ptr = 0
         self.search_audio_buffer = np.zeros(self.search_fft_len, dtype=np.float32)
@@ -358,7 +359,7 @@ class Receiver():
         self.on_decode = on_decode
         self.on_busy_profile = on_busy_profile
         self.verbose = verbose
-        search_timerange = [-0.5, 3.5]
+        search_timerange = [-2, 3.5]
         self.search_h0_range = [int((t+0.5)*self.audio_in.search_hps*SYM_RATE) for t in search_timerange]
         self.search_start_hop = self.search_h0_range[1] + 43 * self.audio_in.search_hps
         dt = 1.0 / (SYM_RATE * self.audio_in.search_hps)
@@ -380,7 +381,7 @@ class Receiver():
             fbins = range(tone * self.audio_in.search_bpt, (tone+1) * self.audio_in.search_bpt)
             csync[sym_idx, fbins] = 1.0
         csync_search = csync.ravel()
-        for f0_idx in range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1] - 8* self.audio_in.search_bpt, 2):
+        for f0_idx in range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 2):
             p = self.audio_in.search_grid[:, f0_idx: f0_idx + 7*self.audio_in.search_bpt]
             origin = {'score':0}
             for h0_idx in range(self.search_h0_range[0], self.search_h0_range[1]):
