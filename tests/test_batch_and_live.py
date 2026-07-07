@@ -51,7 +51,9 @@ def on_decode(c):
     message = Message(c,'20m')
     if gui:
         gui.add_message_box(message)
-    print(f"{len(py_times):03d}: {message.wsjtx_screen_format():60s} DM start: {c.demap_started:5.1f} Sync score: {c.origin['score']:3.0f} LLR_SD: {c.llr_sd:5.1f} Pass: {c.ipass:2d} n_its: {c.n_its:3d}")
+    print(f"{len(py_times):03d}: {message.wsjtx_screen_format():50s} demap_start: {c.demap_started:5.1f} " +
+          f"h0: {c.origin['h0_idx']:3d} " +
+          f"Sync score: {c.origin['score']:3.0f} LLR_SD: {c.llr_sd:5.1f} Pass: {c.ipass:2d} n_its: {c.n_its:3d}")
     if c.msg_tuple is not None:
         #icycle = int(time_utils.time() - tstart)/15
         py_times.append(time_utils.time() - t_start)
