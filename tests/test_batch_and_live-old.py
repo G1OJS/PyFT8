@@ -1,9 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import pickle, threading
+import time, pickle, threading
 from matplotlib.animation import FuncAnimation
-from PyFT8.time_utils import time_utils
-from PyFT8.receiver import Receiver
+
+from PyFT8.receiver import Receiver, AudioIn
 from PyFT8.gui import Gui
 from PyFT8.pyft8 import Message
 
@@ -23,7 +23,7 @@ class Wsjtx_all_tailer:
                 while True:
                     line = f.readline()
                     if not line:
-                        time_utils.sleep(0.2)
+                        time.sleep(0.2)
                         continue
                     yield line.strip()
         for line in follow():
@@ -31,7 +31,7 @@ class Wsjtx_all_tailer:
             try:
                 cs, freq, dt, snr = ls[0], int(ls[6]), float(ls[5]), int(ls[4])
                 msg = f"{ls[7]} {ls[8]} {ls[9]}"
-                td = f"{time_utils.time() %60:4.1f}"
+                td = f"{time.time() %60:4.1f}"
                 self.on_decode({'cs':cs, 'decoder':'WSJTX', 'origin':{'f0':int(freq), 't0':dt, 'score':0}, 'msg':msg, 'snr':snr, 'td':td})
             except:
                 if(not self.silent):
@@ -51,12 +51,10 @@ def on_decode(c):
     message = Message(c,'20m')
     if gui:
         gui.add_message_box(message)
-    print(f"{len(py_times):03d}: {message.wsjtx_screen_format():50s} demap_start: {c.demap_started:5.1f} " +
-          f"h0: {c.origin['h0_idx']:3d} " +
-          f"Sync score: {c.origin['score']:3.0f} LLR_SD: {c.llr_sd:5.1f} Pass: {c.ipass:2d} n_its: {c.n_its:3d}")
+    print(f"{len(py_times):03d}: {message.wsjtx_screen_format():60s} DM start: {c.demap_started:03d} Sync score: {c.origin['score']:3.0f} LLR_SD: {c.llr_sd:5.1f} Pass: {c.ipass:2d} n_its: {c.n_its:3d}")
     if c.msg_tuple is not None:
-        #icycle = int(time_utils.time() - tstart)/15
-        py_times.append(time_utils.time() - t_start)
+        #icycle = int(time.time() - tstart)/15
+        py_times.append(time.time() - t_start)
 
 def on_wsjtx_decode(dd):
     global ws_times, both_started
@@ -64,7 +62,7 @@ def on_wsjtx_decode(dd):
         if len(py_times):
             ws_times = [wt for wt in ws_times if py_times[0]-wt < 5]
             both_started = True
-    ws_times.append(time_utils.time() - t_start)
+    ws_times.append(time.time() - t_start)
 
 def test_common(input_source):
     global gui, rx, t_start
@@ -74,17 +72,17 @@ def test_common(input_source):
     using_wav_files = input_source[0].endswith('.wav')
     input_device_keywords = input_source if not using_wav_files else None
     wav_files = input_source if using_wav_files else None
-    rx = Receiver([100, 2900], input_device_keywords, wav_files, on_decode, None)
+    rx = Receiver([200, 3100], input_device_keywords, wav_files, on_decode, None)
     gui = Gui(rx, {'bands':{'20m':14.074},'station':{'call':'G1OJS','grid':'IO90'}}, None, None, None)
     fig, ax = gui.plt.subplots(figsize=(10,10))
-    t_start = time_utils.time()
+    t_start = time.time()
 
 def batch_test(i0, i1):
     wav_files = []
     for idx in range(i0, i1):
         wav_files.append(f"{wav_folder}/test_{idx:02d}.wav")
     test_common(wav_files)
-    t_start = time_utils.time()
+    t_start = time.time()
     with open('baseline.pkl', 'rb') as f:
         py_times_prev = pickle.load(f)
         avg_cycle = np.max(py_times_prev) / (i1 - i0)
@@ -139,8 +137,8 @@ def live_test():
 data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy"
 wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
 
-live_test()
-#batch_test(1,39)
+#live_test()
+batch_test(1,39)
 
 
 

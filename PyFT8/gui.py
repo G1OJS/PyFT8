@@ -1,9 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import time, queue
+import queue
 from matplotlib import rcParams
 from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Slider, Button
+from PyFT8.time_utils import time_utils
 
 rcParams['toolbar'] = 'None'
 MAIN_TEXT_COLOR = '#f0f9fa'
@@ -89,7 +90,7 @@ class Msg_box:
         self.patch.set_facecolor(colors[0])
         
     def hide_if_expired(self):
-        if time.time() > self.expire > 0:
+        if time_utils.time() > self.expire > 0:
             self.patch.set_visible(False)
             self.text_inst.set_visible(False)
 
@@ -149,7 +150,7 @@ class Gui:
         self.decode_queue = queue.Queue()
         self.make_layout(config)
         self.display_cycle = 0
-        self.ani = FuncAnimation(self.fig, self._animate, interval = 40, frames=(100000), blit=True)
+        self.ani = FuncAnimation(self.fig, self._animate, interval = 160, frames=(100000), blit=True)
 
     def set_bandstats_title(self, txt):
         self.band_stats.ax.set_title(txt, fontsize = 10)
