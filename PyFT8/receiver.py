@@ -179,6 +179,7 @@ class AudioIn:
         self.search_fft_in = np.zeros(self.search_fft_len, dtype=np.float32)
         self.cycle_audio_buffer = np.zeros(192000, dtype=np.float32)
         self.cycle_audio_buffer_ptr = 0
+        self.adj, self.cycle_audio_buffer_ptr_prev, self.t_prev = 1.0, -1, None
         
     def start_wav_load(self):
         threading.Thread(target = self.load_wavs, args =(self.wav_files,)).start()
@@ -186,7 +187,7 @@ class AudioIn:
         self.cycle_audio_buffer_ptr = 0
 
     def load_wavs(self, wav_paths):
-        hop_dt = 1 / (SYM_RATE * self.search_hps) 
+        hop_dt = 1 / (SYM_RATE * self.search_hps) -0.002
         samples_perhop = int(SAMP_RATE / (SYM_RATE * self.search_hps))
         adj = 1
         self.sync_pointer_to_wall_clock()
@@ -196,7 +197,7 @@ class AudioIn:
             th = time_utils.time()
             frames = wf.readframes(samples_perhop)
             while frames:
-                delay = hop_dt*adj - (time_utils.time()-th)
+                delay = hop_dt*self.adj - (time_utils.time()-th)
                 if(delay>0): time_utils.sleep(delay)
                 th = time_utils.time()
                 hoptimes.append(th)
@@ -205,7 +206,7 @@ class AudioIn:
             wf.close()
             deltas = np.diff(hoptimes)
             meanhop, sdhop = 1000*np.mean(deltas), 1000*np.std(deltas)
-            adj = adj * 40/meanhop
+            #adj = adj * 40/meanhop
             print(f"[Receiver] read wav file with hop mean = {meanhop:6.2f}ms, sd =  {sdhop:6.2f}ms")
         for run_on in range(1 * self.search_hops_per_cycle):
             time_utils.sleep(hop_dt)
@@ -228,7 +229,14 @@ class AudioIn:
         if np.abs(delta) > tolerance:
             print(f"Sync grid pointers (delta = {delta*1000:6.1f}ms)")
             self.search_grid_ptr, self.cycle_audio_buffer_ptr = search_grid_ptr, cycle_audio_buffer_ptr
-       
+
+    def adjust_wav_load_rate(self):
+        if self.t_prev is not None:
+            tcyc = time_utils.time() - self.t_prev
+            print(f"Cycle completed in {tcyc:6.3f}s")
+            self.adj = self.adj * 15/tcyc
+        self.t_prev = time_utils.time()
+            
     def find_device(self, device_str_contains):
         pya = pyaudio.PyAudio()
         for dev_idx in range(pya.get_device_count()):
@@ -252,6 +260,11 @@ class AudioIn:
 
         self.cycle_audio_buffer[self.cycle_audio_buffer_ptr:self.cycle_audio_buffer_ptr + ns] = samples
         self.cycle_audio_buffer_ptr = (self.cycle_audio_buffer_ptr + ns) % (SAMP_RATE * T_CYC)
+
+        if self.cycle_audio_buffer_ptr < self.cycle_audio_buffer_ptr_prev:
+            adjust_wav_load_rate()
+
+        self.cycle_audio_buffer_ptr_prev = self.cycle_audio_buffer_ptr
         return (None, pyaudio.paContinue)
 
 
