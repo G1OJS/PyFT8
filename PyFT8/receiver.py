@@ -261,8 +261,8 @@ class AudioIn:
         self.cycle_audio_buffer[self.cycle_audio_buffer_ptr:self.cycle_audio_buffer_ptr + ns] = samples
         self.cycle_audio_buffer_ptr = (self.cycle_audio_buffer_ptr + ns) % (SAMP_RATE * T_CYC)
 
-        if self.cycle_audio_buffer_ptr < self.cycle_audio_buffer_ptr_prev:
-            adjust_wav_load_rate()
+        if self.wav_files is not None and self.cycle_audio_buffer_ptr < self.cycle_audio_buffer_ptr_prev:
+            self.adjust_wav_load_rate()
 
         self.cycle_audio_buffer_ptr_prev = self.cycle_audio_buffer_ptr
         return (None, pyaudio.paContinue)
