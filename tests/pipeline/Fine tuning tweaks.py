@@ -9,14 +9,9 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 files_root = os.path.dirname('⁨On My iPhone⁩/⁨Chrome⁩')
 sys.path.insert(0, files_root)
 
-HPS=16
-BPT=4
 SYM_RATE =6.25
 SAMP_RATE=12000
 T_CYC=15
-MIN_LLR_SD= 0.5
-LDPC_CONTROL = (55, 100) 
-H0_RANGE = [0, 12]
 SYMBOL_IDXS = np.array( list(range(7, 36)) + list(range(43, 72)))
 COSTAS = [3,1,4,0,6,5,2]
 SYMBOLS_PER_CYCLE = int(T_CYC * SYM_RATE)
@@ -272,7 +267,7 @@ def get_messages(wav_file):
     print(f"{len(origins)} candidates")
     for origin in origins:
         
-        ttweaks = np.arange(-50, 51, 10)/1000
+        ttweaks = np.arange(-50, 51, 20)/1000
         scores = []
         for ttweak in ttweaks:
             tmp_origin = {'t0':origin['t0']+ttweak, 'f0':origin['f0'], 'score':0}
@@ -282,7 +277,7 @@ def get_messages(wav_file):
         ttweak = float(ttweaks[np.argmax(scores)])
         origin = {'t0':origin['t0']+ttweak, 'f0':origin['f0'], 'score':np.max(scores)}
         
-        ftweaks = np.arange(-2.5, 2.6, 0.5)
+        ftweaks = np.arange(-2.5, 2.6, 1)
         scores = []
         for ftweak in ftweaks:
             tmp_origin = {'t0':origin['t0'], 'f0':origin['f0']+ftweak, 'score':0}
@@ -312,7 +307,6 @@ def get_messages(wav_file):
                         [58,[0,1,1,1,1,1,1,0,1,0,0,1,0,0,1,0,0,0,1]],                       # RRR
                       ]
         msg, ipass = None, 0
-        max_ncheck = LDPC_CONTROL[0]
         for ipass, (b0, ap_pattern) in enumerate(ap_patterns):
             llr = llr0.copy()
             for b, bval in enumerate(ap_pattern):
