@@ -3,15 +3,25 @@ import time
 class Time_utils:
     def __init__(self):
         self.cycle_seconds = 15
+        self.time_offset = 0
+
+    def set_time_offset(self):
+        self.time_offset = time.time()
+
+    def time(self):
+        return time.time() - self.time_offset
+
+    def sleep(self, t):
+        time.sleep(t)
 
     def set_cycle_length(self, dur):
         self.cycle_seconds = dur
 
     def cycle_time(self):
-        return (time.time()) % self.cycle_seconds
+        return (self.time()) % self.cycle_seconds
 
     def curr_cycle_from_time(self):
-        t = time.time()
+        t = self.time()
         return int((t % (2*self.cycle_seconds)) / self.cycle_seconds)
 
     def cyclestart(self, t):
@@ -21,7 +31,7 @@ class Time_utils:
 
     def tlog(self, txt, verbose = False):
         if(verbose):
-            print(f"{self.cyclestart(time.time())['string']} {self.cycle_time():5.2f} {txt}")
+            print(f"{self.cyclestart(self.time())['string']} {self.cycle_time():5.2f} {txt}")
 
     def format_duration(self, seconds):
         intervals = ( ('yr', 314496000), ('wk', 604800), ('day', 86400), ('hr', 3600), ('min', 60), ('sec', 1) )
@@ -30,10 +40,10 @@ class Time_utils:
             if value:
                 return f"{value:d} {name}{'s' if value > 1 else ''}"
 
-global_time_utils = Time_utils()
+time_utils = Time_utils()
 
 class Ticker:
-    def __init__(self, trigger_time, cycle_length = global_time_utils.cycle_seconds, timing_function = global_time_utils.cycle_time):
+    def __init__(self, trigger_time, cycle_length = time_utils.cycle_seconds, timing_function = time_utils.cycle_time):
         self.previous_ticker_time = 0
         self.timing_function = timing_function
         self.trigger_time = trigger_time

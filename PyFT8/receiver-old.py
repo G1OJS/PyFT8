@@ -125,11 +125,6 @@ import warnings
 warnings.filterwarnings("error")
 
 
-def calc_ncheck(llr):
-    bits6, bits7 = llr[CV6idx] > 0, llr[CV7idx] > 0
-    parity6, parity7 = np.sum(bits6, axis=1) & 1, np.sum(bits7, axis=1) & 1
-    return int(np.sum(parity7) + np.sum(parity6))
-
 def pass_ldpc_messages(llr, CVidx, mC2V_prev, update_collector):
     mV2C = llr[CVidx] - mC2V_prev
     tanh_mV2C = np.tanh(-mV2C)
@@ -142,6 +137,31 @@ def pass_ldpc_messages(llr, CVidx, mC2V_prev, update_collector):
     mC2V_curr  = tanh_mC2V / ((tanh_mC2V - alpha_atanh_approx) * (alpha_atanh_approx + tanh_mC2V))
     np.add.at(update_collector, CVidx, mC2V_curr - mC2V_prev)
     return mC2V_curr
+
+def ldpc_decode(llr, max_ncheck, max_iters):
+    mC2V_prev6, mC2V_prev7 = np.zeros(CV6idx.shape, dtype=np.float32), np.zeros(CV7idx.shape, dtype=np.float32)
+    for iteration in range(max_iters):
+        bits6, bits7 = llr[CV6idx] > 0, llr[CV7idx] > 0
+        parity6, parity7 = np.sum(bits6, axis=1) & 1, np.sum(bits7, axis=1) & 1
+        ncheck = int(np.sum(parity7) + np.sum(parity6))
+        if iteration==0:
+             ncheck0 = ncheck
+        if ncheck0 > max_ncheck:
+            return None, ncheck0, iteration
+        if ncheck == 0:
+            bits91_int = 0
+            for bit in (llr[:91] > 0).astype(int).tolist():
+                bits91_int = (bits91_int << 1) | bit
+            bits77_int = check_crc(bits91_int)
+            msg_tuple = unpack(bits77_int)
+            if msg_tuple:
+                return msg_tuple, ncheck0, iteration
+        else:
+            update_collector = np.zeros_like(llr)
+            mC2V_prev6 = pass_ldpc_messages(llr, CV6idx, mC2V_prev6, update_collector)
+            mC2V_prev7 = pass_ldpc_messages(llr, CV7idx, mC2V_prev7, update_collector)
+            llr += update_collector
+    return None, ncheck0, iteration
 
 #============== AUDIO IN ===========================================================
 class AudioIn:
@@ -294,7 +314,7 @@ class Candidate:
             scores.append(score)
         ttweak = ttweaks[np.argmax(scores)]
 
-        ftweaks = range(-32, 45, 16) # 16 steps = 1Hz, 6.25Hz = 100 steps
+        ftweaks = range(-32, 45, 8) # 16 steps = 1Hz, 6.25Hz = 100 steps
         scores = []
         for ftweak in ftweaks:
             cgrid, score = self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
@@ -314,9 +334,9 @@ class Candidate:
         self.llr = 2.83 * llr / self.llr_sd
         #print(ttweak, ftweak, np.max(scores), self.llr_sd, self.snr)
           
-    def decode(self, max_iters = 15):
+    def decode(self):
         decode_started = time.time()
-        nchecks, llrs = [], []
+        max_ncheck, max_iters = 50, 15
         for ipass, (b0, ap_pattern) in enumerate(ap_patterns):
             llr = self.llr.copy()
             for b, bval in enumerate(ap_pattern):
@@ -324,30 +344,13 @@ class Candidate:
             if ipass == 1:
                 llr[74:76] = -5
                 llr[76] = 5
-            llrs.append(llr)
-            nchecks.append(calc_ncheck(llr))
-        self.ipass = np.argmin(nchecks)
-        ncheck = nchecks[self.ipass]
-        llr = llrs[self.ipass]
-
-        mC2V_prev6, mC2V_prev7 = np.zeros(CV6idx.shape, dtype=np.float32), np.zeros(CV7idx.shape, dtype=np.float32)
-        for self.n_its in range(max_iters):
-            if ncheck == 0:
-                bits91_int = 0
-                for bit in (llr[:91] > 0).astype(int).tolist():
-                    bits91_int = (bits91_int << 1) | bit
-                bits77_int = check_crc(bits91_int)
-                msg_tuple = unpack(bits77_int)
-                if msg_tuple:
-                    self.msg_tuple = msg_tuple
-                    break 
-            else:
-                update_collector = np.zeros_like(llr)
-                mC2V_prev6 = pass_ldpc_messages(llr, CV6idx, mC2V_prev6, update_collector)
-                mC2V_prev7 = pass_ldpc_messages(llr, CV7idx, mC2V_prev7, update_collector)
-                llr += update_collector
-                ncheck = calc_ncheck(llr)
-
+            
+            msg_tuple, ncheck0, self.n_its = ldpc_decode(llr, max_ncheck, max_iters)
+            #max_ncheck = ncheck0 # max ncheck here shortcuts ap patterns that make ncheck worse than previous best
+            if msg_tuple:
+                self.msg_tuple = msg_tuple
+                self.ipass = ipass
+                break 
         self.decode_completed = time.time()
         
 #============== RECEIVER ===========================================================
@@ -390,7 +393,7 @@ class Receiver():
         threading.Thread(target=self.manage_cycle, daemon=True).start()
         
 
-    def search(self, cyclestart, sync_score_min = 65):
+    def search(self, cyclestart, sync_score_min = 80):
         cands = []
         for f0_idx in range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 2):
             p = self.audio_in.search_grid[:, f0_idx: f0_idx+8*self.audio_in.search_bpt]

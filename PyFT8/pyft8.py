@@ -8,7 +8,7 @@ from PyFT8.receiver import Receiver
 from PyFT8.pskreporter import PSKR_upload
 from PyFT8.gui import Gui
 from PyFT8.transmitter import AudioOut
-from PyFT8.time_utils import global_time_utils
+from PyFT8.time_utils import time_utils
 from PyFT8.rigctrl import Rig_hamlib, Rig_CAT
 from PyFT8.databases import History, ADIF
 
@@ -55,14 +55,14 @@ class Message:
         self.origin, self.msg_tuple, self.snr, = c.origin, c.msg_tuple, c.snr
         self.dt, self.fHz = self.origin['t0'] - 0.5, self.origin['f0']
         self.cyclestart = c.cyclestart
-        self.expire = time.time() + 29.25
+        self.expire = time_utils.time() + 29.25
         self.is_from_me = c.msg_tuple[1] == mycall
         self.is_to_me = c.msg_tuple[0] == mycall
         self.is_cq = c.msg_tuple[0].startswith('CQ')
         self.geo_text = history.get_geo_text(c.msg_tuple[1], config['gui']['loc']) if history else ''
-        tnow = time.time()
+        tnow = time_utils.time()
         wb_time = adif_logging.cache.get(c.msg_tuple[1],'') if adif_logging else 0
-        wb_text = f"wb: {global_time_utils.format_duration(tnow - float(wb_time))}" if wb_time else ''
+        wb_text = f"wb: {time_utils.format_duration(tnow - float(wb_time))}" if wb_time else ''
         hearing_me = ''
         if history:
             hearing_me = '# ' if history.is_hearing_me(band, c.msg_tuple[1], tnow - 60*HEARING_PANEL_LIFE_MINS) else ' '
@@ -103,12 +103,12 @@ class FT8_QSO:
             if output_device_idx is None:
                 console_print("No output device")
                 return
-            ct = global_time_utils.cycle_time()
+            ct = time_utils.cycle_time()
             if ct > MAX_TX_START_SECONDS:
                 delay = 15.25 - ct
                 time.sleep(delay)
             if self.tx_cycle is None:
-                self.tx_cycle = global_time_utils.curr_cycle_from_time()
+                self.tx_cycle = time_utils.curr_cycle_from_time()
                 self.tx_freq = clearest_frequency
                 console_print(f"[PyFT8] Set tx cycle = {self.tx_cycle} f = {self.tx_freq:5.1f}")
             symbols = audio_out.create_ft8_symbols(self.message_to_transmit)
@@ -139,7 +139,7 @@ def isGrid(grid_rpt):       return not isReport(grid_rpt) and not is73(grid_rpt)
 def progress_qso(clicked_message):
     global qso
     
-    if time.time() - clicked_message.cyclestart['time'] > (15 + MAX_TX_START_SECONDS):
+    if time_utils.time() - clicked_message.cyclestart['time'] > (15 + MAX_TX_START_SECONDS):
         console_print("Try next cycle")
         return
     
@@ -211,13 +211,13 @@ def on_rx_decode(c):
             return
         call_b_grid = grid_rpt if isGrid(grid_rpt) else ''
         if call_b != config['station']['call']:
-            pskr_upload.add_report(call_b, int(1000000*float(qso.band_info['fMHz'])) + message.fHz, c.snr, 'FT8', 1, int(time.time()))
+            pskr_upload.add_report(call_b, int(1000000*float(qso.band_info['fMHz'])) + message.fHz, c.snr, 'FT8', 1, int(time_utils.time()))
             if history:
                 history.store_best_grid(call_b, call_b_grid)
-                history.add_myspots_record(history.heard_by_me.data, history.heard_by_me_new, qso.band_info['b'], call_b, int(time.time()), c.snr)
+                history.add_myspots_record(history.heard_by_me.data, history.heard_by_me_new, qso.band_info['b'], call_b, int(time_utils.time()), c.snr)
         if history and call_b == config['station']['call'] and (isReport(grid_rpt) or isRReport(grid_rpt)):
             rpt = grid_rpt.replace("R","")
-            history.add_myspots_record(history.hearing_me.data, history.hearing_me_new, qso.band_info['b'], call_a, int(time.time()), rpt)
+            history.add_myspots_record(history.hearing_me.data, history.hearing_me_new, qso.band_info['b'], call_a, int(time_utils.time()), rpt)
 
 def on_rx_busy_profile(busy_profile_new, df, cycle):
     global busy_profile, clearest_frequency
@@ -268,7 +268,7 @@ def on_gui_sidebars_refresh(gui, display_cycle):
     timewindow_str = f"<{HEARING_PANEL_LIFE_MINS:.0f} mins"
     title_txt = f"Hearing me {timewindow_str}" if display_cycle==1 else f"Heard by me {timewindow_str}"
     display_rows = [(title_txt, 2e40, 'white')]
-    tnow = time.time()
+    tnow = time_utils.time()
     if b is not None and b in historic_data:
         band_rpts = historic_data[b]
         calls_now = [call for call in band_rpts if (tnow - band_rpts[call]['t']) < 60*HEARING_PANEL_LIFE_MINS]
@@ -295,7 +295,7 @@ def on_gui_control_click(btn_def):
         qso.tx_cycle = None
     if(btn_action == 'SET_BAND'):
         band, freqMHz = btn_def['band'], btn_def['freq']
-        qso.band_info = {'b':band, 'fMHz':freqMHz, 'time_set':time.time()}
+        qso.band_info = {'b':band, 'fMHz':freqMHz, 'time_set':time_utils.time()}
         rig.set_freq_Hz(int(1000000*float(qso.band_info['fMHz'])))
         console_print(f"[PyFT8] Set band: {qso.band_info['b']} {qso.band_info['fMHz']}")
         gui.band_stats.clear()
