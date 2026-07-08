@@ -186,6 +186,10 @@ class AudioIn:
         self.adj, self.cycle_audio_buffer_ptr_prev, self.t_prev = 1.0, -1, None
         self.set_pointers()
 
+    def clear_spectrum(self):
+        self.search_grid *= 0
+        self.cycle_audio_buffer *= 0
+
     def manage_cycle(self):
         cycle_adj = 0
         search_grid_ptr_prev = 0
@@ -382,6 +386,7 @@ class Receiver():
         self.wav_files = wav_files
         self.on_decode = on_decode
         self.on_busy_profile = on_busy_profile
+        self.candidates = []
         self.verbose = verbose
         search_timerange = [-2, 4]
         self.search_h0_range = [int((t+0.5)*self.audio_in.search_hps*SYM_RATE) for t in search_timerange]
@@ -406,6 +411,10 @@ class Receiver():
         time_utils.sleep(0.5)
         threading.Thread(target=self.manage_cycle, daemon=True).start()
 
+    def clear_all(self):
+        self.candidates = []
+        self.audio_in.clear_spectrum()
+
     def search(self, cyclestart, odd_even, cycle_h0):
         cands = []
         base_search_hops = 36 * self.audio_in.search_hps + np.arange(7) * self.audio_in.search_hps + self.audio_in.search_hps
@@ -427,7 +436,7 @@ class Receiver():
             if origin['score'] > self.sync_score_min:
                 c = Candidate(cyclestart, origin)
                 cands.append(c)
-        return cands[:self.max_cands]
+        self.candidates = cands[:self.max_cands]
 
     def get_busy_profile(self):
         from numpy.lib.stride_tricks import sliding_window_view
@@ -438,7 +447,6 @@ class Receiver():
         
     def manage_cycle(self):
         dashes = "======================================================"
-        candidates = []
         duplicate_filter = set()
         time_utils.tlog(f"[Receiver] running", verbose = self.verbose)
         hopspersym = SYM_RATE * self.audio_in.search_hps
@@ -452,7 +460,7 @@ class Receiver():
             search_grid_ptr_prev = self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle
 
             to_decode = []
-            for c in candidates:
+            for c in self.candidates:
                 if not c.demap_started:
                     odd_even_offset = c.origin['odd_even'] * self.audio_in.search_hops_per_cycle
                     cand_abs_h0_idx = (c.origin['h0_idx'] + PAYLOAD_SYMB_IDXS[0] - 1) * hopspersym + odd_even_offset
@@ -482,14 +490,14 @@ class Receiver():
                 tstart = hstart / (SYM_RATE * self.audio_in.search_hps)
                 time_utils.tlog(f"[Cycle manager] start search at hop {hstart} ({tstart:6.2f}s)", verbose = True)
                 cyclestart = time_utils.cyclestart(time_utils.time())
-                timeouts = len([c for c in candidates if not c.decode_completed])
+                timeouts = len([c for c in self.candidates if not c.decode_completed])
                 if timeouts:
                     time_utils.tlog(f"[Receiver] Warning - {timeouts} candidates ran out of decoding time", verbose = True)
-                candidates = self.search(cyclestart, self.audio_in.odd_even, self.audio_in.cycle_h0)
+                self.search(cyclestart, self.audio_in.odd_even, self.audio_in.cycle_h0)
                 cycle_searched = True
                 hstop = self.audio_in.search_grid_ptr
                 if not self.on_busy_profile is None:
                    self.on_busy_profile(*self.get_busy_profile())
                 tsearch = (hstop-hstart)/ (SYM_RATE * self.audio_in.search_hps)
-                time_utils.tlog(f"[Cycle manager] New spectrum searched in {tsearch}s -> {len(candidates)} candidates", verbose = True) 
+                time_utils.tlog(f"[Cycle manager] New spectrum searched in {tsearch}s -> {len(self.candidates)} candidates", verbose = True) 
 

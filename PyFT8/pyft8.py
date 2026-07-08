@@ -300,6 +300,8 @@ def on_gui_control_click(btn_def):
         qso.band_info = {'b':band, 'fMHz':freqMHz, 'time_set':time_utils.time()}
         rig.set_freq_Hz(int(1000000*float(qso.band_info['fMHz'])))
         console_print(f"[PyFT8] Set band: {qso.band_info['b']} {qso.band_info['fMHz']}")
+        gui.receiver.clear_all()
+        gui.hide_msg_boxes()
         gui.band_stats.clear()
         gui.refresh_sidebars()
         
@@ -315,7 +317,7 @@ def console_print(text, color = 'white'):
         print(text)
         
 def cli():
-    global audio_in, audio_out, output_device_idx, rig, gui, qso, config, config_folder, clearest_frequency, adif_logging, pskr_upload, history
+    global audio_out, output_device_idx, rig, gui, qso, config, config_folder, clearest_frequency, adif_logging, pskr_upload, history
     import time, sys
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-c', '--config_folder', help = 'Location of config folder e.g. C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', default = './') 
@@ -379,7 +381,6 @@ def cli():
         history.set_bands(config['bands'])
         adif_logging = ADIF(f"{config_folder}/PyFT8.adi")
         history.load_hearing_heard_from_adif(adif_logging.cache)
-
 
     if mc is not None and 'pskreporter' in config.keys():
         if config['pskreporter']['upload'] == 'Y':

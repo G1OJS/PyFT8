@@ -91,8 +91,11 @@ class Msg_box:
         
     def hide_if_expired(self):
         if time_utils.time() > self.expire > 0:
-            self.patch.set_visible(False)
-            self.text_inst.set_visible(False)
+            self.hide()
+
+    def hide(self):
+        self.patch.set_visible(False)
+        self.text_inst.set_visible(False)
 
     def _onclick(self, event):
         b, _ = self.patch.contains(event)
@@ -138,6 +141,7 @@ class Gui:
     def __init__(self, receiver, config, on_gui_sidebars_refresh, on_msg_click, on_control_click):
         if config is not None:
             self.mStation = {'c':config['station']['call'], 'g':config['station']['grid']}
+        self.receiver = receiver
         self.on_msg_click = on_msg_click
         self.on_control_click = on_control_click
         self.on_gui_sidebars_refresh = on_gui_sidebars_refresh
@@ -150,7 +154,7 @@ class Gui:
         self.decode_queue = queue.Queue()
         self.make_layout(config)
         self.display_cycle = 0
-        self.ani = FuncAnimation(self.fig, self._animate, interval = 40, frames=(100000), blit=True)
+        self.ani = FuncAnimation(self.fig, self._animate, interval = 160*4, frames=(100000), blit=True)
 
     def set_bandstats_title(self, txt):
         self.band_stats.ax.set_title(txt, fontsize = 10)
@@ -218,6 +222,10 @@ class Gui:
     def _tidy_msg_boxes(self):
         for fb in self.msg_boxes:
             self.msg_boxes[fb].hide_if_expired()
+
+    def hide_msg_boxes(self):
+        for fb in self.msg_boxes:
+            self.msg_boxes[fb].hide()
  
     def _animate(self, frame):
         self.image.set_data(self.waterfall_data.T)
