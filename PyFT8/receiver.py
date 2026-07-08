@@ -7,7 +7,7 @@ import pyaudio
 import pickle
 from PyFT8.databases import call_hashes, add_call_hashes
 
-DEBUG_PRINTS = False
+DEBUG_PRINTS = True
 T_CYC = 15
 SYM_RATE = 6.25
 SAMP_RATE = 12000
@@ -458,7 +458,7 @@ class Receiver():
                         c.demap(all_audio_spectrum)
                         h2s = 1/(SYM_RATE * self.audio_in.search_hps)
                         c.demap_started = self.audio_in.search_grid_ptr*h2s
-                        time_utils.tlog(f"[Receiver] Demap {len(candidates)} {cand_abs_h0_idx*h2s:5.1f} - {cand_abs_hf_idx*h2s:5.1f} {c.llr_sd}", verbose = DEBUG_PRINTS)
+                        #time_utils.tlog(f"[Receiver] Demap {len(candidates)} {cand_abs_h0_idx*h2s:5.1f} - {cand_abs_hf_idx*h2s:5.1f} {c.llr_sd}", verbose = DEBUG_PRINTS)
                 if not c.decode_completed:
                     to_decode.append(c)
 
