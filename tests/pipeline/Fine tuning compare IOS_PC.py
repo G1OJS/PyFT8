@@ -322,7 +322,7 @@ def get_messages(wav_file):
             msg_tuple, n_its, ncheck0 = ldpc_decode(llr, 45, 15)
             if msg_tuple:
                 messages.add(msg_tuple)
-                print(f"{len(messages):3d}. {origin['f0']:6.1f} {msg_tuple} pass{ipass:3d} its {n_its:3d} ncheck0 {ncheck0:3d}")
+                print(f"{len(messages):3d}. {origin['f0']:6.1f} {' '.join(msg_tuple):25s} pass{ipass:3d} its {n_its:3d} ncheck0 {ncheck0:3d}")
                 break
     print( time.perf_counter() - t0)     
 

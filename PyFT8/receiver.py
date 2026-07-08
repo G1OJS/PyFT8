@@ -6,6 +6,7 @@ import os
 import pyaudio
 import pickle
 from PyFT8.databases import call_hashes, add_call_hashes
+from PyFT8.osd import osd_decode_minimal
 
 DEBUG_PRINTS = True
 T_CYC = 15
@@ -367,6 +368,7 @@ class Candidate:
           
     def decode(self):
         if self.llr_sd > self.llr_sd_min:
+            success = False
             for ipass, (b0, ap_pattern) in enumerate(ap_patterns):
                 llr = self.llr.copy()
                 for b, bval in enumerate(ap_pattern):
@@ -374,11 +376,25 @@ class Candidate:
                 if ipass == 1:
                     llr[74:76] = -5
                     llr[76] = 5
-                success = ldpc_decode(llr, 45, 20)
+                success = ldpc_decode(llr, 35, 15)
                 if success:
                     self.msg_tuple, self.n_its = success
                     self.ipass = ipass
                     break
+
+            """
+            if not success:
+                cw = osd_decode_minimal(self.llr, np.argsort(np.abs(self.llr))[::-1])
+                bits91_int = 0
+                for bit in (cw[:91] > 0).astype(int).tolist():
+                    bits91_int = (bits91_int << 1) | bit
+                bits77_int = check_crc(bits91_int)
+                msg_tuple = unpack(bits77_int)
+                if msg_tuple:
+                    self.msg_tuple, self.n_its = msg_tuple, 999
+                    self.ipass = 999
+            """
+                
         self.decode_completed = time_utils.time()
         
 #============== RECEIVER ===========================================================
