@@ -6,6 +6,7 @@ class Time_utils:
         self.time_offset = 0
 
     def set_time_offset(self):
+        return
         self.time_offset = time.time()
 
     def time(self):
