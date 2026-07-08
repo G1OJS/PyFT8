@@ -12,9 +12,9 @@ from PyFT8.time_utils import time_utils
 from PyFT8.rigctrl import Rig_hamlib, Rig_CAT
 from PyFT8.databases import History, ADIF
 
-VER = '3.1.0'
+VER = '3.2.0 test'
 
-MAX_TX_START_SECONDS = 2.5
+MAX_TX_START_SECONDS = 3
 HEARING_PANEL_LIFE_MINS = 20
 PSKR_REFRESH_MINS = 20
 config_folder, rig, gui, qso, adif_logging, history, pskr_upload, output_device_idx = None, None, None, None, None, None, None, None
@@ -77,8 +77,13 @@ class FT8_QSO:
             self.mStation = {'c':config['station']['call'], 'g':config['station']['grid']}
         self.band_info = {'b':None, 'fMHz':0, 'time_set':0}
         self.tx_freq = 750
-        threading.Thread(target = self._transmitter, daemon = True).start()
+        if output_device_idx is None:
+            console_print("[PyFT8] No output device")
+        else:
+            console_print("[PyFT8] starting transmitter")
+            threading.Thread(target = self._transmitter, daemon = True).start()
         self.clear()
+        console_print(f"[PyFT8] QSO handler started for {self.mStation}")
 
     def clear(self):
         self.message_to_transmit = None
@@ -92,42 +97,32 @@ class FT8_QSO:
         if gui and self.band_info['b'] is None:
             console_print("[PyFT8] Please select a band before transmitting", color = 'red')
             return
-        console_print(f"[QSO] Set transmit message to '{message}' with tx cycle = {self.tx_cycle}")
         self.message_to_transmit = message
+        self.tx_start_second = [15, 0][self.tx_cycle]
+        console_print(f"[QSO] Set transmit message to '{self.message_to_transmit}' (cyc {self.tx_cycle}, {self.tx_freq:5.1f} Hz)")
 
     def _transmitter(self):
+        console_print("[Transmitter] running")
         while True:
             time.sleep(0.1)
-            if self.message_to_transmit is None:
-                continue
-            if output_device_idx is None:
-                console_print("No output device")
-                return
-            ct = time_utils.cycle_time()
-            if ct > MAX_TX_START_SECONDS:
-                delay = 15.25 - ct
-                time.sleep(delay)
-            if self.tx_cycle is None:
-                self.tx_cycle = time_utils.curr_cycle_from_time()
-                self.tx_freq = clearest_frequency
-                console_print(f"[PyFT8] Set tx cycle = {self.tx_cycle} f = {self.tx_freq:5.1f}")
-            symbols = audio_out.create_ft8_symbols(self.message_to_transmit)
-            if any(symbols):
-                console_print(f"Transmitting {self.message_to_transmit} on cycle {self.tx_cycle}")
-                audio_data = audio_out.create_ft8_wave(symbols, f_base = self.tx_freq)
-                rig.ptt_on()
-                audio_out.play_data_to_soundcard(audio_data, output_device_idx)
-                rig.ptt_off()
-                self.last_tx = self.message_to_transmit
-            else:
-                console_print(f"Couldn't encode message {self.message_to_transmit}", color = 'red') # move this to earlier by setting tx symbols not tx message
-            self.message_to_transmit = None
+            if self.message_to_transmit and 30*int(time_utils.time()/30) >= self.tx_start_second:
+                symbols = audio_out.create_ft8_symbols(self.message_to_transmit)
+                if any(symbols):
+                    console_print(f"[PyFT8] Transmitting {self.message_to_transmit}")
+                    audio_data = audio_out.create_ft8_wave(symbols, f_base = self.tx_freq)
+                    rig.ptt_on()
+                    audio_out.play_data_to_soundcard(audio_data, output_device_idx)
+                    rig.ptt_off()
+                    self.last_tx = self.message_to_transmit
+                    self.message_to_transmit = None
+                else:
+                    console_print(f"[PyFT8] Couldn't encode message {self.message_to_transmit}", color = 'red') # move this to earlier by setting tx symbols not tx message
 
     def log(self):
         if adif_logging is not None:
             self.times['time_off'] = time.gmtime()
             adif_logging.log(self.times, self.band_info, self.mStation, self.oStation, self.rpts)
-            console_print(f"Logged QSO with {self.oStation['c']}")
+            console_print(f"[PyFT8] Logged QSO with {self.oStation['c']}")
 
 def isReport(grid_rpt):     return "+" in grid_rpt or "-" in grid_rpt
 def isRReport(grid_rpt):    return isReport(grid_rpt) and 'R' in grid_rpt
@@ -138,10 +133,6 @@ def isGrid(grid_rpt):       return not isReport(grid_rpt) and not is73(grid_rpt)
 
 def progress_qso(clicked_message):
     global qso
-    
-    if time_utils.time() - clicked_message.cyclestart['time'] > (15 + MAX_TX_START_SECONDS):
-        console_print("Try next cycle")
-        return
     
     call_a, call_b, grid_rpt = clicked_message.msg_tuple
     my_station = qso.mStation
@@ -154,12 +145,16 @@ def progress_qso(clicked_message):
         qso.times['time_on'] = time.gmtime()
         qso.oStation = {'c': call_b, 'g': grid_rpt}
         qso.rpts['sent'] = f"{clicked_message.snr:+03d}"
+        qso.tx_freq = clearest_frequency
+        qso.tx_cycle = 1 - clicked_message.origin['odd_even']
         qso.set_tx_message(f"{qso.oStation['c']} {my_station['c']} {my_station['g'][:4]}")
         return
 
     if call_a == my_station['c']:
         if qso.times['time_on'] is None:
             qso.times['time_on'] = time.gmtime()
+            qso.tx_freq = clearest_frequency
+            qso.tx_cycle = 1 - clicked_message.origin['odd_even']
         if qso.rpts['sent'] is None:
             qso.rpts['sent'] = f"{clicked_message.snr:+03d}"
         qso.oStation['c'] = call_b
@@ -174,7 +169,7 @@ def progress_qso(clicked_message):
             reply = f"{qso.oStation['c']} {my_station['c']} RR73"
         if isRR73(grid_rpt):
             reply = f"{qso.oStation['c']} {my_station['c']} 73"
-            
+
         qso.set_tx_message(reply)
 
         if reply.endswith("73"): # do last so any log errors don't prevent sending 73
@@ -306,6 +301,7 @@ def on_gui_msg_click(message):
 
 #=============== CLI ========================================================================
 def console_print(text, color = 'white'):
+    text = f"{time_utils.cycle_time():4.1f} {text}"
     if gui is not None:
         gui.console.scroll_print(text, color)
     else:
@@ -339,7 +335,6 @@ def cli():
     config_folder = f"{args.config_folder}".strip()
     get_config()
     mc, mg = config['station']['call'], config['station']['grid']
-    qso = FT8_QSO()
 
     if args.parse_all_file:
         history = History(config_folder, mc, mg, PSKR_REFRESH_MINS, True)
@@ -368,14 +363,16 @@ def cli():
         sys.exit(1)
     else:
         input_device_keywords = args.inputcard_keywords.replace(' ','').split(',')
-        rx = Receiver([200, 3100], input_device_keywords, None, on_rx_decode, on_rx_busy_profile)
+        rx = Receiver([100, 3000], input_device_keywords, None, on_rx_decode, on_rx_busy_profile, sync_score_min = 200)
 
     if not args.no_gui:
+        qso = FT8_QSO()
         gui = Gui(rx, config, on_gui_sidebars_refresh, on_gui_msg_click, on_gui_control_click)
         history = History(config_folder, mc, mg, PSKR_REFRESH_MINS, args.parse_all_file)
         history.set_bands(config['bands'])
         adif_logging = ADIF(f"{config_folder}/PyFT8.adi")
         history.load_hearing_heard_from_adif(adif_logging.cache)
+
 
     if mc is not None and 'pskreporter' in config.keys():
         if config['pskreporter']['upload'] == 'Y':

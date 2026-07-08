@@ -150,7 +150,7 @@ class Gui:
         self.decode_queue = queue.Queue()
         self.make_layout(config)
         self.display_cycle = 0
-        self.ani = FuncAnimation(self.fig, self._animate, interval = 160, frames=(100000), blit=True)
+        self.ani = FuncAnimation(self.fig, self._animate, interval = 40, frames=(100000), blit=True)
 
     def set_bandstats_title(self, txt):
         self.band_stats.ax.set_title(txt, fontsize = 10)
@@ -208,7 +208,7 @@ class Gui:
         self.decode_queue.put(message)
 
     def _display_message_box(self, message):
-        message.h0_idx = message.origin['t0']*self.hps/0.16 + message.origin['cycle']*self.hops_per_cycle
+        message.h0_idx = message.origin['t0']*self.hps/0.16 + message.origin['odd_even']*self.hops_per_cycle
         message.f0_idx = message.origin['f0']*self.bpt/6.25
         if not message.f0_idx in self.msg_boxes:
             self.msg_boxes[message.f0_idx] = Msg_box(self.fig, self.ax_wf, message.h0_idx, message.f0_idx, 79*self.hps, 8*self.bpt, onclick = self.on_msg_click)

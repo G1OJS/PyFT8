@@ -7,6 +7,7 @@ import pyaudio
 import pickle
 from PyFT8.databases import call_hashes, add_call_hashes
 
+DEBUG_PRINTS = True
 T_CYC = 15
 SYM_RATE = 6.25
 SAMP_RATE = 12000
@@ -174,23 +175,41 @@ class AudioIn:
         self.dt = T_CYC / self.search_hops_per_cycle
         self.search_grid = np.ones((self.search_hops_per_grid, self.search_f0_idx_range[1]  + 8 * self.search_bpt ), dtype = np.float32)
         self.waterfall_data = self.search_grid
-        self.search_grid_ptr = 0
+        self.samples_perhop = int(SAMP_RATE / (SYM_RATE * self.search_hps))
+        self.samples_per_cycle = int(SAMP_RATE * T_CYC)
+
         self.search_audio_buffer = np.zeros(self.search_fft_len, dtype=np.float32)
         self.search_fft_in = np.zeros(self.search_fft_len, dtype=np.float32)
-        self.cycle_audio_buffer = np.zeros(192000, dtype=np.float32)
-        self.cycle_audio_buffer_ptr = 0
-        self.adj, self.cycle_audio_buffer_ptr_prev, self.t_prev = 1.0, -1, None
         
-    def start_wav_load(self):
-        threading.Thread(target = self.load_wavs, args =(self.wav_files,)).start()
-        self.search_grid_ptr = 0
-        self.cycle_audio_buffer_ptr = 0
+        self.cycle_audio_buffer = np.zeros(192000, dtype=np.float32)
+        self.adj, self.cycle_audio_buffer_ptr_prev, self.t_prev = 1.0, -1, None
+        self.set_pointers()
+
+    def manage_cycle(self):
+        cycle_adj = 0
+        search_grid_ptr_prev = 0
+        while True:
+            time_utils.sleep(0.04)
+            self.odd_even = int(self.search_grid_ptr / self.search_hops_per_cycle)
+            self.cycle_h0 = int(self.odd_even * self.search_hops_per_cycle)
+            if self.search_grid_ptr % (self.search_hops_per_cycle - cycle_adj) < search_grid_ptr_prev:
+                if self.wav_files:
+                    self.adjust_wav_load_rate()
+                else:
+                    tcyc = time_utils.cycle_time()
+                    time_utils.tlog(f"[Receiver] Cycle rollover at {tcyc:7.3f}s", verbose = True)
+                    if tcyc > 0.25:
+                        self.set_pointers()
+                        cycle_adj += 5
+                    else:
+                        cycle_adj -= 1
+            search_grid_ptr_prev = self.search_grid_ptr % (self.search_hops_per_cycle - cycle_adj)
 
     def load_wavs(self, wav_paths):
+        self.search_grid_ptr = 0
+        self.cycle_audio_buffer_ptr = 0
         hop_dt = 1 / (SYM_RATE * self.search_hps) -0.002
-        samples_perhop = int(SAMP_RATE / (SYM_RATE * self.search_hps))
         adj = 1
-        self.sync_pointer_to_wall_clock()
         for wav_path in wav_paths:
             wf = wave.open(wav_path, "rb")
             hoptimes = []
@@ -202,12 +221,11 @@ class AudioIn:
                 th = time_utils.time()
                 hoptimes.append(th)
                 self._callback(frames, None, None, None)
-                frames = wf.readframes(samples_perhop)
+                frames = wf.readframes(self.samples_perhop)
             wf.close()
             deltas = np.diff(hoptimes)
             meanhop, sdhop = 1000*np.mean(deltas), 1000*np.std(deltas)
-            #adj = adj * 40/meanhop
-            print(f"[Receiver] read wav file with hop mean = {meanhop:6.2f}ms, sd =  {sdhop:6.2f}ms")
+            time_utils.tlog(f"[Receiver] read wav file with hop mean = {meanhop:6.2f}ms, sd =  {sdhop:6.2f}ms", verbose = DEBUG_PRINTS)
         for run_on in range(1 * self.search_hops_per_cycle):
             time_utils.sleep(hop_dt)
             self.search_grid_ptr = (self.search_grid_ptr + 1) % self.search_hops_per_grid
@@ -215,26 +233,20 @@ class AudioIn:
     def start_streamed_audio(self, input_device_idx):
         self.stream = pyaudio.PyAudio().open(
             format = pyaudio.paInt16, channels=1, rate = SAMP_RATE, input = True, input_device_index = input_device_idx,
-            frames_per_buffer = int(SAMP_RATE / (SYM_RATE * self.search_hps)), stream_callback=self._callback,)
-        self.sync_pointer_to_wall_clock()
+            frames_per_buffer = self.samples_perhop, stream_callback=self._callback,)
+        self.set_pointers()
         self.stream.start_stream()
 
-    def sync_pointer_to_wall_clock(self, tolerance = 0.01):
+    def set_pointers(self):
         t = time_utils.time()
-        self.odd_even = int((t % 2*T_CYC)/T_CYC)
-        search_grid_ptr = int(t * SYM_RATE * self.search_hps) % self.search_hops_per_grid
-        cycle_audio_buffer_ptr = int(t * SAMP_RATE) % (SAMP_RATE * T_CYC)
-        delta1 = np.abs(cycle_audio_buffer_ptr - self.cycle_audio_buffer_ptr) / SAMP_RATE 
-        delta2 = np.abs(cycle_audio_buffer_ptr - self.cycle_audio_buffer_ptr + SAMP_RATE * T_CYC) / SAMP_RATE 
-        delta = np.min([delta1, delta2])
-        if np.abs(delta) > tolerance:
-            print(f"Sync grid pointers (delta = {delta*1000:6.1f}ms)")
-            self.search_grid_ptr, self.cycle_audio_buffer_ptr = search_grid_ptr, cycle_audio_buffer_ptr
-
+        self.search_grid_ptr = int(self.search_hops_per_grid * (t % (2 * T_CYC)) / (2 * T_CYC))
+        self.cycle_audio_buffer_ptr = int(SAMP_RATE * (t % T_CYC))
+        time_utils.tlog(f"[Audio] Grid pointers adjusted", verbose = DEBUG_PRINTS)
+        
     def adjust_wav_load_rate(self):
         if self.t_prev is not None:
             tcyc = time_utils.time() - self.t_prev
-            print(f"Cycle completed in {tcyc:6.3f}s")
+            time_utils.tlog(f"[Audio] Cycle completed in {tcyc:6.3f}s", verbose = DEBUG_PRINTS)
             self.adj = self.adj * 15/tcyc
         self.t_prev = time_utils.time()
             
@@ -247,25 +259,21 @@ class AudioIn:
                 if (not pattern in name): match = False
             if(match):
                 return dev_idx
-        print(f"[Audio] No input audio device found matching {device_str_contains}")
+        time_utils.tlog(f"[Audio] No input audio device found matching {device_str_contains}", verbose = True)
 
     def _callback(self, in_data, frame_count, time_info, status_flags):
-        samples = np.frombuffer(in_data, dtype=np.int16).astype(np.float32)
-        ns = len(samples)
+        samples = np.frombuffer(in_data, dtype=np.int16)#.astype(np.float32)
+        ns = self.samples_perhop
         self.search_audio_buffer[:-ns] = self.search_audio_buffer[ns:]
         self.search_audio_buffer[-ns:] = samples
         np.multiply(self.search_audio_buffer, self.search_fft_window, out = self.search_fft_in)
         z = np.fft.rfft(self.search_fft_in)[:self.search_grid.shape[1]]
+        
         self.search_grid[self.search_grid_ptr, :] = 20*np.log10(np.abs(z))
         self.search_grid_ptr = (self.search_grid_ptr + 1) % self.search_hops_per_grid
 
         self.cycle_audio_buffer[self.cycle_audio_buffer_ptr:self.cycle_audio_buffer_ptr + ns] = samples
-        self.cycle_audio_buffer_ptr = (self.cycle_audio_buffer_ptr + ns) % (SAMP_RATE * T_CYC)
-
-        if self.wav_files is not None and self.cycle_audio_buffer_ptr < self.cycle_audio_buffer_ptr_prev:
-            self.adjust_wav_load_rate()
-
-        self.cycle_audio_buffer_ptr_prev = self.cycle_audio_buffer_ptr
+        self.cycle_audio_buffer_ptr = (self.cycle_audio_buffer_ptr + ns) % self.samples_per_cycle
         return (None, pyaudio.paContinue)
 
 
@@ -366,34 +374,37 @@ class Candidate:
 #============== RECEIVER ===========================================================
         
 class Receiver():
-    def __init__(self, search_freq_range, input_device_keywords, wav_files, on_decode, on_busy_profile = None, verbose = False):
+    def __init__(self, search_freq_range, input_device_keywords, wav_files, on_decode, on_busy_profile = None, verbose = False, sync_score_min = 100):
         self.audio_in = AudioIn(search_freq_range, wav_files)
+        self.sync_score_min = sync_score_min
         self.wav_files = wav_files
-        if input_device_keywords is not None:
-            self.input_device_idx = self.audio_in.find_device(input_device_keywords)
-            if not self.input_device_idx:
-                print("[Receiver] No input device")
-                sys.exit(1)
-            self.audio_in.start_streamed_audio(self.input_device_idx)
         self.on_decode = on_decode
         self.on_busy_profile = on_busy_profile
         self.verbose = verbose
-        search_timerange = [-1, 3]
+        search_timerange = [-1, 4]
         self.search_h0_range = [int((t+0.5)*self.audio_in.search_hps*SYM_RATE) for t in search_timerange]
         self.search_start_hop = self.search_h0_range[1] + 43 * self.audio_in.search_hps
         dt = 1.0 / (SYM_RATE * self.audio_in.search_hps)
         time_utils.set_cycle_length(T_CYC)
-        if wav_files is not None:
-            time_utils.set_time_offset()
-            self.audio_in.start_wav_load()
-        print(f"Search hops {self.search_h0_range[0]:3d} to {self.search_h0_range[1]:3d}")
-        print(f"Start search at hop {self.search_start_hop:3d}")
+        time_utils.tlog(f"[Receiver] Search hops {self.search_h0_range[0]:3d} to {self.search_h0_range[1]:3d}", verbose = self.verbose)
+        time_utils.tlog(f"[Receiver] Start search at hop {self.search_start_hop:3d}", verbose = self.verbose)
+        
+        if input_device_keywords is not None:
+            self.input_device_idx = self.audio_in.find_device(input_device_keywords)
+            if not self.input_device_idx:
+                time_utils.tlog("[Receiver] No input device", verbose = True)
+                sys.exit(1)
+            threading.Thread(target = self.audio_in.start_streamed_audio, args =(self.input_device_idx,), daemon=True).start()
+        else:
+            threading.Thread(target = self.audio_in.load_wavs, args =(self.wav_files,), daemon=True).start()
+
+        threading.Thread(target = self.audio_in.manage_cycle, daemon=True).start()
+
         time_utils.sleep(0.5)
         threading.Thread(target=self.manage_cycle, daemon=True).start()
-        
-    def search(self, cyclestart, odd_even, sync_score_min = 100):
+
+    def search(self, cyclestart, odd_even, cycle_h0):
         cands = []
-        cycle_h0 = int(odd_even * T_CYC * SYM_RATE * self.audio_in.search_hps)
         base_search_hops = 36 * self.audio_in.search_hps + np.arange(7) * self.audio_in.search_hps + self.audio_in.search_hps
         csync = np.full((7, 7 * self.audio_in.search_bpt), -1/6, np.float32)
         for sym_idx, tone in enumerate([3,1,4,0,6,5,2]):
@@ -405,20 +416,19 @@ class Receiver():
             origin = {'score':0}
             for h0_idx in range(self.search_h0_range[0], self.search_h0_range[1]):
                 score = float(np.dot(p[h0_idx + cycle_h0 + base_search_hops, :].ravel(), csync_search))
-                test_sync = {'cycle':odd_even, 'h0_idx':h0_idx, 
+                test_sync = {'odd_even':odd_even, 'h0_idx':h0_idx, 
                              't0':h0_idx/(self.audio_in.search_hps * SYM_RATE),
                              'f0':SYM_RATE * f0_idx / self.audio_in.search_bpt, 'score':score}
                 if test_sync['score'] > origin['score']:
                     origin = test_sync
-            if origin['score'] > sync_score_min:
+            if origin['score'] > self.sync_score_min:
                 c = Candidate(cyclestart, origin)
                 cands.append(c)
         return cands
 
     def get_busy_profile(self):
         from numpy.lib.stride_tricks import sliding_window_view
-        h0 = 0 if self.audio_in.odd_even == 0 else self.audio_in.search_hops_per_cycle+1    
-        fbin_sum = np.sum(self.audio_in.search_grid[h0:self.audio_in.search_grid_ptr, :], axis = 0)
+        fbin_sum = np.sum(self.audio_in.search_grid[self.audio_in.cycle_h0:self.audio_in.search_grid_ptr, :], axis = 0)
         windows = sliding_window_view(fbin_sum, 8*self.audio_in.search_bpt)
         bp = windows.max(axis=1) 
         return bp, self.audio_in.df, self.audio_in.odd_even
@@ -427,25 +437,21 @@ class Receiver():
         dashes = "======================================================"
         candidates = []
         duplicate_filter = set()
-        search_grid_ptr_prev = 0
-        print("Rx running")
-        ticker_cycle_rollover = Ticker(0)
-        ticker_search_for_syncs = Ticker(self.search_start_hop,
-                                         timing_function = lambda: self.audio_in.search_grid_ptr,
-                                         cycle_length = self.audio_in.search_hops_per_cycle)
+        time_utils.tlog(f"[Receiver] running", verbose = self.verbose)
         hopspersym = SYM_RATE * self.audio_in.search_hps
         last_spectrum_calc = -1
-        
+        search_grid_ptr_prev = 0
+        cycle_searched = False
         while True:
-            time_utils.sleep(0.040)
-            if self.wav_files is None and ticker_cycle_rollover.ticked():                
-                self.audio_in.sync_pointer_to_wall_clock(0.25)
-            
+            time_utils.sleep(0.1)
+            if self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle < search_grid_ptr_prev:
+                cycle_searched = False
+            search_grid_ptr_prev = self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle
+
             to_decode = []
             for c in candidates:
-                time_utils.sleep(0.001)
                 if not c.demap_started:
-                    odd_even_offset = c.origin['cycle'] * self.audio_in.search_hops_per_cycle
+                    odd_even_offset = c.origin['odd_even'] * self.audio_in.search_hops_per_cycle
                     cand_abs_h0_idx = (c.origin['h0_idx'] + PAYLOAD_SYMB_IDXS[0] - 1) * hopspersym + odd_even_offset
                     cand_abs_hf_idx = (c.origin['h0_idx'] + PAYLOAD_SYMB_IDXS[1] + 1) * hopspersym + odd_even_offset
                     if not (cand_abs_h0_idx <= self.audio_in.search_grid_ptr <= cand_abs_hf_idx):
@@ -455,13 +461,12 @@ class Receiver():
                         c.demap(all_audio_spectrum)
                         h2s = 1/(SYM_RATE * self.audio_in.search_hps)
                         c.demap_started = self.audio_in.search_grid_ptr*h2s
-                       #print(f"Demap {len(candidates)} {cand_abs_h0_idx*h2s:5.1f} - {cand_abs_hf_idx*h2s:5.1f} {c.llr_sd}")
+                        #time_utils.tlog(f"[Receiver] Demap {len(candidates)} {cand_abs_h0_idx*h2s:5.1f} - {cand_abs_hf_idx*h2s:5.1f} {c.llr_sd}", verbose = DEBUG_PRINTS)
                 if not c.decode_completed:
                     to_decode.append(c)
 
             to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
             for c in to_decode[:40]:
-                time_utils.sleep(0.001)
                 c.decode()
                 if c.msg_tuple:
                     key = c.cyclestart['string'] + ''.join(c.msg_tuple)
@@ -469,15 +474,16 @@ class Receiver():
                         duplicate_filter.add(key)
                         self.on_decode(c)
 
-            if ticker_search_for_syncs.ticked():
+            if not cycle_searched and self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle > self.search_start_hop:
                 hstart = self.audio_in.search_grid_ptr
                 tstart = hstart / (SYM_RATE * self.audio_in.search_hps)
                 time_utils.tlog(f"[Cycle manager] start search at hop {hstart} ({tstart:6.2f}s)", verbose = True)
                 cyclestart = time_utils.cyclestart(time_utils.time())
                 timeouts = len([c for c in candidates if not c.decode_completed])
                 if timeouts:
-                    print(f"Warning - {timeouts} candidates ran out of decoding time")
-                candidates = self.search(cyclestart, self.audio_in.odd_even)
+                    time_utils.tlog(f"[Receiver] Warning - {timeouts} candidates ran out of decoding time", verbose = True)
+                candidates = self.search(cyclestart, self.audio_in.odd_even, self.audio_in.cycle_h0)
+                cycle_searched = True
                 hstop = self.audio_in.search_grid_ptr
                 if not self.on_busy_profile is None:
                    self.on_busy_profile(*self.get_busy_profile())
