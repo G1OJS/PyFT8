@@ -214,7 +214,7 @@ class AudioIn:
             wf = wave.open(wav_path, "rb")
             hoptimes = []
             th = time_utils.time()
-            frames = wf.readframes(samples_perhop)
+            frames = wf.readframes(self.samples_perhop)
             while frames:
                 delay = hop_dt*self.adj - (time_utils.time()-th)
                 if(delay>0): time_utils.sleep(delay)
@@ -374,9 +374,9 @@ class Candidate:
 #============== RECEIVER ===========================================================
         
 class Receiver():
-    def __init__(self, search_freq_range, input_device_keywords, wav_files, on_decode, on_busy_profile = None, verbose = False, sync_score_min = 100):
+    def __init__(self, search_freq_range, input_device_keywords, wav_files, on_decode, on_busy_profile = None, verbose = False, sync_score_min = 100, max_cands = 1000):
         self.audio_in = AudioIn(search_freq_range, wav_files)
-        self.sync_score_min = sync_score_min
+        self.sync_score_min, self.max_cands = sync_score_min, max_cands
         self.wav_files = wav_files
         self.on_decode = on_decode
         self.on_busy_profile = on_busy_profile
@@ -424,7 +424,7 @@ class Receiver():
             if origin['score'] > self.sync_score_min:
                 c = Candidate(cyclestart, origin)
                 cands.append(c)
-        return cands
+        return cands[:self.max_cands]
 
     def get_busy_profile(self):
         from numpy.lib.stride_tricks import sliding_window_view
@@ -455,7 +455,7 @@ class Receiver():
                     cand_abs_h0_idx = (c.origin['h0_idx'] + PAYLOAD_SYMB_IDXS[0] - 1) * hopspersym + odd_even_offset
                     cand_abs_hf_idx = (c.origin['h0_idx'] + PAYLOAD_SYMB_IDXS[1] + 1) * hopspersym + odd_even_offset
                     if not (cand_abs_h0_idx <= self.audio_in.search_grid_ptr <= cand_abs_hf_idx):
-                        if self.audio_in.search_grid_ptr != last_spectrum_calc: # only calc full spectrum if more samples received
+                        if self.audio_in.search_grid_ptr - last_spectrum_calc > 0 : # only calc full spectrum if more samples received
                             all_audio_spectrum = np.fft.rfft(self.audio_in.cycle_audio_buffer)
                         last_spectrum_calc = self.audio_in.search_grid_ptr
                         c.demap(all_audio_spectrum)
