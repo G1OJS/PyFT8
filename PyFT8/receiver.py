@@ -9,6 +9,7 @@ from PyFT8.databases import call_hashes, add_call_hashes
 
 DEBUG_PRINTS = True
 T_CYC = 15
+N_SYMS = 79
 SYM_RATE = 6.25
 SAMP_RATE = 12000
 COSTAS = [3,1,4,0,6,5,2]
@@ -298,25 +299,27 @@ class Candidate:
         for sym_idx, tone in enumerate([3,1,4,0,6,5,2]):
             csync[sym_idx, tone] = 1.0
         self.csync_7x7 =  csync.ravel()
+        self.fft2_len = 3200
+        self.candidate_spectrum = np.zeros(self.fft2_len, dtype = np.complex64)
+        self.cgrid = np.ones((N_SYMS, 8), dtype = np.complex64)
 
     def get_tfgrid(self, all_audio_spectrum, fb_0, fb_bot, fb_top, tb_0): 
-        N_SYMS = 79
-        fft2_len = 3200
-        candidate_spectrum = np.zeros(fft2_len, dtype = np.complex64)
-        candidate_spectrum[:(fb_top - fb_bot)] = all_audio_spectrum[fb_bot:fb_top]
-        candidate_spectrum = np.roll(candidate_spectrum, -(fb_0 - fb_bot))
-        candidate_zsig = np.fft.ifft(candidate_spectrum)
-        # get candidate symbol spectra x79 with df = 1 tone spacing
-        cgrid = np.ones((N_SYMS, 8), dtype = np.float32)
-        
-        for s in range(N_SYMS):
-            i0 = tb_0 + s * 32
-            zsymb = candidate_zsig[i0:i0+32]
-            if(zsymb.shape[0] == 32):
-                cgrid[s, :] = np.abs(np.fft.fft(zsymb))[:8]
+        fft1_len = len(all_audio_spectrum)
 
-        score = float(np.dot(cgrid[36:43, :7].ravel(), self.csync_7x7))
-        return cgrid, score
+        # downsample to 32 samples per symbol / 200 samples per sec
+        self.candidate_spectrum[:(fb_top - fb_0)] = all_audio_spectrum[fb_0:fb_top]
+        self.candidate_spectrum[-(fb_0-fb_bot):] = all_audio_spectrum[fb_bot:fb_0]
+        candidate_zsig = np.fft.ifft(self.candidate_spectrum)
+
+        # get candidate symbol spectra x79 with df = 1 tone spacing
+        symbols = np.empty((N_SYMS, 32), dtype=np.complex64)
+        idx = tb_0 + np.arange(N_SYMS)*32
+        idx = np.clip(idx, 0, len(candidate_zsig)-32)
+        symbols = np.empty((N_SYMS,32), dtype=np.complex64)
+        for j, i0 in enumerate(idx):
+            symbols[j,:] = candidate_zsig[i0:i0+32]
+        self.cgrid = np.abs(np.fft.fft(symbols, axis=1)[:, :8])
+        self.score = float(np.dot(self.cgrid[36:43, :7].ravel(), self.csync_7x7))
 
     def demap(self, all_audio_spectrum):
         df = SAMP_RATE / 192000
@@ -331,21 +334,21 @@ class Candidate:
         ttweaks = range(-15, 5, 4) # 4 steps = 20ms = 1/8 sample
         scores = []
         for ttweak in ttweaks:
-            cgrid, score = self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
-            scores.append(score)
+            self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
+            scores.append(self.score)
         ttweak = ttweaks[np.argmax(scores)]
 
         ftweaks = range(-32, 45, 16) # 16 steps = 1Hz, 6.25Hz = 100 steps
         scores = []
         for ftweak in ftweaks:
-            cgrid, score = self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
-            scores.append(score)
+            self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
+            scores.append(self.score)
         ftweak = ftweaks[np.argmax(scores)]
 
         self.ftweak, self.ttweak = ftweak, ttweak
-        cgrid, score = self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
+        self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
         
-        p = 20*np.log10(cgrid[PAYLOAD_SYMB_IDXS, :])
+        p = 20*np.log10(self.cgrid[PAYLOAD_SYMB_IDXS, :])
         self.snr = np.clip(int(np.max(p) - np.min(p) - 58), -24, 24)
         llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
         llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
@@ -356,19 +359,18 @@ class Candidate:
           
     def decode(self):
         if self.llr_sd > self.llr_sd_min:
-            for max_its in [15]:
-                for ipass, (b0, ap_pattern) in enumerate(ap_patterns):
-                    llr = self.llr.copy()
-                    for b, bval in enumerate(ap_pattern):
-                        llr[b0 + b] = (bval*2-1) * 5
-                    if ipass == 1:
-                        llr[74:76] = -5
-                        llr[76] = 5
-                    success = ldpc_decode(llr, 50, max_its)
-                    if success:
-                        self.msg_tuple, self.n_its = success
-                        self.ipass = ipass
-                        break
+            for ipass, (b0, ap_pattern) in enumerate(ap_patterns):
+                llr = self.llr.copy()
+                for b, bval in enumerate(ap_pattern):
+                    llr[b0 + b] = (bval*2-1) * 5
+                if ipass == 1:
+                    llr[74:76] = -5
+                    llr[76] = 5
+                success = ldpc_decode(llr, 45, 20)
+                if success:
+                    self.msg_tuple, self.n_its = success
+                    self.ipass = ipass
+                    break
         self.decode_completed = time_utils.time()
         
 #============== RECEIVER ===========================================================
@@ -381,7 +383,7 @@ class Receiver():
         self.on_decode = on_decode
         self.on_busy_profile = on_busy_profile
         self.verbose = verbose
-        search_timerange = [-1, 4]
+        search_timerange = [-2, 4]
         self.search_h0_range = [int((t+0.5)*self.audio_in.search_hps*SYM_RATE) for t in search_timerange]
         self.search_start_hop = self.search_h0_range[1] + 43 * self.audio_in.search_hps
         dt = 1.0 / (SYM_RATE * self.audio_in.search_hps)
@@ -390,6 +392,7 @@ class Receiver():
         time_utils.tlog(f"[Receiver] Start search at hop {self.search_start_hop:3d}", verbose = self.verbose)
         
         if input_device_keywords is not None:
+            import sys
             self.input_device_idx = self.audio_in.find_device(input_device_keywords)
             if not self.input_device_idx:
                 time_utils.tlog("[Receiver] No input device", verbose = True)
