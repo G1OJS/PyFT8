@@ -175,7 +175,7 @@ class AudioIn:
         self.search_hops_per_grid = 2*self.search_hops_per_cycle
         self.dt = T_CYC / self.search_hops_per_cycle
         self.search_grid = np.ones((self.search_hops_per_grid, self.search_f0_idx_range[1]  + 8 * self.search_bpt ), dtype = np.float32)
-        self.waterfall_data = self.search_grid
+        self.waterfall_data = self.search_grid.T
         self.samples_perhop = int(SAMP_RATE / (SYM_RATE * self.search_hps))
         self.samples_per_cycle = int(SAMP_RATE * T_CYC)
 

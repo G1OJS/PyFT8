@@ -147,7 +147,7 @@ class Gui:
         self.on_gui_sidebars_refresh = on_gui_sidebars_refresh
         
         self.waterfall_data = receiver.audio_in.waterfall_data
-        self.hops_per_cycle = int(self.waterfall_data.shape[0]//2)
+        self.hops_per_cycle = int(self.waterfall_data.shape[1]//2)
         self.hps, self.bpt = receiver.audio_in.search_hps, receiver.audio_in.search_bpt
         
         self.msg_boxes = {}
@@ -169,7 +169,7 @@ class Gui:
 
         # waterfall
         self.ax_wf = self.fig.add_axes([wf_left, L['pmargin'], 1-wf_left-L['pmargin'], wf_top-L['pmargin']])
-        self.image = self.ax_wf.imshow(self.waterfall_data.T,vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
+        self.image = self.ax_wf.imshow(self.waterfall_data,vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self.ax_wf.set_xticks([])
         self.ax_wf.set_yticks([])
 
@@ -228,7 +228,7 @@ class Gui:
             self.msg_boxes[fb].hide()
  
     def _animate(self, frame):
-        self.image.set_data(self.waterfall_data.T)
+        self.image.set_data(self.waterfall_data)
         while not self.decode_queue.empty():
             self._display_message_box(self.decode_queue.get())
         if (frame % 10 == 0):
