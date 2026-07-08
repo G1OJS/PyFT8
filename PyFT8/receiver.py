@@ -184,6 +184,7 @@ class AudioIn:
         
         self.cycle_audio_buffer = np.zeros(192000, dtype=np.float32)
         self.adj, self.cycle_audio_buffer_ptr_prev, self.t_prev = 1.0, -1, None
+        self.cycle_audio_buffer_ptr, self.search_grid_ptr = 0, 0
         self.set_pointers()
 
     def clear_spectrum(self):
@@ -205,9 +206,6 @@ class AudioIn:
                     time_utils.tlog(f"[Receiver] Cycle rollover at {tcyc:7.3f}s", verbose = True)
                     if tcyc > 0.25:
                         self.set_pointers()
-                        cycle_adj += 5
-                    else:
-                        cycle_adj -= 1
             search_grid_ptr_prev = self.search_grid_ptr % (self.search_hops_per_cycle - cycle_adj)
 
     def load_wavs(self, wav_paths):
@@ -242,11 +240,17 @@ class AudioIn:
         self.set_pointers()
         self.stream.start_stream()
 
-    def set_pointers(self):
+    def set_pointers(self, adj_tolerance = 0.25):
         t = time_utils.time()
-        self.search_grid_ptr = int(self.search_hops_per_grid * (t % (2 * T_CYC)) / (2 * T_CYC))
-        self.cycle_audio_buffer_ptr = int(SAMP_RATE * (t % T_CYC))
-        time_utils.tlog(f"[Audio] Grid pointers adjusted", verbose = DEBUG_PRINTS)
+        search_grid_ptr = int(self.search_hops_per_grid * (t % (2 * T_CYC)) / (2 * T_CYC))
+        cycle_audio_buffer_ptr = int(SAMP_RATE * (t % T_CYC))
+        deltasamps = cycle_audio_buffer_ptr - self.cycle_audio_buffer_ptr
+        deltahops = search_grid_ptr - self.search_grid_ptr
+        deltasecs = deltasamps / SAMP_RATE
+        if np.abs(deltasecs) > adj_tolerance:
+            self.cycle_audio_buffer_ptr = cycle_audio_buffer_ptr
+            self.search_grid_ptr = search_grid_ptr
+        time_utils.tlog(f"[Audio] Grid pointers adjusted (t={deltasecs:6.2f}s, h={deltahops}, s={deltasamps})", verbose = DEBUG_PRINTS)
         
     def adjust_wav_load_rate(self):
         if self.t_prev is not None:
