@@ -216,6 +216,7 @@ class AudioIn:
         t = time_utils.time()
         self.search_grid_ptr = int(self.search_hops_per_grid * (t % (2 * T_CYC)) / (2 * T_CYC))
         self.cycle_audio_buffer_ptr = int(SAMP_RATE * (t % T_CYC))
+        print("Grid pointers adjusted")
         
     def adjust_wav_load_rate(self):
         if self.t_prev is not None:
@@ -411,19 +412,22 @@ class Receiver():
         print("Rx running")
         hopspersym = SYM_RATE * self.audio_in.search_hps
         last_spectrum_calc = -1
-        cycle_audio_buffer_ptr_prev = 0
+        search_grid_ptr_prev = 0
         cycle_searched = False
         while True:
             time_utils.sleep(0.040)
             self.odd_even = int(self.audio_in.search_grid_ptr / self.audio_in.search_hops_per_cycle)
             self.cycle_h0 = int(self.odd_even * self.audio_in.search_hops_per_cycle)
-            if self.audio_in.cycle_audio_buffer_ptr < cycle_audio_buffer_ptr_prev:
-                tcyc = time_utils.cycle_time()
-                print(f"Cycle start at {tcyc:7.3f}s")
-                cycle_searched = False
+            if self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle < search_grid_ptr_prev:
                 if self.wav_files:
-                    self.adjust_wav_load_rate()
-            cycle_audio_buffer_ptr_prev = self.audio_in.cycle_audio_buffer_ptr
+                    self.audio_in.adjust_wav_load_rate()
+                else:
+                    tcyc = time_utils.cycle_time()
+                    print(f"Cycle rollover at {tcyc:7.3f}s")
+                    if tcyc > 0.25:
+                        self.audio_in.set_pointers()
+                cycle_searched = False
+            search_grid_ptr_prev = self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle
 
             to_decode = []
             for c in candidates:

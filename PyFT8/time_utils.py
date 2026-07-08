@@ -3,14 +3,9 @@ import time
 class Time_utils:
     def __init__(self):
         self.cycle_seconds = 15
-        self.time_offset = 0
-
-    def set_time_offset(self):
-        return
-        self.time_offset = time.time()
 
     def time(self):
-        return time.time() - self.time_offset
+        return time.time()
 
     def sleep(self, t):
         time.sleep(t)
