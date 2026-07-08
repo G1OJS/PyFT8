@@ -14,7 +14,7 @@ from PyFT8.databases import History, ADIF
 
 VER = '3.2.0 test'
 
-MAX_TX_START_SECONDS = 3
+MAX_TX_START_CYCLETIME = 3
 HEARING_PANEL_LIFE_MINS = 20
 PSKR_REFRESH_MINS = 20
 config_folder, rig, gui, qso, adif_logging, history, pskr_upload, output_device_idx = None, None, None, None, None, None, None, None
@@ -89,6 +89,7 @@ class FT8_QSO:
         self.message_to_transmit = None
         self.last_tx = None
         self.tx_cycle = None
+        self.tx_start_grid_time = 0
         self.oStation = {'c':None, 'g':None}
         self.times = {'time_on':None, 'time_off':None}
         self.rpts = {'sent': None, 'rcvd': None}
@@ -98,14 +99,15 @@ class FT8_QSO:
             console_print("[PyFT8] Please select a band before transmitting", color = 'red')
             return
         self.message_to_transmit = message
-        self.tx_start_second = [15, 0][self.tx_cycle]
+        self.tx_start_grid_time = [0.25, 15.25][self.tx_cycle]
         console_print(f"[QSO] Set transmit message to '{self.message_to_transmit}' (cyc {self.tx_cycle}, {self.tx_freq:5.1f} Hz)")
 
     def _transmitter(self):
         console_print("[Transmitter] running")
         while True:
             time.sleep(0.1)
-            if self.message_to_transmit and 30*int(time_utils.time()/30) >= self.tx_start_second:
+            grid_time = time_utils.grid_time()
+            if self.message_to_transmit and self.tx_start_grid_time <= grid_time < self.tx_start_grid_time + MAX_TX_START_CYCLETIME:
                 symbols = audio_out.create_ft8_symbols(self.message_to_transmit)
                 if any(symbols):
                     console_print(f"[PyFT8] Transmitting {self.message_to_transmit}")
@@ -281,6 +283,11 @@ def on_gui_control_click(btn_def):
     btn_action = btn_def['action']
     if btn_action == "CQ":
         mc, mg = config['station']['call'], config['station']['grid'][:4]
+        qso.clear()
+        qso.tx_freq = clearest_frequency
+        qso.tx_cycle = time_utils.odd_even()
+        if time_utils.cycle_time() > MAX_TX_START_CYCLETIME:
+           qso.tx_cycle = 1-qso.tx_cycle 
         qso.set_tx_message(f"CQ {mc} {mg}")
     if btn_action == "RPT_LAST":
         qso.set_tx_message(qso.last_tx)

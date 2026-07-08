@@ -16,9 +16,11 @@ class Time_utils:
     def cycle_time(self):
         return (self.time()) % self.cycle_seconds
 
-    def curr_cycle_from_time(self):
-        t = self.time()
-        return int((t % (2*self.cycle_seconds)) / self.cycle_seconds)
+    def grid_time(self):
+        return (self.time()) % (2*self.cycle_seconds)
+
+    def odd_even(self):
+        return int( self.grid_time() / self.cycle_seconds)
 
     def cyclestart(self, t):
         cst = self.cycle_seconds * int(t / self.cycle_seconds)
