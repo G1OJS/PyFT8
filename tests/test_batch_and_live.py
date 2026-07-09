@@ -53,7 +53,7 @@ def on_decode(c):
         gui.add_message_box(message)
     print(f"{len(py_times):03d}: {message.wsjtx_screen_format():50s} demap_start: {c.demap_started:5.1f} " +
           f"h0: {c.origin['h0_idx']:3d} " +
-          f"Sync score: {c.origin['score']:3.0f} LLR_SD: {c.llr_sd:5.1f} Pass: {c.ipass:2d} n_its: {c.n_its:3d}")
+          f"Sync score: {c.origin['score']:3.0f} ftwk_steps:{c.ftweak:3d} ttwk_steps:{c.ttweak:3d} n_sync_matches: {c.n_sync_matches:2d} LLR_SD: {c.llr_sd:5.1f} Pass: {c.ipass:2d} n_its: {c.n_its:3d} ")
     if c.msg_tuple is not None:
         #icycle = int(time_utils.time() - tstart)/15
         py_times.append(time_utils.time() - t_start)
@@ -74,7 +74,7 @@ def test_common(input_source):
     using_wav_files = input_source[0].endswith('.wav')
     input_device_keywords = input_source if not using_wav_files else None
     wav_files = input_source if using_wav_files else None
-    rx = Receiver([100, 2900], input_device_keywords, wav_files, on_decode, None, sync_score_min = 95)
+    rx = Receiver([100, 2900], input_device_keywords, wav_files, on_decode, None, sync_score_min = 85)
     gui = Gui(rx, {'bands':{'20m':14.074},'station':{'call':'G1OJS','grid':'IO90'}}, None, None, None)
     fig, ax = gui.plt.subplots(figsize=(10,10))
     t_start = time_utils.time()
@@ -135,6 +135,9 @@ def live_test():
         return ws_line, py_line,
     ani = FuncAnimation(fig, anim, interval = 5000, frames=(100000), blit=False)
     gui.plt.show()
+
+import win32api,win32process
+win32process.SetPriorityClass(win32api.GetCurrentProcess(), win32process.HIGH_PRIORITY_CLASS)
 
 data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy"
 wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"

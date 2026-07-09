@@ -27,7 +27,7 @@ ft_line = ax.plot(fl_times, np.array(range(len(fl_times))), label = 'ft8_lib', c
 
 
 
-for filename in ['baseline_best.pkl','baseline.pkl']:
+for filename in ['baseline.pkl']:
     with open(filename, 'rb') as f:
         py_times = pickle.load(f)
         ax.plot(py_times, np.array(range(len(py_times))), label = filename)

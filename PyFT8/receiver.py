@@ -15,6 +15,7 @@ SYM_RATE = 6.25
 SAMP_RATE = 12000
 COSTAS = [3,1,4,0,6,5,2]
 PAYLOAD_SYMB_IDXS = list(range(7, 36)) + list(range(43, 72))
+COSTAS_SYMB_IDXS = list(range(7)) + list(range(36,43)) + list(range(72,79))
 
 #=========== Unpacking functions ========================================
 def get_bitfields(bits, lengths):
@@ -346,14 +347,14 @@ class Candidate:
         tb_0 = int(t0/dt)
         ftweak, ttweak = 0, 0
 
-        ttweaks = range(-15, 5, 4) # 4 steps = 20ms = 1/8 sample
+        ttweaks = range(-16, 0, 4) # 4 steps = 20ms = 1/8 sample, 1/4 sample = 8 steps
         scores = []
         for ttweak in ttweaks:
             self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
             scores.append(self.score)
         ttweak = ttweaks[np.argmax(scores)]
 
-        ftweaks = range(-32, 45, 16) # 16 steps = 1Hz, 6.25Hz = 100 steps
+        ftweaks = range(-50, 51, 16) # 16 steps = 1Hz, 6.25Hz = 100 steps
         scores = []
         for ftweak in ftweaks:
             self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
@@ -362,6 +363,13 @@ class Candidate:
 
         self.ftweak, self.ttweak = ftweak, ttweak
         self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
+
+        p = self.cgrid[COSTAS_SYMB_IDXS, :]
+        ccheck = np.argmax(p, axis = 1) - (COSTAS * 3)
+        self.n_sync_matches = len([c for c in ccheck if c == 0])
+        if self.n_sync_matches <= 6:
+            self.decode_completed = True
+            return
         
         p = 20*np.log10(self.cgrid[PAYLOAD_SYMB_IDXS, :])
         self.snr = np.clip(int(np.max(p) - np.min(p) - 58), -24, 24)
@@ -381,7 +389,7 @@ class Candidate:
                 if ipass == 1:
                     llr[74:76] = -5
                     llr[76] = 5
-                success = ldpc_decode(llr, 45, 17)
+                success = ldpc_decode(llr, 50, 25)
                 if success:
                     self.msg_tuple, self.n_its = success
                     self.ipass = ipass
