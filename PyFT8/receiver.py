@@ -330,6 +330,12 @@ class Candidate:
         self.cgrid = np.abs(np.fft.fft(symbols, axis=1)[:, :8])
         self.score = float(np.dot(self.cgrid[36:43, :7].ravel(), self.csync_7x7))
 
+    def llr_norm_wsj(self,llr):
+        mean = np.mean(llr)
+        var = np.mean(llr*llr) - mean*mean
+        rootvar = np.sqrt(var)
+        return 2.83 * llr / rootvar, rootvar
+
     def demap(self, all_audio_spectrum):
         df = SAMP_RATE / 192000
         f0, t0 = self.origin['f0'], self.origin['t0']
@@ -363,8 +369,7 @@ class Candidate:
         llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
         llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
         llr = np.column_stack((llra, llrb, llrc)).ravel()
-        self.llr_sd = np.std(llr)
-        self.llr = 2.83 * llr / self.llr_sd
+        self.llr, self.llr_sd = self.llr_norm_wsj(llr)
           
     def decode(self):
         if self.llr_sd > self.llr_sd_min:
@@ -382,7 +387,6 @@ class Candidate:
                     self.ipass = ipass
                     break
 
-            """
             if not success:
                 cw = osd_decode_minimal(self.llr, np.argsort(np.abs(self.llr))[::-1])
                 bits91_int = 0
@@ -393,7 +397,6 @@ class Candidate:
                 if msg_tuple:
                     self.msg_tuple, self.n_its = msg_tuple, 999
                     self.ipass = 999
-            """
                 
         self.decode_completed = time_utils.time()
         

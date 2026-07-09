@@ -47,7 +47,7 @@ def weighted_distance_bits(c, r_hard, w):
     diff = c ^ r_hard
     return float(np.sum(w * diff))
 
-def osd_decode_minimal(llr_channel, reliab_order, Ls = [70,40,10]):
+def osd_decode_minimal(llr_channel, reliab_order, Ls = [55,10]):
     global G
     r = (llr_channel > 0).astype(np.uint8)
     w = np.abs(llr_channel).astype(np.float32)
