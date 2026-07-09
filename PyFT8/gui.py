@@ -142,11 +142,13 @@ class Gui:
         if config is not None:
             self.mStation = {'c':config['station']['call'], 'g':config['station']['grid']}
         self.receiver = receiver
+        self.search_grid_ptr_prev = 0
         self.on_msg_click = on_msg_click
         self.on_control_click = on_control_click
         self.on_gui_sidebars_refresh = on_gui_sidebars_refresh
         
         self.waterfall_data = receiver.audio_in.waterfall_data
+        self.nt, self.nf = self.waterfall_data.shape
         self.hops_per_cycle = int(self.waterfall_data.shape[1]//2)
         self.hps, self.bpt = receiver.audio_in.search_hps, receiver.audio_in.search_bpt
         
@@ -154,7 +156,7 @@ class Gui:
         self.decode_queue = queue.Queue()
         self.make_layout(config)
         self.display_cycle = 0
-        self.ani = FuncAnimation(self.fig, self._animate, interval = 5, frames=(100000), blit=True)
+        self.ani = FuncAnimation(self.fig, self._animate, interval = 50, frames=(100000), blit=True)
 
     def set_bandstats_title(self, txt):
         self.band_stats.ax.set_title(txt, fontsize = 10)
@@ -215,7 +217,7 @@ class Gui:
         message.h0_idx = message.origin['t0']*self.hps/0.16 + message.origin['odd_even']*self.hops_per_cycle
         message.f0_idx = message.origin['f0']*self.bpt/6.25
         if not message.f0_idx in self.msg_boxes:
-            self.msg_boxes[message.f0_idx] = Msg_box(self.fig, self.ax_wf, message.h0_idx, message.f0_idx, 79*self.hps, 8*self.bpt, onclick = self.on_msg_click)
+            self.msg_boxes[message.f0_idx] = Msg_box(self.fig, self.ax_wf, message.h0_idx/2, message.f0_idx/2, 79*self.hps/2, 8*self.bpt/2, onclick = self.on_msg_click)
         self.msg_boxes[message.f0_idx].set_properties(message)
         self.msg_boxes[message.f0_idx].set_appearance(message)
         
@@ -229,11 +231,10 @@ class Gui:
  
     def _animate(self, frame):
         self.image.set_data(self.waterfall_data)
+        self._tidy_msg_boxes()
         while not self.decode_queue.empty():
             self._display_message_box(self.decode_queue.get())
-        if (frame % 10 == 0):
-            self._tidy_msg_boxes()
-        if (frame % 30 == 0):
+        if (frame %30) == 0:
             self.refresh_sidebars()
         return [self.image, *self.ax_wf.patches, *self.ax_wf.texts, *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists,
                 *[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes]]

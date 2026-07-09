@@ -373,7 +373,7 @@ def cli():
     else:
         input_device_keywords = args.inputcard_keywords.replace(' ','').split(',')
         rx = Receiver([100, 3000], input_device_keywords, None, on_rx_decode, on_rx_busy_profile,
-                      sync_score_min = 100, max_cands = 75, osd = False, ldpc = [45,15])
+                      sync_score_min = 100, max_cands = 75, osd = False, ldpc = [45,15], min_search_start = 11)
 
     if not args.no_gui:
         qso = FT8_QSO()
