@@ -40,6 +40,7 @@ class Time_utils:
 
 time_utils = Time_utils()
 
+"""
 class Ticker:
     def __init__(self, trigger_time, cycle_length = time_utils.cycle_seconds, timing_function = time_utils.cycle_time):
         self.previous_ticker_time = 0
@@ -52,3 +53,4 @@ class Ticker:
         ticked = ticker_time < self.previous_ticker_time
         self.previous_ticker_time = ticker_time
         return ticked
+"""
