@@ -400,7 +400,8 @@ class Candidate:
 #============== RECEIVER ===========================================================
         
 class Receiver():
-    def __init__(self, search_freq_range, input_device_keywords, wav_files, on_decode, on_busy_profile = None, verbose = False, sync_score_min = 100, max_cands = 1000):
+    def __init__(self, search_freq_range, input_device_keywords, wav_files, on_decode,
+                 on_busy_profile = None, verbose = False, sync_score_min = 100, max_cands = 1000):
         self.audio_in = AudioIn(search_freq_range, wav_files)
         self.sync_score_min, self.max_cands = sync_score_min, max_cands
         self.wav_files = wav_files
@@ -408,9 +409,10 @@ class Receiver():
         self.on_busy_profile = on_busy_profile
         self.candidates = []
         self.verbose = verbose
-        search_timerange = [-2, 4]
+        search_timerange = [-1.7, 3.8]
         self.search_h0_range = [int((t+0.5)*self.audio_in.search_hps*SYM_RATE) for t in search_timerange]
         self.search_start_hop = self.search_h0_range[1] + 43 * self.audio_in.search_hps
+        self.search_start_hop = np.max([self.search_start_hop, int(13.0 * self.audio_in.search_hps*SYM_RATE)])
         dt = 1.0 / (SYM_RATE * self.audio_in.search_hps)
         time_utils.set_cycle_length(T_CYC)
         time_utils.tlog(f"[Receiver] Search hops {self.search_h0_range[0]:3d} to {self.search_h0_range[1]:3d}", verbose = self.verbose)

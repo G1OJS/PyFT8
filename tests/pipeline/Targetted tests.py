@@ -235,13 +235,13 @@ def ldpc_decode(llr, max_ncheck0, max_iters):
             bits77_int = check_crc(bits91_int)
             msg_tuple = unpack(bits77_int)
             if msg_tuple:
-                return msg_tuple, n_its, ncheck0
+                return msg_tuple, n_its, ncheck0, llr
         else:
             update_collector = np.zeros_like(llr)
             mC2V_prev6 = pass_ldpc_messages(llr, CV6idx, mC2V_prev6, update_collector)
             mC2V_prev7 = pass_ldpc_messages(llr, CV7idx, mC2V_prev7, update_collector)
             llr += update_collector
-    return None, 0, 99
+    return None, 0, 99, llr
             
 def get_candidate_tfgrid_fast(all_audio_spectrum, origin):
     fft1_len = len(all_audio_spectrum)
@@ -270,51 +270,16 @@ def get_candidate_tfgrid_fast(all_audio_spectrum, origin):
 
     return candidate_tf_zgrid
 
-def get_llr_2sym(all_audio_spectrum, origin):
 
-    PAYLOAD_SYMBOLS = list(range(7, 36)) + list(range(43, 72))
-    zcand = get_candidate_tfgrid_fast(all_audio_spectrum, origin)
+def llr_norm_clip(llr):
+    llr_sd = np.std(llr)
+    llr = 3.5 * llr / (1e-12 + llr_sd)        
+    return np.clip(llr, -3.7, 3.7)
 
-    llrs = []
-    gray = [0,1,3,2,5,6,4,7]
-
-    # process the 58 payload symbols as 29 pairs
-    for k in range(0, len(PAYLOAD_SYMBOLS), 2):
-
-        s0 = PAYLOAD_SYMBOLS[k]
-        s1 = PAYLOAD_SYMBOLS[k+1]
-
-        # all 64 possible tone pairs
-        metrics = np.zeros(64)
-
-        for i in range(64):
-            tone0 = int((i & 63)/8)     # upper 3 bits matching fortran
-            tone1 = i & 7               # lower 3 bits
-
-            metrics[i] = abs(zcand[s0, gray[tone0]] + zcand[s1, gray[tone1]])
-
-        # six bit LLRs
-        for bit in range(6):
-
-            bit0 = []
-            bit1 = []
-
-            for i in range(64):
-                if (i >> (5-bit)) & 1:
-                    bit1.append(metrics[i])
-                else:
-                    bit0.append(metrics[i])
-
-            llrs.append(max(bit1) - max(bit0))
-
-    llr = np.array(llrs)
-
+def llr_norm_wsj(llr):
     mean = np.mean(llr)
     var = np.mean(llr*llr) - mean*mean
-    llr = 2.83 * llr / np.sqrt(var)
-
-    return llr
-
+    return 2.83 * llr / np.sqrt(var)
 
 def get_llr(all_audio_spectrum, origin, log = 1):
     PAYLOAD_SYMBOLS = list(range(7, 36)) + list(range(43, 72))  
@@ -327,8 +292,30 @@ def get_llr(all_audio_spectrum, origin, log = 1):
     llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
     llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
     llr = np.column_stack((llra, llrb, llrc)).ravel()
-    llr_sd = np.std(llr)
-    llr = 2.83 * llr / llr_sd        
+    return llr
+
+def get_llr_2sym(all_audio_spectrum, origin):
+    cs = get_candidate_tfgrid_fast(all_audio_spectrum, origin)
+    gray = [0,1,3,2,5,6,4,7]
+    s2 = np.zeros(64)
+    llr = np.zeros(174)
+    for ihalf in [1,2]:
+        for k in range(1,30,2):
+            ks = k-1+7 if ihalf == 1 else k-1+43
+            for i in range(64):
+                i2 = int((i & 63)/8)
+                i3 = int(i & 7)
+                s2[i] = np.abs(cs[ks, gray[i2]] + cs[ks+1, gray[i3]])
+            i32 = (k-1)*3+(ihalf-1)*87
+            for ib in range(6):
+                bit0, bit1 = [], []
+                for i in range(64):
+                    if (i >> (5-ib)) & 1:
+                        bit1.append(s2[i])
+                    else:
+                        bit0.append(s2[i])
+                if i32 + ib < 174:
+                    llr[i32+ib] = np.log10(max(bit1)) - np.log10(max(bit0))
     return llr
 
 def decode(llr0):
@@ -341,6 +328,7 @@ def decode(llr0):
                     [58,[0,1,1,1,1,1,1,0,1,0,0,1,0,0,1,0,0,0,1]],                       # RRR
                   ]
     msg, ipass = None, 0
+    llr0 = llr_norm_wsj(llr0)
     for ipass, (b0, ap_pattern) in enumerate(ap_patterns):
         llr = llr0.copy()
         for b, bval in enumerate(ap_pattern):
@@ -349,11 +337,11 @@ def decode(llr0):
             llr[74:76] = -apmag
             llr[76] = apmag
      
-        msg_tuple, n_its, ncheck0 = ldpc_decode(llr, 60, 25)
+        msg_tuple, n_its, ncheck0, final_llr = ldpc_decode(llr, 60, 35)
         if msg_tuple:
-            return ' '.join(msg_tuple), ipass, n_its, ncheck0
+            return ' '.join(msg_tuple), ipass, n_its, ncheck0, final_llr
 
-    return '', -1, n_its, ncheck0
+    return '', -1, n_its, ncheck0, llr0
 
 
 def osd_decode(llr):
@@ -369,42 +357,40 @@ def osd_decode(llr):
         
     return '', -1, -1, -1
         
-def get_messages(wav_file):
-    # get full audio spectrum 
-    wf = wave.open(wav_file, "rb")
-    all_audio_frames = wf.readframes(SAMP_RATE * T_CYC)
-    wf.close()
-    fft1_len = 192000
-    samples = np.zeros(fft1_len)
-    samps_in = np.frombuffer(all_audio_frames, dtype=np.int16).astype(np.float32)
-    samples[:len(samps_in)] = samps_in 
-    all_audio_spectrum = np.fft.fft(samples)
-
-    #origins = [{'t0':1.4, 'f0':710}, {'t0':1.4, 'f0':559}, {'t0':1.31, 'f0':338.5}, {'t0':1.3, 'f0':947}]
-    origins = [{'t0':1.9+0.5, 'f0':719}, {'t0':0.8+0.5, 'f0':947}, {'t0':0.8+0.5, 'f0':1158},
-               {'t0':0.1+0.5, 'f0':1285}, {'t0':0.1+0.5, 'f0':1345}, {'t0':0.8+0.5, 'f0':2104}]
-    #origins = [{'t0':0.8+0.5, 'f0':1158}]
-    origins = [{'t0':1.33, 'f0':1158.5}]
-    print(f"{len(origins)} candidates")
-
-    for origin in origins:
-        ftweaks = np.arange(-2.5, 2.6, 1)
-        for ftweak in ftweaks:
-            ttweaks = np.arange(-50, 51, 10)/1000
-            for ttweak in ttweaks:
-                tmp_origin = {'t0':origin['t0']+ttweak, 'f0':origin['f0']+ftweak}
-
-                llr = get_llr(all_audio_spectrum, tmp_origin)
-                #llr = get_llr_2sym(all_audio_spectrum, tmp_origin)
-                msg, ipass, n_its, ncheck0 =  decode(llr)
-#                #msg, ipass, n_its, ncheck0 =  osd_decode(llr)
-                print(f"{tmp_origin['t0']:8.3f} {tmp_origin['f0']:8.3f} {msg:25s} pass{ipass:3d} its {n_its:3d} ncheck0 {ncheck0:3d}")
-                
-
+    
 
 fft2_len = 3200
 candidate_spectrum = np.zeros(fft2_len, dtype = np.complex64)
 candidate_tf_zgrid = np.ones((N_SYMS, 8), dtype = np.complex64)
-get_messages(f"test_01.wav")
+wav_file = 'test_01.wav'
+# get full audio spectrum 
+wf = wave.open(wav_file, "rb")
+all_audio_frames = wf.readframes(SAMP_RATE * T_CYC)
+wf.close()
+fft1_len = 192000
+samples = np.zeros(fft1_len)
+samps_in = np.frombuffer(all_audio_frames, dtype=np.int16).astype(np.float32)
+samples[:len(samps_in)] = samps_in 
+all_audio_spectrum = np.fft.fft(samples)
 
-    
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots(figsize = (12,5))
+
+origin = {'t0':1.335, 'f0':1158.1, 'bits': [2*int(c)-1 for c in "000000000000000000000000001001000000110000000101010111011001000100101100100010110010001001001100010011011111111000010111111110111000100001000001000000000010000011000010110011"]}
+
+llr1 = get_llr(all_audio_spectrum, origin)
+llr1 = llr_norm_wsj(llr1)
+msg, ipass, n_its, ncheck0, final_llr =  decode(llr1)
+print(f"{origin['t0']:8.3f} {origin['f0']:8.3f} {msg:25s} pass{ipass:3d} its {n_its:3d} ncheck0 {ncheck0:3d}")
+
+llr2 = get_llr_2sym(all_audio_spectrum, origin)
+llr2 = llr_norm_wsj(llr2)
+msg, ipass, n_its, ncheck0, final_llr =  decode(llr2)
+print(f"{origin['t0']:8.3f} {origin['f0']:8.3f} {msg:25s} pass{ipass:3d} its {n_its:3d} ncheck0 {ncheck0:3d}")
+
+x = np.arange(174)
+ax.bar(x, origin['bits'] * llr1, label = 'llr1', width = 1)
+ax.bar(x, origin['bits'] * llr2, label = 'llr2', width = .7)
+ax.legend()
+
+plt.show()

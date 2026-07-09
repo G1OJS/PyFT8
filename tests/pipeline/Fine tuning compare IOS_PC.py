@@ -258,6 +258,44 @@ def llr_norm_wsj(llr):
     var = np.mean(llr*llr) - mean*mean
     return 2.83 * llr / np.sqrt(var)
 
+def get_llr(all_audio_spectrum, origin, log = 1):
+    PAYLOAD_SYMBOLS = list(range(7, 36)) + list(range(43, 72))  
+    zcand = get_candidate_tfgrid_fast(all_audio_spectrum, origin)
+
+    p = np.abs(zcand[PAYLOAD_SYMBOLS, :])
+    if log:
+        p = 20*np.log10(p)
+    llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
+    llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
+    llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
+    llr = np.column_stack((llra, llrb, llrc)).ravel()
+    return llr
+
+def get_llr_2sym(all_audio_spectrum, origin):
+    cs = get_candidate_tfgrid_fast(all_audio_spectrum, origin)
+    gray = [0,1,3,2,5,6,4,7]
+    s2 = np.zeros(64)
+    llr = np.zeros(174)
+    for ihalf in [1,2]:
+        for k in range(1,30,2):
+            ks = k-1+7 if ihalf == 1 else k-1+43
+            for i in range(64):
+                i2 = int((i & 63)/8)
+                i3 = int(i & 7)
+                s2[i] = np.abs(cs[ks, gray[i2]] + cs[ks+1, gray[i3]])
+            i32 = (k-1)*3+(ihalf-1)*87
+            for ib in range(6):
+                bit0, bit1 = [], []
+                for i in range(64):
+                    if (i >> (5-ib)) & 1:
+                        bit1.append(s2[i])
+                    else:
+                        bit0.append(s2[i])
+                if i32 + ib < 174:
+                    llr[i32+ib] = np.log10(max(bit1)) - np.log10(max(bit0))
+    return llr
+
+
 def get_messages(wav_file):
     # get full audio spectrum 
     wf = wave.open(wav_file, "rb")
@@ -301,17 +339,6 @@ def get_messages(wav_file):
         ftweak = float(ftweaks[np.argmax(scores)])
         origin = {'t0':origin['t0'], 'f0':origin['f0']+ftweak, 'score':np.max(scores)}
         
-        zcand = get_candidate_tfgrid_fast(all_audio_spectrum, origin)
-
-        p = np.abs(zcand[PAYLOAD_SYMBOLS, :])
-        snr = np.clip(int(np.max(p) - np.min(p) - 58), -24, 24)
-        llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
-        llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
-        llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
-        llr = np.column_stack((llra, llrb, llrc)).ravel()
-        llr0 = llr_norm_clip(llr)
-        apmag = np.max(np.abs(llr0))*1.01
-
         ap_patterns = [
                         [0, []],                                                            # no AP
                         [0, [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0]],   # CQ
@@ -320,6 +347,9 @@ def get_messages(wav_file):
                         [58,[0,1,1,1,1,1,1,0,1,0,0,1,0,0,1,0,0,0,1]],                       # RRR
                       ]
         msg, ipass = None, 0
+        llrdemap = get_llr(all_audio_spectrum, origin)
+        llr0 = llr_norm_clip(llrdemap)
+        apmag = np.max(np.abs(llr0))*1.01
         for ipass, (b0, ap_pattern) in enumerate(ap_patterns):
             llr = llr0.copy()
             for b, bval in enumerate(ap_pattern):
