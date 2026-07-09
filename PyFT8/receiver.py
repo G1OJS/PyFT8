@@ -376,7 +376,7 @@ class Candidate:
                 if ipass == 1:
                     llr[74:76] = -5
                     llr[76] = 5
-                success = ldpc_decode(llr, 35, 15)
+                success = ldpc_decode(llr, 45, 17)
                 if success:
                     self.msg_tuple, self.n_its = success
                     self.ipass = ipass
