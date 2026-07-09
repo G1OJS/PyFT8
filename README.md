@@ -93,8 +93,7 @@ upload = Y
 
 The image below shows the number of decodes from PyFT8, WSJT-x V2.7.0 running in NORM mode, and FT8_lib, using the same 10 minutes of busy 20m audio that is used to test ft8_lib. 
 
-<img width="640" height="480" alt="performance snapshot" src="https://github.com/user-attachments/assets/b62221ec-2d74-4fbc-9c61-34b2bbc0e963" />
-
+<img width="1107" height="771" alt="Figure_1" src="https://github.com/user-attachments/assets/9cbc513c-7ea8-4254-bca1-3979169d7dc1" />
 
 ## Limitations
 PyFT8 doesn't decode / encode *all* message types. The table below shows which are handled.
