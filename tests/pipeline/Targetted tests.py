@@ -35,7 +35,10 @@ def unpack(bits):
         if n3 == 0:
             return ('Free text','not','implemented')
         else:
-            return (['DXpedition','Field Day', 'Field Day', 'Telemetry'][n3-1],'not','implemented')
+            if n3 < 5:
+                return (['DXpedition','Field Day', 'Field Day', 'Telemetry'][n3-1],'not','implemented')
+            else:
+                return (f"n3={n3}",'not','implemented')
     elif i3 == 1 or i3 == 2: # 1 = Std Msg incl /R 2 = 'EU VHF' = Std Msg incl /P
         return unpack_std(bits74, i3)
     elif i3 == 3:
@@ -115,6 +118,85 @@ def check_crc(bits91_int):
         if(crc14_int == bits91_int & 0b11111111111111):
             return bits77_int
 
+
+#=================================== OSD Code ====================================================
+from itertools import combinations
+
+generator_matrix_rows = ["8329ce11bf31eaf509f27fc",  "761c264e25c259335493132",  "dc265902fb277c6410a1bdc",  "1b3f417858cd2dd33ec7f62",  "09fda4fee04195fd034783a",  "077cccc11b8873ed5c3d48a",  "29b62afe3ca036f4fe1a9da",  "6054faf5f35d96d3b0c8c3e",  "e20798e4310eed27884ae90",  "775c9c08e80e26ddae56318",  "b0b811028c2bf997213487c",  "18a0c9231fc60adf5c5ea32",  "76471e8302a0721e01b12b8",  "ffbccb80ca8341fafb47b2e",  "66a72a158f9325a2bf67170",  "c4243689fe85b1c51363a18",  "0dff739414d1a1b34b1c270",  "15b48830636c8b99894972e",  "29a89c0d3de81d665489b0e",  "4f126f37fa51cbe61bd6b94",  "99c47239d0d97d3c84e0940",  "1919b75119765621bb4f1e8",  "09db12d731faee0b86df6b8",  "488fc33df43fbdeea4eafb4",  "827423ee40b675f756eb5fe",  "abe197c484cb74757144a9a",  "2b500e4bc0ec5a6d2bdbdd0",  "c474aa53d70218761669360",  "8eba1a13db3390bd6718cec",  "753844673a27782cc42012e",  "06ff83a145c37035a5c1268",  "3b37417858cc2dd33ec3f62",  "9a4a5a28ee17ca9c324842c",  "bc29f465309c977e89610a4",  "2663ae6ddf8b5ce2bb29488",  "46f231efe457034c1814418",  "3fb2ce85abe9b0c72e06fbe",  "de87481f282c153971a0a2e",  "fcd7ccf23c69fa99bba1412",  "f0261447e9490ca8e474cec",  "4410115818196f95cdd7012",  "088fc31df4bfbde2a4eafb4",  "b8fef1b6307729fb0a078c0",  "5afea7acccb77bbc9d99a90",  "49a7016ac653f65ecdc9076",  "1944d085be4e7da8d6cc7d0",  "251f62adc4032f0ee714002",  "56471f8702a0721e00b12b8",  "2b8e4923f2dd51e2d537fa0",  "6b550a40a66f4755de95c26",  "a18ad28d4e27fe92a4f6c84",  "10c2e586388cb82a3d80758",  "ef34a41817ee02133db2eb0",  "7e9c0c54325a9c15836e000",  "3693e572d1fde4cdf079e86",  "bfb2cec5abe1b0c72e07fbe",  "7ee18230c583cccc57d4b08",  "a066cb2fedafc9f52664126",  "bb23725abc47cc5f4cc4cd2",  "ded9dba3bee40c59b5609b4",  "d9a7016ac653e6decdc9036",  "9ad46aed5f707f280ab5fc4",  "e5921c77822587316d7d3c2",  "4f14da8242a8b86dca73352",  "8b8b507ad467d4441df770e",  "22831c9cf1169467ad04b68",  "213b838fe2ae54c38ee7180",  "5d926b6dd71f085181a4e12",  "66ab79d4b29ee6e69509e56",  "958148682d748a38dd68baa",  "b8ce020cf069c32a723ab14",  "f4331d6d461607e95752746",  "6da23ba424b9596133cf9c8",  "a636bcbc7b30c5fbeae67fe",  "5cb0d86a07df654a9089a20",  "f11f106848780fc9ecdd80a",  "1fbb5364fb8d2c9d730d5ba",  "fcb86bc70a50c9d02a5d034",  "a534433029eac15f322e34c",  "c989d9c7c3d3b8c55d75130",  "7bb38b2f0186d46643ae962",  "2644ebadeb44b9467d1f42c",  "608cc857594bfbb55d69600"]
+kGEN = np.array([int(row,16)>>1 for row in generator_matrix_rows])
+A = np.zeros((83, 91), dtype=np.uint8)
+for i, row in enumerate(kGEN):
+    for j in range(91):
+        A[i, 90 - j] = (row >> j) & 1
+G = np.concatenate([np.eye(91, dtype=np.uint8), A.T],axis=1)
+
+def gf2_systematic_from_reliability(G, reliab_order):
+    G = (G.copy() & 1).astype(np.uint8)
+    k, n = G.shape
+    colperm = np.array(reliab_order, dtype=np.int64)  
+    inv = np.empty(n, dtype=np.int64)
+    inv[colperm] = np.arange(n)
+    G = G[:, colperm] 
+    # Gauss-Jordan:
+    row = 0
+    for col in range(n):
+        if row >= k:
+            break
+        pivot_rows = np.where(G[row:, col] == 1)[0]
+        if pivot_rows.size == 0:
+            continue
+        piv = row + pivot_rows[0]
+        if piv != row:
+            G[[row, piv], :] = G[[piv, row], :]
+        ones = np.where(G[:, col] == 1)[0]
+        for r in ones:
+            if r != row:
+                G[r, :] ^= G[row, :]
+        if col != row:
+            G[:, [row, col]] = G[:, [col, row]]
+            colperm[[row, col]] = colperm[[col, row]]
+        row += 1
+    if row < k:
+        raise ValueError("Could not find k independent columns to form a systematic generator.")
+    return G, colperm
+
+def encode_gf2(u, Gsys):
+    u = (u.astype(np.uint8) & 1)
+    return (u @ Gsys) & 1
+
+def weighted_distance_bits(c, r_hard, w):
+    diff = c ^ r_hard
+    return float(np.sum(w * diff))
+
+def osd_decode_minimal(llr_channel, reliab_order, Ls = [55,20,5]):
+    global G
+    r = (llr_channel > 0).astype(np.uint8)
+    w = np.abs(llr_channel).astype(np.float32)
+    k = G.shape[0]
+    n = G.shape[1]
+    Gsys, colperm = gf2_systematic_from_reliability(G, reliab_order)
+    r_sys = r[colperm]
+    w_sys = w[colperm]
+    u0 = r_sys[:k].copy()
+    c0_sys = encode_gf2(u0, Gsys)
+    best_c_sys = c0_sys.copy()
+    best_m = weighted_distance_bits(best_c_sys, r_sys, w_sys)
+    info_reliab = w_sys[:k]
+    for t in range(1, len(Ls) + 1):
+        flip_pool = np.argsort(info_reliab)[:min(Ls[t-1], k)]    
+        for comb in combinations(flip_pool, t):
+            u = u0.copy()
+            u[list(comb)] ^= 1
+            c_sys = encode_gf2(u, Gsys)
+            m = weighted_distance_bits(c_sys, r_sys, w_sys)
+            if m < best_m:
+                best_m = m
+                best_c_sys = c_sys
+    inv = np.empty(n, dtype=np.int64)
+    inv[colperm] = np.arange(n)
+    best_c_orig = best_c_sys[inv]
+    return best_c_orig.astype(np.uint8)
+
 #============== LDPC ===========================================================
 CV6idx = np.array([[4,31,59,92,114,145],[5,23,60,93,121,150],[6,32,61,94,95,142],[5,31,63,96,125,137],[8,34,65,98,138,145],[9,35,66,99,106,125],[11,37,67,101,104,154],[12,38,68,102,148,161],[14,41,58,105,122,158],[0,32,71,105,106,156],[15,42,72,107,140,159],[10,43,74,109,120,165],[7,45,70,111,118,165],[18,37,76,103,115,162],[19,46,69,91,137,164],[1,47,73,112,127,159],[21,46,57,117,126,163],[15,38,61,111,133,157],[22,42,78,119,130,144],[19,35,62,93,135,160],[13,30,78,97,131,163],[2,43,79,123,126,168],[18,45,80,116,134,166],[11,49,60,117,118,143],[12,50,63,113,117,156],[23,51,75,128,147,148],[20,53,76,99,139,170],[34,81,132,141,170,173],[13,29,82,112,124,169],[3,28,67,119,133,172],[51,83,109,114,144,167],[6,49,80,98,131,172],[22,54,66,94,171,173],[25,40,76,108,140,147],[26,39,55,123,124,125],[17,48,54,123,140,166],[5,32,84,107,115,155],[8,53,62,130,146,154],[21,52,67,108,120,173],[2,12,47,77,94,122],[30,68,132,149,154,168],[4,38,74,101,135,166],[1,53,85,100,134,163],[14,55,86,107,118,170],[22,33,70,93,126,152],[10,48,87,91,141,156],[28,33,86,96,146,161],[21,56,84,92,139,158],[27,31,71,102,131,165],[0,25,44,79,127,146],[16,26,88,102,115,152],[50,56,97,162,164,171],[20,36,72,137,151,168],[15,46,75,129,136,153],[2,23,29,71,103,138],[8,39,89,105,133,150],[17,41,78,143,145,151],[24,37,64,98,121,159],[16,41,74,128,169,171]], dtype = np.int16)
 CV7idx = np.array([[3,30,58,90,91,95,152],[7,24,62,82,92,95,147],[4,33,64,77,97,106,153],[10,36,66,86,100,138,157],[7,39,69,81,103,113,144],[13,40,70,87,101,122,155],[16,36,73,80,108,130,153],[44,54,63,110,129,160,172],[17,35,75,88,112,113,142],[20,44,77,82,116,120,150],[18,34,58,72,109,124,160],[6,48,57,89,99,104,167],[24,52,68,89,100,129,155],[19,45,64,79,119,139,169],[0,3,51,56,85,135,151],[25,50,55,90,121,136,167],[1,26,40,60,61,114,132],[27,47,69,84,104,128,157],[11,42,65,88,96,134,158],[9,43,81,90,110,143,148],[29,49,59,85,136,141,161],[9,52,65,83,111,127,164],[27,28,83,87,116,142,149],[14,57,59,73,110,149,162]], dtype = np.int16)
@@ -161,65 +243,6 @@ def ldpc_decode(llr, max_ncheck0, max_iters):
             llr += update_collector
     return None, 0, 99
             
-def get_initial_origins(wav_file ):
-    HPS=4
-    BPT=2
-    COSTAS = [3,1,4,0,6,5,2]
-    HOPDELAY = HPS
-    BASE_COSTAS_HOPS =  np.arange(7) * HPS + HOPDELAY
-    F_MIN, F_MAX = 100, 2900
-
-    fft_len = int( BPT * SAMP_RATE // SYM_RATE)
-    fft_out_len = fft_len // 2 + 1
-    nFreqs = int(fft_out_len * 2 * F_MAX / SAMP_RATE)
-    audio_buffer = np.zeros(fft_len, dtype=np.float32)
-    fft_in = np.zeros(fft_len, dtype=np.float32)
-    fft_window = np.hanning(fft_len).astype(np.float32)
-    hops_per_grid = T_CYC * SYM_RATE * HPS
-    if (int(hops_per_grid) != hops_per_grid):
-        print("Warning - non-integer number of hops per grid")
-    hops_per_grid = int(hops_per_grid)
-    zgrid_main = np.ones((hops_per_grid, nFreqs), dtype = np.complex64) 
-    samples_perhop = int(SAMP_RATE / (SYM_RATE * HPS))
-    zgrid_main_ptr = 0
-
-    wf = wave.open(wav_file, "rb")
-    frames = wf.readframes(samples_perhop)
-    while frames:
-        samples = np.frombuffer(frames, dtype=np.int16).astype(np.float32)
-        ns = len(samples)
-        audio_buffer[:-ns] = audio_buffer[ns:]
-        audio_buffer[-ns:] = samples
-        np.multiply(audio_buffer, fft_window, out=fft_in)
-        zgrid_main[zgrid_main_ptr, :] = np.fft.rfft(fft_in)[:nFreqs]
-        zgrid_main_ptr = (zgrid_main_ptr+1) % hops_per_grid
-        frames = wf.readframes(samples_perhop)
-    wf.close()
-
-    dt = 1.0 / (SYM_RATE * HPS)
-    csync = np.full((7, 7 * BPT), -1/6, np.float32)
-    for sym_idx, tone in enumerate([3,1,4,0,6,5,2]):
-        fbins = range(tone * BPT, (tone+1) * BPT)
-        csync[sym_idx, fbins] = 1.0
-    csync_flat =  csync.ravel()
-
-    origins = []
-    for fb in range(int(F_MIN*BPT/SYM_RATE), nFreqs - 8 * BPT, 2):
-        zstrip = zgrid_main[:, fb: fb+8*BPT]
-        p = 20*np.log10(np.abs(zstrip) + 1e-12)
-        #p = np.abs(zstrip)
-
-        origin = {'score':0}
-        for h0_idx in range(int(-2*HPS/0.16), int(5*HPS/0.16)):
-            sync_score = float(np.dot(p[h0_idx + 36*HPS + BASE_COSTAS_HOPS, :7*BPT].ravel(), csync_flat))
-            test_sync = {'t0':h0_idx/(HPS * SYM_RATE), 'f0':SYM_RATE * fb / BPT, 'score':sync_score}
-            if test_sync['score'] > origin['score']:
-                origin = test_sync
-        if origin['score'] > 100:
-            origins.append(origin)
-
-    return origins
-
 def get_candidate_tfgrid_fast(all_audio_spectrum, origin):
     fft1_len = len(all_audio_spectrum)
     global candidate_spectrum, candidate_tf_zgrid
@@ -247,17 +270,105 @@ def get_candidate_tfgrid_fast(all_audio_spectrum, origin):
 
     return candidate_tf_zgrid
 
+def get_llr_2sym(all_audio_spectrum, origin):
 
-def llr_norm_clip(llr):
-    llr_sd = np.std(llr)
-    llr = 3.5 * llr / (1e-12 + llr_sd)        
-    return np.clip(llr, -3.7, 3.7)
+    PAYLOAD_SYMBOLS = list(range(7, 36)) + list(range(43, 72))
+    zcand = get_candidate_tfgrid_fast(all_audio_spectrum, origin)
 
-def llr_norm_wsj(llr):
+    llrs = []
+    gray = [0,1,3,2,5,6,4,7]
+
+    # process the 58 payload symbols as 29 pairs
+    for k in range(0, len(PAYLOAD_SYMBOLS), 2):
+
+        s0 = PAYLOAD_SYMBOLS[k]
+        s1 = PAYLOAD_SYMBOLS[k+1]
+
+        # all 64 possible tone pairs
+        metrics = np.zeros(64)
+
+        for i in range(64):
+            tone0 = int((i & 63)/8)     # upper 3 bits matching fortran
+            tone1 = i & 7               # lower 3 bits
+
+            metrics[i] = abs(zcand[s0, gray[tone0]] + zcand[s1, gray[tone1]])
+
+        # six bit LLRs
+        for bit in range(6):
+
+            bit0 = []
+            bit1 = []
+
+            for i in range(64):
+                if (i >> (5-bit)) & 1:
+                    bit1.append(metrics[i])
+                else:
+                    bit0.append(metrics[i])
+
+            llrs.append(max(bit1) - max(bit0))
+
+    llr = np.array(llrs)
+
     mean = np.mean(llr)
     var = np.mean(llr*llr) - mean*mean
-    return 2.83 * llr / np.sqrt(var)
+    llr = 2.83 * llr / np.sqrt(var)
 
+    return llr
+
+
+def get_llr(all_audio_spectrum, origin, log = 1):
+    PAYLOAD_SYMBOLS = list(range(7, 36)) + list(range(43, 72))  
+    zcand = get_candidate_tfgrid_fast(all_audio_spectrum, origin)
+
+    p = np.abs(zcand[PAYLOAD_SYMBOLS, :])
+    if log:
+        p = 20*np.log10(p)
+    llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
+    llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
+    llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
+    llr = np.column_stack((llra, llrb, llrc)).ravel()
+    llr_sd = np.std(llr)
+    llr = 2.83 * llr / llr_sd        
+    return llr
+
+def decode(llr0):
+    apmag = np.max(np.abs(llr0))*1.01
+    ap_patterns = [
+                    [0, []],                                                            # no AP
+                    [0, [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0]],   # CQ
+                    [58,[0,1,1,1,1,1,1,0,0,1,1,1,0,1,0,1,0,0,1]],                       # RR73
+                    [58,[0,1,1,1,1,1,1,0,1,0,0,1,0,1,0,0,0,0,1]],                       # 73
+                    [58,[0,1,1,1,1,1,1,0,1,0,0,1,0,0,1,0,0,0,1]],                       # RRR
+                  ]
+    msg, ipass = None, 0
+    for ipass, (b0, ap_pattern) in enumerate(ap_patterns):
+        llr = llr0.copy()
+        for b, bval in enumerate(ap_pattern):
+            llr[b0 + b] = (bval*2-1) * apmag
+        if ipass == 1:
+            llr[74:76] = -apmag
+            llr[76] = apmag
+     
+        msg_tuple, n_its, ncheck0 = ldpc_decode(llr, 60, 25)
+        if msg_tuple:
+            return ' '.join(msg_tuple), ipass, n_its, ncheck0
+
+    return '', -1, n_its, ncheck0
+
+
+def osd_decode(llr):
+    cw = osd_decode_minimal(llr, np.argsort(np.abs(llr))[::-1])
+    bits91_int = 0
+    for bit in (cw[:91] > 0).astype(int).tolist():
+        bits91_int = (bits91_int << 1) | bit
+    bits77_int = check_crc(bits91_int)
+
+    msg_tuple = unpack(bits77_int)
+    if msg_tuple:
+        return ' '.join(msg_tuple), 999, 999, 999
+        
+    return '', -1, -1, -1
+        
 def get_messages(wav_file):
     # get full audio spectrum 
     wf = wave.open(wav_file, "rb")
@@ -269,71 +380,27 @@ def get_messages(wav_file):
     samples[:len(samps_in)] = samps_in 
     all_audio_spectrum = np.fft.fft(samples)
 
-    origins = get_initial_origins(wav_file)
-    PAYLOAD_SYMBOLS = list(range(7, 36)) + list(range(43, 72))    
-    messages = set()
-
-    csync = np.full((7, 7), -1/6, np.float32)
-    for sym_idx, tone in enumerate([3,1,4,0,6,5,2]):
-        csync[sym_idx, tone] = 1.0
-    csync_flat =  csync.ravel()
+    #origins = [{'t0':1.4, 'f0':710}, {'t0':1.4, 'f0':559}, {'t0':1.31, 'f0':338.5}, {'t0':1.3, 'f0':947}]
+    origins = [{'t0':1.9+0.5, 'f0':719}, {'t0':0.8+0.5, 'f0':947}, {'t0':0.8+0.5, 'f0':1158},
+               {'t0':0.1+0.5, 'f0':1285}, {'t0':0.1+0.5, 'f0':1345}, {'t0':0.8+0.5, 'f0':2104}]
+    #origins = [{'t0':0.8+0.5, 'f0':1158}]
+    origins = [{'t0':1.33, 'f0':1158.5}]
     print(f"{len(origins)} candidates")
-    t0 = time.perf_counter()
+
     for origin in origins:
-
-        ttweaks = np.arange(-50, 51, 20)/1000
-        scores = []
-        for ttweak in ttweaks:
-            tmp_origin = {'t0':origin['t0']+ttweak, 'f0':origin['f0'], 'score':0}
-            zcand = get_candidate_tfgrid_fast(all_audio_spectrum, tmp_origin)
-            score = float(np.dot(np.abs(zcand[36:43, :7]).ravel(), csync_flat))
-            scores.append(score)
-        ttweak = float(ttweaks[np.argmax(scores)])
-        origin = {'t0':origin['t0']+ttweak, 'f0':origin['f0'], 'score':np.max(scores)}
-        
         ftweaks = np.arange(-2.5, 2.6, 1)
-        scores = []
         for ftweak in ftweaks:
-            tmp_origin = {'t0':origin['t0'], 'f0':origin['f0']+ftweak, 'score':0}
-            zcand = get_candidate_tfgrid_fast(all_audio_spectrum, tmp_origin)
-            score = float(np.dot(np.abs(zcand[36:43, :7]).ravel(), csync_flat))
-            scores.append(score)
-        ftweak = float(ftweaks[np.argmax(scores)])
-        origin = {'t0':origin['t0'], 'f0':origin['f0']+ftweak, 'score':np.max(scores)}
-        
-        zcand = get_candidate_tfgrid_fast(all_audio_spectrum, origin)
+            ttweaks = np.arange(-50, 51, 10)/1000
+            for ttweak in ttweaks:
+                tmp_origin = {'t0':origin['t0']+ttweak, 'f0':origin['f0']+ftweak}
 
-        p = np.abs(zcand[PAYLOAD_SYMBOLS, :])
-        snr = np.clip(int(np.max(p) - np.min(p) - 58), -24, 24)
-        llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
-        llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
-        llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
-        llr = np.column_stack((llra, llrb, llrc)).ravel()
-        llr0 = llr_norm_clip(llr)
-        apmag = np.max(np.abs(llr0))*1.01
+                llr = get_llr(all_audio_spectrum, tmp_origin)
+                #llr = get_llr_2sym(all_audio_spectrum, tmp_origin)
+                msg, ipass, n_its, ncheck0 =  decode(llr)
+#                #msg, ipass, n_its, ncheck0 =  osd_decode(llr)
+                print(f"{tmp_origin['t0']:8.3f} {tmp_origin['f0']:8.3f} {msg:25s} pass{ipass:3d} its {n_its:3d} ncheck0 {ncheck0:3d}")
+                
 
-        ap_patterns = [
-                        [0, []],                                                            # no AP
-                        [0, [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0]],   # CQ
-                        [58,[0,1,1,1,1,1,1,0,0,1,1,1,0,1,0,1,0,0,1]],                       # RR73
-                        [58,[0,1,1,1,1,1,1,0,1,0,0,1,0,1,0,0,0,0,1]],                       # 73
-                        [58,[0,1,1,1,1,1,1,0,1,0,0,1,0,0,1,0,0,0,1]],                       # RRR
-                      ]
-        msg, ipass = None, 0
-        for ipass, (b0, ap_pattern) in enumerate(ap_patterns):
-            llr = llr0.copy()
-            for b, bval in enumerate(ap_pattern):
-                llr[b0 + b] = (bval*2-1) * apmag
-            if ipass == 1:
-                llr[74:76] = -apmag
-                llr[76] = apmag
-         
-            msg_tuple, n_its, ncheck0 = ldpc_decode(llr, 45, 15)
-            if msg_tuple:
-                messages.add(msg_tuple)
-                print(f"{len(messages):3d}: {origin['t0']:6.1f} {origin['f0']:6.1f} {' '.join(msg_tuple):25s} pass{ipass:3d} its {n_its:3d} ncheck0 {ncheck0:3d}")
-                break
-    print( time.perf_counter() - t0)     
 
 fft2_len = 3200
 candidate_spectrum = np.zeros(fft2_len, dtype = np.complex64)
