@@ -142,8 +142,8 @@ win32process.SetPriorityClass(win32api.GetCurrentProcess(), win32process.HIGH_PR
 data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy"
 wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
 
-#live_test()
-batch_test(1,39)
+live_test()
+#batch_test(1,39)
 
 
 
