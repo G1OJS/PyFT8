@@ -195,18 +195,19 @@ class Gui:
 
     def refresh_sidebars(self):
         current_band = self.get_band_info()['current_band']
-        if current_band is not None and self.history is not None:
-        
-            # band stats
-            grd = self.config['station']['grid'][:4]
-            for bb in self.button_boxes:
-                button_band = bb.clickargs.get('band','')
-                if button_band:
-                    bb.set_active(button_band == current_band)
-                    if button_band in self.history.home_activity:
-                        cnts = self.history.home_activity[button_band]
-                        bb.set_info_text(f"{cnts[0]}Tx, {cnts[1]}Rx")
 
+        # band stats
+        grd = self.config['station']['grid'][:4]
+        for bb in self.button_boxes:
+            button_band = bb.clickargs.get('band','')
+            if button_band:
+                if current_band is not None:
+                    bb.set_active(button_band == current_band)
+                if button_band in self.history.home_activity:
+                    cnts = self.history.home_activity[button_band]
+                    bb.set_info_text(f"{cnts[0]}Tx, {cnts[1]}Rx")
+
+        if current_band is not None and self.history is not None:
             # home square counts
             if current_band in self.history.home_most_remotes:
                 tx_lead,  rx_lead = self.history.home_most_remotes[current_band]
