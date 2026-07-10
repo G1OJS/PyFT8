@@ -413,8 +413,8 @@ class Candidate:
                     self.msg_tuple, self.n_its = msg_tuple, 999
                     self.ipass = 999
 
-        self.dt = self.origin['t0']-0.5
-        self.fHz = self.origin['f0']
+        self.dt = float(self.origin['t0']-0.5)
+        self.fHz = float(self.origin['f0'])
         self.decode_completed = time_utils.time()
         
 #============== RECEIVER ===========================================================

@@ -14,21 +14,22 @@ class QSO_manager:
         self.band_info = {'current_band': None, 'fMHz':0, 'time_set':0}
         self.myCall, self.myGrid = myCall, myGrid
         self.theirCall, self.theirGrid = None, None
-        self.tx_freq = None
-        self.clear()
+        self.tx_freq = 750
+        self.reset()
         self.console_print(f"[PyFT8] QSO handler started for {self.myCall}")
         threading.Thread(target = self.td, daemon = True).start()
 
     def get_band_info(self):
         return self.band_info
 
-    def clear(self):
+    def reset(self):
         self.tx_msg_and_time = None
         self.last_tx_msg_and_time = None
         self.tx_cycle = None
         self.tx_start_grid_time = 0
         self.times = {'time_on':None, 'time_off':None}
         self.rpts = {'sent': None, 'rcvd': None}
+        self.tx_freq = self.find_clear_freq(self.band_info['current_band'])
 
     def set_tx_msg_and_time(self, message):
         self.tx_msg_and_time = {'text':message, 'start_gridtime':[0.25, 15.25][self.tx_cycle]}
@@ -64,7 +65,7 @@ class QSO_manager:
         self.console_print(f"[QSO] Clicked on message '{' '.join(clicked_msg_tuple)}'")
 
         if call_a == "CQ":
-            self.clear()
+            self.reset()
             self.times['time_on'] = time_utils.gmtime()
             self.theirGrid =  grid_rpt
             self.rpts['sent'] = f"{snr:+03d}"
@@ -95,17 +96,13 @@ class QSO_manager:
 
             if reply.endswith("73"): # do last so any log errors don't prevent sending 73
                 self.log()
-                self.tx_freq = None
 
     def on_click(self, btn_def):
         btn_action = btn_def['action']
         if btn_action == "MESSAGE_CLICK":
-            if self.tx_freq is None:
-                self.tx_freq = self.find_clear_freq(self.band_info['current_band'])
             self.progress(btn_def['msg_tuple'], btn_def['odd_even'], btn_def['snr'])
         if btn_action == "CQ":
-            self.clear()
-            self.tx_freq = self.find_clear_freq(self.band_info['current_band'])
+            self.reset()
             self.tx_cycle = time_utils.odd_even()
             if time_utils.cycle_time() > MAX_TX_START_CYCLETIME:
                self.tx_cycle = 1-self.tx_cycle 
