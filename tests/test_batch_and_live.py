@@ -143,8 +143,8 @@ wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy
 
 gui = None
 
-live_test()
-#batch_test(1,39)
+#live_test()
+batch_test(1,39)
 
 
 
