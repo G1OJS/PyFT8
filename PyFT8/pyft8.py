@@ -89,7 +89,7 @@ def on_decode(c):
         wb_text = f"wb: {time_utils.format_duration(tnow - float(wb_time))}" if wb_time else ''
         hearing_me = ''
         if history:
-            hearing_me = '# ' if history.is_hearing_me(band_info['current_band'], c.msg_tuple[1], tnow - 60*HEARING_PANEL_LIFE_MINS) else ' '
+            hearing_me = '# ' if history.is_hearing_me(band_info['current_band'], c.msg_tuple[1]) else ' '
         gui.add_message_box({'origin':c.origin,
                             'msg_tuple':c.msg_tuple,
                             'snr':c.snr,
@@ -185,11 +185,10 @@ def cli():
                       sync_score_min = 100, max_cands = 75, osd = False, ldpc = [45,15], min_search_start = 11)
 
     if not args.no_gui:
-        qso_manager = QSO_manager(myCall, myGrid, console_print, transmit, rig, rx.audio_in.waterfall_data)
-        history = History(config_folder, myCall, myGrid, PSKR_REFRESH_MINS)
-        gui = Gui(config, qso_manager.on_click)
-        gui.init_waterfall(rx.audio_in.waterfall_data)
         adif_logging = ADIF(f"{config_folder}/PyFT8.adi")
+        qso_manager = QSO_manager(myCall, myGrid, console_print, transmit, rig, rx.audio_in.waterfall_data, adif_logging)
+        history = History(config_folder, myCall, myGrid, PSKR_REFRESH_MINS)
+        gui = Gui(config, qso_manager.on_click, history, qso_manager.get_band_info, rx.audio_in.waterfall_data)
         history.load_hearing_heard_from_adif(adif_logging.cache)
         history.start_collect_new()
         

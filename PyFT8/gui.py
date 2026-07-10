@@ -133,23 +133,23 @@ class ButtonBox:
 
 
 class Gui:
-    def __init__(self, config, on_click):
+    def __init__(self, config, on_click, history, get_band_info, waterfall_data, hearing_me_since_mins = 5):
         self.plt = plt
         self.fig = plt.figure(figsize = (10,10), facecolor=(.18, .71, .71, 0.4)) 
         self.fig.canvas.manager.set_window_title('PyFT8 by G1OJS')
         self.config = config
         self.on_click = on_click
+        self.history = history
+        self.hearing_me_since_mins = hearing_me_since_mins
         self.rig = None
         self.wf_data = None
-        self.band_info = {'current_band':None}
+        self.get_band_info = get_band_info
         self.sidebars_refresh_last = 0
         self.sidebars_page = 0
         self.msg_boxes = {}
         self.new_messages = queue.Queue()
         self.make_layout()
-
-    def init_waterfall(self, wf_data):
-        self.wf_data = wf_data
+        self.wf_data = waterfall_data
         self.image = self.ax_wf.imshow(self.wf_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self.ax_wf.set_xticks([])
         self.ax_wf.set_yticks([])
@@ -194,45 +194,45 @@ class Gui:
         self.band_stats.ax.set_title(txt, fontsize = 10)
 
     def refresh_sidebars(self):
-        current_band = self.band_info['current_band']
-        if current_band is not None and current_band in history is not None:
+        current_band = self.get_band_info()['current_band']
+        if current_band is not None and self.history is not None:
         
             # band stats
             grd = self.config['station']['grid'][:4]
             for bb in self.button_boxes:
                 button_band = bb.clickargs.get('band','')
                 if button_band:
-                    bb.set_active(button_band == self.band_info['current_band'])
-                    if button_band in history.home_activity:
-                        cnts = history.home_activity[button_band]
+                    bb.set_active(button_band == current_band)
+                    if button_band in self.history.home_activity:
+                        cnts = self.history.home_activity[button_band]
                         bb.set_info_text(f"{cnts[0]}Tx, {cnts[1]}Rx")
 
             # home square counts
-            if current_band in history.home_most_remotes:
-                tx_lead,  rx_lead = history.home_most_remotes[current_band]
-                call = config['station']['call']
-                n_spotted, n_spotting = history.get_spot_counts(current_band, call)
-                self.band_stats.scroll_print(f"{call:<7} {tx_lead[0]:<7}", color = '#ff756b')
+            if current_band in self.history.home_most_remotes:
+                tx_lead,  rx_lead = self.history.home_most_remotes[current_band]
+                myCall = self.config['station']['call']
+                n_spotted, n_spotting = self.history.get_spot_counts(current_band, myCall)
+                self.band_stats.scroll_print(f"{myCall:<7} {tx_lead[0]:<7}", color = '#ff756b')
                 self.band_stats.scroll_print(f"{n_spotting:<7} {tx_lead[1]:<7}", color = '#ff756b')
-                self.band_stats.scroll_print(f"{call:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
+                self.band_stats.scroll_print(f"{myCall:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
                 self.band_stats.scroll_print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
 
             #refresh hearing me / heard by me panel
-            historic_data = history.hearing_me.data if self.sidebars_page  == 1 else history.heard_by_me.data
-            new_calls_data = history.hearing_me_new if self.sidebars_page  == 1 else history.heard_by_me_new
-            timewindow_str = f"<{HEARING_PANEL_LIFE_MINS:.0f} mins"
-            title_txt = f"Hearing me {timewindow_str}" if display_cycle==1 else f"Heard by me {timewindow_str}"
+            historic_data = self.history.hearing_me.data if self.sidebars_page  == 1 else self.history.heard_by_me.data
+            new_calls_data = self.history.hearing_me_new if self.sidebars_page  == 1 else self.history.heard_by_me_new
+            timewindow_str = f"<{self.hearing_me_since_mins:.0f} mins"
+            title_txt = f"Hearing me {timewindow_str}" if self.sidebars_page==1 else f"Heard by me {timewindow_str}"
             display_rows = [(title_txt, 2e40, 'white')]
             tnow = time_utils.time()
             if current_band in historic_data:
                 band_rpts = historic_data[current_band]
-                calls_now = [call for call in band_rpts if (tnow - band_rpts[call]['t']) < 60*HEARING_PANEL_LIFE_MINS]
+                calls_now = [call for call in band_rpts if (tnow - band_rpts[call]['t']) < 60*self.hearing_me_since_mins]
                 subtitle_txt = f"{len(calls_now)}/{len(band_rpts)} now/ever"
                 display_rows.append((subtitle_txt, 1e40, 'white'))
                 for remote_call in calls_now:
                     rpt = band_rpts[remote_call]
-                    snr, geo_text, timestamp = int(rpt['rp']), history.get_geo_text(remote_call, config['gui']['loc']), rpt['t']
-                    color = 'white' if history.is_in_new_alert(b, remote_call, new_calls_data) else 'lime'
+                    snr, geo_text, timestamp = int(rpt['rp']), self.history.get_geo_text(remote_call, self.config['gui']['loc']), rpt['t']
+                    color = 'white' if self.history.is_in_new_alert(current_band, remote_call, new_calls_data) else 'lime'
                     display_rows.append((f"{remote_call:<7} {snr:+03d} {geo_text:<12}", timestamp, color))
             display_rows.sort(key = lambda row: row[1], reverse = True)
             self.hm.list_print([row[0] for row in display_rows], [row[2] for row in display_rows])

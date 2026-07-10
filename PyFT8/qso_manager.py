@@ -4,8 +4,9 @@ MAX_TX_START_CYCLETIME = 3
 
 
 class QSO_manager:
-    def __init__(self, myCall, myGrid, console_print, transmit, rig, wf_data):
+    def __init__(self, myCall, myGrid, console_print, transmit, rig, wf_data, adif_logging):
         self.transmit = transmit
+        self.adif_logging = adif_logging
         self.tx_msg_and_time = None
         self.wf_data = wf_data
         self.console_print = console_print
@@ -13,14 +14,16 @@ class QSO_manager:
         self.band_info = {'current_band': None, 'fMHz':0, 'time_set':0}
         self.myCall, self.myGrid = myCall, myGrid
         self.theirCall, self.theirGrid = None, None
-        self.tx_freq = 750
+        self.tx_freq = None
         self.clear()
         self.console_print(f"[PyFT8] QSO handler started for {self.myCall}")
         threading.Thread(target = self.td, daemon = True).start()
 
+    def get_band_info(self):
+        return self.band_info
+
     def clear(self):
         self.tx_msg_and_time = None
-        self.tx_freq = None
         self.last_tx_msg_and_time = None
         self.tx_cycle = None
         self.tx_start_grid_time = 0
@@ -42,9 +45,9 @@ class QSO_manager:
                     self.last_tx_msg_and_time = self.tx_msg_and_time
                     self.tx_msg_and_time = None
     def log(self):
-        if adif_logging is not None:
+        if self.adif_logging is not None:
             self.times['time_off'] = time_utils.gmtime()
-            adif_logging.log(self.times, self.band_info, {'c':self.myCall,'g':self.myGrid}, {'c':self.theirCall,'g':self.theirGrid}, self.rpts)
+            self.adif_logging.log(self.times, self.band_info, {'c':self.myCall,'g':self.myGrid}, {'c':self.theirCall,'g':self.theirGrid}, self.rpts)
             self.console_print(f"[PyFT8] Logged QSO with {self.theirCall}")
 
     def progress(self, clicked_msg_tuple, odd_even, snr):

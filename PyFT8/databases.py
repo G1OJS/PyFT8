@@ -204,7 +204,7 @@ class History:
             result = call in new_alert_data[band]
         return result
 
-    def is_hearing_me(self, band, call, since_seconds):
+    def is_hearing_me(self, band, call, since_seconds = 120):
         result = False
         if band in self.hearing_me.data:
             if call in self.hearing_me.data[band]:
