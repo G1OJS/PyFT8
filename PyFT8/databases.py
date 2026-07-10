@@ -285,7 +285,7 @@ class ADIF:
         'rst_sent':rpts['sent'], 'rst_rcvd':rpts['rcvd'], 
         'qso_date':time.strftime("%Y%m%d", times['time_on']), 'qso_date_off':time.strftime("%Y%m%d", times['time_off']),
         'time_on':time.strftime("%H%M%S", times['time_on']), 'time_off':time.strftime("%H%M%S", times['time_on']),
-        'band':band_info['b'], 'freq':band_info['fMHz']}
+        'band':band_info['current_band'], 'freq':band_info['fMHz']}
         with open(self.adif_log_file,'a') as f:
             for k, v in log_dict.items():
                 v = str(v)
