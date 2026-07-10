@@ -77,6 +77,9 @@ class Msg_box:
         self.patch.set_visible(True)
         self.text_inst.set_visible(True)
         self.expire = time_utils.time() + 29.25
+        self.msg_tuple = message['msg_tuple']
+        self.odd_even = message['odd_even']
+        self.snr = message['snr']
         self.text_inst.set_text(message['display_text'])
         colors = ['blue', 'white']
         if message['is_cq']: colors = ['green', 'white']
@@ -96,7 +99,7 @@ class Msg_box:
     def _onclick(self, event):
         b, _ = self.patch.contains(event)
         if(b):
-            self.onclick(self.message)
+            self.onclick({'action': 'MESSAGE_CLICK', 'msg_tuple':self.msg_tuple, 'odd_even':self.odd_even, 'snr':self.snr})
 
 class ButtonBox:
     def __init__(self, fig, box, btn_pc = 30, onclick = None, clickargs=None, btn_label = ''):

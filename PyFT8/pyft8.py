@@ -1,9 +1,5 @@
 import argparse
-import time, sys
-import os
-import threading
-import pickle
-import numpy as np
+import time, sys, os
 from PyFT8.receiver import Receiver
 from PyFT8.pskreporter import PSKR_upload
 from PyFT8.gui import Gui
@@ -17,7 +13,7 @@ VER = '3.2.0 test'
 PSKR_REFRESH_MINS = 20
 HEARING_PANEL_LIFE_MINS = 20
 
-gui, history, qso_manager, adif_logging = None, None, None, None
+gui, history, qso_manager, adif_logging, pskr_upload, audio_out, rig, output_device_idx = None, None, None, None, None, None, None, None
 myCall, myGrid = None, None
 
 def get_config(config_folder):
@@ -61,37 +57,26 @@ def wait_for_keyboard():
     except KeyboardInterrupt:
         pass
 
+def transmit(text, fbase):
+    symbols = audio_out.create_ft8_symbols(text)
+    if any(symbols):
+        console_print(f"[PyFT8] Transmitting {text}")
+        audio_data = audio_out.create_ft8_wave(symbols, f_base = fbase)
+        rig.ptt_on()
+        audio_out.play_data_to_soundcard(audio_data, output_device_idx)
+        rig.ptt_off()
+    else:
+        console_print(f"[PyFT8] Couldn't encode message {self.message_to_transmit}", color = 'red') # move this to earlier by setting tx symbols not tx message
 
-class Transmitter():
-    def __init__(self):
-        self.tx_message = None
-
-    def start_daemon(self):
-        threading.Thread(target = self.td, daemon = True).start()
-
-    def td(self):
-        while True:
-            time.sleep(0.1)
-            if self.tx_message is not None:
-                start_gridtime = self.tx_message['start_gridtime'] 
-                grid_time = time_utils.grid_time()
-                if start_gridtime <= grid_time < start_gridtime + MAX_TX_START_CYCLETIME:
-                    transmit(self.tx_message['text'])
-                    self.tx_message = None
-
-    def transmit(self, text):
-        symbols = audio_out.create_ft8_symbols(self.message_to_transmit)
-        if any(symbols):
-            console_print(f"[PyFT8] Transmitting {self.tx_message}")
-            audio_data = audio_out.create_ft8_wave(symbols, f_base = self.tx_freq)
-            rig.ptt_on()
-            audio_out.play_data_to_soundcard(audio_data, output_device_idx)
-            rig.ptt_off()
-            self.last_tx = self.message_to_transmit
-            self.message_to_transmit = None
-        else:
-            console_print(f"[PyFT8] Couldn't encode message {self.message_to_transmit}", color = 'red') # move this to earlier by setting tx symbols not tx message
-
+def isGrid(grid_rpt):
+    # duplicate code - needs packaging somewhere
+    isReport    = "+" in grid_rpt or "-" in grid_rpt
+    isRReport   = isReport and 'R' in grid_rpt
+    isRR73      = 'RR73' in grid_rpt
+    isRRR       = 'RRR' in grid_rpt
+    is73        = '73' in grid_rpt and not isRR73
+    isGrid      = not isReport and not is73 and not isRR73 and not isRRR
+    return isGrid
 
 def on_decode(c):
     band_info = qso_manager.band_info if qso_manager else {'current_band': None, 'fMHz':0, 'time_set':0}
@@ -107,6 +92,8 @@ def on_decode(c):
             hearing_me = '# ' if history.is_hearing_me(band_info['current_band'], c.msg_tuple[1], tnow - 60*HEARING_PANEL_LIFE_MINS) else ' '
         gui.add_message_box({'origin':c.origin,
                             'msg_tuple':c.msg_tuple,
+                            'snr':c.snr,
+                            'odd_even': c.origin['odd_even'],
                             'is_from_me': c.msg_tuple[1] == myCall,
                             'is_to_me': c.msg_tuple[0] == myCall,
                             'is_cq': c.msg_tuple[0].startswith('CQ'),
@@ -114,39 +101,28 @@ def on_decode(c):
 
     screen_format = f"{c.cyclestart['string']} {c.snr:+03d} {c.dt:4.1f} {c.fHz:4.0f} ~ {' '.join(c.msg_tuple)}"
     print(f"{time_utils.cycle_time():5.1f} {screen_format}")
-    
-    if history:
-        history.write_all_txt_row(c.cyclestart['string'], band_info['fMHz'], 'Rx', 'FT8', c.snr, c.dt, c.fHz, ' '.join(c.msg_tuple))
-        
-    if band_info['current_band'] is not None and pskr_upload is not None:
-        call_a, call_b, grid_rpt = c.msg_tuple
-        if call_b == 'not':
-            return
-        call_b_grid = grid_rpt if isGrid(grid_rpt) else ''
-        if call_b != self.myCall:
-            pskr_upload.add_report(call_b, int(1000000*float(band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 1, int(time_utils.time()))
-            if history:
-                history.store_best_grid(call_b, call_b_grid)
-                history.add_myspots_record(history.heard_by_me.data, history.heard_by_me_new, band_info['current_band'], call_b, int(time_utils.time()), c.snr)
-        if history and call_b == self.myCall and (isReport(grid_rpt) or isRReport(grid_rpt)):
-            rpt = grid_rpt.replace("R","")
-            history.add_myspots_record(history.hearing_me.data, history.hearing_me_new, band_info['current_band'], call_a, int(time_utils.time()), rpt)
 
-def find_clear_freq(busy_profile_new, df, cycle):
-    global busy_profile, clearest_frequency
-    if output_device_idx is None:
+    if c.msg_tuple[1] == 'not':
         return
-    if busy_profile is not None:
-        busy_profile += busy_profile_new
-        fmax = 950 if qso.band_info['b']=='60m' else 2000
-        f0_idx, fn_idx = int(500/df), int(fmax/df)
-        idx = np.argmin(busy_profile[f0_idx:fn_idx])
-        clearest_frequency = (f0_idx + idx) * df
-    busy_profile = busy_profile_new
-    #self.gui.console.scroll_print(f"[on_busy] Clear Tx frequency found at {clearest_frequency:6.1f}")
+
+    if history:
+        history.write_all_txt_row(c.cyclestart['string'], float(band_info['fMHz']), 'Rx', 'FT8', c.snr, c.dt, c.fHz, ' '.join(c.msg_tuple))
+        if isGrid(c.msg_tuple[2]):
+            history.store_best_grid(c.msg_tuple[1], c.msg_tuple[2])
+        history.add_myspots_record(history.heard_by_me.data, history.heard_by_me_new, band_info['current_band'], c.msg_tuple[1], int(time_utils.time()), c.snr)
+        if c.msg_tuple[1] == myCall:
+            rpt = c.msg_tuple[2][-3:]
+            if rpt.isnumeric():
+                history.add_myspots_record(history.hearing_me.data, history.hearing_me_new, band_info['current_band'], c.msg_tuple[0], int(time_utils.time()), int(rpt))
+        
+    if pskr_upload:
+        if band_info['current_band']:
+            if c.msg_tuple[1] != myCall:
+                pskr_upload.add_report(c.msg_tuple[1], int(1000000*float(band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 1, int(time_utils.time()))
+     
 
 def cli():
-    global gui, qso_manager, myCall, myGrid, history, adif_logging
+    global gui, qso_manager, myCall, myGrid, history, adif_logging, pskr_upload, audio_out, rig, output_device_idx
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-c', '--config_folder', help = 'Location of config folder e.g. C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', default = './') 
     parser.add_argument('-i', '--inputcard_keywords', help = 'Comma-separated keywords to identify the input sound device')  
@@ -197,8 +173,7 @@ def cli():
         output_device_idx = audio_out.find_device(outputcard_keywords)
 
         if args.transmit_message and rig and args.outputcard_keywords:
-            transmitter = Transmitter()
-            transmitter.transmit(args.transmit_message)
+            transmit(args.transmit_message, 900)
             sys.exit(1)
         
     if not args.inputcard_keywords:
@@ -210,15 +185,13 @@ def cli():
                       sync_score_min = 100, max_cands = 75, osd = False, ldpc = [45,15], min_search_start = 11)
 
     if not args.no_gui:
-        transmitter = Transmitter()
-        qso_manager = QSO_manager(myCall, myGrid, console_print, transmitter)
+        qso_manager = QSO_manager(myCall, myGrid, console_print, transmit, rig, rx.audio_in.waterfall_data)
         history = History(config_folder, myCall, myGrid, PSKR_REFRESH_MINS)
         gui = Gui(config, qso_manager.on_click)
         gui.init_waterfall(rx.audio_in.waterfall_data)
         adif_logging = ADIF(f"{config_folder}/PyFT8.adi")
         history.load_hearing_heard_from_adif(adif_logging.cache)
         history.start_collect_new()
-        transmitter.start_daemon()
         
     if myCall is not None and 'pskreporter' in config.keys():
         if config['pskreporter']['upload'] == 'Y':

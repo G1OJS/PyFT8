@@ -476,13 +476,6 @@ class Receiver():
                 cands.append(c)
         self.candidates = cands[:self.max_cands]
 
-    def get_busy_profile(self):
-        from numpy.lib.stride_tricks import sliding_window_view
-        fbin_sum = np.sum(self.audio_in.search_grid[self.audio_in.cycle_h0:self.audio_in.search_grid_ptr, :], axis = 0)
-        windows = sliding_window_view(fbin_sum, 8*self.audio_in.search_bpt)
-        bp = windows.max(axis=1) 
-        return bp, self.audio_in.df, self.audio_in.odd_even
-        
     def manage_cycle(self):
         dashes = "======================================================"
         duplicate_filter = set()

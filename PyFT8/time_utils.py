@@ -7,6 +7,9 @@ class Time_utils:
     def time(self):
         return time.time()
 
+    def gmtime(self):
+        return time.gmtime()
+
     def sleep(self, t):
         time.sleep(t)
 
