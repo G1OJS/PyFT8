@@ -40,6 +40,11 @@ class AudioOut:
         waveform_int16 = np.int16(waveform * 32767)
         return waveform_int16
 
+    def make_wav(msg, wave_output_file): 
+        symbols = self.create_ft8_symbols(msg)
+        audio_data = self.create_ft8_wave(symbols)
+        self.write_to_wave_file(audio_data, wave_output_file)
+
     def write_to_wave_file(self, audio_data, wave_file):
         wavefile = wave.open(wave_file, 'wb')
         wavefile.setframerate(12000)

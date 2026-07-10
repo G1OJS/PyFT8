@@ -84,37 +84,28 @@ class DiskDict:
                 return
 
 class History:
-    def __init__(self, config_folder, my_call, home_square, pskr_refresh_mins, parse_all_file):
+    def __init__(self, config_folder, my_call, home_square, pskr_refresh_mins):
         self.pskr_refresh_mins = pskr_refresh_mins
-        self.config_folder = config_folder
         self.my_call = my_call
         self.home_square = home_square
         self.home_square_lev4 = home_square[:4]
         self.freqs_to_bands = {}
         self.dist_brg_cache = {}
-        self.hearing_me = DiskDict(f"{self.config_folder}/hearing_me.json", 3)   # all-time record of hearing me
-        self.heard_by_me = DiskDict(f"{self.config_folder}/heard_by_me.json", 5) # all-time record of heard by me
         self.hearing_me_new = {}
         self.heard_by_me_new = {}
-        self.call_to_grid = DiskDict(f"{self.config_folder}/call_to_grid.json", 7) # all time cache call -> fine locator
-        self.band_TxRx_homecall_recent_l4grid = DiskDict(f"{self.config_folder}/recent_l4grid.json", 9) # last 20 mins data -> per band tx/rx & current band detail
         self.home_activity = {}
         self.home_most_remotes = {}
         self.lock = threading.Lock()
-        if parse_all_file:
-            self.load_hearing_heard_from_all_file(f"{self.config_folder}/ALL.txt")
-            self.hearing_me.save()
-            self.heard_by_me.save()
-            print("All file parsed and saved to hearing_me / heard_by_me files")
-        else:
-            mqtt = PSKR_MQTT_listener(self.home_square_lev4, self.add_mqtt_spot)
-            threading.Thread(target = self.count_activity, daemon = True).start()
+        self.all_file = f"{config_folder}/ALL.txt"
+        self.hearing_me = DiskDict(f"{config_folder}/hearing_me.json", 3)       # all-time record of hearing me
+        self.heard_by_me = DiskDict(f"{config_folder}/heard_by_me.json", 5)     # all-time record of heard by me
+        self.call_to_grid = DiskDict(f"{config_folder}/call_to_grid.json", 7)   # all time cache call -> fine locator
+        self.band_TxRx_homecall_recent_L4grid = DiskDict(f"{config_folder}/recent_l4grid.json", 9) # last 20 mins data -> per band tx/rx & current band detail
 
-    def set_bands(self, bands):
-        for b in bands:
-            f = float(bands[b])
-            self.freqs_to_bands[round(f,1)] = b
-            
+    def start_collect_new(self):
+        mqtt = PSKR_MQTT_listener(self.home_square_lev4, self.add_mqtt_spot)
+        threading.Thread(target = self.count_activity, daemon = True).start()
+
     def load_hearing_heard_from_adif(self, log_cache):
         for key in log_cache:
             key_parts = key.split('_')
@@ -127,9 +118,13 @@ class History:
                 else:
                     print(m)
 
-    def load_hearing_heard_from_all_file(self, all_file):
-        recs = self.parse_all_txt(all_file)
-        if not any(recs): return
+    def load_hearing_heard_from_all_file(self, bands):
+        recs = self.parse_all_txt()
+        if not any(recs):
+            return
+        for b in bands:
+            f = float(bands[b])
+            self.freqs_to_bands[round(f,1)] = b
         for r in recs:
             if r['md'] == 'FT8':
                 band = self.freqs_to_bands.get(round(r['fMHz'], 1), None)
@@ -140,10 +135,10 @@ class History:
                         data = self.heard_by_me.data if TxRx == 'Rx' else self.hearing_me.data
                         self.add_myspots_record(data, None, band, call, 0, 0)
 
-    def parse_all_txt(self, all_file):
+    def parse_all_txt(self):
         rows, recs = None, []
-        if os.path.exists(all_file):
-            with open(all_file, 'r') as f:
+        if os.path.exists(self.all_file):
+            with open(self.all_file, 'r') as f:
                 rows = f.readlines()
         if rows is not None:
             for r in rows:
@@ -157,10 +152,9 @@ class History:
         return recs
 
     def write_all_txt_row(self, cyclestart_string, fMHz, TxRx, mode, snr, dt, fHz, msg):
-        all_file = f"{self.config_folder}/ALL.txt"
-        filemode = 'w' if not os.path.exists(all_file) else 'a'
+        filemode = 'w' if not os.path.exists(self.all_file) else 'a'
         row = f"{cyclestart_string} {fMHz:8.3f} {TxRx} {mode} {snr:+03d} {dt:4.1f} {fHz:4.0f} {msg}"
-        with open(all_file, filemode) as f:
+        with open(self.all_file, filemode) as f:
             f.write(f"{row}\n")
 
     def add_mqtt_spot(self, d):
@@ -183,8 +177,8 @@ class History:
             self.call_to_grid.data[call] = grid
         
     def add_homespots_record(self, key, t):
-        self.band_TxRx_homecall_recent_l4grid.data.setdefault(key, [])
-        self.band_TxRx_homecall_recent_l4grid.data[key].append(int(t))
+        self.band_TxRx_homecall_recent_L4grid.data.setdefault(key, [])
+        self.band_TxRx_homecall_recent_L4grid.data[key].append(int(t))
 
     def add_myspots_record(self, historic_data, new_alert_data, band, call, t, rp):
         self._update_new_alert(band, call, historic_data, new_alert_data)
@@ -210,7 +204,7 @@ class History:
             result = call in new_alert_data[band]
         return result
 
-    def is_hearing_me(self, band, call, since_seconds):
+    def is_hearing_me(self, band, call, since_seconds = 120):
         result = False
         if band in self.hearing_me.data:
             if call in self.hearing_me.data[band]:
@@ -231,29 +225,29 @@ class History:
                     self.home_most_remotes[b] = [('Nobody',0), ('Nobody',0)]
 
                 # keep only the remote spots that happened in the self.pskr_refresh_mins window
-                for band_TxRx_homecall in self.band_TxRx_homecall_recent_l4grid.data:
-                    band_TxRx_homecall_recent_l4grid = self.band_TxRx_homecall_recent_l4grid.data[band_TxRx_homecall]
-                    band_TxRx_homecall_recent_l4grid = [t for t in band_TxRx_homecall_recent_l4grid if (time.time() - t) < 60*self.pskr_refresh_mins]
-                    self.band_TxRx_homecall_recent_l4grid.data[band_TxRx_homecall] = band_TxRx_homecall_recent_l4grid
+                for band_TxRx_homecall in self.band_TxRx_homecall_recent_L4grid.data:
+                    band_TxRx_homecall_recent_L4grid = self.band_TxRx_homecall_recent_L4grid.data[band_TxRx_homecall]
+                    band_TxRx_homecall_recent_L4grid = [t for t in band_TxRx_homecall_recent_L4grid if (time.time() - t) < 60*self.pskr_refresh_mins]
+                    self.band_TxRx_homecall_recent_L4grid.data[band_TxRx_homecall] = band_TxRx_homecall_recent_L4grid
 
                 # count number of local Tx and Rx, and identify the local Tx and Rx with most remote spots
-                for band_TxRx_homecall in self.band_TxRx_homecall_recent_l4grid.data:
-                    band_TxRx_homecall_recent_l4grid = self.band_TxRx_homecall_recent_l4grid.data[band_TxRx_homecall]
-                    if len(band_TxRx_homecall_recent_l4grid):
+                for band_TxRx_homecall in self.band_TxRx_homecall_recent_L4grid.data:
+                    band_TxRx_homecall_recent_L4grid = self.band_TxRx_homecall_recent_L4grid.data[band_TxRx_homecall]
+                    if len(band_TxRx_homecall_recent_L4grid):
                         b, iTxRx, c = band_TxRx_homecall.split('_')
                         iTxRx = int(iTxRx)
                         self.home_activity.setdefault(b, [0, 0])
                         self.home_activity[b][iTxRx] +=1
                         self.home_most_remotes.setdefault(b, [('Nobody',0), ('Nobody',0)])
-                        nremotes = len(band_TxRx_homecall_recent_l4grid)
+                        nremotes = len(band_TxRx_homecall_recent_L4grid)
                         current_winner = self.home_most_remotes[b][iTxRx]
                         if nremotes > current_winner[1]:
                             if c != self.my_call:
                                 self.home_most_remotes[b][iTxRx] = (c, nremotes)
 
     def get_spot_counts(self, band, call):
-        tx_reports = self.band_TxRx_homecall_recent_l4grid.data.get(f"{band}_0_{call}", [])
-        rx_reports = self.band_TxRx_homecall_recent_l4grid.data.get(f"{band}_1_{call}", [])
+        tx_reports = self.band_TxRx_homecall_recent_L4grid.data.get(f"{band}_0_{call}", [])
+        rx_reports = self.band_TxRx_homecall_recent_L4grid.data.get(f"{band}_1_{call}", [])
         n_spotting = len(tx_reports) if tx_reports else 0
         n_spotted = len(rx_reports) if rx_reports else 0
         return n_spotted, n_spotting
@@ -291,7 +285,7 @@ class ADIF:
         'rst_sent':rpts['sent'], 'rst_rcvd':rpts['rcvd'], 
         'qso_date':time.strftime("%Y%m%d", times['time_on']), 'qso_date_off':time.strftime("%Y%m%d", times['time_off']),
         'time_on':time.strftime("%H%M%S", times['time_on']), 'time_off':time.strftime("%H%M%S", times['time_on']),
-        'band':band_info['b'], 'freq':band_info['fMHz']}
+        'band':band_info['current_band'], 'freq':band_info['fMHz']}
         with open(self.adif_log_file,'a') as f:
             for k, v in log_dict.items():
                 v = str(v)
