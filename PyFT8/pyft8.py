@@ -1,5 +1,5 @@
 import argparse
-import time
+import time, sys
 import os
 import threading
 import pickle
@@ -11,18 +11,17 @@ from PyFT8.transmitter import AudioOut
 from PyFT8.time_utils import time_utils
 from PyFT8.rigctrl import Rig_hamlib, Rig_CAT
 from PyFT8.databases import History, ADIF
+from PyFT8.qso_manager import QSO_manager
 
 VER = '3.2.0 test'
-
-MAX_TX_START_CYCLETIME = 3
-HEARING_PANEL_LIFE_MINS = 20
 PSKR_REFRESH_MINS = 20
-config_folder, rig, gui, qso, adif_logging, history, pskr_upload, output_device_idx = None, None, None, None, None, None, None, None
-busy_profile, hearing_me = None, None
 
-def get_config():
+gui = None
+history = None
+myCall, myGrid = None, None
+
+def get_config(config_folder):
     import configparser, sys
-    global config
     config = configparser.ConfigParser()
     ini_file = f"{config_folder}/PyFT8.ini"
     if not os.path.exists(ini_file):
@@ -45,143 +44,14 @@ def get_config():
         sys.exit()
     print(f"Reading config from {ini_file}")
     config.read(ini_file)
+    return config
 
-class Message:
-    def __init__(self, candidate, band):
-        c = candidate
-        mycall = ''
-        if qso is not None:
-            mycall = qso.mStation['c']
-        self.origin, self.msg_tuple, self.snr, = c.origin, c.msg_tuple, c.snr
-        self.dt, self.fHz = self.origin['t0'] - 0.5, self.origin['f0']
-        self.cyclestart = c.cyclestart
-        self.expire = time_utils.time() + 29.25
-        self.is_from_me = c.msg_tuple[1] == mycall
-        self.is_to_me = c.msg_tuple[0] == mycall
-        self.is_cq = c.msg_tuple[0].startswith('CQ')
-        self.geo_text = history.get_geo_text(c.msg_tuple[1], config['gui']['loc']) if history else ''
-        tnow = time_utils.time()
-        wb_time = adif_logging.cache.get(c.msg_tuple[1],'') if adif_logging else 0
-        wb_text = f"wb: {time_utils.format_duration(tnow - float(wb_time))}" if wb_time else ''
-        hearing_me = ''
-        if history:
-            hearing_me = '# ' if history.is_hearing_me(band, c.msg_tuple[1], tnow - 60*HEARING_PANEL_LIFE_MINS) else ' '
-        self.gui_text = f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {self.geo_text}"
-    
-    def wsjtx_screen_format(self):
-        return f"{self.cyclestart['string']} {self.snr:+03d} {self.dt:4.1f} {self.fHz:4.0f} ~ {' '.join(self.msg_tuple)}"
-
-class FT8_QSO:
-    def __init__(self):
-        if config is not None:
-            self.mStation = {'c':config['station']['call'], 'g':config['station']['grid']}
-        self.band_info = {'b':None, 'fMHz':0, 'time_set':0}
-        self.tx_freq = 750
-        if output_device_idx is None:
-            console_print("[PyFT8] No output device")
-        else:
-            console_print("[PyFT8] starting transmitter")
-            threading.Thread(target = self._transmitter, daemon = True).start()
-        self.clear()
-        console_print(f"[PyFT8] QSO handler started for {self.mStation}")
-
-    def clear(self):
-        self.message_to_transmit = None
-        self.last_tx = None
-        self.tx_cycle = None
-        self.tx_start_grid_time = 0
-        self.oStation = {'c':None, 'g':None}
-        self.times = {'time_on':None, 'time_off':None}
-        self.rpts = {'sent': None, 'rcvd': None}
-
-    def set_tx_message(self, message):
-        if gui and self.band_info['b'] is None:
-            console_print("[PyFT8] Please select a band before transmitting", color = 'red')
-            return
-        self.message_to_transmit = message
-        self.tx_start_grid_time = [0.25, 15.25][self.tx_cycle]
-        console_print(f"[QSO] Set transmit message to '{self.message_to_transmit}' (cyc {self.tx_cycle}, {self.tx_freq:5.1f} Hz)")
-
-    def _transmitter(self):
-        console_print("[Transmitter] running")
-        while True:
-            time.sleep(0.1)
-            grid_time = time_utils.grid_time()
-            if self.message_to_transmit and self.tx_start_grid_time <= grid_time < self.tx_start_grid_time + MAX_TX_START_CYCLETIME:
-                symbols = audio_out.create_ft8_symbols(self.message_to_transmit)
-                if any(symbols):
-                    console_print(f"[PyFT8] Transmitting {self.message_to_transmit}")
-                    audio_data = audio_out.create_ft8_wave(symbols, f_base = self.tx_freq)
-                    rig.ptt_on()
-                    audio_out.play_data_to_soundcard(audio_data, output_device_idx)
-                    rig.ptt_off()
-                    self.last_tx = self.message_to_transmit
-                    self.message_to_transmit = None
-                else:
-                    console_print(f"[PyFT8] Couldn't encode message {self.message_to_transmit}", color = 'red') # move this to earlier by setting tx symbols not tx message
-
-    def log(self):
-        if adif_logging is not None:
-            self.times['time_off'] = time.gmtime()
-            adif_logging.log(self.times, self.band_info, self.mStation, self.oStation, self.rpts)
-            console_print(f"[PyFT8] Logged QSO with {self.oStation['c']}")
-
-def isReport(grid_rpt):     return "+" in grid_rpt or "-" in grid_rpt
-def isRReport(grid_rpt):    return isReport(grid_rpt) and 'R' in grid_rpt
-def isRRR(grid_rpt):        return 'RRR' in grid_rpt
-def isRR73(grid_rpt):       return 'RR73' in grid_rpt
-def is73(grid_rpt):         return '73' in grid_rpt and not isRR73(grid_rpt)
-def isGrid(grid_rpt):       return not isReport(grid_rpt) and not is73(grid_rpt) and not isRR73(grid_rpt) and not isRRR(grid_rpt) 
-
-def progress_qso(clicked_message):
-    global qso
-    
-    call_a, call_b, grid_rpt = clicked_message.msg_tuple
-    my_station = qso.mStation
-    reply = ""
-    msg = ' '.join(clicked_message.msg_tuple)
-    console_print(f"[QSO] Clicked on message '{msg}'")
-
-    if call_a == "CQ":
-        qso.clear()
-        qso.times['time_on'] = time.gmtime()
-        qso.oStation = {'c': call_b, 'g': grid_rpt}
-        qso.rpts['sent'] = f"{clicked_message.snr:+03d}"
-        qso.tx_freq = clearest_frequency
-        qso.tx_cycle = 1 - clicked_message.origin['odd_even']
-        qso.set_tx_message(f"{qso.oStation['c']} {my_station['c']} {my_station['g'][:4]}")
-        return
-
-    if call_a == my_station['c']:
-        if qso.times['time_on'] is None:
-            qso.times['time_on'] = time.gmtime()
-            qso.tx_freq = clearest_frequency
-            qso.tx_cycle = 1 - clicked_message.origin['odd_even']
-        if qso.rpts['sent'] is None:
-            qso.rpts['sent'] = f"{clicked_message.snr:+03d}"
-        qso.oStation['c'] = call_b
-        
-        if isGrid(grid_rpt):
-            qso.oStation = {'c': call_b, 'g': grid_rpt}
-            reply = f"{qso.oStation['c']} {my_station['c']} {clicked_message.snr:+03d}"
-        if isReport(grid_rpt):
-            reply = f"{qso.oStation['c']} {my_station['c']} R{clicked_message.snr:+03d}"
-            qso.rpts['rcvd'] = grid_rpt[-3:]
-        if isRReport(grid_rpt) or isRRR(grid_rpt):
-            reply = f"{qso.oStation['c']} {my_station['c']} RR73"
-        if isRR73(grid_rpt):
-            reply = f"{qso.oStation['c']} {my_station['c']} 73"
-
-        qso.set_tx_message(reply)
-
-        if reply.endswith("73"): # do last so any log errors don't prevent sending 73
-            qso.log()
-
-def make_wav(msg, wave_output_file): # move to transmitter.py?
-    symbols = audio_out.create_ft8_symbols(msg)
-    audio_data = audio_out.create_ft8_wave(symbols)
-    audio_out.write_to_wave_file(audio_data, wave_output_file)
-    console_print(f"Created wave file {wave_output_file}")
+def console_print(text, color = 'white'):
+    text = f"{time_utils.cycle_time():4.1f} {text}"
+    if gui is not None:
+        gui.console.scroll_print(text, color)
+    else:
+        print(text)
 
 def wait_for_keyboard():
     import time
@@ -191,32 +61,78 @@ def wait_for_keyboard():
     except KeyboardInterrupt:
         pass
 
-#============= Callbacks for Receiver ==========================================================
-def on_rx_decode(c):
-    if (c.decode_completed - qso.band_info['time_set']) < 9: # prevent bad QRG -> heard_by_me and pskreporter upload data
-        return
-    message = Message(c, qso.band_info['b'])
+
+class Transmitter():
+    def __init__(self):
+        self.tx_message = None
+
+    def start_daemon(self):
+        threading.Thread(target = self.td, daemon = True).start()
+
+    def td(self):
+        while True:
+            time.sleep(0.1)
+            if self.tx_message is not None:
+                start_gridtime = self.tx_message['start_gridtime'] 
+                grid_time = time_utils.grid_time()
+                if start_gridtime <= grid_time < start_gridtime + MAX_TX_START_CYCLETIME:
+                    transmit(self.tx_message['text'])
+                    self.tx_message = None
+
+    def transmit(self, text):
+        symbols = audio_out.create_ft8_symbols(self.message_to_transmit)
+        if any(symbols):
+            console_print(f"[PyFT8] Transmitting {self.tx_message}")
+            audio_data = audio_out.create_ft8_wave(symbols, f_base = self.tx_freq)
+            rig.ptt_on()
+            audio_out.play_data_to_soundcard(audio_data, output_device_idx)
+            rig.ptt_off()
+            self.last_tx = self.message_to_transmit
+            self.message_to_transmit = None
+        else:
+            console_print(f"[PyFT8] Couldn't encode message {self.message_to_transmit}", color = 'red') # move this to earlier by setting tx symbols not tx message
+
+
+def on_decode(c):
+    band_info = gui.qso.band_info if gui else {'current_band': None, 'fMHz':0, 'time_set':0}
     if gui:
-        gui.add_message_box(message)
-    print(f"{time_utils.cycle_time():5.1f} {message.wsjtx_screen_format()}")
-    fMHz = float(qso.band_info['fMHz']) if qso.band_info['fMHz'] is not None else 0
+        #if (c.decode_completed - band_info['time_set']) < 9: # prevent bad QRG -> heard_by_me and pskreporter upload data
+        #    return
+        geo_text = history.get_geo_text(c.msg_tuple[1], myGrid) if history else ''
+        tnow = time_utils.time()
+        wb_time = adif_logging.cache.get(c.msg_tuple[1],'') if adif_logging else 0
+        wb_text = f"wb: {time_utils.format_duration(tnow - float(wb_time))}" if wb_time else ''
+        hearing_me = ''
+        if history:
+            hearing_me = '# ' if history.is_hearing_me(band, c.msg_tuple[1], tnow - 60*HEARING_PANEL_LIFE_MINS) else ' '
+        gui.add_message_box({'origin':c.origin,
+                            'msg_tuple':c.msg_tuple,
+                            'is_from_me': msg_tuple[1] == myCall,
+                            'is_to_me': msg_tuple[0] == myCall,
+                            'is_cq': msg_tuple[0].startswith('CQ'),
+                            'display_text': f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {self.geo_text}"})
+
+    screen_format = f"{c.cyclestart['string']} {c.snr:+03d} {c.dt:4.1f} {c.fHz:4.0f} ~ {' '.join(c.msg_tuple)}"
+    print(f"{time_utils.cycle_time():5.1f} {screen_format}")
+    
     if history:
-        history.write_all_txt_row(c.cyclestart['string'], fMHz, 'Rx', 'FT8', c.snr, message.dt, message.fHz, ' '.join(c.msg_tuple))
-    if qso.band_info['b'] is not None and pskr_upload is not None:
+        history.write_all_txt_row(c.cyclestart['string'], band_info['fMHz'], 'Rx', 'FT8', c.snr, c.dt, c.fHz, ' '.join(c.msg_tuple))
+        
+    if band_info['current_band'] is not None and pskr_upload is not None:
         call_a, call_b, grid_rpt = c.msg_tuple
         if call_b == 'not':
             return
         call_b_grid = grid_rpt if isGrid(grid_rpt) else ''
-        if call_b != config['station']['call']:
-            pskr_upload.add_report(call_b, int(1000000*float(qso.band_info['fMHz'])) + message.fHz, c.snr, 'FT8', 1, int(time_utils.time()))
+        if call_b != self.myCall:
+            pskr_upload.add_report(call_b, int(1000000*float(band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 1, int(time_utils.time()))
             if history:
                 history.store_best_grid(call_b, call_b_grid)
-                history.add_myspots_record(history.heard_by_me.data, history.heard_by_me_new, qso.band_info['b'], call_b, int(time_utils.time()), c.snr)
-        if history and call_b == config['station']['call'] and (isReport(grid_rpt) or isRReport(grid_rpt)):
+                history.add_myspots_record(history.heard_by_me.data, history.heard_by_me_new, band_info['current_band'], call_b, int(time_utils.time()), c.snr)
+        if history and call_b == self.myCall and (isReport(grid_rpt) or isRReport(grid_rpt)):
             rpt = grid_rpt.replace("R","")
-            history.add_myspots_record(history.hearing_me.data, history.hearing_me_new, qso.band_info['b'], call_a, int(time_utils.time()), rpt)
+            history.add_myspots_record(history.hearing_me.data, history.hearing_me_new, band_info['current_band'], call_a, int(time_utils.time()), rpt)
 
-def on_rx_busy_profile(busy_profile_new, df, cycle):
+def find_clear_freq(busy_profile_new, df, cycle):
     global busy_profile, clearest_frequency
     if output_device_idx is None:
         return
@@ -227,98 +143,10 @@ def on_rx_busy_profile(busy_profile_new, df, cycle):
         idx = np.argmin(busy_profile[f0_idx:fn_idx])
         clearest_frequency = (f0_idx + idx) * df
     busy_profile = busy_profile_new
-    #console_print(f"[on_busy] Clear Tx frequency found at {clearest_frequency:6.1f}")
+    #self.gui.console.scroll_print(f"[on_busy] Clear Tx frequency found at {clearest_frequency:6.1f}")
 
-#============= Callbacks for GUI ==========================================================
-def on_gui_sidebars_refresh(gui, display_cycle):
-    if qso.band_info['b'] is None:
-        console_print(f"[PyFT8] Band not set; please select a band.", color = 'red')
-    if history is None:
-        return
-    
-    # refresh band stats
-    grd = config['station']['grid'][:4]
-    for bb in gui.button_boxes:
-        band = bb.clickargs.get('band','')
-        if band:
-            bb.set_active(band == qso.band_info.get('b',''))
-            if band in history.home_activity:
-                cnts = history.home_activity[band]
-                new_text = f"{cnts[0]}Tx, {cnts[1]}Rx"
-                if new_text != bb.get_info_text():
-                    bb.set_info_text(new_text)
-
-    # refresh home square counts
-    b = qso.band_info['b']
-    if b is not None and b in history.home_most_remotes:
-        tx_lead,  rx_lead = history.home_most_remotes[b]
-        call = config['station']['call']
-        n_spotted, n_spotting = history.get_spot_counts(b, call)
-        gui.band_stats.scroll_print(f"{call:<7} {tx_lead[0]:<7}", color = '#ff756b')
-        gui.band_stats.scroll_print(f"{n_spotting:<7} {tx_lead[1]:<7}", color = '#ff756b')
-        gui.band_stats.scroll_print(f"{call:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
-        gui.band_stats.scroll_print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
-
-    #refresh hearing me / heard by me panel
-    historic_data = history.hearing_me.data if display_cycle == 1 else history.heard_by_me.data
-    new_calls_data = history.hearing_me_new if display_cycle == 1 else history.heard_by_me_new
-    timewindow_str = f"<{HEARING_PANEL_LIFE_MINS:.0f} mins"
-    title_txt = f"Hearing me {timewindow_str}" if display_cycle==1 else f"Heard by me {timewindow_str}"
-    display_rows = [(title_txt, 2e40, 'white')]
-    tnow = time_utils.time()
-    if b is not None and b in historic_data:
-        band_rpts = historic_data[b]
-        calls_now = [call for call in band_rpts if (tnow - band_rpts[call]['t']) < 60*HEARING_PANEL_LIFE_MINS]
-        subtitle_txt = f"{len(calls_now)}/{len(band_rpts)} now/ever"
-        display_rows.append((subtitle_txt, 1e40, 'white'))
-        for remote_call in calls_now:
-            rpt = band_rpts[remote_call]
-            snr, geo_text, timestamp = int(rpt['rp']), history.get_geo_text(remote_call, config['gui']['loc']), rpt['t']
-            color = 'white' if history.is_in_new_alert(b, remote_call, new_calls_data) else 'lime'
-            display_rows.append((f"{remote_call:<7} {snr:+03d} {geo_text:<12}", timestamp, color))
-    display_rows.sort(key = lambda row: row[1], reverse = True)
-    gui.hm.list_print([row[0] for row in display_rows], [row[2] for row in display_rows])
-
-def on_gui_control_click(btn_def):
-    btn_action = btn_def['action']
-    if btn_action == "CQ":
-        mc, mg = config['station']['call'], config['station']['grid'][:4]
-        qso.clear()
-        qso.tx_freq = clearest_frequency
-        qso.tx_cycle = time_utils.odd_even()
-        if time_utils.cycle_time() > MAX_TX_START_CYCLETIME:
-           qso.tx_cycle = 1-qso.tx_cycle 
-        qso.set_tx_message(f"CQ {mc} {mg}")
-    if btn_action == "RPT_LAST":
-        qso.set_tx_message(qso.last_tx)
-    if btn_action == "TX_OFF":
-        console_print("[PyFT8] Set PTT Off")
-        rig.ptt_off()
-        qso.tx_cycle = None
-    if(btn_action == 'SET_BAND'):
-        band, freqMHz = btn_def['band'], btn_def['freq']
-        qso.band_info = {'b':band, 'fMHz':freqMHz, 'time_set':time_utils.time()}
-        rig.set_freq_Hz(int(1000000*float(qso.band_info['fMHz'])))
-        console_print(f"[PyFT8] Set band: {qso.band_info['b']} {qso.band_info['fMHz']}")
-        gui.receiver.clear_all()
-        gui.hide_msg_boxes()
-        gui.band_stats.clear()
-        gui.refresh_sidebars()
-        
-def on_gui_msg_click(message):
-    progress_qso(message)
-
-#=============== CLI ========================================================================
-def console_print(text, color = 'white'):
-    text = f"{time_utils.cycle_time():4.1f} {text}"
-    if gui is not None:
-        gui.console.scroll_print(text, color)
-    else:
-        print(text)
-        
 def cli():
-    global audio_out, output_device_idx, rig, gui, qso, config, config_folder, clearest_frequency, adif_logging, pskr_upload, history
-    import time, sys
+    global myCall, myGrid, history
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-c', '--config_folder', help = 'Location of config folder e.g. C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', default = './') 
     parser.add_argument('-i', '--inputcard_keywords', help = 'Comma-separated keywords to identify the input sound device')  
@@ -338,15 +166,20 @@ def cli():
         clearest_frequency = 760
 
     if args.transmit_message and args.wave_output_file:
-        make_wav(args.transmit_message, f"{args.wave_output_file}")
+        audio_out.make_wav(args.transmit_message, f"{args.wave_output_file}")
+        console_print(f"Created wave file {wave_output_file}")
         sys.exit(1)
     
     config_folder = f"{args.config_folder}".strip()
-    get_config()
-    mc, mg = config['station']['call'], config['station']['grid']
+    config = get_config(config_folder)
+    myCall, myGrid = config['station']['call'], config['station']['grid']
 
     if args.parse_all_file:
-        history = History(config_folder, mc, mg, PSKR_REFRESH_MINS, True)
+        history = History(config_folder, mc, mg, PSKR_REFRESH_MINS)
+        history.load_hearing_heard_from_all_file(config['bands'])
+        history.hearing_me.save()
+        history.heard_by_me.save()
+        print("All file parsed and saved to hearing_me / heard_by_me files")
         sys.exit(1)
 
     if config.has_section('hamlib_rig'):
@@ -364,7 +197,8 @@ def cli():
         output_device_idx = audio_out.find_device(outputcard_keywords)
 
         if args.transmit_message and rig and args.outputcard_keywords:
-            qso.set_tx_message(args.transmit_message)
+            transmitter = Transmitter()
+            transmitter.transmit(args.transmit_message)
             sys.exit(1)
         
     if not args.inputcard_keywords:
@@ -372,20 +206,24 @@ def cli():
         sys.exit(1)
     else:
         input_device_keywords = args.inputcard_keywords.replace(' ','').split(',')
-        rx = Receiver([100, 3000], input_device_keywords, None, on_rx_decode, on_rx_busy_profile,
+        rx = Receiver([100, 3000], input_device_keywords, wav_files = None, on_decode = on_decode,
                       sync_score_min = 100, max_cands = 75, osd = False, ldpc = [45,15], min_search_start = 11)
 
     if not args.no_gui:
-        qso = FT8_QSO()
-        gui = Gui(rx, config, on_gui_sidebars_refresh, on_gui_msg_click, on_gui_control_click)
-        history = History(config_folder, mc, mg, PSKR_REFRESH_MINS, args.parse_all_file)
-        history.set_bands(config['bands'])
+        gui = Gui(config)
+        gui.init_waterfall(rx.audio_in.waterfall_data)
+        transmitter = Transmitter()
+        transmitter.start_daemon()
+        station = config['station']
+        gui.qso_manager = QSO_manager(station['call'], station['grid'], gui, transmitter)
+        history = History(config_folder, myCall, myGrid, PSKR_REFRESH_MINS)
         adif_logging = ADIF(f"{config_folder}/PyFT8.adi")
         history.load_hearing_heard_from_adif(adif_logging.cache)
-
-    if mc is not None and 'pskreporter' in config.keys():
+        history.start_collect_new()
+        
+    if myCall is not None and 'pskreporter' in config.keys():
         if config['pskreporter']['upload'] == 'Y':
-            pskr_upload = PSKR_upload(mc, mg, software = f"PyFT8 v{VER}", console_print = console_print) if not mc is None else None
+            pskr_upload = PSKR_upload(myCall, myGrid, software = f"PyFT8 v{VER}", console_print = console_print) if not myCall is None else None
 
     if gui is None:
         wait_for_keyboard()

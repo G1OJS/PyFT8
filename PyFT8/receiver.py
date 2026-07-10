@@ -177,17 +177,23 @@ class AudioIn:
         self.search_hops_per_grid = 2*self.search_hops_per_cycle
         self.dt = T_CYC / self.search_hops_per_cycle
         self.search_grid = np.ones((self.search_hops_per_grid, self.search_f0_idx_range[1]  + 8 * self.search_bpt ), dtype = np.float32)
-        self.waterfall_data = self.search_grid[::2,::2].T
         self.samples_perhop = int(SAMP_RATE / (SYM_RATE * self.search_hps))
         self.samples_per_cycle = int(SAMP_RATE * T_CYC)
+        self.waterfall_data = self.set_waterfall_data()
 
         self.search_audio_buffer = np.zeros(self.search_fft_len, dtype=np.float32)
-        self.search_fft_in = np.zeros(self.search_fft_len, dtype=np.float32)
-        
+        self.search_fft_in = np.zeros(self.search_fft_len, dtype=np.float32)        
         self.cycle_audio_buffer = np.zeros(192000, dtype=np.float32)
         self.adj, self.cycle_audio_buffer_ptr_prev, self.t_prev = 1.0, -1, None
         self.cycle_audio_buffer_ptr, self.search_grid_ptr = 0, 0
         self.set_pointers()
+
+    def set_waterfall_data(self):
+        downsample = 2
+        data = self.search_grid[::downsample,::downsample].T
+        df, dt = self.df / downsample, self.dt / downsample
+        sig_w, sig_h = int(79/dt), int(8/df)
+        return {'data':data, 'df':df, 'dt':dt, 'sig_w':sig_w, 'sig_h':sig_h, 'hops_per_cycle':self.search_hops_per_cycle}
 
     def clear_spectrum(self):
         self.search_grid *= 0
@@ -405,21 +411,21 @@ class Candidate:
                 if msg_tuple:
                     self.msg_tuple, self.n_its = msg_tuple, 999
                     self.ipass = 999
-                
+
+        self.dt = self.origin['t0']-0.5
+        self.fHz = self.origin['f0']
         self.decode_completed = time_utils.time()
         
 #============== RECEIVER ===========================================================
         
 class Receiver():
-    def __init__(self, search_freq_range, input_device_keywords, wav_files, on_decode, 
-                 on_busy_profile = None, verbose = False,
+    def __init__(self, search_freq_range, input_device_keywords, on_decode = None, wav_files = None, verbose = False,
                  sync_score_min = 100, max_cands = 1000, osd = True, ldpc = [50,25], min_search_start = 13):
         self.audio_in = AudioIn(search_freq_range, wav_files)
         self.osd, self.ldpc = osd, ldpc
         self.sync_score_min, self.max_cands = sync_score_min, max_cands
         self.wav_files = wav_files
         self.on_decode = on_decode
-        self.on_busy_profile = on_busy_profile
         self.candidates = []
         self.verbose = verbose
         search_timerange = [-1.7, 3.8]
@@ -445,10 +451,6 @@ class Receiver():
 
         time_utils.sleep(0.5)
         threading.Thread(target=self.manage_cycle, daemon=True).start()
-
-    def clear_all(self):
-        self.candidates = []
-        self.audio_in.clear_spectrum()
 
     def search(self, cyclestart, odd_even, cycle_h0):
         cands = []
@@ -520,7 +522,8 @@ class Receiver():
                     if (key not in duplicate_filter):
                         duplicate_filter.add(key)
                         c.decode_time_from_grid = self.audio_in.cycle_audio_buffer_ptr / SAMP_RATE
-                        self.on_decode(c)
+                        if self.on_decode:
+                            self.on_decode(c)
 
             if not cycle_searched and self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle > self.search_start_hop:
                 hstart = self.audio_in.search_grid_ptr
@@ -533,8 +536,6 @@ class Receiver():
                 self.search(cyclestart, self.audio_in.odd_even, self.audio_in.cycle_h0)
                 cycle_searched = True
                 hstop = self.audio_in.search_grid_ptr
-                if not self.on_busy_profile is None:
-                   self.on_busy_profile(*self.get_busy_profile())
                 tsearch = (hstop-hstart)/ (SYM_RATE * self.audio_in.search_hps)
                 time_utils.tlog(f"[Cycle manager] New spectrum searched in {tsearch}s -> {len(self.candidates)} candidates", verbose = True) 
 
