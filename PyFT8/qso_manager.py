@@ -22,6 +22,12 @@ class QSO_manager:
     def get_band_info(self):
         return self.band_info
 
+    def band_is_set(self):
+        if self.band_info['current_band'] is None:
+            self.console_print("Please select a band before transmitting", color = 'red')
+            return False
+        return True
+
     def reset(self):
         self.tx_msg_and_time = None
         self.last_tx_msg_and_time = None
@@ -45,11 +51,6 @@ class QSO_manager:
                     self.transmit(self.tx_msg_and_time['text'], self.tx_freq)
                     self.last_tx_msg_and_time = self.tx_msg_and_time
                     self.tx_msg_and_time = None
-    def log(self):
-        if self.adif_logging is not None:
-            self.times['time_off'] = time_utils.gmtime()
-            self.adif_logging.log(self.times, self.band_info, {'c':self.myCall,'g':self.myGrid}, {'c':self.theirCall,'g':self.theirGrid}, self.rpts)
-            self.console_print(f"[PyFT8] Logged QSO with {self.theirCall}")
 
     def progress(self, clicked_msg_tuple, odd_even, snr):
         call_a, call_b, grid_rpt = clicked_msg_tuple
@@ -95,18 +96,23 @@ class QSO_manager:
             self.set_tx_msg_and_time(reply)
 
             if reply.endswith("73"): # do last so any log errors don't prevent sending 73
-                self.log()
+                if self.adif_logging is not None:
+                    self.times['time_off'] = time_utils.gmtime()
+                    self.adif_logging.log(self.times, self.band_info, {'c':self.myCall,'g':self.myGrid}, {'c':self.theirCall,'g':self.theirGrid}, self.rpts)
+                    self.console_print(f"[PyFT8] Logged QSO with {self.theirCall}")
 
     def on_click(self, btn_def):
         btn_action = btn_def['action']
         if btn_action == "MESSAGE_CLICK":
-            self.progress(btn_def['msg_tuple'], btn_def['odd_even'], btn_def['snr'])
+            if self.band_is_set(): 
+                self.progress(btn_def['msg_tuple'], btn_def['odd_even'], btn_def['snr'])
         if btn_action == "CQ":
-            self.reset()
-            self.tx_cycle = time_utils.odd_even()
-            if time_utils.cycle_time() > MAX_TX_START_CYCLETIME:
-               self.tx_cycle = 1-self.tx_cycle 
-            self.set_tx_msg_and_time(f"CQ {self.myCall} {self.myGrid[:4]}")
+            if self.band_is_set():                
+                self.reset()
+                self.tx_cycle = time_utils.odd_even()
+                if time_utils.cycle_time() > MAX_TX_START_CYCLETIME:
+                   self.tx_cycle = 1-self.tx_cycle 
+                self.set_tx_msg_and_time(f"CQ {self.myCall} {self.myGrid[:4]}")
         if btn_action == "RPT_LAST":
             self.set_tx_msg_and_time(self.last_tx_msg_and_time)
         if btn_action == "TX_OFF":
