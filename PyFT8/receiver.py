@@ -191,9 +191,10 @@ class AudioIn:
     def set_waterfall_data(self):
         downsample = 2
         data = self.search_grid[::downsample,::downsample].T
-        df, dt = self.df / downsample, self.dt / downsample
-        sig_w, sig_h = int(79/dt), int(8/df)
-        return {'data':data, 'df':df, 'dt':dt, 'sig_w':sig_w, 'sig_h':sig_h, 'hops_per_cycle':self.search_hops_per_cycle}
+        df, dt = self.df * downsample, self.dt * downsample
+        sig_w, sig_h = int(79*self.search_hps/downsample), int(8*self.search_bpt/downsample)
+        pixels_per_cycle = int(self.search_hops_per_cycle / downsample)
+        return {'data':data, 'df':df, 'dt':dt, 'sig_w':sig_w, 'sig_h':sig_h, 'pixels_per_cycle':pixels_per_cycle}
 
     def clear_spectrum(self):
         self.search_grid *= 0

@@ -64,7 +64,6 @@ class Scrollbox:
 class Msg_box:
     def __init__(self, fig, ax, fbin, w, h, onclick):
         from matplotlib.patches import Rectangle
-        print("New Box")
         self.onclick = onclick 
         rect = Rectangle((0, fbin), width=w, height=h, alpha=0.6, edgecolor='lime', lw=2)
         self.patch = ax.add_patch(rect)
@@ -73,7 +72,6 @@ class Msg_box:
         self.expire = 0
 
     def set_properties(self, message, x):
-        print("set props", message, x)
         self.patch.set_x(x)
         self.text_inst.set_x(x)
         self.patch.set_visible(True)
@@ -132,12 +130,12 @@ class ButtonBox:
 
 
 class Gui:
-    def __init__(self, config):
+    def __init__(self, config, on_click):
         self.plt = plt
         self.fig = plt.figure(figsize = (10,10), facecolor=(.18, .71, .71, 0.4)) 
         self.fig.canvas.manager.set_window_title('PyFT8 by G1OJS')
         self.config = config
-        self.qso_manager = None
+        self.on_click = on_click
         self.rig = None
         self.wf_data = None
         self.band_info = {'current_band':None}
@@ -172,17 +170,17 @@ class Gui:
         self.button_boxes = []
         bh, bs = 0.02, 0.002
         bb = ButtonBox(self.fig, [L['pmargin'], wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
-                        btn_label = "CQ", onclick = self.handle_click, clickargs = {'action':'CQ'})                            
+                        btn_label = "CQ", onclick = self.on_click, clickargs = {'action':'CQ'})                            
         self.button_boxes.append(bb)
         bb = ButtonBox(self.fig, [L['pmargin'], wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
-                        btn_label = "Repeat last", onclick = self.handle_click, clickargs = {'action':'RPT_LAST'})                            
+                        btn_label = "Repeat last", onclick = self.on_click, clickargs = {'action':'RPT_LAST'})                            
         self.button_boxes.append(bb)
         bb = ButtonBox(self.fig, [L['pmargin'], wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
-                        btn_label = "Tx off", onclick = self.handle_click, clickargs = {'action':'TX_OFF'})                            
+                        btn_label = "Tx off", onclick = self.on_click, clickargs = {'action':'TX_OFF'})                            
         self.button_boxes.append(bb)            
         for band, freq in self.config['bands'].items():
             bb = ButtonBox(self.fig, [L['pmargin'], wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 30,
-                            btn_label = band, onclick = self.handle_click, clickargs = {'action':'SET_BAND','band':band,'freq':freq})
+                            btn_label = band, onclick = self.on_click, clickargs = {'action':'SET_BAND','band':band,'freq':freq})
             self.button_boxes.append(bb)
 
         # hearing me list
@@ -242,33 +240,6 @@ class Gui:
     def add_message_box(self, message_info):
         self.new_messages.put(message_info)
 
-    def handle_click(self, btn_def):
-        if not self.qso_manager:
-            return
-        btn_action = btn_def['action']
-        if btn_action == "CQ":
-            mc, mg = config['station']['call'], config['station']['grid'][:4]
-            self.qso_manager.clear()
-            self.qso_manager.tx_freq = clearest_frequency
-            self.qso_manager.tx_cycle = time_utils.odd_even()
-            if time_utils.cycle_time() > MAX_TX_START_CYCLETIME:
-               self.qso_manager.tx_cycle = 1-self.qso_manager.tx_cycle 
-            self.qso_manager.set_tx_message(f"CQ {mc} {mg}")
-        if btn_action == "RPT_LAST":
-            self.qso_manager.set_tx_message(self.qso_manager.last_tx)
-        if btn_action == "TX_OFF":
-            console_print("[PyFT8] Set PTT Off")
-            self.rig.ptt_off()
-            self.qso_manager.tx_cycle = None
-        if(btn_action == 'SET_BAND'):
-            current_band, freqMHz = btn_def['band'], btn_def['freq']
-            self.band_info = {'current_band':current_band, 'fMHz':freqMHz, 'time_set':time_utils.time()}
-            self.rig.set_freq_Hz(int(1000000*float(self.band_info['fMHz'])))
-            console_print(f"[PyFT8] Set band: {self.band_info['current_band']} {self.band_info['fMHz']}")
-            self.hide_msg_boxes()
-            self.band_stats.clear()
-            self.refresh_sidebars()                                 
-
     def hide_msg_boxes(self):
         for fb in self.msg_boxes:
             self.msg_boxes[fb].hide()
@@ -283,10 +254,10 @@ class Gui:
             message = self.new_messages.get()
             wf = self.wf_data
             o = message['origin']
-            x = o['t0'] / wf['dt'] + o['odd_even'] * wf['hops_per_cycle']
+            x = o['t0'] / wf['dt'] + o['odd_even'] * wf['pixels_per_cycle']
             y = o['f0'] / wf['df']
-            if not y in self.msg_boxes:
-                self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, x, y, self.wf_data['sig_w'], self.wf_data['sig_h'], onclick = self.handle_click)
+            if not y in self.msg_boxes: 
+                self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, y, self.wf_data['sig_w'], self.wf_data['sig_h'], onclick = self.on_click)
             self.msg_boxes[y].set_properties(message, x)
             
         if time_utils.time() - self.sidebars_refresh_last > 3:            

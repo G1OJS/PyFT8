@@ -1,14 +1,13 @@
 MAX_TX_START_CYCLETIME = 3
 
-
 class QSO_manager:
-    def __init__(self, myCall, myGrid, gui, transmitter):
-        self.gui = gui
+    def __init__(self, myCall, myGrid, console_print, transmitter):
         self.transmitter = transmitter
+        self.band_info = {'current_band': None, 'fMHz':0, 'time_set':0}
         self.myCall, self.myGrid = myCall, myGrid
         self.tx_freq = 750
         self.clear()
-        self.gui.console.scroll_print(f"[PyFT8] QSO handler started for {myCall}")
+        console_print(f"[PyFT8] QSO handler started for {myCall}")
 
     def clear(self):
         self.transmitter.tx_message = None
@@ -20,17 +19,14 @@ class QSO_manager:
         self.rpts = {'sent': None, 'rcvd': None}
 
     def set_tx_message(self, message):
-        if gui and self.band_info['b'] is None:
-            self.gui.console.scroll_print("[PyFT8] Please select a band before transmitting", color = 'red')
-            return
         self.transmitter.tx_message = {'text':message, 'start_gridtime':[0.25, 15.25][self.tx_cycle]}
-        self.gui.console.scroll_print(f"[QSO] Set transmit message to '{self.message_to_transmit}' (cyc {self.tx_cycle}, {self.tx_freq:5.1f} Hz)")
+        console_print(f"[QSO] Set transmit message to '{self.message_to_transmit}' (cyc {self.tx_cycle}, {self.tx_freq:5.1f} Hz)")
 
     def log(self):
         if adif_logging is not None:
             self.times['time_off'] = time.gmtime()
             adif_logging.log(self.times, self.band_info, self.mStation, self.oStation, self.rpts)
-            self.gui.console.scroll_print(f"[PyFT8] Logged QSO with {self.oStation['c']}")
+            console_print(f"[PyFT8] Logged QSO with {self.oStation['c']}")
 
     def progress(self):
         call_a, call_b, grid_rpt = clicked_message.msg_tuple
@@ -43,7 +39,7 @@ class QSO_manager:
 
         my_station = qso.mStation
         reply = ""
-        self.gui.console.scroll_print(f"[QSO] Clicked on message '{' '.join(clicked_message.msg_tuple)}'")
+        console_print(f"[QSO] Clicked on message '{' '.join(clicked_message.msg_tuple)}'")
 
         if call_a == "CQ":
             qso.clear()
@@ -80,5 +76,27 @@ class QSO_manager:
             if reply.endswith("73"): # do last so any log errors don't prevent sending 73
                 qso.log()
 
-
+    def on_click(self, btn_def):
+        btn_action = btn_def['action']
+        if btn_action == "CQ":
+            self.clear()
+            self.tx_freq = clearest_frequency
+            self.tx_cycle = time_utils.odd_even()
+            if time_utils.cycle_time() > MAX_TX_START_CYCLETIME:
+               self.tx_cycle = 1-self.tx_cycle 
+            self.set_tx_message(f"CQ {self.myCall} {self.myGrid[:4]}")
+        if btn_action == "RPT_LAST":
+            self.set_tx_message(self.last_tx)
+        if btn_action == "TX_OFF":
+            console_print("[PyFT8] Set PTT Off")
+            self.rig.ptt_off()
+            self.tx_cycle = None
+        if(btn_action == 'SET_BAND'):
+            current_band, freqMHz = btn_def['band'], btn_def['freq']
+            self.band_info = {'current_band':current_band, 'fMHz':freqMHz, 'time_set':time_utils.time()}
+            self.rig.set_freq_Hz(int(1000000*float(self.band_info['fMHz'])))
+            console_print(f"[PyFT8] Set band: {self.band_info['current_band']} {self.band_info['fMHz']}")
+            self.hide_msg_boxes()
+            self.band_stats.clear()
+            self.refresh_sidebars() 
 

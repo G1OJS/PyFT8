@@ -15,9 +15,9 @@ from PyFT8.qso_manager import QSO_manager
 
 VER = '3.2.0 test'
 PSKR_REFRESH_MINS = 20
+HEARING_PANEL_LIFE_MINS = 20
 
-gui = None
-history = None
+gui, history, qso_manager, adif_logging = None, None, None, None
 myCall, myGrid = None, None
 
 def get_config(config_folder):
@@ -94,7 +94,7 @@ class Transmitter():
 
 
 def on_decode(c):
-    band_info = gui.qso.band_info if gui else {'current_band': None, 'fMHz':0, 'time_set':0}
+    band_info = qso_manager.band_info if qso_manager else {'current_band': None, 'fMHz':0, 'time_set':0}
     if gui:
         #if (c.decode_completed - band_info['time_set']) < 9: # prevent bad QRG -> heard_by_me and pskreporter upload data
         #    return
@@ -104,13 +104,13 @@ def on_decode(c):
         wb_text = f"wb: {time_utils.format_duration(tnow - float(wb_time))}" if wb_time else ''
         hearing_me = ''
         if history:
-            hearing_me = '# ' if history.is_hearing_me(band, c.msg_tuple[1], tnow - 60*HEARING_PANEL_LIFE_MINS) else ' '
+            hearing_me = '# ' if history.is_hearing_me(band_info['current_band'], c.msg_tuple[1], tnow - 60*HEARING_PANEL_LIFE_MINS) else ' '
         gui.add_message_box({'origin':c.origin,
                             'msg_tuple':c.msg_tuple,
-                            'is_from_me': msg_tuple[1] == myCall,
-                            'is_to_me': msg_tuple[0] == myCall,
-                            'is_cq': msg_tuple[0].startswith('CQ'),
-                            'display_text': f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {self.geo_text}"})
+                            'is_from_me': c.msg_tuple[1] == myCall,
+                            'is_to_me': c.msg_tuple[0] == myCall,
+                            'is_cq': c.msg_tuple[0].startswith('CQ'),
+                            'display_text': f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {history.get_geo_text(c.msg_tuple[1], '')}"})
 
     screen_format = f"{c.cyclestart['string']} {c.snr:+03d} {c.dt:4.1f} {c.fHz:4.0f} ~ {' '.join(c.msg_tuple)}"
     print(f"{time_utils.cycle_time():5.1f} {screen_format}")
@@ -146,7 +146,7 @@ def find_clear_freq(busy_profile_new, df, cycle):
     #self.gui.console.scroll_print(f"[on_busy] Clear Tx frequency found at {clearest_frequency:6.1f}")
 
 def cli():
-    global myCall, myGrid, history
+    global gui, qso_manager, myCall, myGrid, history, adif_logging
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-c', '--config_folder', help = 'Location of config folder e.g. C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', default = './') 
     parser.add_argument('-i', '--inputcard_keywords', help = 'Comma-separated keywords to identify the input sound device')  
@@ -210,16 +210,15 @@ def cli():
                       sync_score_min = 100, max_cands = 75, osd = False, ldpc = [45,15], min_search_start = 11)
 
     if not args.no_gui:
-        gui = Gui(config)
-        gui.init_waterfall(rx.audio_in.waterfall_data)
         transmitter = Transmitter()
-        transmitter.start_daemon()
-        station = config['station']
-        gui.qso_manager = QSO_manager(station['call'], station['grid'], gui, transmitter)
+        qso_manager = QSO_manager(myCall, myGrid, console_print, transmitter)
         history = History(config_folder, myCall, myGrid, PSKR_REFRESH_MINS)
+        gui = Gui(config, qso_manager.on_click)
+        gui.init_waterfall(rx.audio_in.waterfall_data)
         adif_logging = ADIF(f"{config_folder}/PyFT8.adi")
         history.load_hearing_heard_from_adif(adif_logging.cache)
         history.start_collect_new()
+        transmitter.start_daemon()
         
     if myCall is not None and 'pskreporter' in config.keys():
         if config['pskreporter']['upload'] == 'Y':
