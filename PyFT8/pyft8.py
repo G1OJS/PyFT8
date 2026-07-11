@@ -74,13 +74,13 @@ def on_decode(c):
     band_info = qso_manager.band_info if qso_manager else {'current_band': None, 'fMHz':0, 'time_set':0}
     if gui:
         gui.add_message_box(c, myCall)
-    decode_queue_non_time_critical.put(c)
+    decode_queue_non_time_critical.put((c, band_info))
 
 def on_decode_non_time_critical():
     while True:
         time_utils.sleep(0.5)
-        while not decode_queue_non_time_critical.empty:
-            c = decode_queue_non_time_critical.get()
+        while not decode_queue_non_time_critical.empty():
+            c, band_info = decode_queue_non_time_critical.get()
             screen_format = f"{c.cyclestart['string']} {c.snr:+03d} {c.dt:4.1f} {c.fHz:4.0f} ~ {' '.join(c.msg_tuple)}"
             print(f"{time_utils.cycle_time():5.1f} {screen_format}")
             if c.msg_tuple[1] != 'not':
