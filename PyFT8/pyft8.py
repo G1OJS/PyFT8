@@ -82,7 +82,7 @@ def on_decode_non_time_critical():
         while not decode_queue_non_time_critical.empty():
             c, band_info = decode_queue_non_time_critical.get()
             screen_format = f"{c.cyclestart['string']} {c.snr:+03d} {c.dt:4.1f} {c.fHz:4.0f} ~ {' '.join(c.msg_tuple)}"
-            print(f"{time_utils.cycle_time():5.1f} {screen_format}")
+            print(f"{screen_format:50s} decoded@ {c.decode_completed % 15:5.1f}s ")
             if c.msg_tuple[1] != 'not':
                 if history:
                     history.write_all_txt_row(c.cyclestart['string'], float(band_info['fMHz']), 'Rx', 'FT8', c.snr, c.dt, c.fHz, ' '.join(c.msg_tuple))
@@ -173,7 +173,7 @@ def cli():
     else:
         input_device_keywords = args.inputcard_keywords.replace(' ','').split(',')
         rx = Receiver([100, 3000], input_device_keywords, wav_files = None, on_decode = on_decode,
-                      sync_score_min = 100, max_cands = 75, osd = False, ldpc = [45,15], min_search_start = 11)
+                      sync_score_min = 90, max_cands = 75, osd = False, ldpc = [45,15], min_search_start = 11.5)
 
 # Initialise the gui
     if not args.no_gui:
