@@ -27,10 +27,10 @@ ft_line = ax.plot(fl_times, np.array(range(len(fl_times))), label = 'ft8_lib', c
 
 
 
-for filename in ['baseline.pkl']:
+for filename in ['baseline - min_search_start=11.5.pkl', 'baseline - min_search_start=12.pkl', 'baseline - min_search_start=13.pkl']:
     with open(filename, 'rb') as f:
         py_times = pickle.load(f)
-        ax.plot(py_times, np.array(range(len(py_times))), label = 'PyFT8')
+        ax.plot(py_times, np.array(range(len(py_times))), label = 'PyFT8 ' + filename)
         
 ax.set_xlabel("Time, seconds")
 ax.set_ylabel("Cumulative decodes (unique per cycle)")

@@ -395,7 +395,7 @@ class Candidate:
 
     def decode(self, max_ipass):
         if self.llr_sd < self.llr_sd_min:
-            self.decode_completed = True
+            self.decode_completed = time_utils.cycle_time()
             return
         if self.ipass > max_ipass:
             return
@@ -408,13 +408,13 @@ class Candidate:
         if len(self.saved_llrs) > self.ipass-3 >= 0:
             self._decode_osd(self.saved_llrs[self.ipass-3])
         if self.ipass-3 >= len(self.saved_llrs):
-            self.decode_completed = True
+            self.decode_completed = time_utils.cycle_time()
         self.ipass +=1
           
     def _decode_ldpc_fast(self):
         self.msg_tuple, self.n_its, _  = ldpc_decode(self.llr.copy(), 35, 5)
         if self.msg_tuple:
-            self.decode_completed = True
+            self.decode_completed = time_utils.cycle_time()
                 
     def _decode_ldpc_AP(self):
         self.saved_llrs = []
@@ -428,7 +428,7 @@ class Candidate:
             self.msg_tuple, self.n_its, output_llr = ldpc_decode(llr, 55, 25)
             if self.msg_tuple:
                 self.iAP = ipass
-                self.decode_completed = True
+                self.decode_completed = time_utils.cycle_time()
                 break
             else:
                 if len(output_llr) == 174:
@@ -443,7 +443,7 @@ class Candidate:
             msg_tuple = unpack(bits77_int)
             if msg_tuple:
                 self.msg_tuple, self.n_its = msg_tuple, -1
-                self.decode_completed = True
+                self.decode_completed = time_utils.cycle_time()
         
 #============== RECEIVER ===========================================================
         
