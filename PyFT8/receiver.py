@@ -475,6 +475,7 @@ class Receiver():
             if origin['score'] > self.sync_score_min:
                 c = Candidate(cyclestart, origin)
                 cands.append(c)
+        cands.sort(key = lambda c: c.origin['score'], reverse = True)
         self.candidates = cands[:self.max_cands]
 
     def manage_cycle(self):
