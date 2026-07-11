@@ -78,8 +78,8 @@ def on_decode(c):
 
 def on_decode_non_time_critical():
     while True:
+        time_utils.sleep(0.5)
         while not decode_queue_non_time_critical.empty:
-            time_utils.sleep(0.5)
             c = decode_queue_non_time_critical.get()
             screen_format = f"{c.cyclestart['string']} {c.snr:+03d} {c.dt:4.1f} {c.fHz:4.0f} ~ {' '.join(c.msg_tuple)}"
             print(f"{time_utils.cycle_time():5.1f} {screen_format}")
@@ -190,7 +190,7 @@ def cli():
             pskr_upload = PSKR_upload(myCall, myGrid, software = f"PyFT8 v{VER}", console_print = console_print) if not myCall is None else None
 
 # Start on_decode_non_time_critical
-    #threading.Thread(target = on_decode_non_time_critical, daemon = True).start()
+    threading.Thread(target = on_decode_non_time_critical, daemon = True).start()
 
 # wait or show gui as appropriate
     if gui is None:
