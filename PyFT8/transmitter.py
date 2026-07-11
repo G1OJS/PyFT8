@@ -4,73 +4,70 @@ import pyaudio
 import time
 from PyFT8.databases import hashes_for_calls, add_call_hashes
 
-#==================== AUDIO OUT ================================================================
+SAMP_RATE = 12000
 
-class AudioOut:
+#==================== SOUNDCARD OUT ================================================================
 
-    def find_device(self, device_str_contains):
-        pya = pyaudio.PyAudio()
-        for dev_idx in range(pya.get_device_count()):
-            name = pya.get_device_info_by_index(dev_idx)['name']
-            match = True
-            for pattern in device_str_contains:
-                if (not pattern in name): match = False
-            if(match):
-                return dev_idx
-        print(f"[Audio] No outout audio device found matching {device_str_contains}")
-
-    def create_ft8_symbols(self, tx_msg):
-        c1, c2, grid_rpt = tx_msg.split()
-        return pack_message(c1, c2, grid_rpt)
-
-    def create_ft8_wave(self, symbols, fs=12000, f_base=873.0, f_step=6.25, amplitude = 0.5):
-        symbol_len = int(fs * 0.160)
-        t = np.arange(symbol_len) / fs
-        phase = 0
-        waveform = []
-        for s in symbols:
-            f = f_base + s * f_step
-            phase_inc = 2 * np.pi * f / fs
-            w = np.sin(phase + phase_inc * np.arange(symbol_len))
-            waveform.append(w)
-            phase = (phase + phase_inc * symbol_len) % (2 * np.pi)
-        waveform = np.concatenate(waveform).astype(np.float32)
-        waveform = waveform.astype(np.float32)
-        waveform = amplitude * waveform / np.max(np.abs(waveform))
-        waveform_int16 = np.int16(waveform * 32767)
-        return waveform_int16
-
-    def make_wav(msg, wave_output_file): 
-        symbols = self.create_ft8_symbols(msg)
-        audio_data = self.create_ft8_wave(symbols)
-        self.write_to_wave_file(audio_data, wave_output_file)
-
-    def write_to_wave_file(self, audio_data, wave_file):
-        wavefile = wave.open(wave_file, 'wb')
-        wavefile.setframerate(12000)
-        wavefile.setnchannels(1)
-        wavefile.setsampwidth(2)
-        wavefile.writeframes(audio_data.tobytes())
-        wavefile.close()
-
-    def play_data_to_soundcard(self, audio_data_int16, output_device_idx, fs=12000):
-        stream = pyaudio.PyAudio().open(format=pyaudio.paInt16, channels=1, rate=fs,
-                          output=True,
-                          output_device_index = output_device_idx)
-        stream.write(audio_data_int16.tobytes())
+class SoundcardOut:
+    def __init__(self, outputcard_keywords):
+        self.output_device_index = None
+        self.pya = pyaudio.PyAudio()
+        
+        if outputcard_keywords:
+            for dev_idx in range(self.pya.get_device_count()):
+                name = self.pya.get_device_info_by_index(dev_idx)['name']
+                match = True
+                for pattern in outputcard_keywords:
+                    if (not pattern in name): match = False
+                if(match):
+                    self.output_device_index = dev_idx
+                    break
+                    
+    def send_bytes(self, audio_data_bytes):
+        stream = self.pya.open(format=pyaudio.paInt16, channels=1, rate = SAMP_RATE, output=True,
+                          output_device_index = self.output_device_index)
+        stream.write(audio_data_bytes)
         stream.stop_stream()
         stream.close()
+
+#==================== WAVE GENERATION =====================================
+
+def symbols_to_audio_bytes(symbols, fs = SAMP_RATE, f_base=873.0, f_step=6.25, amplitude = 0.5):
+    symbol_len = int(fs * 0.160)
+    t = np.arange(symbol_len) / fs
+    phase = 0
+    waveform = []
+    for s in symbols:
+        f = f_base + s * f_step
+        phase_inc = 2 * np.pi * f / fs
+        w = np.sin(phase + phase_inc * np.arange(symbol_len))
+        waveform.append(w)
+        phase = (phase + phase_inc * symbol_len) % (2 * np.pi)
+    waveform = np.concatenate(waveform).astype(np.float32)
+    waveform = waveform.astype(np.float32)
+    waveform = amplitude * waveform / np.max(np.abs(waveform))
+    waveform_bytes = np.int16(waveform * 32767).tobytes()
+    return waveform_bytes
+
+def write_wav_file(audio_data_bytes, wave_output_file): 
+    wavefile = wave.open(wave_output_file, 'wb')
+    wavefile.setframerate(12000)
+    wavefile.setnchannels(1)
+    wavefile.setsampwidth(2)
+    wavefile.writeframes(audio_data_bytes)
+    wavefile.close()
 
 #==================== PACK ================================================================
 
 def ifindex(arr, val, default = None):
     return arr.index(val) if val in arr else default
 
-def pack_message(c1, c2, gr):
-    symbols, bits77 = _pack_message(c1, c2, gr)
+def get_ft8_symbols(text):
+    c1, c2, grid_rpt = text.split()
+    symbols, bits77 = pack_message(c1, c2, grid_rpt)
     return symbols
 
-def _pack_message(c1, c2, gr):
+def pack_message(c1, c2, gr):
     c29a, c29b = pack_ft8_c29(c1), pack_ft8_c29(c2)
     g15, ir = pack_ft8_g15(gr)
     if c29a and c29b:
@@ -205,7 +202,7 @@ if __name__ == "__main__":
             ("CQ","CT7ARQ/P","JO03"), ("EC5A","9A5E","RR73"), ("EC5A/P","9A5E","73"), ("EC5A/MM","9A5E","73"),
             ("CQ","CT7ARQ/R","JO03")]
     for msg_tx in msgs:
-        symbols, bits77 = _pack_message(*msg_tx)
+        symbols, bits77 = pack_message(*msg_tx)
         from PyFT8.receiver import unpack
         msg_rx = unpack(bits77)
         print(f"\n{msg_tx}\n{msg_rx}")
@@ -222,7 +219,7 @@ if __name__ == "__main__":
                         "",
                         "3140652564261623472565070174400214333140652601351750040163007617513443213140652"]
     for i, msg_tx in enumerate(msgs):
-        symbols, bits77 = _pack_message(*msg_tx)
+        symbols, bits77 = pack_message(*msg_tx)
         from PyFT8.receiver import unpack
         msg_rx = unpack(bits77)
         print(f"\n{msg_tx}\n{msg_rx}")

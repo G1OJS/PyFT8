@@ -1,13 +1,14 @@
 import threading
 from PyFT8.time_utils import time_utils
+from PyFT8.transmitter import get_ft8_symbols, symbols_to_audio_bytes
 MAX_TX_START_CYCLETIME = 3
 
 
 class QSO_manager:
-    def __init__(self, myCall, myGrid, console_print, transmit, rig, wf_data, adif_logging):
-        self.transmit = transmit
+    def __init__(self, myCall, myGrid, console_print, send_bytes, rig, wf_data, adif_logging):
+        self.send_bytes = send_bytes
         self.adif_logging = adif_logging
-        self.tx_msg_and_time = None
+        self.tx_payload = None
         self.wf_data = wf_data
         self.console_print = console_print
         self.rig = rig
@@ -29,28 +30,32 @@ class QSO_manager:
         return True
 
     def reset(self):
-        self.tx_msg_and_time = None
-        self.last_tx_msg_and_time = None
+        self.tx_payload = None
+        self.last_tx_payload = None
         self.tx_cycle = None
         self.tx_start_grid_time = 0
         self.times = {'time_on':None, 'time_off':None}
         self.rpts = {'sent': None, 'rcvd': None}
         self.tx_freq = self.find_clear_freq(self.band_info['current_band'])
 
-    def set_tx_msg_and_time(self, message):
-        self.tx_msg_and_time = {'text':message, 'start_gridtime':[0.25, 15.25][self.tx_cycle]}
+    def prep_and_arm_transmit(self, message):
+        symbols = get_ft8_symbols(message)
+        audio_bytes = symbols_to_audio_bytes(symbols, f_base = self.tx_freq)
+        self.tx_payload = {'audio_bytes':audio_bytes, 'start_gridtime':[0.25, 15.25][self.tx_cycle]}
         self.console_print(f"[QSO] Set transmit message to '{message}' (cyc {self.tx_cycle}, {self.tx_freq:5.1f} Hz)")
 
     def td(self):
         while True:
             time_utils.sleep(0.1)
-            if self.tx_msg_and_time is not None:
-                start_gridtime = self.tx_msg_and_time['start_gridtime'] 
+            if self.tx_payload is not None:
+                start_gridtime = self.tx_payload['start_gridtime'] 
                 grid_time = time_utils.grid_time()
                 if start_gridtime <= grid_time < start_gridtime + MAX_TX_START_CYCLETIME:
-                    self.transmit(self.tx_msg_and_time['text'], self.tx_freq)
-                    self.last_tx_msg_and_time = self.tx_msg_and_time
-                    self.tx_msg_and_time = None
+                    self.rig.ptt_on()
+                    self.send_bytes(self.tx_payload['audio_bytes'])
+                    self.rig.ptt_off()
+                    self.last_tx_payload = self.tx_payload
+                    self.tx_payload = None
 
     def progress(self, clicked_msg_tuple, odd_even, snr):
         call_a, call_b, grid_rpt = clicked_msg_tuple
@@ -71,7 +76,7 @@ class QSO_manager:
             self.theirGrid =  grid_rpt
             self.rpts['sent'] = f"{snr:+03d}"
             self.tx_cycle = 1 - odd_even
-            self.set_tx_msg_and_time(f"{self.theirCall} {self.myCall} {self.myGrid[:4]}")
+            self.prep_and_arm_transmit(f"{self.theirCall} {self.myCall} {self.myGrid[:4]}")
             return
 
         if call_a == self.myCall:
@@ -93,7 +98,7 @@ class QSO_manager:
             if isRR73:
                 reply = f"{self.theirCall} {self.myCall} 73"
 
-            self.set_tx_msg_and_time(reply)
+            self.prep_and_arm_transmit(reply)
 
             if reply.endswith("73"): # do last so any log errors don't prevent sending 73
                 if self.adif_logging is not None:
@@ -112,9 +117,9 @@ class QSO_manager:
                 self.tx_cycle = time_utils.odd_even()
                 if time_utils.cycle_time() > MAX_TX_START_CYCLETIME:
                    self.tx_cycle = 1-self.tx_cycle 
-                self.set_tx_msg_and_time(f"CQ {self.myCall} {self.myGrid[:4]}")
+                self.prep_and_arm_transmit(f"CQ {self.myCall} {self.myGrid[:4]}")
         if btn_action == "RPT_LAST":
-            self.set_tx_msg_and_time(self.last_tx_msg_and_time)
+            self.tx_payload = self.last_tx_payload
         if btn_action == "TX_OFF":
             self.console_print("[PyFT8] Set PTT Off")
             self.rig.ptt_off()

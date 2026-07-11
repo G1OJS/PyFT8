@@ -241,7 +241,20 @@ class Gui:
         self.sidebars_refresh_last = time_utils.time()
         self.sidebars_page = (self.sidebars_page +1 )%2
 
-    def add_message_box(self, message_info):
+    def add_message_box(self, candidate, myCall):
+        c = candidate
+        hearing_me, geo_text, wb_time, wb_text = '', '', 0, ''
+        if self.history:
+            current_band = self.get_band_info()['current_band']
+            geo_text = self.history.get_geo_text(c.msg_tuple[1], c.msg_tuple[2])
+            tnow = time_utils.time()
+            wb_time = self.history.log_cache.get(c.msg_tuple[1],'') 
+            wb_text = f"wb: {time_utils.format_duration(tnow - float(wb_time))}" if wb_time else ''
+            hearing_me = '# ' if self.history.is_hearing_me(current_band, c.msg_tuple[1]) else ' '
+        message_info = {'origin':c.origin,'msg_tuple':c.msg_tuple,'snr':c.snr,'odd_even': c.origin['odd_even'],
+                        'is_from_me': c.msg_tuple[1] == myCall, 'is_to_me': c.msg_tuple[0] == myCall, 'is_cq': c.msg_tuple[0].startswith('CQ'),
+                        'display_text': f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {geo_text}"}
+        
         self.new_messages.put(message_info)
 
     def hide_msg_boxes(self):

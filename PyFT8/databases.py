@@ -86,6 +86,7 @@ class DiskDict:
 class History:
     def __init__(self, config_folder, my_call, home_square, pskr_refresh_mins):
         self.pskr_refresh_mins = pskr_refresh_mins
+        self.log_cache = None
         self.my_call = my_call
         self.home_square = home_square
         self.home_square_lev4 = home_square[:4]
@@ -106,7 +107,8 @@ class History:
         mqtt = PSKR_MQTT_listener(self.home_square_lev4, self.add_mqtt_spot)
         threading.Thread(target = self.count_activity, daemon = True).start()
 
-    def load_hearing_heard_from_adif(self, log_cache):
+    def incorporate_log_data(self, log_cache):
+        self.log_cache = log_cache
         for key in log_cache:
             key_parts = key.split('_')
             if len(key_parts) > 1:
