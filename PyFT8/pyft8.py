@@ -174,7 +174,7 @@ def cli():
     else:
         input_device_keywords = args.inputcard_keywords.replace(' ','').split(',')
         rx = Receiver([100, 3000], input_device_keywords, wav_files = None, on_decode = on_decode,
-                      sync_score_min = 100, max_cands = 100, osd = False, ldpc = [45,15], min_search_start = 11.5)
+                      sync_score_min = 90, max_cands = 100, osd = False, ldpc = [45,15], min_search_start = 12)
 
 # Initialise the gui
     if not args.no_gui:

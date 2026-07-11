@@ -154,7 +154,12 @@ class Gui:
         self.image = self.ax_wf.imshow(self.wf_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self.ax_wf.set_xticks([])
         self.ax_wf.set_yticks([])
+        self.sidebars_dirty = True
         self.ani = FuncAnimation(self.fig, self._animate, interval = 160, frames=(100000), blit=True)
+
+    def on_click_local(self, btn_def):
+        self.sidebars_dirty = True
+        self.on_click(btn_def)
 
     def make_layout(self):
         # waterfall axis
@@ -174,17 +179,17 @@ class Gui:
         self.button_boxes = []
         bh, bs = 0.02, 0.002
         bb = ButtonBox(self.fig, [L['pmargin'], wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
-                        btn_label = "CQ", onclick = self.on_click, clickargs = {'action':'CQ'})                            
+                        btn_label = "CQ", onclick = self.on_click_local, clickargs = {'action':'CQ'})                            
         self.button_boxes.append(bb)
         bb = ButtonBox(self.fig, [L['pmargin'], wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
-                        btn_label = "Repeat last", onclick = self.on_click, clickargs = {'action':'RPT_LAST'})                            
+                        btn_label = "Repeat last", onclick = self.on_click_local, clickargs = {'action':'RPT_LAST'})                            
         self.button_boxes.append(bb)
         bb = ButtonBox(self.fig, [L['pmargin'], wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
-                        btn_label = "Tx off", onclick = self.on_click, clickargs = {'action':'TX_OFF'})                            
+                        btn_label = "Tx off", onclick = self.on_click_local, clickargs = {'action':'TX_OFF'})                            
         self.button_boxes.append(bb)            
         for band, freq in self.config['bands'].items():
             bb = ButtonBox(self.fig, [L['pmargin'], wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 30,
-                            btn_label = band, onclick = self.on_click, clickargs = {'action':'SET_BAND','band':band,'freq':freq})
+                            btn_label = band, onclick = self.on_click_local, clickargs = {'action':'SET_BAND','band':band,'freq':freq})
             self.button_boxes.append(bb)
 
         # hearing me list
@@ -264,8 +269,9 @@ class Gui:
  
     def _animate(self, frame):
         self.image.set_data(self.wf_data['data'])
-        boxes_updated = False
-
+        if (time_utils.time() - self.sidebars_refresh_last > 3):
+            self.sidebars_dirty = True
+            
         if (time_utils.time() > 12):
             while not self.new_messages.empty():
                 message = self.new_messages.get()
@@ -274,7 +280,7 @@ class Gui:
                 x = o['t0'] / wf['dt'] + o['odd_even'] * wf['pixels_per_cycle']
                 y = o['f0'] / wf['df']
                 if not y in self.msg_boxes: 
-                    self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, y, self.wf_data['sig_w'], self.wf_data['sig_h'], onclick = self.on_click)
+                    self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, y, self.wf_data['sig_w'], self.wf_data['sig_h'], onclick = self.on_click_local)
                 self.msg_boxes[y].set_properties(message, x)
 
             live_message_boxes = [mb for mb in self.msg_boxes.values() if not mb.expired()]
@@ -282,10 +288,11 @@ class Gui:
                 self.message_box_artists = [i for items in [[mb.patch, mb.text_inst] for mb in live_message_boxes] for i in items]
             self.len_live_message_boxes_prev = len(live_message_boxes)                
 
-        if time_utils.time() - self.sidebars_refresh_last > 3:            
+        if self.sidebars_dirty:
             self.refresh_sidebars()
-            return [self.image,  *self.message_box_artists, *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists,
-                *[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes]]
+            self.sidebars_dirty = False
+            return [self.image,  *self.message_box_artists, *[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes],
+                    *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists]
                 
         return [self.image, *self.message_box_artists]
         
