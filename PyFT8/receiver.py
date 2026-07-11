@@ -147,7 +147,7 @@ def ldpc_decode(llr, max_ncheck0, max_iters):
         parity6, parity7 = np.sum(bits6, axis=1) & 1, np.sum(bits7, axis=1) & 1
         ncheck = int(np.sum(parity7) + np.sum(parity6))
         if n_its == 0 and ncheck > max_ncheck0:
-            return None
+            return None, -1, []
         if ncheck == 0:
             bits91_int = 0
             for bit in (llr[:91] > 0).astype(int).tolist():
@@ -155,12 +155,14 @@ def ldpc_decode(llr, max_ncheck0, max_iters):
             bits77_int = check_crc(bits91_int)
             msg_tuple = unpack(bits77_int)
             if msg_tuple:
-                return (msg_tuple, n_its)
+                return msg_tuple, n_its, []
         else:
             update_collector = np.zeros_like(llr)
             mC2V_prev6 = pass_ldpc_messages(llr, CV6idx, mC2V_prev6, update_collector)
             mC2V_prev7 = pass_ldpc_messages(llr, CV7idx, mC2V_prev7, update_collector)
             llr += update_collector
+
+    return None, -1, llr
 
 #============== AUDIO IN ===========================================================
 class AudioIn:
@@ -310,6 +312,8 @@ class Candidate:
         self.cyclestart, self.origin = cyclestart, origin
         self.demap_started, self.decode_completed = 0, 0
         self.msg_tuple = None
+        self.saved_llrs = []
+        self.ipass = 0
         self.llr_sd_min = llr_sd_min
         self.llr_sd, self.ipass, self.n_its, self.snr = 0, 0, 0, -30
         csync = np.full((7, 7), -1/6, np.float32)
@@ -385,45 +389,68 @@ class Candidate:
         llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
         llr = np.column_stack((llra, llrb, llrc)).ravel()
         self.llr, self.llr_sd = self.llr_norm_wsj(llr)
+        self.dt = float(self.origin['t0'] - 0.5 + ttweak / 200)
+        self.fHz = float(self.origin['f0'] + ftweak / 16)
+        
+
+    def decode(self, max_ipass):
+        if self.llr_sd < self.llr_sd_min:
+            self.decode_completed = True
+            return
+        if self.ipass > max_ipass:
+            return
+        if self.ipass == 0:
+            self._decode_ldpc_fast()
+        if self.ipass == 1:
+            self._decode_ldpc_AP()
+        if self.ipass == 2:
+            self._decode_osd(self.llr)
+        if len(self.saved_llrs) > self.ipass-3 >= 0:
+            self._decode_osd(self.saved_llrs[self.ipass-3])
+        if self.ipass-3 >= len(self.saved_llrs):
+            self.decode_completed = True
+        self.ipass +=1
           
-    def decode(self):
-        if self.llr_sd > self.llr_sd_min:
-            success = False
-            for ipass, (b0, ap_pattern) in enumerate(ap_patterns):
-                llr = self.llr.copy()
-                for b, bval in enumerate(ap_pattern):
-                    llr[b0 + b] = (bval*2-1) * 5
-                if ipass == 1:
-                    llr[74:76] = -5
-                    llr[76] = 5
-                success = ldpc_decode(llr, self.ldpc[0], self.ldpc[1])
-                if success:
-                    self.msg_tuple, self.n_its = success
-                    self.ipass = ipass
-                    break
-
-            if not success and self.osd:
-                cw = osd_decode_minimal(self.llr, np.argsort(np.abs(self.llr))[::-1])
-                bits91_int = 0
-                for bit in (cw[:91] > 0).astype(int).tolist():
-                    bits91_int = (bits91_int << 1) | bit
-                bits77_int = check_crc(bits91_int)
-                msg_tuple = unpack(bits77_int)
-                if msg_tuple:
-                    self.msg_tuple, self.n_its = msg_tuple, 999
-                    self.ipass = 999
-
-        self.dt = float(self.origin['t0']-0.5)
-        self.fHz = float(self.origin['f0'])
-        self.decode_completed = time_utils.time()
+    def _decode_ldpc_fast(self):
+        self.msg_tuple, self.n_its, _  = ldpc_decode(self.llr.copy(), 35, 5)
+        if self.msg_tuple:
+            self.decode_completed = True
+                
+    def _decode_ldpc_AP(self):
+        self.saved_llrs = []
+        for ipass, (b0, ap_pattern) in enumerate(ap_patterns):
+            llr = self.llr.copy()
+            for b, bval in enumerate(ap_pattern):
+                llr[b0 + b] = (bval*2-1) * 5
+            if ipass == 1:
+                llr[74:76] = -5
+                llr[76] = 5
+            self.msg_tuple, self.n_its, output_llr = ldpc_decode(llr, 55, 25)
+            if self.msg_tuple:
+                self.iAP = ipass
+                self.decode_completed = True
+                break
+            else:
+                if len(output_llr) == 174:
+                    self.saved_llrs.append(output_llr)
+                
+    def _decode_osd(self, llr):
+            cw = osd_decode_minimal(llr, np.argsort(np.abs(self.llr))[::-1])
+            bits91_int = 0
+            for bit in (cw[:91] > 0).astype(int).tolist():
+                bits91_int = (bits91_int << 1) | bit
+            bits77_int = check_crc(bits91_int)
+            msg_tuple = unpack(bits77_int)
+            if msg_tuple:
+                self.msg_tuple, self.n_its = msg_tuple, -1
+                self.decode_completed = True
         
 #============== RECEIVER ===========================================================
         
 class Receiver():
     def __init__(self, search_freq_range, input_device_keywords, on_decode = None, wav_files = None, verbose = False,
-                 sync_score_min = 100, max_cands = 1000, osd = True, ldpc = [50,25], min_search_start = 13):
+                 sync_score_min = 100, max_cands = 1000, min_search_start = 13):
         self.audio_in = AudioIn(search_freq_range, wav_files)
-        self.osd, self.ldpc = osd, ldpc
         self.sync_score_min, self.max_cands = sync_score_min, max_cands
         self.wav_files = wav_files
         self.on_decode = on_decode
@@ -486,6 +513,7 @@ class Receiver():
         last_spectrum_calc = -1
         search_grid_ptr_prev = 0
         cycle_searched = False
+        end_decoding_message_printed = False
         while True:
             time_utils.sleep(0.1)
             if self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle < search_grid_ptr_prev:
@@ -507,30 +535,39 @@ class Receiver():
                         c.demap_started = self.audio_in.search_grid_ptr*h2s
                         #time_utils.tlog(f"[Receiver] Demap {len(candidates)} {cand_abs_h0_idx*h2s:5.1f} - {cand_abs_hf_idx*h2s:5.1f} {c.llr_sd}", verbose = DEBUG_PRINTS)
                 if not c.decode_completed:
-                    c.osd, c.ldpc = self.osd, self.ldpc
                     to_decode.append(c)
 
-            to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
-            for c in to_decode[:40]:
-                c.decode()
-                if c.msg_tuple:
-                    key = c.cyclestart['string'] + ''.join(c.msg_tuple)
-                    if (key not in duplicate_filter):
-                        duplicate_filter.add(key)
-                        c.decode_time_from_grid = self.audio_in.cycle_audio_buffer_ptr / SAMP_RATE
-                        if self.on_decode:
-                            self.on_decode(c)
+            if len(to_decode):
+                to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
+                max_ipass = 1 + np.min([c.ipass for c in to_decode])
+                for c in to_decode[:40]:
+                    c.decode(max_ipass)
+                    if c.msg_tuple:
+                        key = c.cyclestart['string'] + ''.join(c.msg_tuple)
+                        if (key not in duplicate_filter):
+                            duplicate_filter.add(key)
+                            c.decode_time_from_grid = self.audio_in.cycle_audio_buffer_ptr / SAMP_RATE
+                            if self.on_decode:
+                                self.on_decode(c)
+            else:
+                if not end_decoding_message_printed and len([c for c in self.candidates if c.demap_started]):
+                    h = self.audio_in.search_grid_ptr
+                    t = h / (SYM_RATE * self.audio_in.search_hps)
+                    time_utils.tlog(f"[Receiver] Finished decoding at t={t:6.2f}s", verbose = True)
+                    end_decoding_message_printed = True
 
             if not cycle_searched and self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle > self.search_start_hop:
                 hstart = self.audio_in.search_grid_ptr
                 tstart = hstart / (SYM_RATE * self.audio_in.search_hps)
                 time_utils.tlog(f"[Cycle manager] start search at hop {hstart} ({tstart:6.2f}s)", verbose = True)
                 cyclestart = time_utils.cyclestart(time_utils.time())
-                timeouts = len([c for c in self.candidates if not c.decode_completed])
-                if timeouts:
-                    time_utils.tlog(f"[Receiver] Warning - {timeouts} candidates ran out of decoding time", verbose = True)
+                timeouts = [c for c in self.candidates if not c.decode_completed]
+                if len(timeouts):
+                    ipasses = [c.ipass for c in timeouts]
+                    time_utils.tlog(f"[Receiver] Warning - {len(timeouts)} candidates ran out of decoding time, ipass = {ipasses}", verbose = True)
                 self.search(cyclestart, self.audio_in.odd_even, self.audio_in.cycle_h0)
                 cycle_searched = True
+                end_decoding_message_printed = False
                 hstop = self.audio_in.search_grid_ptr
                 tsearch = (hstop-hstart)/ (SYM_RATE * self.audio_in.search_hps)
                 time_utils.tlog(f"[Cycle manager] New spectrum searched in {tsearch}s -> {len(self.candidates)} candidates", verbose = True) 
