@@ -135,9 +135,10 @@ class QSO_manager:
         import numpy as np
         fbin_sum = np.sum(self.wf_data['data'], axis = 0)
         windows = sliding_window_view(fbin_sum, self.wf_data['sig_h'])
-        busy_profile = windows.max(axis=1) 
+        busy_profile = windows.max(axis=1)
         fmax = 950 if band=='60m' else 2000
         f0_idx, fn_idx = int(500/self.wf_data['df']), int(fmax/self.wf_data['df'])
         idx = np.argmin(busy_profile[f0_idx:fn_idx])
         clearest_frequency = (f0_idx + idx) * self.wf_data['df']
+        #print(idx, clearest_frequency, np.mean(self.wf_data['data'][:, idx:idx+self.wf_data['sig_h']]))
         return clearest_frequency

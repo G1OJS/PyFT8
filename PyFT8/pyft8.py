@@ -10,7 +10,7 @@ from PyFT8.rigctrl import Rig_hamlib, Rig_CAT
 from PyFT8.databases import History, ADIF
 from PyFT8.qso_manager import QSO_manager
 
-VER = '3.2.0 test'
+VER = '3.2.0'
 PSKR_REFRESH_MINS = 20
 HEARING_PANEL_LIFE_MINS = 20
 
