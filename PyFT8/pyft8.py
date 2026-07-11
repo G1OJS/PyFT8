@@ -160,11 +160,12 @@ def cli():
 
 # If we have audio_bytes and capability to transmit, transmit
 # (if we're just setting up for receiving or transceiving, we won't have audio_bytes)
-    if soundcard_out.output_device_index and rig and audio_bytes:
-        rig.ptt_on()
-        soundcard_out.send_bytes(audio_bytes)
-        rig.ptt_off()
-        sys.exit(1)
+    if soundcard_out:
+        if soundcard_out.output_device_index and rig and audio_bytes:
+            rig.ptt_on()
+            soundcard_out.send_bytes(audio_bytes)
+            rig.ptt_off()
+            sys.exit(1)
 
 # Set up for receiving with or without Gui
     if not args.inputcard_keywords:

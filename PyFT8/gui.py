@@ -87,11 +87,10 @@ class Msg_box:
         if message['is_to_me']: colors = ['red', 'white']
         self.text_inst.set_color(colors[1])
         self.patch.set_facecolor(colors[0])
-        
-    def hide_if_expired(self):
-        if time_utils.time() > self.expire > 0:
-            self.hide()
 
+    def expired(self):
+        return time_utils.time() > self.expire
+        
     def hide(self):
         self.patch.set_visible(False)
         self.text_inst.set_visible(False)
@@ -147,13 +146,15 @@ class Gui:
         self.sidebars_refresh_last = 0
         self.sidebars_page = 0
         self.msg_boxes = {}
+        self.len_live_message_boxes_prev = 0
+        self.message_box_artists = []
         self.new_messages = queue.Queue()
         self.make_layout()
         self.wf_data = waterfall_data
         self.image = self.ax_wf.imshow(self.wf_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self.ax_wf.set_xticks([])
         self.ax_wf.set_yticks([])
-        self.ani = FuncAnimation(self.fig, self._animate, interval = 25, frames=(100000), blit=True)
+        self.ani = FuncAnimation(self.fig, self._animate, interval = 160, frames=(100000), blit=True)
 
     def make_layout(self):
         # waterfall axis
@@ -263,25 +264,28 @@ class Gui:
  
     def _animate(self, frame):
         self.image.set_data(self.wf_data['data'])
-        
-        for fb in self.msg_boxes:
-            self.msg_boxes[fb].hide_if_expired()
-            
-        while not self.new_messages.empty():
-            message = self.new_messages.get()
-            wf = self.wf_data
-            o = message['origin']
-            x = o['t0'] / wf['dt'] + o['odd_even'] * wf['pixels_per_cycle']
-            y = o['f0'] / wf['df']
-            if not y in self.msg_boxes: 
-                self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, y, self.wf_data['sig_w'], self.wf_data['sig_h'], onclick = self.on_click)
-            self.msg_boxes[y].set_properties(message, x)
-            
+        boxes_updated = False
+
+        if (time_utils.time() > 12):
+            while not self.new_messages.empty():
+                message = self.new_messages.get()
+                wf = self.wf_data
+                o = message['origin']
+                x = o['t0'] / wf['dt'] + o['odd_even'] * wf['pixels_per_cycle']
+                y = o['f0'] / wf['df']
+                if not y in self.msg_boxes: 
+                    self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, y, self.wf_data['sig_w'], self.wf_data['sig_h'], onclick = self.on_click)
+                self.msg_boxes[y].set_properties(message, x)
+
+            live_message_boxes = [mb for mb in self.msg_boxes.values() if not mb.expired()]
+            if len(live_message_boxes) != self.len_live_message_boxes_prev:
+                self.message_box_artists = [i for items in [[mb.patch, mb.text_inst] for mb in live_message_boxes] for i in items]
+            self.len_live_message_boxes_prev = len(live_message_boxes)                
+
         if time_utils.time() - self.sidebars_refresh_last > 3:            
             self.refresh_sidebars()
-            return [self.image, *self.ax_wf.patches, *self.ax_wf.texts, *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists,
+            return [self.image,  *self.message_box_artists, *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists,
                 *[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes]]
+                
+        return [self.image, *self.message_box_artists]
         
-        return [self.image, *self.ax_wf.patches, *self.ax_wf.texts]
-        
-
