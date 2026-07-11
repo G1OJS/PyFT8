@@ -434,6 +434,13 @@ class Receiver():
         self.search_start_hop = self.search_h0_range[1] + 43 * self.audio_in.search_hps
         self.search_start_hop = np.max([self.search_start_hop, int(min_search_start * self.audio_in.search_hps*SYM_RATE)])
         dt = 1.0 / (SYM_RATE * self.audio_in.search_hps)
+        self.base_search_hops = 36 * self.audio_in.search_hps + np.arange(7) * self.audio_in.search_hps + self.audio_in.search_hps
+        csync = np.full((7, 7 * self.audio_in.search_bpt), -1/6, np.float32)
+        for sym_idx, tone in enumerate([3,1,4,0,6,5,2]):
+            fbins = range(tone * self.audio_in.search_bpt, (tone+1) * self.audio_in.search_bpt)
+            csync[sym_idx, fbins] = 1.0
+        self.csync_search = csync.ravel()
+        
         time_utils.set_cycle_length(T_CYC)
         time_utils.tlog(f"[Receiver] Search hops {self.search_h0_range[0]:3d} to {self.search_h0_range[1]:3d}", verbose = self.verbose)
         time_utils.tlog(f"[Receiver] Start search at hop {self.search_start_hop:3d}", verbose = self.verbose)
@@ -455,17 +462,11 @@ class Receiver():
 
     def search(self, cyclestart, odd_even, cycle_h0):
         cands = []
-        base_search_hops = 36 * self.audio_in.search_hps + np.arange(7) * self.audio_in.search_hps + self.audio_in.search_hps
-        csync = np.full((7, 7 * self.audio_in.search_bpt), -1/6, np.float32)
-        for sym_idx, tone in enumerate([3,1,4,0,6,5,2]):
-            fbins = range(tone * self.audio_in.search_bpt, (tone+1) * self.audio_in.search_bpt)
-            csync[sym_idx, fbins] = 1.0
-        csync_search = csync.ravel()
         for f0_idx in range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 2):
             p = self.audio_in.search_grid[:, f0_idx: f0_idx + 7*self.audio_in.search_bpt]
             origin = {'score':0}
             for h0_idx in range(self.search_h0_range[0], self.search_h0_range[1]):
-                score = float(np.dot(p[h0_idx + cycle_h0 + base_search_hops, :].ravel(), csync_search))
+                score = float(np.dot(p[h0_idx + cycle_h0 + self.base_search_hops, :].ravel(), self.csync_search))
                 test_sync = {'odd_even':odd_even, 'h0_idx':h0_idx, 
                              't0':h0_idx/(self.audio_in.search_hps * SYM_RATE),
                              'f0':SYM_RATE * f0_idx / self.audio_in.search_bpt, 'score':score}
