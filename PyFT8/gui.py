@@ -92,10 +92,11 @@ class ButtonBox:
 
 MESSAGE_TYPES = {'generic':{'bg':'blue', 'fg':'white'}, 'CQ':{'bg':'green', 'fg':'white'},'from_me': {'bg':'yellow', 'fg':'white'}, 'to_me':{'bg':'red', 'fg':'white'}} 
 class Msg_box:
-    def __init__(self, fig, ax, position, onclick):
+    def __init__(self, fig, ax, message, onclick):
         from matplotlib.patches import Rectangle
         self.onclick = onclick
-        p = position
+        self.message, self.message_type = message, message['message_type']
+        p, display_text = message['position'], message['display_text']
         rect = Rectangle((0, p['y']), width=p['w'], height=p['h'], alpha=0.6, edgecolor='lime', lw=2)
         self.patch = ax.add_patch(rect)
         self.text_inst = ax.text(0, p['y'] + 2, '', fontsize='small', fontweight='bold', clip_on = True )
@@ -105,7 +106,8 @@ class Msg_box:
         
     def set_properties(self, message):
         self.message, self.message_type = message, message['message_type']
-        x, display_text = message['position']['x'], message['display_text']
+        p, display_text = message['position'], message['display_text']
+        x = p['x']
         self.patch.set_x(x)
         self.text_inst.set_x(x)
         self.patch.set_visible(True)
@@ -137,25 +139,21 @@ class Gui:
         self.wf_top = 1-L['pmargin']-L['banner_height']-L['vsep1']
         self.wf_left = L['pmargin']+L['sidebar_width']+L['hsep1']
         self.hearing_me_since_mins = hearing_me_since_mins
-        self.len_active_mb = 0
-        self.sidebars_refresh_last = 0
         self.sidebars_page = 0
         self._make_axes()
         self.msg_boxes = {}
-        self.len_live_message_boxes_prev = 0
         self.message_box_artists = []
-        self.message_boxes_dirty = False
         self.image = self.ax_wf.imshow(self.waterfall_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self._make_buttons()
         self.sidebars_dirty = True
         self.sidebars_artists = [*[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes],
                     *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists]
-        self.ani = FuncAnimation(self.fig, self._animate, interval = 160, frames=(100000), blit=True)
+        self.ani = FuncAnimation(self.fig, self._animate, interval = 100, frames=(100000), blit = True)
 
     def _on_click_local(self, clickargs):
         self.sidebars_dirty = True
         if clickargs['action'] == "MESSAGE_CLICK":
-            self.console_print(f"[GUI] Clicked on message '{clickargs['message']['message_text']}'")
+            self.console_print(f"[GUI] Clicked on message '{clickargs['message']['msg_tuple']}'")
         self.on_click(clickargs)
 
     def _make_axes(self):
@@ -235,19 +233,22 @@ class Gui:
 
     def _animate(self, frame):
         abs_time = time_utils.time()
-        if (abs_time - self.sidebars_refresh_last > 3):
+        self.image.set_data(self.waterfall_data['data']) 
+
+        if (frame %2) == 0:
+            if abs_time %15 > 11:
+                to_hide = [mb for mb in self.msg_boxes.values() if mb.visible and abs_time > mb.expire_time]
+                for mb in to_hide:
+                    mb.hide()
+
+        if frame %30 == 0:
             self.sidebars_dirty = True
+
         if self.sidebars_dirty:
             self._refresh_sidebars()
-            self.sidebars_refresh_last = abs_time
             self.sidebars_dirty = False
-        if abs_time %15 > 12:
-            to_hide = [mb for mb in self.msg_boxes.values() if mb.visible and abs_time > mb.expire_time]
-            for mb in to_hide:
-                mb.hide()
-        self.image.set_data(self.waterfall_data['data'])
-        
-        return [self.image, *self.message_box_artists, *self.sidebars_artists]   
+
+        return [self.image, *self.message_box_artists, *self.sidebars_artists] 
 
     def set_bandstats_title(self, txt):
         self.band_stats.ax.set_title(txt, fontsize = 10)
@@ -266,13 +267,13 @@ class Gui:
         wf, o = self.waterfall_data, c.origin
         x = int(o['t0'] / wf['dt'] + o['odd_even'] * wf['pixels_per_cycle'])
         y = int(o['f0'] / wf['df'])
-        message = {'message_type':message_type,
-                                'position': {'x':x, 'y':y, 'w':self.waterfall_data['sig_w'], 'h':self.waterfall_data['sig_h']},
-                                'message_text': ' '.join(c.msg_tuple),
-                                'new_qso_info': {'call':c.msg_tuple[1], 'rst_sent': f"{c.snr:+03d}", 'grid_rpt':c.msg_tuple[2], 'my_tx_cycle': 1-c.origin['odd_even']},
-                                'display_text': f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {geo_text}"}
+        message = { 'message_type':message_type,
+                    'position': {'x':x, 'y':y, 'w':self.waterfall_data['sig_w'], 'h':self.waterfall_data['sig_h']},
+                    'msg_tuple':c.msg_tuple, 
+                    'new_qso_info': {'call':c.msg_tuple[1], 'rst_sent': f"{c.snr:+03d}", 'grid_rpt':c.msg_tuple[2], 'my_tx_cycle': 1-c.origin['odd_even']},
+                    'display_text': f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {geo_text}"}
         if not y in self.msg_boxes: 
-            self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, message['position'], onclick = self._on_click_local)
+            self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, message, onclick = self._on_click_local)
             self.message_box_artists.append(self.msg_boxes[y].patch)
             self.message_box_artists.append(self.msg_boxes[y].text_inst)
         self.msg_boxes[y].set_properties(message)
