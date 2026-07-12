@@ -1,5 +1,6 @@
+import threading, os, pickle, json
 from PyFT8.pskreporter import PSKR_MQTT_listener
-import threading, time, os, pickle, json
+from PyFT8.time_utils import time_utils
 
 call_hashes, hashes_for_calls = {}, {}
 
@@ -56,9 +57,9 @@ class DiskDict:
         threading.Thread(target = self._autosave, args=(autosave_t0,),  daemon = True).start()
 
     def _autosave(self, autosave_t0, autosave_period = 15):
-        time.sleep(autosave_t0)
+        time_utils.sleep(autosave_t0)
         while True:
-            time.sleep(autosave_period)
+            time_utils.sleep(autosave_period)
             self.save()
 
     def load(self):
@@ -98,9 +99,9 @@ class History:
         self.home_most_remotes = {}
         self.lock = threading.Lock()
         self.all_file = f"{config_folder}/ALL.txt"
-        self.hearing_me = DiskDict(f"{config_folder}/hearing_me.json", 3)       # all-time record of hearing me
-        self.heard_by_me = DiskDict(f"{config_folder}/heard_by_me.json", 5)     # all-time record of heard by me
-        self.call_to_grid = DiskDict(f"{config_folder}/call_to_grid.json", 7)   # all time cache call -> fine locator
+        self.hearing_me = DiskDict(f"{config_folder}/hearing_me.json", 3)       # all-time_utils record of hearing me
+        self.heard_by_me = DiskDict(f"{config_folder}/heard_by_me.json", 5)     # all-time_utils record of heard by me
+        self.call_to_grid = DiskDict(f"{config_folder}/call_to_grid.json", 7)   # all time_utils cache call -> fine locator
         self.band_TxRx_homecall_recent_L4grid = DiskDict(f"{config_folder}/recent_l4grid.json", 9) # last 20 mins data -> per band tx/rx & current band detail
 
     def start_collect_new(self):
@@ -160,7 +161,7 @@ class History:
             f.write(f"{row}\n")
 
     def add_mqtt_spot(self, d):
-        tnow = int(time.time())
+        tnow = int(time_utils.time())
         sc, rc = (d['sc'], d['sl']), (d['rc'], d['rl'])
         for iTxRx, call_grid in enumerate([sc, rc]):
             call, grid = call_grid
@@ -216,7 +217,7 @@ class History:
     def count_activity(self):
         import numpy as np
         while True:
-            time.sleep(5)
+            time_utils.sleep(5)
             self.home_activity = {}
             self.home_most_remotes = {}
             with self.lock:
@@ -229,7 +230,7 @@ class History:
                 # keep only the remote spots that happened in the self.pskr_refresh_mins window
                 for band_TxRx_homecall in self.band_TxRx_homecall_recent_L4grid.data:
                     band_TxRx_homecall_recent_L4grid = self.band_TxRx_homecall_recent_L4grid.data[band_TxRx_homecall]
-                    band_TxRx_homecall_recent_L4grid = [t for t in band_TxRx_homecall_recent_L4grid if (time.time() - t) < 60*self.pskr_refresh_mins]
+                    band_TxRx_homecall_recent_L4grid = [t for t in band_TxRx_homecall_recent_L4grid if (time_utils.time() - t) < 60*self.pskr_refresh_mins]
                     self.band_TxRx_homecall_recent_L4grid.data[band_TxRx_homecall] = band_TxRx_homecall_recent_L4grid
 
                 # count number of local Tx and Rx, and identify the local Tx and Rx with most remote spots
@@ -281,20 +282,14 @@ class ADIF:
         ensure_file_exists(self.adif_log_file, header = "header <eoh>\n")
         self.cache = self._build_cache()
               
-    def log(self, times, band_info, mStation, oStation, rpts):
-        log_dict = {'call':oStation['c'], 'gridsquare':oStation['g'], 'mode':'FT8',
-        'operator':mStation['c'], 'station_callsign':mStation['c'], 'my_gridsquare':mStation['g'], 
-        'rst_sent':rpts['sent'], 'rst_rcvd':rpts['rcvd'], 
-        'qso_date':time.strftime("%Y%m%d", times['time_on']), 'qso_date_off':time.strftime("%Y%m%d", times['time_off']),
-        'time_on':time.strftime("%H%M%S", times['time_on']), 'time_off':time.strftime("%H%M%S", times['time_on']),
-        'band':band_info['current_band'], 'freq':band_info['fMHz']}
+    def log(self, log_dict):
         with open(self.adif_log_file,'a') as f:
             for k, v in log_dict.items():
                 v = str(v)
                 f.write(f"<{k}:{len(v)}>{v} ")
             f.write(f"<eor>\n")
         cbm = log_dict['call'] + "_" + log_dict['band'] + "_FT8"
-        tm = time.time()
+        tm = time_utils.time()
         self.cache[log_dict['call']] = tm
         self.cache[cbm] = tm
 
@@ -314,10 +309,10 @@ class ADIF:
         with open(self.adif_log_file, 'r') as f:
             for l in f.readlines():
                 if parse(l, 'mode') == "FT8":
-                    c, b, d, t = parse(l, 'call'), parse(l, 'band'), parse(l, 'qso_date'), parse(l, 'time_on')
+                    c, b, d, t = parse(l, 'call'), parse(l, 'band'), parse(l, 'qso_date'), parse(l, 'time_utils_on')
                     if c and b and d and t:
-                        time_tuple = time.strptime(d+t, "%Y%m%d%H%M%S")
-                        tm = calendar.timegm(time_tuple)
+                        time_utils_tuple = time_utils.strptime_utils(d+t, "%Y%m%d%H%M%S")
+                        tm = calendar.time_utilsgm(time_utils_tuple)
                         cache[c] = tm
                         cache[c + "_"+b+"_FT8"] = tm
         return cache

@@ -61,45 +61,6 @@ class Scrollbox:
             if self.lineartists[i].get_text() != '':
                 self.lineartists[i].set_text('')          
 
-class Msg_box:
-    def __init__(self, fig, ax, fbin, w, h, onclick):
-        from matplotlib.patches import Rectangle
-        self.onclick = onclick 
-        rect = Rectangle((0, fbin), width=w, height=h, alpha=0.6, edgecolor='lime', lw=2)
-        self.patch = ax.add_patch(rect)
-        self.text_inst = ax.text(0, fbin+2, '', fontsize='small', fontweight='bold', clip_on = True )
-        self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
-        self.expire = 0
-
-    def set_properties(self, message, x):
-        self.patch.set_x(x)
-        self.text_inst.set_x(x)
-        self.patch.set_visible(True)
-        self.text_inst.set_visible(True)
-        self.expire = time_utils.time() + 29.25
-        self.msg_tuple = message['msg_tuple']
-        self.odd_even = message['odd_even']
-        self.snr = message['snr']
-        self.text_inst.set_text(message['display_text'])
-        colors = ['blue', 'white']
-        if message['is_cq']: colors = ['green', 'white']
-        if message['is_from_me']: colors = ['yellow', 'white']
-        if message['is_to_me']: colors = ['red', 'white']
-        self.text_inst.set_color(colors[1])
-        self.patch.set_facecolor(colors[0])
-
-    def expired(self):
-        return time_utils.time() > self.expire
-        
-    def hide(self):
-        self.patch.set_visible(False)
-        self.text_inst.set_visible(False)
-
-    def _onclick(self, event):
-        b, _ = self.patch.contains(event)
-        if(b):
-            self.onclick({'action': 'MESSAGE_CLICK', 'msg_tuple':self.msg_tuple, 'odd_even':self.odd_even, 'snr':self.snr})
-
 class ButtonBox:
     def __init__(self, fig, box, btn_pc = 30, onclick = None, clickargs=None, btn_label = ''):
         btnbox, infobox = box.copy(), box.copy()
@@ -130,7 +91,44 @@ class ButtonBox:
         if text != self.label2:
             self.label2.set_text(text)
 
+MESSAGE_TYPES = {'generic':{'bg':'blue', 'fg':'white'}, 'CQ':{'bg':'green', 'fg':'white'},'from_me': {'bg':'yellow', 'fg':'white'}, 'to_me':{'bg':'red', 'fg':'white'}} 
+class Msg_box:
+    def __init__(self, fig, ax, position, onclick):
+        from matplotlib.patches import Rectangle
+        self.onclick = onclick
+        p = position
+        rect = Rectangle((0, p['y']), width=p['w'], height=p['h'], alpha=0.6, edgecolor='lime', lw=2)
+        self.patch = ax.add_patch(rect)
+        self.text_inst = ax.text(0, p['y'] + 2, '', fontsize='small', fontweight='bold', clip_on = True )
+        self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
+        self.expire = 0
+        
+    def set_properties(self, message):
+        self.message, self.message_type = message, message['message_type']
+        x, display_text = message['position']['x'], message['display_text']
+        self.patch.set_x(x)
+        self.text_inst.set_x(x)
+        self.patch.set_visible(True)
+        self.text_inst.set_visible(True)
+        self.expire = time_utils.time() + 29.25
+        self.text_inst.set_text(display_text)
+        
+        message_type_params = MESSAGE_TYPES[self.message_type]
+        self.text_inst.set_color(message_type_params['fg'])
+        self.patch.set_facecolor(message_type_params['bg'])
 
+    def expired(self):
+        return time_utils.time() > self.expire
+        
+    def hide(self):
+        self.patch.set_visible(False)
+        self.text_inst.set_visible(False)
+
+    def _onclick(self, event):
+        b, _ = self.patch.contains(event)
+        if(b):
+            self.onclick({'action': 'MESSAGE_CLICK', 'message':self.message})
+    
 class Gui:
     def __init__(self, config, on_click, history, get_band_info, waterfall_data, hearing_me_since_mins = 5):
         self.plt = plt
@@ -157,9 +155,11 @@ class Gui:
         self.sidebars_dirty = True
         self.ani = FuncAnimation(self.fig, self._animate, interval = 160, frames=(100000), blit=True)
 
-    def on_click_local(self, btn_def):
+    def on_click_local(self, clickargs):
         self.sidebars_dirty = True
-        self.on_click(btn_def)
+        if clickargs['action'] == "MESSAGE_CLICK":
+            self.console.scroll_print(f"[GUI] Clicked on message '{clickargs['message']['message_text']}'")
+        self.on_click(clickargs)
 
     def make_layout(self):
         # waterfall axis
@@ -189,7 +189,7 @@ class Gui:
         self.button_boxes.append(bb)            
         for band, freq in self.config['bands'].items():
             bb = ButtonBox(self.fig, [L['pmargin'], wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 30,
-                            btn_label = band, onclick = self.on_click_local, clickargs = {'action':'SET_BAND','band':band,'freq':freq})
+                            btn_label = band, onclick = self.on_click_local, clickargs = {'action':'SET_BAND', 'band':band, 'freq':freq})
             self.button_boxes.append(bb)
 
         # hearing me list
@@ -251,17 +251,21 @@ class Gui:
         c = candidate
         hearing_me, geo_text, wb_time, wb_text = '', '', 0, ''
         if self.history:
-            current_band = self.get_band_info()['current_band']
             geo_text = self.history.get_geo_text(c.msg_tuple[1], c.msg_tuple[2])
-            tnow = time_utils.time()
             wb_time = self.history.log_cache.get(c.msg_tuple[1],'') 
-            wb_text = f"wb: {time_utils.format_duration(tnow - float(wb_time))}" if wb_time else ''
+            wb_text = f"wb: {time_utils.format_duration(time_utils.time() - float(wb_time))}" if wb_time else ''
+            current_band = self.get_band_info()['current_band']
             hearing_me = '# ' if self.history.is_hearing_me(current_band, c.msg_tuple[1]) else ' '
-        message_info = {'origin':c.origin,'msg_tuple':c.msg_tuple,'snr':c.snr,'odd_even': c.origin['odd_even'],
-                        'is_from_me': c.msg_tuple[1] == myCall, 'is_to_me': c.msg_tuple[0] == myCall, 'is_cq': c.msg_tuple[0].startswith('CQ'),
-                        'display_text': f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {geo_text}"}
-        
-        self.new_messages.put(message_info)
+        message_type_value = 0 + 1*(c.msg_tuple[1] == myCall) + 2*(c.msg_tuple[0] == myCall) + 3*(c.msg_tuple[0].startswith('CQ'))
+        message_type = ['generic', 'from_me', 'to_me', 'CQ'][message_type_value]
+        wf, o = self.wf_data, c.origin
+        x = o['t0'] / wf['dt'] + o['odd_even'] * wf['pixels_per_cycle']
+        y = o['f0'] / wf['df']
+        self.new_messages.put( {'message_type':message_type,
+                                'position': {'x':x, 'y':y, 'w':self.wf_data['sig_w'], 'h':self.wf_data['sig_h']},
+                                'message_text': ' '.join(c.msg_tuple),
+                                'new_qso_info': {'call':c.msg_tuple[1], 'rst_sent': f"{c.snr:+03d}", 'grid_rpt':c.msg_tuple[2], 'my_tx_cycle': 1-c.origin['odd_even']},
+                                'display_text': f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {geo_text}"}            )
 
     def hide_msg_boxes(self):
         for fb in self.msg_boxes:
@@ -275,13 +279,10 @@ class Gui:
         if (time_utils.time() > 12):
             while not self.new_messages.empty():
                 message = self.new_messages.get()
-                wf = self.wf_data
-                o = message['origin']
-                x = o['t0'] / wf['dt'] + o['odd_even'] * wf['pixels_per_cycle']
-                y = o['f0'] / wf['df']
+                y = message['position']['y']
                 if not y in self.msg_boxes: 
-                    self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, y, self.wf_data['sig_w'], self.wf_data['sig_h'], onclick = self.on_click_local)
-                self.msg_boxes[y].set_properties(message, x)
+                    self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, message['position'], onclick = self.on_click_local)
+                self.msg_boxes[y].set_properties(message)
 
             live_message_boxes = [mb for mb in self.msg_boxes.values() if not mb.expired()]
             if len(live_message_boxes) != self.len_live_message_boxes_prev:

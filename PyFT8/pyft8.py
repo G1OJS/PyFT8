@@ -59,15 +59,6 @@ def wait_for_keyboard():
     except KeyboardInterrupt:
         pass
 
-def isGrid(grid_rpt):
-    # duplicate code - needs packaging somewhere
-    isReport    = "+" in grid_rpt or "-" in grid_rpt
-    isRReport   = isReport and 'R' in grid_rpt
-    isRR73      = 'RR73' in grid_rpt
-    isRRR       = 'RRR' in grid_rpt
-    is73        = '73' in grid_rpt and not isRR73
-    isGrid      = not isReport and not is73 and not isRR73 and not isRRR
-    return isGrid
 
 def on_decode(c):
     global decode_queue_non_time_critical
@@ -77,6 +68,8 @@ def on_decode(c):
     decode_queue_non_time_critical.put((c, band_info))
 
 def on_decode_non_time_critical():
+    def isGrid(grid_rpt):
+        return not any([m for m in ['+','-','RR','73'] if m in grid_rpt])
     while True:
         time_utils.sleep(0.5)
         while not decode_queue_non_time_critical.empty():
@@ -146,10 +139,7 @@ def cli():
         os.system(config['launch']['app'])
 
     if args.outputcard_keywords:
-        outputcard_keywords = args.outputcard_keywords.replace(' ','').split(',')
-        soundcard_out = SoundcardOut(outputcard_keywords)
-        if soundcard_out.output_device_index is None:
-            console_print(f"[PyFT8] No outout audio device found matching {args.outputcard_keywords}")
+        soundcard_out = SoundcardOut(args.outputcard_keywords)
 
     if config.has_section('hamlib_rig'):
         console_print("Connecting to rig via Hamlib")
@@ -168,18 +158,13 @@ def cli():
             sys.exit(1)
 
 # Set up for receiving with or without Gui
-    if not args.inputcard_keywords:
-        print("No input device specified")
-        sys.exit(1)
-    else:
-        input_device_keywords = args.inputcard_keywords.replace(' ','').split(',')
-        rx = Receiver([100, 3000], input_device_keywords, wav_files = None, on_decode = on_decode,
-                      sync_score_min = 90, max_cands = 100, min_search_start = 12)
+    rx = Receiver([100, 3000], args.inputcard_keywords, wav_files = None, on_decode = on_decode,
+                sync_score_min = 90, max_cands = 100, min_search_start = 12)
 
 # Initialise the gui
     if not args.no_gui:
         adif_logging = ADIF(f"{config_folder}/PyFT8.adi")
-        qso_manager = QSO_manager(myCall, myGrid, console_print, soundcard_out.send_bytes, rig, rx.audio_in.waterfall_data, adif_logging)
+        qso_manager = QSO_manager(myCall, myGrid, console_print, soundcard_out.transmit_audio_data_bytes, rig, rx.audio_in.waterfall_data, adif_logging)
         history = History(config_folder, myCall, myGrid, PSKR_REFRESH_MINS)
         gui = Gui(config, qso_manager.on_click, history, qso_manager.get_band_info, rx.audio_in.waterfall_data)
         history.incorporate_log_data(adif_logging.cache)
