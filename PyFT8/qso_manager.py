@@ -53,20 +53,25 @@ class QSO_manager:
 
         if btn_action == "MESSAGE_CLICK":
             message = clickargs['message']
-            message_type, new_qso_info = message['message_type'], message['new_qso_info']
+            message_type = message['message_type']
+            new_qso_info = message['new_qso_info']
             reply = ""
+            
             if message_type == "CQ" or message_type == "to_me":
-                if not self.qso_active:
+                if not self.qso_active or message_type == "CQ":
                     gmt = time.gmtime()
                     self.qso_info.update({'call':new_qso_info['call'],
                                          'time_on': time.strftime("%Y%m%d", gmt), 'qso_date':time.strftime("%Y%m%d", gmt),
                                          'band':self.band_info['current_band'], 'freq':self.band_info['fMHz'],
                                          'rst_sent':new_qso_info['rst_sent'] })
-                    grid_rpt = new_qso_info['grid_rpt']
-                    self.tx_cycle = 1 - odd_even
+                    self.tx_cycle = new_qso_info['my_tx_cycle']
                     self.tx_freq = self._find_clear_freq(self.band_info['current_band'])
                     self.qso_active = True
 
+            grid_rpt = new_qso_info['grid_rpt']
+            if any([m for m in ['+','-'] if m in grid_rpt]): # grid_rpt == rpt
+                self.qso_info.update({'rst_rcvd': grid_rpt})
+            
             if not any([m for m in ['+','-','RR','73'] if m in grid_rpt]): # grid_rpt == grid
                 self.qso_info.update({'gridsquare': grid_rpt})
 
@@ -88,7 +93,7 @@ class QSO_manager:
             if reply.endswith("73"): # do last so any log errors don't prevent sending 73
                 if self.adif_logging is not None:
                     gmt = time.gmtime()
-                    qso_info.update({'time_off': time.strftime("%Y%m%d", gmt), 'qso_date_off':time.strftime("%Y%m%d", gmt)})
+                    self.qso_info.update({'time_off': time.strftime("%Y%m%d", gmt), 'qso_date_off':time.strftime("%Y%m%d", gmt)})
                     self.adif_logging.log(self.qso_info)
                     self.console_print(f"[PyFT8] Logged QSO with {self.qso_info['call']}")
                 self.qso_active = False
