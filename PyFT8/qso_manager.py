@@ -99,10 +99,11 @@ class QSO_manager:
                 self.qso_active = False
 
     def _set_tx_payload(self, msg_text):
-        symbols = get_ft8_symbols(msg_text)
-        audio_bytes = symbols_to_audio_bytes(symbols, f_base = self.tx_freq)
-        self.tx_payload = {'audio_bytes':audio_bytes, 'start_gridtime':[0.25, 15.25][self.tx_cycle]}
         self.console_print(f"[QSO] Set transmit message to '{msg_text}' (cyc {self.tx_cycle}, {self.tx_freq:5.1f} Hz)")
+        if len(msg_text.split(' ')) == 3:           
+            symbols = get_ft8_symbols(msg_text)
+            audio_bytes = symbols_to_audio_bytes(symbols, f_base = self.tx_freq)
+            self.tx_payload = {'audio_bytes':audio_bytes, 'start_gridtime':[0.25, 15.25][self.tx_cycle]}
 
     def _transmit_daemon(self):
         while True:

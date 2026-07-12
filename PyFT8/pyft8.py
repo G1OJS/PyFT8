@@ -166,7 +166,7 @@ def cli():
         adif_logging = ADIF(f"{config_folder}/PyFT8.adi")
         qso_manager = QSO_manager(myCall, myGrid, console_print, soundcard_out.transmit_audio_data_bytes, rig, rx.audio_in.waterfall_data, adif_logging)
         history = History(config_folder, myCall, myGrid, PSKR_REFRESH_MINS)
-        gui = Gui(config, qso_manager.on_click, history, qso_manager.get_band_info, rx.audio_in.waterfall_data)
+        gui = Gui(config, qso_manager.on_click, history, console_print, qso_manager.get_band_info, rx.audio_in.waterfall_data)
         history.incorporate_log_data(adif_logging.cache)
         history.start_collect_new()
 

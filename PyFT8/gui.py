@@ -130,13 +130,14 @@ class Msg_box:
             self.onclick({'action': 'MESSAGE_CLICK', 'message':self.message})
     
 class Gui:
-    def __init__(self, config, on_click, history, get_band_info, waterfall_data, hearing_me_since_mins = 5):
+    def __init__(self, config, on_click, history, console_print, get_band_info, waterfall_data, hearing_me_since_mins = 5):
         self.plt = plt
         self.fig = plt.figure(figsize = (10,10), facecolor=(.18, .71, .71, 0.4)) 
         self.fig.canvas.manager.set_window_title('PyFT8 by G1OJS')
         self.config = config
         self.on_click = on_click
         self.history = history
+        self.console_print = console_print
         self.hearing_me_since_mins = hearing_me_since_mins
         self.rig = None
         self.wf_data = None
@@ -158,7 +159,7 @@ class Gui:
     def on_click_local(self, clickargs):
         self.sidebars_dirty = True
         if clickargs['action'] == "MESSAGE_CLICK":
-            self.console.scroll_print(f"[GUI] Clicked on message '{clickargs['message']['message_text']}'")
+            self.console_print(f"[GUI] Clicked on message '{clickargs['message']['message_text']}'")
         self.on_click(clickargs)
 
     def make_layout(self):
