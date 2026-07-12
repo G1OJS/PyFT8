@@ -321,6 +321,7 @@ class Candidate:
     def __init__(self, cyclestart, origin, llr_sd_min = 5):
         self.cyclestart, self.origin = cyclestart, origin
         self.demap_started, self.decode_completed = 0, 0
+        self.fast_decode_tried = False
         self.msg_tuple = None
         self.saved_llrs = []
         self.ipass = 0
@@ -357,6 +358,28 @@ class Candidate:
         var = np.mean(llr*llr) - mean*mean
         rootvar = np.sqrt(var)
         return 2.83 * llr / rootvar, rootvar
+
+    def fast_demap_decode(self, all_audio_spectrum):
+        # could also try this direct from search grid
+        df = SAMP_RATE / 192000
+        f0, t0 = self.origin['f0'], self.origin['t0']
+        fb_0 = int(0.5 + f0 / df )
+        fb_top = int(0.5 + (f0 + 8.5*SYM_RATE) / df )
+        fb_bot = int(0.5 + (f0 - 1.5*SYM_RATE) / df )
+        dt = 0.005
+        tb_0 = int(t0/dt)
+        self.get_tfgrid(all_audio_spectrum, fb_0, fb_bot, fb_top, tb_0)
+
+        p = 20*np.log10(self.cgrid[PAYLOAD_SYMB_IDXS, :])
+        self.snr = np.clip(int(np.max(p) - np.min(p) - 58), -24, 24)
+        llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
+        llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
+        llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
+        llr = np.column_stack((llra, llrb, llrc)).ravel()
+        self.llr, self.llr_sd = self.llr_norm_wsj(llr)
+        self.dt = float(self.origin['t0'])
+        self.fHz = float(self.origin['f0'])
+        self._decode_ldpc_fast()
 
     def demap(self, all_audio_spectrum):
         df = SAMP_RATE / 192000
@@ -402,7 +425,6 @@ class Candidate:
         self.dt = float(self.origin['t0'] - 0.5 + ttweak / 200)
         self.fHz = float(self.origin['f0'] + ftweak / 16)
         
-
     def decode(self, max_ipass):
         if self.llr_sd < self.llr_sd_min:
             self.decode_completed = time_utils.cycle_time()
@@ -528,25 +550,29 @@ class Receiver():
                         if self.audio_in.search_grid_ptr - last_spectrum_calc > 0 : # only calc full spectrum if more samples received
                             all_audio_spectrum = np.fft.rfft(self.audio_in.cycle_audio_buffer)
                         last_spectrum_calc = self.audio_in.search_grid_ptr
-                        c.demap(all_audio_spectrum)
-                        h2s = 1/(SYM_RATE * self.audio_in.search_hps)
-                        c.demap_started = self.audio_in.search_grid_ptr*h2s
-                        #time_utils.tlog(f"[Receiver] Demap {len(candidates)} {cand_abs_h0_idx*h2s:5.1f} - {cand_abs_hf_idx*h2s:5.1f} {c.llr_sd}", verbose = DEBUG_PRINTS)
+                        if not c.fast_decode_tried:
+                            c.fast_demap_decode(all_audio_spectrum)
+                            c.fast_decode_tried = True
+                        if not c.decode_completed:
+                            c.demap(all_audio_spectrum)
+                            h2s = 1/(SYM_RATE * self.audio_in.search_hps)
+                            c.demap_started = self.audio_in.search_grid_ptr*h2s
                 if not c.decode_completed:
                     to_decode.append(c)
+
+                if c.msg_tuple:
+                    key = c.cyclestart['string'] + ''.join(c.msg_tuple)
+                    if (key not in duplicate_filter):
+                        duplicate_filter.add(key)
+                        c.decode_time_from_grid = self.audio_in.cycle_audio_buffer_ptr / SAMP_RATE
+                        if self.on_decode:
+                            self.on_decode(c)
 
             if len(to_decode):
                 to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
                 max_ipass = 1 + np.min([c.ipass for c in to_decode])
                 for c in to_decode[:40]:
                     c.decode(max_ipass)
-                    if c.msg_tuple:
-                        key = c.cyclestart['string'] + ''.join(c.msg_tuple)
-                        if (key not in duplicate_filter):
-                            duplicate_filter.add(key)
-                            c.decode_time_from_grid = self.audio_in.cycle_audio_buffer_ptr / SAMP_RATE
-                            if self.on_decode:
-                                self.on_decode(c)
             else:
                 if not end_decoding_message_printed and len([c for c in self.candidates if c.demap_started]):
                     h = self.audio_in.search_grid_ptr
