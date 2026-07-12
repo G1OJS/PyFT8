@@ -1,4 +1,4 @@
-import threading, os, pickle, json
+import threading, os, pickle, json, time
 from PyFT8.pskreporter import PSKR_MQTT_listener
 from PyFT8.time_utils import time_utils
 
@@ -99,9 +99,9 @@ class History:
         self.home_most_remotes = {}
         self.lock = threading.Lock()
         self.all_file = f"{config_folder}/ALL.txt"
-        self.hearing_me = DiskDict(f"{config_folder}/hearing_me.json", 3)       # all-time_utils record of hearing me
-        self.heard_by_me = DiskDict(f"{config_folder}/heard_by_me.json", 5)     # all-time_utils record of heard by me
-        self.call_to_grid = DiskDict(f"{config_folder}/call_to_grid.json", 7)   # all time_utils cache call -> fine locator
+        self.hearing_me = DiskDict(f"{config_folder}/hearing_me.json", 3)       # all-time record of hearing me
+        self.heard_by_me = DiskDict(f"{config_folder}/heard_by_me.json", 5)     # all-time record of heard by me
+        self.call_to_grid = DiskDict(f"{config_folder}/call_to_grid.json", 7)   # all time cache call -> fine locator
         self.band_TxRx_homecall_recent_L4grid = DiskDict(f"{config_folder}/recent_l4grid.json", 9) # last 20 mins data -> per band tx/rx & current band detail
 
     def start_collect_new(self):
@@ -309,10 +309,10 @@ class ADIF:
         with open(self.adif_log_file, 'r') as f:
             for l in f.readlines():
                 if parse(l, 'mode') == "FT8":
-                    c, b, d, t = parse(l, 'call'), parse(l, 'band'), parse(l, 'qso_date'), parse(l, 'time_utils_on')
+                    c, b, d, t = parse(l, 'call'), parse(l, 'band'), parse(l, 'qso_date'), parse(l, 'time_on')
                     if c and b and d and t:
-                        time_utils_tuple = time_utils.strptime_utils(d+t, "%Y%m%d%H%M%S")
-                        tm = calendar.time_utilsgm(time_utils_tuple)
+                        time_tuple = time.strptime(d+t, "%Y%m%d%H%M%S")
+                        tm = calendar.timegm(time_tuple)
                         cache[c] = tm
                         cache[c + "_"+b+"_FT8"] = tm
         return cache
