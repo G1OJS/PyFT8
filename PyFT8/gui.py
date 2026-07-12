@@ -101,7 +101,7 @@ class Msg_box:
         self.patch = ax.add_patch(rect)
         self.text_inst = ax.text(0, p['y'] + 2, '', fontsize='small', fontweight='bold', clip_on = True )
         self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
-        self.expire = 0
+        self.expire_time = 0
         
     def set_properties(self, message):
         self.message, self.message_type = message, message['message_type']
@@ -110,15 +110,12 @@ class Msg_box:
         self.text_inst.set_x(x)
         self.patch.set_visible(True)
         self.text_inst.set_visible(True)
-        self.expire = time_utils.time() + 29.25
+        self.expire_time = time_utils.time() + 29.25
         self.text_inst.set_text(display_text)
         
         message_type_params = MESSAGE_TYPES[self.message_type]
         self.text_inst.set_color(message_type_params['fg'])
         self.patch.set_facecolor(message_type_params['bg'])
-
-    def expired(self):
-        return time_utils.time() > self.expire
         
     def hide(self):
         self.patch.set_visible(False)
@@ -134,73 +131,64 @@ class Gui:
         self.plt = plt
         self.fig = plt.figure(figsize = (10,10), facecolor=(.18, .71, .71, 0.4)) 
         self.fig.canvas.manager.set_window_title('PyFT8 by G1OJS')
-        self.config = config
-        self.on_click = on_click
-        self.history = history
-        self.console_print = console_print
+        self.config, self.on_click, self.history, self.console_print, self.get_band_info, self.waterfall_data  = config, on_click, history, console_print, get_band_info, waterfall_data
+        self.wf_top = 1-L['pmargin']-L['banner_height']-L['vsep1']
+        self.wf_left = L['pmargin']+L['sidebar_width']+L['hsep1']
         self.hearing_me_since_mins = hearing_me_since_mins
-        self.rig = None
-        self.wf_data = None
-        self.get_band_info = get_band_info
+        self.len_active_mb = 0
         self.sidebars_refresh_last = 0
         self.sidebars_page = 0
-        self.msg_boxes = {}
-        self.len_live_message_boxes_prev = 0
-        self.message_box_artists = []
         self.new_messages = queue.Queue()
-        self.make_layout()
-        self.wf_data = waterfall_data
-        self.image = self.ax_wf.imshow(self.wf_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
-        self.ax_wf.set_xticks([])
-        self.ax_wf.set_yticks([])
+        self._make_axes()
+        self._initialise_artists()
+        self._make_buttons()
         self.sidebars_dirty = True
-        self.ani = FuncAnimation(self.fig, self._animate, interval = 160, frames=(100000), blit=True)
+        self.sidebars_artists = [*[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes],
+                    *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists]
+        self.ani = FuncAnimation(self.fig, self._animate, interval = 40, frames=(100000), blit=True)
 
-    def on_click_local(self, clickargs):
+    def _on_click_local(self, clickargs):
         self.sidebars_dirty = True
         if clickargs['action'] == "MESSAGE_CLICK":
             self.console_print(f"[GUI] Clicked on message '{clickargs['message']['message_text']}'")
         self.on_click(clickargs)
 
-    def make_layout(self):
-        # waterfall axis
-        wf_top = 1-L['pmargin']-L['banner_height']-L['vsep1']
-        wf_left = L['pmargin']+L['sidebar_width']+L['hsep1']
-        self.ax_wf = self.fig.add_axes([wf_left, L['pmargin'], 1-wf_left-L['pmargin'], wf_top-L['pmargin']])
-
-        # band stats
-        self.band_stats = Scrollbox(self.fig, [L['pmargin'], wf_top+L['vsep1'], L['sidebar_width'], L['banner_height']], nlines = 4, monospace = True)
+    def _make_axes(self):
+        self.ax_wf = self.fig.add_axes([self.wf_left, L['pmargin'], 1-self.wf_left-L['pmargin'], self.wf_top-L['pmargin']])
+        self.ax_wf.set_xticks([])
+        self.ax_wf.set_yticks([])
+        self.band_stats = Scrollbox(self.fig, [L['pmargin'], self.wf_top+L['vsep1'], L['sidebar_width'], L['banner_height']], nlines = 4, monospace = True)
         self.band_stats.ax.text(-0.2,0.75,'Tx')
         self.band_stats.ax.text(-0.2,0.25,'Rx')
+        self.console = Scrollbox(self.fig, [self.wf_left, self.wf_top+L['vsep1'], 1-self.wf_left-L['pmargin'], L['banner_height']])
 
-        # console
-        self.console = Scrollbox(self.fig, [wf_left, wf_top+L['vsep1'], 1-wf_left-L['pmargin'], L['banner_height']])
+    def _initialise_artists(self):
+        self.msg_boxes = {}
+        self.len_live_message_boxes_prev = 0
+        self.message_box_artists = []
+        self.image = self.ax_wf.imshow(self.waterfall_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
 
-        # control buttons
+    def _make_buttons(self):
         self.button_boxes = []
         bh, bs = 0.02, 0.002
-        bb = ButtonBox(self.fig, [L['pmargin'], wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
-                        btn_label = "CQ", onclick = self.on_click_local, clickargs = {'action':'CQ'})                            
+        bb = ButtonBox(self.fig, [L['pmargin'], self.wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
+                        btn_label = "CQ", onclick = self._on_click_local, clickargs = {'action':'CQ'})                            
         self.button_boxes.append(bb)
-        bb = ButtonBox(self.fig, [L['pmargin'], wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
-                        btn_label = "Repeat last", onclick = self.on_click_local, clickargs = {'action':'RPT_LAST'})                            
+        bb = ButtonBox(self.fig, [L['pmargin'], self.wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
+                        btn_label = "Repeat last", onclick = self._on_click_local, clickargs = {'action':'RPT_LAST'})                            
         self.button_boxes.append(bb)
-        bb = ButtonBox(self.fig, [L['pmargin'], wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
-                        btn_label = "Tx off", onclick = self.on_click_local, clickargs = {'action':'TX_OFF'})                            
+        bb = ButtonBox(self.fig, [L['pmargin'], self.wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
+                        btn_label = "Tx off", onclick = self._on_click_local, clickargs = {'action':'TX_OFF'})                            
         self.button_boxes.append(bb)            
         for band, freq in self.config['bands'].items():
-            bb = ButtonBox(self.fig, [L['pmargin'], wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 30,
-                            btn_label = band, onclick = self.on_click_local, clickargs = {'action':'SET_BAND', 'band':band, 'freq':freq})
+            bb = ButtonBox(self.fig, [L['pmargin'], self.wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 30,
+                            btn_label = band, onclick = self._on_click_local, clickargs = {'action':'SET_BAND', 'band':band, 'freq':freq})
             self.button_boxes.append(bb)
 
-        # hearing me list
-        self.hm = Scrollbox(self.fig, [L['pmargin'], L['pmargin'], L['sidebar_width'], wf_top - (len(self.button_boxes)+2) * bh + bs - L['vsep1']],
+        self.hm = Scrollbox(self.fig, [L['pmargin'], L['pmargin'], L['sidebar_width'], self.wf_top - (len(self.button_boxes)+2) * bh + bs - L['vsep1']],
                             nlines = 30, monospace = True, fontsize = 8)
 
-    def set_bandstats_title(self, txt):
-        self.band_stats.ax.set_title(txt, fontsize = 10)
-
-    def refresh_sidebars(self):
+    def _refresh_sidebars(self):
         current_band = self.get_band_info()['current_band']
 
         # band stats
@@ -244,9 +232,41 @@ class Gui:
                     display_rows.append((f"{remote_call:<7} {snr:+03d} {geo_text:<12}", timestamp, color))
             display_rows.sort(key = lambda row: row[1], reverse = True)
             self.hm.list_print([row[0] for row in display_rows], [row[2] for row in display_rows])
-
-        self.sidebars_refresh_last = time_utils.time()
         self.sidebars_page = (self.sidebars_page +1 )%2
+
+    def _animate(self, frame):
+        
+        abs_time = time_utils.time()
+        if (abs_time - self.sidebars_refresh_last > 3):
+            self.sidebars_dirty = True
+        live_mb = []
+        for mb in self.msg_boxes.values():
+            if abs_time < mb.expire_time:
+                live_mb.append(mb)
+            else:
+                mb.hide()
+        self.message_boxes_dirty = (len(live_mb) != self.len_active_mb)
+            
+        if self.sidebars_dirty:
+            self._refresh_sidebars()
+            self.sidebars_refresh_last = abs_time
+            self.sidebars_dirty = False
+        elif self.message_boxes_dirty:
+            self.message_box_artists = []
+            for mb in live_mb:
+                self.message_box_artists.append(mb.patch)
+                self.message_box_artists.append(mb.text_inst)
+            self.len_active_mb = len(live_mb)
+        else:
+            self.image.set_data(self.waterfall_data['data'])
+            
+        return [self.image, *self.message_box_artists, *self.sidebars_artists]     
+
+
+    def set_bandstats_title(self, txt):
+        self.band_stats.ax.set_title(txt, fontsize = 10)
+
+
 
     def add_message_box(self, candidate, myCall):
         c = candidate
@@ -259,42 +279,21 @@ class Gui:
             hearing_me = '# ' if self.history.is_hearing_me(current_band, c.msg_tuple[1]) else ' '
         message_type_value = 0 + 1*(c.msg_tuple[1] == myCall) + 2*(c.msg_tuple[0] == myCall) + 3*(c.msg_tuple[0].startswith('CQ'))
         message_type = ['generic', 'from_me', 'to_me', 'CQ'][message_type_value]
-        wf, o = self.wf_data, c.origin
-        x = o['t0'] / wf['dt'] + o['odd_even'] * wf['pixels_per_cycle']
-        y = o['f0'] / wf['df']
-        self.new_messages.put( {'message_type':message_type,
-                                'position': {'x':x, 'y':y, 'w':self.wf_data['sig_w'], 'h':self.wf_data['sig_h']},
+        wf, o = self.waterfall_data, c.origin
+        x = int(o['t0'] / wf['dt'] + o['odd_even'] * wf['pixels_per_cycle'])
+        y = int(o['f0'] / wf['df'])
+        message = {'message_type':message_type,
+                                'position': {'x':x, 'y':y, 'w':self.waterfall_data['sig_w'], 'h':self.waterfall_data['sig_h']},
                                 'message_text': ' '.join(c.msg_tuple),
                                 'new_qso_info': {'call':c.msg_tuple[1], 'rst_sent': f"{c.snr:+03d}", 'grid_rpt':c.msg_tuple[2], 'my_tx_cycle': 1-c.origin['odd_even']},
-                                'display_text': f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {geo_text}"}            )
+                                'display_text': f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {geo_text}"}
+        if not y in self.msg_boxes: 
+            self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, message['position'], onclick = self._on_click_local)
+        self.msg_boxes[y].set_properties(message)
 
     def hide_msg_boxes(self):
         for fb in self.msg_boxes:
             self.msg_boxes[fb].hide()
  
-    def _animate(self, frame):
-        self.image.set_data(self.wf_data['data'])
-        if (time_utils.time() - self.sidebars_refresh_last > 3):
-            self.sidebars_dirty = True
-            
-        if (time_utils.time() > 12):
-            while not self.new_messages.empty():
-                message = self.new_messages.get()
-                y = message['position']['y']
-                if not y in self.msg_boxes: 
-                    self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, message['position'], onclick = self.on_click_local)
-                self.msg_boxes[y].set_properties(message)
 
-            live_message_boxes = [mb for mb in self.msg_boxes.values() if not mb.expired()]
-            if len(live_message_boxes) != self.len_live_message_boxes_prev:
-                self.message_box_artists = [i for items in [[mb.patch, mb.text_inst] for mb in live_message_boxes] for i in items]
-            self.len_live_message_boxes_prev = len(live_message_boxes)                
-
-        if self.sidebars_dirty:
-            self.refresh_sidebars()
-            self.sidebars_dirty = False
-            return [self.image,  *self.message_box_artists, *[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes],
-                    *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists]
-                
-        return [self.image, *self.message_box_artists]
         

@@ -67,7 +67,7 @@ def ifindex(arr, val, default = None):
     return arr.index(val) if val in arr else default
 
 def get_ft8_symbols(text):
-    c1, c2, grid_rpt = text.split()
+    c1, c2, grid_rpt = text.split(' ')
     symbols, bits77 = pack_message(c1, c2, grid_rpt)
     return symbols
 

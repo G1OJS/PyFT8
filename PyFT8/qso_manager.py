@@ -61,7 +61,7 @@ class QSO_manager:
                 if not self.qso_active or message_type == "CQ":
                     gmt = time.gmtime()
                     self.qso_info.update({'call':new_qso_info['call'],
-                                         'time_on': time.strftime("%Y%m%d", gmt), 'qso_date':time.strftime("%Y%m%d", gmt),
+                                         'time_on': time.strftime("%H%M%S", gmt), 'qso_date':time.strftime("%Y%m%d", gmt),
                                          'band':self.band_info['current_band'], 'freq':self.band_info['fMHz'],
                                          'rst_sent':new_qso_info['rst_sent'] })
                     self.tx_cycle = new_qso_info['my_tx_cycle']
@@ -93,7 +93,7 @@ class QSO_manager:
             if reply.endswith("73"): # do last so any log errors don't prevent sending 73
                 if self.adif_logging is not None:
                     gmt = time.gmtime()
-                    self.qso_info.update({'time_off': time.strftime("%Y%m%d", gmt), 'qso_date_off':time.strftime("%Y%m%d", gmt)})
+                    self.qso_info.update({'time_off': time.strftime("%H%M%S", gmt), 'qso_date_off':time.strftime("%Y%m%d", gmt)})
                     self.adif_logging.log(self.qso_info)
                     self.console_print(f"[PyFT8] Logged QSO with {self.qso_info['call']}")
                 self.qso_active = False
@@ -104,6 +104,9 @@ class QSO_manager:
             symbols = get_ft8_symbols(msg_text)
             audio_bytes = symbols_to_audio_bytes(symbols, f_base = self.tx_freq)
             self.tx_payload = {'audio_bytes':audio_bytes, 'start_gridtime':[0.25, 15.25][self.tx_cycle]}
+        else:
+            self.console_print(f"[QSO] Message is malformed", color = 'red')
+            
 
     def _transmit_daemon(self):
         while True:
