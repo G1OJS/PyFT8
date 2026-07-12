@@ -140,7 +140,10 @@ class Gui:
         self.sidebars_page = 0
         self.new_messages = queue.Queue()
         self._make_axes()
-        self._initialise_artists()
+        self.msg_boxes = {}
+        self.len_live_message_boxes_prev = 0
+        self.message_box_artists = []
+        self.image = self.ax_wf.imshow(self.waterfall_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self._make_buttons()
         self.sidebars_dirty = True
         self.sidebars_artists = [*[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes],
@@ -161,12 +164,6 @@ class Gui:
         self.band_stats.ax.text(-0.2,0.75,'Tx')
         self.band_stats.ax.text(-0.2,0.25,'Rx')
         self.console = Scrollbox(self.fig, [self.wf_left, self.wf_top+L['vsep1'], 1-self.wf_left-L['pmargin'], L['banner_height']])
-
-    def _initialise_artists(self):
-        self.msg_boxes = {}
-        self.len_live_message_boxes_prev = 0
-        self.message_box_artists = []
-        self.image = self.ax_wf.imshow(self.waterfall_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
 
     def _make_buttons(self):
         self.button_boxes = []
@@ -235,38 +232,23 @@ class Gui:
         self.sidebars_page = (self.sidebars_page +1 )%2
 
     def _animate(self, frame):
-        
+        self.image.set_data(self.waterfall_data['data'])
         abs_time = time_utils.time()
         if (abs_time - self.sidebars_refresh_last > 3):
             self.sidebars_dirty = True
-        live_mb = []
-        for mb in self.msg_boxes.values():
-            if abs_time < mb.expire_time:
-                live_mb.append(mb)
-            else:
-                mb.hide()
-        self.message_boxes_dirty = (len(live_mb) != self.len_active_mb)
-            
         if self.sidebars_dirty:
             self._refresh_sidebars()
             self.sidebars_refresh_last = abs_time
             self.sidebars_dirty = False
-        elif self.message_boxes_dirty:
-            self.message_box_artists = []
-            for mb in live_mb:
-                self.message_box_artists.append(mb.patch)
-                self.message_box_artists.append(mb.text_inst)
-            self.len_active_mb = len(live_mb)
-        else:
-            self.image.set_data(self.waterfall_data['data'])
-            
+        if abs_time %15 > 12:
+            for mb in self.msg_boxes.values():
+                if abs_time > mb.expire_time:
+                    mb.hide()
         return [self.image, *self.message_box_artists, *self.sidebars_artists]     
 
 
     def set_bandstats_title(self, txt):
         self.band_stats.ax.set_title(txt, fontsize = 10)
-
-
 
     def add_message_box(self, candidate, myCall):
         c = candidate
@@ -289,6 +271,8 @@ class Gui:
                                 'display_text': f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {geo_text}"}
         if not y in self.msg_boxes: 
             self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, message['position'], onclick = self._on_click_local)
+            self.message_box_artists.append(self.msg_boxes[y].patch)
+            self.message_box_artists.append(self.msg_boxes[y].text_inst)
         self.msg_boxes[y].set_properties(message)
 
     def hide_msg_boxes(self):
