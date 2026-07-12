@@ -322,6 +322,7 @@ class Candidate:
     def __init__(self, cyclestart, origin, llr_sd_min = 5):
         self.cyclestart, self.origin = cyclestart, origin
         self.demap_started, self.decode_completed = 0, 0
+        self.ftweak, self.ttweak = 0, 0
         self.fast_decode_tried = False
         self.msg_tuple = None
         self.saved_llrs = []
