@@ -309,7 +309,7 @@ class ADIF:
         with open(self.adif_log_file, 'r') as f:
             for l in f.readlines():
                 if parse(l, 'mode') == "FT8":
-                    c, b, d, t = parse(l, 'call'), parse(l, 'band'), parse(l, 'qso_date'), parse(l, 'time_on')
+                    c, b, d, t = parse(l, 'call:'), parse(l, 'band'), parse(l, 'qso_date'), parse(l, 'time_on')
                     if c and b and d and t:
                         time_tuple = time.strptime(d+t, "%Y%m%d%H%M%S")
                         tm = calendar.timegm(time_tuple)

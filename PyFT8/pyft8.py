@@ -169,7 +169,6 @@ def cli():
         gui = Gui(config, qso_manager.on_click, history, qso_manager.get_band_info, rx.audio_in.waterfall_data)
         history.incorporate_log_data(adif_logging.cache)
         history.start_collect_new()
-        print(adif_logging.cache)
 
 # Start pskreporter upload
     if myCall is not None and 'pskreporter' in config.keys():
