@@ -15,6 +15,7 @@ class QSO_manager:
         self.adif_logging = adif_logging
         self.qso_active = False
         self.tx_payload = None
+        self.tx_cycle = 0
         self.wf_data = wf_data
         self.console_print = console_print
         self.rig = rig
