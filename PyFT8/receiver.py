@@ -323,6 +323,7 @@ class Candidate:
         self.cyclestart, self.origin = cyclestart, origin
         self.demap_started, self.decode_completed = 0, 0
         self.ftweak, self.ttweak = 0, 0
+        self.n_sync_matches = -1
         self.fast_decode_tried = False
         self.msg_tuple = None
         self.saved_llrs = []
