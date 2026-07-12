@@ -16,6 +16,7 @@ HEARING_PANEL_LIFE_MINS = 20
 
 gui, history, qso_manager, adif_logging, pskr_upload, soundcard_out, rig, output_device_idx = None, None, None, None, None, None, None, None
 myCall, myGrid = None, None
+decode_queue_time_critical = queue.Queue()
 decode_queue_non_time_critical = queue.Queue()
 
 def get_config(config_folder):
@@ -61,21 +62,22 @@ def wait_for_keyboard():
 
 
 def on_decode(c):
-    global decode_queue_non_time_critical
-    band_info = qso_manager.band_info if qso_manager else {'current_band': None, 'fMHz':0, 'time_set':0}
+    global decode_queue_time_critical, decode_queue_non_time_critical
+    decode_queue_non_time_critical.put(c)
     if gui:
         gui.add_message_box(c, myCall)
     screen_format = f"{c.cyclestart['string']} {c.snr:+03d} {c.dt:4.1f} {c.fHz:4.0f} ~ {' '.join(c.msg_tuple)}"
     print(f"{screen_format:50s} decoded@ {c.decode_completed % 15:5.1f}s ")
-    decode_queue_non_time_critical.put((c, band_info))
 
 def on_decode_non_time_critical():
     def isGrid(grid_rpt):
         return not any([m for m in ['+','-','RR','73'] if m in grid_rpt])
     while True:
-        time_utils.sleep(0.5)
+        time_utils.sleep(0.25)
         while not decode_queue_non_time_critical.empty():
-            c, band_info = decode_queue_non_time_critical.get()
+            time_utils.sleep(0.1)
+            c = decode_queue_non_time_critical.get()
+            band_info = qso_manager.band_info if qso_manager else {'current_band': None, 'fMHz':0, 'time_set':0}
             if c.msg_tuple[1] != 'not':
                 if history:
                     history.write_all_txt_row(c.cyclestart['string'], float(band_info['fMHz']), 'Rx', 'FT8', c.snr, c.dt, c.fHz, ' '.join(c.msg_tuple))
@@ -175,7 +177,8 @@ def cli():
         if config['pskreporter']['upload'] == 'Y':
             pskr_upload = PSKR_upload(myCall, myGrid, software = f"PyFT8 v{VER}", console_print = console_print) if not myCall is None else None
 
-# Start on_decode_non_time_critical
+# Start decode queue watchers
+    #threading.Thread(target = on_decode_time_critical, daemon = True).start()
     threading.Thread(target = on_decode_non_time_critical, daemon = True).start()
 
 # wait or show gui as appropriate

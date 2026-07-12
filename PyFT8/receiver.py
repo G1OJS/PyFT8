@@ -2,7 +2,7 @@ import threading
 import numpy as np
 import wave
 from PyFT8.time_utils import time_utils
-import os
+import os, sys
 import pyaudio
 import pickle
 from PyFT8.databases import call_hashes, add_call_hashes
@@ -166,10 +166,13 @@ def ldpc_decode(llr, max_ncheck0, max_iters):
 
 #============== AUDIO IN ===========================================================
 class AudioIn:
-    def __init__(self, search_freq_range, wav_files = None):
+    def __init__(self, search_freq_range, input_device_keywords = None, wav_files = None):
+        if input_device_keywords is not None:
+            self._find_input_device(input_device_keywords)
+        self.wav_files = wav_files
+            
         self.search_hps, self.search_bpt = 4, 2
         self.search_freq_range = search_freq_range
-        self.wav_files = wav_files
         self.search_fft_len = int(self.search_bpt * SAMP_RATE // SYM_RATE)
         self.df = SYM_RATE / self.search_bpt
         self.search_f0_idx_range = [int(self.search_freq_range[0] / self.df),
@@ -181,45 +184,48 @@ class AudioIn:
         self.search_grid = np.ones((self.search_hops_per_grid, self.search_f0_idx_range[1]  + 8 * self.search_bpt ), dtype = np.float32)
         self.samples_perhop = int(SAMP_RATE / (SYM_RATE * self.search_hps))
         self.samples_per_cycle = int(SAMP_RATE * T_CYC)
-        self.waterfall_data = self.set_waterfall_data()
+        self.waterfall_data = self._set_waterfall_data()
 
         self.search_audio_buffer = np.zeros(self.search_fft_len, dtype=np.float32)
         self.search_fft_in = np.zeros(self.search_fft_len, dtype=np.float32)        
         self.cycle_audio_buffer = np.zeros(192000, dtype=np.float32)
         self.adj, self.cycle_audio_buffer_ptr_prev, self.t_prev = 1.0, -1, None
         self.cycle_audio_buffer_ptr, self.search_grid_ptr = 0, 0
-        self.set_pointers()
+        self._set_pointers()
+        self._start_audio()
 
-    def set_waterfall_data(self):
-        downsample = 2
-        data = self.search_grid[::downsample,::downsample].T
-        df, dt = self.df * downsample, self.dt * downsample
-        sig_w, sig_h = int(79*self.search_hps/downsample), int(8*self.search_bpt/downsample)
-        pixels_per_cycle = int(self.search_hops_per_cycle / downsample)
-        return {'data':data, 'df':df, 'dt':dt, 'sig_w':sig_w, 'sig_h':sig_h, 'pixels_per_cycle':pixels_per_cycle}
+    def _start_audio(self):
+        if self.input_device_idx is not None:
+            threading.Thread(target = self._load_streamed_audio, args =(self.input_device_idx,), daemon=True).start()
+        elif wav_files is not None:
+            threading.Thread(target = self._load_wavs, args =(self.wav_files,), daemon=True).start()
+        else:
+            time_utils.tlog(f"[Audio In] No input source specified", verbose = True)
+            return
+        threading.Thread(target = self._manage_audio_in_cycle, daemon=True).start()
 
-    def clear_spectrum(self):
-        self.search_grid *= 0
-        self.cycle_audio_buffer *= 0
+    def _find_input_device(self, input_device_keywords):
+        pya = pyaudio.PyAudio()
+        for dev_idx in range(pya.get_device_count()):
+            name = pya.get_device_info_by_index(dev_idx)['name']
+            match = True
+            for pattern in input_device_keywords.replace(' ','').split(','):
+                if (not pattern in name): match = False
+            if(match):
+                self.input_device_idx = dev_idx
+                break
+        if not self.input_device_idx:
+            time_utils.tlog(f"[Audio] No input audio device found matching {input_device_keywords}", verbose = True)
+            sys.exit(1)
 
-    def manage_cycle(self):
-        cycle_adj = 0
-        search_grid_ptr_prev = 0
-        while True:
-            time_utils.sleep(0.04)
-            self.odd_even = int(self.search_grid_ptr / self.search_hops_per_cycle)
-            self.cycle_h0 = int(self.odd_even * self.search_hops_per_cycle)
-            if self.search_grid_ptr % (self.search_hops_per_cycle - cycle_adj) < search_grid_ptr_prev:
-                if self.wav_files:
-                    self.adjust_wav_load_rate()
-                else:
-                    tcyc = time_utils.cycle_time()
-                    time_utils.tlog(f"[Receiver] Cycle rollover at {tcyc:7.3f}s", verbose = True)
-                    if tcyc > 0.25:
-                        self.set_pointers()
-            search_grid_ptr_prev = self.search_grid_ptr % (self.search_hops_per_cycle - cycle_adj)
+    def _load_streamed_audio(self, input_device_idx):
+        self.stream = pyaudio.PyAudio().open(
+            format = pyaudio.paInt16, channels=1, rate = SAMP_RATE, input = True, input_device_index = input_device_idx,
+            frames_per_buffer = self.samples_perhop, stream_callback=self._callback,)
+        self._set_pointers()
+        self.stream.start_stream()
 
-    def load_wavs(self, wav_paths):
+    def _load_wavs(self, wav_paths):
         self.search_grid_ptr = 0
         self.cycle_audio_buffer_ptr = 0
         hop_dt = 1 / (SYM_RATE * self.search_hps) -0.002
@@ -244,14 +250,36 @@ class AudioIn:
             time_utils.sleep(hop_dt)
             self.search_grid_ptr = (self.search_grid_ptr + 1) % self.search_hops_per_grid
             
-    def start_streamed_audio(self, input_device_idx):
-        self.stream = pyaudio.PyAudio().open(
-            format = pyaudio.paInt16, channels=1, rate = SAMP_RATE, input = True, input_device_index = input_device_idx,
-            frames_per_buffer = self.samples_perhop, stream_callback=self._callback,)
-        self.set_pointers()
-        self.stream.start_stream()
+    def _set_waterfall_data(self):
+        downsample = 2
+        data = self.search_grid[::downsample,::downsample].T
+        df, dt = self.df * downsample, self.dt * downsample
+        sig_w, sig_h = int(79*self.search_hps/downsample), int(8*self.search_bpt/downsample)
+        pixels_per_cycle = int(self.search_hops_per_cycle / downsample)
+        return {'data':data, 'df':df, 'dt':dt, 'sig_w':sig_w, 'sig_h':sig_h, 'pixels_per_cycle':pixels_per_cycle}
 
-    def set_pointers(self, adj_tolerance = 0.25):
+    def _manage_audio_in_cycle(self):
+        cycle_adj = 0
+        search_grid_ptr_prev = 0
+        while True:
+            time_utils.sleep(0.04)
+            self.odd_even = int(self.search_grid_ptr / self.search_hops_per_cycle)
+            self.cycle_h0 = int(self.odd_even * self.search_hops_per_cycle)
+            if self.search_grid_ptr % (self.search_hops_per_cycle - cycle_adj) < search_grid_ptr_prev:
+                if self.wav_files:
+                    if self.t_prev is not None:
+                        tcyc = time_utils.time() - self.t_prev
+                        time_utils.tlog(f"[Audio] Cycle completed in {tcyc:6.3f}s", verbose = DEBUG_PRINTS)
+                        self.adj = self.adj * 15/tcyc
+                    self.t_prev = time_utils.time()
+                else:
+                    tcyc = time_utils.cycle_time()
+                    time_utils.tlog(f"[Receiver] Cycle rollover at {tcyc:7.3f}s", verbose = True)
+                    if tcyc > 0.25:
+                        self._set_pointers()
+            search_grid_ptr_prev = self.search_grid_ptr % (self.search_hops_per_cycle - cycle_adj)
+
+    def _set_pointers(self, adj_tolerance = 0.25):
         t = time_utils.time()
         search_grid_ptr = int(self.search_hops_per_grid * (t % (2 * T_CYC)) / (2 * T_CYC))
         cycle_audio_buffer_ptr = int(SAMP_RATE * (t % T_CYC))
@@ -263,24 +291,6 @@ class AudioIn:
             self.search_grid_ptr = search_grid_ptr
         time_utils.tlog(f"[Audio] Grid pointers adjusted (t={deltasecs:6.2f}s, h={deltahops}, s={deltasamps})", verbose = DEBUG_PRINTS)
         
-    def adjust_wav_load_rate(self):
-        if self.t_prev is not None:
-            tcyc = time_utils.time() - self.t_prev
-            time_utils.tlog(f"[Audio] Cycle completed in {tcyc:6.3f}s", verbose = DEBUG_PRINTS)
-            self.adj = self.adj * 15/tcyc
-        self.t_prev = time_utils.time()
-            
-    def find_device(self, device_str_contains):
-        pya = pyaudio.PyAudio()
-        for dev_idx in range(pya.get_device_count()):
-            name = pya.get_device_info_by_index(dev_idx)['name']
-            match = True
-            for pattern in device_str_contains:
-                if (not pattern in name): match = False
-            if(match):
-                return dev_idx
-        time_utils.tlog(f"[Audio] No input audio device found matching {device_str_contains}", verbose = True)
-
     def _callback(self, in_data, frame_count, time_info, status_flags):
         samples = np.frombuffer(in_data, dtype=np.int16)#.astype(np.float32)
         ns = self.samples_perhop
@@ -450,7 +460,7 @@ class Candidate:
 class Receiver():
     def __init__(self, search_freq_range, input_device_keywords, on_decode = None, wav_files = None, verbose = False,
                  sync_score_min = 100, max_cands = 1000, min_search_start = 13):
-        self.audio_in = AudioIn(search_freq_range, wav_files)
+        self.audio_in = AudioIn(search_freq_range, input_device_keywords, wav_files)
         self.sync_score_min, self.max_cands = sync_score_min, max_cands
         self.wav_files = wav_files
         self.on_decode = on_decode
@@ -472,18 +482,6 @@ class Receiver():
         time_utils.tlog(f"[Receiver] Search hops {self.search_h0_range[0]:3d} to {self.search_h0_range[1]:3d}", verbose = self.verbose)
         time_utils.tlog(f"[Receiver] Start search at hop {self.search_start_hop:3d}", verbose = self.verbose)
         
-        if input_device_keywords is not None:
-            import sys
-            self.input_device_idx = self.audio_in.find_device(input_device_keywords)
-            if not self.input_device_idx:
-                time_utils.tlog("[Receiver] No input device", verbose = True)
-                sys.exit(1)
-            threading.Thread(target = self.audio_in.start_streamed_audio, args =(self.input_device_idx,), daemon=True).start()
-        else:
-            threading.Thread(target = self.audio_in.load_wavs, args =(self.wav_files,), daemon=True).start()
-
-        threading.Thread(target = self.audio_in.manage_cycle, daemon=True).start()
-
         time_utils.sleep(0.5)
         threading.Thread(target=self.manage_cycle, daemon=True).start()
 

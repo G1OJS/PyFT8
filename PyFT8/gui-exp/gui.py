@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import queue
+import threading
 from matplotlib import rcParams
 from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Slider, Button
@@ -93,29 +93,33 @@ class ButtonBox:
 
 MESSAGE_TYPES = {'generic':{'bg':'blue', 'fg':'white'}, 'CQ':{'bg':'green', 'fg':'white'},'from_me': {'bg':'yellow', 'fg':'white'}, 'to_me':{'bg':'red', 'fg':'white'}} 
 class Msg_box:
-    def __init__(self, fig, ax, position, onclick):
+    def __init__(self, fig, ax, x,y,w,h, onclick):
         from matplotlib.patches import Rectangle
         self.onclick = onclick
-        p = position
-        rect = Rectangle((0, p['y']), width=p['w'], height=p['h'], alpha=0.6, edgecolor='lime', lw=2)
+        self.ax = ax
+        self.y = y
+        rect = Rectangle((x, y), width=w, height=h, alpha=0.6, edgecolor='lime', lw=2)
         self.patch = ax.add_patch(rect)
-        self.text_inst = ax.text(0, p['y'] + 2, '', fontsize='small', fontweight='bold', clip_on = True )
+        self.text_inst = ax.text(x, self.y + 2, '', fontsize='small', fontweight='bold', clip_on = True )
         self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
         self.expire_time = 0
-        
-    def set_properties(self, message):
-        self.message, self.message_type = message, message['message_type']
-        x, display_text = message['position']['x'], message['display_text']
+
+    def set_x(self, x):
         self.patch.set_x(x)
-        self.text_inst.set_x(x)
-        self.patch.set_visible(True)
-        self.text_inst.set_visible(True)
-        self.expire_time = time_utils.time() + 29.25
-        self.text_inst.set_text(display_text)
+        self.text_inst = self.ax.text(x, self.y + 2, '', fontsize='small', fontweight='bold', clip_on = True )
         
+    def set_message(self, message):
+        self.message = message
+        self.message_type = message['message_type']
+        self.patch.set_visible(True)
+        self.expire_time = time_utils.time() + 29.25
         message_type_params = MESSAGE_TYPES[self.message_type]
-        self.text_inst.set_color(message_type_params['fg'])
         self.patch.set_facecolor(message_type_params['bg'])
+        display_text = message['display_text']
+        self.text_inst.set_text(display_text)
+        self.text_inst.set_color(message_type_params['fg'])
+        self.text_inst.set_visible(True)
+
         
     def hide(self):
         self.patch.set_visible(False)
@@ -135,19 +139,14 @@ class Gui:
         self.wf_top = 1-L['pmargin']-L['banner_height']-L['vsep1']
         self.wf_left = L['pmargin']+L['sidebar_width']+L['hsep1']
         self.hearing_me_since_mins = hearing_me_since_mins
-        self.len_active_mb = 0
-        self.sidebars_refresh_last = 0
-        self.sidebars_page = 0
-        self.new_messages = queue.Queue()
         self._make_axes()
-        self.msg_boxes = {}
-        self.len_live_message_boxes_prev = 0
-        self.message_box_artists = []
-        self.image = self.ax_wf.imshow(self.waterfall_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
+        self.lock = threading.Lock()
+        self._initialise_artists()
         self._make_buttons()
         self.sidebars_dirty = True
         self.sidebars_artists = [*[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes],
                     *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists]
+        threading.Thread(target = self._housekeep_msg_boxes, daemon = True).start()
         self.ani = FuncAnimation(self.fig, self._animate, interval = 40, frames=(100000), blit=True)
 
     def _on_click_local(self, clickargs):
@@ -164,6 +163,13 @@ class Gui:
         self.band_stats.ax.text(-0.2,0.75,'Tx')
         self.band_stats.ax.text(-0.2,0.25,'Rx')
         self.console = Scrollbox(self.fig, [self.wf_left, self.wf_top+L['vsep1'], 1-self.wf_left-L['pmargin'], L['banner_height']])
+
+    def _initialise_artists(self):
+        self.msg_boxes = {}
+        self.sidebars_refresh_last = 0
+        self.sidebars_page = 0
+        self.msg_box_artists = []
+        self.image = self.ax_wf.imshow(self.waterfall_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
 
     def _make_buttons(self):
         self.button_boxes = []
@@ -232,52 +238,72 @@ class Gui:
         self.sidebars_page = (self.sidebars_page +1 )%2
 
     def _animate(self, frame):
-        self.image.set_data(self.waterfall_data['data'])
         abs_time = time_utils.time()
+
+        self.image.set_data(self.waterfall_data['data'])
+
+        self.msg_box_artists = []
+        for mb in self.msg_boxes.values():
+            if abs_time < mb.expire_time: 
+                self.msg_box_artists.append(mb.patch)
+                self.msg_box_artists.append(mb.text_inst)
+            else:
+                mb.hide()
+        
         if (abs_time - self.sidebars_refresh_last > 3):
             self.sidebars_dirty = True
+            
         if self.sidebars_dirty:
             self._refresh_sidebars()
             self.sidebars_refresh_last = abs_time
             self.sidebars_dirty = False
-        if abs_time %15 > 12:
-            for mb in self.msg_boxes.values():
-                if abs_time > mb.expire_time:
-                    mb.hide()
-        return [self.image, *self.message_box_artists, *self.sidebars_artists]     
+ 
+        return [self.image, *self.msg_box_artists, *self.sidebars_artists]     
 
 
     def set_bandstats_title(self, txt):
         self.band_stats.ax.set_title(txt, fontsize = 10)
 
     def add_message_box(self, candidate, myCall):
-        c = candidate
-        hearing_me, geo_text, wb_time, wb_text = '', '', 0, ''
-        if self.history:
-            geo_text = self.history.get_geo_text(c.msg_tuple[1], c.msg_tuple[2])
-            wb_time = self.history.log_cache.get(c.msg_tuple[1],'') 
-            wb_text = f"wb: {time_utils.format_duration(time_utils.time() - float(wb_time))}" if wb_time else ''
-            current_band = self.get_band_info()['current_band']
-            hearing_me = '# ' if self.history.is_hearing_me(current_band, c.msg_tuple[1]) else ' '
-        message_type_value = 0 + 1*(c.msg_tuple[1] == myCall) + 2*(c.msg_tuple[0] == myCall) + 3*(c.msg_tuple[0].startswith('CQ'))
-        message_type = ['generic', 'from_me', 'to_me', 'CQ'][message_type_value]
-        wf, o = self.waterfall_data, c.origin
+        wf, o = self.waterfall_data, candidate.origin
         x = int(o['t0'] / wf['dt'] + o['odd_even'] * wf['pixels_per_cycle'])
         y = int(o['f0'] / wf['df'])
-        message = {'message_type':message_type,
-                                'position': {'x':x, 'y':y, 'w':self.waterfall_data['sig_w'], 'h':self.waterfall_data['sig_h']},
-                                'message_text': ' '.join(c.msg_tuple),
-                                'new_qso_info': {'call':c.msg_tuple[1], 'rst_sent': f"{c.snr:+03d}", 'grid_rpt':c.msg_tuple[2], 'my_tx_cycle': 1-c.origin['odd_even']},
-                                'display_text': f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {geo_text}"}
-        if not y in self.msg_boxes: 
-            self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, message['position'], onclick = self._on_click_local)
-            self.message_box_artists.append(self.msg_boxes[y].patch)
-            self.message_box_artists.append(self.msg_boxes[y].text_inst)
-        self.msg_boxes[y].set_properties(message)
+        w, h = self.waterfall_data['sig_w'], self.waterfall_data['sig_h']
+        with self.lock:
+            if not y in self.msg_boxes: 
+                self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, x,y,w,h, onclick = self._on_click_local)
+            else:
+                self.msg_boxes[y].set_x(x)
+            mb = self.msg_boxes[y]
+            mb.snr = candidate.snr
+            mb.odd_even = o['odd_even']
+            mb.msg_tuple = candidate.msg_tuple
+            mb.updated = False
 
-    def hide_msg_boxes(self):
-        for fb in self.msg_boxes:
-            self.msg_boxes[fb].hide()
+    def _housekeep_msg_boxes(self):
+        while True:
+            time_utils.sleep(0.1)
+            abs_time = time_utils.time()
+            self.msg_box_artists = []
+            with self.lock:
+                for mb in self.msg_boxes.values():
+                    time_utils.sleep(0)
+                    if mb.updated == False:
+                        hearing_me, geo_text, wb_time, wb_text = '', '', 0, ''
+                        if self.history:
+                            geo_text = self.history.get_geo_text(mb.msg_tuple[1], mb.msg_tuple[2])
+                            wb_time = self.history.log_cache.get(mb.msg_tuple[1],'') 
+                            wb_text = f"wb: {time_utils.format_duration(time_utils.time() - float(wb_time))}" if wb_time else ''
+                            current_band = self.get_band_info()['current_band']
+                            hearing_me = '# ' if self.history.is_hearing_me(current_band, mb.msg_tuple[1]) else ' '
+                        myCall = self.config['station']['call']
+                        message_type_value = 0 + 1*(mb.msg_tuple[1] == myCall) + 2*(mb.msg_tuple[0] == myCall) + 3*(mb.msg_tuple[0].startswith('CQ'))
+                        message_type = ['generic', 'from_me', 'to_me', 'CQ'][message_type_value]
+                        message = {'message_type':message_type,
+                                    'message_text': ' '.join(mb.msg_tuple),
+                                    'new_qso_info': {'call':mb.msg_tuple[1], 'rst_sent': f"{mb.snr:+03d}", 'grid_rpt':mb.msg_tuple[2], 'my_tx_cycle': 1-mb.odd_even},
+                                    'display_text': f"{' '.join(mb.msg_tuple)} {hearing_me}{wb_text} {geo_text}"}
+                        mb.set_message(message)
+                        mb.updated = True
+
  
-
-        

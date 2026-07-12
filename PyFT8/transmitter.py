@@ -1,7 +1,8 @@
 import numpy as np
 import wave
+import sys
 import pyaudio
-import time
+from PyFT8.time_utils import time_utils
 from PyFT8.databases import hashes_for_calls, add_call_hashes
 
 SAMP_RATE = 12000
@@ -17,13 +18,16 @@ class SoundcardOut:
             for dev_idx in range(self.pya.get_device_count()):
                 name = self.pya.get_device_info_by_index(dev_idx)['name']
                 match = True
-                for pattern in outputcard_keywords:
+                for pattern in outputcard_keywords.replace(' ','').split(','):
                     if (not pattern in name): match = False
                 if(match):
                     self.output_device_index = dev_idx
                     break
+            if not self.output_device_index:
+                time_utils.tlog(f"[Audio Out] No output audio device found matching {outputcard_keywords}", verbose = True)
+                sys.exit(1)
                     
-    def send_bytes(self, audio_data_bytes):
+    def transmit_audio_data_bytes(self, audio_data_bytes):
         stream = self.pya.open(format=pyaudio.paInt16, channels=1, rate = SAMP_RATE, output=True,
                           output_device_index = self.output_device_index)
         stream.write(audio_data_bytes)
@@ -63,7 +67,7 @@ def ifindex(arr, val, default = None):
     return arr.index(val) if val in arr else default
 
 def get_ft8_symbols(text):
-    c1, c2, grid_rpt = text.split()
+    c1, c2, grid_rpt = text.split(' ')
     symbols, bits77 = pack_message(c1, c2, grid_rpt)
     return symbols
 
