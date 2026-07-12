@@ -70,8 +70,8 @@ def test_common(input_source):
     using_wav_files = input_source[0].endswith('.wav')
     input_device_keywords = input_source if not using_wav_files else None
     wav_files = input_source if using_wav_files else None
-    rx = Receiver([100, 2900], input_device_keywords, wav_files = wav_files, on_decode = on_decode,
-                    sync_score_min = 85, max_cands = 1000, min_search_start = 12)
+    rx = Receiver([100, 3000], input_device_keywords, wav_files = wav_files, on_decode = on_decode,
+                sync_score_min = 110, max_cands = 100, main_demap_start = 13)
     #gui = Gui(rx, {'bands':{'20m':14.074},'station':{'call':'G1OJS','grid':'IO90'}}, None, None, None)
 
     import matplotlib.pyplot as plt

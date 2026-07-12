@@ -167,6 +167,7 @@ def ldpc_decode(llr, max_ncheck0, max_iters):
 #============== AUDIO IN ===========================================================
 class AudioIn:
     def __init__(self, search_freq_range, input_device_keywords = None, wav_files = None):
+        self.input_device_idx = None
         if input_device_keywords is not None:
             self._find_input_device(input_device_keywords)
         self.wav_files = wav_files
@@ -197,7 +198,7 @@ class AudioIn:
     def _start_audio(self):
         if self.input_device_idx is not None:
             threading.Thread(target = self._load_streamed_audio, args =(self.input_device_idx,), daemon=True).start()
-        elif wav_files is not None:
+        elif self.wav_files is not None:
             threading.Thread(target = self._load_wavs, args =(self.wav_files,), daemon=True).start()
         else:
             time_utils.tlog(f"[Audio In] No input source specified", verbose = True)
@@ -481,7 +482,7 @@ class Candidate:
         
 class Receiver():
     def __init__(self, search_freq_range, input_device_keywords, on_decode = None, wav_files = None, verbose = False,
-                 sync_score_min = 100, max_cands = 1000, min_search_start = 13):
+                 sync_score_min = 100, max_cands = 1000, main_demap_start = 13):
         self.audio_in = AudioIn(search_freq_range, input_device_keywords, wav_files)
         self.sync_score_min, self.max_cands = sync_score_min, max_cands
         self.wav_files = wav_files
@@ -491,7 +492,7 @@ class Receiver():
         search_timerange = [-1.7, 3.8]
         self.search_h0_range = [int((t+0.5)*self.audio_in.search_hps*SYM_RATE) for t in search_timerange]
         self.search_start_hop = self.search_h0_range[1] + 43 * self.audio_in.search_hps
-        self.search_start_hop = np.max([self.search_start_hop, int(min_search_start * self.audio_in.search_hps*SYM_RATE)])
+        self.main_demap_start = int(main_demap_start * self.audio_in.search_hps*SYM_RATE)
         dt = 1.0 / (SYM_RATE * self.audio_in.search_hps)
         self.base_search_hops = 36 * self.audio_in.search_hps + np.arange(7) * self.audio_in.search_hps + self.audio_in.search_hps
         csync = np.full((7, 7 * self.audio_in.search_bpt), -1/6, np.float32)
@@ -542,7 +543,8 @@ class Receiver():
 
             to_decode = []
             for c in self.candidates:
-                if not c.demap_started:
+                
+                if not c.fast_decode_tried:
                     odd_even_offset = c.origin['odd_even'] * self.audio_in.search_hops_per_cycle
                     cand_abs_h0_idx = (c.origin['h0_idx'] + PAYLOAD_SYMB_IDXS[0] - 1) * hopspersym + odd_even_offset
                     cand_abs_hf_idx = (c.origin['h0_idx'] + PAYLOAD_SYMB_IDXS[1] + 1) * hopspersym + odd_even_offset
@@ -550,13 +552,21 @@ class Receiver():
                         if self.audio_in.search_grid_ptr - last_spectrum_calc > 0 : # only calc full spectrum if more samples received
                             all_audio_spectrum = np.fft.rfft(self.audio_in.cycle_audio_buffer)
                         last_spectrum_calc = self.audio_in.search_grid_ptr
-                        if not c.fast_decode_tried:
-                            c.fast_demap_decode(all_audio_spectrum)
-                            c.fast_decode_tried = True
-                        if not c.decode_completed:
-                            c.demap(all_audio_spectrum)
-                            h2s = 1/(SYM_RATE * self.audio_in.search_hps)
-                            c.demap_started = self.audio_in.search_grid_ptr*h2s
+                    c.fast_demap_decode(all_audio_spectrum)
+                    c.fast_decode_tried = True
+
+                main_demap_start = self.main_demap_start + c.origin['odd_even'] * self.audio_in.search_hops_per_cycle
+                if not c.decode_completed and not c.demap_started and self.audio_in.search_grid_ptr > main_demap_start:
+                    odd_even_offset = c.origin['odd_even'] * self.audio_in.search_hops_per_cycle
+                    cand_abs_h0_idx = (c.origin['h0_idx'] + PAYLOAD_SYMB_IDXS[0] - 1) * hopspersym + odd_even_offset
+                    cand_abs_hf_idx = (c.origin['h0_idx'] + PAYLOAD_SYMB_IDXS[1] + 1) * hopspersym + odd_even_offset
+                    if not (cand_abs_h0_idx <= self.audio_in.search_grid_ptr <= cand_abs_hf_idx):
+                        if self.audio_in.search_grid_ptr - last_spectrum_calc > 0 : # only calc full spectrum if more samples received
+                            all_audio_spectrum = np.fft.rfft(self.audio_in.cycle_audio_buffer)
+                        last_spectrum_calc = self.audio_in.search_grid_ptr
+                        c.demap(all_audio_spectrum)
+                        h2s = 1/(SYM_RATE * self.audio_in.search_hps)
+                        c.demap_started = self.audio_in.search_grid_ptr*h2s
                 if not c.decode_completed:
                     to_decode.append(c)
 
