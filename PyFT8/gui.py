@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import queue
 from matplotlib import rcParams
 from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Slider, Button
@@ -102,6 +101,7 @@ class Msg_box:
         self.text_inst = ax.text(0, p['y'] + 2, '', fontsize='small', fontweight='bold', clip_on = True )
         self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
         self.expire_time = 0
+        self.visible = True
         
     def set_properties(self, message):
         self.message, self.message_type = message, message['message_type']
@@ -110,6 +110,7 @@ class Msg_box:
         self.text_inst.set_x(x)
         self.patch.set_visible(True)
         self.text_inst.set_visible(True)
+        self.visible = True
         self.expire_time = time_utils.time() + 29.25
         self.text_inst.set_text(display_text)
         
@@ -120,6 +121,7 @@ class Msg_box:
     def hide(self):
         self.patch.set_visible(False)
         self.text_inst.set_visible(False)
+        self.visible = False
 
     def _onclick(self, event):
         b, _ = self.patch.contains(event)
@@ -138,17 +140,17 @@ class Gui:
         self.len_active_mb = 0
         self.sidebars_refresh_last = 0
         self.sidebars_page = 0
-        self.new_messages = queue.Queue()
         self._make_axes()
         self.msg_boxes = {}
         self.len_live_message_boxes_prev = 0
         self.message_box_artists = []
+        self.message_boxes_dirty = False
         self.image = self.ax_wf.imshow(self.waterfall_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self._make_buttons()
         self.sidebars_dirty = True
         self.sidebars_artists = [*[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes],
                     *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists]
-        self.ani = FuncAnimation(self.fig, self._animate, interval = 40, frames=(100000), blit=True)
+        self.ani = FuncAnimation(self.fig, self._animate, interval = 160, frames=(100000), blit=True)
 
     def _on_click_local(self, clickargs):
         self.sidebars_dirty = True
@@ -232,7 +234,6 @@ class Gui:
         self.sidebars_page = (self.sidebars_page +1 )%2
 
     def _animate(self, frame):
-        self.image.set_data(self.waterfall_data['data'])
         abs_time = time_utils.time()
         if (abs_time - self.sidebars_refresh_last > 3):
             self.sidebars_dirty = True
@@ -241,11 +242,12 @@ class Gui:
             self.sidebars_refresh_last = abs_time
             self.sidebars_dirty = False
         if abs_time %15 > 12:
-            for mb in self.msg_boxes.values():
-                if abs_time > mb.expire_time:
-                    mb.hide()
-        return [self.image, *self.message_box_artists, *self.sidebars_artists]     
-
+            to_hide = [mb for mb in self.msg_boxes.values() if mb.visible and abs_time > mb.expire_time]
+            for mb in to_hide:
+                mb.hide()
+        self.image.set_data(self.waterfall_data['data'])
+        
+        return [self.image, *self.message_box_artists, *self.sidebars_artists]   
 
     def set_bandstats_title(self, txt):
         self.band_stats.ax.set_title(txt, fontsize = 10)
