@@ -76,6 +76,8 @@ def on_decode_non_time_critical():
                     history.write_all_txt_row(c.cyclestart['string'], float(band_info['fMHz']), 'Rx', 'FT8', c.snr, c.dt, c.fHz, ' '.join(c.msg_tuple))
                     history.add_myspots_record(history.heard_by_me.data, history.heard_by_me_new, band_info['current_band'], c.msg_tuple[1], int(time_utils.time()), c.snr)
                     if c.msg_tuple[1] == myCall:
+                        rpt = c.msg_tuple[2][-3:]
+                        if rpt.isnumeric():
                             history.add_myspots_record(history.hearing_me.data, history.hearing_me_new, band_info['current_band'], c.msg_tuple[0], int(time_utils.time()), int(rpt))
                 if pskr_upload:
                     if band_info['current_band']:
