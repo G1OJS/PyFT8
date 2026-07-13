@@ -96,6 +96,7 @@ class Msg_box:
     def __init__(self, fig, ax, message, onclick):
         from matplotlib.patches import Rectangle
         self.onclick = onclick
+        self.cycle = message['cycle']
         p = message['position']
         y, w, h = p['y'], p['sig_w'], p['sig_h']
         rect = Rectangle((0, y), width=w, height=h, alpha=0.6, edgecolor='lime', lw=2)
@@ -120,8 +121,8 @@ class Msg_box:
         message_type_params = MESSAGE_TYPES[self.message_type]
         self.text_inst.set_color(message_type_params['fg'])
         self.patch.set_facecolor(message_type_params['bg'])
-        tdelay = (time_utils.cycle_time() - message['decode_completed']) %15
-        print(f"Set props for {display_text} {tdelay:5.2f}s after decode")
+        #tdelay = (time_utils.cycle_time() - message['decode_completed']) %15
+        #print(f"{tdelay:5.2f}s after decode set props for {display_text} ")
 
     def update_text(self, display_text):
         self.text_inst.set_text(display_text)
@@ -149,13 +150,16 @@ class Gui:
         self.hearing_me_since_mins = hearing_me_since_mins
         self.sidebars_last_update = 0
         self.sidebars_page = 0
+        self.sidebars_dirty = True
         self._make_axes()
         self.msg_boxes = {}
         self.image = self.ax_wf.imshow(self.waterfall_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self._make_buttons()
         self.display_queue_batch = []
+        self.plt.pause(0.1)
 
     def _on_click_local(self, clickargs):
+        self.sidebars_dirty = True
         if clickargs['action'] == "MESSAGE_CLICK":
             self.console_print(f"[GUI] Clicked on message '{clickargs['message']['msg_tuple']}'")
         self.on_click(clickargs)
@@ -247,7 +251,7 @@ class Gui:
         x = int(o['t0'] / wf['dt'] + o['odd_even'] * wf['pixels_per_cycle'])
         y = int(o['f0'] / wf['df'])
         c.y = y
-        message = { 'message_type':message_type,
+        message = { 'message_type':message_type, 'cycle':c.origin['odd_even'],
                     'position': {'x':x, 'y':y, 'sig_w':wf['sig_w'], 'sig_h':wf['sig_h']},
                     'msg_tuple':c.msg_tuple, 'decode_completed':c.decode_completed,
                     'new_qso_info': {'call':c.msg_tuple[1], 'rst_sent': f"{c.snr:+03d}", 'grid_rpt':c.msg_tuple[2], 'my_tx_cycle': 1-c.origin['odd_even']},
@@ -264,40 +268,43 @@ class Gui:
             hearing_me = '# ' if self.history.is_hearing_me(current_band, c.msg_tuple[1]) else ' '
             display_text = f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {geo_text}"
             self.msg_box_update_queue.put((c.y, display_text))
+
+    def clear_message_boxes(self, curr_cycle):
+        to_hide = [mb for mb in self.msg_boxes.values() if mb.visible and mb.cycle == curr_cycle]
+        for mb in to_hide:
+            mb.hide()
              
     def _plot_loop(self):
         while True:
-            abs_time = time_utils.time()
+            message = False
             
-            self.image.set_data(self.waterfall_data['data'])
-            
-            if abs_time %15 > 11:
-                to_hide = [mb for mb in self.msg_boxes.values() if mb.visible and abs_time > mb.expire_time]
-                for mb in to_hide:
-                    mb.hide()
-
-            if abs_time - self.sidebars_last_update > 3:
-                self._refresh_sidebars()
-                self.sidebars_last_update = abs_time
-
             while not self.msg_box_display_queue.empty():
                 message = self.msg_box_display_queue.get()
                 y = message['position']['y']
                 if not y in self.msg_boxes:
                     self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, message, onclick = self._on_click_local)
                 self.msg_boxes[y].set_properties(message)
-              
-            not_ready = []
-            while not self.msg_box_update_queue.empty():
-                update = self.msg_box_update_queue.get()
-                y, display_text = update
-                if y in self.msg_boxes:
-                    self.msg_boxes[y].update_text(display_text)
-                else:
-                    not_ready.append(update)
-            for update in not_ready:
-                self.msg_box_update_queue.put(update)
-                
-            self.plt.pause(0.32)
+
+            if not message:
+                abs_time = time_utils.time()
+                self.image.set_data(self.waterfall_data['data'])
+                if abs_time %15 < 13 or self.sidebars_dirty:
+                    if abs_time - self.sidebars_last_update > 3:
+                        self._refresh_sidebars()
+                        self.sidebars_last_update = abs_time
+                        self.sidebars_dirty = False
+
+                not_ready = []
+                while not self.msg_box_update_queue.empty():
+                    update = self.msg_box_update_queue.get()
+                    y, display_text = update
+                    if y in self.msg_boxes:
+                        self.msg_boxes[y].update_text(display_text)
+                    else:
+                        not_ready.append(update)
+                for update in not_ready:
+                    self.msg_box_update_queue.put(update)
+                    
+                self.plt.pause(0.16)
 
         

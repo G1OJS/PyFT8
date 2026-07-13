@@ -500,6 +500,7 @@ class Receiver():
         self.on_decode = on_decode
         self.candidates = []
         self.verbose = verbose
+        self.presearch_cb = None
         search_timerange = [-1.7, 3.8]
         self.search_h0_range = [int((t+0.5)*self.audio_in.search_hps*SYM_RATE) for t in search_timerange]
         self.search_start_hop = self.search_h0_range[1] + 43 * self.audio_in.search_hps
@@ -519,8 +520,13 @@ class Receiver():
         time_utils.sleep(0.5)
         threading.Thread(target=self.manage_cycle, daemon=True).start()
 
+    def register_presearch_cb(self, presearch_cb):
+        self.presearch_cb = presearch_cb
+
     def search(self, cyclestart, odd_even, cycle_h0):
         cands = []
+        if self.presearch_cb is not None:
+            self.presearch_cb(odd_even)
         for f0_idx in range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 2):
             p = self.audio_in.search_grid[:, f0_idx: f0_idx + 7*self.audio_in.search_bpt]
             origin = {'score':0}
