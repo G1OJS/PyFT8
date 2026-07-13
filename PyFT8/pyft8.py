@@ -57,31 +57,25 @@ def on_decode(c):
     global display_queue_batch, decode_queue_non_time_critical, last_batch_sent
     t = time_utils.time()
     screen_format = f"{c.cyclestart['string']} {c.snr:+03d} {c.dt:4.1f} {c.fHz:4.0f} ~ {' '.join(c.msg_tuple)}"
-    print(f"{screen_format:50s} decoded@ {c.decode_completed % 15:5.1f}s")
+    #print(f"{screen_format:50s} decoded@ {c.decode_completed % 15:5.1f}s")
     if gui:
         gui.enqueue_message_essentials(c)
     decode_queue_non_time_critical.put(c)
 
 def on_decode_non_time_critical():
-    def isGrid(grid_rpt):
-        return not any([m for m in ['+','-','RR','73'] if m in grid_rpt])
-    band_info = qso_manager.band_info if qso_manager else {'current_band': None, 'fMHz':0, 'time_set':0}
     while True:
         time_utils.sleep(0.5)
+        band_info = qso_manager.get_band_info() if qso_manager else {'current_band': None, 'fMHz':0, 'time_set':0}
         while not decode_queue_non_time_critical.empty():
-            time_utils.sleep(0.01)
+            time_utils.sleep(0.05)
             c = decode_queue_non_time_critical.get()
             if c.msg_tuple[1] != 'not':
                 if gui:
                     gui.enqueue_message_updates(c)
                 if history:
                     history.write_all_txt_row(c.cyclestart['string'], float(band_info['fMHz']), 'Rx', 'FT8', c.snr, c.dt, c.fHz, ' '.join(c.msg_tuple))
-                    if isGrid(c.msg_tuple[2]):
-                        history.store_best_grid(c.msg_tuple[1], c.msg_tuple[2])
                     history.add_myspots_record(history.heard_by_me.data, history.heard_by_me_new, band_info['current_band'], c.msg_tuple[1], int(time_utils.time()), c.snr)
                     if c.msg_tuple[1] == myCall:
-                        rpt = c.msg_tuple[2][-3:]
-                        if rpt.isnumeric():
                             history.add_myspots_record(history.hearing_me.data, history.hearing_me_new, band_info['current_band'], c.msg_tuple[0], int(time_utils.time()), int(rpt))
                 if pskr_upload:
                     if band_info['current_band']:
