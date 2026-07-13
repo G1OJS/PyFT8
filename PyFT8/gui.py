@@ -253,7 +253,7 @@ class Gui:
                     'new_qso_info': {'call':c.msg_tuple[1], 'rst_sent': f"{c.snr:+03d}", 'grid_rpt':c.msg_tuple[2], 'my_tx_cycle': 1-c.origin['odd_even']},
                     'display_text': f"{' '.join(c.msg_tuple)}"}
         
-        self.display_queue_batch.append(message)
+        self.msg_box_display_queue.put(message)
 
     def enqueue_message_updates(self, c):
         if self.history:
@@ -280,13 +280,12 @@ class Gui:
                 self._refresh_sidebars()
                 self.sidebars_last_update = abs_time
 
-            if (len(self.display_queue_batch) > 5):
-                for message in self.display_queue_batch:
-                    y = message['position']['y']
-                    if not y in self.msg_boxes:
-                        self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, message, onclick = self._on_click_local)
-                    self.msg_boxes[y].set_properties(message)
-                self.display_queue_batch = []
+            while not self.msg_box_display_queue.empty():
+                message = self.msg_box_display_queue.get()
+                y = message['position']['y']
+                if not y in self.msg_boxes:
+                    self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, message, onclick = self._on_click_local)
+                self.msg_boxes[y].set_properties(message)
               
             not_ready = []
             while not self.msg_box_update_queue.empty():
