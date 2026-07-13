@@ -156,7 +156,10 @@ class Gui:
         self.image = self.ax_wf.imshow(self.waterfall_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self._make_buttons()
         self.display_queue_batch = []
-        self.plt.pause(0.1)
+        self.message_box_artists = []
+        self.sidebars_artists = [*[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes],
+                                 *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists]
+        self.ani = FuncAnimation(self.fig, self._animate, interval = 60, frames=(100000), blit = True)
 
     def _on_click_local(self, clickargs):
         self.sidebars_dirty = True
@@ -274,37 +277,45 @@ class Gui:
         for mb in to_hide:
             mb.hide()
              
-    def _plot_loop(self):
-        while True:
-            message = False
-            
-            while not self.msg_box_display_queue.empty():
-                message = self.msg_box_display_queue.get()
-                y = message['position']['y']
-                if not y in self.msg_boxes:
-                    self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, message, onclick = self._on_click_local)
-                self.msg_boxes[y].set_properties(message)
+    def _animate(self, frames):
 
-            if not message:
-                abs_time = time_utils.time()
-                self.image.set_data(self.waterfall_data['data'])
-                if abs_time %15 < 13 or self.sidebars_dirty:
-                    if abs_time - self.sidebars_last_update > 3:
-                        self._refresh_sidebars()
-                        self.sidebars_last_update = abs_time
-                        self.sidebars_dirty = False
+        message = False
+        while not self.msg_box_display_queue.empty():
+            message = self.msg_box_display_queue.get()
+            y = message['position']['y']
+            if not y in self.msg_boxes:
+                self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, message, onclick = self._on_click_local)
+                self.message_box_artists.append(self.msg_boxes[y].patch)
+                self.message_box_artists.append(self.msg_boxes[y].text_inst)
+            self.msg_boxes[y].set_properties(message)
+            #time_utils.sleep(0.1)
 
-                not_ready = []
-                while not self.msg_box_update_queue.empty():
-                    update = self.msg_box_update_queue.get()
-                    y, display_text = update
-                    if y in self.msg_boxes:
-                        self.msg_boxes[y].update_text(display_text)
-                    else:
-                        not_ready.append(update)
-                for update in not_ready:
-                    self.msg_box_update_queue.put(update)
+        if not message:
+            # refresh sidebars every 3 seconds
+            abs_time = time_utils.time()
+            self.image.set_data(self.waterfall_data['data'])
+            if abs_time %15 < 13 or self.sidebars_dirty:
+                if abs_time - self.sidebars_last_update > 3:
+                    self._refresh_sidebars()
+                    self.sidebars_last_update = abs_time
+                    self.sidebars_dirty = False
+
+            # add slow-time data to existing message boxes
+            not_ready = []
+            while not self.msg_box_update_queue.empty():
+                update = self.msg_box_update_queue.get()
+                y, display_text = update
+                if y in self.msg_boxes:
+                    self.msg_boxes[y].update_text(display_text)
+                else:
+                    not_ready.append(update)
+            for update in not_ready:
+                self.msg_box_update_queue.put(update)
+
+        return [self.image, *self.message_box_artists, *self.sidebars_artists] 
+
+
                     
-            self.plt.pause(0.05)
+
 
         
