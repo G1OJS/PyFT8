@@ -121,8 +121,8 @@ class Msg_box:
         message_type_params = MESSAGE_TYPES[self.message_type]
         self.text_inst.set_color(message_type_params['fg'])
         self.patch.set_facecolor(message_type_params['bg'])
-        #tdelay = (time_utils.cycle_time() - message['decode_completed']) %15
-        #print(f"{tdelay:5.2f}s after decode set props for {display_text} ")
+        tdelay = (time_utils.cycle_time() - message['decode_completed']) %15
+        print(f"{tdelay:5.2f}s after decode set props for {display_text} ")
 
     def update_text(self, display_text):
         self.text_inst.set_text(display_text)
@@ -305,6 +305,6 @@ class Gui:
                 for update in not_ready:
                     self.msg_box_update_queue.put(update)
                     
-                self.plt.pause(0.16)
+            self.plt.pause(0.05)
 
         
