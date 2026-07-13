@@ -71,7 +71,7 @@ def test_common(input_source):
     input_device_keywords = input_source if not using_wav_files else None
     wav_files = input_source if using_wav_files else None
     rx = Receiver([100, 3000], input_device_keywords, wav_files = wav_files, on_decode = on_decode,
-                sync_score_min = 110, max_cands = 100, main_demap_start = 13)
+                sync_score_min = 85, max_cands = 1000, main_demap_start = 13) # now demap not search, so add a second on to this (14) and rebaseline
     #gui = Gui(rx, {'bands':{'20m':14.074},'station':{'call':'G1OJS','grid':'IO90'}}, None, None, None)
 
     import matplotlib.pyplot as plt

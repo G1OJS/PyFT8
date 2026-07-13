@@ -17,6 +17,8 @@ HEARING_PANEL_LIFE_MINS = 20
 gui, history, qso_manager, adif_logging, pskr_upload, soundcard_out, rig, output_device_idx = None, None, None, None, None, None, None, None
 myCall, myGrid = None, None
 decode_queue_non_time_critical = queue.Queue()
+display_queue_batch = []
+last_batch_sent = 0
 
 def get_config(config_folder):
     import configparser, sys
@@ -51,32 +53,52 @@ def console_print(text, color = 'white'):
     else:
         print(text)
 
-def wait_for_keyboard():
-    import time
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        pass
-
 def on_decode(c):
-    global decode_queue_non_time_critical
-    band_info = qso_manager.band_info if qso_manager else {'current_band': None, 'fMHz':0, 'time_set':0}
-    if gui:
-        gui.add_message_box(c, myCall)
+    global display_queue_batch, decode_queue_non_time_critical, last_batch_sent
+    t = time_utils.time()
     screen_format = f"{c.cyclestart['string']} {c.snr:+03d} {c.dt:4.1f} {c.fHz:4.0f} ~ {' '.join(c.msg_tuple)}"
     print(f"{screen_format:50s} decoded@ {c.decode_completed % 15:5.1f}s")
-    decode_queue_non_time_critical.put((c, band_info))
+
+    if gui:
+        message_type_value = 0 + 1*(c.msg_tuple[1] == myCall) + 2*(c.msg_tuple[0] == myCall) + 3*(c.msg_tuple[0].startswith('CQ'))
+        message_type = ['generic', 'from_me', 'to_me', 'CQ'][message_type_value]
+        wf, o = rx.audio_in.waterfall_data, c.origin
+        x = int(o['t0'] / wf['dt'] + o['odd_even'] * wf['pixels_per_cycle'])
+        y = int(o['f0'] / wf['df'])
+        c.y = y
+        message = { 'message_type':message_type,
+                    'position': {'x':x, 'y':y, 'sig_w':wf['sig_w'], 'sig_h':wf['sig_h']},
+                    'msg_tuple':c.msg_tuple, 'decode_completed':c.decode_completed,
+                    'new_qso_info': {'call':c.msg_tuple[1], 'rst_sent': f"{c.snr:+03d}", 'grid_rpt':c.msg_tuple[2], 'my_tx_cycle': 1-c.origin['odd_even']},
+                    'display_text': f"{' '.join(c.msg_tuple)}"}
+        display_queue_batch.append(message)
+    
+        if (len(display_queue_batch) > 5 or t - last_batch_sent > 0.5):
+            for message in display_queue_batch:
+                gui.msg_box_display_queue.put(message)
+            display_queue_batch = []
+            
+    decode_queue_non_time_critical.put(c)
 
 def on_decode_non_time_critical():
     def isGrid(grid_rpt):
         return not any([m for m in ['+','-','RR','73'] if m in grid_rpt])
+    band_info = qso_manager.band_info if qso_manager else {'current_band': None, 'fMHz':0, 'time_set':0}
+
     while True:
         time_utils.sleep(0.5)
         while not decode_queue_non_time_critical.empty():
-            c, band_info = decode_queue_non_time_critical.get()
+            c = decode_queue_non_time_critical.get()
             if c.msg_tuple[1] != 'not':
                 if history:
+                    if gui:
+                        hearing_me, geo_text, wb_time, wb_text = '', '', 0, ''
+                        geo_text = history.get_geo_text(c.msg_tuple[1], c.msg_tuple[2])
+                        wb_time = history.log_cache.get(c.msg_tuple[1],'') 
+                        wb_text = f"wb: {time_utils.format_duration(time_utils.time() - float(wb_time))}" if wb_time else ''
+                        hearing_me = '# ' if history.is_hearing_me(band_info['current_band'], c.msg_tuple[1]) else ' '
+                        display_text = f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {geo_text}"
+                        gui.msg_box_update_queue.put((c.y, display_text))
                     history.write_all_txt_row(c.cyclestart['string'], float(band_info['fMHz']), 'Rx', 'FT8', c.snr, c.dt, c.fHz, ' '.join(c.msg_tuple))
                     if isGrid(c.msg_tuple[2]):
                         history.store_best_grid(c.msg_tuple[1], c.msg_tuple[2])
@@ -92,7 +114,7 @@ def on_decode_non_time_critical():
      
 
 def cli():
-    global gui, qso_manager, myCall, myGrid, history, adif_logging, pskr_upload, soundcard_out, rig, output_device_idx
+    global rx, gui, qso_manager, myCall, myGrid, history, adif_logging, pskr_upload, soundcard_out, rig, output_device_idx
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-c', '--config_folder', help = 'Location of config folder e.g. C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', default = './') 
     parser.add_argument('-i', '--inputcard_keywords', help = 'Comma-separated keywords to identify the input sound device')  
@@ -179,10 +201,15 @@ def cli():
 
 # wait or show gui as appropriate
     if gui is None:
-        wait_for_keyboard()
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            pass
     else:
         gui.set_bandstats_title(f"Pskreporter Spots\nto/from {config['station']['grid'][:4]} <{PSKR_REFRESH_MINS:.0f} mins")
-        gui.plt.show()
+        gui.plot_loop()
+
 
 
 #================== TEST CODE ============================================================
