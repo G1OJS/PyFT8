@@ -561,7 +561,8 @@ class Receiver():
 
             to_decode = []
             for c in self.candidates:
-                
+
+                """
                 if not c.fast_decode_tried:
                     odd_even_offset = c.origin['odd_even'] * self.audio_in.search_hops_per_cycle
                     cand_abs_h0_idx = (c.origin['h0_idx'] + PAYLOAD_SYMB_IDXS[0] - 1) * hopspersym + odd_even_offset
@@ -572,7 +573,7 @@ class Receiver():
                         last_spectrum_calc = self.audio_in.search_grid_ptr
                         c.fast_demap_decode(all_audio_spectrum, duplicate_filter)
                         c.fast_decode_tried = True
-
+                """
                 main_demap_start = self.main_demap_start + c.origin['odd_even'] * self.audio_in.search_hops_per_cycle
                 if not c.decode_completed and not c.demap_started and self.audio_in.search_grid_ptr > main_demap_start:
                     odd_even_offset = c.origin['odd_even'] * self.audio_in.search_hops_per_cycle
