@@ -121,8 +121,8 @@ class Msg_box:
         message_type_params = MESSAGE_TYPES[self.message_type]
         self.text_inst.set_color(message_type_params['fg'])
         self.patch.set_facecolor(message_type_params['bg'])
-        tdelay = (time_utils.cycle_time() - message['decode_completed']) %15
-        print(f"{tdelay:5.2f}s after decode set props for {display_text} ")
+        #tdelay = (time_utils.cycle_time() - message['decode_completed']) %15
+        #print(f"{tdelay:5.2f}s after decode set props for {display_text} ")
 
     def update_text(self, display_text):
         self.text_inst.set_text(display_text)
@@ -270,9 +270,11 @@ class Gui:
             wb_text = f"wb: {time_utils.format_duration(time_utils.time() - float(wb_time))}" if wb_time else ''
             hearing_me = '# ' if self.history.is_hearing_me(current_band, c.msg_tuple[1]) else ' '
             display_text = f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {geo_text}"
-            self.msg_box_update_queue.put((c.y, display_text))
+            self.msg_box_update_queue.put_nowait((c.y, display_text))
 
     def clear_message_boxes(self, curr_cycle):
+        self.msg_box_display_queue = queue.Queue()
+        self.msg_box_update_queue = queue.Queue()
         to_hide = [mb for mb in self.msg_boxes.values() if mb.visible and mb.cycle == curr_cycle]
         for mb in to_hide:
             mb.hide()
@@ -281,7 +283,7 @@ class Gui:
 
         message = False
         while not self.msg_box_display_queue.empty():
-            message = self.msg_box_display_queue.get()
+            message = self.msg_box_display_queue.get_nowait()
             y = message['position']['y']
             if not y in self.msg_boxes:
                 self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, message, onclick = self._on_click_local)
