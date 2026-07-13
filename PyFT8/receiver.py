@@ -252,7 +252,7 @@ class AudioIn:
             self.search_grid_ptr = (self.search_grid_ptr + 1) % self.search_hops_per_grid
             
     def _set_waterfall_data(self):
-        downsample = 2
+        downsample = 4
         data = self.search_grid[::downsample,::downsample].T
         df, dt = self.df * downsample, self.dt * downsample
         sig_w, sig_h = int(79*self.search_hps/downsample), int(8*self.search_bpt/downsample)
