@@ -6,6 +6,8 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Slider, Button
 from PyFT8.time_utils import time_utils
 
+DO_METRICS = False
+
 rcParams['toolbar'] = 'None'
 MAIN_TEXT_COLOR = '#f0f9fa'
 TEXT_BACKGROUND_COLOR = '#2a2b2b'
@@ -136,7 +138,6 @@ class Msg_box:
     def _onclick(self, event):
         b, _ = self.patch.contains(event)
         if(b):
-            print(f"{time_utils.time() %15:6.2f}")
             self.onclick({'action': 'MESSAGE_CLICK', 'message':self.message})
     
 class Gui:
@@ -152,12 +153,12 @@ class Gui:
         self.hearing_me_since_mins = hearing_me_since_mins
         self.sidebars_last_update = 0
         self.sidebars_page = 0
-        self.metrics = []
         self._make_axes()
         self.msg_boxes = {}
         self.image = self.ax_wf.imshow(self.waterfall_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
-        self.waterfall_ptr_prev = 0
         self._make_buttons()
+        if DO_METRICS:
+            self.metrics = []
 
     def _on_click_local(self, clickargs):
         if clickargs['action'] == "MESSAGE_CLICK":
@@ -269,70 +270,58 @@ class Gui:
             display_text = f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {geo_text}"
             self.msg_box_update_queue.put_nowait((c.y, display_text))
 
-    def before_new_search(self, curr_cycle):
+    def after_new_search(self, curr_cycle):
         self._refresh_sidebars()
         to_hide = [mb for mb in self.msg_boxes.values() if mb.visible and mb.cycle == curr_cycle]
         for mb in to_hide:
             mb.hide()
-        for l in self.metrics:
-            print(l)
-        self.metrics = []
+        if DO_METRICS:
+            for l in self.metrics:
+                print(l)
+            self.metrics = []
              
     def run(self):
 
         self.plt.pause(0.1)
         
         while True:
-            changed = False
+            if DO_METRICS:
+                new_messages = []
 
-            # add new message boxes in faster loop
-            boxes_added = 0
-            t0 = time_utils.time()
+            self.image.set_data(self.waterfall_data['data'])
+
             while not self.msg_box_display_queue.empty():
                 message = self.msg_box_display_queue.get_nowait()
                 y = message['position']['y']
                 if not y in self.msg_boxes:
                     self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, message, onclick = self._on_click_local)
                 self.msg_boxes[y].set_properties(message)
+                if DO_METRICS:
+                    new_messages.append(message)
 
-                tdecode = message['decode_completed']
-                tdelay = (time_utils.cycle_time() - tdecode) %15
-                boxes_added +=1
-                changed = True
-                self.metrics.append(f"Box #{boxes_added} in loop, {tdelay:5.2f}s after decode (at {tdecode:5.2f}) set props for {message['display_text']} ")
-            if changed:
-                t = time_utils.time()
-                self.metrics.append(f"Adding message boxes took {t-t0:6.3f}s")
+            not_ready = []
+            while not self.msg_box_update_queue.empty():
+                update = self.msg_box_update_queue.get()
+                y, display_text = update
+                if y in self.msg_boxes:
+                    mb = self.msg_boxes[y]
+                    if not mb.updated:
+                        if mb.visible:
+                            mb.update_text(display_text)
+                        else:
+                            not_ready.append(update)
+            for update in not_ready:
+                self.msg_box_update_queue.put(update)
 
-            # do everything else on waterfall change
-            waterfall_ptr = self.waterfall_data['ptr']()
-            if waterfall_ptr != self.waterfall_ptr_prev:
-                changed = True
-                self.image.set_data(self.waterfall_data['data'])
-                self.waterfall_ptr_prev = waterfall_ptr
+            self.fig.canvas.draw()
+            self.fig.canvas.flush_events()
+            if DO_METRICS:
+                t0 = time_utils.cycle_time()
+                for m in new_messages:
+                    tdecode = m['decode_completed']
+                    tdelay = (t0 - tdecode) %15
+                    self.metrics.append(f"Screen updated {tdelay:5.2f}s after decode (at {tdecode:5.2f}) for {m['display_text']} ")
 
-                # add slow-time data to existing message boxes
-                not_ready = []
-                while not self.msg_box_update_queue.empty():
-                    update = self.msg_box_update_queue.get()
-                    y, display_text = update
-                    if y in self.msg_boxes:
-                        mb = self.msg_boxes[y]
-                        if not mb.updated:
-                            if mb.visible:
-                                mb.update_text(display_text)
-                            else:
-                                not_ready.append(update)
-                for update in not_ready:
-                    self.msg_box_update_queue.put(update)
-
-            if changed:
-                t0 = time_utils.time()
-                self.fig.canvas.draw_idle()
-                self.fig.canvas.flush_events()
-                self.metrics.append(f"At {time_utils.cycle_time():6.3f}, draw & flush took {time_utils.time() - t0:6.3}s")
-            else:
-                time_utils.sleep(0.25)
 
 
 

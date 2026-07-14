@@ -59,7 +59,7 @@ def on_decode(c):
     global display_queue_batch, decode_queue_non_time_critical, last_batch_sent
     t = time_utils.time()
     screen_format = f"{c.cyclestart['string']} {c.snr:+03d} {c.dt:4.1f} {c.fHz:4.0f} ~ {' '.join(c.msg_tuple)}"
-   # print(f"{screen_format:50s} decoded@ {c.decode_completed % 15:5.1f}s")
+    print(f"{screen_format:50s} decoded@ {c.decode_completed % 15:5.1f}s")
     if gui:
         gui.enqueue_message_essentials(c)
     decode_queue_non_time_critical.put(c)
@@ -162,7 +162,7 @@ def cli():
         qso_manager = QSO_manager(myCall, myGrid, console_print, soundcard_out.transmit_audio_data_bytes, rig, rx.audio_in.waterfall_data, adif_logging)
         history = History(config_folder, myCall, myGrid, PSKR_REFRESH_MINS)
         gui = Gui(config, qso_manager.on_click, history, console_print, qso_manager.get_band_info, rx.audio_in.waterfall_data)
-        rx.register_presearch_cb(gui.before_new_search)
+        rx.register_aftersearch_cb(gui.after_new_search)
         history.incorporate_log_data(adif_logging.cache)
         history.start_collect_new()
 
