@@ -8,6 +8,7 @@ import pickle
 from PyFT8.databases import call_hashes, add_call_hashes
 from PyFT8.osd import osd_decode_minimal
 
+WATERFALL_DOWNSAMPLE = 2
 DEBUG_PRINTS = True
 T_CYC = 15
 N_SYMS = 79
@@ -185,13 +186,13 @@ class AudioIn:
         self.search_grid = np.ones((self.search_hops_per_grid, self.search_f0_idx_range[1]  + 8 * self.search_bpt ), dtype = np.float32)
         self.samples_perhop = int(SAMP_RATE / (SYM_RATE * self.search_hps))
         self.samples_per_cycle = int(SAMP_RATE * T_CYC)
-        self.waterfall_data = self._set_waterfall_data()
 
+        self.cycle_audio_buffer_ptr, self.search_grid_ptr = 0, 0
+        self.waterfall_data = self._set_waterfall_data()
         self.search_audio_buffer = np.zeros(self.search_fft_len, dtype=np.float32)
         self.search_fft_in = np.zeros(self.search_fft_len, dtype=np.float32)        
         self.cycle_audio_buffer = np.zeros(192000, dtype=np.float32)
         self.adj, self.cycle_audio_buffer_ptr_prev, self.t_prev = 1.0, -1, None
-        self.cycle_audio_buffer_ptr, self.search_grid_ptr = 0, 0
         self._set_pointers()
         self._start_audio()
 
@@ -250,14 +251,17 @@ class AudioIn:
         for run_on in range(1 * self.search_hops_per_cycle):
             time_utils.sleep(hop_dt)
             self.search_grid_ptr = (self.search_grid_ptr + 1) % self.search_hops_per_grid
+
+    def _get_waterfall_ptr(self):
+        return int(self.search_grid_ptr / WATERFALL_DOWNSAMPLE)
             
     def _set_waterfall_data(self):
-        downsample = 3
+        downsample = WATERFALL_DOWNSAMPLE
         data = self.search_grid[::downsample,::downsample].T
         df, dt = self.df * downsample, self.dt * downsample
         sig_w, sig_h = int(79*self.search_hps/downsample), int(8*self.search_bpt/downsample)
         pixels_per_cycle = int(self.search_hops_per_cycle / downsample)
-        return {'data':data, 'df':df, 'dt':dt, 'sig_w':sig_w, 'sig_h':sig_h, 'pixels_per_cycle':pixels_per_cycle}
+        return {'data':data, 'ptr':self._get_waterfall_ptr, 'df':df, 'dt':dt, 'sig_w':sig_w, 'sig_h':sig_h, 'pixels_per_cycle':pixels_per_cycle}
 
     def _manage_audio_in_cycle(self):
         cycle_adj = 0
@@ -520,13 +524,11 @@ class Receiver():
         time_utils.sleep(0.5)
         threading.Thread(target=self.manage_cycle, daemon=True).start()
 
-    def register_presearch_cb(self, presearch_cb):
-        self.presearch_cb = presearch_cb
+    def register_aftersearch_cb(self, aftersearch_cb):
+        self.aftersearch_cb = aftersearch_cb
 
     def search(self, cyclestart, odd_even, cycle_h0):
         cands = []
-        if self.presearch_cb is not None:
-            self.presearch_cb(odd_even)
         for f0_idx in range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 2):
             p = self.audio_in.search_grid[:, f0_idx: f0_idx + 7*self.audio_in.search_bpt]
             origin = {'score':0}
@@ -543,6 +545,8 @@ class Receiver():
                 cands.append(c)
         cands.sort(key = lambda c: c.origin['score'], reverse = True)
         self.candidates = cands[:self.max_cands]
+        if self.aftersearch_cb is not None:
+            self.aftersearch_cb(odd_even)
 
     def manage_cycle(self):
         dashes = "======================================================"

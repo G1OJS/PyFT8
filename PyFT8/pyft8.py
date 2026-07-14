@@ -10,9 +10,11 @@ from PyFT8.rigctrl import Rig_hamlib, Rig_CAT
 from PyFT8.databases import History, ADIF
 from PyFT8.qso_manager import QSO_manager
 
+import matplotlib.style as mplstyle
+mplstyle.use('fast')
+
 VER = '3.3.0'
 PSKR_REFRESH_MINS = 20
-HEARING_PANEL_LIFE_MINS = 20
 
 gui, history, qso_manager, adif_logging, pskr_upload, soundcard_out, rig, output_device_idx = None, None, None, None, None, None, None, None
 myCall, myGrid = None, None
@@ -160,7 +162,7 @@ def cli():
         qso_manager = QSO_manager(myCall, myGrid, console_print, soundcard_out.transmit_audio_data_bytes, rig, rx.audio_in.waterfall_data, adif_logging)
         history = History(config_folder, myCall, myGrid, PSKR_REFRESH_MINS)
         gui = Gui(config, qso_manager.on_click, history, console_print, qso_manager.get_band_info, rx.audio_in.waterfall_data)
-        rx.register_presearch_cb(gui.clear_message_boxes)
+        rx.register_aftersearch_cb(gui.after_new_search)
         history.incorporate_log_data(adif_logging.cache)
         history.start_collect_new()
 
@@ -181,7 +183,7 @@ def cli():
             pass
     else:
         gui.set_bandstats_title(f"Pskreporter Spots\nto/from {config['station']['grid'][:4]} <{PSKR_REFRESH_MINS:.0f} mins")
-        gui.plt.show()
+        gui.run()
 
 
 

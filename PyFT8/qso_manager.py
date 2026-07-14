@@ -4,7 +4,6 @@ from PyFT8.time_utils import time_utils
 from PyFT8.transmitter import get_ft8_symbols, symbols_to_audio_bytes
 MAX_TX_START_CYCLETIME = 3
 
-
 class QSO_manager:
     def __init__(self, myCall, myGrid, console_print, transmit_audio_data_bytes, rig, wf_data, adif_logging):
         self.transmit_audio_data_bytes = transmit_audio_data_bytes
