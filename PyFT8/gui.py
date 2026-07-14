@@ -246,7 +246,7 @@ class Gui:
 
     def enqueue_message_essentials(self, c):
         myCall = self.config['station']['call']
-        message_type_value = 0 + 1*(c.msg_tuple[1] == myCall) + 2*(c.msg_tuple[0] == myCall) + 3*(c.msg_tuple[0].startswith('CQ'))
+        message_type_value = 0 + 1*(c.msg_tuple[1] == myCall) + 2*(c.msg_tuple[0] == myCall) + 3*(c.msg_tuple[0].startswith('CQ') and not c.msg_tuple[1] == myCall)
         message_type = ['generic', 'from_me', 'to_me', 'CQ'][message_type_value]
         wf, o = self.waterfall_data, c.origin
         x = int(o['t0'] / wf['dt'] + o['odd_even'] * wf['pixels_per_cycle'])
