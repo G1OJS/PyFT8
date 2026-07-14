@@ -102,9 +102,10 @@ class Msg_box:
         rect = Rectangle((0, y), width=w, height=h, alpha=0.6, edgecolor='lime', lw=2)
         self.patch = ax.add_patch(rect)
         self.text_inst = ax.text(0, p['y'] + 1, '', fontsize='small', fontweight='bold', clip_on = True )
-        #self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
+        self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
         self.expire_time = 0
         self.visible = True
+        self.updated = False
         
     def set_properties(self, message):
         self.message, self.message_type = message, message['message_type']
@@ -114,6 +115,7 @@ class Msg_box:
         self.text_inst.set_x(x)
         self.patch.set_visible(True)
         self.text_inst.set_visible(True)
+        self.updated = False
         self.visible = True
         self.expire_time = time_utils.time() + 29.25
         self.text_inst.set_text(display_text)
@@ -121,11 +123,10 @@ class Msg_box:
         message_type_params = MESSAGE_TYPES[self.message_type]
         self.text_inst.set_color(message_type_params['fg'])
         self.patch.set_facecolor(message_type_params['bg'])
-        tdelay = (time_utils.cycle_time() - message['decode_completed']) %15
-        print(f"{tdelay:5.2f}s after decode set props for {display_text} ")
 
     def update_text(self, display_text):
         self.text_inst.set_text(display_text)
+        self.updated = True
         
     def hide(self):
         self.patch.set_visible(False)
@@ -151,6 +152,7 @@ class Gui:
         self.hearing_me_since_mins = hearing_me_since_mins
         self.sidebars_last_update = 0
         self.sidebars_page = 0
+        self.metrics = []
         self._make_axes()
         self.msg_boxes = {}
         self.image = self.ax_wf.imshow(self.waterfall_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
@@ -272,22 +274,20 @@ class Gui:
         to_hide = [mb for mb in self.msg_boxes.values() if mb.visible and mb.cycle == curr_cycle]
         for mb in to_hide:
             mb.hide()
+        for l in self.metrics:
+            print(l)
+        self.metrics = []
              
     def run(self):
 
-        self.plt.ion()
         self.plt.pause(0.1)
         
         while True:
-            time_utils.sleep(0.1)
+            changed = False
 
-            # update waterfall if changed
-            waterfall_ptr = self.waterfall_data['ptr']()
-            if waterfall_ptr != self.waterfall_ptr_prev:
-                self.image.set_data(self.waterfall_data['data'])
-                self.waterfall_ptr_prev = waterfall_ptr
-
-            # add new message boxes
+            # add new message boxes in faster loop
+            boxes_added = 0
+            t0 = time_utils.time()
             while not self.msg_box_display_queue.empty():
                 message = self.msg_box_display_queue.get_nowait()
                 y = message['position']['y']
@@ -295,23 +295,45 @@ class Gui:
                     self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, message, onclick = self._on_click_local)
                 self.msg_boxes[y].set_properties(message)
 
-            # add slow-time data to existing message boxes
-            not_ready = []
-            while not self.msg_box_update_queue.empty():
-                update = self.msg_box_update_queue.get()
-                y, display_text = update
-                if y in self.msg_boxes:
-                    mb = self.msg_boxes[y]
-                    if mb.visible:
-                        mb.update_text(display_text)
-                    else:
-                        not_ready.append(update)
-            for update in not_ready:
-                self.msg_box_update_queue.put(update)
+                tdecode = message['decode_completed']
+                tdelay = (time_utils.cycle_time() - tdecode) %15
+                boxes_added +=1
+                changed = True
+                self.metrics.append(f"Box #{boxes_added} in loop, {tdelay:5.2f}s after decode (at {tdecode:5.2f}) set props for {message['display_text']} ")
+            if changed:
+                t = time_utils.time()
+                self.metrics.append(f"Adding message boxes took {t-t0:6.3f}s")
 
+            # do everything else on waterfall change
+            waterfall_ptr = self.waterfall_data['ptr']()
+            if waterfall_ptr != self.waterfall_ptr_prev:
+                changed = True
+                self.image.set_data(self.waterfall_data['data'])
+                self.waterfall_ptr_prev = waterfall_ptr
 
-            self.fig.canvas.draw_idle()
-            self.fig.canvas.flush_events()
+                # add slow-time data to existing message boxes
+                not_ready = []
+                while not self.msg_box_update_queue.empty():
+                    update = self.msg_box_update_queue.get()
+                    y, display_text = update
+                    if y in self.msg_boxes:
+                        mb = self.msg_boxes[y]
+                        if not mb.updated:
+                            if mb.visible:
+                                mb.update_text(display_text)
+                            else:
+                                not_ready.append(update)
+                for update in not_ready:
+                    self.msg_box_update_queue.put(update)
+
+            if changed:
+                t0 = time_utils.time()
+                self.fig.canvas.draw_idle()
+                self.fig.canvas.flush_events()
+                self.metrics.append(f"At {time_utils.cycle_time():6.3f}, draw & flush took {time_utils.time() - t0:6.3}s")
+            else:
+                time_utils.sleep(0.25)
+
 
 
 
