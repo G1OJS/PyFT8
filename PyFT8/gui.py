@@ -315,6 +315,7 @@ class Gui:
 
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
+            time_utils.sleep(0.05)
             if DO_METRICS:
                 t0 = time_utils.cycle_time()
                 for m in new_messages:
