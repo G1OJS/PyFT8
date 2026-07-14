@@ -155,6 +155,12 @@ class Gui:
         self.msg_boxes = {}
         self.image = self.ax_wf.imshow(self.waterfall_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self._make_buttons()
+        self.message_box_artists = []
+        self.sidebars_artists = [*[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes],
+                                 *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists]
+        self.new_messages = []
+        self.ani = FuncAnimation(self.fig, self._animate, interval = 60, frames=(100000), blit = True)
+
 
     def _on_click_local(self, clickargs):
         if clickargs['action'] == "MESSAGE_CLICK":
@@ -272,51 +278,45 @@ class Gui:
         for mb in to_hide:
             mb.hide()
              
-    def run(self, show_display_delay = False):
-
-        self.plt.pause(0.1)
+    def _animate(self, frames):
         
-        while True:
+        show_display_delay = False
+
+        if show_display_delay:
+            t0 = time_utils.cycle_time()
+            for m in self.new_messages:
+                tdecode = m[2]
+                tdelay = (t0 - tdecode) %15
+                self.msg_box_update_queue.put_nowait((m[0], f" [{tdelay:5.2f}]"))
+            self.new_messages = []
+
+        self.image.set_data(self.waterfall_data['data'])
+
+        while not self.msg_box_display_queue.empty():
+            message = self.msg_box_display_queue.get_nowait()
+            y = message['position']['y']
+            if not y in self.msg_boxes:
+                self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, message, onclick = self._on_click_local)
+                self.message_box_artists.append(self.msg_boxes[y].patch)
+                self.message_box_artists.append(self.msg_boxes[y].text_inst)
+            self.msg_boxes[y].set_properties(message)
             if show_display_delay:
-                new_messages = []
+                self.new_messages.append((y, message['display_text'], message['decode_completed']))
 
-            self.image.set_data(self.waterfall_data['data'])
+        not_ready = []
+        while not self.msg_box_update_queue.empty():
+            update = self.msg_box_update_queue.get()
+            y, extra_text = update
+            if y in self.msg_boxes:
+                mb = self.msg_boxes[y]
+                if mb.visible:
+                    mb.update_text(extra_text)
+                else:
+                    not_ready.append(update)
+        for update in not_ready:
+            self.msg_box_update_queue.put(update)
 
-            while not self.msg_box_display_queue.empty():
-                message = self.msg_box_display_queue.get_nowait()
-                y = message['position']['y']
-                if not y in self.msg_boxes:
-                    self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, message, onclick = self._on_click_local)
-                self.msg_boxes[y].set_properties(message)
-                if show_display_delay:
-                    new_messages.append((y, message['display_text'], message['decode_completed']))
-
-            not_ready = []
-            while not self.msg_box_update_queue.empty():
-                update = self.msg_box_update_queue.get()
-                y, extra_text = update
-                if y in self.msg_boxes:
-                    mb = self.msg_boxes[y]
-                    if mb.visible:
-                        mb.update_text(extra_text)
-                    else:
-                        not_ready.append(update)
-            for update in not_ready:
-                self.msg_box_update_queue.put(update)
-
-            self.fig.canvas.draw()
-            self.fig.canvas.flush_events()
-            time_utils.sleep(0.05)
-            if show_display_delay:
-                t0 = time_utils.cycle_time()
-                for m in new_messages:
-                    tdecode = m[2]
-                    tdelay = (t0 - tdecode) %15
-                    self.msg_box_update_queue.put_nowait((m[0], f" [{tdelay:5.2f}]"))
-
-
-
-
+        return [self.image, *self.message_box_artists, *self.sidebars_artists] 
 
                     
 
