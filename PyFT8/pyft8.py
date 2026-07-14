@@ -183,7 +183,7 @@ def cli():
             pass
     else:
         gui.set_bandstats_title(f"Pskreporter Spots\nto/from {config['station']['grid'][:4]} <{PSKR_REFRESH_MINS:.0f} mins")
-        gui.run()
+        gui.run(show_display_delay = False)
 
 
 

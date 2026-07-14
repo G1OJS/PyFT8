@@ -6,8 +6,6 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Slider, Button
 from PyFT8.time_utils import time_utils
 
-DO_METRICS = False
-
 rcParams['toolbar'] = 'None'
 MAIN_TEXT_COLOR = '#f0f9fa'
 TEXT_BACKGROUND_COLOR = '#2a2b2b'
@@ -126,8 +124,8 @@ class Msg_box:
         self.text_inst.set_color(message_type_params['fg'])
         self.patch.set_facecolor(message_type_params['bg'])
 
-    def update_text(self, display_text):
-        self.text_inst.set_text(display_text)
+    def update_text(self, extra_text):
+        self.text_inst.set_text(self.text_inst.get_text() + extra_text)
         self.updated = True
         
     def hide(self):
@@ -157,8 +155,6 @@ class Gui:
         self.msg_boxes = {}
         self.image = self.ax_wf.imshow(self.waterfall_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self._make_buttons()
-        if DO_METRICS:
-            self.metrics = []
 
     def _on_click_local(self, clickargs):
         if clickargs['action'] == "MESSAGE_CLICK":
@@ -267,25 +263,21 @@ class Gui:
             wb_time = self.history.log_cache.get(c.msg_tuple[1],'') 
             wb_text = f"wb: {time_utils.format_duration(time_utils.time() - float(wb_time))}" if wb_time else ''
             hearing_me = '# ' if self.history.is_hearing_me(current_band, c.msg_tuple[1]) else ' '
-            display_text = f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {geo_text}"
-            self.msg_box_update_queue.put_nowait((c.y, display_text))
+            extra_text = f"{hearing_me}{wb_text} {geo_text}"
+            self.msg_box_update_queue.put_nowait((c.y, extra_text))
 
     def after_new_search(self, curr_cycle):
         self._refresh_sidebars()
         to_hide = [mb for mb in self.msg_boxes.values() if mb.visible and mb.cycle == curr_cycle]
         for mb in to_hide:
             mb.hide()
-        if DO_METRICS:
-            for l in self.metrics:
-                print(l)
-            self.metrics = []
              
-    def run(self):
+    def run(self, show_display_delay = False):
 
         self.plt.pause(0.1)
         
         while True:
-            if DO_METRICS:
+            if show_display_delay:
                 new_messages = []
 
             self.image.set_data(self.waterfall_data['data'])
@@ -296,33 +288,31 @@ class Gui:
                 if not y in self.msg_boxes:
                     self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, message, onclick = self._on_click_local)
                 self.msg_boxes[y].set_properties(message)
-                if DO_METRICS:
-                    new_messages.append(message)
+                if show_display_delay:
+                    new_messages.append((y, message['display_text'], message['decode_completed']))
 
             not_ready = []
             while not self.msg_box_update_queue.empty():
                 update = self.msg_box_update_queue.get()
-                y, display_text = update
+                y, extra_text = update
                 if y in self.msg_boxes:
                     mb = self.msg_boxes[y]
-                    if not mb.updated:
-                        if mb.visible:
-                            mb.update_text(display_text)
-                        else:
-                            not_ready.append(update)
+                    if mb.visible:
+                        mb.update_text(extra_text)
+                    else:
+                        not_ready.append(update)
             for update in not_ready:
                 self.msg_box_update_queue.put(update)
 
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
             time_utils.sleep(0.05)
-            if DO_METRICS:
+            if show_display_delay:
                 t0 = time_utils.cycle_time()
                 for m in new_messages:
-                    tdecode = m['decode_completed']
+                    tdecode = m[2]
                     tdelay = (t0 - tdecode) %15
-                    self.metrics.append(f"Screen updated {tdelay:5.2f}s after decode (at {tdecode:5.2f}) for {m['display_text']} ")
-
+                    self.msg_box_update_queue.put_nowait((m[0], f" [{tdelay:5.2f}]"))
 
 
 
