@@ -102,7 +102,7 @@ class Msg_box:
         rect = Rectangle((0, y), width=w, height=h, alpha=0.6, edgecolor='lime', lw=2)
         self.patch = ax.add_patch(rect)
         self.text_inst = ax.text(0, p['y'] + 1, '', fontsize='small', fontweight='bold', clip_on = True )
-        self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
+        #self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
         self.expire_time = 0
         self.visible = True
         
@@ -121,8 +121,8 @@ class Msg_box:
         message_type_params = MESSAGE_TYPES[self.message_type]
         self.text_inst.set_color(message_type_params['fg'])
         self.patch.set_facecolor(message_type_params['bg'])
-        #tdelay = (time_utils.cycle_time() - message['decode_completed']) %15
-        #print(f"{tdelay:5.2f}s after decode set props for {display_text} ")
+        tdelay = (time_utils.cycle_time() - message['decode_completed']) %15
+        print(f"{tdelay:5.2f}s after decode set props for {display_text} ")
 
     def update_text(self, display_text):
         self.text_inst.set_text(display_text)
@@ -135,12 +135,13 @@ class Msg_box:
     def _onclick(self, event):
         b, _ = self.patch.contains(event)
         if(b):
+            print(f"{time_utils.time() %15:6.2f}")
             self.onclick({'action': 'MESSAGE_CLICK', 'message':self.message})
     
 class Gui:
     def __init__(self, config, on_click, history, console_print, get_band_info, waterfall_data, hearing_me_since_mins = 5):
         self.plt = plt
-        self.fig = plt.figure(figsize = (10,10), facecolor=(.18, .71, .71, 0.4)) 
+        self.fig = plt.figure(figsize = (10,10), facecolor=(.18, .71, .71, 0.4))
         self.fig.canvas.manager.set_window_title('PyFT8 by G1OJS')
         self.config, self.on_click, self.history, self.console_print, self.get_band_info, self.waterfall_data  = config, on_click, history, console_print, get_band_info, waterfall_data
         self.wf_top = 1-L['pmargin']-L['banner_height']-L['vsep1']
@@ -150,19 +151,13 @@ class Gui:
         self.hearing_me_since_mins = hearing_me_since_mins
         self.sidebars_last_update = 0
         self.sidebars_page = 0
-        self.sidebars_dirty = True
         self._make_axes()
         self.msg_boxes = {}
         self.image = self.ax_wf.imshow(self.waterfall_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
+        self.waterfall_ptr_prev = 0
         self._make_buttons()
-        self.display_queue_batch = []
-        self.message_box_artists = []
-        self.sidebars_artists = [*[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes],
-                                 *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists]
-        self.ani = FuncAnimation(self.fig, self._animate, interval = 60, frames=(100000), blit = True)
 
     def _on_click_local(self, clickargs):
-        self.sidebars_dirty = True
         if clickargs['action'] == "MESSAGE_CLICK":
             self.console_print(f"[GUI] Clicked on message '{clickargs['message']['msg_tuple']}'")
         self.on_click(clickargs)
@@ -272,35 +267,33 @@ class Gui:
             display_text = f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {geo_text}"
             self.msg_box_update_queue.put_nowait((c.y, display_text))
 
-    def clear_message_boxes(self, curr_cycle):
-        self.msg_box_display_queue = queue.Queue()
-        self.msg_box_update_queue = queue.Queue()
+    def before_new_search(self, curr_cycle):
+        self._refresh_sidebars()
         to_hide = [mb for mb in self.msg_boxes.values() if mb.visible and mb.cycle == curr_cycle]
         for mb in to_hide:
             mb.hide()
              
-    def _animate(self, frames):
+    def run(self):
 
-        message = False
-        while not self.msg_box_display_queue.empty():
-            message = self.msg_box_display_queue.get_nowait()
-            y = message['position']['y']
-            if not y in self.msg_boxes:
-                self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, message, onclick = self._on_click_local)
-                self.message_box_artists.append(self.msg_boxes[y].patch)
-                self.message_box_artists.append(self.msg_boxes[y].text_inst)
-            self.msg_boxes[y].set_properties(message)
-            #time_utils.sleep(0.1)
+        self.plt.ion()
+        self.plt.pause(0.1)
+        
+        while True:
+            time_utils.sleep(0.1)
 
-        if not message:
-            # refresh sidebars every 3 seconds
-            abs_time = time_utils.time()
-            self.image.set_data(self.waterfall_data['data'])
-            if abs_time %15 < 13 or self.sidebars_dirty:
-                if abs_time - self.sidebars_last_update > 3:
-                    self._refresh_sidebars()
-                    self.sidebars_last_update = abs_time
-                    self.sidebars_dirty = False
+            # update waterfall if changed
+            waterfall_ptr = self.waterfall_data['ptr']()
+            if waterfall_ptr != self.waterfall_ptr_prev:
+                self.image.set_data(self.waterfall_data['data'])
+                self.waterfall_ptr_prev = waterfall_ptr
+
+            # add new message boxes
+            while not self.msg_box_display_queue.empty():
+                message = self.msg_box_display_queue.get_nowait()
+                y = message['position']['y']
+                if not y in self.msg_boxes:
+                    self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, message, onclick = self._on_click_local)
+                self.msg_boxes[y].set_properties(message)
 
             # add slow-time data to existing message boxes
             not_ready = []
@@ -308,13 +301,19 @@ class Gui:
                 update = self.msg_box_update_queue.get()
                 y, display_text = update
                 if y in self.msg_boxes:
-                    self.msg_boxes[y].update_text(display_text)
-                else:
-                    not_ready.append(update)
+                    mb = self.msg_boxes[y]
+                    if mb.visible:
+                        mb.update_text(display_text)
+                    else:
+                        not_ready.append(update)
             for update in not_ready:
                 self.msg_box_update_queue.put(update)
 
-        return [self.image, *self.message_box_artists, *self.sidebars_artists] 
+
+            self.fig.canvas.draw_idle()
+            self.fig.canvas.flush_events()
+
+
 
 
                     
