@@ -19,11 +19,9 @@ mpl.rcParams['path.simplify_threshold'] = 1.0
 VER = '3.3.1'
 PSKR_REFRESH_MINS = 20
 
-gui, history, qso_manager, adif_logging, pskr_upload, soundcard_out, rig, output_device_idx = None, None, None, None, None, None, None, None
+gui, history, qso_manager, adif_logging, pskr_upload, soundcard_out, rig = None, None, None, None, None, None, None
 myCall, myGrid = None, None
 decode_queue_non_time_critical = queue.Queue()
-display_queue_batch = []
-last_batch_sent = 0
 
 def get_config(config_folder):
     import configparser, sys
@@ -59,7 +57,7 @@ def console_print(text, color = 'white'):
         print(text)
 
 def on_decode(c):
-    global display_queue_batch, decode_queue_non_time_critical, last_batch_sent
+    global decode_queue_non_time_critical
     t = time_utils.time()
     screen_format = f"{c.cyclestart['string']} {c.snr:+03d} {c.dt:4.1f} {c.fHz:4.0f} ~ {' '.join(c.msg_tuple)}"
     print(f"{screen_format:50s} decoded@ {c.decode_completed % 15:5.1f}s")
@@ -104,7 +102,7 @@ def on_decode_non_time_critical():
      
 
 def cli():
-    global rx, gui, qso_manager, myCall, myGrid, history, adif_logging, pskr_upload, soundcard_out, rig, output_device_idx
+    global rx, gui, qso_manager, myCall, myGrid, history, adif_logging, pskr_upload, soundcard_out, rig
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-c', '--config_folder', help = 'Location of config folder e.g. C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', default = './') 
     parser.add_argument('-i', '--inputcard_keywords', help = 'Comma-separated keywords to identify the input sound device')  
