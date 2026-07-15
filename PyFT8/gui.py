@@ -169,7 +169,7 @@ class Gui:
                 self._clear_msg_boxes(curr_cycle)
             else:
                 x, y, message = data
-                mb = self._get_message_box()
+                mb = self._get_msg_box()
                 self.active_msg_boxes.append(mb)
                 mb.set_properties(x, y, message)
 
