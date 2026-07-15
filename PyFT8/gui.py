@@ -1,11 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import queue
 from matplotlib import rcParams
 from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Slider, Button
 from PyFT8.time_utils import time_utils
 
+MAX_MSG_BOXES = 50
 rcParams['toolbar'] = 'None'
 MAIN_TEXT_COLOR = '#f0f9fa'
 TEXT_BACKGROUND_COLOR = '#2a2b2b'
@@ -98,35 +98,27 @@ class Msg_box:
         self.onclick = onclick
         self.cycle = message['cycle']
         p = message['position']
-        y, w, h = p['y'], p['sig_w'], p['sig_h']
-        rect = Rectangle((0, y), width=w, height=h, alpha=0.6, edgecolor='lime', lw=2)
+        rect = Rectangle((0, 0), width=p['sig_w'], height=p['sig_h'], alpha=0.6, edgecolor='lime', lw=2)
         self.patch = ax.add_patch(rect)
         self.text_inst = ax.text(0, p['y'] + 1, '', fontsize='small', fontweight='bold', clip_on = True )
         self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
-        self.expire_time = 0
-        self.visible = True
-        self.updated = False
+        self.visible = False
         
     def set_properties(self, message):
         self.message, self.message_type = message, message['message_type']
         p, display_text = message['position'], message['display_text']
-        x = p['x']
-        self.patch.set_x(x)
-        self.text_inst.set_x(x)
+        self.patch.set_x(p['x'])
+        self.text_inst.set_x(p['x'])
+        self.patch.set_y(p['y'])
+        self.text_inst.set_y(p['y']+1)
         self.patch.set_visible(True)
         self.text_inst.set_visible(True)
-        self.updated = False
         self.visible = True
-        self.expire_time = time_utils.time() + 29.25
         self.text_inst.set_text(display_text)
         
         message_type_params = MESSAGE_TYPES[self.message_type]
         self.text_inst.set_color(message_type_params['fg'])
         self.patch.set_facecolor(message_type_params['bg'])
-
-    def update_text(self, extra_text):
-        self.text_inst.set_text(self.text_inst.get_text() + extra_text)
-        self.updated = True
         
     def hide(self):
         self.patch.set_visible(False)
@@ -146,22 +138,23 @@ class Gui:
         self.config, self.on_click, self.history, self.console_print, self.get_band_info, self.waterfall_data  = config, on_click, history, console_print, get_band_info, waterfall_data
         self.wf_top = 1-L['pmargin']-L['banner_height']-L['vsep1']
         self.wf_left = L['pmargin']+L['sidebar_width']+L['hsep1']
-        self.msg_box_display_queue = queue.Queue()
-        self.msg_box_update_queue = queue.Queue()
         self.hearing_me_since_mins = hearing_me_since_mins
         self.sidebars_last_update = 0
         self.sidebars_page = 0
         self._make_axes()
         self.msg_boxes = {}
+        self.msg_box_serial = 0
         self.image = self.ax_wf.imshow(self.waterfall_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self._make_buttons()
         self.message_box_artists = []
         self.sidebars_artists = [*[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes],
                                  *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists]
-        self.new_messages = []
         self.ani = FuncAnimation(self.fig, self._animate, interval = 60, frames=(100000), blit = True)
 
-
+    def _animate(self, frames):
+        self.image.set_data(self.waterfall_data['data'])
+        return [self.image, *self.message_box_artists, *self.sidebars_artists]
+    
     def _on_click_local(self, clickargs):
         if clickargs['action'] == "MESSAGE_CLICK":
             self.console_print(f"[GUI] Clicked on message '{clickargs['message']['msg_tuple']}'")
@@ -246,77 +239,44 @@ class Gui:
     def set_bandstats_title(self, txt):
         self.band_stats.ax.set_title(txt, fontsize = 10)
 
-    def enqueue_message_essentials(self, c):
+    def after_new_search(self, curr_cycle):
+        self._refresh_sidebars()
+        to_hide = [mb for mb in self.msg_boxes.values() if mb.visible and mb.cycle == curr_cycle]
+        for mb in to_hide:
+            mb.hide()
+
+    def set_message(self, c):
         myCall = self.config['station']['call']
         message_type_value = 0 + 1*(c.msg_tuple[1] == myCall) + 2*(c.msg_tuple[0] == myCall) + 3*(c.msg_tuple[0].startswith('CQ') and not c.msg_tuple[1] == myCall)
         message_type = ['generic', 'from_me', 'to_me', 'CQ'][message_type_value]
         wf, o = self.waterfall_data, c.origin
         x = int(o['t0'] / wf['dt'] + o['odd_even'] * wf['pixels_per_cycle'])
         y = int(o['f0'] / wf['df'])
-        c.y = y
-        message = { 'message_type':message_type, 'cycle':c.origin['odd_even'],
-                    'position': {'x':x, 'y':y, 'sig_w':wf['sig_w'], 'sig_h':wf['sig_h']},
-                    'msg_tuple':c.msg_tuple, 'decode_completed':c.decode_completed,
-                    'new_qso_info': {'call':c.msg_tuple[1], 'rst_sent': f"{c.snr:+03d}", 'grid_rpt':c.msg_tuple[2], 'my_tx_cycle': 1-c.origin['odd_even']},
-                    'display_text': f"{' '.join(c.msg_tuple)}"}
-        
-        self.msg_box_display_queue.put(message)
-
-    def enqueue_message_updates(self, c):
+        self.msg_box_serial = (self.msg_box_serial + 1) % MAX_MSG_BOXES
+        c.msg_box_id = self.msg_box_serial
+        display_text = f"{' '.join(c.msg_tuple)}"
         if self.history:
             current_band = self.get_band_info()['current_band']
             geo_text = self.history.get_geo_text(c.msg_tuple[1], c.msg_tuple[2])
             wb_time = self.history.log_cache.get(c.msg_tuple[1],'') 
             wb_text = f"wb: {time_utils.format_duration(time_utils.time() - float(wb_time))}" if wb_time else ''
             hearing_me = '# ' if self.history.is_hearing_me(current_band, c.msg_tuple[1]) else ' '
-            extra_text = f"{hearing_me}{wb_text} {geo_text}"
-            self.msg_box_update_queue.put_nowait((c.y, extra_text))
-
-    def after_new_search(self, curr_cycle):
-        self._refresh_sidebars()
-        to_hide = [mb for mb in self.msg_boxes.values() if mb.visible and mb.cycle == curr_cycle]
-        for mb in to_hide:
-            mb.hide()
-             
-    def _animate(self, frames):
+            display_text = f"{display_text} {hearing_me}{wb_text} {geo_text}"
+            
+        message = { 'message_type':message_type, 'cycle':c.origin['odd_even'], 'msg_box_id':c.msg_box_id,
+                    'position': {'x':x, 'y':y, 'sig_w':wf['sig_w'], 'sig_h':wf['sig_h']},
+                    'msg_tuple':c.msg_tuple, 'decode_completed':c.decode_completed,
+                    'new_qso_info': {'call':c.msg_tuple[1], 'rst_sent': f"{c.snr:+03d}", 'grid_rpt':c.msg_tuple[2], 'my_tx_cycle': 1-c.origin['odd_even']},
+                    'display_text': display_text}
         
-        show_display_delay = False
+        if not c.msg_box_id in self.msg_boxes:
+            mb = Msg_box(self.fig, self.ax_wf, message, onclick = self._on_click_local)
+            self.msg_boxes[c.msg_box_id] = mb
+            self.message_box_artists.append(mb.patch)
+            self.message_box_artists.append(mb.text_inst)
+        self.msg_boxes[c.msg_box_id].set_properties(message)
 
-        if show_display_delay:
-            t0 = time_utils.cycle_time()
-            for m in self.new_messages:
-                tdecode = m[2]
-                tdelay = (t0 - tdecode) %15
-                self.msg_box_update_queue.put_nowait((m[0], f" [{tdelay:5.2f}]"))
-            self.new_messages = []
 
-        self.image.set_data(self.waterfall_data['data'])
-
-        while not self.msg_box_display_queue.empty():
-            message = self.msg_box_display_queue.get_nowait()
-            y = message['position']['y']
-            if not y in self.msg_boxes:
-                self.msg_boxes[y] = Msg_box(self.fig, self.ax_wf, message, onclick = self._on_click_local)
-                self.message_box_artists.append(self.msg_boxes[y].patch)
-                self.message_box_artists.append(self.msg_boxes[y].text_inst)
-            self.msg_boxes[y].set_properties(message)
-            if show_display_delay:
-                self.new_messages.append((y, message['display_text'], message['decode_completed']))
-
-        not_ready = []
-        while not self.msg_box_update_queue.empty():
-            update = self.msg_box_update_queue.get()
-            y, extra_text = update
-            if y in self.msg_boxes:
-                mb = self.msg_boxes[y]
-                if mb.visible:
-                    mb.update_text(extra_text)
-                else:
-                    not_ready.append(update)
-        for update in not_ready:
-            self.msg_box_update_queue.put(update)
-
-        return [self.image, *self.message_box_artists, *self.sidebars_artists] 
 
                     
 

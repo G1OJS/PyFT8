@@ -64,7 +64,7 @@ def on_decode(c):
     screen_format = f"{c.cyclestart['string']} {c.snr:+03d} {c.dt:4.1f} {c.fHz:4.0f} ~ {' '.join(c.msg_tuple)}"
     print(f"{screen_format:50s} decoded@ {c.decode_completed % 15:5.1f}s")
     if gui:
-        gui.enqueue_message_essentials(c)
+        gui.set_message(c)
     decode_queue_non_time_critical.put(c)
 
 def on_decode_non_time_critical():
@@ -75,8 +75,6 @@ def on_decode_non_time_critical():
             time_utils.sleep(0.05)
             c = decode_queue_non_time_critical.get()
             if c.msg_tuple[1] != 'not':
-                if gui:
-                    gui.enqueue_message_updates(c)
                 if history:
                     history.write_all_txt_row(c.cyclestart['string'], float(band_info['fMHz']), 'Rx', 'FT8', c.snr, c.dt, c.fHz, ' '.join(c.msg_tuple))
                     history.add_myspots_record(history.heard_by_me.data, history.heard_by_me_new, band_info['current_band'], c.msg_tuple[1], int(time_utils.time()), c.snr)
