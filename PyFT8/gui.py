@@ -97,7 +97,7 @@ class Msg_box:
         from matplotlib.patches import Rectangle
         self.onclick = onclick
         self.fig, self.ax = fig, ax
-        rect = Rectangle((0, 0), w, h, alpha=1, edgecolor='lime', lw=1)
+        rect = Rectangle((0, 0), w, h, alpha=0.5, edgecolor='lime', lw=1)
         self.patch = self.ax.add_patch(rect)
         self.text_inst = self.ax.text(0, 0, '', fontsize='small', fontweight = 'bold' )
         self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
@@ -148,30 +148,32 @@ class Gui:
         self.sidebars_artists = [*[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes],
                                  *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists]
 
-        self.ani = FuncAnimation(self.fig, self._animate, interval = 50, frames=(100000), blit = False)
+        self.ani = FuncAnimation(self.fig, self._animate, interval = 250, frames=(100000), blit = False)
 
     def _animate(self, frames):
-        t = time_utils.time()
-        print(t - self.tlast)
-        self.tlast = t
+        #t = time_utils.time()
+        #print(t - self.tlast)
+        #self.tlast = t
 
-        self.image.set_data(self.wf_data['data'])
-    
-        while not self.gui_queue.empty():
-            action, data = self.gui_queue.get()
-            if action == "clear_cycle":
-                curr_cycle = data
-                self._clear_msg_boxes(curr_cycle)
-            else:
-                x, y, message = data
-                mb = self._get_msg_box()
-                self.active_msg_boxes.append(mb)
-                mb.set_properties(x, y, message)
+        if self.gui_queue.empty():
+            self.image.set_data(self.wf_data['data'])
+        else:
+            t0 = time_utils.time()
+            while (not self.gui_queue.empty()) and (time_utils.time()-t0 < 0.2):
+                action, data = self.gui_queue.get()
+                if action == "clear_cycle":
+                    curr_cycle = data
+                    self._clear_msg_boxes(curr_cycle)
+                else:
+                    x, y, message = data
+                    mb = self._get_msg_box()
+                    self.active_msg_boxes.append(mb)
+                    mb.set_properties(x, y, message)
 
-        p = [mb.patch for mb in self.active_msg_boxes]
-        t = [mb.text_inst for mb in self.active_msg_boxes]
+        #p = [mb.patch for mb in self.active_msg_boxes]
+        #t = [mb.text_inst for mb in self.active_msg_boxes]
         
-        return [self.image, *p, *t, *self.sidebars_artists] 
+        #return [self.image, *p, *t, *self.sidebars_artists] 
 
     def _on_click_local(self, clickargs):
         if clickargs['action'] == "MESSAGE_CLICK":
