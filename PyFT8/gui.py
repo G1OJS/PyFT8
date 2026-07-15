@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
+import queue
 from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Slider, Button
 from PyFT8.time_utils import time_utils
@@ -91,68 +92,104 @@ class ButtonBox:
         if text != self.label2:
             self.label2.set_text(text)
 
+def text_to_rgba(s, *, dpi, **kwargs):
+    fig = Figure(facecolor="none")
+    fig.text(0, 0, s, **kwargs)
+    with BytesIO() as buf:
+        fig.savefig(buf, dpi=dpi, format="png", bbox_inches="tight",
+                    pad_inches=0)
+        buf.seek(0)
+        rgba = np.asarray(Image.open(buf))
+    return rgba
+
 MESSAGE_TYPES = {'generic':{'bg':'blue', 'fg':'white'}, 'CQ':{'bg':'green', 'fg':'white'},'from_me': {'bg':'yellow', 'fg':'white'}, 'to_me':{'bg':'red', 'fg':'white'}} 
 class Msg_box:
     def __init__(self, fig, ax, w, h, onclick):
-        from matplotlib.patches import Rectangle
         self.onclick = onclick
-        rect = Rectangle((0, 0), width=w, height=h, alpha=0.6, edgecolor='lime', lw=2)
-        self.patch = ax.add_patch(rect)
-        self.text_inst = ax.text(0, 0, '', fontsize='small', fontweight='bold', clip_on = True )
+        self.fig, self.ax = fig, ax
+        self.w, self.h = w, h
         self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
         self.visible = False
-        
-    def set_properties(self, x, y, message):
-        self.message = message
-        self.message_type = message['message_type']
-        self.cycle = message['origin']['odd_even']
-        self.patch.set_x(x)
-        self.text_inst.set_x(x)
-        self.patch.set_y(y)
-        self.text_inst.set_y(y+1)
-        self.patch.set_visible(True)
-        self.text_inst.set_visible(True)
-        self.visible = True
+        self.text_img = None
+        self.text_inst, self.patch = None, None
+        self.artists = [self.text_inst, self.patch]
+
+    def set_properties(self, x, y, message, text_to_img = False):
+        from matplotlib.patches import Rectangle
+        rect = Rectangle((x, y), width=self.w, height=self.h, alpha=1, edgecolor='lime', lw=1)
+        self.patch = self.ax.add_patch(rect)
+        self.text_inst = self.ax.text(x, y+1, '', fontsize='small', fontweight = 'bold' )
         self.text_inst.set_text(message['display_text'])
-        
-        message_type_params = MESSAGE_TYPES[self.message_type]
+        message_type_params = MESSAGE_TYPES[message['message_type']]
         self.text_inst.set_color(message_type_params['fg'])
         self.patch.set_facecolor(message_type_params['bg'])
-        
+        if text_to_img:
+            text_img = self.fig.canvas.copy_from_bbox(self.text_inst.get_tightbbox())
+            self.artists = [self.fig.figimage(text_img, x, y)]
+        else:
+            self.artists = [self.text_inst, self.patch]
+        self.message = message
+        self.cycle = message['origin']['odd_even']
+        self.visible = True
+
     def hide(self):
-        self.patch.set_visible(False)
-        self.text_inst.set_visible(False)
+        for a in self.artists:
+            a.set_visible(False)
         self.visible = False
 
     def _onclick(self, event):
-        b, _ = self.patch.contains(event)
+        b, _ = self.text_img.contains(event)
         if(b):
             self.onclick({'action': 'MESSAGE_CLICK', 'message':self.message})
     
 class Gui:
-    def __init__(self, config, on_click, history, console_print, get_band_info, waterfall_data, hearing_me_since_mins = 5):
+    def __init__(self, config, on_click, history, console_print, get_band_info, hearing_me_since_mins = 5):
         self.plt = plt
+        self.plt.ion()
         self.fig = plt.figure(figsize = (10,10), facecolor=(.18, .71, .71, 0.4))
         self.fig.canvas.manager.set_window_title('PyFT8 by G1OJS')
-        self.config, self.on_click, self.history, self.console_print, self.get_band_info, self.waterfall_data  = config, on_click, history, console_print, get_band_info, waterfall_data
+        self.config, self.on_click, self.history = config, on_click, history
+        self.console_print, self.get_band_info = console_print, get_band_info
         self.wf_top = 1-L['pmargin']-L['banner_height']-L['vsep1']
         self.wf_left = L['pmargin']+L['sidebar_width']+L['hsep1']
         self.hearing_me_since_mins = hearing_me_since_mins
         self.sidebars_last_update = 0
         self.sidebars_page = 0
         self._make_axes()
+        self.msg_box_queue = queue.Queue()
         self.msg_boxes = {}
         self.msg_box_serial = 0
-        self.image = self.ax_wf.imshow(self.waterfall_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
+        self.image = None
         self._make_buttons()
         self.message_box_artists = []
         self.sidebars_artists = [*[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes],
                                  *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists]
-        self.ani = FuncAnimation(self.fig, self._animate, interval = 60, frames=(100000), blit = True)
 
-    def _animate(self, frames):
-        self.image.set_data(self.waterfall_data['data'])
-        return [self.image, *self.message_box_artists, *self.sidebars_artists]
+    def plot_loop(self, wf_data):
+        w, h = wf_data['sig_w'], wf_data['sig_h']
+        self.plt.pause(0.1)
+        tlast = 0
+        while True:
+            t = time_utils.time()
+            print(t - tlast)
+            tlast = t
+            self.fig.canvas.flush_events()
+            
+            if self.image is None:
+                self.image = self.ax_wf.imshow(wf_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
+            self.image.set_data(wf_data['data'])
+        
+            while not self.msg_box_queue.empty():
+                message = self.msg_box_queue.get()
+                o = message['origin']
+                x = int(o['t0'] / wf_data['dt'] + o['odd_even'] * wf_data['pixels_per_cycle'])
+                y = int(o['f0'] / wf_data['df'])
+                self.msg_box_serial = (self.msg_box_serial + 1) % MAX_MSG_BOXES
+                if not self.msg_box_serial in self.msg_boxes:
+                    mb = Msg_box(self.fig, self.ax_wf, w, h, onclick = self._on_click_local)
+                    self.msg_boxes[self.msg_box_serial] = mb
+                self.msg_boxes[self.msg_box_serial].set_properties(x, y, message)
+                self.message_box_artists += mb.artists
     
     def _on_click_local(self, clickargs):
         if clickargs['action'] == "MESSAGE_CLICK":
@@ -239,23 +276,14 @@ class Gui:
         self.band_stats.ax.set_title(txt, fontsize = 10)
 
     def after_new_search(self, curr_cycle):
-        self._refresh_sidebars()
+        #self._refresh_sidebars()
         to_hide = [mb for mb in self.msg_boxes.values() if mb.visible and mb.cycle == curr_cycle]
         for mb in to_hide:
             mb.hide()
 
     def set_message(self, message):
-        wf, o = self.waterfall_data, message['origin']
-        x = int(o['t0'] / wf['dt'] + o['odd_even'] * wf['pixels_per_cycle'])
-        y = int(o['f0'] / wf['df'])
-        w, h = wf['sig_w'], wf['sig_h']
-        self.msg_box_serial = (self.msg_box_serial + 1) % MAX_MSG_BOXES
-        if not self.msg_box_serial in self.msg_boxes:
-            mb = Msg_box(self.fig, self.ax_wf, w, h, onclick = self._on_click_local)
-            self.msg_boxes[self.msg_box_serial] = mb
-            self.message_box_artists.append(mb.patch)
-            self.message_box_artists.append(mb.text_inst)
-        self.msg_boxes[self.msg_box_serial].set_properties(x, y, message)
+        self.msg_box_queue.put(message)
+
 
 
 
