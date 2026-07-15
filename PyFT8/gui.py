@@ -103,16 +103,16 @@ class Msg_box:
         self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
 
     def set_properties(self, x, y, message):
-        self.patch.set_x(x)
-        self.patch.set_y(y)
-        self.text_inst.set_x(x)
-        self.text_inst.set_y(y+1)
+        self.patch.set_xy((x, y))
+        self.text_inst.set_position((x, y+1))
         self.text_inst.set_text(message['display_text'])
         message_type_params = MESSAGE_TYPES[message['message_type']]
         self.text_inst.set_color(message_type_params['fg'])
         self.patch.set_facecolor(message_type_params['bg'])
         self.message = message
         self.cycle = message['origin']['odd_even']
+        self.patch.set_visible(True)
+        self.text_inst.set_visible(True)
 
     def hide(self):
         self.patch.set_visible(False)
