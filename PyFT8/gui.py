@@ -127,7 +127,6 @@ class Msg_box:
 class Gui:
     def __init__(self, config, on_click, history, console_print, get_band_info, wf_data, hearing_me_since_mins = 5):
         self.plt = plt
-        self.plt.ion()
         self.fig = plt.figure(figsize = (10,10), facecolor=(.18, .71, .71, 0.4))
         self.fig.canvas.manager.set_window_title('PyFT8 by G1OJS')
         self.config, self.on_click, self.history = config, on_click, history
