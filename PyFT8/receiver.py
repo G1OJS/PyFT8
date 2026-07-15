@@ -497,7 +497,7 @@ class Candidate:
         
 class Receiver():
     def __init__(self, search_freq_range, input_device_keywords, on_decode = None, wav_files = None, verbose = False,
-                 sync_score_min = 100, max_cands = 1000, main_demap_start = 13):
+                 sync_score_min = 100, max_cands = 1000, main_demap_start = 13, search_timerange = [-1.7, 3.8]):
         self.audio_in = AudioIn(search_freq_range, input_device_keywords, wav_files)
         self.sync_score_min, self.max_cands = sync_score_min, max_cands
         self.wav_files = wav_files
@@ -505,7 +505,6 @@ class Receiver():
         self.candidates = []
         self.verbose = verbose
         self.aftersearch_cb = None
-        search_timerange = [-1.7, 3.8]
         self.search_h0_range = [int((t+0.5)*self.audio_in.search_hps*SYM_RATE) for t in search_timerange]
         self.search_start_hop = self.search_h0_range[1] + 43 * self.audio_in.search_hps
         self.main_demap_start = int(main_demap_start * self.audio_in.search_hps*SYM_RATE)
@@ -566,7 +565,6 @@ class Receiver():
             to_decode = []
             for c in self.candidates:
 
-                """
                 if not c.fast_decode_tried:
                     odd_even_offset = c.origin['odd_even'] * self.audio_in.search_hops_per_cycle
                     cand_abs_h0_idx = (c.origin['h0_idx'] + PAYLOAD_SYMB_IDXS[0] - 1) * hopspersym + odd_even_offset
@@ -577,7 +575,7 @@ class Receiver():
                         last_spectrum_calc = self.audio_in.search_grid_ptr
                         c.fast_demap_decode(all_audio_spectrum, duplicate_filter)
                         c.fast_decode_tried = True
-                """
+            
                 main_demap_start = self.main_demap_start + c.origin['odd_even'] * self.audio_in.search_hops_per_cycle
                 if not c.decode_completed and not c.demap_started and self.audio_in.search_grid_ptr > main_demap_start:
                     odd_even_offset = c.origin['odd_even'] * self.audio_in.search_hops_per_cycle
