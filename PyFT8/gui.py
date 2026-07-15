@@ -93,28 +93,27 @@ class ButtonBox:
 
 MESSAGE_TYPES = {'generic':{'bg':'blue', 'fg':'white'}, 'CQ':{'bg':'green', 'fg':'white'},'from_me': {'bg':'yellow', 'fg':'white'}, 'to_me':{'bg':'red', 'fg':'white'}} 
 class Msg_box:
-    def __init__(self, fig, ax, message, onclick):
+    def __init__(self, fig, ax, w, h, onclick):
         from matplotlib.patches import Rectangle
         self.onclick = onclick
-        self.cycle = message['cycle']
-        p = message['position']
-        rect = Rectangle((0, 0), width=p['sig_w'], height=p['sig_h'], alpha=0.6, edgecolor='lime', lw=2)
+        rect = Rectangle((0, 0), width=w, height=h, alpha=0.6, edgecolor='lime', lw=2)
         self.patch = ax.add_patch(rect)
-        self.text_inst = ax.text(0, p['y'] + 1, '', fontsize='small', fontweight='bold', clip_on = True )
+        self.text_inst = ax.text(0, 0, '', fontsize='small', fontweight='bold', clip_on = True )
         self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
         self.visible = False
         
-    def set_properties(self, message):
-        self.message, self.message_type = message, message['message_type']
-        p, display_text = message['position'], message['display_text']
-        self.patch.set_x(p['x'])
-        self.text_inst.set_x(p['x'])
-        self.patch.set_y(p['y'])
-        self.text_inst.set_y(p['y']+1)
+    def set_properties(self, x, y, message):
+        self.message = message
+        self.message_type = message['message_type']
+        self.cycle = message['origin']['odd_even']
+        self.patch.set_x(x)
+        self.text_inst.set_x(x)
+        self.patch.set_y(y)
+        self.text_inst.set_y(y+1)
         self.patch.set_visible(True)
         self.text_inst.set_visible(True)
         self.visible = True
-        self.text_inst.set_text(display_text)
+        self.text_inst.set_text(message['display_text'])
         
         message_type_params = MESSAGE_TYPES[self.message_type]
         self.text_inst.set_color(message_type_params['fg'])
@@ -245,36 +244,18 @@ class Gui:
         for mb in to_hide:
             mb.hide()
 
-    def set_message(self, c):
-        myCall = self.config['station']['call']
-        message_type_value = 0 + 1*(c.msg_tuple[1] == myCall) + 2*(c.msg_tuple[0] == myCall) + 3*(c.msg_tuple[0].startswith('CQ') and not c.msg_tuple[1] == myCall)
-        message_type = ['generic', 'from_me', 'to_me', 'CQ'][message_type_value]
-        wf, o = self.waterfall_data, c.origin
+    def set_message(self, message):
+        wf, o = self.waterfall_data, message['origin']
         x = int(o['t0'] / wf['dt'] + o['odd_even'] * wf['pixels_per_cycle'])
         y = int(o['f0'] / wf['df'])
+        w, h = wf['sig_w'], wf['sig_h']
         self.msg_box_serial = (self.msg_box_serial + 1) % MAX_MSG_BOXES
-        c.msg_box_id = self.msg_box_serial
-        display_text = f"{' '.join(c.msg_tuple)}"
-        if self.history:
-            current_band = self.get_band_info()['current_band']
-            geo_text = self.history.get_geo_text(c.msg_tuple[1], c.msg_tuple[2])
-            wb_time = self.history.log_cache.get(c.msg_tuple[1],'') 
-            wb_text = f"wb: {time_utils.format_duration(time_utils.time() - float(wb_time))}" if wb_time else ''
-            hearing_me = '# ' if self.history.is_hearing_me(current_band, c.msg_tuple[1]) else ' '
-            display_text = f"{display_text} {hearing_me}{wb_text} {geo_text}"
-            
-        message = { 'message_type':message_type, 'cycle':c.origin['odd_even'], 'msg_box_id':c.msg_box_id,
-                    'position': {'x':x, 'y':y, 'sig_w':wf['sig_w'], 'sig_h':wf['sig_h']},
-                    'msg_tuple':c.msg_tuple, 'decode_completed':c.decode_completed,
-                    'new_qso_info': {'call':c.msg_tuple[1], 'rst_sent': f"{c.snr:+03d}", 'grid_rpt':c.msg_tuple[2], 'my_tx_cycle': 1-c.origin['odd_even']},
-                    'display_text': display_text}
-        
-        if not c.msg_box_id in self.msg_boxes:
-            mb = Msg_box(self.fig, self.ax_wf, message, onclick = self._on_click_local)
-            self.msg_boxes[c.msg_box_id] = mb
+        if not self.msg_box_serial in self.msg_boxes:
+            mb = Msg_box(self.fig, self.ax_wf, w, h, onclick = self._on_click_local)
+            self.msg_boxes[self.msg_box_serial] = mb
             self.message_box_artists.append(mb.patch)
             self.message_box_artists.append(mb.text_inst)
-        self.msg_boxes[c.msg_box_id].set_properties(message)
+        self.msg_boxes[self.msg_box_serial].set_properties(x, y, message)
 
 
 
