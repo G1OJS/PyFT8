@@ -38,7 +38,7 @@ def get_config(config_folder):
             station_grid = input(f"Please enter your Maidenhead locator (at least 4 characters, you can edit this later): ")
         config['station'] = {'call':station_callsign, 'grid':station_grid}
         config['bands'] = {'20m':14.074}
-        config['gui'] = {'loc':'km_deg', 'wb':'Y', 'show_all_messages':'Y'}
+        config['gui'] = {'loc':'km_deg', 'wb':'Y'}
         config['hamlib_rig'] = {'rigctld':'C:/WSJT/wsjtx/bin/rigctld-wsjtx', 'port': 'COM4', 'baud_rate':9600, 'model':3070}
         config['pskreporter'] = {'upload':'Y'}
         with open(ini_file, 'w') as f:
@@ -90,7 +90,7 @@ def on_decode_non_time_critical():
             time_utils.sleep(0.05)
             c, message = decode_queue_non_time_critical.get()
             if c.msg_tuple[1] != 'not':
-                if gui and config['gui']['show_all_messages']=='Y' and not message['priority']:
+                if gui and not message['priority']:
                     gui.set_message(message)                   
                 if history:
                     history.write_all_txt_row(c.cyclestart['string'], float(band_info['fMHz']), 'Rx', 'FT8', c.snr, c.dt, c.fHz, ' '.join(c.msg_tuple))
