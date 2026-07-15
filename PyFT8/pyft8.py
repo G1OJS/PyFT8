@@ -60,7 +60,7 @@ def on_decode(c):
     global decode_queue_non_time_critical
     t = time_utils.time()
     screen_format = f"{c.cyclestart['string']} {c.snr:+03d} {c.dt:4.1f} {c.fHz:4.0f} ~ {' '.join(c.msg_tuple)}"
-    print(f"{screen_format:50s} decoded@ {c.decode_completed % 15:5.1f}s")
+    #print(f"{screen_format:50s} decoded@ {c.decode_completed % 15:5.1f}s")
     if gui:
         message_type_value = 0 + 1*(c.msg_tuple[1] == myCall) + 2*(c.msg_tuple[0] == myCall) + 3*(c.msg_tuple[0].startswith('CQ') and not c.msg_tuple[1] == myCall)
         message_type = ['generic', 'from_me', 'to_me', 'CQ'][message_type_value]
@@ -73,7 +73,7 @@ def on_decode(c):
             hearing_me = '# ' if history.is_hearing_me(current_band, c.msg_tuple[1]) else ' '
             display_text = f"{display_text} {hearing_me}{wb_text} {geo_text}"
             
-        message = { 'message_type':message_type, 'origin':c.origin,
+        message = { 'message_type':message_type, 'origin':c.origin, 'short_msg':' '.join(c.msg_tuple),
                     'msg_tuple':c.msg_tuple, 'decode_completed':c.decode_completed,
                     'new_qso_info': {'call':c.msg_tuple[1], 'rst_sent': f"{c.snr:+03d}", 'grid_rpt':c.msg_tuple[2], 'my_tx_cycle': 1-c.origin['odd_even']},
                     'display_text': display_text}
@@ -175,7 +175,7 @@ def cli():
         adif_logging = ADIF(f"{config_folder}/PyFT8.adi")
         qso_manager = QSO_manager(myCall, myGrid, console_print, soundcard_out.transmit_audio_data_bytes, rig, rx.audio_in.waterfall_data, adif_logging)
         history = History(config_folder, myCall, myGrid, PSKR_REFRESH_MINS)
-        gui = Gui(config, qso_manager.on_click, history, console_print, qso_manager.get_band_info)
+        gui = Gui(config, qso_manager.on_click, history, console_print, qso_manager.get_band_info, rx.audio_in.waterfall_data)
         rx.register_aftersearch_cb(gui.after_new_search)
         history.incorporate_log_data(adif_logging.cache)
         history.start_collect_new()
@@ -197,7 +197,7 @@ def cli():
             pass
     else:
         gui.set_bandstats_title(f"Pskreporter Spots\nto/from {config['station']['grid'][:4]} <{PSKR_REFRESH_MINS:.0f} mins")
-        gui.plot_loop(rx.audio_in.waterfall_data)
+        gui.plt.show()
 
 
 

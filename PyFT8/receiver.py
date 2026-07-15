@@ -504,7 +504,7 @@ class Receiver():
         self.on_decode = on_decode
         self.candidates = []
         self.verbose = verbose
-        self.presearch_cb = None
+        self.aftersearch_cb = None
         search_timerange = [-1.7, 3.8]
         self.search_h0_range = [int((t+0.5)*self.audio_in.search_hps*SYM_RATE) for t in search_timerange]
         self.search_start_hop = self.search_h0_range[1] + 43 * self.audio_in.search_hps

@@ -6,7 +6,6 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Slider, Button
 from PyFT8.time_utils import time_utils
 
-MAX_MSG_BOXES = 50
 rcParams['toolbar'] = 'None'
 MAIN_TEXT_COLOR = '#f0f9fa'
 TEXT_BACKGROUND_COLOR = '#2a2b2b'
@@ -92,16 +91,6 @@ class ButtonBox:
         if text != self.label2:
             self.label2.set_text(text)
 
-def text_to_rgba(s, *, dpi, **kwargs):
-    fig = Figure(facecolor="none")
-    fig.text(0, 0, s, **kwargs)
-    with BytesIO() as buf:
-        fig.savefig(buf, dpi=dpi, format="png", bbox_inches="tight",
-                    pad_inches=0)
-        buf.seek(0)
-        rgba = np.asarray(Image.open(buf))
-    return rgba
-
 MESSAGE_TYPES = {'generic':{'bg':'blue', 'fg':'white'}, 'CQ':{'bg':'green', 'fg':'white'},'from_me': {'bg':'yellow', 'fg':'white'}, 'to_me':{'bg':'red', 'fg':'white'}} 
 class Msg_box:
     def __init__(self, fig, ax, w, h, onclick):
@@ -109,12 +98,11 @@ class Msg_box:
         self.fig, self.ax = fig, ax
         self.w, self.h = w, h
         self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
-        self.visible = False
         self.text_img = None
         self.text_inst, self.patch = None, None
         self.artists = [self.text_inst, self.patch]
 
-    def set_properties(self, x, y, message, text_to_img = False):
+    def set_properties(self, x, y, message):
         from matplotlib.patches import Rectangle
         rect = Rectangle((x, y), width=self.w, height=self.h, alpha=1, edgecolor='lime', lw=1)
         self.patch = self.ax.add_patch(rect)
@@ -123,27 +111,26 @@ class Msg_box:
         message_type_params = MESSAGE_TYPES[message['message_type']]
         self.text_inst.set_color(message_type_params['fg'])
         self.patch.set_facecolor(message_type_params['bg'])
-        if text_to_img:
-            text_img = self.fig.canvas.copy_from_bbox(self.text_inst.get_tightbbox())
-            self.artists = [self.fig.figimage(text_img, x, y)]
-        else:
-            self.artists = [self.text_inst, self.patch]
+        """
+        bbox = self.text_inst.get_tightbbox()
+        text_img = self.fig.canvas.copy_from_bbox(bbox)
+        self.artists = [self.fig.figimage(text_img, xo=x, yo=y)]
+        """
         self.message = message
         self.cycle = message['origin']['odd_even']
-        self.visible = True
 
     def hide(self):
-        for a in self.artists:
-            a.set_visible(False)
-        self.visible = False
+        self.patch.set_visible(False)
+        self.text_inst.set_visible(False)
 
     def _onclick(self, event):
-        b, _ = self.text_img.contains(event)
-        if(b):
-            self.onclick({'action': 'MESSAGE_CLICK', 'message':self.message})
+        if self.patch is not None:
+            b, _ = self.patch.contains(event)
+            if(b):
+                self.onclick({'action': 'MESSAGE_CLICK', 'message':self.message})
     
 class Gui:
-    def __init__(self, config, on_click, history, console_print, get_band_info, hearing_me_since_mins = 5):
+    def __init__(self, config, on_click, history, console_print, get_band_info, wf_data, hearing_me_since_mins = 5):
         self.plt = plt
         self.plt.ion()
         self.fig = plt.figure(figsize = (10,10), facecolor=(.18, .71, .71, 0.4))
@@ -153,49 +140,64 @@ class Gui:
         self.wf_top = 1-L['pmargin']-L['banner_height']-L['vsep1']
         self.wf_left = L['pmargin']+L['sidebar_width']+L['hsep1']
         self.hearing_me_since_mins = hearing_me_since_mins
+        self.wf_data = wf_data
         self.sidebars_last_update = 0
         self.sidebars_page = 0
         self._make_axes()
-        self.msg_box_queue = queue.Queue()
-        self.msg_boxes = {}
-        self.msg_box_serial = 0
-        self.image = None
+        self.gui_queue = queue.Queue()
+        self.active_msg_boxes = []
+        self.inactive_msg_boxes = []
+        self.image = self.ax_wf.imshow(self.wf_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self._make_buttons()
-        self.message_box_artists = []
+        self.tlast = 0
         self.sidebars_artists = [*[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes],
                                  *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists]
 
-    def plot_loop(self, wf_data):
-        w, h = wf_data['sig_w'], wf_data['sig_h']
-        self.plt.pause(0.1)
-        tlast = 0
-        while True:
-            t = time_utils.time()
-            print(t - tlast)
-            tlast = t
-            self.fig.canvas.flush_events()
-            
-            if self.image is None:
-                self.image = self.ax_wf.imshow(wf_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
-            self.image.set_data(wf_data['data'])
-        
-            while not self.msg_box_queue.empty():
-                message = self.msg_box_queue.get()
-                o = message['origin']
-                x = int(o['t0'] / wf_data['dt'] + o['odd_even'] * wf_data['pixels_per_cycle'])
-                y = int(o['f0'] / wf_data['df'])
-                self.msg_box_serial = (self.msg_box_serial + 1) % MAX_MSG_BOXES
-                if not self.msg_box_serial in self.msg_boxes:
-                    mb = Msg_box(self.fig, self.ax_wf, w, h, onclick = self._on_click_local)
-                    self.msg_boxes[self.msg_box_serial] = mb
-                self.msg_boxes[self.msg_box_serial].set_properties(x, y, message)
-                self.message_box_artists += mb.artists
+        self.ani = FuncAnimation(self.fig, self._animate, interval = 50, frames=(100000), blit = False)
+
+    def _animate(self, frames):
+        t = time_utils.time()
+        print(t - self.tlast)
+        self.tlast = t
+
+        self.image.set_data(self.wf_data['data'])
     
+        while not self.gui_queue.empty():
+            action, data = self.gui_queue.get()
+            if action == "clear_cycle":
+                curr_cycle = data
+                self._clear_msg_boxes(curr_cycle)
+            else:
+                x, y, message = data
+                mb = self._get_message_box()
+                self.active_msg_boxes.append(mb)
+                mb.set_properties(x, y, message)
+
+        p = [mb.patch for mb in self.active_msg_boxes]
+        t = [mb.text_inst for mb in self.active_msg_boxes]
+                
+        return [self.image, *p, *t, *self.sidebars_artists] 
+
     def _on_click_local(self, clickargs):
         if clickargs['action'] == "MESSAGE_CLICK":
             self.console_print(f"[GUI] Clicked on message '{clickargs['message']['msg_tuple']}'")
         self.on_click(clickargs)
         self._refresh_sidebars()
+
+    def _clear_msg_boxes(self, curr_cycle):
+        self._refresh_sidebars()
+        to_hide = [mb for mb in self.active_msg_boxes if mb.cycle == curr_cycle]
+        for mb in to_hide:
+            self.inactive_msg_boxes.append(mb)
+            self.active_msg_boxes.remove(mb)
+            mb.hide()
+
+    def _get_msg_box(self):
+        if len(self.inactive_msg_boxes) == 0:
+            mb = Msg_box(self.fig, self.ax_wf, self.wf_data['sig_w'], self.wf_data['sig_h'], onclick = self._on_click_local)
+        else:
+            mb = self.inactive_msg_boxes.pop()
+        return mb
 
     def _make_axes(self):
         self.ax_wf = self.fig.add_axes([self.wf_left, L['pmargin'], 1-self.wf_left-L['pmargin'], self.wf_top-L['pmargin']])
@@ -276,13 +278,13 @@ class Gui:
         self.band_stats.ax.set_title(txt, fontsize = 10)
 
     def after_new_search(self, curr_cycle):
-        #self._refresh_sidebars()
-        to_hide = [mb for mb in self.msg_boxes.values() if mb.visible and mb.cycle == curr_cycle]
-        for mb in to_hide:
-            mb.hide()
-
+        self.gui_queue.put(('clear_cycle', curr_cycle))
+            
     def set_message(self, message):
-        self.msg_box_queue.put(message)
+        o = message['origin']
+        x = int(o['t0'] / self.wf_data['dt'] + o['odd_even'] * self.wf_data['pixels_per_cycle'])
+        y = int(o['f0'] / self.wf_data['df'])
+        self.gui_queue.put(('add_message', (x, y, message)))
 
 
 
