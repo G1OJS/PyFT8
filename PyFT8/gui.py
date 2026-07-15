@@ -94,28 +94,23 @@ class ButtonBox:
 MESSAGE_TYPES = {'generic':{'bg':'blue', 'fg':'white'}, 'CQ':{'bg':'green', 'fg':'white'},'from_me': {'bg':'yellow', 'fg':'white'}, 'to_me':{'bg':'red', 'fg':'white'}} 
 class Msg_box:
     def __init__(self, fig, ax, w, h, onclick):
+        from matplotlib.patches import Rectangle
         self.onclick = onclick
         self.fig, self.ax = fig, ax
-        self.w, self.h = w, h
+        rect = Rectangle((0, 0), w, h, alpha=1, edgecolor='lime', lw=1)
+        self.patch = self.ax.add_patch(rect)
+        self.text_inst = self.ax.text(0, 0, '', fontsize='small', fontweight = 'bold' )
         self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
-        self.text_img = None
-        self.text_inst, self.patch = None, None
-        self.artists = [self.text_inst, self.patch]
 
     def set_properties(self, x, y, message):
-        from matplotlib.patches import Rectangle
-        rect = Rectangle((x, y), width=self.w, height=self.h, alpha=1, edgecolor='lime', lw=1)
-        self.patch = self.ax.add_patch(rect)
-        self.text_inst = self.ax.text(x, y+1, '', fontsize='small', fontweight = 'bold' )
+        self.patch.set_x(x)
+        self.patch.set_y(y)
+        self.text_inst.set_x(x)
+        self.text_inst.set_y(y+1)
         self.text_inst.set_text(message['display_text'])
         message_type_params = MESSAGE_TYPES[message['message_type']]
         self.text_inst.set_color(message_type_params['fg'])
         self.patch.set_facecolor(message_type_params['bg'])
-        """
-        bbox = self.text_inst.get_tightbbox()
-        text_img = self.fig.canvas.copy_from_bbox(bbox)
-        self.artists = [self.fig.figimage(text_img, xo=x, yo=y)]
-        """
         self.message = message
         self.cycle = message['origin']['odd_even']
 
@@ -175,7 +170,7 @@ class Gui:
 
         p = [mb.patch for mb in self.active_msg_boxes]
         t = [mb.text_inst for mb in self.active_msg_boxes]
-                
+        
         return [self.image, *p, *t, *self.sidebars_artists] 
 
     def _on_click_local(self, clickargs):
