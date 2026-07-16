@@ -47,10 +47,11 @@ def get_cumulative_from_text_files(i0, i1, postfix):
     return times
 
 def on_decode(c):
-
+    grid_ptr = rx.audio_in.search_grid_ptr
+    decode_time_from_grid = 30* grid_ptr / rx.audio_in.search_hops_per_grid
     print(f"{len(py_times):03d}: {' '.join(c.msg_tuple):30s} demap_start: {c.demap_started:5.1f} " +
-          f"decoded at: {c.decode_time_from_grid:6.2f}s h0: {c.origin['h0_idx']:3d} " +
-          f"Sync score: {c.origin['score']:3.0f} ftwk_steps:{c.ftweak:3d} ttwk_steps:{c.ttweak:3d} n_sync_matches: {c.n_sync_matches:2d} LLR_SD: {c.llr_sd:5.1f} Pass: {c.ipass:2d} n_its: {c.n_its:3d} ")
+          f"decoded at: {decode_time_from_grid:6.2f}s h0: {c.origin['h0_idx']:3d} " +
+          f"Sync score: {c.origin['score']:3.0f}  n_sync_matches: {c.n_sync_matches:2d} LLR_SD: {c.llr_sd:5.1f} Pass: {c.ipass:2d} n_its: {c.n_its:3d} ")
     if c.msg_tuple is not None:
         py_times.append(time_utils.time() - t_start)
 
