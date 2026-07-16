@@ -65,11 +65,10 @@ def on_decode(c):
     if gui:
         message_type_value = 0 + 1*(c.msg_tuple[1] == myCall) + 2*(c.msg_tuple[0] == myCall) + 3*(c.msg_tuple[0].startswith('CQ') and not c.msg_tuple[1] == myCall)
         message_type = ['generic', 'from_me', 'to_me', 'CQ'][message_type_value]
-        display_text = f"{' '.join(c.msg_tuple)}"
         message = { 'message_type':message_type, 'origin':c.origin, 'short_msg':' '.join(c.msg_tuple), 'priority':False,
                     'msg_tuple':c.msg_tuple, 'decode_completed':c.decode_completed,
                     'new_qso_info': {'call':c.msg_tuple[1], 'rst_sent': f"{c.snr:+03d}", 'grid_rpt':c.msg_tuple[2], 'my_tx_cycle': 1-c.origin['odd_even']},
-                    'display_text': display_text}
+                    'display_text': f"{' '.join(c.msg_tuple)}"}
         if message_type == 'to_me' or message_type == 'CQ':
             message.update({'priority':True})
             if history:
@@ -78,7 +77,7 @@ def on_decode(c):
                 wb_time = history.log_cache.get(c.msg_tuple[1],'') 
                 wb_text = f"wb: {time_utils.format_duration(time_utils.time() - float(wb_time))}" if wb_time else ''
                 hearing_me = '# ' if history.is_hearing_me(current_band, c.msg_tuple[1]) else ' '
-                message.update({'display_text':f"{display_text} {hearing_me}{wb_text} {geo_text}"})            
+                message.update({'display_text':f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {geo_text}"})            
             gui.set_message(message)
 
         decode_queue_non_time_critical.put((c, message))

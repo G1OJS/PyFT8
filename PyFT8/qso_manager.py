@@ -9,10 +9,6 @@ class QSO_manager:
         self.transmit_audio_data_bytes = transmit_audio_data_bytes
         self.get_band_info = get_band_info
         self.find_clear_freq = find_clear_freq
-        self.qso_info = {'operator':myCall, 'station_callsign':myCall, 'my_gridsquare':myGrid, 'mode':'FT8', 
-                        'call':None, 'gridsquare':None, 'rst_sent':None, 'rst_rcvd': None, 
-                        'qso_date':None, 'qso_date_off':None, 'time_on':None, 'time_off':None,
-                        'band':None, 'freq':None}
         self.adif_logging = adif_logging
         self.qso_active = False
         self.tx_payload = None
@@ -23,6 +19,11 @@ class QSO_manager:
         self.tx_freq = 750
         self.console_print(f"[PyFT8] QSO handler started for {self.myCall}")
         threading.Thread(target = self._transmit_daemon, daemon = True).start()
+        self.clear_qso()
+
+    def clear_qso(self):
+        self.qso_active = False
+        self.qso_info = {'operator':self.myCall, 'station_callsign':self.myCall, 'my_gridsquare':self.myGrid, 'mode':'FT8'}
 
     def on_click(self, clickargs):
         btn_action = clickargs['action']
@@ -31,7 +32,8 @@ class QSO_manager:
             self.console_print("Please select a band before transmitting", color = 'red')
             return
         
-        if btn_action == "CQ":            
+        if btn_action == "CQ":
+            self.clear_qso()
             self.tx_cycle = time_utils.odd_even()
             if time_utils.cycle_time() > MAX_TX_START_CYCLETIME:
                 self.tx_cycle = 1 - self.tx_cycle 
@@ -39,10 +41,10 @@ class QSO_manager:
         if btn_action == "RPT_LAST":
             self.tx_payload = self.last_tx_payload
         if btn_action == "TX_OFF":
+            #self.clear_qso()
             self.console_print("[PyFT8] Set PTT Off")
             self.rig.ptt_off()
             self.tx_payload = None
-            self.qso_active = False
         if btn_action == "MESSAGE_CLICK":
             message = clickargs['message']
             message_type = message['message_type']
@@ -50,7 +52,8 @@ class QSO_manager:
             reply = ""
             
             if message_type == "CQ" or message_type == "to_me":
-                if not self.qso_active or message_type == "CQ":
+                if (not self.qso_active) or message_type == "CQ":
+                    self.clear_qso()
                     gmt = time.gmtime()
                     self.qso_info.update({'call':new_qso_info['call'],
                                          'time_on': time.strftime("%H%M%S", gmt), 'qso_date':time.strftime("%Y%m%d", gmt),
@@ -69,17 +72,17 @@ class QSO_manager:
                 self.qso_info.update({'gridsquare': grid_rpt})
 
             if message_type == "CQ":
-                reply = f"{new_qso_info['call']} {self.myCall} {self.myGrid[:4]}"
+                reply = f"{self.qso_info['call']} {self.myCall} {self.myGrid[:4]}"
                     
             if message_type == "to_me":
                 rst_sent = self.qso_info['rst_sent']
-                reply = f"{new_qso_info['call']} {self.myCall} {rst_sent}"
+                reply = f"{self.qso_info['call']} {self.myCall} {rst_sent}"
                 if any([m for m in ['+','-'] if m in grid_rpt]):
-                    reply = f"{new_qso_info['call']} {self.myCall} R{rst_sent}"
+                    reply = f"{self.qso_info['call']} {self.myCall} R{rst_sent}"
                 if any([m for m in ['R+','R-','RRR'] if m in grid_rpt]):
-                    reply = f"{new_qso_info['call']} {self.myCall} RR73"
+                    reply = f"{self.qso_info['call']} {self.myCall} RR73"
                 if grid_rpt == 'RR73':
-                    reply = f"{new_qso_info['call']} {self.myCall} 73"
+                    reply = f"{self.qso_info['call']} {self.myCall} 73"
 
             self._set_tx_payload(reply)
 
@@ -89,7 +92,7 @@ class QSO_manager:
                     self.qso_info.update({'time_off': time.strftime("%H%M%S", gmt), 'qso_date_off':time.strftime("%Y%m%d", gmt)})
                     self.adif_logging.log(self.qso_info)
                     self.console_print(f"[PyFT8] Logged QSO with {self.qso_info['call']}")
-                self.qso_active = False
+                self.clear_qso()
 
     def _set_tx_payload(self, msg_text):
         self.console_print(f"[QSO] Set transmit message to '{msg_text}' (cyc {self.tx_cycle}, {self.tx_freq:5.1f} Hz)")
