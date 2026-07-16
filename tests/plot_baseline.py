@@ -21,16 +21,13 @@ avg_cycle = 15.1
 ws_times = get_cumulative_from_text_files(i0, i1, "_wsjtx_2.7.0_NORM.txt")
 fl_times = get_cumulative_from_text_files(i0, i1, "_ft8_lib.txt")
     
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize = (9,9))
 ws_line = ax.plot(ws_times, np.array(range(len(ws_times))), label = 'WSJT-X', color = 'gray')[0]
-ft_line = ax.plot(fl_times, np.array(range(len(fl_times))), label = 'ft8_lib', color = 'lightgreen')[0]
-
-
-
-for filename in ['baseline - min_search_start=11.5.pkl', 'baseline - min_search_start=12.pkl', 'baseline - min_search_start=13.pkl','baseline - with fast decode path.pkl']:
-    with open(filename, 'rb') as f:
-        py_times = pickle.load(f)
-        ax.plot(py_times, np.array(range(len(py_times))), label = 'PyFT8 ' + filename)
+filename ='baseline.pkl'
+with open(filename, 'rb') as f:
+    py_times = pickle.load(f)
+    ax.plot(py_times, np.array(range(len(py_times))), label = 'PyFT8 ' + filename, color = 'lightgreen')
+ft_line = ax.plot(fl_times, np.array(range(len(fl_times))), label = 'ft8_lib', color = 'blue')[0]
         
 ax.set_xlabel("Time, seconds")
 ax.set_ylabel("Cumulative decodes (unique per cycle)")
