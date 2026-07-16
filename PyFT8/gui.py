@@ -125,12 +125,14 @@ class Msg_box:
                 self.onclick({'action': 'MESSAGE_CLICK', 'message':self.message})
     
 class Gui:
-    def __init__(self, config, on_click, history, console_print, get_band_info, wf_data, hearing_me_since_mins = 5):
+    def __init__(self, config, rig, history, console_print, wf_data, hearing_me_since_mins = 5):
+        self.rig = rig
+        self.on_click = None
         self.plt = plt
         self.fig = plt.figure(figsize = (10,10), facecolor=(.18, .71, .71, 0.4))
         self.fig.canvas.manager.set_window_title('PyFT8 by G1OJS')
-        self.config, self.on_click, self.history = config, on_click, history
-        self.console_print, self.get_band_info = console_print, get_band_info
+        self.config, self.history = config, history
+        self.console_print = console_print
         self.wf_top = 1-L['pmargin']-L['banner_height']-L['vsep1']
         self.wf_left = L['pmargin']+L['sidebar_width']+L['hsep1']
         self.hearing_me_since_mins = hearing_me_since_mins
@@ -144,10 +146,17 @@ class Gui:
         self.image = self.ax_wf.imshow(self.wf_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self._make_buttons()
         self.tlast = 0
+        self.band_info = {'current_band': None, 'fMHz':0, 'time_set':0}
         self.sidebars_artists = [*[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes],
                                  *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists]
 
         self.ani = FuncAnimation(self.fig, self._animate, interval = 250, frames=(100000), blit = False)
+
+    def register_onclick(self, on_click):
+        self.on_click = on_click
+
+    def get_band_info(self):
+        return self.band_info
 
     def _animate(self, frames):
         #t = time_utils.time()
@@ -175,6 +184,12 @@ class Gui:
         #return [self.image, *p, *t, *self.sidebars_artists] 
 
     def _on_click_local(self, clickargs):
+        btn_action = clickargs['action']
+        if(btn_action == 'SET_BAND'):
+            current_band, freqMHz = clickargs['band'], clickargs['freq']
+            self.band_info = {'current_band':current_band, 'fMHz':freqMHz, 'time_set':time_utils.time()}
+            self.rig.set_freq_Hz(int(1000000*float(self.band_info['fMHz'])))
+            self.console_print(f"[PyFT8] Set band: {self.band_info['current_band']} {self.band_info['fMHz']}")
         if clickargs['action'] == "MESSAGE_CLICK":
             self.console_print(f"[GUI] Clicked on message '{clickargs['message']['msg_tuple']}'")
         self.on_click(clickargs)
@@ -225,7 +240,7 @@ class Gui:
                             nlines = 30, monospace = True, fontsize = 8)
 
     def _refresh_sidebars(self):
-        current_band = self.get_band_info()['current_band']
+        current_band = self.band_info['current_band']
 
         # band stats
         grd = self.config['station']['grid'][:4]

@@ -80,15 +80,15 @@ def on_decode(c):
                 hearing_me = '# ' if history.is_hearing_me(current_band, c.msg_tuple[1]) else ' '
                 message.update({'display_text':f"{display_text} {hearing_me}{wb_text} {geo_text}"})            
             gui.set_message(message)
-                               
-    decode_queue_non_time_critical.put((c, message))
+
+        decode_queue_non_time_critical.put((c, message))
 
 def on_decode_non_time_critical():
     while True:
-        time_utils.sleep(0.5)
-        band_info = qso_manager.get_band_info() if qso_manager else {'current_band': None, 'fMHz':0, 'time_set':0}
+        time_utils.sleep(0.2)
         while not decode_queue_non_time_critical.empty():
-            time_utils.sleep(0.05)
+            band_info = gui.get_band_info() if qso_manager else {'current_band': None, 'fMHz':0, 'time_set':0}
+            time_utils.sleep(0.01)
             c, message = decode_queue_non_time_critical.get()
             if c.msg_tuple[1] != 'not':
                 if gui and not message['priority']:
@@ -178,12 +178,14 @@ def cli():
 # Initialise the gui
     if not args.no_gui:
         adif_logging = ADIF(f"{config_folder}/PyFT8.adi")
-        qso_manager = QSO_manager(myCall, myGrid, console_print, soundcard_out.transmit_audio_data_bytes, rig, rx.audio_in.waterfall_data, adif_logging)
         history = History(config_folder, myCall, myGrid, PSKR_REFRESH_MINS)
-        gui = Gui(config, qso_manager.on_click, history, console_print, qso_manager.get_band_info, rx.audio_in.waterfall_data)
-        rx.register_aftersearch_cb(gui.after_new_search)
         history.incorporate_log_data(adif_logging.cache)
         history.start_collect_new()
+
+        gui = Gui(config, rig, history, console_print, rx.audio_in.waterfall_data)
+        qso_manager = QSO_manager(myCall, myGrid, console_print, soundcard_out.transmit_audio_data_bytes, rig, rx.find_clear_freq, gui.get_band_info, adif_logging)
+        gui.register_onclick(qso_manager.on_click)
+        rx.register_aftersearch_cb(gui.after_new_search)
 
 # Start pskreporter upload
     if myCall is not None and 'pskreporter' in config.keys():

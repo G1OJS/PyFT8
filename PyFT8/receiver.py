@@ -340,16 +340,16 @@ class Candidate:
             csync[sym_idx, tone] = 1.0
         self.csync_7x7 =  csync.ravel()
         self.fft2_len = 3200
-        self.candidate_spectrum = np.zeros(self.fft2_len, dtype = np.complex64)
+        self.spectrum = np.zeros(self.fft2_len, dtype = np.complex64)
         self.cgrid = np.ones((N_SYMS, 8), dtype = np.complex64)
 
     def get_tfgrid(self, all_audio_spectrum, fb_0, fb_bot, fb_top, tb_0): 
         fft1_len = len(all_audio_spectrum)
 
         # downsample to 32 samples per symbol / 200 samples per sec
-        self.candidate_spectrum[:(fb_top - fb_0)] = all_audio_spectrum[fb_0:fb_top]
-        self.candidate_spectrum[-(fb_0-fb_bot):] = all_audio_spectrum[fb_bot:fb_0]
-        candidate_zsig = np.fft.ifft(self.candidate_spectrum)
+        self.spectrum[:(fb_top - fb_0)] = all_audio_spectrum[fb_0:fb_top]
+        self.spectrum[-(fb_0-fb_bot):] = all_audio_spectrum[fb_bot:fb_0]
+        candidate_zsig = np.fft.ifft(self.spectrum)
 
         # get candidate symbol spectra x79 with df = 1 tone spacing
         symbols = np.empty((N_SYMS, 32), dtype=np.complex64)
@@ -415,9 +415,9 @@ class Candidate:
         
         p = 20*np.log10(self.cgrid[PAYLOAD_SYMB_IDXS, :])
         self.llr, self.llr_sd, self.snr = self.dB_to_llr(p)
-        self.dt = float(self.origin['t0'] - 0.5 + ttweak / 200)
-        self.fHz = float(self.origin['f0'] + ftweak / 16)
-        
+        self.origin.update({'t0': float(self.origin['t0'] + ttweak / 200),
+                            'f0':float(self.origin['f0'] + ftweak / 16) })
+
     def decode(self, max_ipass, duplicate_filter):
         self.duplicate_filter = duplicate_filter
         if self.llr_sd < self.llr_sd_min:
@@ -477,6 +477,7 @@ class Candidate:
         if (key not in self.duplicate_filter):
             self.duplicate_filter.add(key)
             self.origin.update({'dt':self.origin['t0'] - 0.5})
+            self.spectrum, self.cgrid, self.saved_llrs, self.csync = None, None, [], None
             self.on_decode(self)
         
 #============== RECEIVER ===========================================================
@@ -508,6 +509,17 @@ class Receiver():
         
         time_utils.sleep(0.5)
         threading.Thread(target=self.manage_cycle, daemon=True).start()
+
+    def find_clear_freq(self, fmax):
+        from numpy.lib.stride_tricks import sliding_window_view
+        import numpy as np
+        fbin_sum = np.sum(self.audio_in.waterfall_data['data'], axis = 0)
+        windows = sliding_window_view(fbin_sum, self.audio_in.waterfall_data['sig_h'])
+        busy_profile = windows.max(axis=1)
+        f0_idx, fn_idx = int(500/self.audio_in.waterfall_data['df']), int(fmax/self.audio_in.waterfall_data['df'])
+        idx = np.argmin(busy_profile[f0_idx:fn_idx])
+        clearest_frequency = (f0_idx + idx) * self.audio_in.waterfall_data['df']
+        return clearest_frequency
 
     def register_aftersearch_cb(self, aftersearch_cb):
         self.aftersearch_cb = aftersearch_cb

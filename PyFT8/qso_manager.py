@@ -5,8 +5,10 @@ from PyFT8.transmitter import get_ft8_symbols, symbols_to_audio_bytes
 MAX_TX_START_CYCLETIME = 3
 
 class QSO_manager:
-    def __init__(self, myCall, myGrid, console_print, transmit_audio_data_bytes, rig, wf_data, adif_logging):
+    def __init__(self, myCall, myGrid, console_print, transmit_audio_data_bytes, rig, find_clear_freq, get_band_info, adif_logging):
         self.transmit_audio_data_bytes = transmit_audio_data_bytes
+        self.get_band_info = get_band_info
+        self.find_clear_freq = find_clear_freq
         self.qso_info = {'operator':myCall, 'station_callsign':myCall, 'my_gridsquare':myGrid, 'mode':'FT8', 
                         'call':None, 'gridsquare':None, 'rst_sent':None, 'rst_rcvd': None, 
                         'qso_date':None, 'qso_date_off':None, 'time_on':None, 'time_off':None,
@@ -15,20 +17,16 @@ class QSO_manager:
         self.qso_active = False
         self.tx_payload = None
         self.tx_cycle = 0
-        self.wf_data = wf_data
         self.console_print = console_print
         self.rig = rig
-        self.band_info = {'current_band': None, 'fMHz':0, 'time_set':0}
         self.myCall, self.myGrid = myCall, myGrid
         self.tx_freq = 750
         self.console_print(f"[PyFT8] QSO handler started for {self.myCall}")
         threading.Thread(target = self._transmit_daemon, daemon = True).start()
 
-    def get_band_info(self):
-        return self.band_info
-
     def on_click(self, clickargs):
         btn_action = clickargs['action']
+        self.band_info = self.get_band_info()
         if btn_action in ['MESSAGE_CLICK','CQ'] and self.band_info['current_band'] is None:
             self.console_print("Please select a band before transmitting", color = 'red')
             return
@@ -45,12 +43,6 @@ class QSO_manager:
             self.rig.ptt_off()
             self.tx_payload = None
             self.qso_active = False
-        if(btn_action == 'SET_BAND'):
-            current_band, freqMHz = clickargs['band'], clickargs['freq']
-            self.band_info = {'current_band':current_band, 'fMHz':freqMHz, 'time_set':time_utils.time()}
-            self.rig.set_freq_Hz(int(1000000*float(self.band_info['fMHz'])))
-            self.console_print(f"[PyFT8] Set band: {self.band_info['current_band']} {self.band_info['fMHz']}")
-
         if btn_action == "MESSAGE_CLICK":
             message = clickargs['message']
             message_type = message['message_type']
@@ -65,7 +57,8 @@ class QSO_manager:
                                          'band':self.band_info['current_band'], 'freq':self.band_info['fMHz'],
                                          'rst_sent':new_qso_info['rst_sent'] })
                     self.tx_cycle = new_qso_info['my_tx_cycle']
-                    self.tx_freq = self._find_clear_freq(self.band_info['current_band'])
+                    maxfreq = 950 if self.band_info['current_band'] == '60m' else 2500
+                    self.tx_freq = self.find_clear_freq(maxfreq)
                     self.qso_active = True
 
             grid_rpt = new_qso_info['grid_rpt']
@@ -121,15 +114,3 @@ class QSO_manager:
                     self.last_tx_payload = self.tx_payload
                     self.tx_payload = None
 
-    def _find_clear_freq(self, band):
-        from numpy.lib.stride_tricks import sliding_window_view
-        import numpy as np
-        fbin_sum = np.sum(self.wf_data['data'], axis = 0)
-        windows = sliding_window_view(fbin_sum, self.wf_data['sig_h'])
-        busy_profile = windows.max(axis=1)
-        fmax = 950 if band=='60m' else 2000
-        f0_idx, fn_idx = int(500/self.wf_data['df']), int(fmax/self.wf_data['df'])
-        idx = np.argmin(busy_profile[f0_idx:fn_idx])
-        clearest_frequency = (f0_idx + idx) * self.wf_data['df']
-        #print(idx, clearest_frequency, np.mean(self.wf_data['data'][:, idx:idx+self.wf_data['sig_h']]))
-        return clearest_frequency
