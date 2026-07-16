@@ -101,6 +101,7 @@ class Msg_box:
         self.patch = self.ax.add_patch(rect)
         self.text_inst = self.ax.text(0, 0, '', fontsize='small', fontweight = 'bold' )
         self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
+        self.visible = False
 
     def set_properties(self, x, y, message):
         self.patch.set_xy((x, y))
@@ -113,13 +114,16 @@ class Msg_box:
         self.cycle = message['origin']['odd_even']
         self.patch.set_visible(True)
         self.text_inst.set_visible(True)
+        self.visible = True
+
 
     def hide(self):
         self.patch.set_visible(False)
         self.text_inst.set_visible(False)
+        self.visible = False
 
     def _onclick(self, event):
-        if self.patch is not None:
+        if self.visible:
             b, _ = self.patch.contains(event)
             if(b):
                 self.onclick({'action': 'MESSAGE_CLICK', 'message':self.message})
@@ -150,7 +154,7 @@ class Gui:
         self.sidebars_artists = [*[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes],
                                  *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists]
 
-        self.ani = FuncAnimation(self.fig, self._animate, interval = 50, frames=(100000), blit = False)
+        self.ani = FuncAnimation(self.fig, self._animate, interval = 100, frames=(100000), blit = False)
 
     def register_onclick(self, on_click):
         self.on_click = on_click
@@ -163,10 +167,11 @@ class Gui:
         #print(t - self.tlast)
         #self.tlast = t
 
-        self.image.set_data(self.wf_data['data'])
-        if not self.gui_queue.empty():
+        if self.gui_queue.empty():
+            self.image.set_data(self.wf_data['data'])
+        else:
             t0 = time_utils.time()
-            while (not self.gui_queue.empty()) and (time_utils.time()-t0 < 0.2):
+            while (not self.gui_queue.empty()) and (time_utils.time()-t0 < 0.1):
                 action, data = self.gui_queue.get()
                 if action == "clear_cycle":
                     curr_cycle = data

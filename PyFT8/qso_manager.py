@@ -64,35 +64,35 @@ class QSO_manager:
                     self.tx_freq = self.find_clear_freq(maxfreq)
                     self.qso_active = True
 
-            grid_rpt = new_qso_info['grid_rpt']
-            if any([m for m in ['+','-'] if m in grid_rpt]): # grid_rpt == rpt
-                self.qso_info.update({'rst_rcvd': grid_rpt})
-            
-            if not any([m for m in ['+','-','RR','73'] if m in grid_rpt]): # grid_rpt == grid
-                self.qso_info.update({'gridsquare': grid_rpt})
+                grid_rpt = new_qso_info['grid_rpt']
+                if any([m for m in ['+','-'] if m in grid_rpt]): # grid_rpt == rpt
+                    self.qso_info.update({'rst_rcvd': grid_rpt})
+                
+                if not any([m for m in ['+','-','RR','73'] if m in grid_rpt]): # grid_rpt == grid
+                    self.qso_info.update({'gridsquare': grid_rpt})
 
-            if message_type == "CQ":
-                reply = f"{self.qso_info['call']} {self.myCall} {self.myGrid[:4]}"
-                    
-            if message_type == "to_me":
-                rst_sent = self.qso_info['rst_sent']
-                reply = f"{self.qso_info['call']} {self.myCall} {rst_sent}"
-                if any([m for m in ['+','-'] if m in grid_rpt]):
-                    reply = f"{self.qso_info['call']} {self.myCall} R{rst_sent}"
-                if any([m for m in ['R+','R-','RRR'] if m in grid_rpt]):
-                    reply = f"{self.qso_info['call']} {self.myCall} RR73"
-                if grid_rpt == 'RR73':
-                    reply = f"{self.qso_info['call']} {self.myCall} 73"
+                if message_type == "CQ":
+                    reply = f"{self.qso_info['call']} {self.myCall} {self.myGrid[:4]}"
+                        
+                if message_type == "to_me":
+                    rst_sent = self.qso_info['rst_sent']
+                    reply = f"{self.qso_info['call']} {self.myCall} {rst_sent}"
+                    if any([m for m in ['+','-'] if m in grid_rpt]):
+                        reply = f"{self.qso_info['call']} {self.myCall} R{rst_sent}"
+                    if any([m for m in ['R+','R-','RRR'] if m in grid_rpt]):
+                        reply = f"{self.qso_info['call']} {self.myCall} RR73"
+                    if grid_rpt == 'RR73':
+                        reply = f"{self.qso_info['call']} {self.myCall} 73"
 
-            self._set_tx_payload(reply)
+                self._set_tx_payload(reply)
 
-            if reply.endswith("73"): # do last so any log errors don't prevent sending 73
-                if self.adif_logging is not None:
-                    gmt = time.gmtime()
-                    self.qso_info.update({'time_off': time.strftime("%H%M%S", gmt), 'qso_date_off':time.strftime("%Y%m%d", gmt)})
-                    self.adif_logging.log(self.qso_info)
-                    self.console_print(f"[PyFT8] Logged QSO with {self.qso_info['call']}")
-                self.clear_qso()
+                if reply.endswith("73"): # do last so any log errors don't prevent sending 73
+                    if self.adif_logging is not None:
+                        gmt = time.gmtime()
+                        self.qso_info.update({'time_off': time.strftime("%H%M%S", gmt), 'qso_date_off':time.strftime("%Y%m%d", gmt)})
+                        self.adif_logging.log(self.qso_info)
+                        self.console_print(f"[PyFT8] Logged QSO with {self.qso_info['call']}")
+                    self.clear_qso()
 
     def _set_tx_payload(self, msg_text):
         self.console_print(f"[QSO] Set transmit message to '{msg_text}' (cyc {self.tx_cycle}, {self.tx_freq:5.1f} Hz)")
