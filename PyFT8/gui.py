@@ -150,7 +150,7 @@ class Gui:
         self.sidebars_artists = [*[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes],
                                  *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists]
 
-        self.ani = FuncAnimation(self.fig, self._animate, interval = 250, frames=(100000), blit = False)
+        self.ani = FuncAnimation(self.fig, self._animate, interval = 50, frames=(100000), blit = False)
 
     def register_onclick(self, on_click):
         self.on_click = on_click
@@ -163,9 +163,8 @@ class Gui:
         #print(t - self.tlast)
         #self.tlast = t
 
-        if self.gui_queue.empty():
-            self.image.set_data(self.wf_data['data'])
-        else:
+        self.image.set_data(self.wf_data['data'])
+        if not self.gui_queue.empty():
             t0 = time_utils.time()
             while (not self.gui_queue.empty()) and (time_utils.time()-t0 < 0.2):
                 action, data = self.gui_queue.get()
