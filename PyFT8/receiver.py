@@ -491,6 +491,7 @@ class Candidate:
         key = self.cyclestart['string'] + ''.join(self.msg_tuple)
         if (key not in self.duplicate_filter):
             self.duplicate_filter.add(key)
+            self.origin.update({'dt':self.origin['t0'] - 0.5})
             self.on_decode(self)
         
 #============== RECEIVER ===========================================================

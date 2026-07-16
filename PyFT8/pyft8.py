@@ -59,7 +59,8 @@ def console_print(text, color = 'white'):
 def on_decode(c):
     global decode_queue_non_time_critical
     t = time_utils.time()
-    screen_format = f"{c.cyclestart['string']} {c.snr:+03d} {c.dt:4.1f} {c.fHz:4.0f} ~ {' '.join(c.msg_tuple)}"
+    o = c.origin
+    screen_format = f"{c.cyclestart['string']} {c.snr:+03d} {o['dt']:4.1f} {o['f0']:4.0f} ~ {' '.join(c.msg_tuple)}"
     print(f"{screen_format:50s} decoded@ {c.decode_completed % 15:5.1f}s")
     if gui:
         message_type_value = 0 + 1*(c.msg_tuple[1] == myCall) + 2*(c.msg_tuple[0] == myCall) + 3*(c.msg_tuple[0].startswith('CQ') and not c.msg_tuple[1] == myCall)
@@ -93,7 +94,7 @@ def on_decode_non_time_critical():
                 if gui and not message['priority']:
                     gui.set_message(message)                   
                 if history:
-                    history.write_all_txt_row(c.cyclestart['string'], float(band_info['fMHz']), 'Rx', 'FT8', c.snr, c.dt, c.fHz, ' '.join(c.msg_tuple))
+                    history.write_all_txt_row(c.cyclestart['string'], float(band_info['fMHz']), 'Rx', 'FT8', c.snr, c.origin['dt'], c.origin['f0'], ' '.join(c.msg_tuple))
                     history.add_myspots_record(history.heard_by_me.data, history.heard_by_me_new, band_info['current_band'], c.msg_tuple[1], int(time_utils.time()), c.snr)
                     if c.msg_tuple[1] == myCall:
                         rpt = c.msg_tuple[2][-3:]
@@ -102,7 +103,7 @@ def on_decode_non_time_critical():
                 if pskr_upload:
                     if band_info['current_band']:
                         if c.msg_tuple[1] != myCall:
-                            pskr_upload.add_report(c.msg_tuple[1], int(1000000*float(band_info['fMHz'])) + c.fHz, c.snr, 'FT8', 1, int(time_utils.time()))
+                            pskr_upload.add_report(c.msg_tuple[1], int(1000000*float(band_info['fMHz'])) + c.origin['f0'], c.snr, 'FT8', 1, int(time_utils.time()))
      
 
 def cli():
