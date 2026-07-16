@@ -323,10 +323,11 @@ ap_patterns = [
               ]
 
 class Candidate:
-    def __init__(self, cyclestart, origin, llr_sd_min = 5):
+    def __init__(self, cyclestart, origin, search_grid_bounds, llr_sd_min = 5):
         self.cyclestart, self.origin = cyclestart, origin
+        self.search_grid_bounds = search_grid_bounds
+        self.decoded_from_grid = True
         self.demap_started, self.decode_completed = 0, 0
-        self.ftweak, self.ttweak = 0, 0
         self.n_sync_matches = -1
         self.fast_decode_tried = False
         self.msg_tuple = None
@@ -360,36 +361,26 @@ class Candidate:
         self.cgrid = np.abs(np.fft.fft(symbols, axis=1)[:, :8])
         self.score = float(np.dot(self.cgrid[36:43, :7].ravel(), self.csync_7x7))
 
-    def llr_norm_wsj(self,llr):
-        mean = np.mean(llr)
-        var = np.mean(llr*llr) - mean*mean
-        rootvar = np.sqrt(var)
-        return 2.83 * llr / rootvar, rootvar
-
-    def fast_demap_decode(self, all_audio_spectrum, duplicate_filter):
-        self.duplicate_filter = duplicate_filter
-        # could also try this direct from search grid
-        df = SAMP_RATE / 192000
-        f0, t0 = self.origin['f0'], self.origin['t0']
-        fb_0 = int(0.5 + f0 / df )
-        fb_top = int(0.5 + (f0 + 8.5*SYM_RATE) / df )
-        fb_bot = int(0.5 + (f0 - 1.5*SYM_RATE) / df )
-        dt = 0.005
-        tb_0 = int(t0/dt)
-        self.get_tfgrid(all_audio_spectrum, fb_0, fb_bot, fb_top, tb_0)
-
-        p = 20*np.log10(self.cgrid[PAYLOAD_SYMB_IDXS, :])
-        self.snr = np.clip(int(np.max(p) - np.min(p) - 58), -24, 24)
+    def dB_to_llr(self, p):
+        snr = np.clip(int(np.max(p) - np.min(p) - 58), -24, 24)
         llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
         llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
         llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
         llr = np.column_stack((llra, llrb, llrc)).ravel()
-        self.llr, self.llr_sd = self.llr_norm_wsj(llr)
+        mean = np.mean(llr)
+        var = np.mean(llr*llr) - mean*mean
+        rootvar = np.sqrt(var)
+        return 2.83 * llr / rootvar, rootvar, snr
+
+    def fast_demap_decode(self, payload_on_search_grid, duplicate_filter):
+        self.duplicate_filter = duplicate_filter
+        self.llr, self.llr_sd, self.snr = self.dB_to_llr(payload_on_search_grid)
         self.dt = float(self.origin['t0'])
         self.fHz = float(self.origin['f0'])
         self._decode_ldpc_fast()
 
     def demap(self, all_audio_spectrum):
+        self.decoded_from_grid = False
         df = SAMP_RATE / 192000
         f0, t0 = self.origin['f0'], self.origin['t0']
         fb_0 = int(0.5 + f0 / df )
@@ -413,7 +404,6 @@ class Candidate:
             scores.append(self.score)
         ftweak = ftweaks[np.argmax(scores)]
 
-        self.ftweak, self.ttweak = ftweak, ttweak
         self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
 
         p = self.cgrid[COSTAS_SYMB_IDXS, :]
@@ -424,12 +414,7 @@ class Candidate:
             return
         
         p = 20*np.log10(self.cgrid[PAYLOAD_SYMB_IDXS, :])
-        self.snr = np.clip(int(np.max(p) - np.min(p) - 58), -24, 24)
-        llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
-        llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
-        llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
-        llr = np.column_stack((llra, llrb, llrc)).ravel()
-        self.llr, self.llr_sd = self.llr_norm_wsj(llr)
+        self.llr, self.llr_sd, self.snr = self.dB_to_llr(p)
         self.dt = float(self.origin['t0'] - 0.5 + ttweak / 200)
         self.fHz = float(self.origin['f0'] + ftweak / 16)
         
@@ -529,18 +514,20 @@ class Receiver():
 
     def search(self, cyclestart, odd_even, cycle_h0):
         cands = []
+        hops_per_sig = self.audio_in.search_hps * PAYLOAD_SYMB_IDXS[-1]
         for f0_idx in range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 2):
             p = self.audio_in.search_grid[:, f0_idx: f0_idx + 7*self.audio_in.search_bpt]
             origin = {'score':0}
             for h0_idx in range(self.search_h0_range[0], self.search_h0_range[1]):
                 score = float(np.dot(p[h0_idx + cycle_h0 + self.base_search_hops, :].ravel(), self.csync_search))
-                test_sync = {'odd_even':odd_even, 'h0_idx':h0_idx, 
+                test_sync = {'odd_even':odd_even, 'h0_idx':h0_idx,  'f0_idx':f0_idx,
                              't0':h0_idx/(self.audio_in.search_hps * SYM_RATE),
                              'f0':SYM_RATE * f0_idx / self.audio_in.search_bpt, 'score':score}
                 if test_sync['score'] > origin['score']:
                     origin = test_sync
             if origin['score'] > self.sync_score_min:
-                c = Candidate(cyclestart, origin)
+                h0 = origin['h0_idx']
+                c = Candidate(cyclestart, origin, [cycle_h0 + h0, cycle_h0 + h0 + hops_per_sig])
                 c.on_decode = self.on_decode
                 cands.append(c)
         cands.sort(key = lambda c: c.origin['score'], reverse = True)
@@ -571,10 +558,10 @@ class Receiver():
                     cand_abs_h0_idx = (c.origin['h0_idx'] + PAYLOAD_SYMB_IDXS[0] - 1) * hopspersym + odd_even_offset
                     cand_abs_hf_idx = (c.origin['h0_idx'] + PAYLOAD_SYMB_IDXS[1] + 1) * hopspersym + odd_even_offset
                     if not (cand_abs_h0_idx <= self.audio_in.search_grid_ptr <= cand_abs_hf_idx):
-                        if self.audio_in.search_grid_ptr - last_spectrum_calc > 0 : # only calc full spectrum if more samples received
-                            all_audio_spectrum = np.fft.rfft(self.audio_in.cycle_audio_buffer)
-                        last_spectrum_calc = self.audio_in.search_grid_ptr
-                        c.fast_demap_decode(all_audio_spectrum, duplicate_filter)
+                        hops = np.array([(c.search_grid_bounds[0] + self.audio_in.search_hps * s)% self.audio_in.search_hops_per_grid for s in PAYLOAD_SYMB_IDXS])
+                        freqs = np.array([c.origin['f0_idx'] + self.audio_in.search_bpt//2 + t * self.audio_in.search_bpt for t in range(8)])
+                        tfgrid_payload_dB = self.audio_in.search_grid[hops,:][:, freqs]
+                        c.fast_demap_decode(tfgrid_payload_dB, duplicate_filter)
                         c.fast_decode_tried = True
             
                 main_demap_start = self.main_demap_start + c.origin['odd_even'] * self.audio_in.search_hops_per_cycle
@@ -587,8 +574,7 @@ class Receiver():
                             all_audio_spectrum = np.fft.rfft(self.audio_in.cycle_audio_buffer)
                         last_spectrum_calc = self.audio_in.search_grid_ptr
                         c.demap(all_audio_spectrum)
-                        h2s = 1/(SYM_RATE * self.audio_in.search_hps)
-                        c.demap_started = self.audio_in.search_grid_ptr*h2s
+                        c.demap_started = self.audio_in.search_grid_ptr / (SYM_RATE * self.audio_in.search_hps)
                 if not c.decode_completed:
                     to_decode.append(c)
                     

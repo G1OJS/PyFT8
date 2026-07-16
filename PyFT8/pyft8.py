@@ -61,7 +61,7 @@ def on_decode(c):
     t = time_utils.time()
     o = c.origin
     screen_format = f"{c.cyclestart['string']} {c.snr:+03d} {o['dt']:4.1f} {o['f0']:4.0f} ~ {' '.join(c.msg_tuple)}"
-    print(f"{screen_format:50s} decoded@ {c.decode_completed % 15:5.1f}s")
+    print(f"{screen_format:50s} decoded@ {c.decode_completed % 15:5.1f}s, from grid = {c.decoded_from_grid}")
     if gui:
         message_type_value = 0 + 1*(c.msg_tuple[1] == myCall) + 2*(c.msg_tuple[0] == myCall) + 3*(c.msg_tuple[0].startswith('CQ') and not c.msg_tuple[1] == myCall)
         message_type = ['generic', 'from_me', 'to_me', 'CQ'][message_type_value]
