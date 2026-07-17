@@ -62,6 +62,7 @@ class Msg_box:
         self.patch = self.ax.add_patch(rect)
         self.text_inst = self.ax.text(0, 0, '', fontsize='small', fontweight = 'bold' )
         self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
+        self.active = False
 
     def set_properties(self, x, y, message):
         self.patch.set_xy((x, y))
@@ -73,11 +74,13 @@ class Msg_box:
         self.patch.set_alpha(message_type_params['alpha'])
         self.message = message
         self.cycle = message['origin']['odd_even']
+        self.active = True
 
     def _onclick(self, event):
-        b, _ = self.patch.contains(event)
-        if(b):
-            self.onclick({'action': 'MESSAGE_CLICK', 'message':self.message})
+        if self.active:
+            b, _ = self.patch.contains(event)
+            if(b):
+                self.onclick({'action': 'MESSAGE_CLICK', 'message':self.message})
     
 class Gui:
     def __init__(self, config, history, console_print, wf_data, hearing_me_since_mins = 5):
@@ -205,6 +208,7 @@ class Gui:
     def _clear_msg_boxes(self, curr_cycle):
         to_remove = [mb for mb in self.active_msg_boxes if mb.cycle == curr_cycle]
         for mb in to_remove:
+            mb.active = False
             self.inactive_msg_boxes.append(mb)
             self.active_msg_boxes.remove(mb)
 
