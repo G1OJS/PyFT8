@@ -31,7 +31,8 @@ class QSO_manager:
         if btn_action in ['MESSAGE_CLICK','CQ'] and self.band_info['current_band'] is None:
             self.console_print("Please select a band before transmitting", color = 'red')
             return
-        
+        if btn_action == "SET_BAND":
+            self.rig.set_freq_Hz(int(1000000*float(clickargs['fMHz'])))
         if btn_action == "CQ":
             self.clear_qso()
             self.tx_cycle = time_utils.odd_even()
