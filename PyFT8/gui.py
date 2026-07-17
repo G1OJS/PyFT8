@@ -47,14 +47,14 @@ class ButtonBox:
         self.info_axs.draw_artist(self.info_text_inst)
 
 
-MESSAGE_TYPES = {'generic':{'bg':'blue', 'fg':'white'}, 'CQ':{'bg':'green', 'fg':'white'},'from_me': {'bg':'yellow', 'fg':'white'},
-                 'to_me':{'bg':'red', 'fg':'white'}} 
+MESSAGE_TYPES = {'generic':{'bg':'blue', 'fg':'white', 'alpha':0.5}, 'CQ':{'bg':'green', 'fg':'white', 'alpha':0.8},
+                 'from_me': {'bg':'yellow', 'fg':'white', 'alpha':0.95}, 'to_me':{'bg':'red', 'fg':'white', 'alpha':0.9}} 
 class Msg_box:
     def __init__(self, fig, ax, w, h, onclick):
         from matplotlib.patches import Rectangle
         self.onclick = onclick
         self.fig, self.ax = fig, ax
-        rect = Rectangle((0, 0), w, h, alpha=0.5, edgecolor='lime', lw=1)
+        rect = Rectangle((0, 0), w, h, edgecolor='lime', lw=2)
         self.patch = self.ax.add_patch(rect)
         self.text_inst = self.ax.text(0, 0, '', fontsize='small', fontweight = 'bold' )
         self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
@@ -66,6 +66,7 @@ class Msg_box:
         message_type_params = MESSAGE_TYPES[message['message_type']]
         self.text_inst.set_color(message_type_params['fg'])
         self.patch.set_facecolor(message_type_params['bg'])
+        self.patch.set_alpha(message_type_params['alpha'])
         self.message = message
         self.cycle = message['origin']['odd_even']
 
@@ -130,6 +131,20 @@ class Gui:
     def get_band_info(self):
         return self.band_info
 
+    def set_bandstats_title(self, txt):
+        self.ax_ss.set_title(txt, fontsize = 10)
+        
+    def update_console(self, text, color, nlines = 5):
+        ax = self.ax_cs
+        bbox = ax.get_window_extent().transformed(self.fig.dpi_scale_trans.inverted())
+        rowheight = bbox.height * self.fig.dpi / nlines
+        fontsize = np.min([0.5 * rowheight, MAX_FONT_SIZE_MAIN])
+        self._reset_axis(ax)
+        self.console_rows[1:] = self.console_rows[:-1]
+        self.console_rows[0] = (text, color)
+        for i, rw in enumerate(self.console_rows):
+            ax.draw_artist(self._text_row(ax, 0.03, .03+0.9*i/len(self.console_rows), rw[0], color = rw[1], fontsize = fontsize))
+
     def monitor_waterfall(self):
         last_ptr = 0
         self.plt.show(block = False)
@@ -146,9 +161,6 @@ class Gui:
                     self.ax_wf.draw_artist(mb.text_inst)
                 self.fig.canvas.update()
                 self.fig.canvas.flush_events()
-
-    def set_bandstats_title(self, txt):
-        pass
 
     def after_new_search(self, curr_cycle):
         self._refresh_hearing()
@@ -203,32 +215,22 @@ class Gui:
         art = ax.text(x, y, text, color = color)
         art.set_fontfamily('monospace')
         return art
-
-    def update_console(self, text, color, nlines = 5):
-        ax = self.ax_cs
-        bbox = ax.get_window_extent().transformed(self.fig.dpi_scale_trans.inverted())
-        rowheight = bbox.height * self.fig.dpi / nlines
-        fontsize = np.min([0.5 * rowheight, MAX_FONT_SIZE_MAIN])
-        self._reset_axis(ax)
-        self.console_rows[1:] = self.console_rows[:-1]
-        self.console_rows[0] = (text, color)
-        for i, rw in enumerate(self.console_rows):
-            ax.draw_artist(self._text_row(ax, 0.03, .03+0.9*i/len(self.console_rows), rw[0], color = rw[1], fontsize = fontsize))
-            
+   
     def _refresh_square_stats(self):
-        self._reset_axis(self.ax_ss)
-        self.ax_ss.text(-0.2,0.75,'Tx')
-        self.ax_ss.text(-0.2,0.25,'Rx')
+        ax = self.ax_ss
+        self._reset_axis(ax)
+        ax.draw_artist(ax.text(-0.2,0.75,'Tx'))
+        ax.draw_artist(ax.text(-0.2,0.25,'Rx'))
         current_band = self.band_info['current_band']
         if current_band is not None and self.history is not None:
             if current_band in self.history.home_most_remotes:
                 tx_lead,  rx_lead = self.history.home_most_remotes[current_band]
                 myCall = self.config['station']['call']
                 n_spotted, n_spotting = self.history.get_spot_counts(current_band, myCall)
-                #self.band_stats.scroll_print(f"{myCall:<7} {tx_lead[0]:<7}", color = '#ff756b')
-                #self.band_stats.scroll_print(f"{n_spotting:<7} {tx_lead[1]:<7}", color = '#ff756b')
-                #self.band_stats.scroll_print(f"{myCall:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
-                #self.band_stats.scroll_print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
+                ax.draw_artist(self._text_row(ax, 0.03, .75, f"{myCall:<7} {tx_lead[0]:<7}", color = '#ff756b' ))
+                ax.draw_artist(self._text_row(ax, 0.03, .6, f"{n_spotting:<7} {tx_lead[1]:<7}", color = '#ff756b' ))
+                ax.draw_artist(self._text_row(ax, 0.03, .25, f"{myCall:<7} {rx_lead[0]:<7}", color = '#b6f0c6' ))
+                ax.draw_artist(self._text_row(ax, 0.03, .1, f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6' ))
 
     def _refresh_band_buttons(self):
         current_band = self.band_info['current_band']
@@ -248,6 +250,8 @@ class Gui:
         ax = self.ax_hm
         self._reset_axis(ax)
         line_height = 0.03
+        bbox = ax.get_window_extent().transformed(self.fig.dpi_scale_trans.inverted())
+        nlines = int(0.9 / line_height)
         row_artists = []
         if current_band is not None and self.history is not None:
             historic_data = self.history.hearing_me.data if self.hearing_page  == 1 else self.history.heard_by_me.data
@@ -259,13 +263,14 @@ class Gui:
                 tnow = time_utils.time()
                 band_rpts = historic_data[current_band]
                 calls_now = [call for call in band_rpts if (tnow - band_rpts[call]['t']) < 60*self.hearing_me_since_mins]
+                calls_now.sort(key = lambda c: band_rpts[c]['t'], reverse = True)
                 subtitle_txt = f"{len(calls_now)}/{len(band_rpts)} now/ever"
                 row_artists.append(self._text_row(ax, 0.03, 1 - 2*line_height, subtitle_txt, color = 'white'))
-                for i, remote_call in enumerate(calls_now[:10]):
+                for i, remote_call in enumerate(calls_now[:nlines - 3]):
                     rpt = band_rpts[remote_call]
                     row_txt = f"{remote_call:<7} {self.history.get_geo_text(remote_call, self.config['gui']['loc'])}"
                     color = 'white' if self.history.is_in_new_alert(current_band, remote_call, new_calls_data) else 'lime'
-                    row_artists.append(self._text_row(ax, 0.03, 1 - line_height*(i+3), row_txt, color = color))
+                    row_artists.append(self._text_row(ax, 0.03, 1 - line_height*(i+3.2), row_txt, color = color))
         for row_art in row_artists:
             ax.draw_artist(row_art)
         self.fig.canvas.update()
