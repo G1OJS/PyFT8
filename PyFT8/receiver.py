@@ -484,7 +484,7 @@ class Candidate:
         
 class Receiver():
     def __init__(self, search_freq_range, input_device_keywords, on_decode = None, wav_files = None, verbose = False,
-                 sync_score_min = 100, max_cands = 1000, main_demap_start = 13, search_timerange = [-2, 5]):
+                 sync_score_min = 100, max_cands = 1000, search_timerange = [-2, 5]):
         self.audio_in = AudioIn(search_freq_range, input_device_keywords, wav_files)
         self.sync_score_min, self.max_cands = sync_score_min, max_cands
         self.wav_files = wav_files
@@ -494,7 +494,6 @@ class Receiver():
         self.aftersearch_cb = None
         self.search_h0_range = [int((t+0.5)*self.audio_in.search_hps*SYM_RATE) for t in search_timerange]
         self.search_start_hop = self.search_h0_range[1] + 43 * self.audio_in.search_hps
-        self.main_demap_start = int(main_demap_start * self.audio_in.search_hps*SYM_RATE)
         dt = 1.0 / (SYM_RATE * self.audio_in.search_hps)
         self.base_search_hops = 36 * self.audio_in.search_hps + np.arange(7) * self.audio_in.search_hps 
         csync = np.full((7, 7 * self.audio_in.search_bpt), -1/6, np.float32)

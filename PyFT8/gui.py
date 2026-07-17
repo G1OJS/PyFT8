@@ -91,7 +91,8 @@ class ButtonBox:
         if text != self.label2:
             self.label2.set_text(text)
 
-MESSAGE_TYPES = {'generic':{'bg':'blue', 'fg':'white'}, 'CQ':{'bg':'green', 'fg':'white'},'from_me': {'bg':'yellow', 'fg':'white'}, 'to_me':{'bg':'red', 'fg':'white'}} 
+MESSAGE_TYPES = {'generic':{'bg':'blue', 'fg':'white'}, 'CQ':{'bg':'green', 'fg':'white'},'from_me': {'bg':'yellow', 'fg':'white'},
+                 'to_me':{'bg':'red', 'fg':'white'}} 
 class Msg_box:
     def __init__(self, fig, ax, w, h, onclick):
         from matplotlib.patches import Rectangle

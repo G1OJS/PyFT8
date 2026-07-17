@@ -172,7 +172,7 @@ def cli():
 
 # Set up for receiving with or without Gui
     rx = Receiver([100, 3000], args.inputcard_keywords, wav_files = None, on_decode = on_decode,
-                sync_score_min = 110, max_cands = 100, main_demap_start = 12, search_timerange = [-1, 2.5])
+                sync_score_min = 90, max_cands = 100, search_timerange = [-1, 3.5])
 
 # Initialise the gui
     if not args.no_gui:
