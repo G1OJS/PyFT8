@@ -20,10 +20,9 @@ L = {'pmargin':0.04, 'sidebar_width': 0.17, 'banner_height':0.1, 'vsep1':0.01, '
 # ================== WATERFALL ======================================================
 
 class Scrollbox:
-    def __init__(self, fig, box, nlines = 5, monospace = False, default_text = '', fontsize = None):
+    def __init__(self, fig, box, nlines = 5, monospace = False, fontsize = None):
         self.fig = fig
         self.ax = fig.add_axes(box)
-        self.default_text = default_text
         bbox = self.ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
         self.fontsize = np.min([0.5 * bbox.height * fig.dpi / nlines, MAX_FONT_SIZE_MAIN]) if fontsize is None else fontsize
         self.nlines = nlines
@@ -45,12 +44,8 @@ class Scrollbox:
         for i, line in enumerate(self.lines):
             self.lineartists[i].set_text(line['text'])
             self.lineartists[i].set_color(line['color'])
-
-    def clear(self):
-        self.lines = []
-        for i in range(self.nlines):
-            self.lineartists[i].set_text(self.default_text)
-
+        self._refresh()
+            
     def list_print(self, lst, colors = None):
         for i, txt in enumerate(lst[:self.nlines]):
             if txt != self.lineartists[i].get_text():
@@ -60,6 +55,13 @@ class Scrollbox:
         for i in range(len(lst), self.nlines):
             if self.lineartists[i].get_text() != '':
                 self.lineartists[i].set_text('')
+        self._refresh()
+
+    def _refresh(self):
+        for l in self.lineartists:
+            self.ax.draw_artist(l)
+        self.fig.canvas.update()
+        self.fig.canvas.flush_events()
 
 class ButtonBox:
     def __init__(self, fig, box, btn_pc = 30, onclick = None, clickargs=None, btn_label = ''):
@@ -87,10 +89,20 @@ class ButtonBox:
             color = ACTIVE_BUTTON_COLOR if self.active else INACTIVE_BUTTON_COLOR
             self.label.set_color(color)
             self.label2.set_color(color)
+            self._refresh()
 
     def set_info_text(self, text):
         if text != self.label2:
             self.label2.set_text(text)
+            self._refresh()
+
+    def _refresh(self):
+        #self.btn_axs.cla()
+        #self.info_axs.cla()
+        self.btn_axs.draw_artist(self.label)
+        self.info_axs.draw_artist(self.label2)
+        self.fig.canvas.update()
+        self.fig.canvas.flush_events()
 
 MESSAGE_TYPES = {'generic':{'bg':'blue', 'fg':'white'}, 'CQ':{'bg':'green', 'fg':'white'},'from_me': {'bg':'yellow', 'fg':'white'},
                  'to_me':{'bg':'red', 'fg':'white'}} 
@@ -161,7 +173,6 @@ class Gui:
 
                 self.image.set_data(self.wf_data['data'])
                 self.ax_wf.draw_artist(self.image)
-                print(f"{len(self.active_msg_boxes)} box artists")
                 for mb in self.active_msg_boxes:
                     self.ax_wf.draw_artist(mb.patch)
                     self.ax_wf.draw_artist(mb.text_inst)
@@ -176,7 +187,6 @@ class Gui:
         self._clear_msg_boxes(curr_cycle)
         self._refresh_band_buttons()
         self._refresh_square_stats()
-        self.fig.canvas.draw()
 
     def set_message(self, message):
         o = message['origin']
@@ -200,7 +210,6 @@ class Gui:
             self.rig.set_freq_Hz(int(1000000*float(self.band_info['fMHz'])))
         if clickargs['action'] == "MESSAGE_CLICK":
             self.console_print(f"[GUI] Clicked on message '{clickargs['message']['msg_tuple']}'")
-        self.fig.canvas.draw()
         self.on_click(clickargs)
 
     def _clear_msg_boxes(self, curr_cycle):
