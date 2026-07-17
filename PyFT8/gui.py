@@ -20,8 +20,9 @@ L = {'pmargin':0.04, 'sidebar_width': 0.17, 'banner_height':0.1, 'vsep1':0.01, '
 # ================== WATERFALL ======================================================
 
 class Scrollbox:
-    def __init__(self, fig, box, nlines = 5, monospace = False, default_text = '', fontsize = None):
+    def __init__(self, fig, gui_queue, box, nlines = 5, monospace = False, default_text = '', fontsize = None):
         self.fig = fig
+        self.gui_queue = gui_queue
         self.ax = fig.add_axes(box)
         self.default_text = default_text
         bbox = self.ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
@@ -38,6 +39,7 @@ class Scrollbox:
         self.ax.set_xticks([])
         self.ax.set_yticks([])
         self.ax.set_facecolor(TEXT_BACKGROUND_COLOR)
+        self.axis_artists = [(self.ax, lineartist) for lineartist in self.lineartists]
 
     def scroll_print(self, text, color = MAIN_TEXT_COLOR):
         self.lines = self.lines[-(self.nlines-1):]
@@ -45,11 +47,13 @@ class Scrollbox:
         for i, line in enumerate(self.lines):
             self.lineartists[i].set_text(line['text'])
             self.lineartists[i].set_color(line['color'])
+        self.gui_queue.put(("refresh_artists", self.axis_artists))
 
     def clear(self):
         self.lines = []
         for i in range(self.nlines):
             self.lineartists[i].set_text(self.default_text)
+        self.gui_queue.put(("refresh_artists", self.axis_artists))
 
     def list_print(self, lst, colors = None):
         for i, txt in enumerate(lst[:self.nlines]):
@@ -59,7 +63,8 @@ class Scrollbox:
                 self.lineartists[i].set_color(col)
         for i in range(len(lst), self.nlines):
             if self.lineartists[i].get_text() != '':
-                self.lineartists[i].set_text('')          
+                self.lineartists[i].set_text('')
+        self.gui_queue.put(("refresh_artists", self.axis_artists))
 
 class ButtonBox:
     def __init__(self, fig, box, btn_pc = 30, onclick = None, clickargs=None, btn_label = ''):
@@ -136,6 +141,7 @@ class Gui:
         self.plt = plt
         self.fig = plt.figure(figsize = (10,10), facecolor=(.18, .71, .71, 0.4))
         self.fig.canvas.manager.set_window_title('PyFT8 by G1OJS')
+        self.gui_queue = queue.Queue()
         self.config, self.history = config, history
         self.console_print = console_print
         self.wf_top = 1-L['pmargin']-L['banner_height']-L['vsep1']
@@ -145,48 +151,60 @@ class Gui:
         self.sidebars_last_update = 0
         self.sidebars_page = 0
         self._make_axes()
-        self.gui_queue = queue.Queue()
         self.active_msg_boxes = []
         self.inactive_msg_boxes = []
         self.image = self.ax_wf.imshow(self.wf_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self._make_buttons()
         self.tlast = 0
         self.band_info = {'current_band': None, 'fMHz':0, 'time_set':0}
-        self.sidebars_artists = [*[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes],
-                                 *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists]
-
-        self.ani = FuncAnimation(self.fig, self._animate, interval = 100, frames=(100000), blit = False)
-
+        #self.sidebars_artists = [*[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes],
+        #                                 *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists]
+        
     def register_onclick(self, on_click):
         self.on_click = on_click
 
     def get_band_info(self):
         return self.band_info
 
-    def _animate(self, frames):
-        #t = time_utils.time()
-        #print(t - self.tlast)
-        #self.tlast = t
+    def plot_loop(self):
+        self.plt.show(block = False)
+        mb_artists = [[],[]]
+        while True:
+            time_utils.sleep(0.001)
+            t = time_utils.time()
+            print(t - self.tlast)
+            self.tlast = t
 
-        if self.gui_queue.empty():
             self.image.set_data(self.wf_data['data'])
-        else:
-            t0 = time_utils.time()
-            while (not self.gui_queue.empty()) and (time_utils.time()-t0 < 0.1):
-                action, data = self.gui_queue.get()
-                if action == "clear_cycle":
-                    curr_cycle = data
-                    self._clear_msg_boxes(curr_cycle)
-                else:
-                    x, y, message = data
-                    mb = self._get_msg_box()
-                    self.active_msg_boxes.append(mb)
-                    mb.set_properties(x, y, message)
+            self.ax_wf.draw_artist(self.image)
+            
+            if not self.gui_queue.empty():
+                t0 = time_utils.time()
+                while (not self.gui_queue.empty()) and (time_utils.time()-t0 < 0.1):
+                    action, data = self.gui_queue.get()
+                    if action == "clear_cycle":
+                        curr_cycle = data
+                        mb_artists[curr_cycle] = []
+                        
+                    elif action == "refresh_artists":
+                        for ax, art in data:
+                            ax.draw_artist(art)
+                    else:
+                        x, y, message = data
+                        mb = self._get_msg_box()
+                        self.active_msg_boxes.append(mb)
+                        mb.set_properties(x, y, message)
+                        cycle = message['origin']['odd_even']
+                        mb_artists[cycle].append(mb.patch)
+                        mb_artists[cycle].append(mb.text_inst)
 
-        #p = [mb.patch for mb in self.active_msg_boxes]
-        #t = [mb.text_inst for mb in self.active_msg_boxes]
-        
-        #return [self.image, *p, *t, *self.sidebars_artists] 
+            for cycle in range(2):
+                for art in mb_artists[cycle]:
+                    self.ax_wf.draw_artist(art)
+            self.fig.canvas.update()
+            self.fig.canvas.flush_events()
+
+
 
     def _on_click_local(self, clickargs):
         btn_action = clickargs['action']
@@ -219,10 +237,10 @@ class Gui:
         self.ax_wf = self.fig.add_axes([self.wf_left, L['pmargin'], 1-self.wf_left-L['pmargin'], self.wf_top-L['pmargin']])
         self.ax_wf.set_xticks([])
         self.ax_wf.set_yticks([])
-        self.band_stats = Scrollbox(self.fig, [L['pmargin'], self.wf_top+L['vsep1'], L['sidebar_width'], L['banner_height']], nlines = 4, monospace = True)
+        self.band_stats = Scrollbox(self.fig, self.gui_queue, [L['pmargin'], self.wf_top+L['vsep1'], L['sidebar_width'], L['banner_height']], nlines = 4, monospace = True)
         self.band_stats.ax.text(-0.2,0.75,'Tx')
         self.band_stats.ax.text(-0.2,0.25,'Rx')
-        self.console = Scrollbox(self.fig, [self.wf_left, self.wf_top+L['vsep1'], 1-self.wf_left-L['pmargin'], L['banner_height']])
+        self.console = Scrollbox(self.fig, self.gui_queue, [self.wf_left, self.wf_top+L['vsep1'], 1-self.wf_left-L['pmargin'], L['banner_height']])
 
     def _make_buttons(self):
         self.button_boxes = []
@@ -241,7 +259,7 @@ class Gui:
                             btn_label = band, onclick = self._on_click_local, clickargs = {'action':'SET_BAND', 'band':band, 'freq':freq})
             self.button_boxes.append(bb)
 
-        self.hm = Scrollbox(self.fig, [L['pmargin'], L['pmargin'], L['sidebar_width'], self.wf_top - (len(self.button_boxes)+2) * bh + bs - L['vsep1']],
+        self.hm = Scrollbox(self.fig, self.gui_queue, [L['pmargin'], L['pmargin'], L['sidebar_width'], self.wf_top - (len(self.button_boxes)+2) * bh + bs - L['vsep1']],
                             nlines = 30, monospace = True, fontsize = 8)
 
     def _refresh_sidebars(self):
