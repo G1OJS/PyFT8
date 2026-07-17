@@ -27,13 +27,12 @@ class ButtonBox:
         infobox[2] = box[2] * (100-btn_pc) /100
         infobox[0] = box[0] + box[2] * (btn_pc /100)
         self.btn_axs = fig.add_axes(btnbox)
-        self._reset_axis(self.btn_axs)
         self.btn_widg = Button(self.btn_axs, btn_text, color = BUTTONCOLOR, hovercolor = HOVERCOLOR)
         self.btn_widg.on_clicked(lambda x: onclick(clickargs))
         self.btn_text_inst = self.btn_widg.label
         self.btn_text_inst.set_color(MAIN_TEXT_COLOR)
         self.info_axs = fig.add_axes(infobox)
-        self.info_text_inst = None
+        self.info_text_inst = self.info_axs.text(0.03, 0.5, info_text, color = INFO_TEXT_COLOR, verticalalignment = 'center', clip_on = True)        
         self.set_info_text(info_text)
 
     def set_state(self, is_active: bool):
@@ -44,7 +43,7 @@ class ButtonBox:
 
     def set_info_text(self, info_text):
         self._reset_axis(self.info_axs)
-        self.info_text_inst = self.info_axs.text(0.03, 0.5, info_text, color = INFO_TEXT_COLOR, verticalalignment = 'center', clip_on = True)        
+        self.info_text_inst.set_text(info_text)
         self.info_axs.draw_artist(self.info_text_inst)
 
 
@@ -97,6 +96,7 @@ class Gui:
         self.inactive_msg_boxes = []
         self.image = self.ax_wf.imshow(self.wf_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self.button_boxes = []
+        self.rh_rows = []
 
         self.ax_ss = self.fig.add_axes([L['pmargin'], self.wf_top+L['vsep1'], L['sidebar_width'], L['banner_height']])
         self.ax_cs = self.fig.add_axes([self.wf_left, self.wf_top+L['vsep1'], 1-self.wf_left-L['pmargin'], L['banner_height']])
@@ -166,12 +166,11 @@ class Gui:
         mb.set_properties(x, y, message)
 
     def _reset_axis(self, ax):
-        ax.cla()
+        from matplotlib.patches import Rectangle
+        rect = Rectangle((0, 0), 1, 1, facecolor = TEXT_BACKGROUND_COLOR)
+        ax.draw_artist(ax.add_patch(rect))
         ax.set_xticks([])
         ax.set_yticks([])
-        ax.set_facecolor(TEXT_BACKGROUND_COLOR)
-        for txt in self.fig.texts:
-            txt.set_visible(False)
 
     def _on_click_local(self, clickargs):
         btn_action = clickargs['action']
@@ -259,7 +258,6 @@ class Gui:
             ax.draw_artist(row_art)
         self.fig.canvas.update()
         self.fig.canvas.flush_events()
-            
         self.hearing_page = (self.hearing_page +1 )%2
 
 
