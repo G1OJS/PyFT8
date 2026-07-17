@@ -16,7 +16,7 @@ mplstyle.use('fast')
 mpl.rcParams['path.simplify'] = True
 mpl.rcParams['path.simplify_threshold'] = 1.0
 
-VER = '3.3.1'
+VER = '3.5.0'
 PSKR_REFRESH_MINS = 20
 
 config, gui, history, qso_manager, adif_logging, pskr_upload, soundcard_out, rig = None, None, None, None, None, None, None, None
