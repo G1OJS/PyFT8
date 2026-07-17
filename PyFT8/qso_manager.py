@@ -77,6 +77,7 @@ class QSO_manager:
                         
                 if message_type == "to_me":
                     rst_sent = self.qso_info['rst_sent']
+                    self.qso_info.update({'call':new_qso_info['call']})
                     reply = f"{self.qso_info['call']} {self.myCall} {rst_sent}"
                     if any([m for m in ['+','-'] if m in grid_rpt]):
                         reply = f"{self.qso_info['call']} {self.myCall} R{rst_sent}"
