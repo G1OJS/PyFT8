@@ -48,7 +48,7 @@ class ButtonBox:
 
 
 MESSAGE_TYPES = {'generic':{'bg':'blue', 'fg':'white', 'alpha':0.5}, 'CQ':{'bg':'green', 'fg':'white', 'alpha':0.8},
-                 'from_me': {'bg':'yellow', 'fg':'white', 'alpha':0.95}, 'to_me':{'bg':'red', 'fg':'white', 'alpha':0.9}} 
+                 'from_me': {'bg':'yellow', 'fg':'black', 'alpha':0.95}, 'to_me':{'bg':'red', 'fg':'white', 'alpha':0.9}} 
 class Msg_box:
     def __init__(self, fig, ax, w, h, onclick):
         from matplotlib.patches import Rectangle
