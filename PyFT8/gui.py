@@ -29,17 +29,21 @@ class ButtonBox:
         self.btn_axs = fig.add_axes(btnbox)
         self.btn_widg = Button(self.btn_axs, btn_text, color = BUTTONCOLOR, hovercolor = HOVERCOLOR)
         self.btn_widg.on_clicked(lambda x: onclick(clickargs))
-        self.btn_text_inst = self.btn_widg.label
-        self.btn_text_inst.set_color(MAIN_TEXT_COLOR)
         self.info_axs = fig.add_axes(infobox)
         self.info_text_inst = self.info_axs.text(0.03, 0.5, info_text, color = INFO_TEXT_COLOR, verticalalignment = 'center', clip_on = True)        
         self.set_info_text(info_text)
+        self.state_is_active = None
+        self.set_state(False)
 
     def set_state(self, is_active: bool):
-        color = ACTIVE_BUTTON_COLOR if is_active else INACTIVE_BUTTON_COLOR
-        self.btn_text_inst.set_color(color)
-        if self.info_text_inst: 
-            self.info_text_inst.set_color(color)
+        if is_active != self.state_is_active:
+            self.state_is_active = is_active
+            color = ACTIVE_BUTTON_COLOR if is_active else INACTIVE_BUTTON_COLOR
+            self.btn_widg.label.set_color(color)
+            self.btn_axs.draw_artist(self.btn_widg.label)
+            if self.info_text_inst: 
+                self.info_text_inst.set_color(color)
+                self.info_axs.draw_artist(self.info_text_inst)
 
     def set_info_text(self, info_text):
         self._reset_axis(self.info_axs)
