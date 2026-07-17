@@ -61,14 +61,15 @@ def on_decode(c):
     t = time_utils.time()
     o = c.origin
     screen_format = f"{c.cyclestart['string']} {c.snr:+03d} {o['dt']:4.1f} {o['f0']:4.0f} ~ {' '.join(c.msg_tuple)}"
-    print(f"{screen_format:50s} decoded@ {c.decode_completed % 15:5.1f}s, from grid = {c.decoded_from_grid}")
+    print(f"{screen_format:50s} decoded@ {c.decode_completed % 15:5.1f}s, dec = {c.decode_status}")
     if gui:
         message_type_value = 0 + 1*(c.msg_tuple[1] == myCall) + 2*(c.msg_tuple[0] == myCall) + 3*(c.msg_tuple[0].startswith('CQ') and not c.msg_tuple[1] == myCall)
         message_type = ['generic', 'from_me', 'to_me', 'CQ'][message_type_value]
-        message = { 'message_type':message_type, 'origin':c.origin, 'short_msg':' '.join(c.msg_tuple), 'priority':False,
+        message = { 'message_type':message_type, 'origin':c.origin, 'short_msg':' '.join(c.msg_tuple), 'snr':c.snr, 'priority':False,
                     'msg_tuple':c.msg_tuple, 'decode_completed':c.decode_completed,
                     'new_qso_info': {'call':c.msg_tuple[1], 'rst_sent': f"{c.snr:+03d}", 'grid_rpt':c.msg_tuple[2], 'my_tx_cycle': 1-c.origin['odd_even']},
-                    'display_text': f"{' '.join(c.msg_tuple)}"}
+                    'display_text': f"{' '.join(c.msg_tuple)}",
+                    'cyclestart_string':c.cyclestart['string'], 'decode_status':c.decode_status}
         if message_type == 'to_me' or message_type == 'CQ':
             message.update({'priority':True})
             if history:
@@ -80,29 +81,33 @@ def on_decode(c):
                 message.update({'display_text':f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {geo_text}"})            
             gui.set_message(message)
 
-        decode_queue_non_time_critical.put((c, message))
+        decode_queue_non_time_critical.put(message)
 
 def on_decode_non_time_critical():
     while True:
-        time_utils.sleep(0.2)
+        time_utils.sleep(0.25)
         while not decode_queue_non_time_critical.empty():
             band_info = gui.get_band_info() if qso_manager else {'current_band': None, 'fMHz':0, 'time_set':0}
             time_utils.sleep(0.01)
-            c, message = decode_queue_non_time_critical.get()
-            if c.msg_tuple[1] != 'not':
+            message = decode_queue_non_time_critical.get()
+            if message['msg_tuple'] is None:
+                print("Warning None-type sent for processing")
+                a = input("?????")
+            if message['msg_tuple'][1] != 'not':
+                o = message['origin']
                 if gui and not message['priority']:
                     gui.set_message(message)                   
                 if history:
-                    history.write_all_txt_row(c.cyclestart['string'], float(band_info['fMHz']), 'Rx', 'FT8', c.snr, c.origin['dt'], c.origin['f0'], ' '.join(c.msg_tuple))
-                    history.add_myspots_record(history.heard_by_me.data, history.heard_by_me_new, band_info['current_band'], c.msg_tuple[1], int(time_utils.time()), c.snr)
-                    if c.msg_tuple[1] == myCall:
-                        rpt = c.msg_tuple[2][-3:]
+                    history.write_all_txt_row(message['cyclestart_string'], float(band_info['fMHz']), 'Rx', 'FT8', message['snr'], o['dt'], o['f0'], message['short_msg'])
+                    history.add_myspots_record(history.heard_by_me.data, history.heard_by_me_new, band_info['current_band'], message['msg_tuple'][1], int(time_utils.time()), message['snr'])
+                    if message['msg_tuple'][1] == myCall:
+                        rpt = message['msg_tuple'][2][-3:]
                         if rpt.isnumeric():
-                            history.add_myspots_record(history.hearing_me.data, history.hearing_me_new, band_info['current_band'], c.msg_tuple[0], int(time_utils.time()), int(rpt))
+                            history.add_myspots_record(history.hearing_me.data, history.hearing_me_new, band_info['current_band'], message['msg_tuple'][0], int(time_utils.time()), int(rpt))
                 if pskr_upload:
                     if band_info['current_band']:
-                        if c.msg_tuple[1] != myCall:
-                            pskr_upload.add_report(c.msg_tuple[1], int(1000000*float(band_info['fMHz'])) + c.origin['f0'], c.snr, 'FT8', 1, int(time_utils.time()))
+                        if message['msg_tuple'][1] != myCall:
+                            pskr_upload.add_report(message['msg_tuple'][1], int(1000000*float(band_info['fMHz'])) + o['f0'], message['snr'], 'FT8', 1, int(time_utils.time()))
      
 
 def cli():

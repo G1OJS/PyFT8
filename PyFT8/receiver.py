@@ -70,7 +70,7 @@ def unpack_std(bits74, i3):
         prefix = 'R' if (g16 >> 15) else ''
         grid_rpt = prefix + f"{(g15 - 32435):+03d}"
     msg_tuple = (call_29(ca29, i3), call_29(cb29, i3), grid_rpt)
-    if msg_tuple != ('','',''):
+    if msg_tuple != ('','','') and msg_tuple is not None:
         return msg_tuple
 
 def call_29(call_int29, i3):    
@@ -375,8 +375,15 @@ class Candidate:
     def fast_demap_decode(self, payload_on_search_grid, duplicate_filter):
         self.duplicate_filter = duplicate_filter
         self.llr, self.llr_sd, self.snr = self.dB_to_llr(payload_on_search_grid)
-        self.dt = float(self.origin['t0'])
-        self.fHz = float(self.origin['f0'])
+        self.llr0 = self.llr.copy()
+        self.llr[:30] = -5
+        self.llr[26] = 5
+        self.llr[74:76] = -5
+        self.llr[76] = 5
+        self.decode_status = 'CQ grid'
+        self._decode_ldpc_fast() # try CQ pattern first
+        self.llr = self.llr0
+        self.decode_status = 'Vanilla grid'
         self._decode_ldpc_fast()
 
     def demap(self, all_audio_spectrum):
@@ -421,17 +428,22 @@ class Candidate:
     def decode(self, max_ipass, duplicate_filter):
         self.duplicate_filter = duplicate_filter
         if self.llr_sd < self.llr_sd_min:
+            self.decode_status = 'llr reject'
             self.decode_completed = time_utils.cycle_time()
             return
         if self.ipass > max_ipass:
+            self.decode_status = 'fail'
             return
         if self.ipass == 0:
+            self.decode_status = 'Vanilla fine'
             self._decode_ldpc_fast()
         if self.ipass == 1:
             self._decode_ldpc_AP()
         if self.ipass == 2:
+            self.decode_status = 'OSD fine'
             self._decode_osd(self.llr)
         if len(self.saved_llrs) > self.ipass-3 >= 0:
+            self.decode_status = f'OSD from saved {self.ipass-3}'
             self._decode_osd(self.saved_llrs[self.ipass-3])
         if self.ipass-3 >= len(self.saved_llrs):
             self.decode_completed = time_utils.cycle_time()
@@ -445,6 +457,7 @@ class Candidate:
     def _decode_ldpc_AP(self):
         self.saved_llrs = []
         for ipass, (b0, ap_pattern) in enumerate(ap_patterns):
+            self.decode_status = f'LDPC-AP fine {ipass}'
             llr = self.llr.copy()
             for b, bval in enumerate(ap_pattern):
                 llr[b0 + b] = (bval*2-1) * 5
@@ -472,13 +485,16 @@ class Candidate:
                 self.send_result()
 
     def send_result(self):
-        self.decode_completed = time_utils.cycle_time()
-        key = self.cyclestart['string'] + ''.join(self.msg_tuple)
-        if (key not in self.duplicate_filter):
-            self.duplicate_filter.add(key)
-            self.origin.update({'dt':self.origin['t0'] - 0.5})
-            self.spectrum, self.cgrid, self.saved_llrs, self.csync = None, None, [], None
-            self.on_decode(self)
+        if self.msg_tuple is None:
+            print("Warning - None-type msg_tuple sent for processing")
+        else:
+            self.decode_completed = time_utils.cycle_time()
+            key = self.cyclestart['string'] + ''.join(self.msg_tuple)
+            if (key not in self.duplicate_filter):
+                self.duplicate_filter.add(key)
+                self.origin.update({'dt':self.origin['t0'] - 0.5})
+                self.spectrum, self.cgrid, self.saved_llrs, self.csync = None, None, [], None
+                self.on_decode(self)
         
 #============== RECEIVER ===========================================================
         
