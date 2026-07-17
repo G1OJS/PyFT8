@@ -16,7 +16,7 @@ mplstyle.use('fast')
 mpl.rcParams['path.simplify'] = True
 mpl.rcParams['path.simplify_threshold'] = 1.0
 
-VER = '3.3.1'
+VER = '3.5.0'
 PSKR_REFRESH_MINS = 20
 
 config, gui, history, qso_manager, adif_logging, pskr_upload, soundcard_out, rig = None, None, None, None, None, None, None, None
@@ -52,7 +52,7 @@ def get_config(config_folder):
 def console_print(text, color = 'white'):
     text = f"{time_utils.cycle_time():4.1f} {text}"
     if gui is not None:
-        gui.console.scroll_print(text, color)
+        gui.update_console(text, color)
     else:
         print(text)
 
@@ -181,7 +181,7 @@ def cli():
         history.incorporate_log_data(adif_logging.cache)
         history.start_collect_new()
 
-        gui = Gui(config, rig, history, console_print, rx.audio_in.waterfall_data)
+        gui = Gui(config, history, console_print, rx.audio_in.waterfall_data)
         qso_manager = QSO_manager(myCall, myGrid, console_print, soundcard_out.transmit_audio_data_bytes, rig, rx.find_clear_freq, gui.get_band_info, adif_logging)
         gui.register_onclick(qso_manager.on_click)
         rx.register_aftersearch_cb(gui.after_new_search)
@@ -203,7 +203,7 @@ def cli():
             pass
     else:
         gui.set_bandstats_title(f"Pskreporter Spots\nto/from {config['station']['grid'][:4]} <{PSKR_REFRESH_MINS:.0f} mins")
-        gui.plt.show()
+        gui.monitor_waterfall()
 
 
 
