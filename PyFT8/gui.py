@@ -96,8 +96,7 @@ class Gui:
         self.inactive_msg_boxes = []
         self.image = self.ax_wf.imshow(self.wf_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self.button_boxes = []
-        self.rh_rows = []
-
+        self.console_rows = [('','white'),('','white'),('','white'),('','white'),('','white')]
         self.ax_ss = self.fig.add_axes([L['pmargin'], self.wf_top+L['vsep1'], L['sidebar_width'], L['banner_height']])
         self.ax_cs = self.fig.add_axes([self.wf_left, self.wf_top+L['vsep1'], 1-self.wf_left-L['pmargin'], L['banner_height']])
 
@@ -200,9 +199,22 @@ class Gui:
             mb = self.inactive_msg_boxes.pop()
         return mb
 
-    def update_console(self, text, color):
-        self._reset_axis(self.ax_cs)
+    def _text_row(self, ax, x, y, text = '', color = 'white', **args):
+        art = ax.text(x, y, text, color = color)
+        art.set_fontfamily('monospace')
+        return art
 
+    def update_console(self, text, color, nlines = 5):
+        ax = self.ax_cs
+        bbox = ax.get_window_extent().transformed(self.fig.dpi_scale_trans.inverted())
+        rowheight = bbox.height * self.fig.dpi / nlines
+        fontsize = np.min([0.5 * rowheight, MAX_FONT_SIZE_MAIN])
+        self._reset_axis(ax)
+        self.console_rows[1:] = self.console_rows[:-1]
+        self.console_rows[0] = (text, color)
+        for i, rw in enumerate(self.console_rows):
+            ax.draw_artist(self._text_row(ax, 0.03, .03+0.9*i/len(self.console_rows), rw[0], color = rw[1], fontsize = fontsize))
+            
     def _refresh_square_stats(self):
         self._reset_axis(self.ax_ss)
         self.ax_ss.text(-0.2,0.75,'Tx')
@@ -242,18 +254,18 @@ class Gui:
             new_calls_data = self.history.hearing_me_new if self.hearing_page  == 1 else self.history.heard_by_me_new
             timewindow_str = f"<{self.hearing_me_since_mins:.0f} mins"
             title_txt = f"Hearing me {timewindow_str}" if self.hearing_page==1 else f"Heard by me {timewindow_str}"
-            row_artists.append(ax.text(0.03, 1 - line_height, title_txt, color = 'white'))
+            row_artists.append(self._text_row(ax, 0.03, 1 - line_height, title_txt, color = 'white'))
             if current_band in historic_data:
                 tnow = time_utils.time()
                 band_rpts = historic_data[current_band]
                 calls_now = [call for call in band_rpts if (tnow - band_rpts[call]['t']) < 60*self.hearing_me_since_mins]
                 subtitle_txt = f"{len(calls_now)}/{len(band_rpts)} now/ever"
-                row_artists.append(ax.text(0.03, 1 - 2*line_height, subtitle_txt, color = 'white'))
+                row_artists.append(self._text_row(ax, 0.03, 1 - 2*line_height, subtitle_txt, color = 'white'))
                 for i, remote_call in enumerate(calls_now[:10]):
                     rpt = band_rpts[remote_call]
                     row_txt = f"{remote_call:<7} {self.history.get_geo_text(remote_call, self.config['gui']['loc'])}"
                     color = 'white' if self.history.is_in_new_alert(current_band, remote_call, new_calls_data) else 'lime'
-                    row_artists.append(ax.text(0.03, 1 - line_height*(i+3), row_txt, color = color, fontsize = 'x-small'))
+                    row_artists.append(self._text_row(ax, 0.03, 1 - line_height*(i+3), row_txt, color = color))
         for row_art in row_artists:
             ax.draw_artist(row_art)
         self.fig.canvas.update()
