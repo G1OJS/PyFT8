@@ -20,9 +20,8 @@ L = {'pmargin':0.04, 'sidebar_width': 0.17, 'banner_height':0.1, 'vsep1':0.01, '
 # ================== WATERFALL ======================================================
 
 class Scrollbox:
-    def __init__(self, fig, gui_queue, box, nlines = 5, monospace = False, default_text = '', fontsize = None):
+    def __init__(self, fig, box, nlines = 5, monospace = False, default_text = '', fontsize = None):
         self.fig = fig
-        self.gui_queue = gui_queue
         self.ax = fig.add_axes(box)
         self.default_text = default_text
         bbox = self.ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
@@ -39,7 +38,6 @@ class Scrollbox:
         self.ax.set_xticks([])
         self.ax.set_yticks([])
         self.ax.set_facecolor(TEXT_BACKGROUND_COLOR)
-        self.axis_artists = [(self.ax, lineartist) for lineartist in self.lineartists]
 
     def scroll_print(self, text, color = MAIN_TEXT_COLOR):
         self.lines = self.lines[-(self.nlines-1):]
@@ -47,13 +45,11 @@ class Scrollbox:
         for i, line in enumerate(self.lines):
             self.lineartists[i].set_text(line['text'])
             self.lineartists[i].set_color(line['color'])
-        self.gui_queue.put(("refresh_artists", self.axis_artists))
 
     def clear(self):
         self.lines = []
         for i in range(self.nlines):
             self.lineartists[i].set_text(self.default_text)
-        self.gui_queue.put(("refresh_artists", self.axis_artists))
 
     def list_print(self, lst, colors = None):
         for i, txt in enumerate(lst[:self.nlines]):
@@ -64,10 +60,10 @@ class Scrollbox:
         for i in range(len(lst), self.nlines):
             if self.lineartists[i].get_text() != '':
                 self.lineartists[i].set_text('')
-        self.gui_queue.put(("refresh_artists", self.axis_artists))
 
 class ButtonBox:
     def __init__(self, fig, box, btn_pc = 30, onclick = None, clickargs=None, btn_label = ''):
+        self.fig = fig
         btnbox, infobox = box.copy(), box.copy()
         btnbox[2] = box[2] * btn_pc /100
         infobox[2] = box[2] * (100-btn_pc) /100
@@ -107,7 +103,6 @@ class Msg_box:
         self.patch = self.ax.add_patch(rect)
         self.text_inst = self.ax.text(0, 0, '', fontsize='small', fontweight = 'bold' )
         self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
-        self.visible = False
 
     def set_properties(self, x, y, message):
         self.patch.set_xy((x, y))
@@ -118,21 +113,11 @@ class Msg_box:
         self.patch.set_facecolor(message_type_params['bg'])
         self.message = message
         self.cycle = message['origin']['odd_even']
-        self.patch.set_visible(True)
-        self.text_inst.set_visible(True)
-        self.visible = True
-
-
-    def hide(self):
-        self.patch.set_visible(False)
-        self.text_inst.set_visible(False)
-        self.visible = False
 
     def _onclick(self, event):
-        if self.visible:
-            b, _ = self.patch.contains(event)
-            if(b):
-                self.onclick({'action': 'MESSAGE_CLICK', 'message':self.message})
+        b, _ = self.patch.contains(event)
+        if(b):
+            self.onclick({'action': 'MESSAGE_CLICK', 'message':self.message})
     
 class Gui:
     def __init__(self, config, rig, history, console_print, wf_data, hearing_me_since_mins = 5):
@@ -149,7 +134,7 @@ class Gui:
         self.hearing_me_since_mins = hearing_me_since_mins
         self.wf_data = wf_data
         self.sidebars_last_update = 0
-        self.sidebars_page = 0
+        self.hearing_page = 0
         self._make_axes()
         self.active_msg_boxes = []
         self.inactive_msg_boxes = []
@@ -157,8 +142,7 @@ class Gui:
         self._make_buttons()
         self.tlast = 0
         self.band_info = {'current_band': None, 'fMHz':0, 'time_set':0}
-        #self.sidebars_artists = [*[bb.label for bb in self.button_boxes], *[bb.label2 for bb in self.button_boxes],
-        #                                 *self.band_stats.lineartists, *self.console.lineartists, *self.hm.lineartists]
+        
         
     def register_onclick(self, on_click):
         self.on_click = on_click
@@ -166,65 +150,64 @@ class Gui:
     def get_band_info(self):
         return self.band_info
 
-    def plot_loop(self):
+    def monitor_waterfall(self):
+        last_ptr = 0
         self.plt.show(block = False)
-        mb_artists = [[],[]]
         while True:
-            time_utils.sleep(0.001)
-            t = time_utils.time()
-            print(t - self.tlast)
-            self.tlast = t
+            time_utils.sleep(0.01)
+            ptr = self.wf_data['ptr']()
+            if abs(ptr-last_ptr)>1:
+                last_ptr = ptr
 
-            self.image.set_data(self.wf_data['data'])
-            self.ax_wf.draw_artist(self.image)
-            
-            if not self.gui_queue.empty():
-                t0 = time_utils.time()
-                while (not self.gui_queue.empty()) and (time_utils.time()-t0 < 0.1):
-                    action, data = self.gui_queue.get()
-                    if action == "clear_cycle":
-                        curr_cycle = data
-                        mb_artists[curr_cycle] = []
-                        
-                    elif action == "refresh_artists":
-                        for ax, art in data:
-                            ax.draw_artist(art)
-                    else:
-                        x, y, message = data
-                        mb = self._get_msg_box()
-                        self.active_msg_boxes.append(mb)
-                        mb.set_properties(x, y, message)
-                        cycle = message['origin']['odd_even']
-                        mb_artists[cycle].append(mb.patch)
-                        mb_artists[cycle].append(mb.text_inst)
+                self.image.set_data(self.wf_data['data'])
+                self.ax_wf.draw_artist(self.image)
+                print(f"{len(self.active_msg_boxes)} box artists")
+                for mb in self.active_msg_boxes:
+                    self.ax_wf.draw_artist(mb.patch)
+                    self.ax_wf.draw_artist(mb.text_inst)
+                self.fig.canvas.update()
+                self.fig.canvas.flush_events()
 
-            for cycle in range(2):
-                for art in mb_artists[cycle]:
-                    self.ax_wf.draw_artist(art)
-            self.fig.canvas.update()
-            self.fig.canvas.flush_events()
+    def set_bandstats_title(self, txt):
+        self.band_stats.ax.set_title(txt, fontsize = 10)
 
+    def after_new_search(self, curr_cycle):
+        self._refresh_hearing()
+        self._clear_msg_boxes(curr_cycle)
+        self._refresh_band_buttons()
+        self._refresh_square_stats()
+        self.fig.canvas.draw()
 
+    def set_message(self, message):
+        o = message['origin']
+        x = int(o['t0'] / self.wf_data['dt'] + o['odd_even'] * self.wf_data['pixels_per_cycle'])
+        y = int(o['f0'] / self.wf_data['df'])
+        mb = self._get_msg_box()
+        self.active_msg_boxes.append(mb)
+        mb.set_properties(x, y, message)
 
     def _on_click_local(self, clickargs):
         btn_action = clickargs['action']
         if(btn_action == 'SET_BAND'):
             current_band, freqMHz = clickargs['band'], clickargs['freq']
             self.band_info = {'current_band':current_band, 'fMHz':freqMHz, 'time_set':time_utils.time()}
-            self.rig.set_freq_Hz(int(1000000*float(self.band_info['fMHz'])))
             self.console_print(f"[PyFT8] Set band: {self.band_info['current_band']} {self.band_info['fMHz']}")
+            self._refresh_hearing()
+            for cyc in range(2):
+                self._clear_msg_boxes(cyc)
+            self._refresh_band_buttons()
+            self._refresh_square_stats()
+            self.rig.set_freq_Hz(int(1000000*float(self.band_info['fMHz'])))
         if clickargs['action'] == "MESSAGE_CLICK":
             self.console_print(f"[GUI] Clicked on message '{clickargs['message']['msg_tuple']}'")
+        self.fig.canvas.draw()
         self.on_click(clickargs)
-        self._refresh_sidebars()
 
     def _clear_msg_boxes(self, curr_cycle):
-        self._refresh_sidebars()
-        to_hide = [mb for mb in self.active_msg_boxes if mb.cycle == curr_cycle]
-        for mb in to_hide:
+        to_remove = [mb for mb in self.active_msg_boxes if mb.cycle == curr_cycle]
+        for mb in to_remove:
             self.inactive_msg_boxes.append(mb)
             self.active_msg_boxes.remove(mb)
-            mb.hide()
 
     def _get_msg_box(self):
         if len(self.inactive_msg_boxes) == 0:
@@ -237,10 +220,10 @@ class Gui:
         self.ax_wf = self.fig.add_axes([self.wf_left, L['pmargin'], 1-self.wf_left-L['pmargin'], self.wf_top-L['pmargin']])
         self.ax_wf.set_xticks([])
         self.ax_wf.set_yticks([])
-        self.band_stats = Scrollbox(self.fig, self.gui_queue, [L['pmargin'], self.wf_top+L['vsep1'], L['sidebar_width'], L['banner_height']], nlines = 4, monospace = True)
+        self.band_stats = Scrollbox(self.fig, [L['pmargin'], self.wf_top+L['vsep1'], L['sidebar_width'], L['banner_height']], nlines = 4, monospace = True)
         self.band_stats.ax.text(-0.2,0.75,'Tx')
         self.band_stats.ax.text(-0.2,0.25,'Rx')
-        self.console = Scrollbox(self.fig, self.gui_queue, [self.wf_left, self.wf_top+L['vsep1'], 1-self.wf_left-L['pmargin'], L['banner_height']])
+        self.console = Scrollbox(self.fig, [self.wf_left, self.wf_top+L['vsep1'], 1-self.wf_left-L['pmargin'], L['banner_height']])
 
     def _make_buttons(self):
         self.button_boxes = []
@@ -259,13 +242,23 @@ class Gui:
                             btn_label = band, onclick = self._on_click_local, clickargs = {'action':'SET_BAND', 'band':band, 'freq':freq})
             self.button_boxes.append(bb)
 
-        self.hm = Scrollbox(self.fig, self.gui_queue, [L['pmargin'], L['pmargin'], L['sidebar_width'], self.wf_top - (len(self.button_boxes)+2) * bh + bs - L['vsep1']],
+        self.hm = Scrollbox(self.fig, [L['pmargin'], L['pmargin'], L['sidebar_width'], self.wf_top - (len(self.button_boxes)+2) * bh + bs - L['vsep1']],
                             nlines = 30, monospace = True, fontsize = 8)
 
-    def _refresh_sidebars(self):
+    def _refresh_square_stats(self):
         current_band = self.band_info['current_band']
+        if current_band is not None and self.history is not None:
+            if current_band in self.history.home_most_remotes:
+                tx_lead,  rx_lead = self.history.home_most_remotes[current_band]
+                myCall = self.config['station']['call']
+                n_spotted, n_spotting = self.history.get_spot_counts(current_band, myCall)
+                self.band_stats.scroll_print(f"{myCall:<7} {tx_lead[0]:<7}", color = '#ff756b')
+                self.band_stats.scroll_print(f"{n_spotting:<7} {tx_lead[1]:<7}", color = '#ff756b')
+                self.band_stats.scroll_print(f"{myCall:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
+                self.band_stats.scroll_print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
 
-        # band stats
+    def _refresh_band_buttons(self):
+        current_band = self.band_info['current_band']
         grd = self.config['station']['grid'][:4]
         for bb in self.button_boxes:
             button_band = bb.clickargs.get('band','')
@@ -276,22 +269,13 @@ class Gui:
                     cnts = self.history.home_activity[button_band]
                     bb.set_info_text(f"{cnts[0]}Tx, {cnts[1]}Rx")
 
+    def _refresh_hearing(self):
+        current_band = self.band_info['current_band']
         if current_band is not None and self.history is not None:
-            # home square counts
-            if current_band in self.history.home_most_remotes:
-                tx_lead,  rx_lead = self.history.home_most_remotes[current_band]
-                myCall = self.config['station']['call']
-                n_spotted, n_spotting = self.history.get_spot_counts(current_band, myCall)
-                self.band_stats.scroll_print(f"{myCall:<7} {tx_lead[0]:<7}", color = '#ff756b')
-                self.band_stats.scroll_print(f"{n_spotting:<7} {tx_lead[1]:<7}", color = '#ff756b')
-                self.band_stats.scroll_print(f"{myCall:<7} {rx_lead[0]:<7}", color = '#b6f0c6')
-                self.band_stats.scroll_print(f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6')
-
-            #refresh hearing me / heard by me panel
-            historic_data = self.history.hearing_me.data if self.sidebars_page  == 1 else self.history.heard_by_me.data
-            new_calls_data = self.history.hearing_me_new if self.sidebars_page  == 1 else self.history.heard_by_me_new
+            historic_data = self.history.hearing_me.data if self.hearing_page  == 1 else self.history.heard_by_me.data
+            new_calls_data = self.history.hearing_me_new if self.hearing_page  == 1 else self.history.heard_by_me_new
             timewindow_str = f"<{self.hearing_me_since_mins:.0f} mins"
-            title_txt = f"Hearing me {timewindow_str}" if self.sidebars_page==1 else f"Heard by me {timewindow_str}"
+            title_txt = f"Hearing me {timewindow_str}" if self.hearing_page==1 else f"Heard by me {timewindow_str}"
             display_rows = [(title_txt, 2e40, 'white')]
             tnow = time_utils.time()
             if current_band in historic_data:
@@ -306,24 +290,10 @@ class Gui:
                     display_rows.append((f"{remote_call:<7} {snr:+03d} {geo_text:<12}", timestamp, color))
             display_rows.sort(key = lambda row: row[1], reverse = True)
             self.hm.list_print([row[0] for row in display_rows], [row[2] for row in display_rows])
-        self.sidebars_page = (self.sidebars_page +1 )%2
-
-    def set_bandstats_title(self, txt):
-        self.band_stats.ax.set_title(txt, fontsize = 10)
-
-    def after_new_search(self, curr_cycle):
-        self.gui_queue.put(('clear_cycle', curr_cycle))
-            
-    def set_message(self, message):
-        o = message['origin']
-        x = int(o['t0'] / self.wf_data['dt'] + o['odd_even'] * self.wf_data['pixels_per_cycle'])
-        y = int(o['f0'] / self.wf_data['df'])
-        self.gui_queue.put(('add_message', (x, y, message)))
+        self.hearing_page = (self.hearing_page +1 )%2
 
 
 
-
-                    
 
 
         
