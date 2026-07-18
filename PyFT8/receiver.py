@@ -458,7 +458,6 @@ class Candidate:
             self.msg_tuple, self.n_its, output_llr = ldpc_decode(llr, 55, 25)
             if self.msg_tuple:
                 self.iAP = ipass
-                self.send_result()
                 break
             else:
                 if len(output_llr) == 174:

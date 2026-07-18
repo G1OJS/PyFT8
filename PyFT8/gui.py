@@ -72,7 +72,7 @@ class Msg_box:
         self.patch.set_facecolor(message_type_params['bg'])
         self.patch.set_alpha(message_type_params['alpha'])
         self.message = message
-        self.cycle = message['origin']['odd_even']
+        self.cycle = message['their_tx_cycle']
         self.active = True
 
     def _onclick(self, event):
@@ -274,7 +274,7 @@ class Gui:
                 row_artists.append(self._text_row(ax, 0.03, 1 - 2*line_height, subtitle_txt, color = 'white'))
                 for i, remote_call in enumerate(calls_now[:nlines - 3]):
                     rpt = band_rpts[remote_call]
-                    row_txt = f"{remote_call:<7} {self.history.get_geo_text(remote_call, self.config['gui']['loc'])}"
+                    row_txt = f"{remote_call:<7} {self.history.get_geo_text(remote_call, self.geo_units)}"
                     color = 'white' if self.history.is_in_new_alert(current_band, remote_call, new_calls_data) else 'lime'
                     row_artists.append(self._text_row(ax, 0.03, 1 - line_height*(i+3.2), row_txt, color = color))
         for row_art in row_artists:

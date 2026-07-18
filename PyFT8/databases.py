@@ -85,8 +85,9 @@ class DiskDict:
                 return
 
 class History:
-    def __init__(self, config_folder, my_call, home_square = '', pskr_refresh_mins = 20):
+    def __init__(self, config_folder, my_call, home_square = '', geo_units = 'km', pskr_refresh_mins = 20):
         self.pskr_refresh_mins = pskr_refresh_mins
+        self.geo_units = geo_units
         self.log_cache = None
         self.my_call = my_call
         self.home_square = home_square
@@ -154,7 +155,8 @@ class History:
             print("Didn't find any records in an ALL.txt file in the config folder")
         return recs
 
-    def process_message(message, band_info, myCall):
+    def process_message(self, message, band_info, myCall):
+        m = message
         self._write_all_txt_row(m['cyclestart_string'], float(band_info['fMHz']), 'Rx', 'FT8',
                                 m['their_snr'], m['dt'], m['fHz'], m['hail'], m['their_call'], m['grid_rpt'])
         self._add_myspots_record(self.heard_by_me.data, self.heard_by_me_new,
@@ -278,12 +280,12 @@ class History:
         hearing_me = '# ' if self.is_hearing_me(current_band, their_call) else ' '
         return hearing_me, wb_text, geo_text 
 
-    def get_geo_text(self, call, units):
+    def get_geo_text(self, call):
         geo_text = ''
         grid = self.call_to_grid.data.get(call, False)
         if grid:
-            loc = grid if units == 'grid' else self.get_dist_brg(grid, units)
-            units_str = '' if units == 'grid' else ('km' if 'km' in units else 'mi')
+            loc = grid if self.geo_units == 'grid' else self.get_dist_brg(grid, self.geo_units)
+            units_str = '' if self.geo_units == 'grid' else ('km' if 'km' in self.geo_units else 'mi')
             geo_text = f"{int(loc[0]):5d}{units_str} {int(loc[1]):3d}°"
         return geo_text
                 

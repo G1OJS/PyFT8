@@ -128,7 +128,7 @@ def cli():
         message_broker.myCall, message_broker.myGrid = myCall, myGrid
         message_broker.soundcard_out = soundcard_out
         message_broker.adif_logging = ADIF(f"{config_folder}/PyFT8.adi")
-        message_broker.history = History(config_folder, myCall, myGrid)
+        message_broker.history = History(config_folder, myCall, myGrid, config['gui']['loc'])
         configured_bands = []
         for b,f in config['bands'].items():
             configured_bands.append({'band':b, 'fMHz':f})
