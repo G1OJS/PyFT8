@@ -1,10 +1,8 @@
 import threading
 import numpy as np
-import wave
+import pyaudio, wave
+
 from PyFT8.time_utils import time_utils
-import os, sys
-import pyaudio
-import pickle
 from PyFT8.databases import call_hashes, add_call_hashes
 from PyFT8.osd import osd_decode_minimal
 
@@ -216,9 +214,6 @@ class AudioIn:
             if(match):
                 self.input_device_idx = dev_idx
                 break
-        if not self.input_device_idx:
-            time_utils.tlog(f"[Audio] No input audio device found matching {input_device_keywords}", verbose = True)
-            sys.exit(1)
 
     def _load_streamed_audio(self, input_device_idx):
         self.stream = pyaudio.PyAudio().open(
@@ -372,8 +367,7 @@ class Candidate:
         rootvar = np.sqrt(var)
         return 2.83 * llr / rootvar, rootvar, snr
 
-    def fast_demap_decode(self, payload_on_search_grid, duplicate_filter):
-        self.duplicate_filter = duplicate_filter
+    def fast_demap_decode(self, payload_on_search_grid):
         self.llr, self.llr_sd, self.snr = self.dB_to_llr(payload_on_search_grid)
         self.llr0 = self.llr.copy()
         self.llr[:30] = -5
@@ -425,8 +419,7 @@ class Candidate:
         self.origin.update({'t0': float(self.origin['t0'] + ttweak / 200),
                             'f0':float(self.origin['f0'] + ftweak / 16) })
 
-    def decode(self, max_ipass, duplicate_filter):
-        self.duplicate_filter = duplicate_filter
+    def decode(self, max_ipass):
         if self.llr_sd < self.llr_sd_min:
             self.decode_status = 'llr reject'
             self.decode_completed = time_utils.cycle_time()
@@ -451,8 +444,6 @@ class Candidate:
           
     def _decode_ldpc_fast(self):
         self.msg_tuple, self.n_its, _  = ldpc_decode(self.llr.copy(), 35, 5)
-        if self.msg_tuple:
-            self.send_result()
                 
     def _decode_ldpc_AP(self):
         self.saved_llrs = []
@@ -467,7 +458,6 @@ class Candidate:
             self.msg_tuple, self.n_its, output_llr = ldpc_decode(llr, 55, 25)
             if self.msg_tuple:
                 self.iAP = ipass
-                self.send_result()
                 break
             else:
                 if len(output_llr) == 174:
@@ -482,32 +472,20 @@ class Candidate:
             msg_tuple = unpack(bits77_int)
             if msg_tuple:
                 self.msg_tuple, self.n_its = msg_tuple, -1
-                self.send_result()
 
-    def send_result(self):
-        if self.msg_tuple is None:
-            print("Warning - None-type msg_tuple sent for processing")
-        else:
-            self.decode_completed = time_utils.cycle_time()
-            key = self.cyclestart['string'] + ''.join(self.msg_tuple)
-            if (key not in self.duplicate_filter):
-                self.duplicate_filter.add(key)
-                self.origin.update({'dt':self.origin['t0'] - 0.5})
-                self.spectrum, self.cgrid, self.saved_llrs, self.csync = None, None, [], None
-                self.on_decode(self)
-        
 #============== RECEIVER ===========================================================
         
 class Receiver():
-    def __init__(self, search_freq_range, input_device_keywords, on_decode = None, wav_files = None, verbose = False,
+    def __init__(self, message_broker, search_freq_range, input_device_keywords, wav_files = None, verbose = False,
                  sync_score_min = 100, max_cands = 1000, search_timerange = [-2, 5]):
         self.audio_in = AudioIn(search_freq_range, input_device_keywords, wav_files)
+        self.process_message = message_broker.process_message
+        message_broker.waterfall_data = self.audio_in.waterfall_data
+        self.after_search = None
         self.sync_score_min, self.max_cands = sync_score_min, max_cands
         self.wav_files = wav_files
-        self.on_decode = on_decode
         self.candidates = []
         self.verbose = verbose
-        self.aftersearch_cb = None
         self.search_h0_range = [int((t+0.5)*self.audio_in.search_hps*SYM_RATE) for t in search_timerange]
         self.search_start_hop = self.search_h0_range[1] + 43 * self.audio_in.search_hps
         dt = 1.0 / (SYM_RATE * self.audio_in.search_hps)
@@ -525,6 +503,9 @@ class Receiver():
         time_utils.sleep(0.5)
         threading.Thread(target=self.manage_cycle, daemon=True).start()
 
+    def register_after_search(self, func):
+        self.after_search = func
+
     def find_clear_freq(self, fmax):
         from numpy.lib.stride_tricks import sliding_window_view
         import numpy as np
@@ -535,9 +516,6 @@ class Receiver():
         idx = np.argmin(busy_profile[f0_idx:fn_idx])
         clearest_frequency = (f0_idx + idx) * self.audio_in.waterfall_data['df']
         return clearest_frequency
-
-    def register_aftersearch_cb(self, aftersearch_cb):
-        self.aftersearch_cb = aftersearch_cb
 
     def search(self, cyclestart, odd_even, cycle_h0):
         cands = []
@@ -555,12 +533,12 @@ class Receiver():
             if origin['score'] > self.sync_score_min:
                 h0 = origin['h0_idx']
                 c = Candidate(cyclestart, origin, [cycle_h0 + h0 + self.audio_in.search_hps, cycle_h0 + h0 + self.audio_in.search_hps + hops_per_sig])
-                c.on_decode = self.on_decode
                 cands.append(c)
         cands.sort(key = lambda c: c.origin['score'], reverse = True)
         self.candidates = cands[:self.max_cands]
-        if self.aftersearch_cb is not None:
-            self.aftersearch_cb(odd_even)
+        if self.after_search is not None:
+            self.after_search(odd_even)
+        
 
     def manage_cycle(self):
         dashes = "======================================================"
@@ -584,7 +562,7 @@ class Receiver():
                         hops = np.array([(c.search_grid_bounds[0] + self.audio_in.search_hps * s)% self.audio_in.search_hops_per_grid for s in PAYLOAD_SYMB_IDXS])
                         freqs = np.array([c.origin['f0_idx'] + self.audio_in.search_bpt//2 + t * self.audio_in.search_bpt for t in range(8)])
                         tfgrid_payload_dB = self.audio_in.search_grid[hops,:][:, freqs]
-                        c.fast_demap_decode(tfgrid_payload_dB, duplicate_filter)
+                        c.fast_demap_decode(tfgrid_payload_dB)
                         c.fast_decode_tried = True
 
                 if not c.decode_completed and not c.demap_started:
@@ -597,12 +575,23 @@ class Receiver():
                         
                 if not c.decode_completed and c.llr_sd > 0:  
                     to_decode.append(c)
+
+                if c.msg_tuple:
+                    key = c.cyclestart['string'] + ''.join(c.msg_tuple)
+                    if (key not in duplicate_filter):
+                        duplicate_filter.add(key)
+                        hail, their_call, grid_rpt = c.msg_tuple
+                        message_dict = {'cyclestart_string':c.cyclestart['string'], 'hail':hail, 'their_call':their_call, 'grid_rpt':grid_rpt,
+                                        'their_snr':f"{c.snr:+03d}", 'their_tx_cycle':c.origin['odd_even'], 
+                                        't0':c.origin['t0'], 'dt':c.origin['t0'] - 0.5, 'fHz':c.origin['f0'],
+                                        'decode_status':c.decode_status, 'decode_completed':time_utils.cycle_time()}
+                        self.process_message(message_dict)
                 
             if len(to_decode):
                 to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
                 max_ipass = 1 + np.min([c.ipass for c in to_decode])
                 for c in to_decode[:40]:
-                    c.decode(max_ipass, duplicate_filter)
+                    c.decode(max_ipass)
             else:
                 if not end_decoding_message_printed and len([c for c in self.candidates if c.demap_started]):
                     h = self.audio_in.search_grid_ptr

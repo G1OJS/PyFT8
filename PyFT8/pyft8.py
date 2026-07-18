@@ -1,30 +1,21 @@
-import argparse
-import queue, threading
-import time, sys, os
+import argparse, sys, os
+import configparser
+from PyFT8.time_utils import time_utils
 from PyFT8.receiver import Receiver
 from PyFT8.pskreporter import PSKR_upload
 from PyFT8.gui import Gui
 from PyFT8.transmitter import get_ft8_symbols, symbols_to_audio_bytes, write_wav_file, SoundcardOut
-from PyFT8.time_utils import time_utils
 from PyFT8.rigctrl import Rig_hamlib, Rig_CAT
-from PyFT8.databases import History, ADIF
+from PyFT8.databases import History
+from PyFT8.databases import ADIF
 from PyFT8.qso_manager import QSO_manager
-
-import matplotlib.style as mplstyle
-import matplotlib as mpl
-mplstyle.use('fast')
-mpl.rcParams['path.simplify'] = True
-mpl.rcParams['path.simplify_threshold'] = 1.0
+from PyFT8.message_broker import Broker
 
 VER = '3.5.0'
 PSKR_REFRESH_MINS = 20
-
-config, gui, history, qso_manager, adif_logging, pskr_upload, soundcard_out, rig = None, None, None, None, None, None, None, None
-myCall, myGrid = None, None
-decode_queue_non_time_critical = queue.Queue()
+message_broker = None
 
 def get_config(config_folder):
-    import configparser, sys
     config = configparser.ConfigParser()
     ini_file = f"{config_folder}/PyFT8.ini"
     if not os.path.exists(ini_file):
@@ -51,67 +42,13 @@ def get_config(config_folder):
 
 def console_print(text, color = 'white'):
     text = f"{time_utils.cycle_time():4.1f} {text}"
-    if gui is not None:
-        gui.update_console(text, color)
+    if message_broker is not None:
+        if message_broker.gui is not None:
+            message_broker.gui.update_console(text, color)
     else:
         print(text)
 
-def on_decode(c):
-    global decode_queue_non_time_critical
-    t = time_utils.time()
-    o = c.origin
-    screen_format = f"{c.cyclestart['string']} {c.snr:+03d} {o['dt']:4.1f} {o['f0']:4.0f} ~ {' '.join(c.msg_tuple)}"
-    print(f"{screen_format:50s} decoded@ {c.decode_completed % 15:5.1f}s, dec = {c.decode_status}")
-    if gui:
-        message_type_value = 0 + 1*(c.msg_tuple[1] == myCall) + 2*(c.msg_tuple[0] == myCall) + 3*(c.msg_tuple[0].startswith('CQ') and not c.msg_tuple[1] == myCall)
-        message_type = ['generic', 'from_me', 'to_me', 'CQ'][message_type_value]
-        message = { 'message_type':message_type, 'origin':c.origin, 'short_msg':' '.join(c.msg_tuple), 'snr':c.snr, 'priority':False,
-                    'msg_tuple':c.msg_tuple, 'decode_completed':c.decode_completed,
-                    'new_qso_info': {'call':c.msg_tuple[1], 'rst_sent': f"{c.snr:+03d}", 'grid_rpt':c.msg_tuple[2], 'my_tx_cycle': 1-c.origin['odd_even']},
-                    'display_text': f"{' '.join(c.msg_tuple)}",
-                    'cyclestart_string':c.cyclestart['string'], 'decode_status':c.decode_status}
-        if message_type == 'to_me' or message_type == 'CQ':
-            message.update({'priority':True})
-            if history:
-                current_band = qso_manager.get_band_info()['current_band'] 
-                geo_text = history.get_geo_text(c.msg_tuple[1], c.msg_tuple[2])
-                wb_time = history.log_cache.get(c.msg_tuple[1],'') 
-                wb_text = f"wb: {time_utils.format_duration(time_utils.time() - float(wb_time))}" if wb_time else ''
-                hearing_me = '# ' if history.is_hearing_me(current_band, c.msg_tuple[1]) else ' '
-                message.update({'display_text':f"{' '.join(c.msg_tuple)} {hearing_me}{wb_text} {geo_text}"})            
-            gui.set_message(message)
-
-        decode_queue_non_time_critical.put(message)
-
-def on_decode_non_time_critical():
-    while True:
-        time_utils.sleep(0.25)
-        while not decode_queue_non_time_critical.empty():
-            band_info = gui.get_band_info() if qso_manager else {'current_band': None, 'fMHz':0, 'time_set':0}
-            time_utils.sleep(0.01)
-            message = decode_queue_non_time_critical.get()
-            if message['msg_tuple'] is None:
-                print("Warning None-type sent for processing")
-                a = input("?????")
-            if message['msg_tuple'][1] != 'not':
-                o = message['origin']
-                if gui and not message['priority']:
-                    gui.set_message(message)                   
-                if history:
-                    history.write_all_txt_row(message['cyclestart_string'], float(band_info['fMHz']), 'Rx', 'FT8', message['snr'], o['dt'], o['f0'], message['short_msg'])
-                    history.add_myspots_record(history.heard_by_me.data, history.heard_by_me_new, band_info['current_band'], message['msg_tuple'][1], int(time_utils.time()), message['snr'])
-                    if message['msg_tuple'][1] == myCall:
-                        rpt = message['msg_tuple'][2][-3:]
-                        if rpt.isnumeric():
-                            history.add_myspots_record(history.hearing_me.data, history.hearing_me_new, band_info['current_band'], message['msg_tuple'][0], int(time_utils.time()), int(rpt))
-                if pskr_upload:
-                    if band_info['current_band']:
-                        if message['msg_tuple'][1] != myCall:
-                            pskr_upload.add_report(message['msg_tuple'][1], int(1000000*float(band_info['fMHz'])) + o['f0'], message['snr'], 'FT8', 1, int(time_utils.time()))
-     
-
 def cli():
-    global config, rx, gui, qso_manager, myCall, myGrid, history, adif_logging, pskr_upload, soundcard_out, rig
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-c', '--config_folder', help = 'Location of config folder e.g. C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', default = './') 
     parser.add_argument('-i', '--inputcard_keywords', help = 'Comma-separated keywords to identify the input sound device')  
@@ -126,16 +63,8 @@ def cli():
         parser.print_help(sys.stderr)
         sys.exit(1)
 
-# Use cases not needing sound in or out
     audio_bytes = None
-
-    if args.parse_all_file:
-        history = History(config_folder, mc, mg, PSKR_REFRESH_MINS)
-        history.load_hearing_heard_from_all_file(config['bands'])
-        history.hearing_me.save()
-        history.heard_by_me.save()
-        print("All file parsed and saved to hearing_me / heard_by_me files")
-        sys.exit(1)
+    rig_control, gui, soundcard_out = None, None, None
 
 # If we're creating a wav file or tranmitting a message, get the symbols from the transmit_message
     if args.transmit_message:
@@ -148,67 +77,83 @@ def cli():
         console_print(f"Created wave file {args.wave_output_file}")
         sys.exit(1)
 
-# Set up for transmitting via sound card (now we need the config file to specify rig etc)
+# use cases below require things from config file
     config_folder = f"{args.config_folder}".strip()
     config = get_config(config_folder)
     myCall, myGrid = config['station']['call'], config['station']['grid']
+    
+    if args.parse_all_file:
+        history = History(config_folder, myCall)
+        history.load_hearing_heard_from_all_file(config['bands'])
+        history.hearing_me.save()
+        history.heard_by_me.save()
+        print("All file parsed and saved to hearing_me / heard_by_me files")
+        sys.exit(1)
 
     if config.has_section('launch'):
         os.system(config['launch']['app'])
 
-    if args.outputcard_keywords:
-        soundcard_out = SoundcardOut(args.outputcard_keywords)
-
     if config.has_section('hamlib_rig'):
         console_print("Connecting to rig via Hamlib")
-        rig = Rig_hamlib(config)
+        rig_control = Rig_hamlib(config)
     else:
         console_print("Connecting to rig via CAT")
-        rig = Rig_CAT(config)
+        rig_control = Rig_CAT(config)
 
+    if rig_control and args.outputcard_keywords:
+        soundcard_out = SoundcardOut(args.outputcard_keywords)
+        if soundcard_out is None:
+            time_utils.tlog(f"[Audio] No input audio device found matching {output_device_keywords}", verbose = True)
+            sys.exit(1)
+        
 # If we have audio_bytes and capability to transmit, transmit
 # (if we're just setting up for receiving or transceiving, we won't have audio_bytes)
-    if soundcard_out:
-        if soundcard_out.output_device_index and rig and audio_bytes:
-            rig.ptt_on()
-            soundcard_out.send_bytes(audio_bytes)
-            rig.ptt_off()
-            sys.exit(1)
+    if soundcard_out and audio_bytes:
+        rig_control.ptt_on()
+        soundcard_out.send_bytes(audio_bytes)
+        rig_control.ptt_off()
+        sys.exit(1)
 
 # Set up for receiving with or without Gui
-    rx = Receiver([100, 3000], args.inputcard_keywords, wav_files = None, on_decode = on_decode,
-                sync_score_min = 90, max_cands = 100, search_timerange = [-1, 3.5])
+    global message_broker
+    message_broker = Broker()
+    message_broker.rx = Receiver(message_broker, [100, 3000], args.inputcard_keywords, wav_files = None, 
+                                  sync_score_min = 90, max_cands = 100, search_timerange = [-1, 3.5])
+    if not message_broker.rx.audio_in.input_device_idx:
+        time_utils.tlog(f"[Audio] No input audio device found matching {input_device_keywords}", verbose = True)
+        sys.exit(1)
 
 # Initialise the gui
     if not args.no_gui:
-        adif_logging = ADIF(f"{config_folder}/PyFT8.adi")
-        history = History(config_folder, myCall, myGrid, PSKR_REFRESH_MINS)
-        history.incorporate_log_data(adif_logging.cache)
-        history.start_collect_new()
-
-        gui = Gui(config, history, console_print, rx.audio_in.waterfall_data)
-        qso_manager = QSO_manager(myCall, myGrid, console_print, soundcard_out.transmit_audio_data_bytes, rig, rx.find_clear_freq, gui.get_band_info, adif_logging)
-        gui.register_onclick(qso_manager.on_click)
-        rx.register_aftersearch_cb(gui.after_new_search)
+        message_broker.myCall, message_broker.myGrid = myCall, myGrid
+        message_broker.soundcard_out = soundcard_out
+        message_broker.adif_logging = ADIF(f"{config_folder}/PyFT8.adi")
+        message_broker.history = History(config_folder, myCall, myGrid, config['gui']['loc'])
+        configured_bands = []
+        for b,f in config['bands'].items():
+            configured_bands.append({'band':b, 'fMHz':f})
+        message_broker.gui = Gui(message_broker, rig_control, console_print,  configured_bands)
+        qso_manager = QSO_manager(message_broker, rig_control, console_print)
+        message_broker.gui.register_qso_manager(qso_manager)
+        message_broker.rx.register_after_search(message_broker.gui.after_search)
+        message_broker.history.incorporate_log_data(qso_manager.adif_logging.cache)
+        message_broker.history.start_collect_new()
 
 # Start pskreporter upload
     if myCall is not None and 'pskreporter' in config.keys():
         if config['pskreporter']['upload'] == 'Y':
-            pskr_upload = PSKR_upload(myCall, myGrid, software = f"PyFT8 v{VER}", console_print = console_print) if not myCall is None else None
-
-# Start on_decode_non_time_critical
-    threading.Thread(target = on_decode_non_time_critical, daemon = True).start()
+            message_broker.pskr_upload = PSKR_upload(myCall, myGrid, software = f"PyFT8 v{VER}", console_print = console_print) 
 
 # wait or show gui as appropriate
-    if gui is None:
+    if message_broker.gui is None:
         try:
             while True:
-                time.sleep(1)
+                time_utils.sleep(1)
         except KeyboardInterrupt:
             pass
     else:
-        gui.set_bandstats_title(f"Pskreporter Spots\nto/from {config['station']['grid'][:4]} <{PSKR_REFRESH_MINS:.0f} mins")
-        gui.monitor_waterfall()
+        message_broker.gui.set_bandstats_title(f"Pskreporter Spots\nto/from {config['station']['grid'][:4]} <{PSKR_REFRESH_MINS:.0f} mins")
+        message_broker.gui.monitor_waterfall()
 
 
 
