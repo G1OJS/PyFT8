@@ -60,13 +60,13 @@ class QSO_manager:
         self.in_qso_with = False
 
     def on_click(self, clickargs):
+        btn_action = clickargs['action']
         if btn_action == "TX_OFF":
             self.console_print("[PyFT8] Set PTT Off")
             self.rig.ptt_off()
             self.tx_payload = None
         if self.transmitting:
             return
-        btn_action = clickargs['action']
         self.band_info = self.get_band_info()
         if btn_action in ['MESSAGE_CLICK','CQ'] and self.band_info['current_band'] is None:
             self.console_print("Please select a band before transmitting", color = 'red')
