@@ -574,7 +574,7 @@ class Receiver():
                     if (key not in duplicate_filter):
                         duplicate_filter.add(key)
                         hail, their_call, grid_rpt = c.msg_tuple
-                        message_dict = {'cyclestart_str':c.cyclestart['string'], 'hail':hail, 'their_call':their_call, 'grid_rpt':grid_rpt,
+                        message_dict = {'cyclestart_string':c.cyclestart['string'], 'hail':hail, 'their_call':their_call, 'grid_rpt':grid_rpt,
                                         'their_snr':f"{c.snr:+03d}", 'their_tx_cycle':c.origin['odd_even'], 
                                         't0':c.origin['t0'], 'dt':c.origin['t0'] - 0.5, 'fHz':c.origin['f0'],
                                         'decode_status':c.decode_status, 'decode_completed':time_utils.cycle_time()}
