@@ -481,6 +481,7 @@ class Receiver():
         self.audio_in = AudioIn(search_freq_range, input_device_keywords, wav_files)
         self.process_message = message_broker.process_message
         message_broker.waterfall_data = self.audio_in.waterfall_data
+        self.after_search = None
         self.sync_score_min, self.max_cands = sync_score_min, max_cands
         self.wav_files = wav_files
         self.candidates = []
@@ -501,6 +502,9 @@ class Receiver():
         
         time_utils.sleep(0.5)
         threading.Thread(target=self.manage_cycle, daemon=True).start()
+
+    def register_after_search(self, func):
+        self.after_search = func
 
     def find_clear_freq(self, fmax):
         from numpy.lib.stride_tricks import sliding_window_view
@@ -532,6 +536,9 @@ class Receiver():
                 cands.append(c)
         cands.sort(key = lambda c: c.origin['score'], reverse = True)
         self.candidates = cands[:self.max_cands]
+        if self.after_search is not None:
+            self.after_search(odd_even)
+        
 
     def manage_cycle(self):
         dashes = "======================================================"

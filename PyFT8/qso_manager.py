@@ -37,7 +37,7 @@ class QSO_manager:
         if not any([m for m in ['+','-','RR','73'] if m in grid_rpt]): # grid_rpt == grid
             self.logging_info.update({'gridsquare': grid_rpt})
 
-    def _determine_reply(message_type, their_call, their_snr):
+    def _determine_reply(self, message_type, their_call, their_snr):
         if message_type == "CQ":
             reply = f"{their_call} {self.myCall} {self.myGrid[:4]}"   
         if message_type == "to_me":
@@ -75,20 +75,21 @@ class QSO_manager:
         if btn_action == "RPT_LAST":
             self.tx_payload = self.last_tx_payload
         if btn_action == "TX_OFF":
-            #self.clear_qso()
             self.console_print("[PyFT8] Set PTT Off")
             self.rig.ptt_off()
             self.tx_payload = None
-        if btn_action == "MESSAGE_CLICK" and clickargs['message']['message_type'] in ['CQ','to_me']:
-            message = clickargs['message']
-            their_call, grid_rpt, their_snr, their_tx_cycle = message['msg_tuple'][1], message['msg_tuple'][2], message['their_snr'], message['odd_even']
-            if their_call != self.in_qso_with:
-                self._start_qso(their_call, their_snr, 1 - their_tx_cycle)
-            self._add_their_report_or_grid(grid_rpt)
-            reply = self._determine_reply(message_type, their_call, their_snr)
-            self._set_tx_payload(reply)
-            if reply.endswith("73"):
-                self._end_qso()
+        if btn_action == "MESSAGE_CLICK":
+            message_type = clickargs['message']['message_type']
+            if message_type in ['CQ','to_me']:
+                message = clickargs['message']
+                their_call, grid_rpt, their_snr, their_tx_cycle = message['their_call'], message['grid_rpt'], message['their_snr'], message['their_tx_cycle']
+                if their_call != self.in_qso_with:
+                    self._start_qso(their_call, their_snr, 1 - their_tx_cycle)
+                self._add_their_report_or_grid(grid_rpt)
+                reply = self._determine_reply(message_type, their_call, their_snr)
+                self._set_tx_payload(reply)
+                if reply.endswith("73"):
+                    self._end_qso()
 
     def _set_tx_payload(self, msg_text):
         self.console_print(f"[QSO] Set transmit message to '{msg_text}' (cyc {self.tx_cycle}, {self.tx_freq:5.1f} Hz)")

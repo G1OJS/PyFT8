@@ -133,8 +133,10 @@ def cli():
         for b,f in config['bands'].items():
             configured_bands.append({'band':b, 'fMHz':f})
         message_broker.gui = Gui(message_broker, rig_control, console_print,  configured_bands)
-        message_broker.qso_manager = QSO_manager(message_broker, rig_control, console_print)
-        message_broker.history.incorporate_log_data(message_broker.qso_manager.adif_logging.cache)
+        qso_manager = QSO_manager(message_broker, rig_control, console_print)
+        message_broker.gui.register_qso_manager(qso_manager)
+        message_broker.rx.register_after_search(message_broker.gui.after_search)
+        message_broker.history.incorporate_log_data(qso_manager.adif_logging.cache)
         message_broker.history.start_collect_new()
 
 # Start pskreporter upload

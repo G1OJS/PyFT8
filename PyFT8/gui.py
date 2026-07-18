@@ -86,7 +86,9 @@ class Gui:
         self.hearing_me_since_mins = hearing_me_since_mins
         self.waterfall_data = message_broker.waterfall_data
         self.history = message_broker.history
+        self.qso_manager = None
         self.configured_bands = configured_bands
+        self.console_print = console_print
         self.myCall, self.myGrid = message_broker.myCall, message_broker.myGrid
         self.band_info = {'current_band': None, 'fMHz':0, 'time_set':0}
         
@@ -138,6 +140,9 @@ class Gui:
     def get_band_info(self):
         return self.band_info
 
+    def register_qso_manager(self, qsm):
+        self.qso_manager = qsm
+
     def set_bandstats_title(self, txt):
         self.ax_ss.set_title(txt, fontsize = 10)
         
@@ -169,7 +174,7 @@ class Gui:
                 self.fig.canvas.update()
                 self.fig.canvas.flush_events()
 
-    def after_new_search(self, curr_cycle):
+    def after_search(self, curr_cycle):
         self._refresh_hearing()
         self._clear_msg_boxes(curr_cycle)
         self._refresh_band_buttons()
@@ -201,8 +206,10 @@ class Gui:
             self._refresh_band_buttons()
             self._refresh_square_stats()
         if clickargs['action'] == "MESSAGE_CLICK":
-            self.console_print(f"[GUI] Clicked on message '{clickargs['message']['msg_tuple']}'")
-        self.on_click(clickargs)
+            m = clickargs['message']
+            m_string = f"{m['hail']} {m['their_call']} {m['grid_rpt']}"
+            self.console_print(f"[GUI] Clicked on message '{m_string}'")
+        self.qso_manager.on_click(clickargs)
 
     def _clear_msg_boxes(self, curr_cycle):
         to_remove = [mb for mb in self.active_msg_boxes if mb.cycle == curr_cycle]
@@ -232,10 +239,10 @@ class Gui:
         if current_band is not None and self.history is not None:
             if current_band in self.history.home_most_remotes:
                 tx_lead,  rx_lead = self.history.home_most_remotes[current_band]
-                n_spotted, n_spotting = self.history.get_spot_counts(current_band, myCall)
-                ax.draw_artist(self._text_row(ax, 0.03, .75, f"{myCall:<7} {tx_lead[0]:<7}", color = '#ff756b' ))
+                n_spotted, n_spotting = self.history.get_spot_counts(current_band, self.myCall)
+                ax.draw_artist(self._text_row(ax, 0.03, .75, f"{self.myCall:<7} {tx_lead[0]:<7}", color = '#ff756b' ))
                 ax.draw_artist(self._text_row(ax, 0.03, .6, f"{n_spotting:<7} {tx_lead[1]:<7}", color = '#ff756b' ))
-                ax.draw_artist(self._text_row(ax, 0.03, .25, f"{myCall:<7} {rx_lead[0]:<7}", color = '#b6f0c6' ))
+                ax.draw_artist(self._text_row(ax, 0.03, .25, f"{self.myCall:<7} {rx_lead[0]:<7}", color = '#b6f0c6' ))
                 ax.draw_artist(self._text_row(ax, 0.03, .1, f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6' ))
 
     def _refresh_band_buttons(self):
@@ -274,7 +281,7 @@ class Gui:
                 row_artists.append(self._text_row(ax, 0.03, 1 - 2*line_height, subtitle_txt, color = 'white'))
                 for i, remote_call in enumerate(calls_now[:nlines - 3]):
                     rpt = band_rpts[remote_call]
-                    row_txt = f"{remote_call:<7} {self.history.get_geo_text(remote_call, self.geo_units)}"
+                    row_txt = f"{remote_call:<7} {self.history.get_geo_text(remote_call)}"
                     color = 'white' if self.history.is_in_new_alert(current_band, remote_call, new_calls_data) else 'lime'
                     row_artists.append(self._text_row(ax, 0.03, 1 - line_height*(i+3.2), row_txt, color = color))
         for row_art in row_artists:

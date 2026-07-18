@@ -7,7 +7,6 @@ class Broker():
         self.rx = None
         self.history = None
         self.gui = None
-        self.qso_manager = None
         self.history = None
         self.pskr_upload = None
         self.message_queue = queue.Queue()
@@ -15,7 +14,7 @@ class Broker():
         self.waterfall_data = None
         self.configured_bands = None
         threading.Thread(target = self._process_message_ntc, daemon = True).start()
-
+        
     def process_message(self, message_dict):
         hail, their_call, grid_rpt = message_dict['hail'], message_dict['their_call'], message_dict['grid_rpt']
 
@@ -51,7 +50,7 @@ class Broker():
                         self.history.process_message(m, band_info, self.myCall)
                     if self.pskr_upload:
                         if band_info['fMHz']:
-                            if m['their_call'] != myCall:
+                            if m['their_call'] != self.myCall:
                                 self.pskr_upload.add_report(m['their_call'], int(1000000*float(band_info['fMHz'])) + m['fHz'],
                                                        m['their_snr'], 'FT8', 1, int(time_utils.time()))
 
