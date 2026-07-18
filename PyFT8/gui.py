@@ -2,8 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
 import queue
-from matplotlib.animation import FuncAnimation
-from matplotlib.widgets import Slider, Button
+from matplotlib.widgets import Button
 from PyFT8.time_utils import time_utils
 
 rcParams['toolbar'] = 'None'
@@ -83,30 +82,33 @@ class Msg_box:
                 self.onclick({'action': 'MESSAGE_CLICK', 'message':self.message})
     
 class Gui:
-    def __init__(self, config, history, console_print, wf_data, hearing_me_since_mins = 5):
-        self.on_click = None
+    def __init__(self, message_broker, rig_control, console_print, configured_bands, hearing_me_since_mins = 5):
+        self.hearing_me_since_mins = hearing_me_since_mins
+        self.waterfall_data = message_broker.waterfall_data
+        self.history = message_broker.history
+        self.configured_bands = configured_bands
+        self.myCall, self.myGrid = message_broker.myCall, message_broker.myGrid
+        self.band_info = {'current_band': None, 'fMHz':0, 'time_set':0}
+        
         self.plt = plt
         self.fig = plt.figure(figsize = (10,10), facecolor=(.18, .71, .71, 0.4))
         self.fig.canvas.manager.set_window_title('PyFT8 by G1OJS')
-        self.gui_queue = queue.Queue()
-        self.config, self.history = config, history
-        self.console_print = console_print
         self.wf_top = 1-L['pmargin']-L['banner_height']-L['vsep1']
         self.wf_left = L['pmargin']+L['sidebar_width']+L['hsep1']
-        self.hearing_me_since_mins = hearing_me_since_mins
-        self.wf_data = wf_data
-        self.sidebars_last_update = 0
-        self.hearing_page = 0
+
         self.ax_wf = self.fig.add_axes([self.wf_left, L['pmargin'], 1-self.wf_left-L['pmargin'], self.wf_top-L['pmargin']])
         self.ax_wf.set_xticks([])
         self.ax_wf.set_yticks([])
-        self.active_msg_boxes = []
-        self.inactive_msg_boxes = []
-        self.image = self.ax_wf.imshow(self.wf_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
-        self.button_boxes = []
-        self.console_rows = [('','white'),('','white'),('','white'),('','white'),('','white')]
+
+        self.image = self.ax_wf.imshow(self.waterfall_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self.ax_ss = self.fig.add_axes([L['pmargin'], self.wf_top+L['vsep1'], L['sidebar_width'], L['banner_height']])
         self.ax_cs = self.fig.add_axes([self.wf_left, self.wf_top+L['vsep1'], 1-self.wf_left-L['pmargin'], L['banner_height']])
+
+        self.console_rows = [('','white'),('','white'),('','white'),('','white'),('','white')]
+        self.hearing_page = 0
+        self.active_msg_boxes = []
+        self.inactive_msg_boxes = []
+        self.button_boxes = []
 
         bh, bs = 0.02, 0.002
         bb = ButtonBox(self.fig, self._reset_axis, [L['pmargin'], self.wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
@@ -118,7 +120,8 @@ class Gui:
         bb = ButtonBox(self.fig, self._reset_axis, [L['pmargin'], self.wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
                         btn_text = "Tx off", onclick = self._on_click_local, clickargs = {'action':'TX_OFF'})                            
         self.button_boxes.append(bb)            
-        for band, fMHz in self.config['bands'].items():
+        for band_info in self.configured_bands:
+            band, fMHz = band_info['band'], band_info['fMHz']
             bb = ButtonBox(self.fig, self._reset_axis, [L['pmargin'], self.wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 30,
                             btn_text = band, onclick = self._on_click_local, clickargs = {'action':'SET_BAND', 'band':band, 'fMHz':fMHz})
             self.button_boxes.append(bb)
@@ -131,9 +134,6 @@ class Gui:
         self._refresh_hearing()
         self._refresh_band_buttons()
         self._refresh_square_stats()
-        
-    def register_onclick(self, on_click):
-        self.on_click = on_click
 
     def get_band_info(self):
         return self.band_info
@@ -157,11 +157,11 @@ class Gui:
         self.plt.show(block = False)
         while True:
             time_utils.sleep(0.01)
-            ptr = self.wf_data['ptr']()
+            ptr = self.waterfall_data['ptr']()
             if abs(ptr-last_ptr)>1:
                 last_ptr = ptr
 
-                self.image.set_data(self.wf_data['data'])
+                self.image.set_data(self.waterfall_data['data'])
                 self.ax_wf.draw_artist(self.image)
                 for mb in self.active_msg_boxes:
                     self.ax_wf.draw_artist(mb.patch)
@@ -175,10 +175,9 @@ class Gui:
         self._refresh_band_buttons()
         self._refresh_square_stats()
 
-    def set_message(self, message):
-        o = message['origin']
-        x = int(o['t0'] / self.wf_data['dt'] + o['odd_even'] * self.wf_data['pixels_per_cycle'])
-        y = int(o['f0'] / self.wf_data['df'])
+    def display_message(self, message):
+        x = int(message['t0'] / self.waterfall_data['dt'] + message['their_tx_cycle'] * self.waterfall_data['pixels_per_cycle'])
+        y = int(message['fHz'] / self.waterfall_data['df'])
         mb = self._get_msg_box()
         self.active_msg_boxes.append(mb)
         mb.set_properties(x, y, message)
@@ -214,7 +213,7 @@ class Gui:
 
     def _get_msg_box(self):
         if len(self.inactive_msg_boxes) == 0:
-            mb = Msg_box(self.fig, self.ax_wf, self.wf_data['sig_w'], self.wf_data['sig_h'], onclick = self._on_click_local)
+            mb = Msg_box(self.fig, self.ax_wf, self.waterfall_data['sig_w'], self.waterfall_data['sig_h'], onclick = self._on_click_local)
         else:
             mb = self.inactive_msg_boxes.pop()
         return mb
@@ -233,7 +232,6 @@ class Gui:
         if current_band is not None and self.history is not None:
             if current_band in self.history.home_most_remotes:
                 tx_lead,  rx_lead = self.history.home_most_remotes[current_band]
-                myCall = self.config['station']['call']
                 n_spotted, n_spotting = self.history.get_spot_counts(current_band, myCall)
                 ax.draw_artist(self._text_row(ax, 0.03, .75, f"{myCall:<7} {tx_lead[0]:<7}", color = '#ff756b' ))
                 ax.draw_artist(self._text_row(ax, 0.03, .6, f"{n_spotting:<7} {tx_lead[1]:<7}", color = '#ff756b' ))
@@ -242,7 +240,7 @@ class Gui:
 
     def _refresh_band_buttons(self):
         current_band = self.band_info['current_band']
-        grd = self.config['station']['grid'][:4]
+        grd = self.myGrid[:4]
         for bb in self.button_boxes:
             button_band = bb.clickargs.get('band',None)
             if button_band is not None:

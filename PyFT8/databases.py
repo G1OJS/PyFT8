@@ -1,4 +1,4 @@
-import threading, os, pickle, json, time
+import threading, os, pickle, json
 from PyFT8.pskreporter import PSKR_MQTT_listener
 from PyFT8.time_utils import time_utils
 
@@ -85,7 +85,7 @@ class DiskDict:
                 return
 
 class History:
-    def __init__(self, config_folder, my_call, home_square, pskr_refresh_mins):
+    def __init__(self, config_folder, my_call, home_square = '', pskr_refresh_mins = 20):
         self.pskr_refresh_mins = pskr_refresh_mins
         self.log_cache = None
         self.my_call = my_call
@@ -116,8 +116,8 @@ class History:
                 c, b, m = key_parts
                 if m == 'FT8':
                     #print(f"Parsing adif log: Add hearing & heard by {c} on {b}")
-                    self.add_myspots_record(self.hearing_me.data, None, b, c, 0, 0)
-                    self.add_myspots_record(self.heard_by_me.data, None, b, c, 0, 0)
+                    self._add_myspots_record(self.hearing_me.data, None, b, c, 0, 0)
+                    self._add_myspots_record(self.heard_by_me.data, None, b, c, 0, 0)
                 else:
                     print(m)
 
@@ -136,7 +136,7 @@ class History:
                     call = r['call_b'] if TxRx == 'Rx' else r['call_a']
                     if len(call) > 3:
                         data = self.heard_by_me.data if TxRx == 'Rx' else self.hearing_me.data
-                        self.add_myspots_record(data, None, band, call, 0, 0)
+                        self._add_myspots_record(data, None, band, call, 0, 0)
 
     def parse_all_txt(self):
         rows, recs = None, []
@@ -154,9 +154,21 @@ class History:
             print("Didn't find any records in an ALL.txt file in the config folder")
         return recs
 
-    def write_all_txt_row(self, cyclestart_string, fMHz, TxRx, mode, snr, dt, fHz, msg):
+    def process_message(message, band_info, myCall):
+        self._write_all_txt_row(m['cyclestart_string'], float(band_info['fMHz']), 'Rx', 'FT8',
+                                m['their_snr'], m['dt'], m['fHz'], m['hail'], m['their_call'], m['grid_rpt'])
+        self._add_myspots_record(self.heard_by_me.data, self.heard_by_me_new,
+                                band_info['current_band'], m['their_call'], int(time_utils.time()), m['their_snr'])
+        if m['hail'] == myCall: # They're calling me, so they're hearing me
+            rpt = m['grid_rpt'][-3:]
+            if rpt.isnumeric():
+                self._add_myspots_record(self.hearing_me.data, self.hearing_me_new,
+                                       band_info['current_band'], m['their_call'], int(time_utils.time()), int(rpt))
+
+
+    def _write_all_txt_row(self, cyclestart_string, fMHz, TxRx, mode, snr_str, dt, fHz, hail, their_call, grid_rpt):
         filemode = 'w' if not os.path.exists(self.all_file) else 'a'
-        row = f"{cyclestart_string} {fMHz:8.3f} {TxRx} {mode} {snr:+03d} {dt:4.1f} {fHz:4.0f} {msg}"
+        row = f"{cyclestart_string} {fMHz:8.3f} {TxRx} {mode} {snr_str} {dt:4.1f} {fHz:4.0f} {hail} {their_call} {grid_rpt}"
         with open(self.all_file, filemode) as f:
             f.write(f"{row}\n")
 
@@ -169,9 +181,9 @@ class History:
             if self.home_square_lev4 in grid:
                 self.add_homespots_record(f"{d['b']}_{iTxRx}_{call}", tnow)
         if d['sc'] == self.my_call:
-            self.add_myspots_record(self.hearing_me.data, self.hearing_me_new, d['b'], d['rc'], tnow, d['rp'])
+            self._add_myspots_record(self.hearing_me.data, self.hearing_me_new, d['b'], d['rc'], tnow, d['rp'])
         if d['rc'] == self.my_call:
-            self.add_myspots_record(self.heard_by_me.data, self.heard_by_me_new, d['b'], d['sc'], tnow, d['rp'])
+            self._add_myspots_record(self.heard_by_me.data, self.heard_by_me_new, d['b'], d['sc'], tnow, d['rp'])
 
     def store_best_grid(self, call, grid):
         if call.startswith('<'): return
@@ -183,7 +195,7 @@ class History:
         self.band_TxRx_homecall_recent_L4grid.data.setdefault(key, [])
         self.band_TxRx_homecall_recent_L4grid.data[key].append(int(t))
 
-    def add_myspots_record(self, historic_data, new_alert_data, band, call, t, rp):
+    def _add_myspots_record(self, historic_data, new_alert_data, band, call, t, rp):
         self._update_new_alert(band, call, historic_data, new_alert_data)
         historic_data.setdefault(band, {})
         if call in historic_data[band]:
@@ -259,6 +271,13 @@ class History:
         self.dist_brg_cache.setdefault(grid, grids_to_dist_brg(self.home_square, grid, units))
         return self.dist_brg_cache[grid]
 
+    def get_message_extra_info(self, their_call, current_band):
+        geo_text = self.get_geo_text(their_call)
+        wb_time = self.log_cache.get(their_call,'') 
+        wb_text = f"wb: {time_utils.format_duration(time_utils.time() - float(wb_time))}" if wb_time else ''
+        hearing_me = '# ' if self.is_hearing_me(current_band, their_call) else ' '
+        return hearing_me, wb_text, geo_text 
+
     def get_geo_text(self, call, units):
         geo_text = ''
         grid = self.call_to_grid.data.get(call, False)
@@ -294,7 +313,7 @@ class ADIF:
         self.cache[cbm] = tm
 
     def _build_cache(self):
-        import calendar
+        import calendar, time
         def parse(rec, field):
             p = rec.find(field)
             if p<0:
