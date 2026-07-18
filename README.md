@@ -88,11 +88,11 @@ upload = Y
 2m = 144.174
 ```
 
-## Performance Compared with FT8_lib and WSJT-x
+## Performance Compared with WSJT-x
 
-The image below shows the number of decodes from PyFT8, WSJT-x V2.7.0 running in NORM mode, and FT8_lib, using the same 10 minutes of busy 20m audio that is used to test ft8_lib. 
+The image below shows the number of decodes from PyFT8, WSJT-x V2.7.0 running in NORM mode, using the same 10 minutes of busy 20m audio that is used to test ft8_lib. On this dataset, WSJT-x performs almost the same on DEEP mode as it does on NORM, and both beat PyFT8. However, PyFT8 gets very close to WSJT-x's performance on FAST mode.
 
-<img width="900" height="898" alt="batch test performance" src="https://github.com/user-attachments/assets/513d4121-5483-4e7b-81df-785dc4db3d37" />
+<img width="900" height="900" alt="live playback vs wsjtx_v2 7 0" src="https://github.com/user-attachments/assets/853e98b2-5b9b-4241-b5f3-181fe193642e" />
 
 ## Limitations
 PyFT8 doesn't decode / encode *all* message types. The table below shows which are handled.
