@@ -5,6 +5,7 @@ from matplotlib.animation import FuncAnimation
 from PyFT8.time_utils import time_utils
 from PyFT8.receiver import Receiver
 from PyFT8.message_broker import Broker
+from PyFT8.transmitter import SoundcardOut
 from PyFT8.gui import Gui
 
 class Wsjtx_all_tailer:
@@ -79,6 +80,7 @@ def test_common(input_source):
     t_start = time_utils.time()
 
 def batch_test(i0, i1):
+    soundout = SoundcardOut(["CABLE","Input"])
     wav_files = []
     for idx in range(i0, i1):
         wav_files.append(f"{wav_folder}/test_{idx:02d}.wav")
@@ -109,10 +111,10 @@ def batch_test(i0, i1):
     plt.show()
 
 
-def live_test():
+def live_test(audio_source):
     global both_started
     both_started = False
-    test_common(["Mic", "CODEC"])
+    test_common(audio_source)
     wsjtx_all_tailer = Wsjtx_all_tailer(on_wsjtx_decode, silent = True)
     
     ws_line = ax.plot([], [], label = 'WSJT-X')[0]
@@ -131,6 +133,10 @@ def live_test():
             ax.set_ylim(0, n_max)
         if any(py_times):
             ax.set_xlim(0, np.max(py_times))
+            with open('live_decode_times_PyFT8.pkl', 'wb') as f:
+                pickle.dump(py_times, f)
+            with open('live_decode_times_WSJTx.pkl', 'wb') as f:
+                pickle.dump(ws_times, f)
         return ws_line, py_line,
     ani = FuncAnimation(fig, anim, interval = 5000, frames=(100000), blit=False)
     plt.show()
@@ -142,9 +148,12 @@ data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib
 wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
 
 gui = None
-
-#live_test()
-batch_test(1,39)
+t = 15.05-time_utils.cycle_time()
+print(t)
+time_utils.sleep(t)
+#live_test("Mic, CODEC")
+live_test("CABLE, Output")
+#batch_test(1,39)
 
 
 
