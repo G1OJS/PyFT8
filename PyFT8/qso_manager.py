@@ -12,6 +12,7 @@ class QSO_manager:
         self.adif_logging = message_broker.adif_logging
         self.in_qso_with = False
         self.tx_payload = None
+        self.transmitting = False
         self.tx_cycle = 0
         self.console_print = console_print
         self.rig = rig_control
@@ -59,6 +60,12 @@ class QSO_manager:
         self.in_qso_with = False
 
     def on_click(self, clickargs):
+        if btn_action == "TX_OFF":
+            self.console_print("[PyFT8] Set PTT Off")
+            self.rig.ptt_off()
+            self.tx_payload = None
+        if self.transmitting:
+            return
         btn_action = clickargs['action']
         self.band_info = self.get_band_info()
         if btn_action in ['MESSAGE_CLICK','CQ'] and self.band_info['current_band'] is None:
@@ -74,10 +81,7 @@ class QSO_manager:
             self._set_tx_payload(f"CQ {self.myCall} {self.myGrid[:4]}")
         if btn_action == "RPT_LAST":
             self.tx_payload = self.last_tx_payload
-        if btn_action == "TX_OFF":
-            self.console_print("[PyFT8] Set PTT Off")
-            self.rig.ptt_off()
-            self.tx_payload = None
+
         if btn_action == "MESSAGE_CLICK":
             message_type = clickargs['message']['message_type']
             if message_type in ['CQ','to_me']:
@@ -109,8 +113,10 @@ class QSO_manager:
                 grid_time = time_utils.grid_time()
                 if start_gridtime <= grid_time < start_gridtime + MAX_TX_START_CYCLETIME:
                     self.rig.ptt_on()
+                    self.transmitting = True
                     self.transmit_audio_data_bytes(self.tx_payload['audio_bytes'])
                     self.rig.ptt_off()
+                    self.transmitting = False
                     self.last_tx_payload = self.tx_payload
                     self.tx_payload = None
 

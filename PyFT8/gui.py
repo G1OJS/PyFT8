@@ -162,20 +162,17 @@ class Gui:
         self.plt.show(block = False)
         t0 = time_utils.time()
         while True:
-            time_utils.sleep(0.01)
-            ptr = self.waterfall_data['ptr']()
-            if abs(ptr-last_ptr)>1:
-                last_ptr = ptr
-                t = time_utils.time()
-                print(f"{t - t0:6.3f}")
-                t0 = t
-                self.image.set_data(self.waterfall_data['data'])
-                self.ax_wf.draw_artist(self.image)
-                for mb in self.active_msg_boxes:
-                    self.ax_wf.draw_artist(mb.patch)
-                    self.ax_wf.draw_artist(mb.text_inst)
-                self.fig.canvas.update()
-                self.fig.canvas.flush_events()
+            time_utils.sleep(0.05)
+            self.image.set_data(self.waterfall_data['data'])
+            self.ax_wf.draw_artist(self.image)
+            for mb in self.active_msg_boxes:
+                self.ax_wf.draw_artist(mb.patch)
+                self.ax_wf.draw_artist(mb.text_inst)
+            self.fig.canvas.update()
+            self.fig.canvas.flush_events()
+            t = time_utils.time()
+            #print(f"{t - t0:6.3f}")
+            t0 = t
 
     def after_search(self, curr_cycle):
         self._refresh_hearing()
