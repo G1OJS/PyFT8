@@ -17,9 +17,10 @@ class Broker():
         
     def process_message(self, message_dict):
         hail, their_call, grid_rpt = message_dict['hail'], message_dict['their_call'], message_dict['grid_rpt']
-
-        #screen_format = ' '.join(screen_info)
-        #print(f"{screen_format:50s} decoded@ {decode_info['decode_completed']}s, dec = {decode_info['decode_status']}")
+        cyclestart_string, their_snr = message_dict['cyclestart_string'], message_dict['their_snr']
+        m = message_dict
+        screen_format = f"{cyclestart_string} {their_snr} {m['dt']:4.1f} {m['fHz']:4.0f} ~ {hail} {their_call} {grid_rpt}"
+        print(f"{screen_format:50s} decoded@ {m['decode_completed']:5.1f}s, dec = {m['decode_status']}")
 
         mtype_val = 0 + 1*(their_call == self.myCall) + 2*(hail == self.myCall) + 3*(their_call != self.myCall and hail.startswith('CQ'))
         mtype = ['generic', 'from_me', 'to_me', 'CQ'][mtype_val]        

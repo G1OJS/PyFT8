@@ -160,12 +160,15 @@ class Gui:
     def monitor_waterfall(self):
         last_ptr = 0
         self.plt.show(block = False)
+        t0 = time_utils.time()
         while True:
             time_utils.sleep(0.01)
             ptr = self.waterfall_data['ptr']()
             if abs(ptr-last_ptr)>1:
                 last_ptr = ptr
-
+                t = time_utils.time()
+                print(f"{t - t0:6.3f}")
+                t0 = t
                 self.image.set_data(self.waterfall_data['data'])
                 self.ax_wf.draw_artist(self.image)
                 for mb in self.active_msg_boxes:

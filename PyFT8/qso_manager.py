@@ -37,13 +37,13 @@ class QSO_manager:
         if not any([m for m in ['+','-','RR','73'] if m in grid_rpt]): # grid_rpt == grid
             self.logging_info.update({'gridsquare': grid_rpt})
 
-    def _determine_reply(self, message_type, their_call, their_snr):
+    def _determine_reply(self, message_type, their_call, their_snr, grid_rpt):
         if message_type == "CQ":
             reply = f"{their_call} {self.myCall} {self.myGrid[:4]}"   
         if message_type == "to_me":
             reply = f"{their_call} {self.myCall} {their_snr}"
             if any([m for m in ['+','-'] if m in grid_rpt]):
-                reply = f"{stheir_call} {self.myCall} R{their_snr}"
+                reply = f"{their_call} {self.myCall} R{their_snr}"
             if any([m for m in ['R+','R-','RRR'] if m in grid_rpt]):
                 reply = f"{their_call} {self.myCall} RR73"
             if grid_rpt == 'RR73':
@@ -86,7 +86,7 @@ class QSO_manager:
                 if their_call != self.in_qso_with:
                     self._start_qso(their_call, their_snr, 1 - their_tx_cycle)
                 self._add_their_report_or_grid(grid_rpt)
-                reply = self._determine_reply(message_type, their_call, their_snr)
+                reply = self._determine_reply(message_type, their_call, their_snr, grid_rpt)
                 self._set_tx_payload(reply)
                 if reply.endswith("73"):
                     self._end_qso()
