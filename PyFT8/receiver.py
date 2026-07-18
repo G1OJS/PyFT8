@@ -577,6 +577,7 @@ class Receiver():
                     to_decode.append(c)
 
                 if c.msg_tuple:
+                    c.decode_completed = True
                     key = c.cyclestart['string'] + ''.join(c.msg_tuple)
                     if (key not in duplicate_filter):
                         duplicate_filter.add(key)

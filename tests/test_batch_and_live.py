@@ -4,6 +4,7 @@ import pickle, threading
 from matplotlib.animation import FuncAnimation
 from PyFT8.time_utils import time_utils
 from PyFT8.receiver import Receiver
+from PyFT8.message_broker import Broker
 from PyFT8.gui import Gui
 
 class Wsjtx_all_tailer:
@@ -46,14 +47,10 @@ def get_cumulative_from_text_files(i0, i1, postfix):
                 times.append(t)
     return times
 
-def on_decode(c):
-    grid_ptr = rx.audio_in.search_grid_ptr
-    decode_time_from_grid = 30* grid_ptr / rx.audio_in.search_hops_per_grid
-    print(f"{len(py_times):03d}: {' '.join(c.msg_tuple):30s} demap_start: {c.demap_started:5.1f} " +
-          f"decoded at: {decode_time_from_grid:6.2f}s h0: {c.origin['h0_idx']:3d} " +
-          f"Sync score: {c.origin['score']:3.0f}  n_sync_matches: {c.n_sync_matches:2d} LLR_SD: {c.llr_sd:5.1f} Pass: {c.ipass:2d} n_its: {c.n_its:3d} ")
-    if c.msg_tuple is not None:
-        py_times.append(time_utils.time() - t_start)
+def on_decode(md):
+    #grid_ptr = message_broker.rx.audio_in.search_grid_ptr
+    #decode_time_from_grid = 30* grid_ptr / message_broker.rx.audio_in.search_hops_per_grid
+    py_times.append(time_utils.time() - t_start)
 
 def on_wsjtx_decode(dd):
     global ws_times, both_started
@@ -64,15 +61,17 @@ def on_wsjtx_decode(dd):
     ws_times.append(time_utils.time() - t_start)
 
 def test_common(input_source):
-    global gui, rx, t_start
+    global gui, rx, t_start, message_broker
     global decodes, py_times, ws_times, decodes
     global fig, ax
     decodes, py_times, ws_times = [], [], []
     using_wav_files = input_source[0].endswith('.wav')
     input_device_keywords = input_source if not using_wav_files else None
     wav_files = input_source if using_wav_files else None
-    rx = Receiver([100, 3000], input_device_keywords, wav_files = wav_files, on_decode = on_decode,
-                sync_score_min = 85, max_cands = 1000, main_demap_start = 13) # now demap not search, so add a second on to this (14) and rebaseline
+    message_broker = Broker()
+    message_broker.rx = Receiver(message_broker, [100, 2900], input_device_keywords, wav_files = wav_files,
+                                  sync_score_min = 80, max_cands = 1000)
+    message_broker.register_on_decode(on_decode)
     #gui = Gui(rx, {'bands':{'20m':14.074},'station':{'call':'G1OJS','grid':'IO90'}}, None, None, None)
 
     import matplotlib.pyplot as plt

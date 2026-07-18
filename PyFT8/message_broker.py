@@ -13,7 +13,11 @@ class Broker():
         self.message_queue_non_time_critical = queue.Queue()
         self.waterfall_data = None
         self.configured_bands = None
+        self.on_decode = None
         threading.Thread(target = self._process_message_ntc, daemon = True).start()
+
+    def register_on_decode(self, func):
+        self.on_decode = func
         
     def process_message(self, message_dict):
         hail, their_call, grid_rpt = message_dict['hail'], message_dict['their_call'], message_dict['grid_rpt']
@@ -33,27 +37,34 @@ class Broker():
             display_text = f"{message_dict['hail']} {message_dict['their_call']} {message_dict['grid_rpt']} {hearing_me} {wb_text} {geo_text}"
             message_dict.update( {'hearing_me':hearing_me, 'wb_text':wb_text, 'geo_text':geo_text, 'display_text':display_text } )            
         if message_dict['priority']:
-            self.gui.display_message(message_dict)
+            if self.gui:
+                self.gui.display_message(message_dict)
 
         self.message_queue_non_time_critical.put(message_dict)
+
+        if self.on_decode:
+            self.on_decode(message_dict)
 
     def _process_message_ntc(self):
         while True:
             time_utils.sleep(0.25)
             while not self.message_queue_non_time_critical.empty():
-                band_info = self.gui.get_band_info()
                 time_utils.sleep(0.01)
                 m = self.message_queue_non_time_critical.get()
-                if not m['priority']:
-                    self.gui.display_message(m)                   
-                if m['their_call'] != 'not':
-                    if self.history:
-                        self.history.process_message(m, band_info, self.myCall)
-                    if self.pskr_upload:
-                        if band_info['fMHz']:
-                            if m['their_call'] != self.myCall:
-                                self.pskr_upload.add_report(m['their_call'], int(1000000*float(band_info['fMHz'])) + m['fHz'],
-                                                       m['their_snr'], 'FT8', 1, int(time_utils.time()))
+                band_info = None
+                if self.gui:
+                    band_info = self.gui.get_band_info()
+                    if not m['priority']:
+                        self.gui.display_message(m)                   
+                if band_info:
+                    if m['their_call'] != 'not':
+                        if self.history:
+                            self.history.process_message(m, band_info, self.myCall)
+                        if self.pskr_upload:
+                            if float(band_info['time_set']) < time_utils.time() - 10: # bad QRG Guard
+                                if m['their_call'] != self.myCall:
+                                    self.pskr_upload.add_report(m['their_call'], int(1000000*float(band_info['fMHz'])) + m['fHz'],
+                                                           m['their_snr'], 'FT8', 1, int(time_utils.time()))
 
 
 
