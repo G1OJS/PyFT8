@@ -202,9 +202,10 @@ class Gui:
                     time_utils.sleep(tdelay)
 
     def before_search(self, curr_cycle):
-        self._hide_msg_boxes(curr_cycle)
+        self._hide_msg_boxes(curr_cycle) # hide boxes overlapping new decodes
+        self._hide_msg_boxes(curr_cycle = None) # hide all boxes
         
-    def after_search(self,curr_cycle):
+    def after_search(self, curr_cycle):
         self._refresh_hearing()
         self._refresh_band_buttons()
         self._refresh_home_panel()
@@ -258,8 +259,6 @@ class Gui:
             self._clear_msg_boxes()
 
     def _oncanvasclick(self, clickargs):
-        #print(f"Click at {time_utils.cycle_time():6.2f}")
-         
         if clickargs.inaxes is self.ax_wf:
             for mb in self.msg_boxes:
                 if mb.contains(clickargs.x, clickargs.y):
@@ -277,15 +276,15 @@ class Gui:
                     action = ["CQ", "RPT_LAST", "TX_OFF"][['CQ', 'Repeat last', 'Tx off'].index(bb.id)]
                     self.qso_manager.on_click({'action':action})
 
-    def _hide_msg_boxes(self, curr_cycle):
-        to_hide = [mb for mb in self.msg_boxes if mb.cycle == curr_cycle]
+    def _hide_msg_boxes(self, curr_cycle = None):
+        to_hide = [mb for mb in self.msg_boxes if (mb.cycle == curr_cycle) or (curr_cycle is None)]
         for mb in to_hide:
             mb.hide()
         self.needs_redraw = True
 
     def _clear_msg_boxes(self, curr_cycle = None):
-        to_remove = [mb for mb in self.msg_boxes if mb.cycle == curr_cycle or curr_cycle is None]
-        self.msg_boxes = [mb for mb in self.msg_boxes if mb.cycle != curr_cycle and curr_cycle is not None]
+        to_remove = [mb for mb in self.msg_boxes if (mb.cycle == curr_cycle) or (curr_cycle is None)]
+        self.msg_boxes = [mb for mb in self.msg_boxes if (mb.cycle != curr_cycle) and not (curr_cycle is None)]
         for mb in to_remove:
             mb.hide()
             mb.remove()
