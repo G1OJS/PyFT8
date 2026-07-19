@@ -276,8 +276,9 @@ class Gui:
 
     def _clear_msg_boxes(self, curr_cycle = None):
         to_remove = [mb for mb in self.msg_boxes if mb.cycle == curr_cycle or curr_cycle is None]
-        self.msg_boxes = [mb for mb in self.msg_boxes if mb.cycle != curr_cycle or curr_cycle is None]
+        self.msg_boxes = [mb for mb in self.msg_boxes if mb.cycle != curr_cycle and curr_cycle is not None]
         for mb in to_remove:
+            mb.hide()
             mb.remove()
         self.needs_redraw = True
 
