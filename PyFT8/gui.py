@@ -17,40 +17,6 @@ MAX_FONT_SIZE_MAIN = 10
 L = {'pmargin':0.04, 'sidebar_width': 0.17, 'banner_height':0.1, 'vsep1':0.01, 'hsep1':0.02}
 
 
-class ButtonBox:
-    def __init__(self, fig, add_axis, box, btn_pc = 30, onclick = None, clickargs=None, btn_text = ' ', info_text = ' '):
-        self.clickargs = clickargs
-        btnbox, infobox = box.copy(), box.copy()
-        btnbox[2] = box[2] * btn_pc /100
-        infobox[2] = box[2] * (100-btn_pc) /100
-        infobox[0] = box[0] + box[2] * (btn_pc /100)
-        
-        self.btn_axs = add_axis(fig.add_axes(btnbox))
-        self.btn_widg = Button(self.btn_axs, btn_text, color = BUTTONCOLOR, hovercolor = HOVERCOLOR)
-        self.btn_widg.on_clicked(lambda x: onclick(clickargs))
-        
-        self.info_axs = add_axis(fig.add_axes(infobox))
-        self.info_art = self.info_axs.text(0.03, 0.5, info_text, color = INFO_TEXT_COLOR, verticalalignment = 'center', clip_on = True)        
-
-        self.state_is_active = None
-       # self.set_state(False)
-
-    def set_state(self, is_active: bool):
-        if is_active != self.state_is_active:
-            self.state_is_active = is_active
-            color = ACTIVE_BUTTON_COLOR if is_active else INACTIVE_BUTTON_COLOR
-            self.btn_widg.label.set_color(color)
-            self.btn_widg.label.remove()
-            self.btn_axs.draw_artist(self.btn_widg.label)
-            self.set_info_text(info_text = None, color = color)
-
-    def set_info_text(self, info_text, color = None):
-        if info_text is not None:
-            self.info_text_inst.set_text(info_text)
-        if color is not None:
-            self.info_text_inst.set_color(color)
-        self.info_art.remove()
-        self.info_axs.draw_artist(self.info_art)
 
 
 MESSAGE_TYPES = {'generic':{'bg':'blue', 'fg':'white', 'alpha':0.5}, 'CQ':{'bg':'green', 'fg':'white', 'alpha':0.8},
@@ -113,6 +79,46 @@ class Panel:
             a.set_color(color)
         self.artists.append(a)
         self.ax.draw_artist(a)
+
+class ButtonBox:
+    def __init__(self, fig, box, btn_pc = 30, onclick = None, clickargs=None, btn_text = ' ', info_text = ' '):
+        self.clickargs = clickargs
+        btnbox, infobox = box.copy(), box.copy()
+        btnbox[2] = box[2] * btn_pc /100
+        infobox[2] = box[2] * (100-btn_pc) /100
+        infobox[0] = box[0] + box[2] * (btn_pc /100)
+        
+        self.btn_axs = fig.add_axes(btnbox)
+        self.btn_widg = Button(self.btn_axs, btn_text, color = BUTTONCOLOR, hovercolor = HOVERCOLOR)
+        self.btn_widg.on_clicked(lambda x: onclick(clickargs))
+        self.btn_axs.set_xticks([])
+        self.btn_axs.set_yticks([])
+        
+        self.info_axs = fig.add_axes(infobox)
+        self.info_art = self.info_axs.text(0.03, 0.5, info_text, color = INFO_TEXT_COLOR, verticalalignment = 'center', clip_on = True)        
+        self.info_axs.set_xticks([])
+        self.info_axs.set_yticks([])
+        self.info_axs.set_facecolor(TEXT_BACKGROUND_COLOR)
+        
+        self.state_is_active = None
+        self.set_state(False)
+
+    def set_state(self, is_active: bool):
+        if is_active != self.state_is_active:
+            self.state_is_active = is_active
+            color = ACTIVE_BUTTON_COLOR if is_active else INACTIVE_BUTTON_COLOR
+            self.btn_widg.label.set_color(color)
+            #self.btn_widg.label.remove()
+            #self.btn_axs.draw_artist(self.btn_widg.label)
+            self.set_info_text(info_text = None, color = color)
+
+    def set_info_text(self, info_text, color = None):
+        if info_text is not None:
+            self.info_art.set_text(info_text)
+        if color is not None:
+            self.info_art.set_color(color)
+        #self.info_art.remove()
+        #self.info_axs.draw_artist(self.info_art)
         
 class Gui:
     def __init__(self, message_broker, rig_control, console_print, configured_bands, hearing_me_since_mins = 5):
@@ -148,18 +154,18 @@ class Gui:
         self.button_boxes = []
 
         bh, bs = 0.02, 0.002
-        bb = ButtonBox(self.fig, self._add_axis, [L['pmargin'], self.wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
+        bb = ButtonBox(self.fig, [L['pmargin'], self.wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
                         btn_text = "CQ", onclick = self._on_click_local, clickargs = {'action':'CQ'})                            
         self.button_boxes.append(bb)
-        bb = ButtonBox(self.fig, self._add_axis, [L['pmargin'], self.wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
+        bb = ButtonBox(self.fig, [L['pmargin'], self.wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
                         btn_text = "Repeat last", onclick = self._on_click_local, clickargs = {'action':'RPT_LAST'})                            
         self.button_boxes.append(bb)
-        bb = ButtonBox(self.fig, self._add_axis, [L['pmargin'], self.wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
+        bb = ButtonBox(self.fig, [L['pmargin'], self.wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
                         btn_text = "Tx off", onclick = self._on_click_local, clickargs = {'action':'TX_OFF'})                            
         self.button_boxes.append(bb)            
         for band_info in self.configured_bands:
             band, fMHz = band_info['band'], band_info['fMHz']
-            bb = ButtonBox(self.fig, self._add_axis, [L['pmargin'], self.wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 30,
+            bb = ButtonBox(self.fig, [L['pmargin'], self.wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 30,
                             btn_text = band, onclick = self._on_click_local, clickargs = {'action':'SET_BAND', 'band':band, 'fMHz':fMHz})
             self.button_boxes.append(bb)
             
@@ -272,7 +278,6 @@ class Gui:
                 self.home_panel.print_row(f"{n_spotted:<7} {rx_lead[1]:<7}", 5, color = '#b6f0c6' )
 
     def _refresh_band_buttons(self):
-        return
         current_band = self.band_info['current_band']
         grd = self.myGrid[:4]
         for bb in self.button_boxes:
@@ -282,6 +287,7 @@ class Gui:
                 if button_band in self.history.home_activity:
                     cnts = self.history.home_activity[button_band]
                     bb.set_info_text(f"{cnts[0]}Tx, {cnts[1]}Rx")
+        self.needs_redraw = True
 
     def _refresh_hearing(self):
         current_band = self.band_info['current_band']
