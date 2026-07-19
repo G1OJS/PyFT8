@@ -135,6 +135,7 @@ def cli():
         message_broker.gui = Gui(message_broker, rig_control, console_print,  configured_bands)
         qso_manager = QSO_manager(message_broker, rig_control, console_print)
         message_broker.gui.register_qso_manager(qso_manager)
+        message_broker.rx.register_before_search(message_broker.gui.before_search)
         message_broker.rx.register_after_search(message_broker.gui.after_search)
         message_broker.history.incorporate_log_data(qso_manager.adif_logging.cache)
         message_broker.history.start_collect_new()
@@ -153,7 +154,7 @@ def cli():
             pass
     else:
         message_broker.gui.set_bandstats_title(f"Pskreporter Spots\nto/from {config['station']['grid'][:4]} <{PSKR_REFRESH_MINS:.0f} mins")
-        message_broker.gui.monitor_waterfall()
+        message_broker.gui.main_loop()
 
 
 

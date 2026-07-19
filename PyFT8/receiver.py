@@ -481,6 +481,7 @@ class Receiver():
         self.audio_in = AudioIn(search_freq_range, input_device_keywords, wav_files)
         self.process_message = message_broker.process_message
         message_broker.waterfall_data = self.audio_in.waterfall_data
+        self.before_search = None
         self.after_search = None
         self.sync_score_min, self.max_cands = sync_score_min, max_cands
         self.wav_files = wav_files
@@ -503,6 +504,9 @@ class Receiver():
         time_utils.sleep(0.5)
         threading.Thread(target=self.manage_cycle, daemon=True).start()
 
+    def register_before_search(self, func):
+        self.before_search = func
+
     def register_after_search(self, func):
         self.after_search = func
 
@@ -518,6 +522,8 @@ class Receiver():
         return clearest_frequency
 
     def search(self, cyclestart, odd_even, cycle_h0):
+        if self.before_search is not None:
+            self.before_search(odd_even)
         cands = []
         hops_per_sig = self.audio_in.search_hps * PAYLOAD_SYMB_IDXS[-1]
         for f0_idx in range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 2):
