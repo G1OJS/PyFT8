@@ -221,8 +221,7 @@ class Gui:
             self.console_print(f"[PyFT8] Set band: {self.band_info['current_band']} {self.band_info['fMHz']}")
 
     def _oncanvasclick(self, clickargs):
-        print(f"Click at {time_utils.cycle_time():6.2f}")
-        return
+        #print(f"Click at {time_utils.cycle_time():6.2f}")
          
         if clickargs.inaxes is self.ax_wf:
             for mb in self.msg_boxes:
