@@ -87,7 +87,36 @@ class Msg_box:
         b, _ = self.patch.contains(event)
         if(b):
             self.onclick({'action': 'MESSAGE_CLICK', 'message':self.message})
-    
+
+class Panel:
+    def __init__(self, fig, pos, nlines = 5):
+        self.fig = fig
+        self.nlines = nlines
+        self.artists = []
+        self.ax = self.fig.add_axes(pos)
+        self.ax.set_xticks([])
+        self.ax.set_yticks([])
+        self.ax.set_facecolor(TEXT_BACKGROUND_COLOR)
+        bbox = self.ax.get_window_extent().transformed(self.fig.dpi_scale_trans.inverted())
+        self.rowheight = bbox.height * self.fig.dpi / self.nlines
+        self.fontsize = np.min([0.5 * self.rowheight, MAX_FONT_SIZE_MAIN])
+
+    def clear(self):
+        for a in self.artists:
+            a.set_visible(False)
+            a.remove()
+        self.fig.canvas.update()
+        self.fig.canvas.flush_events()
+        self.artists = [a for a in self.artists if a.get_visible()]
+
+    def print_row(self, row_text, row_number, color = None):
+        a = self.ax.text(0.03, .03+0.9*(self.nlines - row_number)/self.nlines, row_text, fontsize = self.fontsize)
+        a.set_fontfamily('monospace')
+        if color is not None:
+            a.set_color(color)
+        self.artists.append(a)
+        self.ax.draw_artist(a)
+        
 class Gui:
     def __init__(self, message_broker, rig_control, console_print, configured_bands, hearing_me_since_mins = 5):
         self.hearing_me_since_mins = hearing_me_since_mins
@@ -117,11 +146,6 @@ class Gui:
         self.ax_ss.draw_artist(self.ax_ss.text(-0.2,0.25,'Rx'))
         self.ss_arts = []
 
-        ax = self.fig.add_axes([self.wf_left, self.wf_top+L['vsep1'], 1-self.wf_left-L['pmargin'], L['banner_height']], fc=TEXT_BACKGROUND_COLOR)
-        self.ax_cs = self._add_axis(ax)
-        self.cs_arts = []
-
-        self.console_rows = [('','white'),('','white'),('','white'),('','white'),('','white')]
         self.hearing_page = 0
         self.msg_boxes = []
         self.button_boxes = []
@@ -150,6 +174,10 @@ class Gui:
         self.tlast = 0
         self.band_info = {'current_band': None, 'fMHz':0, 'time_set':0}
 
+        self.console = Panel(self.fig, [self.wf_left, self.wf_top+L['vsep1'], 1-self.wf_left-L['pmargin'], L['banner_height']])
+        self.console_rows_text = None
+
+        
     def monitor_waterfall(self):
         last_ptr = 0
         self.plt.show(block = False)
@@ -190,22 +218,13 @@ class Gui:
         self.ax_ss.set_title(txt, fontsize = 10)
         
     def update_console(self, text, color, nlines = 5):
-        ax = self.ax_cs
-        bbox = ax.get_window_extent().transformed(self.fig.dpi_scale_trans.inverted())
-        rowheight = bbox.height * self.fig.dpi / nlines
-        fontsize = np.min([0.5 * rowheight, MAX_FONT_SIZE_MAIN])
-        for a in self.cs_arts:
-            a.set_visible(False)
-            a.remove()
-            self.fig.canvas.update()
-            self.fig.canvas.flush_events()
-        self.cs_arts = [a for a in self.cs_arts if a.get_visible()]
-        self.console_rows[1:] = self.console_rows[:-1]
-        self.console_rows[0] = (text, color)
-        for i, rw in enumerate(self.console_rows):
-            a = self._text_row(ax, 0.03, .03+0.9*i/len(self.console_rows), rw[0], color = rw[1], fontsize = fontsize)
-            ax.draw_artist(a)
-            self.cs_arts.append(a)
+        if self.console_rows_text is None:
+            self.console_rows_text = [''] * nlines
+        self.console_rows_text[1:] = self.console_rows_text[:-1]
+        self.console_rows_text[0] = text
+        self.console.clear()
+        for row_number, row_text in enumerate(self.console_rows_text):
+            self.console.print_row(row_text, nlines - row_number, color = color)
 
     def _add_axis(self, ax):
         ax.set_xticks([])
