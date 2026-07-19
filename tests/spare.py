@@ -12,11 +12,11 @@ bg = np.random.rand(SIZE,SIZE)
 
 def sender():
     global msg_box_display_queue, bg
-    x, y = SIZE*np.random.rand(50), SIZE*np.random.rand(50)
-    for i in range(20):
+    while True:
+        time.sleep(0.5)
         bg = np.random.rand(SIZE,SIZE)
-        time.sleep(0.16)
-        msg_box_display_queue.put({'x':x[i], 'y':y[i]})
+        x, y = SIZE*np.random.rand(1)[0], SIZE*np.random.rand(1)[0]
+        msg_box_display_queue.put({'x':x, 'y':y})
     
 class Msg_box():
     def __init__(self, message):
@@ -47,6 +47,6 @@ while True:
 
     t = time.time()
     fig.canvas.draw()
-    print(time.time() - t)
+    #print(time.time() - t)
     fig.canvas.flush_events()
     time.sleep(0.01)
