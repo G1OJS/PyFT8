@@ -33,7 +33,9 @@ class Msg_box:
         message_type_params = MESSAGE_TYPES[message['message_type']]
         rect = Rectangle((x, y), w, h, edgecolor='lime', lw=2)
         self.patch = self.ax.add_patch(rect)
+        self.patch.set_visible(False)
         text_inst = self.ax.text(x, y+1, message['display_text'], fontsize='small', fontweight = 'bold' )
+        text_inst.set_visible(False)
         self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
         text_inst.set_color(message_type_params['fg'])
         self.patch.set_facecolor(message_type_params['bg'])
@@ -41,6 +43,8 @@ class Msg_box:
         self.message = message
         self.cycle = message['their_tx_cycle']
         self.artists = [self.patch, text_inst]
+        for a in self.artists:
+            a.set_visible(True)
 
     def draw(self):
         for a in self.artists:
@@ -191,8 +195,7 @@ class Gui:
                 self.fig.canvas.flush_events()
 
     def before_search(self, curr_cycle):
-        pass
-        #self._clear_msg_boxes(curr_cycle)
+        self._hide_msg_boxes(curr_cycle)
         
     def after_search(self,curr_cycle):
         self._refresh_hearing()
