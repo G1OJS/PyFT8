@@ -168,12 +168,7 @@ class Gui:
     def main_loop(self):
         last_ptr = 0
         self.plt.show(block = False)
-        t0 = time_utils.time()
         while True:
-            t = time_utils.time()
-            #print(f"{t-t0:6.3f}")
-            t0=t
-            time_utils.sleep(0.25)
             self.image.set_data(self.waterfall_data['data'])
             if self.needs_redraw:
                 self.needs_redraw = False
@@ -227,6 +222,7 @@ class Gui:
 
     def _oncanvasclick(self, clickargs):
         print(f"Click at {time_utils.cycle_time():6.2f}")
+        return
          
         if clickargs.inaxes is self.ax_wf:
             for mb in self.msg_boxes:
