@@ -187,7 +187,7 @@ class Gui:
                 self.needs_redraw = False
                 plt.pause(0.01)
             else:
-                self.ax_wf.draw_artist(self.image
+                self.ax_wf.draw_artist(self.image)
                 for mb in self.msg_boxes:
                     mb.draw()
                 self.fig.canvas.update()
