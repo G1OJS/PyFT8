@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
+import matplotlib.style as mplstyle
+mplstyle.use('fast')
 import queue
 from matplotlib.widgets import Button
 from PyFT8.time_utils import time_utils
@@ -177,7 +179,9 @@ class Gui:
     def main_loop(self):
         last_ptr = 0
         self.plt.show(block = False)
+        target_update_time = 0.25
         while True:
+            tstart_wf_redraw = time_utils.time()
             self.image.set_data(self.waterfall_data['data'])
             if self.needs_redraw:
                 self.needs_redraw = False
@@ -188,9 +192,14 @@ class Gui:
                 for mb in self.msg_boxes:
                     mb.draw()
                 #print(f"Drew {len(self.msg_boxes)} in {time_utils.time() - t:6.2f}s")
-                self.fig.canvas.update()
+                self.fig.canvas.blit(self.ax_wf.bbox)
+                #self.fig.canvas.update()
                 self.fig.canvas.flush_events()
                 #print(f"Updated at {time_utils.cycle_time():6.2f}s")
+                tdelay = target_update_time - (time_utils.time() - tstart_wf_redraw)
+                #print(tdelay)
+                if tdelay > 0.01:
+                    time_utils.sleep(tdelay)
 
     def before_search(self, curr_cycle):
         self._hide_msg_boxes(curr_cycle)
