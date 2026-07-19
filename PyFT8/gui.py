@@ -16,8 +16,12 @@ INACTIVE_BUTTON_COLOR = '#edeef0'
 MAX_FONT_SIZE_MAIN = 10
 L = {'pmargin':0.04, 'sidebar_width': 0.17, 'banner_height':0.1, 'vsep1':0.01, 'hsep1':0.02}
 
-
-
+def add_my_axes(fig, pos):
+    ax = fig.add_axes(pos)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_facecolor(TEXT_BACKGROUND_COLOR)
+    return ax
 
 MESSAGE_TYPES = {'generic':{'bg':'blue', 'fg':'white', 'alpha':0.5}, 'CQ':{'bg':'green', 'fg':'white', 'alpha':0.8},
                  'from_me': {'bg':'yellow', 'fg':'black', 'alpha':0.95}, 'to_me':{'bg':'red', 'fg':'white', 'alpha':0.9}} 
@@ -41,6 +45,10 @@ class Msg_box:
     def draw(self):
         for a in self.artists:
             self.ax.draw_artist(a)
+
+    def hide(self):
+        for a in self.artists:
+            a.set_visible(False)
 
     def remove(self):
         for a in self.artists:
@@ -87,19 +95,12 @@ class ButtonBox:
         btnbox[2] = box[2] * btn_pc /100
         infobox[2] = box[2] * (100-btn_pc) /100
         infobox[0] = box[0] + box[2] * (btn_pc /100)
-        
-        self.btn_axs = fig.add_axes(btnbox)
+        self.btn_axs = add_my_axes(fig, btnbox)
+        self.btn_axs.set_facecolor(BUTTONCOLOR)
         self.btn_widg = Button(self.btn_axs, btn_text, color = BUTTONCOLOR, hovercolor = HOVERCOLOR)
         self.btn_widg.on_clicked(lambda x: onclick(clickargs))
-        self.btn_axs.set_xticks([])
-        self.btn_axs.set_yticks([])
-        
-        self.info_axs = fig.add_axes(infobox)
+        self.info_axs = add_my_axes(fig, infobox)
         self.info_art = self.info_axs.text(0.03, 0.5, info_text, color = INFO_TEXT_COLOR, verticalalignment = 'center', clip_on = True)        
-        self.info_axs.set_xticks([])
-        self.info_axs.set_yticks([])
-        self.info_axs.set_facecolor(TEXT_BACKGROUND_COLOR)
-        
         self.state_is_active = None
         self.set_state(False)
 
@@ -108,8 +109,6 @@ class ButtonBox:
             self.state_is_active = is_active
             color = ACTIVE_BUTTON_COLOR if is_active else INACTIVE_BUTTON_COLOR
             self.btn_widg.label.set_color(color)
-            #self.btn_widg.label.remove()
-            #self.btn_axs.draw_artist(self.btn_widg.label)
             self.set_info_text(info_text = None, color = color)
 
     def set_info_text(self, info_text, color = None):
@@ -117,8 +116,6 @@ class ButtonBox:
             self.info_art.set_text(info_text)
         if color is not None:
             self.info_art.set_color(color)
-        #self.info_art.remove()
-        #self.info_axs.draw_artist(self.info_art)
         
 class Gui:
     def __init__(self, message_broker, rig_control, console_print, configured_bands, hearing_me_since_mins = 5):
@@ -134,21 +131,18 @@ class Gui:
         self.plt = plt
         self.fig = plt.figure(figsize = (10,10), facecolor=(.18, .71, .71, 0.4))
         self.fig.canvas.manager.set_window_title('PyFT8 by G1OJS')
-        self.needs_redraw = False
         self.wf_top = 1-L['pmargin']-L['banner_height']-L['vsep1']
         self.wf_left = L['pmargin']+L['sidebar_width']+L['hsep1']
+        self.needs_redraw = False
 
-        ax = self.fig.add_axes([self.wf_left, L['pmargin'], 1-self.wf_left-L['pmargin'], self.wf_top-L['pmargin']])
-        self.ax_wf = self._add_axis(ax)
+        self.ax_wf = add_my_axes(self.fig, [self.wf_left, L['pmargin'], 1-self.wf_left-L['pmargin'], self.wf_top-L['pmargin']])
         self.image = self.ax_wf.imshow(self.waterfall_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
-        self.wf_arts = []
 
         self.home_panel = Panel(self.fig, [L['pmargin'], self.wf_top+L['vsep1'], L['sidebar_width'], L['banner_height']])
         ax = self.home_panel.ax
         ax.draw_artist(ax.text(-0.15,0.75,'Tx'))
         ax.draw_artist(ax.text(-0.15,0.125,'Rx'))
        
-
         self.hearing_page = 0
         self.msg_boxes = []
         self.button_boxes = []
@@ -171,20 +165,18 @@ class Gui:
             
         hm_top = self.wf_top - (len(self.button_boxes)+2) * bh + bs - L['vsep1']
 
-
-        self.tlast = 0
-        self.band_info = {'current_band': None, 'fMHz':0, 'time_set':0}
-
         self.console = Panel(self.fig, [self.wf_left, self.wf_top+L['vsep1'], 1-self.wf_left-L['pmargin'], L['banner_height']])
         self.console_rows_text = None
         self.hearing_panel = Panel(self.fig, [L['pmargin'], L['pmargin'], L['sidebar_width'], hm_top])
 
-        
-    def monitor_waterfall(self):
+    def main_loop(self):
         last_ptr = 0
         self.plt.show(block = False)
         t0 = time_utils.time()
         while True:
+            t = time_utils.time()
+            #print(f"{t-t0:6.3f}")
+            t0=t
             time_utils.sleep(0.05)
             self.image.set_data(self.waterfall_data['data'])
             if self.needs_redraw:
@@ -198,11 +190,15 @@ class Gui:
                 self.fig.canvas.update()
                 self.fig.canvas.flush_events()
 
-    def after_search(self, curr_cycle):
+    def before_search(self, curr_cycle):
+        pass
+        #self._clear_msg_boxes(curr_cycle)
+        
+    def after_search(self,curr_cycle):
         self._refresh_hearing()
-        self._clear_msg_boxes(curr_cycle)
         self._refresh_band_buttons()
         self._refresh_home_panel()
+        self._clear_msg_boxes(curr_cycle)
         self.needs_redraw = True
 
     def display_message(self, message):
@@ -230,12 +226,6 @@ class Gui:
                                    color = row_text['color'])
         self.needs_redraw = True
 
-    def _add_axis(self, ax):
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.set_facecolor(TEXT_BACKGROUND_COLOR);
-        return ax
-
     def _on_click_local(self, clickargs):
         btn_action = clickargs['action']
         if(btn_action == 'SET_BAND'):
@@ -254,11 +244,19 @@ class Gui:
         self.needs_redraw = True
         self.qso_manager.on_click(clickargs)
 
+
+    def _hide_msg_boxes(self, curr_cycle):
+        to_hide = [mb for mb in self.msg_boxes if mb.cycle == curr_cycle]
+        for mb in to_hide:
+            mb.hide()
+        self.needs_redraw = True
+
     def _clear_msg_boxes(self, curr_cycle):
         to_remove = [mb for mb in self.msg_boxes if mb.cycle == curr_cycle]
+        self.msg_boxes = [mb for mb in self.msg_boxes if mb.cycle != curr_cycle]
         for mb in to_remove:
             mb.remove()
-            self.msg_boxes.remove(mb)
+        self.needs_redraw = True
 
     def _text_row(self, ax, x, y, text = '', color = 'white', **args):
         art = ax.text(x, y, text, color = color)
