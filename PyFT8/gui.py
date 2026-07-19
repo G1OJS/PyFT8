@@ -89,28 +89,25 @@ class Msg_box:
             self.onclick({'action': 'MESSAGE_CLICK', 'message':self.message})
 
 class Panel:
-    def __init__(self, fig, pos, nlines = 5):
+    def __init__(self, fig, pos):
         self.fig = fig
-        self.nlines = nlines
-        self.artists = []
         self.ax = self.fig.add_axes(pos)
         self.ax.set_xticks([])
         self.ax.set_yticks([])
         self.ax.set_facecolor(TEXT_BACKGROUND_COLOR)
-        bbox = self.ax.get_window_extent().transformed(self.fig.dpi_scale_trans.inverted())
-        self.rowheight = bbox.height * self.fig.dpi / self.nlines
-        self.fontsize = np.min([0.5 * self.rowheight, MAX_FONT_SIZE_MAIN])
+        box_h = self.ax.get_window_extent().height
+        font_h = 10
+        self.nlines = int(0.5*box_h / font_h)
+        self.artists = []
 
     def clear(self):
         for a in self.artists:
             a.set_visible(False)
             a.remove()
-        self.fig.canvas.update()
-        self.fig.canvas.flush_events()
         self.artists = [a for a in self.artists if a.get_visible()]
 
     def print_row(self, row_text, row_number, color = None):
-        a = self.ax.text(0.03, .03+0.9*(self.nlines - row_number)/self.nlines, row_text, fontsize = self.fontsize)
+        a = self.ax.text(0.03, 0.03+(self.nlines - row_number)/self.nlines, row_text)
         a.set_fontfamily('monospace')
         if color is not None:
             a.set_color(color)
@@ -167,15 +164,14 @@ class Gui:
             self.button_boxes.append(bb)
             
         hm_top = self.wf_top - (len(self.button_boxes)+2) * bh + bs - L['vsep1']
-        ax = self.fig.add_axes([L['pmargin'], L['pmargin'], L['sidebar_width'], hm_top])
-        self.ax_hm = self._add_axis(ax)
-        self.hm_arts = []
+
 
         self.tlast = 0
         self.band_info = {'current_band': None, 'fMHz':0, 'time_set':0}
 
         self.console = Panel(self.fig, [self.wf_left, self.wf_top+L['vsep1'], 1-self.wf_left-L['pmargin'], L['banner_height']])
         self.console_rows_text = None
+        self.hearing_panel = Panel(self.fig, [L['pmargin'], L['pmargin'], L['sidebar_width'], hm_top])
 
         
     def monitor_waterfall(self):
@@ -217,14 +213,16 @@ class Gui:
     def set_bandstats_title(self, txt):
         self.ax_ss.set_title(txt, fontsize = 10)
         
-    def update_console(self, text, color, nlines = 5):
+    def update_console(self, text, color):
         if self.console_rows_text is None:
-            self.console_rows_text = [''] * nlines
+            self.console_rows_text = [{'text':'','color':'white'} for i in range(self.console.nlines)]
         self.console_rows_text[1:] = self.console_rows_text[:-1]
-        self.console_rows_text[0] = text
+        self.console_rows_text[0] = {'text':text,'color':color}
         self.console.clear()
         for row_number, row_text in enumerate(self.console_rows_text):
-            self.console.print_row(row_text, nlines - row_number, color = color)
+            self.console.print_row(row_text['text'], self.console.nlines - row_number,
+                                   color = row_text['color'])
+        self.needs_redraw = True
 
     def _add_axis(self, ax):
         ax.set_xticks([])
@@ -293,36 +291,25 @@ class Gui:
 
     def _refresh_hearing(self):
         current_band = self.band_info['current_band']
-        ax = self.ax_hm
-        line_height = 0.03
-        bbox = ax.get_window_extent().transformed(self.fig.dpi_scale_trans.inverted())
-        nlines = int(0.9 / line_height)
-        for a in self.hm_arts:
-            a.set_visible(False)
-            a.remove()
-            self.hm_arts.remove(a)
-            self.fig.canvas.update()
-            self.fig.canvas.flush_events()
         if current_band is not None and self.history is not None:
             historic_data = self.history.hearing_me.data if self.hearing_page  == 1 else self.history.heard_by_me.data
             new_calls_data = self.history.hearing_me_new if self.hearing_page  == 1 else self.history.heard_by_me_new
             timewindow_str = f"<{self.hearing_me_since_mins:.0f} mins"
             title_txt = f"Hearing me {timewindow_str}" if self.hearing_page==1 else f"Heard by me {timewindow_str}"
-            self.hm_arts.append(self._text_row(ax, 0.03, 1 - line_height, title_txt, color = 'white'))
+            self.hearing_panel.clear()
+            self.hearing_panel.print_row(title_txt, 2, color = 'white')
             if current_band in historic_data:
                 tnow = time_utils.time()
                 band_rpts = historic_data[current_band]
                 calls_now = [call for call in band_rpts if (tnow - band_rpts[call]['t']) < 60*self.hearing_me_since_mins]
                 calls_now.sort(key = lambda c: band_rpts[c]['t'], reverse = True)
                 subtitle_txt = f"{len(calls_now)}/{len(band_rpts)} now/ever"
-                self.hm_arts.append(self._text_row(ax, 0.03, 1 - 2*line_height, subtitle_txt, color = 'white'))
-                for i, remote_call in enumerate(calls_now[:nlines - 3]):
+                self.hearing_panel.print_row(subtitle_txt, 3, color = 'white')
+                for i, remote_call in enumerate(calls_now[:self.hearing_panel.nlines - 3]):
                     rpt = band_rpts[remote_call]
                     row_txt = f"{remote_call:<7} {self.history.get_geo_text(remote_call)}"
                     color = 'white' if self.history.is_in_new_alert(current_band, remote_call, new_calls_data) else 'lime'
-                    self.hm_arts.append(self._text_row(ax, 0.03, 1 - line_height*(i+3.2), row_txt, color = color))
-        for row_art in self.hm_arts:
-            ax.draw_artist(row_art)
+                    self.hearing_panel.print_row(row_txt, i+4, color = color)            
         self.hearing_page = (self.hearing_page +1 )%2
 
 
