@@ -185,10 +185,9 @@ class Gui:
             self.image.set_data(self.waterfall_data['data'])
             if self.needs_redraw:
                 self.needs_redraw = False
-                plt.pause(0.1)
+                plt.pause(0.01)
             else:
-                self.ax_wf.draw_artist(self.image)
-                self.fig.canvas.update()
+                self.ax_wf.draw_artist(self.image
                 for mb in self.msg_boxes:
                     mb.draw()
                 self.fig.canvas.update()
@@ -202,13 +201,13 @@ class Gui:
         self._refresh_band_buttons()
         self._refresh_home_panel()
         self._clear_msg_boxes(curr_cycle)
-        self.needs_redraw = True
 
     def display_message(self, message):
         x = int(message['t0'] / self.waterfall_data['dt'] + message['their_tx_cycle'] * self.waterfall_data['pixels_per_cycle'])
         y = int(message['fHz'] / self.waterfall_data['df'])
         mb = Msg_box(self.fig, self.ax_wf, x, y, self.waterfall_data['sig_w'], self.waterfall_data['sig_h'], message, onclick = self._on_click_local)
         self.msg_boxes.append(mb)
+        
     def get_band_info(self):
         return self.band_info
 
