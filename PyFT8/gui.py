@@ -137,11 +137,11 @@ class Gui:
         self.image = self.ax_wf.imshow(self.waterfall_data['data'],vmax=120,vmin=90,origin='lower',interpolation='none', aspect = 'auto')
         self.wf_arts = []
 
-        ax = self.fig.add_axes([L['pmargin'], self.wf_top+L['vsep1'], L['sidebar_width'], L['banner_height']], fc=TEXT_BACKGROUND_COLOR)
-        self.ax_ss = self._add_axis(ax)
-        self.ax_ss.draw_artist(self.ax_ss.text(-0.2,0.75,'Tx'))
-        self.ax_ss.draw_artist(self.ax_ss.text(-0.2,0.25,'Rx'))
-        self.ss_arts = []
+        self.home_panel = Panel(self.fig, [L['pmargin'], self.wf_top+L['vsep1'], L['sidebar_width'], L['banner_height']])
+        ax = self.home_panel.ax
+        ax.draw_artist(ax.text(-0.15,0.75,'Tx'))
+        ax.draw_artist(ax.text(-0.15,0.125,'Rx'))
+       
 
         self.hearing_page = 0
         self.msg_boxes = []
@@ -196,7 +196,7 @@ class Gui:
         self._refresh_hearing()
         self._clear_msg_boxes(curr_cycle)
         self._refresh_band_buttons()
-        self._refresh_square_stats()
+        self._refresh_home_panel()
         self.needs_redraw = True
 
     def display_message(self, message):
@@ -211,7 +211,7 @@ class Gui:
         self.qso_manager = qsm
 
     def set_bandstats_title(self, txt):
-        self.ax_ss.set_title(txt, fontsize = 10)
+        self.home_panel.ax.set_title(txt, fontsize = 10)
         
     def update_console(self, text, color):
         if self.console_rows_text is None:
@@ -240,7 +240,7 @@ class Gui:
             for cyc in range(2):
                 self._clear_msg_boxes(cyc)
             self._refresh_band_buttons()
-            self._refresh_square_stats()
+            self._refresh_home_panel()
         if clickargs['action'] == "MESSAGE_CLICK":
             m = clickargs['message']
             m_string = f"{m['hail']} {m['their_call']} {m['grid_rpt']}"
@@ -259,23 +259,17 @@ class Gui:
         art.set_fontfamily('monospace')
         return art
    
-    def _refresh_square_stats(self):
-        ax = self.ax_ss
+    def _refresh_home_panel(self):
         current_band = self.band_info['current_band']
         if current_band is not None and self.history is not None:
             if current_band in self.history.home_most_remotes:
-                for a in self.ss_arts:
-                    a.set_visible(False)
-                    a.remove()
-                    self.ss_arts.remove(a)
                 tx_lead,  rx_lead = self.history.home_most_remotes[current_band]
                 n_spotted, n_spotting = self.history.get_spot_counts(current_band, self.myCall)
-                self.ss_arts.append(self._text_row(ax, 0.03, .75, f"{self.myCall:<7} {tx_lead[0]:<7}", color = '#ff756b' ))
-                self.ss_arts.append(self._text_row(ax, 0.03, .6, f"{n_spotting:<7} {tx_lead[1]:<7}", color = '#ff756b' ))
-                self.ss_arts.append(self._text_row(ax, 0.03, .25, f"{self.myCall:<7} {rx_lead[0]:<7}", color = '#b6f0c6' ))
-                self.ss_arts.append(self._text_row(ax, 0.03, .1, f"{n_spotted:<7} {rx_lead[1]:<7}", color = '#b6f0c6' ))
-                for a in self.ss_arts:
-                    ax.draw_artist(a)
+                self.home_panel.clear()
+                self.home_panel.print_row(f"{self.myCall:<7} {tx_lead[0]:<7}", 1, color = '#ff756b' )
+                self.home_panel.print_row(f"{n_spotting:<7} {tx_lead[1]:<7}", 2, color = '#ff756b' )
+                self.home_panel.print_row(f"{self.myCall:<7} {rx_lead[0]:<7}", 4, color = '#b6f0c6' )
+                self.home_panel.print_row(f"{n_spotted:<7} {rx_lead[1]:<7}", 5, color = '#b6f0c6' )
 
     def _refresh_band_buttons(self):
         return
