@@ -246,6 +246,7 @@ class Gui:
         if band in self.configured_bands:
             self.band_info = {'current_band':band, 'fMHz':self.configured_bands[band], 'time_set':time_utils.time()}
             self.console_print(f"[PyFT8] Set band: {self.band_info['current_band']} {self.band_info['fMHz']}")
+            self._clear_msg_boxes()
 
     def _oncanvasclick(self, clickargs):
         #print(f"Click at {time_utils.cycle_time():6.2f}")
