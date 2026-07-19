@@ -11,7 +11,7 @@ class QSO_manager:
         self.find_clear_freq = message_broker.rx.find_clear_freq
         self.adif_logging = message_broker.adif_logging
         self.in_qso_with = False
-        self.tx_payload = None
+        self.tx_payload, self.last_tx_payload = None, None
         self.transmitting = False
         self.tx_cycle = 0
         self.console_print = console_print

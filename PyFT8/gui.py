@@ -26,9 +26,8 @@ def add_my_axes(fig, pos):
 MESSAGE_TYPES = {'generic':{'bg':'blue', 'fg':'white', 'alpha':0.5}, 'CQ':{'bg':'green', 'fg':'white', 'alpha':0.8},
                  'from_me': {'bg':'yellow', 'fg':'black', 'alpha':0.95}, 'to_me':{'bg':'red', 'fg':'white', 'alpha':0.9}} 
 class Msg_box:
-    def __init__(self, fig, ax, x, y, w, h, message, onclick):
+    def __init__(self, fig, ax, x, y, w, h, message):
         from matplotlib.patches import Rectangle
-        self.onclick = onclick
         self.fig, self.ax = fig, ax
         message_type_params = MESSAGE_TYPES[message['message_type']]
         rect = Rectangle((x, y), w, h, edgecolor='lime', lw=2)
@@ -36,7 +35,6 @@ class Msg_box:
         self.patch.set_visible(False)
         text_inst = self.ax.text(x, y+1, message['display_text'], fontsize='small', fontweight = 'bold' )
         text_inst.set_visible(False)
-        self.cid = fig.canvas.mpl_connect('button_press_event', self._onclick)
         text_inst.set_color(message_type_params['fg'])
         self.patch.set_facecolor(message_type_params['bg'])
         self.patch.set_alpha(message_type_params['alpha'])
@@ -45,6 +43,10 @@ class Msg_box:
         self.artists = [self.patch, text_inst]
         for a in self.artists:
             a.set_visible(True)
+
+    def contains(self, x, y):
+        if self.patch.get_visible():
+            return self.patch.get_extents().contains(x, y)
 
     def draw(self):
         for a in self.artists:
@@ -60,11 +62,6 @@ class Msg_box:
             a.remove()
             self.artists.remove(a)
         self = None
-
-    def _onclick(self, event):
-        b, _ = self.patch.contains(event)
-        if(b):
-            self.onclick({'action': 'MESSAGE_CLICK', 'message':self.message})
 
 class Panel:
     def __init__(self, fig, pos):
@@ -93,16 +90,16 @@ class Panel:
         self.ax.draw_artist(a)
 
 class ButtonBox:
-    def __init__(self, fig, box, btn_pc = 30, onclick = None, clickargs=None, btn_text = ' ', info_text = ' '):
-        self.clickargs = clickargs
+    def __init__(self, fig, box, btn_pc = 30, btn_text = ' ', info_text = ' '):
+        self.id = btn_text
         btnbox, infobox = box.copy(), box.copy()
         btnbox[2] = box[2] * btn_pc /100
         infobox[2] = box[2] * (100-btn_pc) /100
         infobox[0] = box[0] + box[2] * (btn_pc /100)
         self.btn_axs = add_my_axes(fig, btnbox)
         self.btn_axs.set_facecolor(BUTTONCOLOR)
+        self.bbox = self.btn_axs.bbox
         self.btn_widg = Button(self.btn_axs, btn_text, color = BUTTONCOLOR, hovercolor = HOVERCOLOR)
-        self.btn_widg.on_clicked(lambda x: onclick(clickargs))
         self.info_axs = add_my_axes(fig, infobox)
         self.info_art = self.info_axs.text(0.03, 0.5, info_text, color = INFO_TEXT_COLOR, verticalalignment = 'center', clip_on = True)        
         self.state_is_active = None
@@ -120,7 +117,7 @@ class ButtonBox:
             self.info_art.set_text(info_text)
         if color is not None:
             self.info_art.set_color(color)
-        
+
 class Gui:
     def __init__(self, message_broker, rig_control, console_print, configured_bands, hearing_me_since_mins = 5):
         self.hearing_me_since_mins = hearing_me_since_mins
@@ -151,27 +148,22 @@ class Gui:
         self.msg_boxes = []
         self.button_boxes = []
 
-        bh, bs = 0.02, 0.002
-        bb = ButtonBox(self.fig, [L['pmargin'], self.wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
-                        btn_text = "CQ", onclick = self._on_click_local, clickargs = {'action':'CQ'})                            
-        self.button_boxes.append(bb)
-        bb = ButtonBox(self.fig, [L['pmargin'], self.wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
-                        btn_text = "Repeat last", onclick = self._on_click_local, clickargs = {'action':'RPT_LAST'})                            
-        self.button_boxes.append(bb)
-        bb = ButtonBox(self.fig, [L['pmargin'], self.wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 100,
-                        btn_text = "Tx off", onclick = self._on_click_local, clickargs = {'action':'TX_OFF'})                            
-        self.button_boxes.append(bb)            
-        for band_info in self.configured_bands:
-            band, fMHz = band_info['band'], band_info['fMHz']
-            bb = ButtonBox(self.fig, [L['pmargin'], self.wf_top - (len(self.button_boxes)+1) * bh + bs, L['sidebar_width'], bh-bs], btn_pc = 30,
-                            btn_text = band, onclick = self._on_click_local, clickargs = {'action':'SET_BAND', 'band':band, 'fMHz':fMHz})
-            self.button_boxes.append(bb)
+        bh, bsep = 0.02, 0.002
+        bx, bw = L['pmargin'], L['sidebar_width']
+        bxs = self.button_boxes
+        self.button_boxes.append(ButtonBox(self.fig, [bx, self.wf_top - (len(bxs)+1)*bh + bsep, bw, bh-bsep], btn_text = "CQ", btn_pc = 100) )
+        self.button_boxes.append(ButtonBox(self.fig, [bx, self.wf_top - (len(bxs)+1)*bh + bsep, bw, bh-bsep], btn_text = "Repeat last", btn_pc = 100) )
+        self.button_boxes.append(ButtonBox(self.fig, [bx, self.wf_top - (len(bxs)+1)*bh + bsep, bw, bh-bsep], btn_text = "Tx off", btn_pc = 100) )           
+        for band in self.configured_bands:
+            self.button_boxes.append(ButtonBox(self.fig, [bx, self.wf_top - (len(self.button_boxes)+1) * bh + bsep, bw, bh-bsep], btn_pc = 30, btn_text = band))
             
-        hm_top = self.wf_top - (len(self.button_boxes)+2) * bh + bs - L['vsep1']
+        hm_top = self.wf_top - (len(self.button_boxes)+2) * bh + bsep - L['vsep1']
 
         self.console = Panel(self.fig, [self.wf_left, self.wf_top+L['vsep1'], 1-self.wf_left-L['pmargin'], L['banner_height']])
         self.console_rows_text = None
         self.hearing_panel = Panel(self.fig, [L['pmargin'], L['pmargin'], L['sidebar_width'], hm_top])
+
+        self.cid = self.fig.canvas.mpl_connect('button_press_event', self._oncanvasclick)
 
     def main_loop(self):
         last_ptr = 0
@@ -181,7 +173,7 @@ class Gui:
             t = time_utils.time()
             #print(f"{t-t0:6.3f}")
             t0=t
-            time_utils.sleep(0.05)
+            time_utils.sleep(0.25)
             self.image.set_data(self.waterfall_data['data'])
             if self.needs_redraw:
                 self.needs_redraw = False
@@ -205,7 +197,7 @@ class Gui:
     def display_message(self, message):
         x = int(message['t0'] / self.waterfall_data['dt'] + message['their_tx_cycle'] * self.waterfall_data['pixels_per_cycle'])
         y = int(message['fHz'] / self.waterfall_data['df'])
-        mb = Msg_box(self.fig, self.ax_wf, x, y, self.waterfall_data['sig_w'], self.waterfall_data['sig_h'], message, onclick = self._on_click_local)
+        mb = Msg_box(self.fig, self.ax_wf, x, y, self.waterfall_data['sig_w'], self.waterfall_data['sig_h'], message)
         self.msg_boxes.append(mb)
         
     def get_band_info(self):
@@ -228,24 +220,30 @@ class Gui:
                                    color = row_text['color'])
         self.needs_redraw = True
 
-    def _on_click_local(self, clickargs):
-        btn_action = clickargs['action']
-        if(btn_action == 'SET_BAND'):
-            current_band, freqMHz = clickargs['band'], clickargs['fMHz']
-            self.band_info = {'current_band':current_band, 'fMHz':freqMHz, 'time_set':time_utils.time()}
+    def _set_band(self, band):
+        if band in self.configured_bands:
+            self.band_info = {'current_band':band, 'fMHz':self.configured_bands[band], 'time_set':time_utils.time()}
             self.console_print(f"[PyFT8] Set band: {self.band_info['current_band']} {self.band_info['fMHz']}")
-            self._refresh_hearing()
-            for cyc in range(2):
-                self._clear_msg_boxes(cyc)
-            self._refresh_band_buttons()
-            self._refresh_home_panel()
-        if clickargs['action'] == "MESSAGE_CLICK":
-            m = clickargs['message']
-            m_string = f"{m['hail']} {m['their_call']} {m['grid_rpt']}"
-            self.console_print(f"[GUI] Clicked on message '{m_string}'")
-        self.needs_redraw = True
-        self.qso_manager.on_click(clickargs)
 
+    def _oncanvasclick(self, clickargs):
+        print(f"Click at {time_utils.cycle_time():6.2f}")
+         
+        if clickargs.inaxes is self.ax_wf:
+            for mb in self.msg_boxes:
+                if mb.contains(clickargs.x, clickargs.y):
+                    self.console_print(f"[GUI] Clicked on message '{mb.message['msg_text']}'")
+                    self.qso_manager.on_click({'action':"MESSAGE_CLICK", 'message':mb.message})
+                    return
+        for bb in self.button_boxes:
+            if bb.bbox.contains(clickargs.x, clickargs.y):
+                if bb.id[:-1].isnumeric():
+                    self.needs_redraw = True
+                    self._set_band(bb.id)
+                    self.qso_manager.on_click({'action':"SET_BAND", 'fMHz':self.configured_bands[bb.id]})
+                    self.after_search(curr_cycle = None)
+                else:
+                    action = ["CQ", "RPT_LAST", "TX_OFF"][['CQ', 'Repeat last', 'Tx off'].index(bb.id)]
+                    self.qso_manager.on_click({'action':action})
 
     def _hide_msg_boxes(self, curr_cycle):
         to_hide = [mb for mb in self.msg_boxes if mb.cycle == curr_cycle]
@@ -253,8 +251,8 @@ class Gui:
             mb.hide()
         self.needs_redraw = True
 
-    def _clear_msg_boxes(self, curr_cycle):
-        to_remove = [mb for mb in self.msg_boxes if mb.cycle == curr_cycle]
+    def _clear_msg_boxes(self, curr_cycle = None):
+        to_remove = [mb for mb in self.msg_boxes if mb.cycle == curr_cycle or curr_cycle is None]
         self.msg_boxes = [mb for mb in self.msg_boxes if mb.cycle != curr_cycle]
         for mb in to_remove:
             mb.remove()
@@ -281,12 +279,10 @@ class Gui:
         current_band = self.band_info['current_band']
         grd = self.myGrid[:4]
         for bb in self.button_boxes:
-            button_band = bb.clickargs.get('band',None)
-            if button_band is not None:
-                bb.set_state(button_band == current_band)
-                if button_band in self.history.home_activity:
-                    cnts = self.history.home_activity[button_band]
-                    bb.set_info_text(f"{cnts[0]}Tx, {cnts[1]}Rx")
+            bb.set_state(bb.id == current_band)
+            if bb.id in self.history.home_activity:
+                cnts = self.history.home_activity[bb.id]
+                bb.set_info_text(f"{cnts[0]}Tx, {cnts[1]}Rx")
         self.needs_redraw = True
 
     def _refresh_hearing(self):

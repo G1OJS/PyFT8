@@ -129,9 +129,9 @@ def cli():
         message_broker.soundcard_out = soundcard_out
         message_broker.adif_logging = ADIF(f"{config_folder}/PyFT8.adi")
         message_broker.history = History(config_folder, myCall, myGrid, config['gui']['loc'])
-        configured_bands = []
-        for b,f in config['bands'].items():
-            configured_bands.append({'band':b, 'fMHz':f})
+        configured_bands = {}
+        for b, f in config['bands'].items():
+            configured_bands[b] = f
         message_broker.gui = Gui(message_broker, rig_control, console_print,  configured_bands)
         qso_manager = QSO_manager(message_broker, rig_control, console_print)
         message_broker.gui.register_qso_manager(qso_manager)
