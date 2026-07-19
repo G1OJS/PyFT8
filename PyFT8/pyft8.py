@@ -11,7 +11,7 @@ from PyFT8.databases import ADIF
 from PyFT8.qso_manager import QSO_manager
 from PyFT8.message_broker import Broker
 
-VER = '3.6.3'
+VER = '3.6.4'
 PSKR_REFRESH_MINS = 20
 message_broker = None
 
