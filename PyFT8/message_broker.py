@@ -26,15 +26,10 @@ class Broker():
         mtype = ['generic', 'from_me', 'to_me', 'CQ'][mtype_val]        
         message_dict.update( {'message_type':mtype, 'display_text':f"{hail} {their_call} {grid_rpt}",
                               'priority':(mtype == 'to_me' or mtype == 'CQ')} )
-        if self.history:
-            current_band = self.gui.get_band_info()['current_band'] 
-            hearing_me, wb_text, geo_text = self.history.get_message_extra_info(their_call, current_band)
-            display_text = f"{message_dict['hail']} {message_dict['their_call']} {message_dict['grid_rpt']} {hearing_me} {wb_text} {geo_text}"
-            message_dict.update( {'hearing_me':hearing_me, 'wb_text':wb_text, 'geo_text':geo_text, 'display_text':display_text } )            
-
         if message_dict['priority']:
             if self.gui:
                 self.gui.display_message(message_dict)
+
         if self.on_decode:
             self.on_decode(message_dict)
         m = message_dict
@@ -52,7 +47,15 @@ class Broker():
                 if self.gui:
                     band_info = self.gui.get_band_info()
                     if not m['priority']:
-                        self.gui.display_message(m)                   
+                        self.gui.display_message(m)
+                    else:
+                        if self.history:
+                            current_band = self.gui.get_band_info()['current_band'] 
+                            hearing_me, wb_text, geo_text = self.history.get_message_extra_info(m['their_call'], current_band)
+                            new_display_text = f"{m['display_text']} {hearing_me} {wb_text} {geo_text}"
+                            self.gui.update_message( m['display_text'], {'hearing_me':hearing_me, 'wb_text':wb_text,
+                                                        'geo_text':geo_text, 'display_text':new_display_text } )
+
                 if band_info:
                     if m['their_call'] != 'not':
                         if self.history:

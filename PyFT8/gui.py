@@ -30,17 +30,26 @@ class Msg_box:
         from matplotlib.patches import Rectangle
         self.fig, self.ax = fig, ax
         message_type_params = MESSAGE_TYPES[message['message_type']]
-        rect = Rectangle((x, y), w, h, edgecolor='lime', lw=2)
+        rect = Rectangle((0, 0), w, h, edgecolor='lime', lw=2)
         self.patch = self.ax.add_patch(rect)
         self.patch.set_visible(False)
-        text_inst = self.ax.text(x, y+1, message['display_text'], fontsize='small', fontweight = 'bold' )
-        text_inst.set_visible(False)
-        text_inst.set_color(message_type_params['fg'])
-        self.patch.set_facecolor(message_type_params['bg'])
-        self.patch.set_alpha(message_type_params['alpha'])
+        self.text_inst = self.ax.text(0, 0, '', fontweight = 'bold' )
+        self.text_inst.set_visible(False)
+        self.text_inst.set_fontfamily('monospace')
+        self.artists = [self.patch, self.text_inst]
+        self.set_props(x, y, message)
+
+    def set_props(self, x, y, message):
+        self.xy = (x, y)
         self.message = message
         self.cycle = message['their_tx_cycle']
-        self.artists = [self.patch, text_inst]
+        message_type_params = MESSAGE_TYPES[message['message_type']]
+        self.text_inst.set_text(message['display_text'])
+        self.text_inst.set_color(message_type_params['fg'])
+        self.patch.set_facecolor(message_type_params['bg'])
+        self.patch.set_alpha(message_type_params['alpha'])
+        self.text_inst.set_position((x, y+1))
+        self.patch.set_xy((x, y))
         for a in self.artists:
             a.set_visible(True)
 
@@ -175,10 +184,13 @@ class Gui:
                 plt.pause(0.01)
             else:
                 self.ax_wf.draw_artist(self.image)
+                t = time_utils.time()
                 for mb in self.msg_boxes:
                     mb.draw()
+                #print(f"Drew {len(self.msg_boxes)} in {time_utils.time() - t:6.2f}s")
                 self.fig.canvas.update()
                 self.fig.canvas.flush_events()
+                #print(f"Updated at {time_utils.cycle_time():6.2f}s")
 
     def before_search(self, curr_cycle):
         self._hide_msg_boxes(curr_cycle)
@@ -187,13 +199,28 @@ class Gui:
         self._refresh_hearing()
         self._refresh_band_buttons()
         self._refresh_home_panel()
-        self._clear_msg_boxes(curr_cycle)
+        #self._clear_msg_boxes(curr_cycle)
 
     def display_message(self, message):
         x = int(message['t0'] / self.waterfall_data['dt'] + message['their_tx_cycle'] * self.waterfall_data['pixels_per_cycle'])
         y = int(message['fHz'] / self.waterfall_data['df'])
-        mb = Msg_box(self.fig, self.ax_wf, x, y, self.waterfall_data['sig_w'], self.waterfall_data['sig_h'], message)
-        self.msg_boxes.append(mb)
+        mb = None
+        for mb1 in self.msg_boxes:
+            if not mb1.patch.get_visible():
+                mb1.set_props(x, y, message)
+                mb = mb1
+                break
+        if not mb:
+            mb = Msg_box(self.fig, self.ax_wf, x, y, self.waterfall_data['sig_w'], self.waterfall_data['sig_h'], message)
+            self.msg_boxes.append(mb)
+        #print(f"{len(self.msg_boxes)} message boxes")
+
+    def update_message(self, display_text, update_dict):
+        for mb in self.msg_boxes:
+            if mb.patch.get_visible():
+                if mb.message['display_text'] == display_text:
+                    mb.message.update(update_dict)
+                    mb.set_props(mb.xy[0], mb.xy[1], mb.message)
         
     def get_band_info(self):
         return self.band_info
@@ -248,7 +275,7 @@ class Gui:
 
     def _clear_msg_boxes(self, curr_cycle = None):
         to_remove = [mb for mb in self.msg_boxes if mb.cycle == curr_cycle or curr_cycle is None]
-        self.msg_boxes = [mb for mb in self.msg_boxes if mb.cycle != curr_cycle]
+        self.msg_boxes = [mb for mb in self.msg_boxes if mb.cycle != curr_cycle or curr_cycle is None]
         for mb in to_remove:
             mb.remove()
         self.needs_redraw = True
