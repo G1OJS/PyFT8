@@ -179,6 +179,7 @@ class Gui:
         self.plt.show(block = False)
         target_update_time = 0.15
         while True:
+            self.fig.canvas.flush_events() # for clicks
             tstart_wf_redraw = time_utils.time()
             self.image.set_data(self.waterfall_data['data'])
             if self.needs_redraw:
@@ -186,28 +187,23 @@ class Gui:
                 plt.pause(0.01)
             else:
                 self.ax_wf.draw_artist(self.image)
+                self.fig.canvas.flush_events() # for clicks
                 for mb in self.msg_boxes:
                     if mb.patch.get_visible():
                         mb.draw()
+                    self.fig.canvas.flush_events() # for clicks
                 self.fig.canvas.blit(self.ax_wf.bbox) #self.fig.canvas.update()
                 self.fig.canvas.flush_events()
-                t = time_utils.time()
-                for mb in self.msg_boxes:
-                    if not mb.display_delay:
-                        if mb.patch.get_visible():
-                            mb.drawn_at = t
-                            mb.display_delay = f"{mb.message['display_text']:30} {(t - mb.message['decode_completed']) :6.2f}s"
                 tdelay = target_update_time - (time_utils.time() - tstart_wf_redraw)
                 if tdelay > 0.01:
                     time_utils.sleep(tdelay)
 
-    def before_search(self, curr_cycle):
-        self._hide_msg_boxes(curr_cycle) # hide boxes overlapping new decodes
+    def before_search(self, curr_cycle): # would be better with a local trigger
+        #self._hide_msg_boxes(curr_cycle) # hide boxes overlapping new decodes
         self._hide_msg_boxes(curr_cycle = None) # hide all boxes
-        for mb in self.msg_boxes:
-            if mb.display_delay:
-                print(mb.display_delay)
-            mb.display_delay = None
+        self._refresh_home_panel()
+        self._refresh_band_buttons()
+        self._refresh_hearing()
 
     def display_message(self, message):
         mb = self._get_message_box()
@@ -267,8 +263,7 @@ class Gui:
         if clickargs.inaxes is self.ax_wf:
             for mb in self.msg_boxes:
                 if mb.contains(clickargs.x, clickargs.y):
-                    delay = time_utils.time() - mb.drawn_at
-                    self.console_print(f"[GUI] Clicked on message '{mb.message['msg_text']} drw->clck:{delay:4.1f}'")
+                    self.console_print(f"[GUI] Clicked on message '{mb.message['msg_text']}")
                     self.qso_manager.on_click({'action':"MESSAGE_CLICK", 'message':mb.message})
                     return
         for bb in self.button_boxes:
