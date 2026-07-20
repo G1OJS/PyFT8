@@ -126,7 +126,7 @@ class ButtonBox:
 class Gui:
     def __init__(self, comms_hub, rig_control, console_print, configured_bands, hearing_me_since_mins = 5):
         self.hearing_me_since_mins = hearing_me_since_mins
-        self.comms_hub.hearing_me_since_mins = hearing_me_since_mins
+        comms_hub.hearing_me_since_mins = hearing_me_since_mins
         self.waterfall_data = comms_hub.waterfall_data
         self.history = comms_hub.history
         self.qso_manager = None
