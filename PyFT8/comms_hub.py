@@ -16,7 +16,7 @@ class Broker():
         self.on_decode = None
         threading.Thread(target = self._process_message_ntc, daemon = True).start()
 
-    def register_on_decode(self, func):
+    def register_on_decode(self, func): # used by testing code
         self.on_decode = func
         
     def process_message(self, message_dict):
