@@ -25,8 +25,8 @@ def add_my_axes(fig, pos):
     ax.set_facecolor(TEXT_BACKGROUND_COLOR)
     return ax
 
-MESSAGE_TYPES = {'generic':{'bg':'blue', 'fg':'white', 'alpha':0.5}, 'CQ':{'bg':'green', 'fg':'white', 'alpha':0.8},
-                 'from_me': {'bg':'yellow', 'fg':'black', 'alpha':0.95}, 'to_me':{'bg':'red', 'fg':'white', 'alpha':0.9}} 
+MESSAGE_TYPES = {'generic':{'bg':'blue', 'fg':'white', 'alpha':0.4}, 'CQ':{'bg':'green', 'fg':'white', 'alpha':0.7},
+                 'from_me': {'bg':'yellow', 'fg':'black', 'alpha':0.9}, 'to_me':{'bg':'red', 'fg':'white', 'alpha':0.9}} 
 class Msg_box:
     def __init__(self, fig, ax, w, h):
         from matplotlib.patches import Rectangle
@@ -190,10 +190,10 @@ class Gui:
                     mb.draw()
                 self.fig.canvas.blit(self.ax_wf.bbox) #self.fig.canvas.update()
                 self.fig.canvas.flush_events()
-                t = time_utils.cycle_time()
+                t = time_utils.time()
                 for mb in self.msg_boxes:
                     if not mb.display_delay:
-                        mb.display_delay = f"{mb.message['display_text']:30} {(t - mb.message['decode_completed'])%15 :6.2f}s"
+                        mb.display_delay = f"{mb.message['display_text']:30} {(t - mb.message['decode_completed']) :6.2f}s"
                 tdelay = target_update_time - (time_utils.time() - tstart_wf_redraw)
                 if tdelay > 0.01:
                     time_utils.sleep(tdelay)
@@ -202,7 +202,8 @@ class Gui:
         self._hide_msg_boxes(curr_cycle) # hide boxes overlapping new decodes
         self._hide_msg_boxes(curr_cycle = None) # hide all boxes
         for mb in self.msg_boxes:
-            print(mb.display_delay)
+            if mb.display_delay:
+                print(mb.display_delay)
             mb.display_delay = None
 
     def display_message(self, message):

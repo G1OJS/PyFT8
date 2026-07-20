@@ -34,7 +34,7 @@ class Broker():
             self.on_decode(message_dict)
         m = message_dict
         screen_format = f"{cyclestart_string} {their_snr} {m['dt']:4.1f} {m['fHz']:4.0f} ~ {hail} {their_call} {grid_rpt}"
-        print(f"{screen_format:50s} decoded@ {m['decode_completed']:5.1f}s, dec = {m['decode_status']}")
+        print(f"{screen_format:50s} decoded@ {m['decode_completed'] %15:5.1f}s, dec = {m['decode_status']}")
         self.message_queue_non_time_critical.put(message_dict)
 
     def _process_message_ntc(self):
