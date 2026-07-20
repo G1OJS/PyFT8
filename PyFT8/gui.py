@@ -52,7 +52,6 @@ class Msg_box:
         self.patch.set_xy((x, y))
         for a in self.artists:
             a.set_visible(True)
-        self.display_delay = None
 
     def contains(self, x, y):
         if self.patch.get_visible():
@@ -256,7 +255,10 @@ class Gui:
             for mb in self.msg_boxes:
                 mb.hide()
                 mb.remove()
-            self.msg_boxes = []    
+            self.msg_boxes = []
+            self._refresh_home_panel()
+            self._refresh_band_buttons()
+            self._refresh_hearing()
             self.needs_redraw = True
 
     def _oncanvasclick(self, clickargs):
@@ -281,11 +283,6 @@ class Gui:
         for mb in to_hide:
             mb.hide()
         self.needs_redraw = True
-
-    def _text_row(self, ax, x, y, text = '', color = 'white', **args):
-        art = ax.text(x, y, text, color = color)
-        art.set_fontfamily('monospace')
-        return art
    
     def _refresh_home_panel(self):
         current_band = self.band_info['current_band']
