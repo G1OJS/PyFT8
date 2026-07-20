@@ -2,6 +2,9 @@ import threading, os, pickle, json
 from PyFT8.pskreporter import PSKR_MQTT_listener
 from PyFT8.time_utils import time_utils
 
+
+# call hash calculator for receiver ==============================================================
+
 call_hashes, hashes_for_calls = {}, {}
 
 def add_call_hashes(call):
@@ -22,31 +25,8 @@ def add_call_hashes(call):
         call_hashes[(x, m)] = call
     hashes_for_calls[call] = hashes
 
-def grid_to_latlong(grid, centre = True):
-    lat, lon = -90, -180
-    grid = grid.upper()
-    if centre:
-        grid = grid + "LL44LL44LL44"[len(grid):]
-    mults = [20, 2, 2/24, 0.2/24, 0.2/(24*24), 0.02/(24*24)]
-    grid = grid[:2*len(mults)]
-    pairs = [grid[i:i+2] for i in range(0,len(grid),2)]
-    for i, p in enumerate(pairs):
-        zero = [ord('A'),ord('0')][i % 2]
-        lon += mults[i] * (ord(p[0]) - zero)
-        lat += mults[i] * (ord(p[1]) - zero) / 2
-    return (lat, lon)
-        
-def grids_to_dist_brg(sq1, sq2, units):
-    from numpy import sin, cos, asin, atan2, sqrt, radians, degrees
-    ll1, ll2 = grid_to_latlong(sq1), grid_to_latlong(sq2)
-    lats = [radians(ll1[0]), radians(ll2[0])]
-    dlat, dlon = radians(ll2[0] - ll1[0]), radians(ll2[1] - ll1[1])
-    s_lats, c_lats = sin(lats), cos(lats)
-    a = sin(dlat/2)**2 + c_lats[0] * c_lats[1] * sin(dlon/2)**2
-    r = 6371 * 2 * asin(sqrt(a))
-    b = atan2(c_lats[1] * sin(dlon), c_lats[0] * s_lats[1] - s_lats[0] * c_lats[1] * cos(dlon))
-    b *= (1.0 if 'km' in units else 0.621371)
-    return (r, degrees(b) % 360)
+
+# Disk-synced dictionary class for History ======================================================
 
 class DiskDict:
     def __init__(self, file, autosave_t0):
@@ -84,6 +64,8 @@ class DiskDict:
             except:
                 return
 
+# History class ==============================================================================================
+
 class History:
     def __init__(self, config_folder, my_call, home_square = '', geo_units = 'km', pskr_refresh_mins = 20):
         self.pskr_refresh_mins = pskr_refresh_mins
@@ -105,9 +87,47 @@ class History:
         self.call_to_grid = DiskDict(f"{config_folder}/call_to_grid.json", 7)   # all time cache call -> fine locator
         self.band_TxRx_homecall_recent_L4grid = DiskDict(f"{config_folder}/recent_l4grid.json", 9) # last 20 mins data -> per band tx/rx & current band detail
 
+    
+    # external query-type functions --------------------------------------------------------
+
+    def is_in_new_alert(self, band, call, new_alert_data):
+        result = False
+        if band in new_alert_data:
+            result = call in new_alert_data[band]
+        return result
+
+    def is_hearing_me(self, band, call, in_last_n_minutes):
+        result = False
+        if band in self.hearing_me.data:
+            if call in self.hearing_me.data[band]:
+                result = int(self.hearing_me.data[band][call]['t']) > (time_utils.time() - 60*in_last_n_minutes)
+        return result        
+      
+    def get_spot_counts(self, band, call):
+        tx_reports = self.band_TxRx_homecall_recent_L4grid.data.get(f"{band}_0_{call}", [])
+        rx_reports = self.band_TxRx_homecall_recent_L4grid.data.get(f"{band}_1_{call}", [])
+        n_spotting = len(tx_reports) if tx_reports else 0
+        n_spotted = len(rx_reports) if rx_reports else 0
+        return n_spotted, n_spotting
+
+    def get_geo_text(self, call):
+        geo_text = ''
+        grid = self.call_to_grid.data.get(call, False)
+        if grid:
+            loc = grid if self.geo_units == 'grid' else self._get_dist_brg(grid, self.geo_units)
+            units_str = '' if self.geo_units == 'grid' else ('km' if 'km' in self.geo_units else 'mi')
+            geo_text = f"{int(loc[0]):5d}{units_str} {int(loc[1]):3d}°"
+        return geo_text
+
+    def get_worked_before_info(self, their_call, current_band):
+        wb_time = self.log_cache.get(their_call,'') 
+        return f"wb: {time_utils.format_duration(time_utils.time() - float(wb_time))}" if wb_time else ''
+
+    # external storage-like functions -------------------------------------------------------------------
+
     def start_collect_new(self):
-        mqtt = PSKR_MQTT_listener(self.home_square_lev4, self.add_mqtt_spot)
-        threading.Thread(target = self.count_activity, daemon = True).start()
+        mqtt = PSKR_MQTT_listener(self.home_square_lev4, self._add_mqtt_spot)
+        threading.Thread(target = self._count_activity, daemon = True).start()
 
     def incorporate_log_data(self, log_cache):
         self.log_cache = log_cache
@@ -123,7 +143,7 @@ class History:
                     print(m)
 
     def load_hearing_heard_from_all_file(self, bands):
-        recs = self.parse_all_txt()
+        recs = self._parse_all_txt()
         if not any(recs):
             return
         for b in bands:
@@ -139,7 +159,51 @@ class History:
                         data = self.heard_by_me.data if TxRx == 'Rx' else self.hearing_me.data
                         self._add_myspots_record(data, None, band, call, 0, 0)
 
-    def parse_all_txt(self):
+    def process_message(self, message, band_info, myCall):
+        m = message
+        self._write_all_txt_row(m['cyclestart_string'], float(band_info['fMHz']), 'Rx', 'FT8',
+                                m['their_snr'], m['dt'], m['fHz'], m['hail'], m['their_call'], m['grid_rpt'])
+        self._add_myspots_record(self.heard_by_me.data, self.heard_by_me_new,
+                                band_info['current_band'], m['their_call'], int(time_utils.time()), m['their_snr'])
+        if m['hail'] == myCall: # They're calling me, so they're hearing me
+            rpt = m['grid_rpt'][-3:]
+            if rpt.isnumeric():
+                self._add_myspots_record(self.hearing_me.data, self.hearing_me_new,
+                                       band_info['current_band'], m['their_call'], int(time_utils.time()), int(rpt))
+
+
+    # ----- internal storing / writing functions ----------------------------------------------------------
+
+    def _write_all_txt_row(self, cyclestart_string, fMHz, TxRx, mode, snr_str, dt, fHz, hail, their_call, grid_rpt):
+        filemode = 'w' if not os.path.exists(self.all_file) else 'a'
+        row = f"{cyclestart_string} {fMHz:8.3f} {TxRx} {mode} {snr_str} {dt:4.1f} {fHz:4.0f} {hail} {their_call} {grid_rpt}"
+        with open(self.all_file, filemode) as f:
+            f.write(f"{row}\n")
+
+    def _add_mqtt_spot(self, d):
+        tnow = int(time_utils.time())
+        sc, rc = (d['sc'], d['sl']), (d['rc'], d['rl'])
+        for iTxRx, call_grid in enumerate([sc, rc]):
+            call, grid = call_grid
+            self._store_best_grid(call, grid)
+            if self.home_square_lev4 in grid:
+                self._add_homespots_record(f"{d['b']}_{iTxRx}_{call}", tnow)
+        if d['sc'] == self.my_call:
+            self._add_myspots_record(self.hearing_me.data, self.hearing_me_new, d['b'], d['rc'], tnow, d['rp'])
+        if d['rc'] == self.my_call:
+            self._add_myspots_record(self.heard_by_me.data, self.heard_by_me_new, d['b'], d['sc'], tnow, d['rp'])
+
+    def _add_homespots_record(self, key, t):
+        self.band_TxRx_homecall_recent_L4grid.data.setdefault(key, [])
+        self.band_TxRx_homecall_recent_L4grid.data[key].append(int(t))
+
+    def _store_best_grid(self, call, grid):
+        if call.startswith('<'): return
+        existing_grid = self.call_to_grid.data.get(call, '')
+        if len(grid) > len(existing_grid):
+            self.call_to_grid.data[call] = grid
+
+    def _parse_all_txt(self):
         rows, recs = None, []
         if os.path.exists(self.all_file):
             with open(self.all_file, 'r') as f:
@@ -154,58 +218,16 @@ class History:
         if not any(recs):
             print("Didn't find any records in an ALL.txt file in the config folder")
         return recs
-
-    def process_message(self, message, band_info, myCall):
-        m = message
-        self._write_all_txt_row(m['cyclestart_string'], float(band_info['fMHz']), 'Rx', 'FT8',
-                                m['their_snr'], m['dt'], m['fHz'], m['hail'], m['their_call'], m['grid_rpt'])
-        self._add_myspots_record(self.heard_by_me.data, self.heard_by_me_new,
-                                band_info['current_band'], m['their_call'], int(time_utils.time()), m['their_snr'])
-        if m['hail'] == myCall: # They're calling me, so they're hearing me
-            rpt = m['grid_rpt'][-3:]
-            if rpt.isnumeric():
-                self._add_myspots_record(self.hearing_me.data, self.hearing_me_new,
-                                       band_info['current_band'], m['their_call'], int(time_utils.time()), int(rpt))
-
-
-    def _write_all_txt_row(self, cyclestart_string, fMHz, TxRx, mode, snr_str, dt, fHz, hail, their_call, grid_rpt):
-        filemode = 'w' if not os.path.exists(self.all_file) else 'a'
-        row = f"{cyclestart_string} {fMHz:8.3f} {TxRx} {mode} {snr_str} {dt:4.1f} {fHz:4.0f} {hail} {their_call} {grid_rpt}"
-        with open(self.all_file, filemode) as f:
-            f.write(f"{row}\n")
-
-    def add_mqtt_spot(self, d):
-        tnow = int(time_utils.time())
-        sc, rc = (d['sc'], d['sl']), (d['rc'], d['rl'])
-        for iTxRx, call_grid in enumerate([sc, rc]):
-            call, grid = call_grid
-            self.store_best_grid(call, grid)
-            if self.home_square_lev4 in grid:
-                self.add_homespots_record(f"{d['b']}_{iTxRx}_{call}", tnow)
-        if d['sc'] == self.my_call:
-            self._add_myspots_record(self.hearing_me.data, self.hearing_me_new, d['b'], d['rc'], tnow, d['rp'])
-        if d['rc'] == self.my_call:
-            self._add_myspots_record(self.heard_by_me.data, self.heard_by_me_new, d['b'], d['sc'], tnow, d['rp'])
-
-    def store_best_grid(self, call, grid):
-        if call.startswith('<'): return
-        existing_grid = self.call_to_grid.data.get(call, '')
-        if len(grid) > len(existing_grid):
-            self.call_to_grid.data[call] = grid
-        
-    def add_homespots_record(self, key, t):
-        self.band_TxRx_homecall_recent_L4grid.data.setdefault(key, [])
-        self.band_TxRx_homecall_recent_L4grid.data[key].append(int(t))
-
+    
     def _add_myspots_record(self, historic_data, new_alert_data, band, call, t, rp):
-        self._update_new_alert(band, call, historic_data, new_alert_data)
+        self._update_new_alert_data(band, call, historic_data, new_alert_data)
         historic_data.setdefault(band, {})
         if call in historic_data[band]:
             if int(t) < int(historic_data[band][call]['t']):
                 return
         historic_data[band][call] = {'t': int(t),'rp':int(rp)}
 
-    def _update_new_alert(self, band, call, historic_data, new_alert_data):
+    def _update_new_alert_data(self, band, call, historic_data, new_alert_data):
         if new_alert_data is None:
             return
         new = band not in historic_data
@@ -215,20 +237,14 @@ class History:
             new_alert_data.setdefault(band, [])
             new_alert_data[band].append(call)
 
-    def is_in_new_alert(self, band, call, new_alert_data):
-        result = False
-        if band in new_alert_data:
-            result = call in new_alert_data[band]
-        return result
+    def _get_dist_brg(self, grid, units):
+        self.dist_brg_cache.setdefault(grid, _grids_to_dist_brg(self.home_square, grid, units))
+        return self.dist_brg_cache[grid]
 
-    def is_hearing_me(self, band, call, since_seconds = 120):
-        result = False
-        if band in self.hearing_me.data:
-            if call in self.hearing_me.data[band]:
-                result = int(self.hearing_me.data[band][call]['t']) > since_seconds
-        return result        
-      
-    def count_activity(self):
+
+    # ---- Internal analysis functions -------------------------------------------------------------
+
+    def _count_activity(self):
         import numpy as np
         while True:
             time_utils.sleep(5)
@@ -261,33 +277,38 @@ class History:
                         if nremotes > current_winner[1]:
                             if c != self.my_call:
                                 self.home_most_remotes[b][iTxRx] = (c, nremotes)
+                                
+# Geo Helpers =================================================================
 
-    def get_spot_counts(self, band, call):
-        tx_reports = self.band_TxRx_homecall_recent_L4grid.data.get(f"{band}_0_{call}", [])
-        rx_reports = self.band_TxRx_homecall_recent_L4grid.data.get(f"{band}_1_{call}", [])
-        n_spotting = len(tx_reports) if tx_reports else 0
-        n_spotted = len(rx_reports) if rx_reports else 0
-        return n_spotted, n_spotting
+def _grids_to_dist_brg(sq1, sq2, units):
+    from numpy import sin, cos, asin, atan2, sqrt, radians, degrees
+    ll1, ll2 = _grid_to_latlong(sq1), _grid_to_latlong(sq2)
+    lats = [radians(ll1[0]), radians(ll2[0])]
+    dlat, dlon = radians(ll2[0] - ll1[0]), radians(ll2[1] - ll1[1])
+    s_lats, c_lats = sin(lats), cos(lats)
+    a = sin(dlat/2)**2 + c_lats[0] * c_lats[1] * sin(dlon/2)**2
+    r = 6371 * 2 * asin(sqrt(a))
+    b = atan2(c_lats[1] * sin(dlon), c_lats[0] * s_lats[1] - s_lats[0] * c_lats[1] * cos(dlon))
+    b *= (1.0 if 'km' in units else 0.621371)
+    return (r, degrees(b) % 360)  
 
-    def get_dist_brg(self, grid, units):
-        self.dist_brg_cache.setdefault(grid, grids_to_dist_brg(self.home_square, grid, units))
-        return self.dist_brg_cache[grid]
 
-    def get_message_extra_info(self, their_call, current_band):
-        geo_text = self.get_geo_text(their_call)
-        wb_time = self.log_cache.get(their_call,'') 
-        wb_text = f"wb: {time_utils.format_duration(time_utils.time() - float(wb_time))}" if wb_time else ''
-        hearing_me = '# ' if self.is_hearing_me(current_band, their_call) else ' '
-        return hearing_me, wb_text, geo_text 
+def _grid_to_latlong(grid, centre = True):
+    lat, lon = -90, -180
+    grid = grid.upper()
+    if centre:
+        grid = grid + "LL44LL44LL44"[len(grid):]
+    mults = [20, 2, 2/24, 0.2/24, 0.2/(24*24), 0.02/(24*24)]
+    grid = grid[:2*len(mults)]
+    pairs = [grid[i:i+2] for i in range(0,len(grid),2)]
+    for i, p in enumerate(pairs):
+        zero = [ord('A'),ord('0')][i % 2]
+        lon += mults[i] * (ord(p[0]) - zero)
+        lat += mults[i] * (ord(p[1]) - zero) / 2
+    return (lat, lon)
+        
 
-    def get_geo_text(self, call):
-        geo_text = ''
-        grid = self.call_to_grid.data.get(call, False)
-        if grid:
-            loc = grid if self.geo_units == 'grid' else self.get_dist_brg(grid, self.geo_units)
-            units_str = '' if self.geo_units == 'grid' else ('km' if 'km' in self.geo_units else 'mi')
-            geo_text = f"{int(loc[0]):5d}{units_str} {int(loc[1]):3d}°"
-        return geo_text
+# ==================ADIF LOGGING=========================================================================
                 
 def ensure_file_exists(path, header = None):
     try:

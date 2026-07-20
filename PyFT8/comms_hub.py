@@ -14,6 +14,7 @@ class Broker():
         self.waterfall_data = None
         self.configured_bands = None
         self.on_decode = None
+        self.hearing_me_since_mins = None
         threading.Thread(target = self._process_message_ntc, daemon = True).start()
 
     def register_on_decode(self, func): # used by testing code
@@ -50,8 +51,13 @@ class Broker():
                         self.gui.display_message(m)
                     else:
                         if self.history:
-                            current_band = self.gui.get_band_info()['current_band'] 
-                            hearing_me, wb_text, geo_text = self.history.get_message_extra_info(m['their_call'], current_band)
+                            current_band, their_call = self.gui.get_band_info()['current_band'], m['their_call']
+                            hearing_me = ''
+                            if self.hearing_me_since_mins is not None:
+                                if self.history.is_hearing_me(current_band, their_call, self.hearing_me_since_mins):
+                                    hearing_me = '@'
+                            wb_text = self.history.get_worked_before_info(current_band, their_call)
+                            geo_text = self.history.get_geo_text(their_call)
                             new_display_text = f"{m['display_text']} {hearing_me} {wb_text} {geo_text}"
                             self.gui.update_message( m['display_text'], {'hearing_me':hearing_me, 'wb_text':wb_text,
                                                         'geo_text':geo_text, 'display_text':new_display_text } )

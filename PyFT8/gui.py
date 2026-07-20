@@ -126,6 +126,7 @@ class ButtonBox:
 class Gui:
     def __init__(self, comms_hub, rig_control, console_print, configured_bands, hearing_me_since_mins = 5):
         self.hearing_me_since_mins = hearing_me_since_mins
+        self.comms_hub.hearing_me_since_mins = hearing_me_since_mins
         self.waterfall_data = comms_hub.waterfall_data
         self.history = comms_hub.history
         self.qso_manager = None
@@ -303,7 +304,6 @@ class Gui:
             if bb.id in self.history.home_activity:
                 cnts = self.history.home_activity[bb.id]
                 bb.set_info_text(f"{cnts[0]}Tx, {cnts[1]}Rx")
-        self.needs_redraw = True
 
     def _refresh_hearing(self):
         current_band = self.band_info['current_band']
