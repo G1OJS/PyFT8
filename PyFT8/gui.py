@@ -177,7 +177,7 @@ class Gui:
 
     def main_loop(self):
         self.plt.show(block = False)
-        target_update_time = 0.25
+        target_update_time = 0.15
         while True:
             tstart_wf_redraw = time_utils.time()
             self.image.set_data(self.waterfall_data['data'])
@@ -195,6 +195,7 @@ class Gui:
                 for mb in self.msg_boxes:
                     if not mb.display_delay:
                         if mb.patch.get_visible():
+                            mb.drawn_at = t
                             mb.display_delay = f"{mb.message['display_text']:30} {(t - mb.message['decode_completed']) :6.2f}s"
                 tdelay = target_update_time - (time_utils.time() - tstart_wf_redraw)
                 if tdelay > 0.01:
@@ -266,7 +267,8 @@ class Gui:
         if clickargs.inaxes is self.ax_wf:
             for mb in self.msg_boxes:
                 if mb.contains(clickargs.x, clickargs.y):
-                    self.console_print(f"[GUI] Clicked on message '{mb.message['msg_text']}'")
+                    delay = time_utils.time() - mb.drawn_at
+                    self.console_print(f"[GUI] Clicked on message '{mb.message['msg_text']} drw->clck:{delay:4.1f}'")
                     self.qso_manager.on_click({'action':"MESSAGE_CLICK", 'message':mb.message})
                     return
         for bb in self.button_boxes:
