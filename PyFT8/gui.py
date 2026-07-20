@@ -187,13 +187,15 @@ class Gui:
             else:
                 self.ax_wf.draw_artist(self.image)
                 for mb in self.msg_boxes:
-                    mb.draw()
+                    if mb.patch.get_visible():
+                        mb.draw()
                 self.fig.canvas.blit(self.ax_wf.bbox) #self.fig.canvas.update()
                 self.fig.canvas.flush_events()
                 t = time_utils.time()
                 for mb in self.msg_boxes:
                     if not mb.display_delay:
-                        mb.display_delay = f"{mb.message['display_text']:30} {(t - mb.message['decode_completed']) :6.2f}s"
+                        if mb.patch.get_visible():
+                            mb.display_delay = f"{mb.message['display_text']:30} {(t - mb.message['decode_completed']) :6.2f}s"
                 tdelay = target_update_time - (time_utils.time() - tstart_wf_redraw)
                 if tdelay > 0.01:
                     time_utils.sleep(tdelay)
