@@ -209,7 +209,6 @@ class Gui:
         x = int(message['t0'] / self.waterfall_data['dt'] + message['their_tx_cycle'] * self.waterfall_data['pixels_per_cycle'])
         y = int(message['fHz'] / self.waterfall_data['df'])
         mb.set_props(x, y, message)
-        self.msg_boxes.append(mb)
 
     def update_message(self, display_text, update_dict):
         for mb in self.msg_boxes:
@@ -246,6 +245,7 @@ class Gui:
                 break
         if not mb:
             mb = Msg_box(self.fig, self.ax_wf, self.waterfall_data['sig_w'], self.waterfall_data['sig_h'])
+            self.msg_boxes.append(mb)
         return mb
 
     def _set_band(self, band):
