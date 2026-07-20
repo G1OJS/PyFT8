@@ -95,11 +95,16 @@ The image below shows the number of decodes from PyFT8, WSJT-x V2.7.0 running in
 <img width="900" height="900" alt="live playback vs wsjtx_v2 7 0" src="https://github.com/user-attachments/assets/853e98b2-5b9b-4241-b5f3-181fe193642e" />
 
 ## Decoding approach
+The approach to decoding, as at v3.7.0, is as follows.
+
  - As audio arrives
     - FFT to a spectrum 4 times per symbol duration & assemble a time-frequency grid with 2 bins per tone.
     - Collect all audio samples for later full cycle FFT
  - Search the time frequency grid for candidates based on Costas array sync score (using middle Costas block)
- - Send candidates for decode using symbol & tone points drawn directly from the search grid to get early decodes (limited LDPC)
+ - Send candidates for decode using symbol & tone points drawn directly from the search grid to get early decodes using limited LDPC cycles.
+
+This often decodes around three quarters of the candidates decoded by WSJT-x, with the steps below getting most of the rest:
+
  - For candidates that haven't decoded:
      - FFT the full cycle audio, downsample to 200 samples per second & shift the signal to f = 0
      - Explore fine time and frequency offsets to maximise the Costas sync score
