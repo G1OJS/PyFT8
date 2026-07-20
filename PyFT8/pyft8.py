@@ -9,11 +9,11 @@ from PyFT8.rigctrl import Rig_hamlib, Rig_CAT
 from PyFT8.databases import History
 from PyFT8.databases import ADIF
 from PyFT8.qso_manager import QSO_manager
-from PyFT8.message_broker import Broker
+from PyFT8.comms_hub import Broker
 
 VER = '3.7.1'
 PSKR_REFRESH_MINS = 20
-message_broker = None
+comms_hub = None
 
 def get_config(config_folder):
     config = configparser.ConfigParser()
@@ -42,9 +42,9 @@ def get_config(config_folder):
 
 def console_print(text, color = 'white'):
     text = f"{time_utils.cycle_time():4.1f} {text}"
-    if message_broker is not None:
-        if message_broker.gui is not None:
-            message_broker.gui.update_console(text, color)
+    if comms_hub is not None:
+        if comms_hub.gui is not None:
+            comms_hub.gui.update_console(text, color)
     else:
         print(text)
 
@@ -115,46 +115,45 @@ def cli():
         sys.exit(1)
 
 # Set up for receiving with or without Gui
-    global message_broker
-    message_broker = Broker()
-    message_broker.rx = Receiver(message_broker, [100, 3000], args.inputcard_keywords, wav_files = None, 
+    global comms_hub
+    comms_hub = Broker()
+    comms_hub.rx = Receiver(comms_hub, [100, 3000], args.inputcard_keywords, wav_files = None, 
                                   sync_score_min = 90, max_cands = 100, search_timerange = [-1, 3.5])
-    if not message_broker.rx.audio_in.input_device_idx:
+    if not comms_hub.rx.audio_in.input_device_idx:
         time_utils.tlog(f"[Audio] No input audio device found matching {input_device_keywords}", verbose = True)
         sys.exit(1)
 
 # Initialise the gui
     if not args.no_gui:
-        message_broker.myCall, message_broker.myGrid = myCall, myGrid
-        message_broker.soundcard_out = soundcard_out
-        message_broker.adif_logging = ADIF(f"{config_folder}/PyFT8.adi")
-        message_broker.history = History(config_folder, myCall, myGrid, config['gui']['loc'])
+        comms_hub.myCall, comms_hub.myGrid = myCall, myGrid
+        comms_hub.soundcard_out = soundcard_out
+        comms_hub.adif_logging = ADIF(f"{config_folder}/PyFT8.adi")
+        comms_hub.history = History(config_folder, myCall, myGrid, config['gui']['loc'])
         configured_bands = {}
         for b, f in config['bands'].items():
             configured_bands[b] = f
-        message_broker.gui = Gui(message_broker, rig_control, console_print,  configured_bands)
-        qso_manager = QSO_manager(message_broker, rig_control, console_print)
-        message_broker.gui.register_qso_manager(qso_manager)
-        message_broker.rx.register_before_search(message_broker.gui.before_search)
-        #message_broker.rx.register_after_search(message_broker.gui.after_search)
-        message_broker.history.incorporate_log_data(qso_manager.adif_logging.cache)
-        message_broker.history.start_collect_new()
+            
+        comms_hub.gui = Gui(comms_hub, rig_control, console_print,  configured_bands)
+        qso_manager = QSO_manager(comms_hub, rig_control, console_print)
+        comms_hub.gui.register_qso_manager(qso_manager)
+        comms_hub.history.incorporate_log_data(qso_manager.adif_logging.cache)
+        comms_hub.history.start_collect_new()
 
 # Start pskreporter upload
     if myCall is not None and 'pskreporter' in config.keys():
         if config['pskreporter']['upload'] == 'Y':
-            message_broker.pskr_upload = PSKR_upload(myCall, myGrid, software = f"PyFT8 v{VER}", console_print = console_print) 
+            comms_hub.pskr_upload = PSKR_upload(myCall, myGrid, software = f"PyFT8 v{VER}", console_print = console_print) 
 
 # wait or show gui as appropriate
-    if message_broker.gui is None:
+    if comms_hub.gui is None:
         try:
             while True:
                 time_utils.sleep(1)
         except KeyboardInterrupt:
             pass
     else:
-        message_broker.gui.set_bandstats_title(f"Pskreporter Spots\nto/from {config['station']['grid'][:4]} <{PSKR_REFRESH_MINS:.0f} mins")
-        message_broker.gui.main_loop()
+        comms_hub.gui.set_bandstats_title(f"Pskreporter Spots\nto/from {config['station']['grid'][:4]} <{PSKR_REFRESH_MINS:.0f} mins")
+        comms_hub.gui.main_loop()
 
 
 
