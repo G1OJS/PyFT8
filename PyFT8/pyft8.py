@@ -136,7 +136,7 @@ def cli():
         qso_manager = QSO_manager(message_broker, rig_control, console_print)
         message_broker.gui.register_qso_manager(qso_manager)
         message_broker.rx.register_before_search(message_broker.gui.before_search)
-        message_broker.rx.register_after_search(message_broker.gui.after_search)
+        #message_broker.rx.register_after_search(message_broker.gui.after_search)
         message_broker.history.incorporate_log_data(qso_manager.adif_logging.cache)
         message_broker.history.start_collect_new()
 

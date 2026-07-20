@@ -55,7 +55,6 @@ class Broker():
                             new_display_text = f"{m['display_text']} {hearing_me} {wb_text} {geo_text}"
                             self.gui.update_message( m['display_text'], {'hearing_me':hearing_me, 'wb_text':wb_text,
                                                         'geo_text':geo_text, 'display_text':new_display_text } )
-
                 if band_info:
                     if m['their_call'] != 'not':
                         if self.history:

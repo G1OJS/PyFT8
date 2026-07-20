@@ -28,10 +28,9 @@ def add_my_axes(fig, pos):
 MESSAGE_TYPES = {'generic':{'bg':'blue', 'fg':'white', 'alpha':0.5}, 'CQ':{'bg':'green', 'fg':'white', 'alpha':0.8},
                  'from_me': {'bg':'yellow', 'fg':'black', 'alpha':0.95}, 'to_me':{'bg':'red', 'fg':'white', 'alpha':0.9}} 
 class Msg_box:
-    def __init__(self, fig, ax, x, y, w, h, message):
+    def __init__(self, fig, ax, w, h):
         from matplotlib.patches import Rectangle
         self.fig, self.ax = fig, ax
-        message_type_params = MESSAGE_TYPES[message['message_type']]
         rect = Rectangle((0, 0), w, h, edgecolor='lime', lw=2)
         self.patch = self.ax.add_patch(rect)
         self.patch.set_visible(False)
@@ -39,7 +38,6 @@ class Msg_box:
         self.text_inst.set_visible(False)
         self.text_inst.set_fontfamily('monospace')
         self.artists = [self.patch, self.text_inst]
-        self.set_props(x, y, message)
 
     def set_props(self, x, y, message):
         self.xy = (x, y)
@@ -54,6 +52,7 @@ class Msg_box:
         self.patch.set_xy((x, y))
         for a in self.artists:
             a.set_visible(True)
+        self.display_delay = None
 
     def contains(self, x, y):
         if self.patch.get_visible():
@@ -177,7 +176,6 @@ class Gui:
         self.cid = self.fig.canvas.mpl_connect('button_press_event', self._oncanvasclick)
 
     def main_loop(self):
-        last_ptr = 0
         self.plt.show(block = False)
         target_update_time = 0.25
         while True:
@@ -188,42 +186,30 @@ class Gui:
                 plt.pause(0.01)
             else:
                 self.ax_wf.draw_artist(self.image)
-                t = time_utils.time()
                 for mb in self.msg_boxes:
                     mb.draw()
-                #print(f"Drew {len(self.msg_boxes)} in {time_utils.time() - t:6.2f}s")
-                self.fig.canvas.blit(self.ax_wf.bbox)
-                #self.fig.canvas.update()
+                self.fig.canvas.blit(self.ax_wf.bbox) #self.fig.canvas.update()
                 self.fig.canvas.flush_events()
-                #print(f"Updated at {time_utils.cycle_time():6.2f}s")
+                t = time_utils.cycle_time()
+                for mb in self.msg_boxes:
+                    if not mb.display_delay:
+                        mb.display_delay = f"{mb.message['display_text']:30} {(t - mb.message['decode_completed'])%15 :6.2f}s"
                 tdelay = target_update_time - (time_utils.time() - tstart_wf_redraw)
-                #print(tdelay)
                 if tdelay > 0.01:
                     time_utils.sleep(tdelay)
 
     def before_search(self, curr_cycle):
         self._hide_msg_boxes(curr_cycle) # hide boxes overlapping new decodes
         self._hide_msg_boxes(curr_cycle = None) # hide all boxes
-        
-    def after_search(self, curr_cycle):
-        self._refresh_hearing()
-        self._refresh_band_buttons()
-        self._refresh_home_panel()
-        #self._clear_msg_boxes(curr_cycle)
+        for mb in self.msg_boxes:
+            print(mb.display_delay)
 
     def display_message(self, message):
+        mb = self._get_message_box()
         x = int(message['t0'] / self.waterfall_data['dt'] + message['their_tx_cycle'] * self.waterfall_data['pixels_per_cycle'])
         y = int(message['fHz'] / self.waterfall_data['df'])
-        mb = None
-        for mb1 in self.msg_boxes:
-            if not mb1.patch.get_visible():
-                mb1.set_props(x, y, message)
-                mb = mb1
-                break
-        if not mb:
-            mb = Msg_box(self.fig, self.ax_wf, x, y, self.waterfall_data['sig_w'], self.waterfall_data['sig_h'], message)
-            self.msg_boxes.append(mb)
-        #print(f"{len(self.msg_boxes)} message boxes")
+        mb.set_props(x, y, message)
+        self.msg_boxes.append(mb)
 
     def update_message(self, display_text, update_dict):
         for mb in self.msg_boxes:
@@ -252,11 +238,25 @@ class Gui:
                                    color = row_text['color'])
         self.needs_redraw = True
 
+    def _get_message_box(self):
+        mb = None
+        for mb1 in self.msg_boxes:
+            if not mb1.patch.get_visible():
+                mb = mb1
+                break
+        if not mb:
+            mb = Msg_box(self.fig, self.ax_wf, self.waterfall_data['sig_w'], self.waterfall_data['sig_h'])
+        return mb
+
     def _set_band(self, band):
         if band in self.configured_bands:
             self.band_info = {'current_band':band, 'fMHz':self.configured_bands[band], 'time_set':time_utils.time()}
             self.console_print(f"[PyFT8] Set band: {self.band_info['current_band']} {self.band_info['fMHz']}")
-            self._clear_msg_boxes()
+            for mb in self.msg_boxes:
+                mb.hide()
+                mb.remove()
+            self.msg_boxes = []    
+            self.needs_redraw = True
 
     def _oncanvasclick(self, clickargs):
         if clickargs.inaxes is self.ax_wf:
@@ -271,7 +271,6 @@ class Gui:
                     self.needs_redraw = True
                     self._set_band(bb.id)
                     self.qso_manager.on_click({'action':"SET_BAND", 'fMHz':self.configured_bands[bb.id]})
-                    self.after_search(curr_cycle = None)
                 else:
                     action = ["CQ", "RPT_LAST", "TX_OFF"][['CQ', 'Repeat last', 'Tx off'].index(bb.id)]
                     self.qso_manager.on_click({'action':action})
@@ -280,14 +279,6 @@ class Gui:
         to_hide = [mb for mb in self.msg_boxes if (mb.cycle == curr_cycle) or (curr_cycle is None)]
         for mb in to_hide:
             mb.hide()
-        self.needs_redraw = True
-
-    def _clear_msg_boxes(self, curr_cycle = None):
-        to_remove = [mb for mb in self.msg_boxes if (mb.cycle == curr_cycle) or (curr_cycle is None)]
-        self.msg_boxes = [mb for mb in self.msg_boxes if (mb.cycle != curr_cycle) and not (curr_cycle is None)]
-        for mb in to_remove:
-            mb.hide()
-            mb.remove()
         self.needs_redraw = True
 
     def _text_row(self, ax, x, y, text = '', color = 'white', **args):
