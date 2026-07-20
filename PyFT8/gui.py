@@ -50,6 +50,9 @@ class Msg_box:
         self.patch.set_alpha(message_type_params['alpha'])
         self.text_inst.set_position((x, y+1))
         self.patch.set_xy((x, y))
+        if message['priority']:
+            for a in self.artists:
+                a.set_zorder(100)
         for a in self.artists:
             a.set_visible(True)
 
