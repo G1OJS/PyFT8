@@ -1,7 +1,7 @@
 # PyFT8 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/pyft8?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/pyft8) [![PyPI Downloads](https://static.pepy.tech/personalized-badge/pyft8?period=weekly&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads/wk)](https://pepy.tech/projects/pyft8) [PyPI link](https://pypi.org/project/PyFT8/)
 # All-Python FT8 Transceiver GUI / Command Line Modem
 
-This repository contains the source code for PyFT8, an all-Python open source FT8 transceiver that you can run as a basic GUI or from the command line to receive and transmit. Decoding performance (number of decodes) is about 70% of that achieved by WSJT-x in NORM mode, but (tbc) slightly above ft8_lib. 
+This repository contains the source code for PyFT8, an all-Python open source FT8 transceiver that you can run as a basic GUI or from the command line to receive and transmit. Decoding performance (number of decodes) is very close to that of WSJT-x 2.7.0 running in FAST mode. 
 
 PyFT8 is somewhat experimental, with a focus on demonstrating FT8 written in Python, but can be used as a standalone replacement for WSJT-x and other software.
 
@@ -93,6 +93,23 @@ upload = Y
 The image below shows the number of decodes from PyFT8, WSJT-x V2.7.0 running in NORM mode, using the same 10 minutes of busy 20m audio that is used to test ft8_lib. On this dataset, WSJT-x performs almost the same on DEEP mode as it does on NORM, and both beat PyFT8. However, PyFT8 gets very close to WSJT-x's performance on FAST mode.
 
 <img width="900" height="900" alt="live playback vs wsjtx_v2 7 0" src="https://github.com/user-attachments/assets/853e98b2-5b9b-4241-b5f3-181fe193642e" />
+
+## Decoding approach
+ - As audio arrives
+    - FFT to a spectrum 4 times per symbol duration & assemble a time-frequency grid with 2 bins per tone.
+    - Collect all audio samples for later full cycle FFT
+ - Search the time frequency grid for candidates based on Costas array sync score (using middle Costas block)
+ - Send candidates for decode using symbol & tone points drawn directly from the search grid to get early decodes (limited LDPC)
+ - For candidates that haven't decoded:
+     - FFT the full cycle audio, downsample to 200 samples per second & shift the signal to f = 0
+     - Explore fine time and frequency offsets to maximise the Costas sync score
+     - Check for bad candidates (count maxima of Costas tones)
+     - Extract the LLR & wait for decoder to pick up the candidate
+ - For candidates awaiting decode from above:
+     - Try more extensive LDPC
+     - Try several 'A Priori' masks and input to more LDPC attempts, recording the output LLR on failures
+     - Try Ordered Statistics Decoding on the base LLR
+     - Try Ordered Statistics Decoding on the LLRs output from the AP+LDPC runs above
 
 ## Limitations
 PyFT8 doesn't decode / encode *all* message types. The table below shows which are handled.
