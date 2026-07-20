@@ -65,13 +65,6 @@ class Msg_box:
         for a in self.artists:
             a.set_visible(False)
 
-    def remove(self):
-        for a in self.artists:
-            a.set_visible(False)
-            a.remove()
-            self.artists.remove(a)
-        self = None
-
 class Panel:
     def __init__(self, fig, pos):
         self.fig = fig
@@ -128,14 +121,14 @@ class ButtonBox:
             self.info_art.set_color(color)
 
 class Gui:
-    def __init__(self, message_broker, rig_control, console_print, configured_bands, hearing_me_since_mins = 5):
+    def __init__(self, comms_hub, rig_control, console_print, configured_bands, hearing_me_since_mins = 5):
         self.hearing_me_since_mins = hearing_me_since_mins
-        self.waterfall_data = message_broker.waterfall_data
-        self.history = message_broker.history
+        self.waterfall_data = comms_hub.waterfall_data
+        self.history = comms_hub.history
         self.qso_manager = None
         self.configured_bands = configured_bands
         self.console_print = console_print
-        self.myCall, self.myGrid = message_broker.myCall, message_broker.myGrid
+        self.myCall, self.myGrid = comms_hub.myCall, comms_hub.myGrid
         self.band_info = {'current_band': None, 'fMHz':0, 'time_set':0}
         
         self.plt = plt
@@ -173,18 +166,19 @@ class Gui:
         self.hearing_panel = Panel(self.fig, [L['pmargin'], L['pmargin'], L['sidebar_width'], hm_top])
 
         self.cid = self.fig.canvas.mpl_connect('button_press_event', self._oncanvasclick)
+        self.new_cycle = False
+        self.cycle_time_prev = 1000
 
     def main_loop(self):
         self.plt.show(block = False)
-        target_update_time = 0.15
         while True:
             self.fig.canvas.flush_events() # for clicks
             tstart_wf_redraw = time_utils.time()
-            self.image.set_data(self.waterfall_data['data'])
             if self.needs_redraw:
                 self.needs_redraw = False
                 plt.pause(0.01)
             else:
+                self.image.set_data(self.waterfall_data['data'])
                 self.ax_wf.draw_artist(self.image)
                 self.fig.canvas.flush_events() # for clicks
                 for mb in self.msg_boxes:
@@ -193,16 +187,26 @@ class Gui:
                     self.fig.canvas.flush_events() # for clicks
                 self.fig.canvas.blit(self.ax_wf.bbox) #self.fig.canvas.update()
                 self.fig.canvas.flush_events()
-                tdelay = target_update_time - (time_utils.time() - tstart_wf_redraw)
-                if tdelay > 0.01:
-                    time_utils.sleep(tdelay)
+            self._do_timed_checks(tstart_wf_redraw)
 
-    def before_search(self, curr_cycle): # would be better with a local trigger
-        #self._hide_msg_boxes(curr_cycle) # hide boxes overlapping new decodes
-        self._hide_msg_boxes(curr_cycle = None) # hide all boxes
-        self._refresh_home_panel()
-        self._refresh_band_buttons()
-        self._refresh_hearing()
+    def _do_timed_checks(self, tstart_wf_redraw, target_update_time = 0.15):
+        ct = time_utils.cycle_time()
+        if ct < self.cycle_time_prev:
+            self.new_cycle = True
+            self._refresh_home_panel()
+            self._refresh_band_buttons()
+            self._refresh_hearing()
+            self.needs_redraw = True
+        self.cycle_time_prev = ct
+        if ct > 10 and self.new_cycle:
+            for mb in self.msg_boxes:
+                mb.hide()
+            self.needs_redraw = True
+            self.new_cycle = False
+        tnow = time_utils.time()
+        tdelay = target_update_time - (tnow - tstart_wf_redraw)
+        if tdelay > 0.01:
+            time_utils.sleep(tdelay)
 
     def display_message(self, message):
         mb = self._get_message_box()
@@ -237,30 +241,6 @@ class Gui:
                                    color = row_text['color'])
         self.needs_redraw = True
 
-    def _get_message_box(self):
-        mb = None
-        for mb1 in self.msg_boxes:
-            if not mb1.patch.get_visible():
-                mb = mb1
-                break
-        if not mb:
-            mb = Msg_box(self.fig, self.ax_wf, self.waterfall_data['sig_w'], self.waterfall_data['sig_h'])
-            self.msg_boxes.append(mb)
-        return mb
-
-    def _set_band(self, band):
-        if band in self.configured_bands:
-            self.band_info = {'current_band':band, 'fMHz':self.configured_bands[band], 'time_set':time_utils.time()}
-            self.console_print(f"[PyFT8] Set band: {self.band_info['current_band']} {self.band_info['fMHz']}")
-            for mb in self.msg_boxes:
-                mb.hide()
-                mb.remove()
-            self.msg_boxes = []
-            self._refresh_home_panel()
-            self._refresh_band_buttons()
-            self._refresh_hearing()
-            self.needs_redraw = True
-
     def _oncanvasclick(self, clickargs):
         if clickargs.inaxes is self.ax_wf:
             for mb in self.msg_boxes:
@@ -278,12 +258,28 @@ class Gui:
                     action = ["CQ", "RPT_LAST", "TX_OFF"][['CQ', 'Repeat last', 'Tx off'].index(bb.id)]
                     self.qso_manager.on_click({'action':action})
 
-    def _hide_msg_boxes(self, curr_cycle = None):
-        to_hide = [mb for mb in self.msg_boxes if (mb.cycle == curr_cycle) or (curr_cycle is None)]
-        for mb in to_hide:
-            mb.hide()
-        self.needs_redraw = True
-   
+    def _get_message_box(self):
+        mb = None
+        for mb1 in self.msg_boxes:
+            if not mb1.patch.get_visible():
+                mb = mb1
+                break
+        if not mb:
+            mb = Msg_box(self.fig, self.ax_wf, self.waterfall_data['sig_w'], self.waterfall_data['sig_h'])
+            self.msg_boxes.append(mb)
+        return mb
+
+    def _set_band(self, band):
+        if band in self.configured_bands:
+            self.band_info = {'current_band':band, 'fMHz':self.configured_bands[band], 'time_set':time_utils.time()}
+            self.console_print(f"[PyFT8] Set band: {self.band_info['current_band']} {self.band_info['fMHz']}")
+            for mb in self.msg_boxes:
+                mb.hide()
+            self._refresh_home_panel()
+            self._refresh_band_buttons()
+            self._refresh_hearing()
+            self.needs_redraw = True
+
     def _refresh_home_panel(self):
         current_band = self.band_info['current_band']
         if current_band is not None and self.history is not None:
