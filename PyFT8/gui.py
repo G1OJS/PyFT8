@@ -203,6 +203,7 @@ class Gui:
         self._hide_msg_boxes(curr_cycle = None) # hide all boxes
         for mb in self.msg_boxes:
             print(mb.display_delay)
+            mb.display_delay = None
 
     def display_message(self, message):
         mb = self._get_message_box()
