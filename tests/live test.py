@@ -28,10 +28,9 @@ class SoundcardOut:
                 time_utils.tlog(f"[Audio Out] No output audio device found matching {outputcard_keywords}", verbose = True)
                 sys.exit(1)
 
-    def play_wavs(self, wav_files, sr=12000):
+    def play_wavs(self, wav_files, sr=12000, wav_file_time_offset = -1):
         import wave
-        t = 15.05-time_utils.cycle_time()
-        print(t)
+        t = (wav_file_time_offset - time_utils.cycle_time()) %15
         time_utils.sleep(t)
         dt = 0.6/4
         for i, w in enumerate(wav_files):
@@ -111,9 +110,10 @@ def live_test(input_device_keywords, wav_range = None):
 
     wsjtx_all_tailer = Wsjtx_all_tailer(on_wsjtx_decode, silent = True)
 
-    t = 15.05-time_utils.cycle_time()
-    print(f"Waiting to start test on next cycle ({t:6.1f}s)")
-    time_utils.sleep(t)
+    t = 15-time_utils.cycle_time()
+    if t > 0.05:
+        print(f"Waiting to start test on next cycle ({t:6.1f}s)")
+        time_utils.sleep(t)
     t_start = time_utils.time()
 
     if wav_files:
@@ -150,8 +150,8 @@ win32process.SetPriorityClass(win32api.GetCurrentProcess(), win32process.HIGH_PR
 data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy"
 wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
 
-live_test("Mic, CODEC")
-#live_test("CABLE, Output", [1,20])
+#live_test("Mic, CODEC")
+live_test("CABLE, Output", [1,20])
 
 
 
