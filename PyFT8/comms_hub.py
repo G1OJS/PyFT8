@@ -20,23 +20,27 @@ class Broker():
     def register_on_decode(self, func): # used by testing code
         self.on_decode = func
         
-    def process_message(self, message_dict):
-        hail, their_call, grid_rpt = message_dict['hail'], message_dict['their_call'], message_dict['grid_rpt']
-        cyclestart_string, their_snr = message_dict['cyclestart_string'], message_dict['their_snr']
+    def process_message(self, message):
+        hail, their_call, grid_rpt = message['hail'], message['their_call'], message['grid_rpt']
+        cyclestart_string, their_snr = message['cyclestart_string'], message['their_snr']
         mtype_val = 0 + 1*(their_call == self.myCall) + 2*(hail == self.myCall) + 3*(their_call != self.myCall and hail.startswith('CQ'))
         mtype = ['generic', 'from_me', 'to_me', 'CQ'][mtype_val]        
-        message_dict.update( {'message_type':mtype, 'display_text':f"{hail} {their_call} {grid_rpt}",
+        message.update( {'message_type':mtype, 'display_text':f"{hail} {their_call} {grid_rpt}",
                               'priority':(mtype == 'to_me' or mtype == 'CQ')} )
-        if message_dict['priority']:
+        if message['priority']:
             if self.gui:
-                self.gui.display_message(message_dict)
+                self.gui.display_message(message)
+
+        if self.gui.qso_manager.in_qso_with == their_call:
+            if hail == self.myCall:
+                self.gui.qso_manager.auto_reply_to_message(message)
 
         if self.on_decode:
-            self.on_decode(message_dict)
-        m = message_dict
+            self.on_decode(message)
+        m = message
         screen_format = f"{cyclestart_string} {their_snr} {m['dt']:4.1f} {m['fHz']:4.0f} ~ {hail} {their_call} {grid_rpt}"
         print(f"{screen_format:50s} decoded@ {m['decode_completed'] %15:5.1f}s, dec = {m['decode_status']}")
-        self.message_queue_non_time_critical.put(message_dict)
+        self.message_queue_non_time_critical.put(message)
 
     def _process_message_ntc(self, testing):
         while True:

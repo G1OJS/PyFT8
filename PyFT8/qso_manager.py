@@ -82,17 +82,25 @@ class QSO_manager:
             self.tx_payload = self.last_tx_payload
 
         if btn_action == "MESSAGE_CLICK":
-            message_type = clickargs['message']['message_type']
-            if message_type in ['CQ','to_me']:
-                message = clickargs['message']
-                their_call, grid_rpt, their_snr, their_tx_cycle = message['their_call'], message['grid_rpt'], message['their_snr'], message['their_tx_cycle']
-                if their_call != self.in_qso_with:
-                    self._start_qso(their_call, their_snr, 1 - their_tx_cycle)
-                self._add_their_report_or_grid(grid_rpt)
-                reply = self._determine_reply(message_type, their_call, their_snr, grid_rpt)
-                self._set_tx_payload(reply)
-                if reply.endswith("73"):
-                    self._end_qso()
+            message = clickargs['message']
+            self.console_print(f"[QSO] Clicked on message '{message['display_text']}")
+            self._reply_to_message(message)
+
+    def auto_reply_to_message(self, message):
+        self.console_print(f"[QSO] Auto reply to message '{message['display_text']}")
+        self._reply_to_message(message)
+
+    def _reply_to_message(self, message):
+        message_type = message['message_type']
+        if message_type in ['CQ','to_me']:
+            their_call, grid_rpt, their_snr, their_tx_cycle = message['their_call'], message['grid_rpt'], message['their_snr'], message['their_tx_cycle']
+            if their_call != self.in_qso_with:
+                self._start_qso(their_call, their_snr, 1 - their_tx_cycle)
+            self._add_their_report_or_grid(grid_rpt)
+            reply = self._determine_reply(message_type, their_call, their_snr, grid_rpt)
+            self._set_tx_payload(reply)
+            if reply.endswith("73"):
+                self._end_qso()
 
     def _set_tx_payload(self, msg_text):
         self.console_print(f"[QSO] Set transmit message to '{msg_text}' (cyc {self.tx_cycle}, {self.tx_freq:5.1f} Hz)")

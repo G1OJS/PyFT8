@@ -247,7 +247,6 @@ class Gui:
         if clickargs.inaxes is self.ax_wf:
             for mb in self.msg_boxes:
                 if mb.contains(clickargs.x, clickargs.y):
-                    self.console_print(f"[GUI] Clicked on message '{mb.message['msg_text']}")
                     self.qso_manager.on_click({'action':"MESSAGE_CLICK", 'message':mb.message})
                     return
         for bb in self.button_boxes:
