@@ -189,7 +189,7 @@ class AudioIn:
         self.adj, self.cycle_audio_buffer_ptr_prev, self.t_prev = 1.0, -1, None
         self._set_pointers()
 
-        threading.Thread(target = self._load_streamed_audio, args =(self.input_device_idx,), daemon=True).start()
+        threading.Thread(target = self._load_streamed_audio, daemon=True).start()
         threading.Thread(target = self._manage_audio_in_cycle, daemon=True).start()
 
     def find_input_device(self, input_device_keywords):
@@ -201,11 +201,12 @@ class AudioIn:
                 if (not pattern in name): match = False
             if(match):
                 self.input_device_idx = dev_idx
+                time_utils.tlog(f"[Audio] using input audio device {name})", verbose = True)
                 break
 
-    def _load_streamed_audio(self, input_device_idx):
+    def _load_streamed_audio(self):
         self.stream = pyaudio.PyAudio().open(
-            format = pyaudio.paInt16, channels=1, rate = SAMP_RATE, input = True, input_device_index = input_device_idx,
+            format = pyaudio.paInt16, channels=1, rate = SAMP_RATE, input = True, input_device_index = self.input_device_idx,
             frames_per_buffer = self.samples_perhop, stream_callback=self._callback,)
         self._set_pointers()
         self.stream.start_stream()

@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import pickle, threading, pyaudio
+import pickle, threading, pyaudio, sys
 from PyFT8.time_utils import time_utils
 from matplotlib.animation import FuncAnimation
 from PyFT8.time_utils import time_utils
@@ -10,7 +10,8 @@ from PyFT8.transmitter import SoundcardOut
 from PyFT8.gui import Gui
 
 class SoundcardOut:
-    def __init__(self, outputcard_keywords, wav_files):
+    def __init__(self, outputcard_keywords, wav_files, wav_file_time_offset = -1):
+        self.wav_file_time_offset = wav_file_time_offset
         self.output_device_index = None
         self.pya = pyaudio.PyAudio()
         threading.Thread(target = self.play_wavs, args = (wav_files,), daemon = True).start()
@@ -28,9 +29,9 @@ class SoundcardOut:
                 time_utils.tlog(f"[Audio Out] No output audio device found matching {outputcard_keywords}", verbose = True)
                 sys.exit(1)
 
-    def play_wavs(self, wav_files, sr=12000, wav_file_time_offset = -1):
+    def play_wavs(self, wav_files, sr=12000):
         import wave
-        t = (wav_file_time_offset - time_utils.cycle_time()) %15
+        t = (self.wav_file_time_offset - time_utils.cycle_time()) %15
         time_utils.sleep(t)
         dt = 0.6/4
         for i, w in enumerate(wav_files):
@@ -86,7 +87,7 @@ def on_wsjtx_decode(dd):
             both_started = True
     ws_times.append(time_utils.time() - t_start)
 
-def live_test(input_device_keywords, wav_range = None):
+def do_test(input_device_keywords, wav_range = None):
     global both_started
     global gui, rx, t_start, message_broker
     global decodes, py_times, ws_times, decodes
@@ -117,13 +118,19 @@ def live_test(input_device_keywords, wav_range = None):
     t_start = time_utils.time()
 
     if wav_files:
-        soundout = SoundcardOut("CABLE, Input", wav_files)
+        soundout = SoundcardOut("CABLE, Input", wav_files, wav_file_time_offset = 0)
 
     both_started = False
     decodes, py_times, ws_times = [], [], []
     
     message_broker = Broker(testing = True)
     message_broker.rx = Receiver(message_broker, [100, 2900], input_device_keywords, sync_score_min = 80, max_cands = 1000)
+    message_broker.rx.audio_in.find_input_device(input_device_keywords)
+    idx = message_broker.rx.audio_in.input_device_idx
+    if not idx:
+        print("Couldn't find input audio device")
+        sys.exit(1)
+    print(idx)
     message_broker.register_on_decode(on_decode)
     
     def anim(frame):
@@ -150,8 +157,8 @@ win32process.SetPriorityClass(win32api.GetCurrentProcess(), win32process.HIGH_PR
 data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy"
 wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
 
-#live_test("Mic, CODEC")
-live_test("CABLE, Output", [1,20])
+#do_test("Mic, CODEC")
+do_test("CABLE, Output", [1,20])
 
 
 
