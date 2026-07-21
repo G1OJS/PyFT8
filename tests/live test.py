@@ -10,7 +10,7 @@ from PyFT8.transmitter import SoundcardOut
 from PyFT8.gui import Gui
 
 class SoundcardOut:
-    def __init__(self, outputcard_keywords, wav_files, wav_file_time_offset = -1):
+    def __init__(self, outputcard_keywords, wav_files, wav_file_time_offset = 0):
         self.wav_file_time_offset = wav_file_time_offset
         self.output_device_index = None
         self.pya = pyaudio.PyAudio()
@@ -118,13 +118,13 @@ def do_test(input_device_keywords, wav_range = None):
     t_start = time_utils.time()
 
     if wav_files:
-       soundout = SoundcardOut("CABLE, Input", wav_files, wav_file_time_offset = 0)
+       soundout = SoundcardOut("CABLE, Input", wav_files, wav_file_time_offset = -1)
 
     both_started = False
     decodes, py_times, ws_times = [], [], []
     
     comms_hub = Broker(testing = True)
-    comms_hub.rx = Receiver(comms_hub, [100, 3000], input_device_keywords, sync_score_min = 90, max_cands = 100)
+    comms_hub.rx = Receiver(comms_hub, [100, 3000], input_device_keywords, sync_score_min = 90, max_cands = 100, search_timerange = [-3, 5])
     
     idx = comms_hub.rx.audio_in.input_device_idx
     if not idx:
