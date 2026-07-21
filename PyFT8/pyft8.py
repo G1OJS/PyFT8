@@ -117,8 +117,8 @@ def cli():
 # Set up for receiving with or without Gui
     global comms_hub
     comms_hub = Broker()
-    comms_hub.rx = Receiver(comms_hub, [100, 3000], args.inputcard_keywords, wav_files = None, 
-                                  sync_score_min = 90, max_cands = 100, search_timerange = [-1, 3.5])
+    comms_hub.rx = Receiver(comms_hub, [100, 3000], sync_score_min = 90, max_cands = 100, search_timerange = [-1, 3.5])
+    comms_hub.rx.audio_in.find_input_device(args.inputcard_keywords)
     if not comms_hub.rx.audio_in.input_device_idx:
         time_utils.tlog(f"[Audio] No input audio device found matching {input_device_keywords}", verbose = True)
         sys.exit(1)
