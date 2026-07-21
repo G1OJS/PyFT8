@@ -25,13 +25,14 @@ class Broker():
         self.qso_manager = qsm
         
     def process_message(self, message):
-        hail, their_call, grid_rpt = message['hail'], message['their_call'], message['grid_rpt']
-        cyclestart_string, their_snr = message['cyclestart_string'], message['their_snr']
-        mtype_val = 0 + 1*(their_call == self.myCall) + 2*(hail == self.myCall) + 3*(their_call != self.myCall and hail.startswith('CQ'))
-        mtype = ['generic', 'from_me', 'to_me', 'CQ'][mtype_val]        
-        message.update( {'message_type':mtype, 'display_text':f"{hail} {their_call} {grid_rpt}",
-                              'priority':(mtype == 'to_me' or mtype == 'CQ')} )
-        if message['priority']:
+        hail, their_call, display_text = message['hail'], message['their_call'], message['display_text']
+
+        message_type_val = 0 + 1*(their_call == self.myCall) + 2*(hail == self.myCall) + 3*(their_call != self.myCall and hail.startswith('CQ'))
+        message_type = ['generic', 'from_me', 'to_me', 'CQ'][message_type_val]
+        priority = (message_type == 'to_me' or message_type == 'CQ')
+        message.update( {'message_type':message_type, 'priority':priority} )
+                         
+        if priority:
             if self.gui:
                 self.gui.display_message(message)
 
@@ -41,9 +42,7 @@ class Broker():
 
         if self.on_decode:
             self.on_decode(message)
-        m = message
-        screen_format = f"{cyclestart_string} {their_snr} {m['dt']:4.1f} {m['fHz']:4.0f} ~ {hail} {their_call} {grid_rpt}"
-        print(f"{screen_format:50s} decoded@ {m['decode_completed'] %15:5.1f}s, dec = {m['decode_status']}")
+
         self.message_queue_non_time_critical.put(message)
 
     def _process_message_ntc(self, testing):
@@ -66,9 +65,8 @@ class Broker():
                                     hearing_me = '@'
                             wb_text = self.history.get_worked_before_info(current_band, their_call)
                             geo_text = self.history.get_geo_text(their_call)
-                            new_display_text = f"{m['display_text']} {hearing_me} {wb_text} {geo_text}"
-                            self.gui.update_message( m['display_text'], {'hearing_me':hearing_me, 'wb_text':wb_text,
-                                                        'geo_text':geo_text, 'display_text':new_display_text } )
+                            display_text_new = f"{m['display_text']} {hearing_me} {wb_text} {geo_text}"
+                            self.gui.update_message( m['display_text'], display_text_new )
                 if band_info and not testing:
                     if m['their_call'] != 'not':
                         if self.history:

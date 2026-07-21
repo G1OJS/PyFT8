@@ -83,11 +83,11 @@ class QSO_manager:
 
         if btn_action == "MESSAGE_CLICK":
             message = clickargs['message']
-            self.console_print(f"[QSO] Clicked on message '{message['msg_text']}'")
+            self.console_print(f"[QSO] Clicked on message '{message['display_text']}'")
             self._reply_to_message(message)
 
     def auto_reply_to_message(self, message):
-        self.console_print(f"[QSO] Auto reply to message '{message['msg_text']}'")
+        self.console_print(f"[QSO] Auto reply to message '{message['display_text']}'")
         self._reply_to_message(message)
 
     def _reply_to_message(self, message):
@@ -102,10 +102,10 @@ class QSO_manager:
             if reply.endswith("73"):
                 self._end_qso()
 
-    def _set_tx_payload(self, msg_text):
-        self.console_print(f"[QSO] Set transmit message to '{msg_text}' (cyc {self.tx_cycle}, {self.tx_freq:5.1f} Hz)")
-        if len(msg_text.split(' ')) == 3:           
-            symbols = get_ft8_symbols(msg_text)
+    def _set_tx_payload(self, display_text):
+        self.console_print(f"[QSO] Set transmit message to '{display_text}' (cyc {self.tx_cycle}, {self.tx_freq:5.1f} Hz)")
+        if len(display_text.split(' ')) == 3:           
+            symbols = get_ft8_symbols(display_text)
             audio_bytes = symbols_to_audio_bytes(symbols, f_base = self.tx_freq)
             self.tx_payload = {'audio_bytes':audio_bytes, 'start_gridtime':[0.25, 15.25][self.tx_cycle]}
         else:

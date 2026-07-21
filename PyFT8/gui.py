@@ -56,6 +56,9 @@ class Msg_box:
         for a in self.artists:
             a.set_visible(True)
 
+    def set_text(self, text):
+        self.text_inst.set_text(text)
+
     def contains(self, x, y):
         if self.patch.get_visible():
             return self.patch.get_extents().contains(x, y)
@@ -222,12 +225,12 @@ class Gui:
         y = int(message['fHz'] / self.waterfall_data['df'])
         mb.set_props(x, y, message)
 
-    def update_message(self, display_text, update_dict):
+    def update_message(self, display_text, display_text_new):
         for mb in self.msg_boxes:
             if mb.patch.get_visible():
                 if mb.message['display_text'] == display_text:
-                    mb.message.update(update_dict)
-                    mb.set_props(mb.xy[0], mb.xy[1], mb.message)
+                    mb.set_text(display_text_new)
+
         
     def get_band_info(self):
         return self.band_info

@@ -534,11 +534,16 @@ class Receiver():
                     if (key not in duplicate_filter):
                         duplicate_filter.add(key)
                         hail, their_call, grid_rpt = c.msg_tuple
-                        message_dict = {'cyclestart_string':c.cyclestart['string'], 'hail':hail, 'their_call':their_call, 'grid_rpt':grid_rpt,
-                                        'msg_text':f"{hail} {their_call} {grid_rpt}",
-                                        'their_snr':f"{c.snr:+03d}", 'their_tx_cycle':c.origin['odd_even'], 
-                                        't0':c.origin['t0'], 'dt':c.origin['t0'] - 0.5, 'fHz':c.origin['f0'],
-                                        'decode_status':c.decode_status, 'decode_completed':time_utils.time()}
+                        their_snr, t0, dt, fHz = f"{c.snr:+03d}", c.origin['t0'], c.origin['t0'] - 0.5, c.origin['f0']
+                        cyclestart_string, odd_even = c.cyclestart['string'], c.origin['odd_even']
+                        decode_status, decode_completed = c.decode_status, time_utils.time()
+                        
+                        screen_format = f"{cyclestart_string} {their_snr} {dt:4.1f} {fHz:4.0f} ~ {hail} {their_call} {grid_rpt}"
+                        print(f"{screen_format:50s} decoded@ {decode_completed%15 :5.1f}s, dec = {decode_status}")
+                        message_dict = {'cyclestart_string':cyclestart_string, 'hail':hail, 'their_call':their_call, 'grid_rpt':grid_rpt,
+                                        'display_text':f"{hail} {their_call} {grid_rpt}",
+                                        'their_snr':their_snr, 'their_tx_cycle':odd_even, 't0':t0, 'dt':dt, 'fHz':fHz,
+                                        'decode_status':decode_status, 'decode_completed':decode_completed}
                         self.process_message(message_dict)
                 
             if len(to_decode):
