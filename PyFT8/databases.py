@@ -135,12 +135,11 @@ class History:
             key_parts = key.split('_')
             if len(key_parts) > 1:
                 c, b, m = key_parts
+                t = log_cache[key]
                 if m == 'FT8':
-                    #print(f"Parsing adif log: Add hearing & heard by {c} on {b}")
-                    self._add_myspots_record(self.hearing_me.data, None, b, c, 0, 0)
-                    self._add_myspots_record(self.heard_by_me.data, None, b, c, 0, 0)
-                else:
-                    print(m)
+                    # if logged as a QSO, I heard the remote call and they heard me
+                    self._add_myspots_record(self.hearing_me.data, b, c, t, 0)
+                    self._add_myspots_record(self.heard_by_me.data, b, c, t, 0)
 
     def load_hearing_heard_from_all_file(self, bands):
         recs = self._parse_all_txt()
@@ -153,23 +152,28 @@ class History:
             if r['md'] == 'FT8':
                 band = self.freqs_to_bands.get(round(r['fMHz'], 1), None)
                 if band is not None:
-                    TxRx = 'Tx' if (r['TxRx'] == 'Tx' or r['call_b'] == self.my_call) else 'Rx'
-                    call = r['call_b'] if TxRx == 'Rx' else r['call_a']
-                    if len(call) > 3:
-                        data = self.heard_by_me.data if TxRx == 'Rx' else self.hearing_me.data
-                        self._add_myspots_record(data, None, band, call, 0, 0)
+                    data = None
+                    if len(r['call_a']) > 3 and len(r['call_b']) > 3:
+                        if r['call_a'] == self.my_call:
+                            data, call = self.hearing_me.data, r['call_b']      # call b is calling me, so call b ishearing me
+                        if r['call_b'] == self.my_call and not r['call_a'].startswith('CQ'): 
+                            data, call = self.heard_by_me.data, r['call_a']     # I'm calling call a, so I'm hearing call a
+                    if data:
+                        self._add_myspots_record(data, band, call, r['t'], r['rp'])
 
     def process_message(self, message, band_info, myCall):
         m = message
         self._write_all_txt_row(m['cyclestart_string'], float(band_info['fMHz']), 'Rx', 'FT8',
                                 m['their_snr'], m['dt'], m['fHz'], m['hail'], m['their_call'], m['grid_rpt'])
-        self._add_myspots_record(self.heard_by_me.data, self.heard_by_me_new,
-                                band_info['current_band'], m['their_call'], int(time_utils.time()), m['their_snr'])
+        self._add_myspots_record(self.heard_by_me.data, band_info['current_band'],
+                                 m['their_call'], int(time_utils.time()), m['their_snr'],
+                                 new_alert_data = self.heard_by_me_new)
         if m['hail'] == myCall: # They're calling me, so they're hearing me
             rpt = m['grid_rpt'][-3:]
             if rpt.isnumeric():
-                self._add_myspots_record(self.hearing_me.data, self.hearing_me_new,
-                                       band_info['current_band'], m['their_call'], int(time_utils.time()), int(rpt))
+                self._add_myspots_record(self.hearing_me.data, 
+                                         band_info['current_band'], m['their_call'], int(time_utils.time()), int(rpt),
+                                         new_alert_data = self.heard_by_me_new)
 
 
     # ----- internal storing / writing functions ----------------------------------------------------------
@@ -189,9 +193,9 @@ class History:
             if self.home_square_lev4 in grid:
                 self._add_homespots_record(f"{d['b']}_{iTxRx}_{call}", tnow)
         if d['sc'] == self.my_call:
-            self._add_myspots_record(self.hearing_me.data, self.hearing_me_new, d['b'], d['rc'], tnow, d['rp'])
+            self._add_myspots_record(self.hearing_me.data, d['b'], d['rc'], tnow, d['rp'], new_alert_data = self.hearing_me_new)
         if d['rc'] == self.my_call:
-            self._add_myspots_record(self.heard_by_me.data, self.heard_by_me_new, d['b'], d['sc'], tnow, d['rp'])
+            self._add_myspots_record(self.heard_by_me.data, d['b'], d['sc'], tnow, d['rp'], new_alert_data = self.heard_by_me_new)
 
     def _add_homespots_record(self, key, t):
         self.band_TxRx_homecall_recent_L4grid.data.setdefault(key, [])
@@ -204,6 +208,7 @@ class History:
             self.call_to_grid.data[call] = grid
 
     def _parse_all_txt(self):
+        import time, calendar
         rows, recs = None, []
         if os.path.exists(self.all_file):
             with open(self.all_file, 'r') as f:
@@ -213,19 +218,23 @@ class History:
                 fields = r.strip().split()
                 if len(fields) > 8:
                     call_a_pos = 7 if fields[7] != '~' else 8
-                    recs.append({'fMHz':float(fields[1]), 'TxRx':fields[2], 'md':fields[3],
-                                 'call_a':fields[call_a_pos], 'call_b':fields[call_a_pos + 1]} )
+                    if len(fields[0]) == 13:
+                        time_tuple = time.strptime(fields[0], "%y%m%d_%H%M%S")
+                        t = calendar.timegm(time_tuple)
+                        recs.append({'t':t , 'fMHz':float(fields[1]), 'TxRx':fields[2], 'md':fields[3],
+                                     'rp':fields[4], 'call_a':fields[call_a_pos], 'call_b':fields[call_a_pos + 1]} )
         if not any(recs):
             print("Didn't find any records in an ALL.txt file in the config folder")
         return recs
     
-    def _add_myspots_record(self, historic_data, new_alert_data, band, call, t, rp):
+    def _add_myspots_record(self, historic_data, band, call, t, rp, new_alert_data = None):
         self._update_new_alert_data(band, call, historic_data, new_alert_data)
         historic_data.setdefault(band, {})
         if call in historic_data[band]:
             if int(t) < int(historic_data[band][call]['t']):
                 return
-        historic_data[band][call] = {'t': int(t),'rp':int(rp)}
+        if t > 0:
+            historic_data[band][call] = {'t': int(t),'rp':int(rp)}
 
     def _update_new_alert_data(self, band, call, historic_data, new_alert_data):
         if new_alert_data is None:
