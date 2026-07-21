@@ -161,7 +161,7 @@ class History:
                     if data:
                         self._add_myspots_record(data, band, call, r['t'], r['rp'])
 
-    def process_message(self, message, band_info, myCall):
+    def process_message_for_history(self, message, band_info, myCall):
         m = message
         self._write_all_txt_row(m['cyclestart_string'], float(band_info['fMHz']), 'Rx', 'FT8',
                                 m['their_snr'], m['dt'], m['fHz'], m['hail'], m['their_call'], m['grid_rpt'])

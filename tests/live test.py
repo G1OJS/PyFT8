@@ -122,7 +122,7 @@ def live_test(input_device_keywords, wav_range = None):
     both_started = False
     decodes, py_times, ws_times = [], [], []
     
-    message_broker = Broker()
+    message_broker = Broker(testing = True)
     message_broker.rx = Receiver(message_broker, [100, 2900], input_device_keywords, sync_score_min = 80, max_cands = 1000)
     message_broker.register_on_decode(on_decode)
     

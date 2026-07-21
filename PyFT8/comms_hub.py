@@ -2,7 +2,7 @@ import queue, threading
 from PyFT8.time_utils import time_utils
 
 class Broker():
-    def __init__(self):
+    def __init__(self, testing):
         self.myCall, self.myGrid = None, None
         self.rx = None
         self.history = None
@@ -15,7 +15,7 @@ class Broker():
         self.configured_bands = None
         self.on_decode = None
         self.hearing_me_since_mins = None
-        threading.Thread(target = self._process_message_ntc, daemon = True).start()
+        threading.Thread(target = self._process_message_ntc, args = (testing,), daemon = True).start()
 
     def register_on_decode(self, func): # used by testing code
         self.on_decode = func
@@ -38,7 +38,7 @@ class Broker():
         print(f"{screen_format:50s} decoded@ {m['decode_completed'] %15:5.1f}s, dec = {m['decode_status']}")
         self.message_queue_non_time_critical.put(message_dict)
 
-    def _process_message_ntc(self):
+    def _process_message_ntc(self, testing):
         while True:
             time_utils.sleep(0.25)
             while not self.message_queue_non_time_critical.empty():
@@ -61,10 +61,10 @@ class Broker():
                             new_display_text = f"{m['display_text']} {hearing_me} {wb_text} {geo_text}"
                             self.gui.update_message( m['display_text'], {'hearing_me':hearing_me, 'wb_text':wb_text,
                                                         'geo_text':geo_text, 'display_text':new_display_text } )
-                if band_info:
+                if band_info and not testing:
                     if m['their_call'] != 'not':
                         if self.history:
-                            self.history.process_message(m, band_info, self.myCall)
+                            self.history.process_message_for_history(m, band_info, self.myCall)
                         if self.pskr_upload:
                             if float(band_info['time_set']) < time_utils.time() - 10: # bad QRG Guard
                                 if m['their_call'] != self.myCall:
