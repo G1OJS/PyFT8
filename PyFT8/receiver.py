@@ -461,12 +461,6 @@ class Receiver():
         time_utils.sleep(0.5)
         threading.Thread(target=self.manage_cycle, daemon=True).start()
 
-    def register_before_search(self, func):
-        self.before_search = func
-
-    def register_after_search(self, func):
-        self.after_search = func
-
     def find_clear_freq(self, fmax):
         from numpy.lib.stride_tricks import sliding_window_view
         import numpy as np
@@ -479,8 +473,6 @@ class Receiver():
         return clearest_frequency
 
     def search(self, cyclestart, odd_even, cycle_h0):
-        if self.before_search is not None:
-            self.before_search(odd_even)
         cands = []
         hops_per_sig = self.audio_in.search_hps * PAYLOAD_SYMB_IDXS[-1]
         for f0_idx in range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 2):
@@ -499,9 +491,6 @@ class Receiver():
                 cands.append(c)
         cands.sort(key = lambda c: c.origin['score'], reverse = True)
         self.candidates = cands[:self.max_cands]
-        if self.after_search is not None:
-            self.after_search(odd_even)
-        
 
     def manage_cycle(self):
         dashes = "======================================================"

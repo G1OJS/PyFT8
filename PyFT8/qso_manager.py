@@ -5,18 +5,18 @@ from PyFT8.transmitter import get_ft8_symbols, symbols_to_audio_bytes
 MAX_TX_START_CYCLETIME = 3
 
 class QSO_manager:
-    def __init__(self, message_broker, rig_control, console_print):
-        self.transmit_audio_data_bytes = message_broker.soundcard_out.transmit_audio_data_bytes
-        self.get_band_info = message_broker.gui.get_band_info
-        self.find_clear_freq = message_broker.rx.find_clear_freq
-        self.adif_logging = message_broker.adif_logging
+    def __init__(self, comms_hub, rig_control, console_print):
+        self.transmit_audio_data_bytes = comms_hub.soundcard_out.transmit_audio_data_bytes
+        self.get_band_info = comms_hub.gui.get_band_info
+        self.find_clear_freq = comms_hub.rx.find_clear_freq
+        self.adif_logging = comms_hub.adif_logging
         self.in_qso_with = False
         self.tx_payload, self.last_tx_payload = None, None
         self.transmitting = False
         self.tx_cycle = 0
         self.console_print = console_print
         self.rig = rig_control
-        self.myCall, self.myGrid = message_broker.myCall, message_broker.myGrid
+        self.myCall, self.myGrid = comms_hub.myCall, comms_hub.myGrid
         self.tx_freq = 750
         self.console_print(f"[PyFT8] QSO handler started for {self.myCall}")
         threading.Thread(target = self._transmit_daemon, daemon = True).start()
@@ -83,11 +83,11 @@ class QSO_manager:
 
         if btn_action == "MESSAGE_CLICK":
             message = clickargs['message']
-            self.console_print(f"[QSO] Clicked on message '{message['display_text']}")
+            self.console_print(f"[QSO] Clicked on message '{message['msg_text']}'")
             self._reply_to_message(message)
 
     def auto_reply_to_message(self, message):
-        self.console_print(f"[QSO] Auto reply to message '{message['display_text']}")
+        self.console_print(f"[QSO] Auto reply to message '{message['msg_text']}'")
         self._reply_to_message(message)
 
     def _reply_to_message(self, message):

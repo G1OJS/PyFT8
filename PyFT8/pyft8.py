@@ -134,7 +134,8 @@ def cli():
             
         comms_hub.gui = Gui(comms_hub, rig_control, console_print,  configured_bands)
         qso_manager = QSO_manager(comms_hub, rig_control, console_print)
-        comms_hub.gui.register_qso_manager(qso_manager)
+        comms_hub.register_qso_manager(qso_manager)
+        
         comms_hub.history.incorporate_log_data(qso_manager.adif_logging.cache)
         comms_hub.history.start_collect_new()
 

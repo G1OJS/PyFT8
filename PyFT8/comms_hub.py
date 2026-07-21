@@ -7,6 +7,7 @@ class Broker():
         self.rx = None
         self.history = None
         self.gui = None
+        self.qso_manager = None
         self.history = None
         self.pskr_upload = None
         self.message_queue = queue.Queue()
@@ -19,6 +20,9 @@ class Broker():
 
     def register_on_decode(self, func): # used by testing code
         self.on_decode = func
+
+    def register_qso_manager(self, qsm):
+        self.qso_manager = qsm
         
     def process_message(self, message):
         hail, their_call, grid_rpt = message['hail'], message['their_call'], message['grid_rpt']
@@ -31,9 +35,9 @@ class Broker():
             if self.gui:
                 self.gui.display_message(message)
 
-        if self.gui.qso_manager.in_qso_with == their_call:
+        if self.qso_manager.in_qso_with == their_call:
             if hail == self.myCall:
-                self.gui.qso_manager.auto_reply_to_message(message)
+                self.qso_manager.auto_reply_to_message(message)
 
         if self.on_decode:
             self.on_decode(message)

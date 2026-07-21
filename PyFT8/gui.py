@@ -129,11 +129,11 @@ class Panel:
 
 class Gui:
     def __init__(self, comms_hub, rig_control, console_print, configured_bands, hearing_me_since_mins = 5):
+        self.comms_hub = comms_hub
         self.hearing_me_since_mins = hearing_me_since_mins          # should really come from config file
         comms_hub.hearing_me_since_mins = hearing_me_since_mins
         self.waterfall_data = comms_hub.waterfall_data
         self.history = comms_hub.history
-        self.qso_manager = None
         self.configured_bands = configured_bands
         self.console_print = console_print
         self.myCall, self.myGrid = comms_hub.myCall, comms_hub.myGrid
@@ -232,9 +232,6 @@ class Gui:
     def get_band_info(self):
         return self.band_info
 
-    def register_qso_manager(self, qsm):
-        self.qso_manager = qsm
-
     def set_bandstats_title(self, txt):
         self.home_panel.ax.set_title(txt, fontsize = 10)
         
@@ -247,17 +244,17 @@ class Gui:
         if clickargs.inaxes is self.ax_wf:
             for mb in self.msg_boxes:
                 if mb.contains(clickargs.x, clickargs.y):
-                    self.qso_manager.on_click({'action':"MESSAGE_CLICK", 'message':mb.message})
+                    self.comms_hub.qso_manager.on_click({'action':"MESSAGE_CLICK", 'message':mb.message})
                     return
         for bb in self.button_boxes:
             if bb.bbox.contains(clickargs.x, clickargs.y):
                 if bb.id[:-1].isnumeric():
                     self.needs_redraw = True
                     self._set_band(bb.id)
-                    self.qso_manager.on_click({'action':"SET_BAND", 'fMHz':self.configured_bands[bb.id]})
+                    self.comms_hub.qso_manager.on_click({'action':"SET_BAND", 'fMHz':self.configured_bands[bb.id]})
                 else:
                     action = ["CQ", "RPT_LAST", "TX_OFF"][['CQ', 'Repeat last', 'Tx off'].index(bb.id)]
-                    self.qso_manager.on_click({'action':action})
+                    self.comms_hub.qso_manager.on_click({'action':action})
 
     def _get_message_box(self):
         mb = None
