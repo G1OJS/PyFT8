@@ -124,7 +124,7 @@ def do_test(input_device_keywords, wav_range = None):
     decodes, py_times, ws_times = [], [], []
     
     comms_hub = Broker(testing = True)
-    comms_hub.rx = Receiver(comms_hub, [100, 3000], input_device_keywords, sync_score_min = 90, max_cands = 100, search_timerange = [-3, 5])
+    comms_hub.rx = Receiver(comms_hub, [100, 3000], input_device_keywords, sync_score_min = 80, max_cands = 250, search_timerange = [-3, 3])
     
     idx = comms_hub.rx.audio_in.input_device_idx
     if not idx:
@@ -151,14 +151,14 @@ def do_test(input_device_keywords, wav_range = None):
     ani = FuncAnimation(fig, anim, interval = 5000, frames=(100000), blit=False)
     plt.show()
 
-#import win32api,win32process
-#win32process.SetPriorityClass(win32api.GetCurrentProcess(), win32process.HIGH_PRIORITY_CLASS)
+import win32api,win32process
+win32process.SetPriorityClass(win32api.GetCurrentProcess(), win32process.HIGH_PRIORITY_CLASS)
 
 data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy"
 wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
 
-do_test("Mic, CODEC")
-#do_test("CABLE, Output", [1,20])
+#do_test("Mic, CODEC")
+do_test("CABLE, Output", [8,28])
 
 
 
