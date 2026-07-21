@@ -165,7 +165,7 @@ def ldpc_decode(llr, max_ncheck0, max_iters):
 
 #============== AUDIO IN ===========================================================
 class AudioIn:
-    def __init__(self, search_freq_range):
+    def __init__(self, search_freq_range, input_device_keywords):
         self.input_device_idx = None
         self.search_hps, self.search_bpt = 4, 2
         self.search_freq_range = search_freq_range
@@ -188,11 +188,12 @@ class AudioIn:
         self.cycle_audio_buffer = np.zeros(192000, dtype=np.float32)
         self.adj, self.cycle_audio_buffer_ptr_prev, self.t_prev = 1.0, -1, None
         self._set_pointers()
+        self._find_input_device(input_device_keywords)
 
         threading.Thread(target = self._load_streamed_audio, daemon=True).start()
         threading.Thread(target = self._manage_audio_in_cycle, daemon=True).start()
 
-    def find_input_device(self, input_device_keywords):
+    def _find_input_device(self, input_device_keywords):
         pya = pyaudio.PyAudio()
         for dev_idx in range(pya.get_device_count()):
             name = pya.get_device_info_by_index(dev_idx)['name']
@@ -201,7 +202,7 @@ class AudioIn:
                 if (not pattern in name): match = False
             if(match):
                 self.input_device_idx = dev_idx
-                time_utils.tlog(f"[Audio] using input audio device {name})", verbose = True)
+                time_utils.tlog(f"[Audio] using input audio device {dev_idx} {name})", verbose = True)
                 break
 
     def _load_streamed_audio(self):
@@ -433,9 +434,9 @@ class Candidate:
 #============== RECEIVER ===========================================================
         
 class Receiver():
-    def __init__(self, message_broker, search_freq_range, verbose = False,
+    def __init__(self, message_broker, search_freq_range, input_device_keywords, verbose = False,
                  sync_score_min = 100, max_cands = 1000, search_timerange = [-2, 5]):
-        self.audio_in = AudioIn(search_freq_range)
+        self.audio_in = AudioIn(search_freq_range, input_device_keywords)
         self.process_message = message_broker.process_message
         message_broker.waterfall_data = self.audio_in.waterfall_data
         self.before_search = None

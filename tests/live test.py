@@ -89,7 +89,7 @@ def on_wsjtx_decode(dd):
 
 def do_test(input_device_keywords, wav_range = None):
     global both_started
-    global gui, rx, t_start, message_broker
+    global gui, rx, t_start, comms_hub
     global decodes, py_times, ws_times, decodes
     global fig, ax
     
@@ -118,20 +118,20 @@ def do_test(input_device_keywords, wav_range = None):
     t_start = time_utils.time()
 
     if wav_files:
-        soundout = SoundcardOut("CABLE, Input", wav_files, wav_file_time_offset = 0)
+       soundout = SoundcardOut("CABLE, Input", wav_files, wav_file_time_offset = 0)
 
     both_started = False
     decodes, py_times, ws_times = [], [], []
     
-    message_broker = Broker(testing = True)
-    message_broker.rx = Receiver(message_broker, [100, 2900], input_device_keywords, sync_score_min = 80, max_cands = 1000)
-    message_broker.rx.audio_in.find_input_device(input_device_keywords)
-    idx = message_broker.rx.audio_in.input_device_idx
+    comms_hub = Broker(testing = True)
+    comms_hub.rx = Receiver(comms_hub, [100, 3000], input_device_keywords, sync_score_min = 90, max_cands = 100)
+    
+    idx = comms_hub.rx.audio_in.input_device_idx
     if not idx:
         print("Couldn't find input audio device")
         sys.exit(1)
     print(idx)
-    message_broker.register_on_decode(on_decode)
+    comms_hub.register_on_decode(on_decode)
     
     def anim(frame):
         n_wsj = len(ws_times)
@@ -151,8 +151,8 @@ def do_test(input_device_keywords, wav_range = None):
     ani = FuncAnimation(fig, anim, interval = 5000, frames=(100000), blit=False)
     plt.show()
 
-import win32api,win32process
-win32process.SetPriorityClass(win32api.GetCurrentProcess(), win32process.HIGH_PRIORITY_CLASS)
+#import win32api,win32process
+#win32process.SetPriorityClass(win32api.GetCurrentProcess(), win32process.HIGH_PRIORITY_CLASS)
 
 data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy"
 wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
