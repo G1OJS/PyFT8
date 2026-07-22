@@ -5,7 +5,6 @@ from PyFT8.time_utils import time_utils
 from matplotlib.animation import FuncAnimation
 from PyFT8.time_utils import time_utils
 from PyFT8.receiver import Receiver
-from PyFT8.comms_hub import Broker
 from PyFT8.transmitter import SoundcardOut
 from PyFT8.gui import Gui
 
@@ -76,8 +75,18 @@ class Wsjtx_all_tailer:
                 if(not self.silent):
                     print(f"Wsjtx_tailer error in line '{line}'")
 
-def on_decode(md):
-    py_times.append(time_utils.time() - t_start)
+timerange = [15, -15]
+freqrange = [4000, 0]
+def process_message(m):
+    global timerange, freqrange
+    py_times.append(m['decode_completed'] - t_start)
+    tsec = m['tsec']
+    if tsec < timerange[0]: timerange[0] = tsec
+    if tsec > timerange[1]: timerange[1] = tsec
+    fHz = m['fHz'] 
+    if fHz < freqrange[0]: freqrange[0] = fHz
+    if fHz > freqrange[1]: freqrange[1] = fHz
+    print(f"Timerange {timerange[0]:+05.2f},{timerange[1]:+05.2f} Freqrange {freqrange[0]:+05.0f},{freqrange[1]:+05.0f} {m['all_txt_format']}")
 
 def on_wsjtx_decode(dd):
     global ws_times, both_started
@@ -92,14 +101,18 @@ def do_test(input_device_keywords, wav_range = None):
     global gui, rx, t_start, comms_hub
     global decodes, py_times, ws_times, decodes
     global fig, ax
+    from matplotlib.ticker import AutoMinorLocator, MultipleLocator
     
     fig, ax = plt.subplots(figsize=(10,10))
-    ws_line = ax.plot([], [], label = 'WSJT-X')[0]
-    py_line = ax.plot([], [], label = 'PyFT8')[0]
+    ws_line = ax.plot([], [], label = 'WSJT-X', marker = 'o')[0]
+    py_line = ax.plot([], [], label = 'PyFT8', marker = 'o')[0]
     ax.set_xlabel("Time, seconds")
     ax.set_ylabel("Cumulative decodes")
+    ax.yaxis.set_label_position("right")
+    ax.yaxis.tick_right()
+    ax.yaxis.set_major_locator(MultipleLocator(100))
+    ax.yaxis.set_minor_locator(MultipleLocator(25))
     ax.legend()
-    from matplotlib.ticker import AutoMinorLocator, MultipleLocator
     ax.xaxis.set_major_locator(MultipleLocator(15))
     ax.xaxis.set_minor_locator(MultipleLocator(1))
     plt.grid(which = 'major', axis = 'x')
@@ -123,16 +136,12 @@ def do_test(input_device_keywords, wav_range = None):
     both_started = False
     decodes, py_times, ws_times = [], [], []
     
-    comms_hub = Broker(testing = True)
-    comms_hub.rx = Receiver(comms_hub, [100, 3000], input_device_keywords, sync_score_min = 80, max_cands = 250, search_timerange = [-3, 3])
-    
-    idx = comms_hub.rx.audio_in.input_device_idx
-    if not idx:
-        print("Couldn't find input audio device")
+    receiver = Receiver(input_device_keywords, process_message, sync_score_min = 85, max_cands = 150,
+                  search_freq_range = [200, 2800], search_timerange = [-2, 3])
+    if not receiver.audio_in.input_device_idx:
+        time_utils.tlog(f"[Audio] No input audio device found matching {input_device_keywords}", verbose = True)
         sys.exit(1)
-    print(idx)
-    comms_hub.register_on_decode(on_decode)
-    
+ 
     def anim(frame):
         n_wsj = len(ws_times)
         n_pyf = len(py_times)
