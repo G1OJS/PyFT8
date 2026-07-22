@@ -294,11 +294,12 @@ class Candidate:
         self.cgrid = np.ones((N_SYMS, 8), dtype = np.complex64)
 
     def package(self):
+        o = self.origin
+        tsec, fHz = o['tsec'], o['fHz']
         their_snr = f"{self.snr:+03d}"
         msg_text = ' '.join(self.msg_tuple)
-        o = self.origin
-        all_text_format = f"{o['cyclestart_string']} {their_snr} {(o['tsec']-0.5):4.1f} {o['fHz']:4.0f} ~ {msg_text}"
-        return {"band_info":o['band_info'], "msg_tuple":self.msg_tuple, "their_snr": their_snr, "their_tx_cycle":o['odd_even'],
+        all_text_format = f"{o['cyclestart_string']} {their_snr} {(tsec-0.5):4.1f} {fHz:4.0f} ~ {msg_text}"
+        return {"band":o['band'], "tsec":tsec, "fHz":fHz, "msg_tuple":self.msg_tuple, "their_snr": their_snr, "their_tx_cycle":o['odd_even'],
                 "decode_completed": time_utils.time(), "all_text_format": all_text_format}
         
     def get_tfgrid(self, all_audio_spectrum, fb_0, fb_bot, fb_top, tb_0): 

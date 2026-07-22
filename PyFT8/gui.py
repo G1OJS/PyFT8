@@ -132,7 +132,7 @@ class Panel:
 
 class Gui:
     def __init__(self, myCall, myGrid, console_print, qso_manager, history,
-                 configured_bands, set_receiver_band, waterfall_data, hearing_me_since_mins, geo_units):
+                 band_frequencies, set_receiver_band, waterfall_data, hearing_me_since_mins, geo_units):
         self.hearing_me_since_mins = hearing_me_since_mins
         self.waterfall_data = waterfall_data
         self.qso_manager = qso_manager
@@ -140,7 +140,7 @@ class Gui:
         self.set_receiver_band = set_receiver_band
 
         self.myCall, self.myGrid = myCall, myGrid
-        self.configured_bands = configured_bands
+        self.band_frequencies = band_frequencies
         self.console_print = console_print
         self.band_info = {'current_band': None, 'fMHz':0, 'time_set':0}
         
@@ -170,7 +170,7 @@ class Gui:
         self.button_boxes.append(ButtonBox(self.fig, [bx, self.wf_top - (len(bxs)+1)*bh + bsep, bw, bh-bsep], btn_text = "CQ", btn_pc = 100) )
         self.button_boxes.append(ButtonBox(self.fig, [bx, self.wf_top - (len(bxs)+1)*bh + bsep, bw, bh-bsep], btn_text = "Repeat last", btn_pc = 100) )
         self.button_boxes.append(ButtonBox(self.fig, [bx, self.wf_top - (len(bxs)+1)*bh + bsep, bw, bh-bsep], btn_text = "Tx off", btn_pc = 100) )           
-        for band in self.configured_bands:
+        for band in self.band_frequencies:
             self.button_boxes.append(ButtonBox(self.fig, [bx, self.wf_top - (len(self.button_boxes)+1) * bh + bsep, bw, bh-bsep], btn_pc = 30, btn_text = band))
             
         hm_top = self.wf_top - (len(self.button_boxes)+2) * bh + bsep - L['vsep1']
@@ -232,20 +232,19 @@ class Gui:
             while not self.message_queue_non_time_critical.empty():
                 time_utils.sleep(0.01)
                 m = self.message_queue_non_time_critical.get()
-                band_info = self.get_band_info()
-                if not testing and m['their_call'] != 'not':
-                    self.history.process_message_for_history(m, band_info, self.myCall)
+                if not testing and m['msg_tuple'][1] != 'not':
+                    self.history.process_message_for_history(m, self.band_info, self.myCall)
                 if not m['priority']:
                     self.process_message(m)
                 for mb in self.msg_boxes:
                     if mb.patch.get_visible():
                         if mb.message['msg_text'] == m['msg_text']:
-                            current_band = band_info['current_band']
+                            current_band = self.band_info['current_band']
                             hearing_me = ''
-                            if self.history.is_hearing_me(current_band, m['their_call'], self.hearing_me_since_mins):
+                            if self.history.is_hearing_me(current_band, m['msg_tuple'][1], self.hearing_me_since_mins):
                                 hearing_me = '@'
-                            wb_text = self.history.get_worked_before_info(current_band, m['their_call'])
-                            geo_text = self.history.get_geo_text(m['their_call'])
+                            wb_text = self.history.get_worked_before_info(current_band, m['msg_tuple'][1])
+                            geo_text = self.history.get_geo_text(m['msg_tuple'][1])
                             new_text = f"{m['short_msg']} {hearing_me} {wb_text} {geo_text}"
                             mb.set_text(new_text)
 
@@ -255,11 +254,7 @@ class Gui:
         message_type_val = 0 + 1*(their_call == self.myCall) + 2*(hail == self.myCall) + 3*(their_call != self.myCall and hail.startswith('CQ'))
         message_type = ['generic', 'from_me', 'to_me', 'CQ'][message_type_val]
         priority = (message_type == 'to_me' or message_type == 'CQ')
-        m.update( {'message_type':message_type, 'priority':priority} )
-        band_info = self.band_info
-        if band_info['band'] == m['band_info']['band'] and m['their_call'] != self.myCall:
-            self.pskr_upload.add_report(m['their_call'], int(1000000*float(band_info['fMHz'])) + m['fHz'],
-                                        m['their_snr'], 'FT8', 1, int(time_utils.time()))                      
+        m.update( {'message_type':message_type, 'priority':priority} )                    
         if priority:
             mb = self._get_message_box()
             x = int(m['tsec'] / self.waterfall_data['dt'] + m['their_tx_cycle'] * self.waterfall_data['pixels_per_cycle'])
@@ -287,7 +282,7 @@ class Gui:
                 if bb.id[:-1].isnumeric():
                     self.needs_redraw = True
                     self._set_band(bb.id)
-                    self.qso_manager.on_click({'action':"SET_BAND", 'fMHz':self.configured_bands[bb.id]})
+                    self.qso_manager.on_click({'action':"SET_BAND", 'fMHz':self.band_frequencies[bb.id]})
                 else:
                     action = ["CQ", "RPT_LAST", "TX_OFF"][['CQ', 'Repeat last', 'Tx off'].index(bb.id)]
                     self.qso_manager.on_click({'action':action})
@@ -304,8 +299,8 @@ class Gui:
         return mb
 
     def _set_band(self, band):
-        if band in self.configured_bands:
-            self.band_info = {'current_band':band, 'fMHz':self.configured_bands[band], 'time_set':time_utils.time()}
+        if band in self.band_frequencies:
+            self.band_info = {'current_band':band, 'fMHz':self.band_frequencies[band], 'time_set':time_utils.time()}
             self.qso_manager.set_band_info(self.band_info)
             self.set_receiver_band(band)
             self.console_print(f"[PyFT8] Set band: {self.band_info['current_band']} {self.band_info['fMHz']}")

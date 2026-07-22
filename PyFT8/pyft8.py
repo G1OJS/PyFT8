@@ -50,11 +50,13 @@ def cli():
     def process_message(m):
         if gui:
             gui.process_message(m)
-            
-        if pskr_upload and not m['their_call'] == myCall:
-            if float(band_info['time_set']) < time_utils.time() - 10: # bad QRG Guard
-                pskr_upload.add_report(m['their_call'], int(1000000*float(band_info['fMHz'])) + m['fHz'],
-                                       m['their_snr'], 'FT8', 1, int(time_utils.time()))
+
+        their_call = m['msg_tuple'][1]
+        if pskr_upload and not their_call == myCall:
+            if m['band'] is not None:
+                fMHz = band_frequencies[m['band']]
+                pskr_upload.add_report(their_call, int(1000000*fMHz + m['fHz']),
+                                           m['their_snr'], 'FT8', 1, int(time_utils.time()))
 
         print(f"{m['all_text_format']:50s} decoded@ {m['decode_completed']%15 :5.1f}s, dec = {m['decode_status']}")
     
@@ -137,9 +139,9 @@ def cli():
 
 # Initialise the gui
     if not args.no_gui:
-        configured_bands = {}
+        band_frequencies = {}
         for b, f in config['bands'].items():
-            configured_bands[b] = f
+            band_frequencies[b] = f
         hearing_me_since_mins = 5
         geo_units = config['gui']['loc']
 
@@ -149,7 +151,7 @@ def cli():
         history = History(config_folder, myCall, myGrid, geo_units)
         qso_manager.update_history_from_log(history)
             
-        gui = Gui(myCall, myGrid, console_print, qso_manager, history, configured_bands, receiver.set_band,
+        gui = Gui(myCall, myGrid, console_print, qso_manager, history, band_frequencies, receiver.set_band,
                   waterfall_data, hearing_me_since_mins, geo_units)
 
 # wait or show gui as appropriate
