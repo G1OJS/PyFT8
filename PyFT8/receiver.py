@@ -294,6 +294,7 @@ class Candidate:
         self.cgrid = np.ones((N_SYMS, 8), dtype = np.complex64)
 
     def package(self):
+        self.decode_completed = True
         o = self.origin
         decode_status = self.decode_status
         tsec, fHz = o['tsec'], o['fHz']
