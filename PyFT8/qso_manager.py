@@ -34,13 +34,10 @@ class QSO_manager:
                     history.add_bidirectional_hearing_heard_spot(band, their_call, time_on)
 
     def _find_clear_freq(self, fmax):
-        from numpy.lib.stride_tricks import sliding_window_view
         import numpy as np
-        fbin_sum = np.sum(self.waterfall_data['data'], axis = 0)
-        windows = sliding_window_view(fbin_sum, self.waterfall_data['sig_h'])
-        busy_profile = windows.max(axis=1)
+        fbin_sum = np.sum(self.waterfall_data['data'], axis = 1)
         f0_idx, fn_idx = int(500/self.waterfall_data['df']), int(fmax/self.waterfall_data['df'])
-        idx = np.argmin(busy_profile[f0_idx:fn_idx])
+        idx = np.argmin(fbin_sum[f0_idx:fn_idx])
         clearest_frequency = (f0_idx + idx) * self.waterfall_data['df']
         return clearest_frequency
 
