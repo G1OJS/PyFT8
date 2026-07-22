@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib import rcParams
 import matplotlib.style as mplstyle
 mplstyle.use('fast')
-import queue
+import threading, queue
 from matplotlib.widgets import Button
 from PyFT8.time_utils import time_utils
 
@@ -44,7 +44,7 @@ class Msg_box:
         self.message = message
         self.cycle = message['their_tx_cycle']
         message_type_params = MESSAGE_TYPES[message['message_type']]
-        self.text_inst.set_text(message['display_text'])
+        self.text_inst.set_text(' '.join(message['msg_tuple']))
         self.text_inst.set_color(message_type_params['fg'])
         self.patch.set_facecolor(message_type_params['bg'])
         self.patch.set_alpha(message_type_params['alpha'])
@@ -131,16 +131,18 @@ class Panel:
             a.set_y(a.get_position()[1] + 1/self.nlines)
 
 class Gui:
-    def __init__(self, comms_hub, rig_control, console_print, configured_bands, hearing_me_since_mins = 5):
-        self.comms_hub = comms_hub
-        self.hearing_me_since_mins = hearing_me_since_mins          # should really come from config file
-        comms_hub.hearing_me_since_mins = hearing_me_since_mins
-        self.waterfall_data = comms_hub.waterfall_data
-        self.history = comms_hub.history
-        self.configured_bands = configured_bands
+    def __init__(self, myCall, myGrid, console_print, qso_manager, history,
+                 band_frequencies, set_receiver_band, waterfall_data, hearing_me_since_mins, geo_units):
+        self.hearing_me_since_mins = hearing_me_since_mins
+        self.waterfall_data = waterfall_data
+        self.qso_manager = qso_manager
+        self.history = history
+        self.set_receiver_band = set_receiver_band
+
+        self.myCall, self.myGrid = myCall, myGrid
+        self.band_frequencies = band_frequencies
         self.console_print = console_print
-        self.myCall, self.myGrid = comms_hub.myCall, comms_hub.myGrid
-        self.band_info = {'current_band': None, 'fMHz':0, 'time_set':0}
+        self.band_info = {'current_band': None, 'fMHz':0}
         
         self.plt = plt
         self.fig = plt.figure(figsize = (10,10), facecolor=(.18, .71, .71, 0.4))
@@ -160,6 +162,7 @@ class Gui:
         self.hearing_page = 0
         self.msg_boxes = []
         self.button_boxes = []
+        self.message_queue_non_time_critical = queue.Queue()
 
         bh, bsep = 0.02, 0.002
         bx, bw = L['pmargin'], L['sidebar_width']
@@ -167,7 +170,7 @@ class Gui:
         self.button_boxes.append(ButtonBox(self.fig, [bx, self.wf_top - (len(bxs)+1)*bh + bsep, bw, bh-bsep], btn_text = "CQ", btn_pc = 100) )
         self.button_boxes.append(ButtonBox(self.fig, [bx, self.wf_top - (len(bxs)+1)*bh + bsep, bw, bh-bsep], btn_text = "Repeat last", btn_pc = 100) )
         self.button_boxes.append(ButtonBox(self.fig, [bx, self.wf_top - (len(bxs)+1)*bh + bsep, bw, bh-bsep], btn_text = "Tx off", btn_pc = 100) )           
-        for band in self.configured_bands:
+        for band in self.band_frequencies:
             self.button_boxes.append(ButtonBox(self.fig, [bx, self.wf_top - (len(self.button_boxes)+1) * bh + bsep, bw, bh-bsep], btn_pc = 30, btn_text = band))
             
         hm_top = self.wf_top - (len(self.button_boxes)+2) * bh + bsep - L['vsep1']
@@ -180,7 +183,11 @@ class Gui:
         self.new_cycle = False
         self.cycle_time_prev = 1000
 
-    def main_loop(self):
+    def start(self, testing):
+        threading.Thread(target = self._slow_loop, args = (testing,), daemon = True).start()
+        self._fast_loop()
+
+    def _fast_loop(self):
         self.plt.show(block = False)
         while True:
             self.fig.canvas.flush_events() # for clicks
@@ -219,21 +226,48 @@ class Gui:
         if tdelay > 0.01:
             time_utils.sleep(tdelay)
 
-    def display_message(self, message):
+    def _slow_loop(self, testing):
+        while True:
+            time_utils.sleep(0.25)
+            while not self.message_queue_non_time_critical.empty():
+                time_utils.sleep(0.01)
+                m = self.message_queue_non_time_critical.get()
+                if not testing and m['msg_tuple'][1] != 'not':
+                    self.history.process_message_for_history(m, self.band_info, self.myCall)
+                    
+                if not m['priority']:
+                    self._display_message(m)
+
+                if m['message_type'] == 'CQ':
+                    for mb in self.msg_boxes:
+                        if mb.patch.get_visible():
+                            if mb.message['msg_tuple'] == m['msg_tuple']:
+                                current_band = self.band_info['current_band']
+                                hearing_me = ''
+                                if self.history.is_hearing_me(current_band, m['msg_tuple'][1], self.hearing_me_since_mins):
+                                    hearing_me = '@'
+                                wb_text = self.qso_manager.adif_logging.get_worked_before_info(m['msg_tuple'][1])
+                                geo_text = self.history.get_geo_text(m['msg_tuple'][1])
+                                new_text = f"{' '.join(m['msg_tuple'])} {hearing_me} {wb_text} {geo_text}"
+                                mb.set_text(new_text)
+
+
+    def process_message(self, m):
+        hail, their_call, _ = m['msg_tuple']
+        message_type_val = 0 + 1*(their_call == self.myCall) + 2*(hail == self.myCall) + 3*(their_call != self.myCall and hail.startswith('CQ'))
+        message_type = ['generic', 'from_me', 'to_me', 'CQ'][message_type_val]
+        priority = (message_type == 'to_me' or message_type == 'CQ')
+        m.update( {'message_type':message_type, 'priority':priority} )                    
+        if priority:
+            self._display_message(m)
+        self.qso_manager.process_message(m)
+        self.message_queue_non_time_critical.put(m)
+
+    def _display_message(self, m):
         mb = self._get_message_box()
-        x = int(message['t0'] / self.waterfall_data['dt'] + message['their_tx_cycle'] * self.waterfall_data['pixels_per_cycle'])
-        y = int(message['fHz'] / self.waterfall_data['df'])
-        mb.set_props(x, y, message)
-
-    def update_message(self, display_text, display_text_new):
-        for mb in self.msg_boxes:
-            if mb.patch.get_visible():
-                if mb.message['display_text'] == display_text:
-                    mb.set_text(display_text_new)
-
-        
-    def get_band_info(self):
-        return self.band_info
+        x = int(m['tsec'] / self.waterfall_data['dt'] + m['their_tx_cycle'] * self.waterfall_data['pixels_per_cycle'])
+        y = int(m['fHz'] / self.waterfall_data['df'])
+        mb.set_props(x, y, m)
 
     def set_bandstats_title(self, txt):
         self.home_panel.ax.set_title(txt, fontsize = 10)
@@ -247,17 +281,17 @@ class Gui:
         if clickargs.inaxes is self.ax_wf:
             for mb in self.msg_boxes:
                 if mb.contains(clickargs.x, clickargs.y):
-                    self.comms_hub.qso_manager.on_click({'action':"MESSAGE_CLICK", 'message':mb.message})
+                    self.qso_manager.on_click({'action':"MESSAGE_CLICK", 'message':mb.message})
                     return
         for bb in self.button_boxes:
             if bb.bbox.contains(clickargs.x, clickargs.y):
                 if bb.id[:-1].isnumeric():
                     self.needs_redraw = True
                     self._set_band(bb.id)
-                    self.comms_hub.qso_manager.on_click({'action':"SET_BAND", 'fMHz':self.configured_bands[bb.id]})
+                    self.qso_manager.on_click({'action':"SET_BAND", 'band_info':self.band_info})
                 else:
                     action = ["CQ", "RPT_LAST", "TX_OFF"][['CQ', 'Repeat last', 'Tx off'].index(bb.id)]
-                    self.comms_hub.qso_manager.on_click({'action':action})
+                    self.qso_manager.on_click({'action':action})
 
     def _get_message_box(self):
         mb = None
@@ -271,8 +305,9 @@ class Gui:
         return mb
 
     def _set_band(self, band):
-        if band in self.configured_bands:
-            self.band_info = {'current_band':band, 'fMHz':self.configured_bands[band], 'time_set':time_utils.time()}
+        if band in self.band_frequencies:
+            self.band_info = {'current_band':band, 'fMHz':self.band_frequencies[band]}
+            self.set_receiver_band(band)
             self.console_print(f"[PyFT8] Set band: {self.band_info['current_band']} {self.band_info['fMHz']}")
             for mb in self.msg_boxes:
                 mb.hide()

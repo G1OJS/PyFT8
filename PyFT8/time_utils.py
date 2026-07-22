@@ -25,14 +25,13 @@ class Time_utils:
     def odd_even(self):
         return int( self.grid_time() / self.cycle_seconds)
 
-    def cyclestart(self, t):
+    def cyclestart_string(self, t):
         cst = self.cycle_seconds * int(t / self.cycle_seconds)
-        css = time.strftime("%y%m%d_%H%M%S", time.gmtime(cst))
-        return {'time':cst, 'string':css}
+        return time.strftime("%y%m%d_%H%M%S", time.gmtime(cst))
 
     def tlog(self, txt, verbose = False):
         if(verbose):
-            print(f"{self.cyclestart(self.time())['string']} {self.cycle_time():5.2f} {txt}")
+            print(f"{self.cyclestart_string(self.time())} {self.cycle_time():5.2f} {txt}")
 
     def format_duration(self, seconds):
         intervals = ( ('yr', 314496000), ('wk', 604800), ('day', 86400), ('hr', 3600), ('min', 60), ('sec', 1) )
