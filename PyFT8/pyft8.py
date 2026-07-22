@@ -54,11 +54,12 @@ def cli():
         their_call = m['msg_tuple'][1]
         if pskr_upload and not their_call == myCall:
             if m['band'] is not None:
-                fMHz = band_frequencies[m['band']]
-                pskr_upload.add_report(their_call, int(1000000*fMHz + m['fHz']),
+                fMHz = float(band_frequencies[m['band']])
+                fHz = float(m['fHz'])
+                pskr_upload.add_report(their_call, int(1000000*fMHz + fHz),
                                            m['their_snr'], 'FT8', 1, int(time_utils.time()))
 
-        print(f"{m['all_text_format']:50s} decoded@ {m['decode_completed']%15 :5.1f}s, dec = {m['decode_status']}")
+        print(f"{m['all_txt_format']:50s} decoded@ {m['decode_completed']%15 :5.1f}s, dec = {m['decode_status']}")
     
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-c', '--config_folder', help = 'Location of config folder e.g. C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', default = './') 

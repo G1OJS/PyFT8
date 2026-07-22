@@ -295,12 +295,13 @@ class Candidate:
 
     def package(self):
         o = self.origin
+        decode_status = self.decode_status
         tsec, fHz = o['tsec'], o['fHz']
         their_snr = f"{self.snr:+03d}"
         msg_text = ' '.join(self.msg_tuple)
-        all_text_format = f"{o['cyclestart_string']} {their_snr} {(tsec-0.5):4.1f} {fHz:4.0f} ~ {msg_text}"
+        all_txt_format = f"{o['cyclestart_string']} {their_snr} {(tsec-0.5):4.1f} {fHz:4.0f} ~ {msg_text}"
         return {"band":o['band'], "tsec":tsec, "fHz":fHz, "msg_tuple":self.msg_tuple, "their_snr": their_snr, "their_tx_cycle":o['odd_even'],
-                "decode_completed": time_utils.time(), "all_text_format": all_text_format}
+                "decode_completed": time_utils.time(), "all_txt_format": all_txt_format, 'decode_status':decode_status}
         
     def get_tfgrid(self, all_audio_spectrum, fb_0, fb_bot, fb_top, tb_0): 
         fft1_len = len(all_audio_spectrum)

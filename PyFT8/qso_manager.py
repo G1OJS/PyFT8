@@ -13,6 +13,7 @@ class QSO_manager:
         self.adif_logging = ADIF(logfile)
         self.in_qso_with = False
         self.tx_payload, self.last_tx_payload = None, None
+        self.band_info = {'current_band': None, 'fMHz':0}
         self.transmitting = False
         self.tx_cycle = 0
         self.console_print = console_print
@@ -93,7 +94,8 @@ class QSO_manager:
             self.console_print("Please select a band before transmitting", color = 'red')
             return
         if btn_action == "SET_BAND":
-            self.rig.set_freq_Hz(int(1000000*float(clickargs['fMHz'])))
+            self.band_info = clickargs['band_info']
+            self.rig.set_freq_Hz(int(1000000*float(self.band_info['fMHz'])))
         if btn_action == "CQ":
             self.tx_cycle = time_utils.odd_even()
             if time_utils.cycle_time() > MAX_TX_START_CYCLETIME:
@@ -104,21 +106,23 @@ class QSO_manager:
 
         if btn_action == "MESSAGE_CLICK":
             m = clickargs['message']
-            self.console_print(f"[QSO] Clicked on message '{m['display_text']}'")
+            short_msg = ' '.join(m['msg_tuple'])
+            self.console_print(f"[QSO] Clicked on message '{short_msg}'")
             self._reply_to_message(m)
 
 
     def process_message(self, m):
         if self.in_qso_with == m['their_call']:
                 if m['hail'] == self.myCall:
-                    self.console_print(f"[QSO] Auto reply to message '{m['display_text']}'")
+                    short_msg = ' '.join(m['msg_tuple'])
+                    self.console_print(f"[QSO] Auto reply to message '{short_msg}'")
                     self._reply_to_message(m)
 
     def _reply_to_message(self, m):
         message_type = m['message_type']
-        if message_type in ['CQ','to_me']:
+        if message_type in ['CQ','to_me'] and m['band_info']['band'] == self.band_info['band']:
             their_call, grid_rpt, their_snr = m['their_call'], m['grid_rpt'], m['their_snr']
-            their_tx_cycle, band_indo = m['their_tx_cycle'], m['band_info']
+            their_tx_cycle, band_info = m['their_tx_cycle'], m['band_info']
             if their_call != self.in_qso_with:
                 self._start_qso(their_call, their_snr, 1 - their_tx_cycle, band_info)
             self._add_their_report_or_grid(grid_rpt)
@@ -127,10 +131,10 @@ class QSO_manager:
             if reply.endswith("73"):
                 self._end_qso()
 
-    def _set_tx_payload(self, display_text):
-        self.console_print(f"[QSO] Set transmit m to '{display_text}' (cyc {self.tx_cycle}, {self.tx_freq:5.1f} Hz)")
-        if len(display_text.split(' ')) == 3:           
-            symbols = get_ft8_symbols(display_text)
+    def _set_tx_payload(self, tx_text):
+        self.console_print(f"[QSO] Set transmit m to '{tx_text}' (cyc {self.tx_cycle}, {self.tx_freq:5.1f} Hz)")
+        if len(tx_text.split(' ')) == 3:           
+            symbols = get_ft8_symbols(tx_text)
             audio_bytes = symbols_to_audio_bytes(symbols, f_base = self.tx_freq)
             self.tx_payload = {'audio_bytes':audio_bytes, 'start_gridtime':[0.25, 15.25][self.tx_cycle]}
         else:
