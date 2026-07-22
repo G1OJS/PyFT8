@@ -67,10 +67,9 @@ class DiskDict:
 # History class ==============================================================================================
 
 class History:
-    def __init__(self, config_folder, my_call, home_square = '', geo_units = 'km', pskr_refresh_mins = 20):
+    def __init__(self, config_folder, my_call, home_square, geo_units, pskr_refresh_mins = 20):
         self.pskr_refresh_mins = pskr_refresh_mins
         self.geo_units = geo_units
-        self.log_cache = None
         self.my_call = my_call
         self.home_square = home_square
         self.home_square_lev4 = home_square[:4]
@@ -86,6 +85,11 @@ class History:
         self.heard_by_me = DiskDict(f"{config_folder}/heard_by_me.json", 5)     # all-time record of heard by me
         self.call_to_grid = DiskDict(f"{config_folder}/call_to_grid.json", 7)   # all time cache call -> fine locator
         self.band_TxRx_homecall_recent_L4grid = DiskDict(f"{config_folder}/recent_l4grid.json", 9) # last 20 mins data -> per band tx/rx & current band detail
+        self.start()
+
+    def start(self):
+        mqtt = PSKR_MQTT_listener(self.home_square_lev4, self._add_mqtt_spot)
+        threading.Thread(target = self._count_activity, daemon = True).start()
 
     
     # external query-type functions --------------------------------------------------------
@@ -125,21 +129,9 @@ class History:
 
     # external storage-like functions -------------------------------------------------------------------
 
-    def start_collect_new(self):
-        mqtt = PSKR_MQTT_listener(self.home_square_lev4, self._add_mqtt_spot)
-        threading.Thread(target = self._count_activity, daemon = True).start()
-
-    def incorporate_log_data(self, log_cache):
-        self.log_cache = log_cache
-        for key in log_cache:
-            key_parts = key.split('_')
-            if len(key_parts) > 1:
-                c, b, m = key_parts
-                t = log_cache[key]
-                if m == 'FT8':
-                    # if logged as a QSO, I heard the remote call and they heard me
-                    self._add_myspots_record(self.hearing_me.data, b, c, t, 0)
-                    self._add_myspots_record(self.heard_by_me.data, b, c, t, 0)
+    def add_bidirectional_hearing_heard_spot(self, band, their_call, time_on):
+        self._add_myspots_record(self.hearing_me.data, band, their_call, time_on, 0)
+        self._add_myspots_record(self.heard_by_me.data, band, their_call, time_on, 0)
 
     def load_hearing_heard_from_all_file(self, bands):
         recs = self._parse_all_txt()

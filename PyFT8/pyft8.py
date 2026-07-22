@@ -7,13 +7,11 @@ from PyFT8.gui import Gui
 from PyFT8.transmitter import get_ft8_symbols, symbols_to_audio_bytes, write_wav_file, SoundcardOut
 from PyFT8.rigctrl import Rig_hamlib, Rig_CAT
 from PyFT8.databases import History
-from PyFT8.databases import ADIF
 from PyFT8.qso_manager import QSO_manager
-from PyFT8.comms_hub import Broker
+from PyFT8.databases import History
 
 VER = '3.7.2'
 PSKR_REFRESH_MINS = 20
-comms_hub = None
 
 def get_config(config_folder):
     config = configparser.ConfigParser()
@@ -40,15 +38,26 @@ def get_config(config_folder):
     config.read(ini_file)
     return config
 
-def console_print(text, color = 'white'):
-    text = f"{time_utils.cycle_time():4.1f} {text}"
-    if comms_hub is not None:
-        if comms_hub.gui is not None:
-            comms_hub.gui.update_console(text, color)
-    else:
-        print(text)
-
 def cli():
+
+    def console_print(text, color = 'white'):
+        text = f"{time_utils.cycle_time():4.1f} {text}"
+        if gui is not None:
+            gui.update_console(text, color)
+        else:
+            print(text)
+
+    def process_message(m):
+        if gui:
+            gui.process_message(m)
+            
+        if pskr_upload and not m['their_call'] == myCall:
+            if float(band_info['time_set']) < time_utils.time() - 10: # bad QRG Guard
+                pskr_upload.add_report(m['their_call'], int(1000000*float(band_info['fMHz'])) + m['fHz'],
+                                       m['their_snr'], 'FT8', 1, int(time_utils.time()))
+
+        print(f"{m['all_text_format']:50s} decoded@ {m['decode_completed']%15 :5.1f}s, dec = {m['decode_status']}")
+    
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-c', '--config_folder', help = 'Location of config folder e.g. C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', default = './') 
     parser.add_argument('-i', '--inputcard_keywords', help = 'Comma-separated keywords to identify the input sound device')  
@@ -114,46 +123,45 @@ def cli():
         rig_control.ptt_off()
         sys.exit(1)
 
+# Start pskreporter upload
+    if myCall is not None and 'pskreporter' in config.keys():
+        if config['pskreporter']['upload'] == 'Y':
+            pskr_upload = PSKR_upload(myCall, myGrid, software = f"PyFT8 v{VER}", console_print = console_print) 
+
 # Set up for receiving with or without Gui
-    global comms_hub
-    comms_hub = Broker(testing = False)
-    comms_hub.rx = Receiver(comms_hub, [100, 3000], args.inputcard_keywords, sync_score_min = 90, max_cands = 100, search_timerange = [-1, 3.5])
-    if not comms_hub.rx.audio_in.input_device_idx:
+    receiver = Receiver(args.inputcard_keywords, process_message, sync_score_min = 90, max_cands = 100,
+                  search_freq_range = [100, 3000], search_timerange = [-1, 3.5])
+    if not receiver.audio_in.input_device_idx:
         time_utils.tlog(f"[Audio] No input audio device found matching {input_device_keywords}", verbose = True)
         sys.exit(1)
 
 # Initialise the gui
     if not args.no_gui:
-        comms_hub.myCall, comms_hub.myGrid = myCall, myGrid
-        comms_hub.soundcard_out = soundcard_out
-        comms_hub.adif_logging = ADIF(f"{config_folder}/PyFT8.adi")
-        comms_hub.history = History(config_folder, myCall, myGrid, config['gui']['loc'])
         configured_bands = {}
         for b, f in config['bands'].items():
             configured_bands[b] = f
-            
-        comms_hub.gui = Gui(comms_hub, rig_control, console_print,  configured_bands)
-        qso_manager = QSO_manager(comms_hub, rig_control, console_print)
-        comms_hub.register_qso_manager(qso_manager)
-        
-        comms_hub.history.incorporate_log_data(qso_manager.adif_logging.cache)
-        comms_hub.history.start_collect_new()
+        hearing_me_since_mins = 5
+        geo_units = config['gui']['loc']
 
-# Start pskreporter upload
-    if myCall is not None and 'pskreporter' in config.keys():
-        if config['pskreporter']['upload'] == 'Y':
-            comms_hub.pskr_upload = PSKR_upload(myCall, myGrid, software = f"PyFT8 v{VER}", console_print = console_print) 
+        logfile = f"{config_folder}/PyFT8.adi"
+        waterfall_data = receiver.audio_in.waterfall_data
+        qso_manager = QSO_manager(myCall, myGrid, rig_control, soundcard_out, console_print, waterfall_data, logfile)
+        history = History(config_folder, myCall, myGrid, geo_units)
+        qso_manager.update_history_from_log(history)
+            
+        gui = Gui(myCall, myGrid, console_print, qso_manager, history, configured_bands, receiver.set_band,
+                  waterfall_data, hearing_me_since_mins, geo_units)
 
 # wait or show gui as appropriate
-    if comms_hub.gui is None:
+    if gui is None:
         try:
             while True:
                 time_utils.sleep(1)
         except KeyboardInterrupt:
             pass
     else:
-        comms_hub.gui.set_bandstats_title(f"Pskreporter Spots\nto/from {config['station']['grid'][:4]} <{PSKR_REFRESH_MINS:.0f} mins")
-        comms_hub.gui.main_loop()
+        gui.set_bandstats_title(f"Pskreporter Spots\nto/from {config['station']['grid'][:4]} <{PSKR_REFRESH_MINS:.0f} mins")
+        gui.start(testing = False)
 
 
 
