@@ -234,19 +234,22 @@ class Gui:
                 m = self.message_queue_non_time_critical.get()
                 if not testing and m['msg_tuple'][1] != 'not':
                     self.history.process_message_for_history(m, self.band_info, self.myCall)
+                    
                 if not m['priority']:
                     self._display_message(m)
-                for mb in self.msg_boxes:
-                    if mb.patch.get_visible():
-                        if mb.message['msg_tuple'] == m['msg_tuple']:
-                            current_band = self.band_info['current_band']
-                            hearing_me = ''
-                            if self.history.is_hearing_me(current_band, m['msg_tuple'][1], self.hearing_me_since_mins):
-                                hearing_me = '@'
-                            wb_text = self.qso_manager.adif_logging.get_worked_before_info(m['msg_tuple'][1])
-                            geo_text = self.history.get_geo_text(m['msg_tuple'][1])
-                            new_text = f"{' '.join(m['msg_tuple'])} {hearing_me} {wb_text} {geo_text}"
-                            mb.set_text(new_text)
+
+                if m['message_type'] == 'CQ':
+                    for mb in self.msg_boxes:
+                        if mb.patch.get_visible():
+                            if mb.message['msg_tuple'] == m['msg_tuple']:
+                                current_band = self.band_info['current_band']
+                                hearing_me = ''
+                                if self.history.is_hearing_me(current_band, m['msg_tuple'][1], self.hearing_me_since_mins):
+                                    hearing_me = '@'
+                                wb_text = self.qso_manager.adif_logging.get_worked_before_info(m['msg_tuple'][1])
+                                geo_text = self.history.get_geo_text(m['msg_tuple'][1])
+                                new_text = f"{' '.join(m['msg_tuple'])} {hearing_me} {wb_text} {geo_text}"
+                                mb.set_text(new_text)
 
 
     def process_message(self, m):
@@ -257,6 +260,7 @@ class Gui:
         m.update( {'message_type':message_type, 'priority':priority} )                    
         if priority:
             self._display_message(m)
+        self.qso_manager.process_message(m)
         self.message_queue_non_time_critical.put(m)
 
     def _display_message(self, m):
