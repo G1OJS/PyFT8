@@ -90,9 +90,10 @@ upload = Y
 
 ## Performance Compared with WSJT-x
 
-The image below shows the number of decodes from PyFT8, WSJT-x V2.7.0 running in NORM mode, using 5 minutes of busy 20m audio taken from the files used to test ft8_lib. On this dataset, WSJT-x performs almost the same on DEEP mode as it does on NORM, so the latter has been left off. Also, using AP with DEEP mode causes WSJT-x to be starved of CPU on my old PC (that's my theory), resulting in some cycles with hardly any decodes. PyFT8 gets about 85% of the decodes that WSJT-x gets on FAST mode, and about 80% of those it gets on DEEP mode.
+The image below shows the number of decodes from PyFT8, WSJT-x V2.7.0 running in NORM mode, using 5 minutes of busy 20m audio taken from the files used to test ft8_lib. On this dataset, WSJT-x performs almost the same on DEEP mode as it does on NORM, so the latter has been left off. Also, using AP with DEEP mode causes WSJT-x to be starved of CPU on my old PC (that's my theory), resulting in some cycles with hardly any decodes. PyFT8 gets about 90% of the decodes that WSJT-x gets on FAST mode, and about 78% of those it gets on DEEP mode.
 
-<img width="900" height="900" alt="live wav playback vs wsjtx_v2 7 0" src="https://github.com/user-attachments/assets/69c5db3b-a180-4c9f-8b72-33324664b0e9" />
+<img width="900" height="900" alt="live wav playback vs wsjtx_v2 7 0" src="https://github.com/user-attachments/assets/d05755c9-07d2-4e2f-98ff-c15f64b320fe" />
+
 
 ## Decoding approach
 The approach to decoding, as at v3.7.0, is as follows.
