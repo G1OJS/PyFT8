@@ -10,17 +10,13 @@ def plot_from_file(ax, fname, label, color):
         times = pickle.load(f)
         ax.plot(times, np.array(range(len(times))), label = label, color = color, marker = 'o')
 
-i0, i1 = 1, 39
-    
 fig, ax = plt.subplots(figsize = (9,9))
 ax.yaxis.set_label_position("right")
 
 
+plot_from_file(ax, 'live_decode_times_PyFT8_3_1_38.pkl', 'PyFT8', 'limegreen')
 
-plot_from_file(ax, 'live_decode_times_PyFT8_2_8_28.pkl', 'PyFT8', 'limegreen')
-
-plot_from_file(ax, 'live_decode_times_WSJTx_1_8_28_FAST.pkl', 'WSJT-x_2.7.0_FAST', 'black')
-plot_from_file(ax, 'live_decode_times_WSJTx_2_8_28_DEEP.pkl', 'WSJT-x_2.7.0_DEEP', 'blue')
+plot_from_file(ax, 'live_decode_times_WSJTx_3_1_38_FAST.pkl', 'WSJT-x_2.7.0_FAST', 'black')
 
 ax.legend()
         
