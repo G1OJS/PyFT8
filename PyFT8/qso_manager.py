@@ -112,19 +112,20 @@ class QSO_manager:
 
 
     def process_message(self, m):
-        if self.in_qso_with == m['their_call']:
-                if m['hail'] == self.myCall:
-                    short_msg = ' '.join(m['msg_tuple'])
-                    self.console_print(f"[QSO] Auto reply to message '{short_msg}'")
-                    self._reply_to_message(m)
+        if self.in_qso_with == m['msg_tuple'][1]:
+            if m['msg_tuple'][0] == self.myCall:
+                short_msg = ' '.join(m['msg_tuple'])
+                self.console_print(f"[QSO] Auto reply to message '{short_msg}'")
+                self._reply_to_message(m)
 
     def _reply_to_message(self, m):
         message_type = m['message_type']
-        if message_type in ['CQ','to_me'] and m['band_info']['band'] == self.band_info['band']:
-            their_call, grid_rpt, their_snr = m['their_call'], m['grid_rpt'], m['their_snr']
-            their_tx_cycle, band_info = m['their_tx_cycle'], m['band_info']
+        if message_type in ['CQ','to_me'] and m['band'] == self.band_info['current_band']:
+            _ , their_call, grid_rpt = m['msg_tuple']
+            their_snr = m['their_snr']
+            their_tx_cycle = m['their_tx_cycle']
             if their_call != self.in_qso_with:
-                self._start_qso(their_call, their_snr, 1 - their_tx_cycle, band_info)
+                self._start_qso(their_call, their_snr, 1 - their_tx_cycle, self.band_info)
             self._add_their_report_or_grid(grid_rpt)
             reply = self._determine_reply(message_type, their_call, their_snr, grid_rpt)
             self._set_tx_payload(reply)
