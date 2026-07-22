@@ -149,12 +149,11 @@ class History:
                     if data:
                         self._add_myspots_record(data, band, call, r['t'], r['rp'])
 
-    def process_message_for_history(self, message, band_info, myCall):
+    def process_message_for_history(self, message, myCall):
         m = message
         self._write_all_txt_row(m['all_txt_format'])
         hail, their_call, grid_rpt = m['msg_tuple']
-        current_band = band_info['current_band']
-        self._add_myspots_record(self.heard_by_me.data, current_band,
+        self._add_myspots_record(self.heard_by_me.data, m['band'],
                                  their_call, int(time_utils.time()), m['their_snr'],
                                  new_alert_data = self.heard_by_me_new)
         if hail == myCall: # They're calling me, so they're hearing me

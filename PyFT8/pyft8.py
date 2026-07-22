@@ -132,8 +132,8 @@ def cli():
             pskr_upload = PSKR_upload(myCall, myGrid, software = f"PyFT8 v{VER}", console_print = console_print) 
 
 # Set up for receiving with or without Gui
-    receiver = Receiver(args.inputcard_keywords, process_message, sync_score_min = 90, max_cands = 100,
-                  search_freq_range = [100, 3000], search_timerange = [-1, 3.5])
+    receiver = Receiver(args.inputcard_keywords, process_message, sync_score_min = 85, max_cands = 150,
+                  search_freq_range = [100, 3000], search_timerange = [-2, 3])
     if not receiver.audio_in.input_device_idx:
         time_utils.tlog(f"[Audio] No input audio device found matching {input_device_keywords}", verbose = True)
         sys.exit(1)

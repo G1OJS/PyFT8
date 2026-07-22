@@ -230,10 +230,10 @@ class Gui:
         while True:
             time_utils.sleep(0.25)
             while not self.message_queue_non_time_critical.empty():
-                time_utils.sleep(0.01)
+                time_utils.sleep(0.05)
                 m = self.message_queue_non_time_critical.get()
                 if not testing and m['msg_tuple'][1] != 'not':
-                    self.history.process_message_for_history(m, self.band_info, self.myCall)
+                    self.history.process_message_for_history(m, self.myCall)
                     
                 if not m['priority']:
                     self._display_message(m)
