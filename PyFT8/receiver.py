@@ -265,13 +265,12 @@ class AudioIn:
 #============== CANDIDATE ===========================================================
 
 ap_patterns = [
-                [0, []],                                                                # no AP
-                [0, [0,0,0,0,0 ,0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,1,0,0]],  # CQ
-                [58,[0,1, 1,1,1,1,1, 0,0,1,1,1, 0,1,0,1,0, 0,1]],                       # RR73
-                [58,[0,1, 1,1,1,1,1, 0,1,0,0,1, 0,1,0,0,0, 0,1]],                       # 73
-                [58,[0,1, 1,1,1,1,1, 0,1,0,0,1, 0,0,1,0,0, 0,1]],                       # RRR
+                ['None',0, []],                                                                # no AP
+                ['CQ',0, [0,0,0,0,0 ,0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,1,0,0]],  # CQ
+                ['RR73',58,[0,1, 1,1,1,1,1, 0,0,1,1,1, 0,1,0,1,0, 0,1]],                       # RR73
+                ['73',58,[0,1, 1,1,1,1,1, 0,1,0,0,1, 0,1,0,0,0, 0,1]],                       # 73
+                ['RRR',58,[0,1, 1,1,1,1,1, 0,1,0,0,1, 0,0,1,0,0, 0,1]],                       # RRR
               ]
-ap_names = ['None','CQ','RR73', '73','RRR']
 
 class Candidate:
     def __init__(self, origin, search_grid_bounds, llr_sd_min = 5):
@@ -333,19 +332,6 @@ class Candidate:
         rootvar = np.sqrt(var)
         return 2.83 * llr / rootvar, rootvar, snr
 
-    def fast_demap_decode(self, payload_on_search_grid):
-        self.llr, self.llr_sd, self.snr = self.dB_to_llr(payload_on_search_grid)
-        self.llr0 = self.llr.copy()
-        self.llr[:30] = -5
-        self.llr[26] = 5
-        self.llr[74:76] = -5
-        self.llr[76] = 5
-        self.decode_status = 'grid FLDPC-AP CQ'
-        self._decode_ldpc_fast() # try CQ pattern first
-        self.llr = self.llr0
-        self.decode_status = 'grid FLDPC'
-        self._decode_ldpc_fast()
-
     def demap(self, all_audio_spectrum):
         self.decoded_from_grid = False
         df = SAMP_RATE / 192000
@@ -385,6 +371,10 @@ class Candidate:
         self.origin.update({'tsec': float(self.origin['tsec'] + ttweak / 200),
                             'fHz':float(self.origin['fHz'] + ftweak / 16) })
 
+    def fast_demap_decode(self, payload_on_search_grid):
+        self.llr, self.llr_sd, self.snr = self.dB_to_llr(payload_on_search_grid)
+        self._decode_ldpc_AP('grid', [1,0], 35, 5, False) # try CQ pattern first
+
     def decode(self, current_max_ipass):
         if self.ipass > current_max_ipass:
             return
@@ -394,44 +384,43 @@ class Candidate:
             return
         if self.ipass == 0:
             self.decode_status = 'fine FLDPC'
-            self._decode_ldpc_fast()
+            self._decode_ldpc_AP('fine', [0], 35, 5, False)
         if self.ipass == 1:
-            self._decode_ldpc_AP()
+            self._decode_ldpc_AP('fine', [0,1,2,3,4], 55, 25, True)
         if self.ipass == 2:
+            self.rel_ord = np.argsort(np.abs(self.llr))[::-1]
             self.decode_status = 'fine OSD'
-            self._decode_osd(self.llr.copy())
+            self._decode_osd(self.llr)
         i_saved = self.ipass - 3
         if len(self.saved_llrs) > i_saved >= 0:
-            self.decode_status = f'fine OSD {ap_names[i_saved]}'
-            self._decode_osd(self.saved_llrs[i_saved])
-            
+            pat_name, llr = self.saved_llrs[i_saved]
+            self.decode_status = f'fine OSD {pat_name}'
+            self._decode_osd(llr)
         if self.msg_tuple or i_saved == len(self.saved_llrs):
             self.decode_completed = True
-
         self.ipass +=1
-          
-    def _decode_ldpc_fast(self):
-        self.msg_tuple, self.n_its, _  = ldpc_decode(self.llr.copy(), 35, 5)
                 
-    def _decode_ldpc_AP(self):
+    def _decode_ldpc_AP(self, source, ap_indexes, max_nc0, max_its, save_llr):
         self.saved_llrs = []
-        for ipass, (b0, ap_pattern) in enumerate(ap_patterns):
-            self.decode_status = f'fine LDPC-AP {ap_names[ipass]}'
+        for ipat in ap_indexes:
+            pat_name, b0, ap_pattern = ap_patterns[ipat]
+            self.decode_status = f'{source} LDPC-AP {pat_name}'
             llr = self.llr.copy()
-            for b, bval in enumerate(ap_pattern):
-                llr[b0 + b] = (bval*2-1) * 5
-            if ipass == 1:
-                llr[74:76] = -5
-                llr[76] = 5
-            self.msg_tuple, self.n_its, output_llr = ldpc_decode(llr, 55, 25)
+            if ipat > 0:
+                for b, bval in enumerate(ap_pattern):
+                    llr[b0 + b] = (bval*2-1) * 5
+                if ipat == 1:
+                    llr[74:76] = -5
+                    llr[76] = 5
+            self.msg_tuple, self.n_its, output_llr = ldpc_decode(llr, max_nc0, max_its)
             if self.msg_tuple:
                 break
             else:
-                if len(output_llr) == 174:
-                    self.saved_llrs.append(output_llr)
+                if save_llr and len(output_llr) == 174:
+                    self.saved_llrs.append((pat_name, output_llr))
                 
     def _decode_osd(self, llr):
-            cw = osd_decode_minimal(llr, np.argsort(np.abs(self.llr))[::-1])
+            cw = osd_decode_minimal(llr, self.rel_ord)
             bits91_int = 0
             for bit in (cw[:91] > 0).astype(int).tolist():
                 bits91_int = (bits91_int << 1) | bit
