@@ -10,7 +10,7 @@ from PyFT8.databases import History
 from PyFT8.qso_manager import QSO_manager
 from PyFT8.databases import History
 
-VER = '3.7.4'
+VER = '3.7.5'
 PSKR_REFRESH_MINS = 20
 
 def get_config(config_folder):
