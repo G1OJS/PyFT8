@@ -187,11 +187,11 @@ class Gui:
         threading.Thread(target = self._slow_loop, args = (testing,), daemon = True).start()
         self._fast_loop()
 
-    def _fast_loop(self):
+    def _fast_loop(self, target_update_time = 0.15):
         self.plt.show(block = False)
         while True:
-            self.fig.canvas.flush_events() # for clicks
             tstart_wf_redraw = time_utils.time()
+            self.fig.canvas.flush_events() # for clicks
             if self.needs_redraw:
                 self.needs_redraw = False
                 plt.pause(0.01)
@@ -205,30 +205,25 @@ class Gui:
                     self.fig.canvas.flush_events() # for clicks
                 self.fig.canvas.blit(self.ax_wf.bbox) #self.fig.canvas.update()
                 self.fig.canvas.flush_events()
-            self._do_timed_checks(tstart_wf_redraw)
-
-    def _do_timed_checks(self, tstart_wf_redraw, target_update_time = 0.15):
-        ct = time_utils.cycle_time()
-        if ct < self.cycle_time_prev:
-            self.new_cycle = True
-            self._refresh_home_panel()
-            self._refresh_band_buttons()
-            self._refresh_hearing()
-            self.needs_redraw = True
-        self.cycle_time_prev = ct
-        if ct > 10 and self.new_cycle:
-            for mb in self.msg_boxes:
-                mb.hide()
-            self.needs_redraw = True
-            self.new_cycle = False
-        tnow = time_utils.time()
-        tdelay = target_update_time - (tnow - tstart_wf_redraw)
-        if tdelay > 0.01:
-            time_utils.sleep(tdelay)
+            tnow = time_utils.time()
+            tdelay = target_update_time - (tnow - tstart_wf_redraw)
+            if tdelay > 0.01:
+                time_utils.sleep(tdelay)
 
     def _slow_loop(self, testing):
         while True:
             time_utils.sleep(0.25)
+            
+            ct = time_utils.cycle_time()
+            if ct < self.cycle_time_prev:
+                self._refresh_panels()
+                self.new_cycle = True
+            self.cycle_time_prev = ct
+
+            if ct > 10 and self.new_cycle:
+                self._hide_msg_boxes()
+                self.new_cycle = False
+            
             while not self.message_queue_non_time_critical.empty():
                 time_utils.sleep(0.05)
                 m = self.message_queue_non_time_critical.get()
@@ -251,7 +246,17 @@ class Gui:
                                 new_text = f"{' '.join(m['msg_tuple'])} {hearing_me} {wb_text} {geo_text}"
                                 mb.set_text(new_text)
 
+    def _refresh_panels(self):
+        self._refresh_home_panel()
+        self._refresh_band_buttons()
+        self._refresh_hearing()
+        self.needs_redraw = True
 
+    def _hide_msg_boxes(self):       
+        for mb in self.msg_boxes:
+            mb.hide()
+        self.needs_redraw = True
+                
     def process_message(self, m):
         hail, their_call, _ = m['msg_tuple']
         message_type_val = 0 + 1*(their_call == self.myCall) + 2*(hail == self.myCall) + 3*(their_call != self.myCall and hail.startswith('CQ'))

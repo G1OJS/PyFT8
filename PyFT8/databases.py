@@ -159,8 +159,10 @@ class History:
         if hail == myCall: # They're calling me, so they're hearing me
             rpt = grid_rpt[-3:]
             if rpt.isnumeric():
-                self._add_myspots_record(self.hearing_me.data, current_band, their_call,
-                                         int(time_utils.time()), int(rpt), new_alert_data = self.heard_by_me_new)
+                band = m['band']
+                    if band:
+                        self._add_myspots_record(self.hearing_me.data, band, their_call,
+                                                 int(time_utils.time()), int(rpt), new_alert_data = self.heard_by_me_new)
 
 
     # ----- internal storing / writing functions ----------------------------------------------------------
