@@ -14,10 +14,10 @@ fig, ax = plt.subplots(figsize = (9,9))
 ax.yaxis.set_label_position("right")
 
 
-plot_from_file(ax, 'live_decode_times_PyFT8_before_changes_8_28.pkl', 'PyFT8', 'limegreen')
-plot_from_file(ax, 'live_decode_times_PyFT8_4_8_28.pkl', 'PyFT8', 'green')
+plot_from_file(ax, 'live_decode_times_PyFT8_8_28_before_changes.pkl', 'PyFT8-before', 'limegreen')
+plot_from_file(ax, 'live_decode_times_PyFT8_8_28_new_baseline.pkl', 'PyFT8', 'green')
 
-plot_from_file(ax, 'live_decode_times_WSJTx_4_8_28_FAST.pkl', 'WSJT-x_2.7.0_FAST', 'black')
+plot_from_file(ax, 'live_decode_times_WSJTx_8_28_FAST_new_baseline.pkl', 'WSJT-x_2.7.0_FAST', 'black')
 
 ax.legend()
         

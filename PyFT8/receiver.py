@@ -339,10 +339,10 @@ class Candidate:
         self.llr[26] = 5
         self.llr[74:76] = -5
         self.llr[76] = 5
-        self.decode_status = 'grid CQ'
+        self.decode_status = 'grid FLDPC-AP'
         self._decode_ldpc_fast() # try CQ pattern first
         self.llr = self.llr0
-        self.decode_status = 'grid'
+        self.decode_status = 'grid FLDPC'
         self._decode_ldpc_fast()
 
     def demap(self, all_audio_spectrum):
@@ -392,7 +392,7 @@ class Candidate:
         if self.ipass > current_max_ipass:
             return
         if self.ipass == 0:
-            self.decode_status = 'fine'
+            self.decode_status = 'fine FLDPC'
             self._decode_ldpc_fast()
         if self.ipass == 1:
             self._decode_ldpc_AP()
@@ -415,7 +415,7 @@ class Candidate:
     def _decode_ldpc_AP(self):
         self.saved_llrs = []
         for ipass, (b0, ap_pattern) in enumerate(ap_patterns):
-            self.decode_status = f'LDPC-AP fine {ipass}'
+            self.decode_status = f'LDPC-AP {ipass}'
             llr = self.llr.copy()
             for b, bval in enumerate(ap_pattern):
                 llr[b0 + b] = (bval*2-1) * 5
