@@ -96,6 +96,8 @@ def on_wsjtx_decode(dd):
             both_started = True
     ws_times.append(time_utils.time() - t_start)
 
+
+
 def do_test(input_device_keywords, wav_range = None):
     global both_started
     global gui, rx, t_start, comms_hub
@@ -104,8 +106,11 @@ def do_test(input_device_keywords, wav_range = None):
     from matplotlib.ticker import AutoMinorLocator, MultipleLocator
     
     fig, ax = plt.subplots(figsize=(10,10))
-    ws_line = ax.plot([], [], label = 'WSJT-X', marker = 'o')[0]
-    py_line = ax.plot([], [], label = 'PyFT8', marker = 'o')[0]
+    ws_line = ax.plot([], [], label = 'WSJT-X', marker = 'o', markersize = 3)[0]
+    py_line = ax.plot([], [], label = 'PyFT8', marker = 'o', markersize = 3)[0]
+    baseline = ax.plot([], [], label = 'PyFT8', marker = 'o', markersize = 3)[0]
+    with open('live_decode_times_PyFT8_8_28_best_23June.pkl', 'rb') as f:
+        baseline_times = pickle.load(f)
     ax.set_xlabel("Time, seconds")
     ax.set_ylabel("Cumulative decodes")
     ax.yaxis.set_label_position("right")
@@ -133,7 +138,7 @@ def do_test(input_device_keywords, wav_range = None):
     if wav_files:
        soundout = SoundcardOut("CABLE, Input", wav_files, wav_file_time_offset = -1)
 
-    both_started = False
+    both_started = True
     decodes, py_times, ws_times = [], [], []
     
     receiver = Receiver(input_device_keywords, process_message, sync_score_min = 85, max_cands = 150,
@@ -145,13 +150,15 @@ def do_test(input_device_keywords, wav_range = None):
     def anim(frame):
         n_wsj = len(ws_times)
         n_pyf = len(py_times)
+        n_baseline = len(baseline_times)
         ws_line.set_data(ws_times, np.array(range(n_wsj)))
         py_line.set_data(py_times, np.array(range(n_pyf)))
-        n_max = np.max([n_wsj, n_pyf])
+        baseline.set_data(baseline_times, np.array(range(n_baseline)))
+        n_max = np.max([n_wsj, n_pyf, n_baseline])
         if(n_max):
-            ax.set_ylim(0, n_max)
+            ax.set_ylim(0, n_max+20)
         if any(py_times):
-            ax.set_xlim(0, np.max(py_times))
+            ax.set_xlim(0, np.max(py_times)+20)
             with open('live_decode_times_PyFT8.pkl', 'wb') as f:
                 pickle.dump(py_times, f)
             with open('live_decode_times_WSJTx.pkl', 'wb') as f:

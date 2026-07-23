@@ -271,6 +271,7 @@ ap_patterns = [
                 [58,[0,1, 1,1,1,1,1, 0,1,0,0,1, 0,1,0,0,0, 0,1]],                       # 73
                 [58,[0,1, 1,1,1,1,1, 0,1,0,0,1, 0,0,1,0,0, 0,1]],                       # RRR
               ]
+ap_names = ['None','CQ','RR73', '73','RRR']
 
 class Candidate:
     def __init__(self, origin, search_grid_bounds, llr_sd_min = 5):
@@ -339,7 +340,7 @@ class Candidate:
         self.llr[26] = 5
         self.llr[74:76] = -5
         self.llr[76] = 5
-        self.decode_status = 'grid FLDPC-AP'
+        self.decode_status = 'grid FLDPC-AP CQ'
         self._decode_ldpc_fast() # try CQ pattern first
         self.llr = self.llr0
         self.decode_status = 'grid FLDPC'
@@ -385,11 +386,11 @@ class Candidate:
                             'fHz':float(self.origin['fHz'] + ftweak / 16) })
 
     def decode(self, current_max_ipass):
+        if self.ipass > current_max_ipass:
+            return
         if self.llr_sd < self.llr_sd_min:
             self.decode_status = 'llr reject'
             self.decode_completed = True
-            return
-        if self.ipass > current_max_ipass:
             return
         if self.ipass == 0:
             self.decode_status = 'fine FLDPC'
@@ -398,10 +399,10 @@ class Candidate:
             self._decode_ldpc_AP()
         if self.ipass == 2:
             self.decode_status = 'fine OSD'
-            self._decode_osd(self.llr)
+            self._decode_osd(self.llr.copy())
         i_saved = self.ipass - 3
         if len(self.saved_llrs) > i_saved >= 0:
-            self.decode_status = f'fine OSD {i_saved}'
+            self.decode_status = f'fine OSD {ap_names[i_saved]}'
             self._decode_osd(self.saved_llrs[i_saved])
             
         if self.msg_tuple or i_saved == len(self.saved_llrs):
@@ -415,7 +416,7 @@ class Candidate:
     def _decode_ldpc_AP(self):
         self.saved_llrs = []
         for ipass, (b0, ap_pattern) in enumerate(ap_patterns):
-            self.decode_status = f'LDPC-AP {ipass}'
+            self.decode_status = f'fine LDPC-AP {ap_names[ipass]}'
             llr = self.llr.copy()
             for b, bval in enumerate(ap_pattern):
                 llr[b0 + b] = (bval*2-1) * 5
@@ -424,7 +425,6 @@ class Candidate:
                 llr[76] = 5
             self.msg_tuple, self.n_its, output_llr = ldpc_decode(llr, 55, 25)
             if self.msg_tuple:
-                self.iAP = ipass
                 break
             else:
                 if len(output_llr) == 174:
@@ -531,6 +531,7 @@ class Receiver():
                     to_decode.append(c)
 
                 if c.msg_tuple:
+                    c.decode_completed = True
                     key = c.origin['cyclestart_string'] + ''.join(c.msg_tuple)
                     if (key not in duplicate_filter):
                         duplicate_filter.add(key)

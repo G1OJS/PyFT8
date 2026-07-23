@@ -8,7 +8,7 @@ def plot_from_file(ax, fname, label, color):
     print(fname)
     with open(fname, 'rb') as f:
         times = pickle.load(f)
-        ax.plot(times, np.array(range(len(times))), label = label, color = color, marker = 'o')
+        ax.plot(times, np.array(range(len(times))), label = label, color = color, marker = 'o', markersize = 3)
 
 fig, ax = plt.subplots(figsize = (9,9))
 ax.yaxis.set_label_position("right")
@@ -16,7 +16,7 @@ ax.yaxis.set_label_position("right")
 
 plot_from_file(ax, 'live_decode_times_PyFT8_8_28_22ndJune.pkl', 'PyFT8-22ndJune', 'limegreen')
 plot_from_file(ax, 'live_decode_times_PyFT8_8_28_best_23June.pkl', 'PyFT8-best', 'green')
-plot_from_file(ax, 'live_decode_times_PyFT8_8_28_current_baseline.pkl', 'PyFT8-best', 'red')
+plot_from_file(ax, 'live_decode_times_PyFT8.pkl', 'PyFT8', 'red')
 
 #plot_from_file(ax, 'live_decode_times_WSJTx.pkl', 'WSJT-x_2.7.0_FAST', 'black')
 
