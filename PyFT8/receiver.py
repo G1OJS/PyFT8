@@ -277,7 +277,7 @@ class Candidate:
         self.origin = origin
         self.search_grid_bounds = search_grid_bounds
         self.decoded_from_grid = True
-        self.demap_started, self.decode_completed = 0, 0
+        self.demap_started, self.decode_completed = False, False
         self.n_sync_matches = -1
         self.fast_decode_tried = False
         self.msg_tuple = None
@@ -294,7 +294,6 @@ class Candidate:
         self.cgrid = np.ones((N_SYMS, 8), dtype = np.complex64)
 
     def package(self):
-        self.decode_completed = True
         o = self.origin
         decode_status = self.decode_status
         tsec, fHz = o['tsec'], o['fHz']
@@ -340,10 +339,10 @@ class Candidate:
         self.llr[26] = 5
         self.llr[74:76] = -5
         self.llr[76] = 5
-        self.decode_status = 'CQ grid'
+        self.decode_status = 'grid CQ'
         self._decode_ldpc_fast() # try CQ pattern first
         self.llr = self.llr0
-        self.decode_status = 'Vanilla grid'
+        self.decode_status = 'grid'
         self._decode_ldpc_fast()
 
     def demap(self, all_audio_spectrum):
@@ -385,27 +384,29 @@ class Candidate:
         self.origin.update({'tsec': float(self.origin['tsec'] + ttweak / 200),
                             'fHz':float(self.origin['fHz'] + ftweak / 16) })
 
-    def decode(self, max_ipass):
+    def decode(self, current_max_ipass):
         if self.llr_sd < self.llr_sd_min:
             self.decode_status = 'llr reject'
-            self.decode_completed = time_utils.cycle_time()
+            self.decode_completed = True
             return
-        if self.ipass > max_ipass:
-            self.decode_status = 'fail'
+        if self.ipass > current_max_ipass:
             return
         if self.ipass == 0:
-            self.decode_status = 'Vanilla fine'
+            self.decode_status = 'fine'
             self._decode_ldpc_fast()
         if self.ipass == 1:
             self._decode_ldpc_AP()
         if self.ipass == 2:
-            self.decode_status = 'OSD fine'
+            self.decode_status = 'fine OSD'
             self._decode_osd(self.llr)
-        if len(self.saved_llrs) > self.ipass-3 >= 0:
-            self.decode_status = f'OSD from saved {self.ipass-3}'
-            self._decode_osd(self.saved_llrs[self.ipass-3])
-        if self.ipass-3 >= len(self.saved_llrs):
-            self.decode_completed = time_utils.cycle_time()
+        i_saved = self.ipass - 3
+        if len(self.saved_llrs) > i_saved >= 0:
+            self.decode_status = f'fine OSD {i_saved}'
+            self._decode_osd(self.saved_llrs[i_saved])
+            
+        if self.msg_tuple or i_saved == len(self.saved_llrs):
+            self.decode_completed = True
+
         self.ipass +=1
           
     def _decode_ldpc_fast(self):
@@ -524,7 +525,7 @@ class Receiver():
                             all_audio_spectrum = np.fft.rfft(self.audio_in.cycle_audio_buffer)
                         last_spectrum_calc = self.audio_in.search_grid_ptr
                         c.demap(all_audio_spectrum)
-                        c.demap_started = self.audio_in.search_grid_ptr / (SYM_RATE * self.audio_in.search_hps)
+                        c.demap_started = True
                         
                 if not c.decode_completed and c.llr_sd > 0:  
                     to_decode.append(c)

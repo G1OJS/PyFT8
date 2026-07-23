@@ -86,7 +86,7 @@ def process_message(m):
     fHz = m['fHz'] 
     if fHz < freqrange[0]: freqrange[0] = fHz
     if fHz > freqrange[1]: freqrange[1] = fHz
-    print(f"Timerange {timerange[0]:+05.2f},{timerange[1]:+05.2f} Freqrange {freqrange[0]:+05.0f},{freqrange[1]:+05.0f} {m['all_txt_format']}")
+    print(f"{m['decode_status']:18s} t {timerange[0]:+05.2f},{timerange[1]:+05.2f} f {freqrange[0]:05.0f},{freqrange[1]:05.0f} {m['all_txt_format']}")
 
 def on_wsjtx_decode(dd):
     global ws_times, both_started
