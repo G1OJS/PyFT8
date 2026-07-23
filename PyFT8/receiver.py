@@ -265,11 +265,11 @@ class AudioIn:
 #============== CANDIDATE ===========================================================
 
 ap_patterns = [
-                ['None',    0,  []                                                                  ],                                                                # no AP
-                ['CQ',      0,  [0,0,0,0,0 ,0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,1,0,0]    ],
-                ['RR73',    58, [0,1, 1,1,1,1,1, 0,0,1,1,1, 0,1,0,1,0, 0,1]                         ],
-                ['73',      58, [0,1, 1,1,1,1,1, 0,1,0,0,1, 0,1,0,0,0, 0,1]                         ],
-                ['RRR',     58, [0,1, 1,1,1,1,1, 0,1,0,0,1, 0,0,1,0,0, 0,1]                         ],
+                ['None',0, []],                                                                # no AP
+                ['CQ',0, [0,0,0,0,0 ,0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,1,0,0]],  # CQ
+                ['RR73',58,[0,1, 1,1,1,1,1, 0,0,1,1,1, 0,1,0,1,0, 0,1]],                       # RR73
+                ['73',58,[0,1, 1,1,1,1,1, 0,1,0,0,1, 0,1,0,0,0, 0,1]],                       # 73
+                ['RRR',58,[0,1, 1,1,1,1,1, 0,1,0,0,1, 0,0,1,0,0, 0,1]],                       # RRR
               ]
 
 class Candidate:
@@ -281,7 +281,7 @@ class Candidate:
         self.n_sync_matches = -1
         self.fast_decode_tried = False
         self.msg_tuple = None
-        self.saved_llrs = []
+        self.saved_llrs = None
         self.ipass = 0
         self.llr_sd_min = llr_sd_min
         self.llr_sd, self.ipass, self.n_its, self.snr = 0, 0, 0, -30
@@ -371,6 +371,7 @@ class Candidate:
         self.origin.update({'tsec': float(self.origin['tsec'] + ttweak / 200),
                             'fHz':float(self.origin['fHz'] + ftweak / 16) })
 
+
     def fast_demap_decode(self, payload_on_search_grid):
         self.llr, self.llr_sd, self.snr = self.dB_to_llr(payload_on_search_grid)
         self._decode_ldpc_AP('grid', [1,0], 35, 5, False) # try CQ pattern first
@@ -383,14 +384,12 @@ class Candidate:
             self.decode_completed = True
             return
         if self.ipass == 0:
-            self.decode_status = 'fine FLDPC'
             self._decode_ldpc_AP('fine', [0], 35, 5, False)
         if self.ipass == 1:
             self._decode_ldpc_AP('fine', [0,1,2,3,4], 55, 25, True)
         if self.ipass == 2:
             self.rel_ord = np.argsort(np.abs(self.llr))[::-1]
-            self.decode_status = 'fine OSD'
-            self._decode_osd(self.llr)
+            self.saved_llrs = [('demap', self.llr)] + self.saved_llrs
         i_saved = self.ipass - 3
         if len(self.saved_llrs) > i_saved >= 0:
             pat_name, llr = self.saved_llrs[i_saved]
@@ -406,12 +405,12 @@ class Candidate:
             pat_name, b0, ap_pattern = ap_patterns[ipat]
             self.decode_status = f'{source} LDPC-AP {pat_name}'
             llr = self.llr.copy()
-            if ipat > 0:
-                for b, bval in enumerate(ap_pattern):
-                    llr[b0 + b] = (bval*2-1) * 5
-                if ipat == 1:
-                    llr[74:76] = -5
-                    llr[76] = 5
+            for b, bval in enumerate(ap_pattern):
+                llr[b0 + b] = (bval*2-1) * 5
+            if pat_name == 'CQ':
+                llr[74:76] = -5
+                llr[76] = 5
+               # llr[57:59] = -5
             self.msg_tuple, self.n_its, output_llr = ldpc_decode(llr, max_nc0, max_its)
             if self.msg_tuple:
                 break
