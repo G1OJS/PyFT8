@@ -387,7 +387,7 @@ class Candidate:
             self._decode_ldpc_AP('fine', [0], 35, 5, False)
         if self.ipass == 1:
             self._decode_ldpc_AP('fine', [0,1,2,3,4], 55, 25, True)
-        if self.ipass == 2:
+        if self.ipass == 2: # no decode, just prep
             self.rel_ord = np.argsort(np.abs(self.llr))[::-1]
             self.saved_llrs = [('demap', self.llr)] + self.saved_llrs
         i_saved = self.ipass - 3
