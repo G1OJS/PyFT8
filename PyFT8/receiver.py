@@ -374,7 +374,7 @@ class Candidate:
 
     def fast_demap_decode(self, payload_on_search_grid):
         self.llr, self.llr_sd, self.snr = self.dB_to_llr(payload_on_search_grid)
-        self._decode_ldpc_AP('grid', [1,0], 35, 5, False) # try CQ pattern first
+        self._decode_ldpc_AP('grid', [1, 0], 35, 5, False) # try CQ pattern first
 
     def decode(self, current_max_ipass):
         if self.ipass > current_max_ipass:

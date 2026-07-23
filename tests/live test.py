@@ -109,7 +109,7 @@ def do_test(input_device_keywords, wav_range = None):
     ws_line = ax.plot([], [], label = 'WSJT-X', marker = 'o', markersize = 3)[0]
     py_line = ax.plot([], [], label = 'PyFT8', marker = 'o', markersize = 3)[0]
     baseline = ax.plot([], [], label = 'PyFT8', marker = 'o', markersize = 3)[0]
-    with open('live_decode_times_PyFT8_8_28_current_baseline.pkl', 'rb') as f:
+    with open('live_decode_times_PyFT8_8_28_current_baseline_with_modular_code.pkl', 'rb') as f:
         baseline_times = pickle.load(f)
     ax.set_xlabel("Time, seconds")
     ax.set_ylabel("Cumulative decodes")
