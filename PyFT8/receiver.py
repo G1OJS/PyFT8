@@ -246,17 +246,17 @@ class AudioIn:
     def _callback(self, in_data, frame_count, time_info, status_flags):
         samples = np.frombuffer(in_data, dtype=np.int16)#.astype(np.float32)
         ns = self.samples_perhop
+        
         self.search_audio_buffer[:-ns] = self.search_audio_buffer[ns:]
         self.search_audio_buffer[-ns:] = samples
         np.multiply(self.search_audio_buffer, self.search_fft_window, out = self.search_fft_in)
         z = np.fft.rfft(self.search_fft_in)[:self.search_grid.shape[1]]
-        
         self.search_grid[self.search_grid_ptr, :] = 20*np.log10(np.abs(z))
-        self.search_grid_ptr = (self.search_grid_ptr + 1) % self.search_hops_per_grid
 
-        ns = len(samples)
-        self.cycle_audio_buffer[:ns] = self.cycle_audio_buffer[-ns:]
+        self.cycle_audio_buffer[:-ns] = self.cycle_audio_buffer[ns:]
         self.cycle_audio_buffer[-ns:] = samples
+    
+        self.search_grid_ptr = (self.search_grid_ptr + 1) % self.search_hops_per_grid
         return (None, pyaudio.paContinue)
 
 
@@ -290,6 +290,7 @@ class Candidate:
         self.fft2_len = 3200
         self.spectrum = np.zeros(self.fft2_len, dtype = np.complex64)
         self.cgrid = np.ones((N_SYMS, 8), dtype = np.complex64)
+        self.tweaks = ""
 
     def package(self):
         o = self.origin
@@ -330,7 +331,7 @@ class Candidate:
         rootvar = np.sqrt(var)
         return 2.83 * llr / rootvar, rootvar, snr
 
-    def demap(self, all_audio_spectrum, tcalc):
+    def demap(self, all_audio_spectrum, t0_audio_buffer):
         self.decoded_from_grid = False
         df = SAMP_RATE / 192000
         fHz, tsec = self.origin['fHz'], self.origin['tsec']
@@ -338,7 +339,7 @@ class Candidate:
         fb_top = int(0.5 + (fHz + 8.5*SYM_RATE) / df )
         fb_bot = int(0.5 + (fHz - 1.5*SYM_RATE) / df )
         dt = 0.005
-        tb_0 = int((tsec + T_CYC - tcalc)/dt)
+        tb_0 = int((tsec - t0_audio_buffer)/dt) %3200
         ftweak, ttweak = 0, 0
 
         ttweaks = range(-16, 0, 4) # 4 steps = 20ms = 1/8 sample, 1/4 sample = 8 steps
@@ -356,7 +357,7 @@ class Candidate:
         ftweak = ftweaks[np.argmax(scores)]
 
         self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
-
+            
         p = self.cgrid[COSTAS_SYMB_IDXS, :]
         ccheck = np.argmax(p, axis = 1) - (COSTAS * 3)
         self.n_sync_matches = len([c for c in ccheck if c == 0])
@@ -368,6 +369,8 @@ class Candidate:
         self.llr, self.llr_sd, self.snr = self.dB_to_llr(p)
         self.origin.update({'tsec': float(self.origin['tsec'] + ttweak / 200),
                             'fHz':float(self.origin['fHz'] + ftweak / 16) })
+
+        self.tweaks = f"t:{ttweak:+03d} f:{ftweak:+03d}"
 
 
     def fast_demap_decode(self, payload_on_search_grid):
@@ -381,18 +384,17 @@ class Candidate:
             self.decode_status = 'llr reject'
             self.decode_completed = True
             return
+        source = f'fine {self.tweaks}'
         if self.ipass == 0:
-            self._decode_ldpc_AP('fine', [0], 35, 5, False)
+            self._decode_ldpc_AP(source, [0], 35, 5, False)
         if self.ipass == 1:
-            self._decode_ldpc_AP('fine', [0,1,2,3,4], 55, 25, True)
+            self._decode_ldpc_AP(source, [0,1,2,3,4], 55, 25, True)
         if self.ipass == 2: # no decode, just prep
             self.rel_ord = np.argsort(np.abs(self.llr))[::-1]
             self.saved_llrs = [('demap', self.llr)] + self.saved_llrs
         i_saved = self.ipass - 3
         if len(self.saved_llrs) > i_saved >= 0:
-            pat_name, llr = self.saved_llrs[i_saved]
-            self.decode_status = f'fine OSD {pat_name}'
-            self._decode_osd(llr)
+            self._decode_osd(source, self.saved_llrs[i_saved])
         if self.msg_tuple or i_saved == len(self.saved_llrs):
             self.decode_completed = True
         self.ipass +=1
@@ -401,7 +403,6 @@ class Candidate:
         self.saved_llrs = []
         for ipat in ap_indexes:
             pat_name, b0, ap_pattern = ap_patterns[ipat]
-            self.decode_status = f'{source} LDPC-AP {pat_name}'
             llr = self.llr.copy()
             for b, bval in enumerate(ap_pattern):
                 llr[b0 + b] = (bval*2-1) * 5
@@ -411,20 +412,23 @@ class Candidate:
                # llr[57:59] = -5
             self.msg_tuple, self.n_its, output_llr = ldpc_decode(llr, max_nc0, max_its)
             if self.msg_tuple:
+                self.decode_status = f'{source} LDPC {pat_name}'
                 break
             else:
                 if save_llr and len(output_llr) == 174:
                     self.saved_llrs.append((pat_name, output_llr))
                 
-    def _decode_osd(self, llr):
-            cw = osd_decode_minimal(llr, self.rel_ord)
-            bits91_int = 0
-            for bit in (cw[:91] > 0).astype(int).tolist():
-                bits91_int = (bits91_int << 1) | bit
-            bits77_int = check_crc(bits91_int)
-            msg_tuple = unpack(bits77_int)
-            if msg_tuple:
-                self.msg_tuple, self.n_its = msg_tuple, -1
+    def _decode_osd(self, source, patname_llr):
+        pat_name, llr = patname_llr
+        cw = osd_decode_minimal(llr, self.rel_ord)
+        bits91_int = 0
+        for bit in (cw[:91] > 0).astype(int).tolist():
+            bits91_int = (bits91_int << 1) | bit
+        bits77_int = check_crc(bits91_int)
+        msg_tuple = unpack(bits77_int)
+        if msg_tuple:
+            self.decode_status = f'{source} OSDx {pat_name}'
+            self.msg_tuple, self.n_its = msg_tuple, -1
 
 #============== RECEIVER ===========================================================
         
@@ -446,6 +450,7 @@ class Receiver():
             csync[sym_idx, fbins] = 1.0
         self.csync_search = csync.ravel()
         self.band = None
+        self.cand_serial = 0
         
         time_utils.set_cycle_length(T_CYC)
         time_utils.tlog(f"[Receiver] Search hops {self.search_h0_range[0]:3d} to {self.search_h0_range[1]:3d}", verbose = self.verbose)
@@ -473,6 +478,8 @@ class Receiver():
                 search_grid_h0 = cycle_h0 + h0 + self.audio_in.search_hps
                 search_grid_hn = cycle_h0 + h0 + self.audio_in.search_hps + hops_per_sig
                 c = Candidate(origin, [search_grid_h0, search_grid_hn])
+                c.serial = self.cand_serial
+                self.cand_serial +=1
                 cands.append(c)
         cands.sort(key = lambda c: c.origin['score'], reverse = True)
         self.candidates = cands[:self.max_cands]
@@ -484,7 +491,7 @@ class Receiver():
         dashes = "======================================================"
         duplicate_filter = set()
         time_utils.tlog(f"[Receiver] running", verbose = self.verbose)
-        last_spectrum_calc = -1
+        ptr_at_last_spectrum_calc = -1
         search_grid_ptr_prev = 0
         cycle_searched = False
         end_decoding_message_printed = False
@@ -507,11 +514,11 @@ class Receiver():
 
                 if not c.decode_completed and not c.demap_started:
                     if not (c.search_grid_bounds[0] <= self.audio_in.search_grid_ptr <= c.search_grid_bounds[1]):
-                        if self.audio_in.search_grid_ptr - last_spectrum_calc > 0 : # only calc full spectrum if more samples received
+                        if np.abs(self.audio_in.search_grid_ptr - ptr_at_last_spectrum_calc) > 0 : # only calc full spectrum if more samples received
                             all_audio_spectrum = np.fft.rfft(self.audio_in.cycle_audio_buffer)
-                            tcalc = (self.audio_in.search_grid_ptr / (SYM_RATE * self.audio_in.search_hps)) %15
-                        last_spectrum_calc = self.audio_in.search_grid_ptr
-                        c.demap(all_audio_spectrum, tcalc)
+                            ptr_at_last_spectrum_calc = self.audio_in.search_grid_ptr
+                        t0_audio_buffer = (ptr_at_last_spectrum_calc % self.audio_in.search_hops_per_cycle) / (SYM_RATE * self.audio_in.search_hps)
+                        c.demap(all_audio_spectrum, t0_audio_buffer)
                         c.demap_started = True
                         
                 if not c.decode_completed and c.llr_sd > 0:  
