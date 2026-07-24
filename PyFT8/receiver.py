@@ -254,8 +254,8 @@ class AudioIn:
         self.search_grid[self.search_grid_ptr, :] = 20*np.log10(np.abs(z))
         self.search_grid_ptr = (self.search_grid_ptr + 1) % self.search_hops_per_grid
 
-        ns1 = 192000 - ns
-        self.cycle_audio_buffer[:ns1] = self.cycle_audio_buffer[-ns1:]
+        ns = len(samples)
+        self.cycle_audio_buffer[:ns] = self.cycle_audio_buffer[-ns:]
         self.cycle_audio_buffer[-ns:] = samples
         return (None, pyaudio.paContinue)
 
@@ -338,10 +338,10 @@ class Candidate:
         fb_top = int(0.5 + (fHz + 8.5*SYM_RATE) / df )
         fb_bot = int(0.5 + (fHz - 1.5*SYM_RATE) / df )
         dt = 0.005
-        tb_0 = int((tsec - T_CYC + tcalc)/dt)
+        tb_0 = int((tsec + T_CYC - tcalc)/dt)
         ftweak, ttweak = 0, 0
 
-        ttweaks = range(-32, 32, 4) # 4 steps = 20ms = 1/8 sample, 1/4 sample = 8 steps
+        ttweaks = range(-16, 0, 4) # 4 steps = 20ms = 1/8 sample, 1/4 sample = 8 steps
         scores = []
         for ttweak in ttweaks:
             self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
@@ -368,7 +368,6 @@ class Candidate:
         self.llr, self.llr_sd, self.snr = self.dB_to_llr(p)
         self.origin.update({'tsec': float(self.origin['tsec'] + ttweak / 200),
                             'fHz':float(self.origin['fHz'] + ftweak / 16) })
-        self.decode_status = self.decode_status + f" t:{ttweak:+03d} f:{ftweak:+03d}" 
 
 
     def fast_demap_decode(self, payload_on_search_grid):
@@ -508,10 +507,10 @@ class Receiver():
 
                 if not c.decode_completed and not c.demap_started:
                     if not (c.search_grid_bounds[0] <= self.audio_in.search_grid_ptr <= c.search_grid_bounds[1]):
-                        if np.abs(self.audio_in.search_grid_ptr - last_spectrum_calc) > 0 : # only calc full spectrum if more samples received
+                        if self.audio_in.search_grid_ptr - last_spectrum_calc > 0 : # only calc full spectrum if more samples received
                             all_audio_spectrum = np.fft.rfft(self.audio_in.cycle_audio_buffer)
-                            last_spectrum_calc = self.audio_in.search_grid_ptr
-                        tcalc = last_spectrum_calc / (self.audio_in.search_hps * SYM_RATE)
+                            tcalc = (self.audio_in.search_grid_ptr / (SYM_RATE * self.audio_in.search_hps)) %15
+                        last_spectrum_calc = self.audio_in.search_grid_ptr
                         c.demap(all_audio_spectrum, tcalc)
                         c.demap_started = True
                         
@@ -525,7 +524,7 @@ class Receiver():
                         duplicate_filter.add(key)
                         m = c.package()
                         self.process_message(m)
-                        c.msg_tuple = None
+                        c.msg_tuple = None  # prevent re-sending
                 
             if len(to_decode):
                 to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
