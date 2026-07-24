@@ -525,6 +525,7 @@ class Receiver():
                         duplicate_filter.add(key)
                         m = c.package()
                         self.process_message(m)
+                        c.msg_tuple = None  # prevent re-sending
                 
             if len(to_decode):
                 to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
