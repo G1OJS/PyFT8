@@ -342,14 +342,14 @@ class Candidate:
         tb_0 = int((tsec - t0_audio_buffer)/dt) %3200
         ftweak, ttweak = 0, 0
 
-        ttweaks = range(-16, 0, 4) # 4 steps = 20ms = 1/8 sample, 1/4 sample = 8 steps
+        ttweaks = range(-16, 0, 2) # 4 steps = 20ms = 1/8 sample, 1/4 sample = 8 steps
         scores = []
         for ttweak in ttweaks:
             self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
             scores.append(self.score)
         ttweak = ttweaks[np.argmax(scores)]
 
-        ftweaks = range(-50, 51, 16) # 16 steps = 1Hz, 6.25Hz = 100 steps
+        ftweaks = range(-50, 51, 8) # 16 steps = 1Hz, 6.25Hz = 100 steps
         scores = []
         for ftweak in ftweaks:
             self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
@@ -361,7 +361,7 @@ class Candidate:
         p = self.cgrid[COSTAS_SYMB_IDXS, :]
         ccheck = np.argmax(p, axis = 1) - (COSTAS * 3)
         self.n_sync_matches = len([c for c in ccheck if c == 0])
-        if self.n_sync_matches <= 6:
+        if self.n_sync_matches <= 5:
             self.decode_completed = True
             return
         
@@ -427,7 +427,7 @@ class Candidate:
         bits77_int = check_crc(bits91_int)
         msg_tuple = unpack(bits77_int)
         if msg_tuple:
-            self.decode_status = f'{source} OSDx {pat_name}'
+            self.decode_status = f'{source} OSD {pat_name}'
             self.msg_tuple, self.n_its = msg_tuple, -1
 
 #============== RECEIVER ===========================================================
