@@ -527,11 +527,11 @@ class Receiver():
                 if c.msg_tuple:
                     c.decode_completed = True
                     key = c.origin['cyclestart_string'] + ''.join(c.msg_tuple)
-                    if (True or key not in duplicate_filter):
+                    if (key not in duplicate_filter):
                         duplicate_filter.add(key)
                         m = c.package()
                         self.process_message(m)
-                        c.msg_tuple = None  # prevent re-sending
+                    c.msg_tuple = None  # prevent re-sending
                 
             if len(to_decode):
                 to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
