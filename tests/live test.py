@@ -86,7 +86,7 @@ def process_message(m):
     fHz = m['fHz'] 
     if fHz < freqrange[0]: freqrange[0] = fHz
     if fHz > freqrange[1]: freqrange[1] = fHz
-    print(f"{m['decode_status']:18s} t {timerange[0]:+05.2f},{timerange[1]:+05.2f} f {freqrange[0]:04.0f},{freqrange[1]:04.0f} {m['all_txt_format']}")
+    print(f"{m['decode_status']:46s} t {timerange[0]:+05.2f},{timerange[1]:+05.2f} f {freqrange[0]:04.0f},{freqrange[1]:04.0f} {m['all_txt_format']}")
 
 def on_wsjtx_decode(dd):
     global ws_times, both_started
@@ -109,7 +109,7 @@ def do_test(input_device_keywords, wav_range = None):
     ws_line = ax.plot([], [], label = 'WSJT-X', marker = 'o', markersize = 3)[0]
     py_line = ax.plot([], [], label = 'PyFT8', marker = 'o', markersize = 3)[0]
     baseline = ax.plot([], [], label = 'PyFT8', marker = 'o', markersize = 3)[0]
-    with open('live_decode_times_PyFT8_8_28_current_baseline_with_modular_code.pkl', 'rb') as f:
+    with open('live_decode_times_PyFT8_rolling_8_28_baseline.pkl', 'rb') as f:
         baseline_times = pickle.load(f)
     ax.set_xlabel("Time, seconds")
     ax.set_ylabel("Cumulative decodes")
