@@ -133,7 +133,7 @@ def cli():
 
 # Set up for receiving with or without Gui
     receiver = Receiver(args.inputcard_keywords, process_message, sync_score_min = 85, max_cands = 150,
-                  search_freq_range = [100, 3000], search_timerange = [-2, 3])
+                  search_freq_range = [100, 3000], search_timerange = [-2.5, 3.5])
     if not receiver.audio_in.input_device_idx:
         time_utils.tlog(f"[Audio] No input audio device found matching {input_device_keywords}", verbose = True)
         sys.exit(1)
