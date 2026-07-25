@@ -14,8 +14,7 @@ fig, ax = plt.subplots(figsize = (9,9))
 ax.yaxis.set_label_position("right")
 
 
-plot_from_file(ax, 'live_decode_times_PyFT8_8_28_baseline.pkl', 'PyFT8-baseline', 'green')
-#plot_from_file(ax, 'live_decode_times_PyFT8.pkl', 'PyFT8', 'limegreen')
+plot_from_file(ax, 'live_decode_times_PyFT8_8_28_best_baseline.pkl', 'PyFT8-best-baseline', 'limegreen')
 plot_from_file(ax, 'live_decode_times_WSJTx_8_28_FAST.pkl', 'WSJT-x_2.7.0_FAST', 'black')
 
 ax.legend()
