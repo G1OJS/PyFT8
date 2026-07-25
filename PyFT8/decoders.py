@@ -135,11 +135,11 @@ def ldpc_decode(llr, max_ncheck0, max_iters):
         parity6, parity7 = np.sum(bits6, axis=1) & 1, np.sum(bits7, axis=1) & 1
         ncheck = int(np.sum(parity7) + np.sum(parity6))
         if n_its == 0 and ncheck > max_ncheck0:
-            return None, -1, []
+            return None, -1, llr # return LLR unchanged because it embodies AP useful for OSD
         if ncheck == 0:
             msg_tuple = crc_unpack91(llr[:91])
             if msg_tuple:
-                return msg_tuple, n_its, []
+                return msg_tuple, n_its, [] # llr not needed now
         else:
             update_collector = np.zeros_like(llr)
             mC2V_prev6 = pass_ldpc_messages(llr, CV6idx, mC2V_prev6, update_collector)
