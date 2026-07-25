@@ -233,106 +233,7 @@ def osd_decode(llr, reliab_order, Ls = [55,10]):
             
     cw = best[0][colperm_inv].astype(np.uint8)
     msg_tuple = crc_unpack(cw[:91])
-    print(msg_tuple)
     return msg_tuple
-
-#============== AUDIO IN ===========================================================
-class AudioIn:
-    def __init__(self, search_freq_range, input_device_keywords):
-        self.input_device_idx = None
-        self.search_hps, self.search_bpt = 4, 2
-        self.search_freq_range = search_freq_range
-        self.search_fft_len = int(self.search_bpt * SAMP_RATE // SYM_RATE)
-        self.df = SYM_RATE / self.search_bpt
-        self.search_f0_idx_range = [int(self.search_freq_range[0] / self.df),
-                                    int((self.search_freq_range[1]) / self.df)]
-        self.search_fft_window = np.hanning(self.search_fft_len).astype(np.float32)
-        self.search_hops_per_cycle = int(T_CYC * SYM_RATE * self.search_hps)
-        self.search_hops_per_grid = 2*self.search_hops_per_cycle
-        self.dt = T_CYC / self.search_hops_per_cycle
-        self.search_grid = np.ones((self.search_hops_per_grid, self.search_f0_idx_range[1]  + 8 * self.search_bpt ), dtype = np.float32)
-        self.samples_perhop = int(SAMP_RATE / (SYM_RATE * self.search_hps))
-        self.samples_per_cycle = int(SAMP_RATE * T_CYC)
-
-        self.cycle_audio_buffer_ptr, self.search_grid_ptr = 0, 0
-        self.waterfall_data = self._set_waterfall_data()
-        self.search_audio_buffer = np.zeros(self.search_fft_len, dtype=np.float32)
-        self.search_fft_in = np.zeros(self.search_fft_len, dtype=np.float32)        
-        self.cycle_audio_buffer = np.zeros(192000, dtype=np.float32)
-        self.adj, self.cycle_audio_buffer_ptr_prev, self.t_prev = 1.0, -1, None
-        self._set_pointers()
-        self._find_input_device(input_device_keywords)
-
-        threading.Thread(target = self._load_streamed_audio, daemon=True).start()
-        threading.Thread(target = self._manage_audio_in_cycle, daemon=True).start()
-
-    def _find_input_device(self, input_device_keywords):
-        pya = pyaudio.PyAudio()
-        for dev_idx in range(pya.get_device_count()):
-            name = pya.get_device_info_by_index(dev_idx)['name']
-            match = True
-            for pattern in input_device_keywords.replace(' ','').split(','):
-                if (not pattern in name): match = False
-            if(match):
-                self.input_device_idx = dev_idx
-                time_utils.tlog(f"[Audio] using input audio device {dev_idx} {name})", verbose = True)
-                break
-
-    def _load_streamed_audio(self):
-        self.stream = pyaudio.PyAudio().open(
-            format = pyaudio.paInt16, channels=1, rate = SAMP_RATE, input = True, input_device_index = self.input_device_idx,
-            frames_per_buffer = self.samples_perhop, stream_callback=self._callback,)
-        self._set_pointers()
-        self.stream.start_stream()
-            
-    def _set_waterfall_data(self):
-        downsample = WATERFALL_DOWNSAMPLE
-        data = self.search_grid[::downsample,::downsample].T
-        df, dt = self.df * downsample, self.dt * downsample
-        sig_w, sig_h = int(79*self.search_hps/downsample), int(8*self.search_bpt/downsample)
-        pixels_per_cycle = int(self.search_hops_per_cycle / downsample)
-        return {'data':data, 'df':df, 'dt':dt, 'sig_w':sig_w, 'sig_h':sig_h, 'pixels_per_cycle':pixels_per_cycle}
-
-    def _manage_audio_in_cycle(self):
-        cycle_adj = 0
-        search_grid_ptr_prev = 0
-        while True:
-            time_utils.sleep(0.04)
-            self.odd_even = int(self.search_grid_ptr / self.search_hops_per_cycle)
-            self.cycle_h0 = int(self.odd_even * self.search_hops_per_cycle)
-            if self.search_grid_ptr % (self.search_hops_per_cycle - cycle_adj) < search_grid_ptr_prev:
-                tcyc = time_utils.cycle_time()
-                time_utils.tlog(f"[Receiver] Cycle rollover at {tcyc:7.3f}s", verbose = True)
-                if tcyc > 0.25:
-                    self._set_pointers() # could be merged into this func
-            search_grid_ptr_prev = self.search_grid_ptr % (self.search_hops_per_cycle - cycle_adj)
-
-    def _set_pointers(self, adj_tolerance = 0.25):
-        t = time_utils.time()
-        search_grid_ptr = int(self.search_hops_per_grid * (t % (2 * T_CYC)) / (2 * T_CYC))
-        cycle_audio_buffer_ptr = int(SAMP_RATE * (t % T_CYC))
-        deltasamps = cycle_audio_buffer_ptr - self.cycle_audio_buffer_ptr
-        deltahops = search_grid_ptr - self.search_grid_ptr
-        deltasecs = deltasamps / SAMP_RATE
-        if np.abs(deltasecs) > adj_tolerance:
-            self.cycle_audio_buffer_ptr = cycle_audio_buffer_ptr
-            self.search_grid_ptr = search_grid_ptr
-        time_utils.tlog(f"[Audio] Grid pointers adjusted (t={deltasecs:6.2f}s, h={deltahops}, s={deltasamps})", verbose = DEBUG_PRINTS)
-        
-    def _callback(self, in_data, frame_count, time_info, status_flags):
-        samples = np.frombuffer(in_data, dtype=np.int16)#.astype(np.float32)
-        ns = self.samples_perhop
-        self.search_audio_buffer[:-ns] = self.search_audio_buffer[ns:]
-        self.search_audio_buffer[-ns:] = samples
-        np.multiply(self.search_audio_buffer, self.search_fft_window, out = self.search_fft_in)
-        z = np.fft.rfft(self.search_fft_in)[:self.search_grid.shape[1]]
-        
-        self.search_grid[self.search_grid_ptr, :] = 20*np.log10(np.abs(z))
-        self.search_grid_ptr = (self.search_grid_ptr + 1) % self.search_hops_per_grid
-
-        self.cycle_audio_buffer[self.cycle_audio_buffer_ptr:self.cycle_audio_buffer_ptr + ns] = samples
-        self.cycle_audio_buffer_ptr = (self.cycle_audio_buffer_ptr + ns) % self.samples_per_cycle
-        return (None, pyaudio.paContinue)
 
 
 #============== CANDIDATE ===========================================================
@@ -458,6 +359,7 @@ class Candidate:
             self.decode_status = 'llr reject'
             self.decode_completed = True
             return
+        time_utils.sleep(0)
         source = f'fine {self.tweaks}'
         if self.ipass == 0:
             self._decode_ldpc_AP(source, [0], 35, 5, False)
@@ -499,6 +401,104 @@ class Candidate:
         if msg_tuple:
             self.decode_status = f'{source} OSD {pat_name}'
             self.msg_tuple, self.n_its = msg_tuple, -1
+
+#============== AUDIO IN ===========================================================
+class AudioIn:
+    def __init__(self, search_freq_range, input_device_keywords):
+        self.input_device_idx = None
+        self.search_hps, self.search_bpt = 4, 2
+        self.search_freq_range = search_freq_range
+        self.search_fft_len = int(self.search_bpt * SAMP_RATE // SYM_RATE)
+        self.df = SYM_RATE / self.search_bpt
+        self.search_f0_idx_range = [int(self.search_freq_range[0] / self.df),
+                                    int((self.search_freq_range[1]) / self.df)]
+        self.search_fft_window = np.hanning(self.search_fft_len).astype(np.float32)
+        self.search_hops_per_cycle = int(T_CYC * SYM_RATE * self.search_hps)
+        self.search_hops_per_grid = 2*self.search_hops_per_cycle
+        self.dt = T_CYC / self.search_hops_per_cycle
+        self.search_grid = np.ones((self.search_hops_per_grid, self.search_f0_idx_range[1]  + 8 * self.search_bpt ), dtype = np.float32)
+        self.samples_perhop = int(SAMP_RATE / (SYM_RATE * self.search_hps))
+        self.samples_per_cycle = int(SAMP_RATE * T_CYC)
+
+        self.cycle_audio_buffer_ptr, self.search_grid_ptr = 0, 0
+        self.waterfall_data = self._set_waterfall_data()
+        self.search_audio_buffer = np.zeros(self.search_fft_len, dtype=np.float32)
+        self.search_fft_in = np.zeros(self.search_fft_len, dtype=np.float32)        
+        self.cycle_audio_buffer = np.zeros(192000, dtype=np.float32)
+        self.adj, self.cycle_audio_buffer_ptr_prev, self.t_prev = 1.0, -1, None
+        self._set_pointers()
+        self._find_input_device(input_device_keywords)
+
+        threading.Thread(target = self._load_streamed_audio, daemon=True).start()
+        threading.Thread(target = self._manage_audio_in_cycle, daemon=True).start()
+
+    def _find_input_device(self, input_device_keywords):
+        pya = pyaudio.PyAudio()
+        for dev_idx in range(pya.get_device_count()):
+            name = pya.get_device_info_by_index(dev_idx)['name']
+            match = True
+            for pattern in input_device_keywords.replace(' ','').split(','):
+                if (not pattern in name): match = False
+            if(match):
+                self.input_device_idx = dev_idx
+                time_utils.tlog(f"[Audio] using input audio device {dev_idx} {name})", verbose = True)
+                break
+
+    def _load_streamed_audio(self):
+        self.stream = pyaudio.PyAudio().open(
+            format = pyaudio.paInt16, channels=1, rate = SAMP_RATE, input = True, input_device_index = self.input_device_idx,
+            frames_per_buffer = self.samples_perhop, stream_callback=self._callback,)
+        self._set_pointers()
+        self.stream.start_stream()
+            
+    def _set_waterfall_data(self):
+        downsample = WATERFALL_DOWNSAMPLE
+        data = self.search_grid[::downsample,::downsample].T
+        df, dt = self.df * downsample, self.dt * downsample
+        sig_w, sig_h = int(79*self.search_hps/downsample), int(8*self.search_bpt/downsample)
+        pixels_per_cycle = int(self.search_hops_per_cycle / downsample)
+        return {'data':data, 'df':df, 'dt':dt, 'sig_w':sig_w, 'sig_h':sig_h, 'pixels_per_cycle':pixels_per_cycle}
+
+    def _manage_audio_in_cycle(self):
+        cycle_adj = 0
+        search_grid_ptr_prev = 0
+        while True:
+            time_utils.sleep(0.04)
+            self.odd_even = int(self.search_grid_ptr / self.search_hops_per_cycle)
+            self.cycle_h0 = int(self.odd_even * self.search_hops_per_cycle)
+            if self.search_grid_ptr % (self.search_hops_per_cycle - cycle_adj) < search_grid_ptr_prev:
+                tcyc = time_utils.cycle_time()
+                time_utils.tlog(f"[Receiver] Cycle rollover at {tcyc:7.3f}s", verbose = True)
+                if tcyc > 0.25:
+                    self._set_pointers() # could be merged into this func
+            search_grid_ptr_prev = self.search_grid_ptr % (self.search_hops_per_cycle - cycle_adj)
+
+    def _set_pointers(self, adj_tolerance = 0.25):
+        t = time_utils.time()
+        search_grid_ptr = int(self.search_hops_per_grid * (t % (2 * T_CYC)) / (2 * T_CYC))
+        cycle_audio_buffer_ptr = int(SAMP_RATE * (t % T_CYC))
+        deltasamps = cycle_audio_buffer_ptr - self.cycle_audio_buffer_ptr
+        deltahops = search_grid_ptr - self.search_grid_ptr
+        deltasecs = deltasamps / SAMP_RATE
+        if np.abs(deltasecs) > adj_tolerance:
+            self.cycle_audio_buffer_ptr = cycle_audio_buffer_ptr
+            self.search_grid_ptr = search_grid_ptr
+        time_utils.tlog(f"[Audio] Grid pointers adjusted (t={deltasecs:6.2f}s, h={deltahops}, s={deltasamps})", verbose = DEBUG_PRINTS)
+        
+    def _callback(self, in_data, frame_count, time_info, status_flags):
+        samples = np.frombuffer(in_data, dtype=np.int16)#.astype(np.float32)
+        ns = self.samples_perhop
+        self.search_audio_buffer[:-ns] = self.search_audio_buffer[ns:]
+        self.search_audio_buffer[-ns:] = samples
+        np.multiply(self.search_audio_buffer, self.search_fft_window, out = self.search_fft_in)
+        z = np.fft.rfft(self.search_fft_in)[:self.search_grid.shape[1]]
+        
+        self.search_grid[self.search_grid_ptr, :] = 20*np.log10(np.abs(z))
+        self.search_grid_ptr = (self.search_grid_ptr + 1) % self.search_hops_per_grid
+
+        self.cycle_audio_buffer[self.cycle_audio_buffer_ptr:self.cycle_audio_buffer_ptr + ns] = samples
+        self.cycle_audio_buffer_ptr = (self.cycle_audio_buffer_ptr + ns) % self.samples_per_cycle
+        return (None, pyaudio.paContinue)
 
 #============== RECEIVER ===========================================================
         
