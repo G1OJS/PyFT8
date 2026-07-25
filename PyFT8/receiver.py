@@ -46,6 +46,8 @@ class Candidate:
         self.fft2_len = 3200
         self.spectrum = np.zeros(self.fft2_len, dtype = np.complex64)
         self.cgrid = np.ones((N_SYMS, 8), dtype = np.complex64)
+        self.serial_id = None
+        self.unique_messages = []
 
     def package(self):
         o = self.origin
@@ -55,7 +57,8 @@ class Candidate:
         msg_text = ' '.join(self.msg_tuple)
         all_txt_format = f"{o['cyclestart_string']} {their_snr} {(tsec-0.5):4.1f} {fHz:4.0f} ~ {msg_text}"
         return {"band":o['band'], "tsec":tsec, "fHz":fHz, "msg_tuple":self.msg_tuple, "their_snr": their_snr, "their_tx_cycle":o['odd_even'],
-                "decode_completed": time_utils.time(), "all_txt_format": all_txt_format, 'decode_status':decode_status}
+                "all_txt_format": all_txt_format,
+                "decode_completed": time_utils.time(),  'serial_id': self.serial_id, 'decode_status':decode_status}
         
     def get_tfgrid(self, all_audio_spectrum, fb_0, fb_bot, fb_top, tb_0): 
         fft1_len = len(all_audio_spectrum)
@@ -177,9 +180,9 @@ class Candidate:
                 
     def _decode_osd(self, source, patname_llr):
         pat_name, llr = patname_llr
-        msg_tuple = osd_decode(llr, self.rel_ord)
+        msg_tuple, best = osd_decode(llr, self.rel_ord)
         if msg_tuple:
-            self.decode_status = f'{source} OSD {pat_name}'
+            self.decode_status = f'{source} OSD {pat_name} {best[2]}'
             self.msg_tuple, self.n_its = msg_tuple, -1
 
 
@@ -312,7 +315,8 @@ class Receiver():
     def search(self, cyclestart_string, odd_even, cycle_h0):
         cands = []
         hops_per_sig = self.audio_in.search_hps * PAYLOAD_SYMB_IDXS[-1]
-        for f0_idx in range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 2):
+        search_f_idxs = range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 2)
+        for cand_serial, f0_idx in enumerate(search_f_idxs):
             p = self.audio_in.search_grid[:, f0_idx: f0_idx + 7*self.audio_in.search_bpt]
             origin = {'score':0}
             for h0_idx in range(self.search_h0_range[0], self.search_h0_range[1]):
@@ -328,6 +332,7 @@ class Receiver():
                 search_grid_h0 = cycle_h0 + h0 + self.audio_in.search_hps
                 search_grid_hn = cycle_h0 + h0 + self.audio_in.search_hps + hops_per_sig
                 c = Candidate(origin, [search_grid_h0, search_grid_hn])
+                c.serial_id = cand_serial
                 cands.append(c)
         cands.sort(key = lambda c: c.origin['score'], reverse = True)
         self.candidates = cands[:self.max_cands]
@@ -378,6 +383,10 @@ class Receiver():
                     if (key not in duplicate_filter):
                         duplicate_filter.add(key)
                         m = c.package()
+                        c.unique_messages.append(m)
+                        nu = len(c.unique_messages)
+                        if nu > 1:
+                            print(f"Candidate {c.serial_id} has {nu} messages")
                         self.process_message(m)
                     c.msg_tuple = None  # prevent re-checking this candidate
                 
