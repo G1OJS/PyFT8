@@ -28,9 +28,9 @@ def gf2_systematic_from_reliability(G, reliab_order):
         if piv != row:
             G[[row, piv], :] = G[[piv, row], :]
         ones = np.where(G[:, col] == 1)[0]
-        for r in ones:
-            if r != row:
-                G[r, :] ^= G[row, :]
+        for bits in ones:
+            if bits != row:
+                G[bits, :] ^= G[row, :]
         if col != row:
             G[:, [row, col]] = G[:, [col, row]]
             colperm[[row, col]] = colperm[[col, row]]
@@ -39,47 +39,65 @@ def gf2_systematic_from_reliability(G, reliab_order):
         raise ValueError("Could not find k independent columns to form a systematic generator.")
     return G, colperm
 
-K, N = 91, 174
-def encode_and_score(u, Gsys, bits_sys, vals_sys):
+def encode_gf2(u, Gsys):
     u = (u.astype(np.uint8) & 1)
-    codeword = (u @ Gsys) & 1
-    bit_diff = codeword ^ bits_sys
-    score = float(np.sum(vals_sys * bit_diff))
-    return codeword, score
+    return (u @ Gsys) & 1
 
-K, N = 91, 174
-def osd_decode_minimal(llr, reliab_order, Ls = [55, 10]):
+def weighted_distance_bits(c, r_hard, w):
+    diff = c ^ r_hard
+    return float(np.sum(w * diff))
 
-    # determine colperm ordering and inverse
+def osd_decode_minimal(llr_channel, reliab_order, Ls = [91,91]):
+    global G
+    r = (llr_channel > 0).astype(np.uint8)
+    w = np.abs(llr_channel).astype(np.float32)
+    k = G.shape[0]
+    n = G.shape[1]
     Gsys, colperm = gf2_systematic_from_reliability(G, reliab_order)
-    colperm_inv = np.empty(N, dtype=np.int64)
-    colperm_inv[colperm] = np.arange(N)
-
-    # permute bits and strengths to new order
-    llr_sys = llr[colperm]
-    bits_sys, vals_sys = (llr_sys > 0).astype(np.uint8), np.abs(llr_sys)
-    bits_sys91, vals_sys91 = bits_sys[:K], vals_sys[:K]
-
-    best  = ([], 1e20)
+    r_sys = r[colperm]
+    w_sys = w[colperm]
+    u0 = r_sys[:k].copy()
+    c0_sys = encode_gf2(u0, Gsys)
+    best_c_sys = c0_sys.copy()
+    best_m = weighted_distance_bits(best_c_sys, r_sys, w_sys)
+    info_reliab = w_sys[:k]
     for t in range(1, len(Ls) + 1):
-        flip_pool = np.argsort(vals_sys91)[:min(Ls[t-1], K)]
+        flip_pool = np.argsort(info_reliab)[:min(Ls[t-1], k)]    
         for comb in combinations(flip_pool, t):
-            bits91_test = bits_sys91.copy()
-            bits91_test[list(comb)] ^= 1
-            test = encode_and_score(bits91_test, Gsys, bits_sys, vals_sys)
-            if test[1] < best[1]:
-                best = test
+            u = u0.copy()
+            u[list(comb)] ^= 1
+            c_sys = encode_gf2(u, Gsys)
+            m = weighted_distance_bits(c_sys, r_sys, w_sys)
+            if m < best_m:
+                best_m = m
+                best_c_sys = c_sys
+    inv = np.empty(n, dtype=np.int64)
+    inv[colperm] = np.arange(n)
+    best_c_orig = best_c_sys[inv]
+    cw = best_c_orig.astype(np.uint8)
+    bits91_int = 0
+    for bit in (cw[:91] > 0).astype(int).tolist():
+        bits91_int = (bits91_int << 1) | bit
+    bits77_int = bits91_int >> 14
+    if(bits77_int > 0):
+        crc14_int = 0
+        for i in range(96):
+            inbit = ((bits77_int >> (76 - i)) & 1) if i < 77 else 0
+            bit14 = (crc14_int >> (14 - 1)) & 1
+            crc14_int = ((crc14_int << 1) & ((1 << 14) - 1)) | inbit
+            if bit14:
+                crc14_int ^= 0x2757
+        if (crc14_int == bits91_int & 0b11111111111111):
+            return cw
 
-    return best[0][colperm_inv].astype(np.uint8)
+import time
+# llr received for ('<....>', 'DB9LG', 'JO40')
+llr = np.array([-4.129,-4.880,-3.641,-6.809,-5.688,-2.661, 3.244, 3.244, 3.244,-3.383,-2.659,-2.172, 5.439,-3.723, 4.409,-2.770, 3.182,-2.736,-4.388, 3.762, 3.268,-4.169, 4.559,-4.342,-2.197,-2.197,-2.197,-2.711,-2.711,-2.711, 3.469, 3.043,-5.144,-3.625, 1.587, 1.587,-3.342, 1.996, 1.882,-3.606, 1.554,-1.554,-4.745,-2.242, 2.242,-4.077,-2.193, 2.193,-4.779,-4.037, 4.098, 4.016,-3.131,-2.916, 2.712, 3.719,-3.719,-4.240,-2.735, 3.822,-4.699,-4.346,-3.755, 4.218,-4.223,-4.096, 3.923, 2.807, 2.807,-2.289, 3.165,-3.366,-4.077,-2.466,-2.466,-4.005, 1.541,-1.541,-3.904,-2.077,-2.077, 1.920, 2.867,-2.867,-2.545, 3.836,-2.670, 3.248, 1.845,-2.225, 0.495,-3.315,-0.495,-0.718,-0.718,-3.458,-3.102, 0.839, 3.153,-3.639, 1.803, 1.803, 2.858, 1.778,-3.560,-3.869, 2.167,-3.682,-1.173,-0.849, 0.086, 0.549,-0.549, 1.201,-0.886,-2.120,-0.886,-0.514, 0.514, 0.103,-1.889,-2.710, 1.646,-3.544,-1.229, 1.229,-3.437,-1.252,-3.877,-2.093,-2.093,-2.093,-3.672, 0.554,-0.554,-1.229,-1.229, 1.229,-0.064, 0.064, 0.064, 2.039,-2.436, 2.436,-0.342,-4.189,-4.189, 0.314,-0.314,-1.911, 4.582, 0.242, 1.206,-2.007,-0.890,-1.222,-1.860, 1.860,-1.860, 3.156,-2.293,-3.716,-2.584,-2.004, 2.933, 3.564,-2.832, 5.037,-3.562, 3.090, 1.484,-2.119,-2.627,-2.627])
+rel_ord = np.argsort(np.abs(llr))[::-1]
 
+t=time.time()
+cw = osd_decode_minimal(llr, rel_ord)
+print(f"{time.time() - t:6.3f}")
+if cw is not None:
+    print("Success")
 
-
-def check_G():
-    from PyFT8.cycle_manager import Candidate
-    u = np.random.randint(0, 2, size=91, dtype=np.uint8)
-    c = (u @ G) & 1
-    cand = Candidate()
-    cand.llr = np.where(c == 1, +1.0, -1.0)
-    assert cand.ldpc.calc_ncheck(self.llr) == 0
-
-       
