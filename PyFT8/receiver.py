@@ -2,7 +2,7 @@ import threading
 import numpy as np
 import pyaudio
 from PyFT8.time_utils import time_utils
-from PyFT8.decoders import ldpc_decode, osd_decode
+from PyFT8.decoders import ldpc_decode, osd_decode, crc_unpack91
 
 WATERFALL_DOWNSAMPLE = 2
 DEBUG_PRINTS = True
@@ -30,13 +30,11 @@ class Candidate:
     def __init__(self, origin, search_grid_bounds, llr_sd_min = 5):
         self.origin = origin
         self.search_grid_bounds = search_grid_bounds
-        self.decoded_from_grid = True
-        self.demap_started, self.decode_completed = False, False
+        self.demap_completed, self.decode_completed = False, False
         self.n_sync_matches = -1
         self.fast_decode_tried = False
         self.msg_tuple = None
         self.saved_llrs = None
-        self.ipass = 0
         self.llr_sd_min = llr_sd_min
         self.llr_sd, self.ipass, self.n_its, self.snr = 0, 0, 0, -30
         csync = np.full((7, 7), -1/6, np.float32)
@@ -47,19 +45,20 @@ class Candidate:
         self.spectrum = np.zeros(self.fft2_len, dtype = np.complex64)
         self.cgrid = np.ones((N_SYMS, 8), dtype = np.complex64)
         self.serial_id = None
-        self.unique_messages = []
+        self.decode_notes = ''
+        self.msg_checked = False
 
     def package(self):
         o = self.origin
-        decode_status = self.decode_status
+        decode_notes = self.decode_notes
         tsec, fHz = o['tsec'], o['fHz']
         their_snr = f"{self.snr:+03d}"
         msg_text = ' '.join(self.msg_tuple)
         all_txt_format = f"{o['cyclestart_string']} {their_snr} {(tsec-0.5):4.1f} {fHz:4.0f} ~ {msg_text}"
         return {"band":o['band'], "tsec":tsec, "fHz":fHz, "msg_tuple":self.msg_tuple, "their_snr": their_snr, "their_tx_cycle":o['odd_even'],
                 "all_txt_format": all_txt_format,
-                "decode_completed": time_utils.time(),  'serial_id': self.serial_id, 'decode_status':decode_status}
-        
+                "decode_completed": time_utils.time(),  'serial_id': self.serial_id, 'decode_notes':decode_notes}
+         
     def get_tfgrid(self, all_audio_spectrum, fb_0, fb_bot, fb_top, tb_0): 
         fft1_len = len(all_audio_spectrum)
 
@@ -90,7 +89,6 @@ class Candidate:
         return 2.83 * llr / rootvar, rootvar, snr
 
     def demap(self, all_audio_spectrum):
-        self.decoded_from_grid = False
         df = SAMP_RATE / 192000
         fHz, tsec = self.origin['fHz'], self.origin['tsec']
         fb_0 = int(0.5 + fHz / df )
@@ -115,6 +113,7 @@ class Candidate:
         ftweak = ftweaks[np.argmax(scores)]
 
         self.get_tfgrid(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
+        self.tweaks = f"t:{ttweak:+03d} f:{ftweak:+03d}"
 
         p = self.cgrid[COSTAS_SYMB_IDXS, :]
         ccheck = np.argmax(p, axis = 1) - (COSTAS * 3)
@@ -128,18 +127,27 @@ class Candidate:
         self.origin.update({'tsec': float(self.origin['tsec'] + ttweak / 200),
                             'fHz':float(self.origin['fHz'] + ftweak / 16) })
 
-        self.tweaks = f"t:{ttweak:+03d} f:{ftweak:+03d}"
 
 
     def fast_demap_decode(self, payload_on_search_grid):
         self.llr, self.llr_sd, self.snr = self.dB_to_llr(payload_on_search_grid)
+        self.msg_tuple = crc_unpack91(self.llr[:91])
+        if self.msg_tuple:
+            self.decode_notes = "grid             GOOD91"
+            self.decode_completed = True
+            return
         self._decode_ldpc_AP('grid            ', [1, 0], 35, 5, False) # try CQ pattern first
 
     def decode(self, current_max_ipass):
+        self.msg_tuple = crc_unpack91(self.llr[:91])
+        if self.msg_tuple:
+            self.decode_notes = f'fine {self.tweaks} GOOD91'
+            self.decode_completed = True
+            return
         if self.ipass > current_max_ipass:
             return
         if self.llr_sd < self.llr_sd_min:
-            self.decode_status = 'llr reject'
+            self.decode_notes = 'llr reject'
             self.decode_completed = True
             return
         time_utils.sleep(0)
@@ -172,7 +180,7 @@ class Candidate:
                # llr[57:59] = -5
             self.msg_tuple, self.n_its, output_llr = ldpc_decode(llr, max_nc0, max_its)
             if self.msg_tuple:
-                self.decode_status = f'{source} LDPC {pat_name}'
+                self.decode_notes += f'{source} LDPC {pat_name}'
                 break
             else:
                 if save_llr and len(output_llr) == 174:
@@ -182,7 +190,7 @@ class Candidate:
         pat_name, llr = patname_llr
         msg_tuple, best = osd_decode(llr, self.rel_ord)
         if msg_tuple:
-            self.decode_status = f'{source} OSD {pat_name} {best[2]}'
+            self.decode_notes += f'{source} OSD {pat_name} {best[2]}'
             self.msg_tuple, self.n_its = msg_tuple, -1
 
 
@@ -365,30 +373,24 @@ class Receiver():
                         c.fast_demap_decode(tfgrid_payload_dB)
                         c.fast_decode_tried = True
 
-                if not c.decode_completed and not c.demap_started:
+                if not c.decode_completed and not c.demap_completed:
                     if not (c.search_grid_bounds[0] <= self.audio_in.search_grid_ptr <= c.search_grid_bounds[1]):
                         if np.abs(self.audio_in.search_grid_ptr - ptr_at_last_spectrum_calc) > 0 : # only calc full spectrum if more samples received
                             all_audio_spectrum = np.fft.rfft(self.audio_in.cycle_audio_buffer)
                             ptr_at_last_spectrum_calc = self.audio_in.search_grid_ptr
-
                         c.demap(all_audio_spectrum)
-                        c.demap_started = True
+                        c.demap_completed = True
                         
-                if not c.decode_completed and c.llr_sd > 0:  
+                if not c.decode_completed and c.demap_completed:  
                     to_decode.append(c)
 
-                if c.msg_tuple:
-                    c.decode_completed = True
+                if c.msg_tuple and not c.msg_checked:
                     key = c.origin['cyclestart_string'] + ''.join(c.msg_tuple)
                     if (key not in duplicate_filter):
                         duplicate_filter.add(key)
                         m = c.package()
-                        c.unique_messages.append(m)
-                        nu = len(c.unique_messages)
-                        if nu > 1:
-                            print(f"Candidate {c.serial_id} has {nu} messages")
                         self.process_message(m)
-                    c.msg_tuple = None  # prevent re-checking this candidate
+                    c.msg_checked = True
                 
             if len(to_decode):
                 to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
@@ -396,7 +398,7 @@ class Receiver():
                 for c in to_decode:
                     c.decode(max_ipass)
             else:
-                if not end_decoding_message_printed and len([c for c in self.candidates if c.demap_started]):
+                if not end_decoding_message_printed and len([c for c in self.candidates if c.demap_completed]):
                     h = self.audio_in.search_grid_ptr
                     t = h / (SYM_RATE * self.audio_in.search_hps)
                     time_utils.tlog(f"[Receiver] Finished decoding at t={t:6.2f}s", verbose = True)
