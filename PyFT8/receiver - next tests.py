@@ -18,13 +18,13 @@ COSTAS_SYMB_IDXS = list(range(7)) + list(range(36,43)) + list(range(72,79))
 
 #============== CANDIDATE ===========================================================
 
-ap_patterns = [
+ap_definitions =  [
                 ['None',     0, []                                                               ], 
                 ['CQ',       0, [0,0,0,0,0 ,0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,1,0,0] ],
                 ['RR73',    58, [0,1, 1,1,1,1,1, 0,0,1,1,1, 0,1,0,1,0, 0,1]                      ],
                 ['73',      58, [0,1, 1,1,1,1,1, 0,1,0,0,1, 0,1,0,0,0, 0,1]                      ],
                 ['RRR',     58, [0,1, 1,1,1,1,1, 0,1,0,0,1, 0,0,1,0,0, 0,1]                      ],
-              ]
+                  ]
 
 class Candidate:
     def __init__(self, origin, search_grid_bounds, llr_sd_min = 5):
@@ -136,7 +136,20 @@ class Candidate:
             self.decode_notes = "grid             GOOD91"
             self.decode_completed = True
             return
-        self._decode_ldpc_AP('grid            ', [1, 0], 35, 5, False) # try CQ pattern first
+        for ap_definition in [ap_definitions[1], ap_definitions[0]]:
+            pat_name, b0, ap_pattern = ap_definition
+            llr = self.llr.copy()
+            for b, bval in enumerate(ap_pattern):
+                llr[b0 + b] = (bval*2-1) * 5
+            if pat_name == 'CQ':
+                llr[74:76] = -5
+                llr[76] = 5
+                # llr[57:59] = -5
+            self.msg_tuple, self.n_its, output_llr = ldpc_decode(llr, 35, 5)
+            if self.msg_tuple:
+                self.decode_notes = f'grid             LDPC FIVE {pat_name}'
+                self.decode_completed = True
+                break
 
     def decode(self, current_max_ipass):
         self.msg_tuple = crc_unpack91(self.llr[:91])
@@ -151,49 +164,46 @@ class Candidate:
             self.decode_completed = True
             return
         time_utils.sleep(0)
-        source = f'fine {self.tweaks}'
+        
         if self.ipass == 0:
-            self._decode_ldpc_AP(source, [0], 35, 5, False)
+            self.msg_tuple, self.n_its, output_llr = ldpc_decode(self.llr.copy(), 35, 5)
+            if self.msg_tuple:
+                self.decode_notes = f'fine {self.tweaks} LDPC FIVE'
+
         if self.ipass == 1:
-            self._decode_ldpc_AP(source, [0,1,2,3,4], 55, 25, True)
+            self.saved_llrs = [('demap', self.llr.copy())]
+            for ap_definition in ap_definitions:
+                pat_name, b0, ap_pattern = ap_definition
+                llr = self.llr.copy()
+                for b, bval in enumerate(ap_pattern):
+                    llr[b0 + b] = (bval*2-1) * 5
+                if pat_name == 'CQ':
+                    llr[74:76] = -5
+                    llr[76] = 5
+                   # llr[57:59] = -5
+                self.msg_tuple, self.n_its, output_llr = ldpc_decode(llr, 55, 25)
+                if self.msg_tuple:
+                    self.decode_notes = f'fine {self.tweaks} LDPC {pat_name}'
+                    break
+                elif len(output_llr): # output_llr = [] if candidate rejected, i.e. not changed, by ldpc 
+                    self.saved_llrs.append((pat_name, np.array(output_llr)))
+                    
         if self.ipass == 2: # no decode, just prep
             self.rel_ord = np.argsort(np.abs(self.llr))[::-1]
-            self.saved_llrs = [('demap', self.llr)] + self.saved_llrs
-        i_saved = self.ipass - 3
-        if len(self.saved_llrs) > i_saved >= 0:
-            self._decode_osd(source, self.saved_llrs[i_saved])
-        if self.msg_tuple or i_saved == len(self.saved_llrs):
-            self.decode_completed = True
+
+        if self.ipass >= 3:
+            i_saved = self.ipass - 3
+            if len(self.saved_llrs) > i_saved >= 0:
+                pat_name, llr = self.saved_llrs[i_saved]
+                msg_tuple, best = osd_decode(llr, self.rel_ord)
+                if msg_tuple:
+                    self.decode_notes = f'fine {self.tweaks} OSD {pat_name} {best[2]}'
+                    self.msg_tuple, self.n_its = msg_tuple, -1
+            if self.msg_tuple or i_saved == len(self.saved_llrs):
+                self.decode_completed = True
+
         self.ipass +=1
                 
-    def _decode_ldpc_AP(self, source, ap_indexes, max_nc0, max_its, save_llr):
-        self.saved_llrs = []
-        for ipat in ap_indexes:
-            pat_name, b0, ap_pattern = ap_patterns[ipat]
-
-            llr = self.llr.copy()
-            for b, bval in enumerate(ap_pattern):
-                llr[b0 + b] = (bval*2-1) * 5
-            if pat_name == 'CQ':
-                llr[74:76] = -5
-                llr[76] = 5
-               # llr[57:59] = -5
-            self.msg_tuple, self.n_its, output_llr = ldpc_decode(llr, max_nc0, max_its)
-            if self.msg_tuple:
-                self.decode_notes += f'{source} LDPC {pat_name}'
-                break
-            else:
-                if save_llr and len(output_llr) == 174:
-                    self.saved_llrs.append((pat_name, output_llr))
-                
-    def _decode_osd(self, source, patname_llr):
-        pat_name, llr = patname_llr
-        msg_tuple, best = osd_decode(llr, self.rel_ord)
-        if msg_tuple:
-            self.decode_notes += f'{source} OSD {pat_name} {best[2]}'
-            self.msg_tuple, self.n_its = msg_tuple, -1
-
-
 #============== AUDIO IN ===========================================================
 class AudioIn:
     def __init__(self, search_freq_range, input_device_keywords):
@@ -373,7 +383,7 @@ class Receiver():
                         c.fast_demap_decode(tfgrid_payload_dB)
                         c.fast_decode_tried = True
 
-                if not c.decode_completed and not c.demap_completed:
+                if c.fast_decode_tried and not c.decode_completed and not c.demap_completed:
                     if not (c.search_grid_bounds[0] <= self.audio_in.search_grid_ptr <= c.search_grid_bounds[1]):
                         if np.abs(self.audio_in.search_grid_ptr - ptr_at_last_spectrum_calc) > 0 : # only calc full spectrum if more samples received
                             all_audio_spectrum = np.fft.rfft(self.audio_in.cycle_audio_buffer)
@@ -381,7 +391,7 @@ class Receiver():
                         c.demap(all_audio_spectrum)
                         c.demap_completed = True
                         
-                if not c.decode_completed and c.demap_completed:  
+                if c.demap_completed and not c.decode_completed:  
                     to_decode.append(c)
 
                 if c.msg_tuple and not c.msg_checked:

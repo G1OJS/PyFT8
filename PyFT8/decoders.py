@@ -92,7 +92,7 @@ def standard_call28(call_int28, i3):
     call = ''.join(chars).strip()
     return call
 
-def crc_unpack(codeword91):
+def crc_unpack91(codeword91):
     bits91_int = 0
     for bit in (codeword91 > 0).astype(int).tolist():
         bits91_int = (bits91_int << 1) | bit
@@ -137,7 +137,7 @@ def ldpc_decode(llr, max_ncheck0, max_iters):
         if n_its == 0 and ncheck > max_ncheck0:
             return None, -1, []
         if ncheck == 0:
-            msg_tuple = crc_unpack(llr[:91])
+            msg_tuple = crc_unpack91(llr[:91])
             if msg_tuple:
                 return msg_tuple, n_its, []
         else:
@@ -192,9 +192,9 @@ def encode_and_score(u, Gsys, bits_sys, vals_sys):
     codeword = (u @ Gsys) & 1
     bit_diff = codeword ^ bits_sys
     score = float(np.sum(vals_sys * bit_diff))
-    return codeword, score
+    return [codeword, score]
 
-def osd_decode(llr, reliab_order, Ls = [55,10]):
+def osd_decode(llr, reliab_order, flip_pool_lengths = [0, 55, 10]):
 
     # determine colperm ordering and inverse
     Gsys, colperm = gf2_systematic_from_reliability(G, reliab_order)
@@ -208,17 +208,20 @@ def osd_decode(llr, reliab_order, Ls = [55,10]):
     rel_ord91 = np.argsort(vals_sys[:91])
 
     best = encode_and_score(bits_sys91, Gsys, bits_sys, vals_sys)
-    for t in range(1, len(Ls) + 1):
-        flip_pool = rel_ord91[:min(Ls[t-1], 91)]
-        for comb in combinations(flip_pool, t):
-            bits91_test = bits_sys91.copy()
-            bits91_test[list(comb)] ^= 1
-            test = encode_and_score(bits91_test, Gsys, bits_sys, vals_sys)
-            if test[1] < best[1]:
-                best = test
+    best.append('None')
+    for nflips, npool in enumerate(flip_pool_lengths):
+        if nflips>0:
+            flip_pool = rel_ord91[:npool]
+            for comb in combinations(flip_pool, nflips):
+                bits91_test = bits_sys91.copy()
+                bits91_test[list(comb)] ^= 1
+                test = encode_and_score(bits91_test, Gsys, bits_sys, vals_sys)
+                test.append(','.join([f"{i:3d}" for i in comb]))
+                if test[1] < best[1]:
+                    best = test
             
     cw = best[0][colperm_inv].astype(np.uint8)
-    msg_tuple = crc_unpack(cw[:91])
-    return msg_tuple
+    msg_tuple = crc_unpack91(cw[:91])
+    return msg_tuple, best
 
 

@@ -86,7 +86,10 @@ def process_message(m):
     fHz = m['fHz'] 
     if fHz < freqrange[0]: freqrange[0] = fHz
     if fHz > freqrange[1]: freqrange[1] = fHz
-    print(f"{m['decode_status']:30s} t {timerange[0]:+05.2f},{timerange[1]:+05.2f} f {freqrange[0]:04.0f},{freqrange[1]:04.0f} {m['all_txt_format']}")
+    info = f"{m['serial_id']:03d} {m['decode_notes']:45s} t {timerange[0]:+05.2f},{timerange[1]:+05.2f} f {freqrange[0]:04.0f},{freqrange[1]:04.0f} {m['all_txt_format']}"
+    with open('test.txt', 'a') as f:
+        f.write(f"{info}\n")
+    print(info)
 
 def on_wsjtx_decode(dd):
     global ws_times, both_started
@@ -96,14 +99,15 @@ def on_wsjtx_decode(dd):
             both_started = True
     ws_times.append(time_utils.time() - t_start)
 
-
-
 def do_test(input_device_keywords, wav_range = None):
     global both_started
     global gui, rx, t_start, comms_hub
     global decodes, py_times, ws_times, decodes
     global fig, ax
     from matplotlib.ticker import AutoMinorLocator, MultipleLocator
+
+    with open('test.txt','w') as f:
+        f.write('')
     
     fig, ax = plt.subplots(figsize=(10,10))
     ws_line = ax.plot([], [], label = 'WSJT-X', marker = 'o', markersize = 3)[0]
