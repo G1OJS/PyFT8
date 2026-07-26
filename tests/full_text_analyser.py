@@ -1,13 +1,13 @@
 
 
-with open(r'C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/test_best_baseline.txt', 'r') as f:
+with open(r'C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/live_decode_times_PyFT8_8_28_baseline.txt', 'r') as f:
     lines = f.readlines()
 
-decode_paths = ['GOOD91', 'LDPC None', 'LDPC CQ', 'LDPC 73', 'LDPC RR73', 'LDPC RRR',
-                'OSD demap', 'OSD None', 'OSD CQ', 'OSD 73', 'OSD RR73', 'OSD RRR']
+decode_paths = ['GOOD91', 'LDPC NoAP', 'LDPC CQ', 'LDPC 73', 'LDPC RR73', 'LDPC RRR',
+                'OSD demap', 'OSD NoAP', 'OSD CQ', 'OSD 73', 'OSD RR73', 'OSD RRR']
 counter = {}
-for dp in decode_paths:
-    for s in ['grid ', 'fine ']:
+for s in ['grid ', 'fine ']:
+    for dp in decode_paths:
         counter.update({s+dp:0})
 
 for l in lines:
