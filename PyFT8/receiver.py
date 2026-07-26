@@ -374,6 +374,8 @@ class Receiver():
                         c.fast_decode_tried = True
 
                 if not c.decode_completed and not c.demap_completed:
+                    # note using 'c.fast_decode_tried and not c.demap_completed' delays demap unnecessarily
+                    # keep 'not c.decode_completed' though because decode could happen above
                     if not (c.search_grid_bounds[0] <= self.audio_in.search_grid_ptr <= c.search_grid_bounds[1]):
                         if np.abs(self.audio_in.search_grid_ptr - ptr_at_last_spectrum_calc) > 0 : # only calc full spectrum if more samples received
                             all_audio_spectrum = np.fft.rfft(self.audio_in.cycle_audio_buffer)
@@ -381,10 +383,11 @@ class Receiver():
                         c.demap(all_audio_spectrum)
                         c.demap_completed = True
                         
-                if not c.decode_completed and c.demap_completed:  
+                if c.demap_completed and not c.decode_completed:
                     to_decode.append(c)
 
                 if c.msg_tuple and not c.msg_checked:
+                    c.decode_completed = True
                     key = c.origin['cyclestart_string'] + ''.join(c.msg_tuple)
                     if (key not in duplicate_filter):
                         duplicate_filter.add(key)
