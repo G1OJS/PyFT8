@@ -190,7 +190,7 @@ class Candidate:
         pat_name, llr = patname_llr
         msg_tuple, best = osd_decode(llr, self.rel_ord)
         if msg_tuple:
-            self.decode_notes += f'{source} OSD {pat_name} {best[2]}'
+            self.decode_notes += f'{source} OSD {pat_name}'
             self.msg_tuple, self.n_its = msg_tuple, -1
 
 

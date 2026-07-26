@@ -1,5 +1,4 @@
 import numpy as np
-from itertools import combinations
 from PyFT8.time_utils import time_utils
 from PyFT8.databases import call_hashes, add_call_hashes
 
@@ -208,25 +207,16 @@ def osd_decode(llr, reliab_order):
     rel_ord91 = np.argsort(vals_sys[:91])
 
     best = encode_and_score(bits_sys91, Gsys, bits_sys, vals_sys)
-    best.append('None')
-    for flips in test_flips:
-        if flips:
-            bits91_test = bits_sys91.copy()
-            bits91_test[list(flips)] ^= 1
-            test = encode_and_score(bits91_test, Gsys, bits_sys, vals_sys)
-            test.append(','.join([f"{i:3d}" for i in flips]))
-            if test[1] < best[1]:
-                best = test
+    for nflip in [0, 1]:
+        if nflip:
+            for flip in range(91):
+                bits_sys91[flip] ^= 1
+                test = encode_and_score(bits_sys91, Gsys, bits_sys, vals_sys)
+                if test[1] < best[1]:
+                    best = test
+                bits_sys91[flip] ^= 1
             
     cw = best[0][colperm_inv].astype(np.uint8)
     msg_tuple = crc_unpack91(cw[:91])
     return msg_tuple, best
-
-test_flips = []
-flip_defs = [0, 91, 20]
-#flip_defs = [0, 91, 20, 5]
-for nflips, npool in enumerate(flip_defs):
-    pool = list(range(npool))
-    for comb in combinations(pool, nflips):
-        test_flips.append(comb)
 

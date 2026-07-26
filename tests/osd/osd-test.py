@@ -65,9 +65,9 @@ def osd_decode(llr, reliab_order):
     for flips in test_flips:
         if flips:
             bits91_test = bits_sys91.copy()
-            bits91_test[list(flips)] ^= 1
+            bits91_test[flips] ^= 1
             test = encode_and_score(bits91_test, Gsys, bits_sys, vals_sys)
-            test.append(','.join([f"{i:3d}" for i in comb]))
+            test.append(','.join([f"{i:3d}" for i in flips]))
             if test[1] < best[1]:
                 best = test
             
@@ -79,11 +79,11 @@ import time
 
 test_flips = []
 flip_defs = [0, 55, 10]
-#flip_defs = [0, 91, 20, 5]
+flip_defs = [0, 91, 20]
 for nflips, npool in enumerate(flip_defs):
     pool = list(range(npool))
     for comb in combinations(pool, nflips):
-        test_flips.append(comb)
+        test_flips.append(list(comb))
 
 print(len(test_flips))
 
