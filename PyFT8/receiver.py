@@ -27,9 +27,10 @@ ap_patterns = [
               ]
 
 class Candidate:
-    def __init__(self, origin, search_grid_bounds, llr_sd_min = 5):
+    def __init__(self, origin, search_grid_bounds, payload_on_search_grid, llr_sd_min = 5):
         self.origin = origin
         self.search_grid_bounds = search_grid_bounds
+        self.payload_on_search_grid = payload_on_search_grid
         self.demap_completed, self.decode_completed = False, False
         self.n_sync_matches = -1
         self.fast_decode_tried = False
@@ -127,23 +128,13 @@ class Candidate:
         self.origin.update({'tsec': float(self.origin['tsec'] + ttweak / 200),
                             'fHz':float(self.origin['fHz'] + ftweak / 16) })
 
-
-
-    def fast_demap_decode(self, payload_on_search_grid):
-        self.llr, self.llr_sd, self.snr = self.dB_to_llr(payload_on_search_grid)
-        self.msg_tuple = crc_unpack91(self.llr[:91])
-        if self.msg_tuple:
-            self.decode_notes = "grid             GOOD91"
-            self.decode_completed = True
-            return
-        self._decode_ldpc_AP('grid            ', [1, 0], 35, 5, False) # try CQ pattern first
+    def fast_demap_decode(self):
+        self.llr, self.llr_sd, self.snr = self.dB_to_llr(self.payload_on_search_grid)
+        source = 'grid            '
+        self._decode_good91(source)
+        self._decode_ldpc_AP(source, [1, 0], 35, 5, False) # try CQ pattern first
 
     def decode(self, current_max_ipass):
-        self.msg_tuple = crc_unpack91(self.llr[:91])
-        if self.msg_tuple:
-            self.decode_notes = f'fine {self.tweaks} GOOD91'
-            self.decode_completed = True
-            return
         if self.ipass > current_max_ipass:
             return
         if self.llr_sd < self.llr_sd_min:
@@ -153,45 +144,56 @@ class Candidate:
         time_utils.sleep(0)
         source = f'fine {self.tweaks}'
         if self.ipass == 0:
-            self._decode_ldpc_AP(source, [0], 35, 5, False)
+            self._decode_good91(source)       
         if self.ipass == 1:
+            self._decode_ldpc_AP(source, [0], 35, 5, False)
+        if self.ipass == 2:
             self._decode_ldpc_AP(source, [0,1,2,3,4], 55, 25, True)
-        if self.ipass == 2: # no decode, just prep
+        if self.ipass == 3: # no decode, just prep
             self.rel_ord = np.argsort(np.abs(self.llr))[::-1]
             self.saved_llrs = [('demap', self.llr)] + self.saved_llrs
-        i_saved = self.ipass - 3
+        i_saved = self.ipass - 4
         if len(self.saved_llrs) > i_saved >= 0:
             self._decode_osd(source, self.saved_llrs[i_saved])
         if self.msg_tuple or i_saved == len(self.saved_llrs):
             self.decode_completed = True
         self.ipass +=1
+
+    def _decode_good91(self, source):
+        if not self.decode_completed:
+            self.msg_tuple = crc_unpack91(self.llr[:91])
+            if self.msg_tuple:
+                self.decode_notes += f'{source} GOOD91'
+                self.decode_completed = True
                 
     def _decode_ldpc_AP(self, source, ap_indexes, max_nc0, max_its, save_llr):
-        self.saved_llrs = []
-        for ipat in ap_indexes:
-            pat_name, b0, ap_pattern = ap_patterns[ipat]
+        if not self.decode_completed:
+            self.saved_llrs = []
+            for ipat in ap_indexes:
+                pat_name, b0, ap_pattern = ap_patterns[ipat]
 
-            llr = self.llr.copy()
-            for b, bval in enumerate(ap_pattern):
-                llr[b0 + b] = (bval*2-1) * 5
-            if pat_name == 'CQ':
-                llr[74:76] = -5
-                llr[76] = 5
-               # llr[57:59] = -5
-            self.msg_tuple, self.n_its, output_llr = ldpc_decode(llr, max_nc0, max_its)
-            if self.msg_tuple:
-                self.decode_notes += f'{source} LDPC {pat_name}'
-                break
-            else:
-                if save_llr and len(output_llr) == 174:
-                    self.saved_llrs.append((pat_name, output_llr))
+                llr = self.llr.copy()
+                for b, bval in enumerate(ap_pattern):
+                    llr[b0 + b] = (bval*2-1) * 5
+                if pat_name == 'CQ':
+                    llr[74:76] = -5
+                    llr[76] = 5
+                   # llr[57:59] = -5
+                self.msg_tuple, self.n_its, output_llr = ldpc_decode(llr, max_nc0, max_its)
+                if self.msg_tuple:
+                    self.decode_notes += f'{source} LDPC {pat_name}'
+                    break
+                else:
+                    if save_llr and len(output_llr) == 174:
+                        self.saved_llrs.append((pat_name, output_llr))
                 
     def _decode_osd(self, source, patname_llr):
-        pat_name, llr = patname_llr
-        msg_tuple, best = osd_decode(llr, self.rel_ord)
-        if msg_tuple:
-            self.decode_notes += f'{source} OSD {pat_name}'
-            self.msg_tuple, self.n_its = msg_tuple, -1
+        if not self.decode_completed:
+            pat_name, llr = patname_llr
+            msg_tuple, best = osd_decode(llr, self.rel_ord)
+            if msg_tuple:
+                self.decode_notes += f'{source} OSD {pat_name}'
+                self.msg_tuple, self.n_its = msg_tuple, -1
 
 
 #============== AUDIO IN ===========================================================
@@ -339,7 +341,10 @@ class Receiver():
                 origin.update({'cyclestart_string':cyclestart_string, 'band':self.band, 'odd_even':odd_even})
                 search_grid_h0 = cycle_h0 + h0 + self.audio_in.search_hps
                 search_grid_hn = cycle_h0 + h0 + self.audio_in.search_hps + hops_per_sig
-                c = Candidate(origin, [search_grid_h0, search_grid_hn])
+                hops = np.array([(search_grid_h0 + self.audio_in.search_hps * s)% self.audio_in.search_hops_per_grid for s in PAYLOAD_SYMB_IDXS])
+                freqs = np.array([origin['f0_idx'] + self.audio_in.search_bpt//2 + t * self.audio_in.search_bpt for t in range(8)])
+                payload_on_search_grid = self.audio_in.search_grid[hops,:][:, freqs]
+                c = Candidate(origin, [search_grid_h0, search_grid_hn], payload_on_search_grid)
                 c.serial_id = cand_serial
                 cands.append(c)
         cands.sort(key = lambda c: c.origin['score'], reverse = True)
@@ -367,13 +372,10 @@ class Receiver():
 
                 if not c.fast_decode_tried:
                     if not (c.search_grid_bounds[0] <= self.audio_in.search_grid_ptr <= c.search_grid_bounds[1]):
-                        hops = np.array([(c.search_grid_bounds[0] + self.audio_in.search_hps * s)% self.audio_in.search_hops_per_grid for s in PAYLOAD_SYMB_IDXS])
-                        freqs = np.array([c.origin['f0_idx'] + self.audio_in.search_bpt//2 + t * self.audio_in.search_bpt for t in range(8)])
-                        tfgrid_payload_dB = self.audio_in.search_grid[hops,:][:, freqs]
-                        c.fast_demap_decode(tfgrid_payload_dB)
+                        c.fast_demap_decode()
                         c.fast_decode_tried = True
-
-                if not c.decode_completed and not c.demap_completed:
+                
+                if not c.demap_completed:
                     # note using 'c.fast_decode_tried and not c.demap_completed' delays demap unnecessarily
                     # keep 'not c.decode_completed' though because decode could happen above
                     if not (c.search_grid_bounds[0] <= self.audio_in.search_grid_ptr <= c.search_grid_bounds[1]):
