@@ -27,12 +27,12 @@ ap_patterns = [
               ]
 
 class Candidate:
-    def __init__(self, origin, search_grid_bounds, payload_on_search_grid, get_full_audio, process_message, llr_sd_min = 5):
+    def __init__(self, origin, search_grid_bounds, payload_on_search_grid, get_full_audio, on_message, llr_sd_min = 5):
         self.origin = origin
         self.search_grid_bounds = search_grid_bounds
         self.payload_on_search_grid = payload_on_search_grid
         self.get_full_audio = get_full_audio
-        self.process_message = process_message
+        self.on_message = on_message
         self.llr_sd = 0
         self.llr_sd_min = llr_sd_min
         self.ipass = 0
@@ -46,27 +46,9 @@ class Candidate:
         self.serial_id = None
         self.decode_notes = ''
 
-    def _check_msg_and_package(self, duplicate_filter):
-        if self.decode_result:
-            if self.decode_result != 'fail':
-                key = self.origin['cyclestart_string'] + ''.join(self.decode_result)
-                if (key not in duplicate_filter):
-                    duplicate_filter.add(key)
-                    o = self.origin
-                    decode_notes = self.decode_notes
-                    tsec, fHz = o['tsec'], o['fHz']
-                    their_snr = f"{self.snr:+03d}"
-                    msg_text = ' '.join(self.decode_result)
-                    all_txt_format = f"{o['cyclestart_string']} {their_snr} {(tsec-0.5):4.1f} {fHz:4.0f} ~ {msg_text}"
-                    message = {"band":o['band'], "tsec":tsec, "fHz":fHz, "msg_tuple":self.decode_result, "their_snr": their_snr, "their_tx_cycle":o['odd_even'],
-                            "all_txt_format": all_txt_format,
-                            "decode_completed": time_utils.time(),  'serial_id': self.serial_id, 'decode_notes':decode_notes}
-                    self.on_message(message)
-            self.decode_result = False
-
     def decode(self, duplicate_filter, current_max_ipass):
         time_utils.sleep(0)
-        if self.ipass <= current_max_ipass and self.decode_result != 'fail':
+        if self.ipass <= current_max_ipass and self.decode_result != 'stop':
                         
             if self.ipass == 0:
                 source = "grid          "
@@ -80,7 +62,7 @@ class Candidate:
                 self.all_audio_spectrum = self.get_full_audio()
                 self.n_sync_matches, self.llr, self.llr_sd, self.snr = self._get_llr_fine(self.all_audio_spectrum)
                 if self.n_sync_matches < 6 or self.llr_sd < self.llr_sd_min:
-                    self.decode_result = 'fail'
+                    self.decode_result = 'stop'
                     return
                 self._decode_good91(source)       
             if self.ipass == 2:
@@ -92,9 +74,27 @@ class Candidate:
                 self.saved_llrs = [('demap', self.llr)] + self.saved_llrs
             i_saved = self.ipass - 5
             if len(self.saved_llrs) > i_saved >= 0:
-                self._decode_osd(source, self.saved_llrs[i_saved])
-            if self.decode_result or i_saved == len(self.saved_llrs):
-                self.decode_result = 'fail'
+                self._decode_osd(source, self.saved_llrs[i_saved]) 
+            if i_saved == len(self.saved_llrs):
+                self.decode_result = 'stop'
+
+            if self.decode_result:
+                if self.decode_result != 'stop':
+                    key = self.origin['cyclestart_string'] + ''.join(self.decode_result)
+                    if (key not in duplicate_filter):
+                        duplicate_filter.add(key)
+                        o = self.origin
+                        decode_notes = self.decode_notes
+                        tsec, fHz = o['tsec'], o['fHz']
+                        their_snr = f"{self.snr:+03d}"
+                        msg_text = ' '.join(self.decode_result)
+                        all_txt_format = f"{o['cyclestart_string']} {their_snr} {(tsec-0.5):4.1f} {fHz:4.0f} ~ {msg_text}"
+                        message = {"band":o['band'], "tsec":tsec, "fHz":fHz, "msg_tuple":self.decode_result, "their_snr": their_snr, "their_tx_cycle":o['odd_even'],
+                                "all_txt_format": all_txt_format,
+                                "decode_completed": time_utils.time(),  'serial_id': self.serial_id, 'decode_notes':decode_notes}
+                        self.on_message(message)
+                self.decode_result = 'stop'
+                
             self.ipass +=1
 
     def _decode_good91(self, source):
@@ -115,7 +115,7 @@ class Candidate:
                    # llr[57:59] = -5
                 self.decode_notes = f'{source} LDPC {pat_name}'
                 self.decode_result, self.n_its, output_llr = ldpc_decode(llr, max_nc0, max_its)
-                if save_llr and not self.decode_result and not len(output_llr) == 174:
+                if save_llr and not self.decode_result and len(output_llr) == 174:
                     self.saved_llrs.append((pat_name, output_llr))
                 if self.decode_result:
                     break
