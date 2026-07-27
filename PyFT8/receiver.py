@@ -48,9 +48,10 @@ class Candidate:
 
     def decode(self, duplicate_filter, current_max_ipass):
         time_utils.sleep(0)
-        if self.ipass <= current_max_ipass and self.decode_result != 'stop':
+        if (self.ipass <= current_max_ipass or current_max_ipass <3) and (self.decode_result != 'stop'):
                         
             if self.ipass == 0:
+                self.all_audio_spectrum = self.get_full_audio()
                 source = "grid          "
                 self.llr, self.llr_sd, self.snr = self._dB_to_llr(self.payload_on_search_grid)
                 if self.llr_sd > self.llr_sd_min:
@@ -59,7 +60,6 @@ class Candidate:
             
             source = f'fine {self.tweaks}'
             if self.ipass == 1:
-                self.all_audio_spectrum = self.get_full_audio()
                 self.n_sync_matches, self.llr, self.llr_sd, self.snr = self._get_llr_fine(self.all_audio_spectrum)
                 if self.n_sync_matches < 6 or self.llr_sd < self.llr_sd_min:
                     self.decode_result = 'stop'
@@ -375,8 +375,6 @@ class Receiver():
         ptr_at_last_spectrum_calc = -1
         search_grid_ptr_prev = 0
         cycle_searched = False
-        end_decoding_message_printed = False
-        all_audio_spectrum = None
         while True:
             time_utils.sleep(0.1)
 
@@ -386,20 +384,13 @@ class Receiver():
             search_grid_ptr_prev = self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle
 
             # list candidates still to decode, and decode them
-            to_decode = [c for c in self.candidates if not c.decode_result]
+            to_decode = [c for c in self.candidates if (not c.decode_result) and (not (c.search_grid_bounds[0] <= self.audio_in.search_grid_ptr <= c.search_grid_bounds[1]))]
             if len(to_decode):
+                ipasses = [c.ipass for c in to_decode]
                 to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
-                max_ipass = 1 + np.min([c.ipass for c in to_decode])
+                max_ipass = np.min(ipasses)
                 for c in to_decode:
-                    if not (c.search_grid_bounds[0] <= self.audio_in.search_grid_ptr <= c.search_grid_bounds[1]):
-                        c.decode(duplicate_filter, max_ipass)
-
-            # print decode completed message
-            if len(to_decode) == 0:
-                if not end_decoding_message_printed:
-                    tnow = time_utils.cycle_time()
-                    time_utils.tlog(f"[Receiver] Finished decoding at t={tnow:6.2f}s", verbose = True)
-                    end_decoding_message_printed = True
+                    c.decode(duplicate_filter, max_ipass)
 
             # if cycle not yet searched and search data available, search
             if not cycle_searched and self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle > self.search_start_hop:
@@ -407,9 +398,7 @@ class Receiver():
                 tstart = hstart / (SYM_RATE * self.audio_in.search_hps)
                 time_utils.tlog(f"[Cycle manager] start search at hop {hstart} ({tstart:6.2f}s)", verbose = True)
                 cyclestart_string = time_utils.cyclestart_string(time_utils.time())
-                timeouts = [c for c in self.candidates if not c.decode_result]
-                if len(timeouts):
-                    ipasses = [c.ipass for c in timeouts]
+                if len(to_decode):
                     time_utils.tlog(f"[Receiver] Warning - {len(timeouts)} candidates ran out of decoding time, ipass = {ipasses}", verbose = True)
                 self.search(cyclestart_string, self.audio_in.odd_even, self.audio_in.cycle_h0)
                 cycle_searched = True
