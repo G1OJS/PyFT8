@@ -69,7 +69,7 @@ class Candidate:
         if self.ipass <= current_max_ipass and self.decode_result != 'fail':
                         
             if self.ipass == 0:
-                source = 'grid          '
+                source = "grid          "
                 self.llr, self.llr_sd, self.snr = self._dB_to_llr(self.payload_on_search_grid)
                 if self.llr_sd > self.llr_sd_min:
                     self._decode_good91(source)
