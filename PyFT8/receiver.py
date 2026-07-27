@@ -66,7 +66,7 @@ class Candidate:
 
     def decode(self, duplicate_filter, current_max_ipass):
         time_utils.sleep(0)
-        if self.ipass <= current_max_ipass:
+        if self.ipass <= current_max_ipass and self.decode_result != 'fail':
                         
             if self.ipass == 0:
                 source = 'grid          '
@@ -94,7 +94,7 @@ class Candidate:
             if len(self.saved_llrs) > i_saved >= 0:
                 self._decode_osd(source, self.saved_llrs[i_saved])
             if self.decode_result or i_saved == len(self.saved_llrs):
-                self.decode_completed = True
+                self.decode_result = 'fail'
             self.ipass +=1
 
     def _decode_good91(self, source):
