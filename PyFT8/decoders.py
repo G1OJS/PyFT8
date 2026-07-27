@@ -218,5 +218,5 @@ def osd_decode(llr, reliab_order):
             
     cw = best[0][colperm_inv].astype(np.uint8)
     msg_tuple = crc_unpack91(cw[:91])
-    return msg_tuple, best
+    return msg_tuple
 
