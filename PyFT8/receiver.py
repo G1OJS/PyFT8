@@ -112,7 +112,7 @@ class Candidate:
                 if pat_name == 'CQ':
                     llr[74:76] = -5
                     llr[76] = 5
-                   # llr[57:59] = -5
+                    llr[57:59] = -5
                 self.decode_notes = f'{source} LDPC {pat_name}'
                 self.decode_result, self.n_its, output_llr = ldpc_decode(llr, max_nc0, max_its)
                 if save_llr and not self.decode_result and len(output_llr) == 174:
