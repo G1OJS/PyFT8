@@ -33,39 +33,44 @@ class Candidate:
         self.payload_on_search_grid = payload_on_search_grid
         self.get_full_audio = get_full_audio
         self.process_message = process_message
+        self.llr_sd = 0
         self.llr_sd_min = llr_sd_min
+        self.ipass = 0
         self.csync_7x7 = None
         self.signal_grid = None
+        self.tweaks = f"t:{0:+03d} f:{0:+03d}"
+        self.saved_llrs = []
+        self.decode_result = None
         self.fft2_len = 3200
         self.reused_spectrum_array = np.zeros(self.fft2_len, dtype = np.complex64)
         self.serial_id = None
         self.decode_notes = ''
-        self.msg_checked = False
 
     def _check_msg_and_package(self, duplicate_filter):
         if self.decode_result:
-            key = self.origin['cyclestart_string'] + ''.join(self.decode_result)
-            if (key not in duplicate_filter):
-                duplicate_filter.add(key)
-                o = self.origin
-                decode_notes = self.decode_notes
-                tsec, fHz = o['tsec'], o['fHz']
-                their_snr = f"{self.snr:+03d}"
-                msg_text = ' '.join(self.decode_result)
-                all_txt_format = f"{o['cyclestart_string']} {their_snr} {(tsec-0.5):4.1f} {fHz:4.0f} ~ {msg_text}"
-                message = {"band":o['band'], "tsec":tsec, "fHz":fHz, "msg_tuple":self.decode_result, "their_snr": their_snr, "their_tx_cycle":o['odd_even'],
-                        "all_txt_format": all_txt_format,
-                        "decode_completed": time_utils.time(),  'serial_id': self.serial_id, 'decode_notes':decode_notes}
-                self.on_message(message)
+            if self.decode_result != 'fail':
+                key = self.origin['cyclestart_string'] + ''.join(self.decode_result)
+                if (key not in duplicate_filter):
+                    duplicate_filter.add(key)
+                    o = self.origin
+                    decode_notes = self.decode_notes
+                    tsec, fHz = o['tsec'], o['fHz']
+                    their_snr = f"{self.snr:+03d}"
+                    msg_text = ' '.join(self.decode_result)
+                    all_txt_format = f"{o['cyclestart_string']} {their_snr} {(tsec-0.5):4.1f} {fHz:4.0f} ~ {msg_text}"
+                    message = {"band":o['band'], "tsec":tsec, "fHz":fHz, "msg_tuple":self.decode_result, "their_snr": their_snr, "their_tx_cycle":o['odd_even'],
+                            "all_txt_format": all_txt_format,
+                            "decode_completed": time_utils.time(),  'serial_id': self.serial_id, 'decode_notes':decode_notes}
+                    self.on_message(message)
             self.decode_result = False
 
-    def decode(self, duplicate_filter, current_max_ipass, all_audio_spectrum):
+    def decode(self, duplicate_filter, current_max_ipass):
         time_utils.sleep(0)
         if self.ipass <= current_max_ipass:
                         
             if self.ipass == 0:
                 source = 'grid          '
-                self.llr, self.llr_sd, self.snr = self.dB_to_llr(self.payload_on_search_grid)
+                self.llr, self.llr_sd, self.snr = self._dB_to_llr(self.payload_on_search_grid)
                 if self.llr_sd > self.llr_sd_min:
                     self._decode_good91(source)
                     self._decode_ldpc_AP(source, [1, 0], 35, 5, False) # try CQ pattern first
@@ -74,8 +79,8 @@ class Candidate:
             if self.ipass == 1:
                 self.all_audio_spectrum = self.get_full_audio()
                 self.n_sync_matches, self.llr, self.llr_sd, self.snr = self._get_llr_fine(self.all_audio_spectrum)
-                if self.n_sync_matches < 6:
-                    self.decode_completed = True
+                if self.n_sync_matches < 6 or self.llr_sd < self.llr_sd_min:
+                    self.decode_result = 'fail'
                     return
                 self._decode_good91(source)       
             if self.ipass == 2:
@@ -99,9 +104,7 @@ class Candidate:
                 
     def _decode_ldpc_AP(self, source, ap_indexes, max_nc0, max_its, save_llr):
         if not self.decode_result:
-            self.saved_llrs = []
             for ipat in ap_indexes:
-                self.decode_notes = f'{source} LDPC {pat_name}'
                 pat_name, b0, ap_pattern = ap_patterns[ipat]
                 llr = self.llr.copy()
                 for b, bval in enumerate(ap_pattern):
@@ -110,6 +113,7 @@ class Candidate:
                     llr[74:76] = -5
                     llr[76] = 5
                    # llr[57:59] = -5
+                self.decode_notes = f'{source} LDPC {pat_name}'
                 self.decode_result, self.n_its, output_llr = ldpc_decode(llr, max_nc0, max_its)
                 if save_llr and not self.decode_result and not len(output_llr) == 174:
                     self.saved_llrs.append((pat_name, output_llr))
@@ -180,7 +184,7 @@ class Candidate:
             symbols[j,:] = candidate_zsig[i0:i0+32]
         self.signal_grid = np.abs(np.fft.fft(symbols, axis=1)[:, :8])
 
-        if not self.csync_7x7:
+        if self.csync_7x7 is None:
             csync = np.full((7, 7), -1/6, np.float32)
             for sym_idx, tone in enumerate([3,1,4,0,6,5,2]):
                 csync[sym_idx, tone] = 1.0
@@ -382,7 +386,7 @@ class Receiver():
             search_grid_ptr_prev = self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle
 
             # list candidates still to decode, and decode them
-            to_decode = [c for c in self.candidates if not c.decode_completed]
+            to_decode = [c for c in self.candidates if not c.decode_result]
             if len(to_decode):
                 to_decode.sort(key=lambda c: c.llr_sd, reverse=True)
                 max_ipass = 1 + np.min([c.ipass for c in to_decode])
@@ -403,7 +407,7 @@ class Receiver():
                 tstart = hstart / (SYM_RATE * self.audio_in.search_hps)
                 time_utils.tlog(f"[Cycle manager] start search at hop {hstart} ({tstart:6.2f}s)", verbose = True)
                 cyclestart_string = time_utils.cyclestart_string(time_utils.time())
-                timeouts = [c for c in self.candidates if not c.decode_completed]
+                timeouts = [c for c in self.candidates if not c.decode_result]
                 if len(timeouts):
                     ipasses = [c.ipass for c in timeouts]
                     time_utils.tlog(f"[Receiver] Warning - {len(timeouts)} candidates ran out of decoding time, ipass = {ipasses}", verbose = True)
