@@ -1,19 +1,18 @@
 
 
-with open(r'C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/live_decode_times_PyFT8_8_28_baseline.txt', 'r') as f:
+with open('live_decode_times_PyFT8_8_28_baseline.txt', 'r') as f:
     lines = f.readlines()
 
-decode_paths = ['GOOD91', 'LDPC NoAP', 'LDPC CQ', 'LDPC 73', 'LDPC RR73', 'LDPC RRR',
-                'OSD demap', 'OSD NoAP', 'OSD CQ', 'OSD 73', 'OSD RR73', 'OSD RRR']
+decode_paths = ['GOOD91', 'LDPC_NoAP', 'LDPC_CQ', 'LDPC_73', 'LDPC_RR73', 'LDPC_RRR',
+                'OSD_demap', 'OSD_NoAP', 'OSD_CQ', 'OSD_73', 'OSD_RR73', 'OSD_RRR']
 counter = {}
-for s in ['grid ', 'fine ']:
+for s in ['grid_', 'fine_']:
     for dp in decode_paths:
         counter.update({s+dp:0})
 
 for l in lines:
-    l = l[4:9] + l[21:30].strip()
-    l = ' '.join(l.split()[:3])
-    counter[l] +=1
+    cat = l.split()[1]
+    counter[cat] +=1
 
 catvals = []
 for c in counter.keys():
@@ -28,7 +27,8 @@ for c in catvals:
 
 import matplotlib.pyplot as plt
 fig, ax = plt.subplots()
-ax.bar(cats, height = vals)
+bars = ax.bar(cats, height = vals)
+ax.bar_label(bars, padding=3)
 plt.xticks(
     rotation=45, 
     horizontalalignment='right',
