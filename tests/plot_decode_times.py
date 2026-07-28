@@ -1,22 +1,22 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import AutoMinorLocator, MultipleLocator
-import pickle
 
 
 def plot_from_file(ax, fname, label, color):
     print(fname)
-    with open(fname, 'rb') as f:
-        times = pickle.load(f)
+    with open(fname, 'r') as f:
+        lines = f.readlines()
+        times = [float(l.split()[2]) for l in lines]
         ax.plot(times, np.array(range(len(times))), label = label, color = color, marker = 'o', markersize = 3)
 
 fig, ax = plt.subplots(figsize = (9,9))
 ax.yaxis.set_label_position("right")
 
 
-plot_from_file(ax, 'live_decode_times_PyFT8_8_28_previous_baseline.pkl', 'PyFT8-prev-baseline', 'green')
-plot_from_file(ax, 'live_decode_times_PyFT8_8_28_baseline.pkl', 'PyFT8-baseline', 'orange')
-plot_from_file(ax, 'live_decode_times_WSJTx_8_28_FAST.pkl', 'WSJT-x_2.7.0_FAST', 'blue')
+plot_from_file(ax, 'PyFT8_8_28_baseline.txt', 'PyFT8-baseline', 'green')
+plot_from_file(ax, 'PyFT8_8_28.txt', 'PyFT8', 'orange')
+plot_from_file(ax, 'WSJTx_8_28_FAST.txt', 'WSJT-x_2.7.0_FAST', 'blue')
 
 ax.legend()
         

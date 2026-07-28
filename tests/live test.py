@@ -1,12 +1,12 @@
 import numpy as np
-import matplotlib.pyplot as plt
-import pickle, threading, pyaudio, sys
+import pickle, threading, pyaudio, sys, queue
 from PyFT8.time_utils import time_utils
 from matplotlib.animation import FuncAnimation
-from PyFT8.time_utils import time_utils
 from PyFT8.receiver import Receiver
 from PyFT8.transmitter import SoundcardOut
 from PyFT8.gui import Gui
+
+finished_audio = False
 
 class SoundcardOut:
     def __init__(self, outputcard_keywords, wav_files, wav_file_time_offset = 0):
@@ -29,6 +29,7 @@ class SoundcardOut:
                 sys.exit(1)
 
     def play_wavs(self, wav_files, sr=12000):
+        global finished_audio
         import wave
         t = (self.wav_file_time_offset - time_utils.cycle_time()) %15
         time_utils.sleep(t)
@@ -44,6 +45,8 @@ class SoundcardOut:
             stream.write(audio_bytes)
             stream.stop_stream()
             stream.close()
+        time_utils.sleep(5)
+        finished_audio = True
 
 class Wsjtx_all_tailer:
     
@@ -66,76 +69,44 @@ class Wsjtx_all_tailer:
                     yield line.strip()
         for line in follow():
             ls = line.split()
-            try:
-                cs, freq, dt, snr = ls[0], int(ls[6]), float(ls[5]), int(ls[4])
-                msg = f"{ls[7]} {ls[8]} {ls[9]}"
-                td = f"{time_utils.time() %60:4.1f}"
-                self.on_decode({'cs':cs, 'decoder':'WSJTX', 'origin':{'f0':int(freq), 't0':dt, 'score':0}, 'msg':msg, 'snr':snr, 'td':td})
-            except:
-                if(not self.silent):
-                    print(f"Wsjtx_tailer error in line '{line}'")
+            msg = ' '.join(ls[7:])
+            self.on_decode({'decode_completed':time_utils.time(),  'ws_msg':msg})
 
-timerange = [15, -15]
-freqrange = [4000, 0]
+py_q = queue.Queue()
+ws_q = queue.Queue()
+
 def process_message(m):
-    global timerange, freqrange
-    py_times.append(m['decode_completed'] - t_start)
-    tsec = m['tsec']
-    if tsec < timerange[0]: timerange[0] = tsec
-    if tsec > timerange[1]: timerange[1] = tsec
-    fHz = m['fHz'] 
-    if fHz < freqrange[0]: freqrange[0] = fHz
-    if fHz > freqrange[1]: freqrange[1] = fHz
-    decode_count = len(py_times)
-    decode_notes = m['decode_notes'].replace(' ','_')
-    info  = f"{decode_count:03d} {py_times[-1]:7.2f} {decode_notes:16s} t {timerange[0]:+05.2f},{timerange[1]:+05.2f} "
-    info += f"f {freqrange[0]:04.0f},{freqrange[1]:04.0f} {m['all_txt_format']}"
-    with open('test.txt', 'a') as f:
-        f.write(f"{info}\n")
-    print(info)
+    global py_q
+    py_q.put(m)
 
-def on_wsjtx_decode(dd):
-    global ws_times, both_started
-    if not both_started:
-        if len(py_times):
-            ws_times = [wt for wt in ws_times if py_times[0]-wt < 5]
-            both_started = True
-    ws_times.append(time_utils.time() - t_start)
+def on_wsjtx_decode(m):
+    global ws_q
+    ws_q.put(m)
 
 def do_test(input_device_keywords, wav_range = None):
     global both_started
     global gui, rx, t_start, comms_hub
-    global decodes, py_times, ws_times, decodes
+    global baseline_times, py_times, ws_times
     global fig, ax
     from matplotlib.ticker import AutoMinorLocator, MultipleLocator
 
-    with open('test.txt','w') as f:
+    with open('PyFT8.txt','w') as f:
         f.write('')
-    
-    fig, ax = plt.subplots(figsize=(10,10))
-    ws_line = ax.plot([], [], label = 'WSJT-X', marker = 'o', markersize = 3)[0]
-    py_line = ax.plot([], [], label = 'PyFT8', marker = 'o', markersize = 3)[0]
-    baseline = ax.plot([], [], label = 'PyFT8', marker = 'o', markersize = 3)[0]
+    with open('wsjtx.txt','w') as f:
+        f.write('')
     baseline_times = []
-    with open('live_decode_times_PyFT8_8_28_previous_baseline.pkl', 'rb') as f:
-        baseline_times = pickle.load(f)
-    ax.set_xlabel("Time, seconds")
-    ax.set_ylabel("Cumulative decodes")
-    ax.yaxis.set_label_position("right")
-    ax.yaxis.tick_right()
-    ax.yaxis.set_major_locator(MultipleLocator(100))
-    ax.yaxis.set_minor_locator(MultipleLocator(25))
-    ax.legend()
-    ax.xaxis.set_major_locator(MultipleLocator(15))
-    ax.xaxis.set_minor_locator(MultipleLocator(1))
-    plt.grid(which = 'major', axis = 'x')
+    baseline_file = 'PyFT8_8_28_baseline.txt'
+    with open(baseline_file, 'r') as f:
+        lines = f.readlines()
+    baseline_times = [float(l.split()[2]) for l in lines]
+    print(f"Loaded {len(baseline_times)} decode times from {baseline_file}")
 
     wav_files = []
     if wav_range:
         for idx in range(*wav_range):
             wav_files.append(f"{wav_folder}/test_{idx:02d}.wav")
 
-    wsjtx_all_tailer = Wsjtx_all_tailer(on_wsjtx_decode, silent = True)
+    wsjtx_all_tailer = Wsjtx_all_tailer(on_wsjtx_decode, silent = False)
 
     t = 15-time_utils.cycle_time()
     if t > 0.05:
@@ -146,34 +117,42 @@ def do_test(input_device_keywords, wav_range = None):
     if wav_files:
        soundout = SoundcardOut("CABLE, Input", wav_files, wav_file_time_offset = -1)
 
-    both_started = True
-    decodes, py_times, ws_times = [], [], []
+    py_times, ws_times = [], []
     
     receiver = Receiver(input_device_keywords, process_message, sync_score_min = 85, max_cands = 200,
                   search_freq_range = [200, 2800], search_timerange = [-2.5, 3.5])
     if not receiver.audio_in.input_device_idx:
         time_utils.tlog(f"[Audio] No input audio device found matching {input_device_keywords}", verbose = True)
         sys.exit(1)
- 
-    def anim(frame):
-        n_wsj = len(ws_times)
-        n_pyf = len(py_times)
-        n_baseline = len(baseline_times)
-        ws_line.set_data(ws_times, np.array(range(n_wsj)))
-        py_line.set_data(py_times, np.array(range(n_pyf)))
-        baseline.set_data(baseline_times, np.array(range(n_baseline)))
-        n_max = np.max([n_wsj, n_pyf, n_baseline])
-        if(n_max):
-            ax.set_ylim(0, n_max+20)
-        if any(py_times):
-            ax.set_xlim(0, np.max(py_times)+20)
-            with open('live_decode_times_PyFT8.pkl', 'wb') as f:
-                pickle.dump(py_times, f)
-            with open('live_decode_times_WSJTx.pkl', 'wb') as f:
-                pickle.dump(ws_times, f)
 
-    ani = FuncAnimation(fig, anim, interval = 5000, frames=(100000), blit=False)
-    plt.show()
+    while not finished_audio:
+        time_utils.sleep(5)
+        
+        while not py_q.empty():
+            time_utils.sleep(0)
+            m = py_q.get()
+            py_times.append(float(m['decode_completed']) - t_start)
+            decode_notes = m['decode_notes'].replace(' ','_')
+            decode_count = len(py_times)
+            baseline_decode_count = len([t for t in baseline_times if t < py_times[-1]])
+            diff = decode_count - baseline_decode_count
+            py_info  = f"{decode_count:03d} {diff:+02d} {py_times[-1]:7.2f} {decode_notes:16s} {m['all_txt_format']}"
+            with open('PyFT8.txt', 'a') as f:
+                f.write(f"{py_info}\n")
+            print(py_info)
+            
+        while not ws_q.empty():
+            time_utils.sleep(0)
+            m = ws_q.get()
+            wst = float(m['decode_completed']) - t_start
+            if len(py_times):
+                if wst > py_times[0] - 5:
+                    ws_times.append(wst)
+                    decode_count = len(ws_times)
+                    ws_info  = f"{decode_count:03d} ~~~ {ws_times[-1]:7.2f} {m['ws_msg']}"
+                    with open('wsjtx.txt', 'a') as f:
+                        f.write(f"{ws_info}\n")
+                   # print(ws_info)
 
 import win32api,win32process
 win32process.SetPriorityClass(win32api.GetCurrentProcess(), win32process.HIGH_PRIORITY_CLASS)

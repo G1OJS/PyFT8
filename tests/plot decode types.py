@@ -1,6 +1,9 @@
 
 
-with open('live_decode_times_PyFT8_8_28_baseline.txt', 'r') as f:
+file = "PyFT8_8_28.txt"
+#file = "PyFT8_8_28_baseline.txt"
+
+with open(file, 'r') as f:
     lines = f.readlines()
 
 decode_paths = ['GOOD91', 'LDPC_NoAP', 'LDPC_CQ', 'LDPC_73', 'LDPC_RR73', 'LDPC_RRR',
@@ -11,7 +14,7 @@ for s in ['grid_', 'fine_']:
         counter.update({s+dp:0})
 
 for l in lines:
-    cat = l.split()[1]
+    cat = l.split()[3]
     counter[cat] +=1
 
 catvals = []

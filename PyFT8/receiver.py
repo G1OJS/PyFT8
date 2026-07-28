@@ -63,7 +63,6 @@ class Candidate:
             if self.ipass == 1:
                 self._get_llr_fine(self.all_audio_spectrum)
                 if self.n_sync_matches < 6 or self.llr_sd < self.llr_sd_min:
-                #if self.llr_sd < self.llr_sd_min:
                     self.decode_result = 'stop'
                 self._decode_good91(source)       
             if self.ipass == 2:
@@ -125,9 +124,9 @@ class Candidate:
     def _decode_osd(self, source, patname_llr):
         if not self.decode_result:
             pat_name, llr = patname_llr
-            self.rel_ord = np.argsort(np.abs(llr))[::-1]
+            rel_ord = np.argsort(np.abs(llr))[::-1]
             self.decode_notes = f'{source} OSD {pat_name}'
-            self.decode_result = osd_decode(llr, self.rel_ord)
+            self.decode_result = osd_decode(llr, rel_ord)
 
     def _get_llr_fine(self, all_audio_spectrum):
         df = SAMP_RATE / 192000
