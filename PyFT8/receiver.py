@@ -41,6 +41,7 @@ class Candidate:
         self.tweaks = f"t:{0:+03d} f:{0:+03d}"
         self.saved_llrs = []
         self.decode_result = None
+        self.n_sync_matches = 100
         self.fft2_len = 3200
         self.reused_spectrum_array = np.zeros(self.fft2_len, dtype = np.complex64)
         self.serial_id = None
@@ -52,18 +53,18 @@ class Candidate:
                         
             if self.ipass == 0:
                 self.all_audio_spectrum = self.get_full_audio()
-                source = "grid          "
-                self.llr, self.llr_sd, self.snr = self._dB_to_llr(self.payload_on_search_grid)
+                source = 'grid'
+                self._dB_to_llr(self.payload_on_search_grid)
                 if self.llr_sd > self.llr_sd_min:
                     self._decode_good91(source)
                     self._decode_ldpc_AP(source, [1, 0], 35, 5, False) # try CQ pattern first
             
-            source = f'fine {self.tweaks}'
+            source = 'fine'
             if self.ipass == 1:
-                self.n_sync_matches, self.llr, self.llr_sd, self.snr = self._get_llr_fine(self.all_audio_spectrum)
+                self._get_llr_fine(self.all_audio_spectrum)
                 if self.n_sync_matches < 6 or self.llr_sd < self.llr_sd_min:
+                #if self.llr_sd < self.llr_sd_min:
                     self.decode_result = 'stop'
-                    return
                 self._decode_good91(source)       
             if self.ipass == 2:
                 self._decode_ldpc_AP(source, [0], 35, 5, False)
@@ -89,9 +90,10 @@ class Candidate:
                         their_snr = f"{self.snr:+03d}"
                         msg_text = ' '.join(self.decode_result)
                         all_txt_format = f"{o['cyclestart_string']} {their_snr} {(tsec-0.5):4.1f} {fHz:4.0f} ~ {msg_text}"
-                        message = {"band":o['band'], "tsec":tsec, "fHz":fHz, "msg_tuple":self.decode_result, "their_snr": their_snr, "their_tx_cycle":o['odd_even'],
-                                "all_txt_format": all_txt_format,
-                                "decode_completed": time_utils.time(),  'serial_id': self.serial_id, 'decode_notes':decode_notes}
+                        message = { "band":o['band'], "tsec":tsec, "fHz":fHz, "msg_tuple":self.decode_result,
+                                    "their_snr": their_snr, "their_tx_cycle":o['odd_even'],
+                                    "all_txt_format": all_txt_format,
+                                    "decode_completed": time_utils.time(),  'tweaks':self.tweaks, 'decode_notes':decode_notes}
                         self.on_message(message)
                 self.decode_result = 'stop'
                 
@@ -155,16 +157,14 @@ class Candidate:
 
         costas_abs_grid = self.signal_grid[COSTAS_SYMB_IDXS, :]
         ccheck = np.argmax(costas_abs_grid, axis = 1) - (COSTAS * 3)
-        n_sync_matches = len([c for c in ccheck if c == 0])
-        if n_sync_matches > 6:
+        self.n_sync_matches = len([c for c in ccheck if c == 0])
+        if self.n_sync_matches > 6:
             self.origin.update({'tsec': float(self.origin['tsec'] + ttweak / 200),
                                 'fHz':float(self.origin['fHz'] + ftweak / 16) })
             payload_dB_grid = 20*np.log10(self.signal_grid[PAYLOAD_SYMB_IDXS, :])
-            llr, llr_sd, snr = self._dB_to_llr(payload_dB_grid)
+            self._dB_to_llr(payload_dB_grid)
         else:
-            llr, llr_sd, snr = [], 0, -30
-
-        return n_sync_matches, llr, llr_sd, snr
+            self.decode_result = 'stop'
 
     def _get_signal_grid_fine(self, all_audio_spectrum, fb_0, fb_bot, fb_top, tb_0): 
 
@@ -193,15 +193,15 @@ class Candidate:
 
     def _dB_to_llr(self, payload_dB_grid):
         p = payload_dB_grid 
-        snr = np.clip(int(np.max(p) - np.min(p) - 58), -24, 24)
+        self.snr = np.clip(int(np.max(p) - np.min(p) - 58), -24, 24)
         llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
         llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
         llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
         llr = np.column_stack((llra, llrb, llrc)).ravel()
         mean = np.mean(llr)
         var = np.mean(llr*llr) - mean*mean
-        rootvar = np.sqrt(var)
-        return 2.83 * llr / rootvar, rootvar, snr
+        self.llr_sd = np.sqrt(var)
+        self.llr = 2.83 * llr / self.llr_sd
 
 #============== AUDIO IN ===========================================================
 class AudioIn:

@@ -86,7 +86,10 @@ def process_message(m):
     fHz = m['fHz'] 
     if fHz < freqrange[0]: freqrange[0] = fHz
     if fHz > freqrange[1]: freqrange[1] = fHz
-    info = f"{m['serial_id']:03d} {m['decode_notes']:45s} t {timerange[0]:+05.2f},{timerange[1]:+05.2f} f {freqrange[0]:04.0f},{freqrange[1]:04.0f} {m['all_txt_format']}"
+    decode_count = len(py_times)
+    decode_notes = m['decode_notes'].replace(' ','_')
+    info  = f"{decode_count:03d} {decode_notes:16s} t {timerange[0]:+05.2f},{timerange[1]:+05.2f} "
+    info += f"f {freqrange[0]:04.0f},{freqrange[1]:04.0f} {m['all_txt_format']}"
     with open('test.txt', 'a') as f:
         f.write(f"{info}\n")
     print(info)
