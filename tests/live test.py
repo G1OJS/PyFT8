@@ -88,7 +88,7 @@ def process_message(m):
     if fHz > freqrange[1]: freqrange[1] = fHz
     decode_count = len(py_times)
     decode_notes = m['decode_notes'].replace(' ','_')
-    info  = f"{decode_count:03d} {decode_notes:16s} t {timerange[0]:+05.2f},{timerange[1]:+05.2f} "
+    info  = f"{decode_count:03d} {py_times[-1]:7.2f} {decode_notes:16s} t {timerange[0]:+05.2f},{timerange[1]:+05.2f} "
     info += f"f {freqrange[0]:04.0f},{freqrange[1]:04.0f} {m['all_txt_format']}"
     with open('test.txt', 'a') as f:
         f.write(f"{info}\n")

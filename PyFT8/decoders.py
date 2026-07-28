@@ -156,12 +156,9 @@ for i, row in enumerate(kGEN):
         A[i, 90 - j] = (row >> j) & 1
 G = np.concatenate([np.eye(91, dtype=np.uint8), A.T],axis=1)
 
-def gf2_systematic_from_reliability(G, reliab_order):
+def gf2_systematic_from_reliability(G, colperm):
     G = (G.copy() & 1).astype(np.uint8)
-    k, n = G.shape
-    colperm = np.array(reliab_order, dtype=np.int64)  
-    inv = np.empty(n, dtype=np.int64)
-    inv[colperm] = np.arange(n)
+    k, n = G.shape 
     G = G[:, colperm] 
     # Gauss-Jordan:
     row = 0
@@ -197,8 +194,6 @@ def osd_decode(llr, reliab_order):
 
     # determine colperm ordering and inverse
     Gsys, colperm = gf2_systematic_from_reliability(G, reliab_order)
-    colperm_inv = np.empty(174, dtype=np.int64)
-    colperm_inv[colperm] = np.arange(174)
 
     # permute bits and strengths to new order
     llr_sys = llr.astype(np.float32)[colperm]
@@ -215,8 +210,9 @@ def osd_decode(llr, reliab_order):
                 if test[1] < best[1]:
                     best = test
                 bits_sys91[flip] ^= 1
-            
-    cw = best[0][colperm_inv].astype(np.uint8)
+
+    cw = np.empty(174)
+    cw[colperm] = best[0]
     msg_tuple = crc_unpack91(cw[:91])
     return msg_tuple
 

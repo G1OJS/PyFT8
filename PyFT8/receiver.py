@@ -70,12 +70,14 @@ class Candidate:
                 self._decode_ldpc_AP(source, [0], 35, 5, False)
             if self.ipass == 3:
                 self._decode_ldpc_AP(source, [0,1,2,3,4], 55, 25, True)
-            if self.ipass == 4: # no decode, just prep
-                self.rel_ord = np.argsort(np.abs(self.llr))[::-1]
+            if self.ipass == 4:
                 self.saved_llrs = [('demap', self.llr)] + self.saved_llrs
-            i_saved = self.ipass - 5
+                
+            i_saved = self.ipass - 4
             if len(self.saved_llrs) > i_saved >= 0:
-                self._decode_osd(source, self.saved_llrs[i_saved]) 
+                self._decode_osd(source, self.saved_llrs[i_saved])
+                
+            self.ipass +=1
             if i_saved == len(self.saved_llrs):
                 self.decode_result = 'stop'
 
@@ -97,8 +99,6 @@ class Candidate:
                         self.on_message(message)
                 self.decode_result = 'stop'
                 
-            self.ipass +=1
-
     def _decode_good91(self, source):
         if not self.decode_result:
             self.decode_notes = f'{source} GOOD91'
@@ -125,6 +125,7 @@ class Candidate:
     def _decode_osd(self, source, patname_llr):
         if not self.decode_result:
             pat_name, llr = patname_llr
+            self.rel_ord = np.argsort(np.abs(llr))[::-1]
             self.decode_notes = f'{source} OSD {pat_name}'
             self.decode_result = osd_decode(llr, self.rel_ord)
 
@@ -399,7 +400,7 @@ class Receiver():
                 time_utils.tlog(f"[Cycle manager] start search at hop {hstart} ({tstart:6.2f}s)", verbose = True)
                 cyclestart_string = time_utils.cyclestart_string(time_utils.time())
                 if len(to_decode):
-                    time_utils.tlog(f"[Receiver] Warning - {len(timeouts)} candidates ran out of decoding time, ipass = {ipasses}", verbose = True)
+                    time_utils.tlog(f"[Receiver] Warning - {len(to_decode)} candidates ran out of decoding time, ipass = {ipasses}", verbose = True)
                 self.search(cyclestart_string, self.audio_in.odd_even, self.audio_in.cycle_h0)
                 cycle_searched = True
                 end_decoding_message_printed = False
