@@ -154,13 +154,14 @@ A = np.zeros((83, 91), dtype=np.uint8)
 for i, row in enumerate(kGEN):
     for j in range(91):
         A[i, 90 - j] = (row >> j) & 1
-G = np.concatenate([np.eye(91, dtype=np.uint8), A.T],axis=1)
+G0 = np.concatenate([np.eye(91, dtype=np.uint8), A.T],axis=1)
 
-def gf2_systematic_from_reliability(G, colperm):
-    G = (G.copy() & 1).astype(np.uint8)
-    k, n = G.shape 
+def osd_decode_0(llr):
+    G = (G0.copy() & 1).astype(np.uint8)
+    colperm = np.argsort(-np.abs(llr))
     G = G[:, colperm] 
-    # Gauss-Jordan:
+
+    k, n = G.shape 
     row = 0
     for col in range(n):
         if row >= k:
@@ -179,40 +180,23 @@ def gf2_systematic_from_reliability(G, colperm):
             G[:, [row, col]] = G[:, [col, row]]
             colperm[[row, col]] = colperm[[col, row]]
         row += 1
-    if row < k:
-        raise ValueError("Could not find k independent columns to form a systematic generator.")
-    return G, colperm
 
-def encode_and_score(u, Gsys, bits_sys, vals_sys):
+    llr91 = llr.astype(np.float32)[colperm][:91]
+    u = (llr91 > 0).astype(np.uint8)
     u = (u.astype(np.uint8) & 1)
-    codeword = (u @ Gsys) & 1
-    bit_diff = codeword ^ bits_sys
-    score = float(np.sum(vals_sys * bit_diff))
-    return [codeword, score]
-
-def osd_decode(llr, reliab_order):
-
-    # determine colperm ordering and inverse
-    Gsys, colperm = gf2_systematic_from_reliability(G, reliab_order)
-
-    # permute bits and strengths to new order
-    llr_sys = llr.astype(np.float32)[colperm]
-    bits_sys, vals_sys = (llr_sys > 0).astype(np.uint8), np.abs(llr_sys).astype(np.float32)
-    bits_sys91 = bits_sys[:91]
-    rel_ord91 = np.argsort(vals_sys[:91])
-
-    best = encode_and_score(bits_sys91, Gsys, bits_sys, vals_sys)
-    for nflip in [0, 1]:
-        if nflip:
-            for flip in range(91):
-                bits_sys91[flip] ^= 1
-                test = encode_and_score(bits_sys91, Gsys, bits_sys, vals_sys)
-                if test[1] < best[1]:
-                    best = test
-                bits_sys91[flip] ^= 1
-
-    cw = np.empty(174)
-    cw[colperm] = best[0]
+    cw = (u @ G) & 1
+    cw[colperm] = cw
     msg_tuple = crc_unpack91(cw[:91])
+    if not msg_tuple:
+        u0 = u.copy()
+        for b in range(90, 71, -1):
+            u = u0.copy()
+            u[b] ^= 1
+            cw = (u @ G) & 1
+            cw[colperm] = cw
+            msg_tuple = crc_unpack91(cw[:91])
+            if msg_tuple:
+                break
     return msg_tuple
+
 

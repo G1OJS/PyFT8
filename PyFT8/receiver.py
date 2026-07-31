@@ -2,7 +2,7 @@ import threading
 import numpy as np
 import pyaudio
 from PyFT8.time_utils import time_utils
-from PyFT8.decoders import ldpc_decode, osd_decode, crc_unpack91
+from PyFT8.decoders import ldpc_decode, osd_decode_0, crc_unpack91
 
 WATERFALL_DOWNSAMPLE = 2
 DEBUG_PRINTS = True
@@ -66,7 +66,7 @@ class Candidate:
                     self.decode_result = 'stop'
                 self._decode_good91(source)       
             if self.ipass == 2:
-                self._decode_ldpc_AP(source, [0], 35, 5, False)
+                self._decode_ldpc_AP(source, [1, 0], 35, 5, False)
             if self.ipass == 3:
                 self._decode_ldpc_AP(source, [0,1,2,3,4], 55, 25, True)
             if self.ipass == 4:
@@ -124,9 +124,8 @@ class Candidate:
     def _decode_osd(self, source, patname_llr):
         if not self.decode_result:
             pat_name, llr = patname_llr
-            rel_ord = np.argsort(np.abs(llr))[::-1]
             self.decode_notes = f'{source} OSD {pat_name}'
-            self.decode_result = osd_decode(llr, rel_ord)
+            self.decode_result = osd_decode_0(llr)
 
     def _get_llr_fine(self, all_audio_spectrum):
         df = SAMP_RATE / 192000
@@ -375,8 +374,9 @@ class Receiver():
         ptr_at_last_spectrum_calc = -1
         search_grid_ptr_prev = 0
         cycle_searched = False
+        to_decode = []
         while True:
-            time_utils.sleep(0.1)
+            time_utils.sleep(0.5)
 
             # reset cycle_searched at beginning of cycle
             if self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle < search_grid_ptr_prev:
