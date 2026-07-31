@@ -70,8 +70,7 @@ class Candidate:
             if self.ipass == 3:
                 self._decode_ldpc_AP(source, [0,1,2,3,4], 55, 25, True)
             if self.ipass == 4:
-                self.saved_llrs = [('demap', self.llr)] + self.saved_llrs
-                
+                self._decode_osd(source, ('demap', self.llr))
             i_saved = self.ipass - 4
             if len(self.saved_llrs) > i_saved >= 0:
                 self._decode_osd(source, self.saved_llrs[i_saved])
