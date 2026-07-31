@@ -1,20 +1,18 @@
 
 
-file = "PyFT8_8_28.txt"
+file = "PyFT8.txt"
 #file = "PyFT8_8_28_baseline.txt"
 
 with open(file, 'r') as f:
     lines = f.readlines()
 
-decode_paths = ['GOOD91', 'LDPC_NoAP', 'LDPC_CQ', 'LDPC_73', 'LDPC_RR73', 'LDPC_RRR',
-                'OSD_demap', 'OSD_NoAP', 'OSD_CQ', 'OSD_73', 'OSD_RR73', 'OSD_RRR']
+
 counter = {}
-for s in ['grid_', 'fine_']:
-    for dp in decode_paths:
-        counter.update({s+dp:0})
 
 for l in lines:
     cat = l.split()[3]
+    if cat not in counter:
+        counter[cat]=0
     counter[cat] +=1
 
 catvals = []
