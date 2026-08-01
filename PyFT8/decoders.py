@@ -107,8 +107,16 @@ def crc_unpack91(codeword91, validate = True):
         if crc14_int == bits91_int & 0b11111111111111:
             m = unpack(bits77_int)
             if m and validate:
-                if m[1] == 'not' or (m[0] == 'CQ' and m[1] in ['73','RR73','RRR']):
-                    m = None
+                if m[1] == 'not':
+                    return None
+                if m[0].startswith('CQ') and m[1] in ['73','RR73','RRR']:
+                    return None
+                for i in range(2):
+                    if m[i].endswith('/R') and not m[i][0] in ['A','K','N','W']:
+                        return None
+                for part in m:
+                    if ' ' in part:
+                        return None
             return m
             
 
@@ -161,7 +169,7 @@ for i, row in enumerate(kGEN):
         A[i, 90 - j] = (row >> j) & 1
 G0 = np.concatenate([np.eye(91, dtype=np.uint8), A.T],axis=1)
 
-def osd_decode_0_1(llr, n_to_flip = 30):
+def osd_decode_0_1(llr, flipwindows = [40,5]):
     G = G0.copy()
     rowperm = np.arange(91)
     colperm = np.argsort(-np.abs(llr))
@@ -184,14 +192,20 @@ def osd_decode_0_1(llr, n_to_flip = 30):
             
     u = (llr>0).astype(np.uint8)[colperm][:91]
     u[rowperm] = u
-    fliplist = [0] + list(rowperm[91-n_to_flip:][::-1])
+    fliplist1 = [0] + list(rowperm[91-flipwindows[0]:][::-1])
+    fliplist2 = [0] + list(rowperm[90-flipwindows[1]:][::-1])
     G = G[:, :91]
-    for i, bit in enumerate(fliplist):
-        u[bit] ^= (i != 0)
-        cw = ((u @ G) & 1)
-        msg_tuple = crc_unpack91(cw)
-        if msg_tuple:
-            return msg_tuple
-        u[bit] ^= (i != 0)
+    
+    for i, bit1 in enumerate(fliplist1):
+        jmax = np.min([flipwindows[1], i+1])
+        for j, bit2 in enumerate(fliplist2[:jmax]):
+            u[bit1] ^= (i != 0)
+            u[bit2] ^= (j != 0)
+            cw = ((u @ G) & 1)
+            msg_tuple = crc_unpack91(cw)
+            if msg_tuple:
+                return msg_tuple
+            u[bit1] ^= (i != 0)
+            u[bit2] ^= (j != 0)
 
 
