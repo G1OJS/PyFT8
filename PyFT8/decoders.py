@@ -161,47 +161,39 @@ for i, row in enumerate(kGEN):
         A[i, 90 - j] = (row >> j) & 1
 G0 = np.concatenate([np.eye(91, dtype=np.uint8), A.T],axis=1)
 
-def osd_decode_0(llr):
-    G = (G0.copy() & 1).astype(np.uint8)
+def osd_decode_0_1(llr):
+    G = G0.copy()
+    rowperm = np.arange(91)
     colperm = np.argsort(-np.abs(llr))
-    G = G[:, colperm] 
-
-    k, n = G.shape 
-    row = 0
-    for col in range(n):
-        if row >= k:
-            break
-        pivot_rows = np.where(G[row:, col] == 1)[0]
-        if pivot_rows.size == 0:
-            continue
-        piv = row + pivot_rows[0]
-        if piv != row:
-            G[[row, piv], :] = G[[piv, row], :]
-        ones = np.where(G[:, col] == 1)[0]
-        for r in ones:
-            if r != row:
-                G[r, :] ^= G[row, :]
-        if col != row:
-            G[:, [row, col]] = G[:, [col, row]]
-            colperm[[row, col]] = colperm[[col, row]]
-        row += 1
-
-    llr91 = llr.astype(np.float32)[colperm][:91]
-    u = (llr91 > 0).astype(np.uint8)
-    u = (u.astype(np.uint8) & 1)
-    cw = (u @ G) & 1
-    cw[colperm] = cw
+    curr_row = 0
+    for curr_col in range(174):
+        ones_below = np.where(G[rowperm[curr_row:], colperm[curr_col]] == 1)[0]
+        if ones_below.size > 0:
+            swap_row = curr_row + ones_below[0]
+            rowperm[[curr_row, swap_row]] = rowperm[[swap_row, curr_row]]
+            r_curr = rowperm[curr_row]
+            c_curr = colperm[curr_col]
+            g_c_curr = G[:, c_curr].copy()
+            g_c_curr[r_curr] = 0
+            rows_to_xor = np.where(g_c_curr == 1)[0]
+            G[rows_to_xor, :] ^= G[r_curr, :]
+            colperm[[curr_row, curr_col]] = colperm[[curr_col, curr_row]]  
+            curr_row += 1
+            if curr_row > 90:
+                break
+    u = (llr>0).astype(np.uint8)[colperm][:91]
+    u[rowperm] = u
+    cw = ((u @ G) & 1)
     msg_tuple = crc_unpack91(cw[:91])
     if not msg_tuple:
-        u0 = u.copy()
-        for b in range(90, 71, -1):
-            u = u0.copy()
-            u[b] ^= 1
-            cw = (u @ G) & 1
-            cw[colperm] = cw
+        for bit in range(90, 55, -1):
+            u[rowperm[bit]] ^=1
+            cw = ((u @ G) & 1)
             msg_tuple = crc_unpack91(cw[:91])
+            u[rowperm[bit]] ^=1
             if msg_tuple:
                 break
+            
     return msg_tuple
 
 
