@@ -28,7 +28,7 @@ def unpack(bits):
         return ('RTTY RU','not','implemented')
     elif i3 == 4:
         cq, rrr, swp, c58, hsh, _ = get_bitfields(bits74, [1,2,1,58,12]) 
-        ca = "CQ" if cq else call_hashes.get((hsh,12), '<....>')
+        ca = "CQ" if cq else f"<{call_hashes.get((hsh,12), '...')}>"
         cb = ""
         for i in range(12):
             cb = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ/"[c58 % 38] + cb
@@ -71,7 +71,7 @@ def call_29(call_int29, i3):
             x //= 27
         return f"CQ {txt.strip()}"
     elif call_int28 < 2063592+4194303:
-        return call_hashes.get((call_int28 - 2063592, 22), '<....>')
+        return f"<{call_hashes.get((call_int28 - 2063592, 22), '...')}>"
     else:
         call = standard_call28(call_int28, i3)
         if portable_rover:

@@ -119,6 +119,7 @@ class QSO_manager:
         message_type = m['message_type']
         if message_type in ['CQ','to_me'] and m['band'] == self.band_info['current_band']:
             _ , their_call, grid_rpt = m['msg_tuple']
+            their_call = their_call.replace('<','').replace('>','')
             their_snr = m['their_snr']
             their_tx_cycle = m['their_tx_cycle']
             if their_call != self.in_qso_with:
