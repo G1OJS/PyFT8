@@ -161,7 +161,7 @@ for i, row in enumerate(kGEN):
         A[i, 90 - j] = (row >> j) & 1
 G0 = np.concatenate([np.eye(91, dtype=np.uint8), A.T],axis=1)
 
-def osd_decode_0_1(llr):
+def osd_decode_0_1(llr, n_to_flip = 30):
     G = G0.copy()
     rowperm = np.arange(91)
     colperm = np.argsort(-np.abs(llr))
@@ -181,19 +181,17 @@ def osd_decode_0_1(llr):
             curr_row += 1
             if curr_row > 90:
                 break
+            
     u = (llr>0).astype(np.uint8)[colperm][:91]
     u[rowperm] = u
-    cw = ((u @ G) & 1)
-    msg_tuple = crc_unpack91(cw[:91])
-    if not msg_tuple:
-        for bit in range(90, 55, -1):
-            u[rowperm[bit]] ^=1
-            cw = ((u @ G) & 1)
-            msg_tuple = crc_unpack91(cw[:91])
-            u[rowperm[bit]] ^=1
-            if msg_tuple:
-                break
-            
-    return msg_tuple
+    fliplist = [0] + list(rowperm[91-n_to_flip:][::-1])
+    G = G[:, :91]
+    for i, bit in enumerate(fliplist):
+        u[bit] ^= (i != 0)
+        cw = ((u @ G) & 1)
+        msg_tuple = crc_unpack91(cw)
+        if msg_tuple:
+            return msg_tuple
+        u[bit] ^= (i != 0)
 
 
