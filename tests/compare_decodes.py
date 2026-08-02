@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-with open('wsjtx.txt') as f:
+with open('wsjtx302_8_28_FAST.txt') as f:
     ws = f.readlines()
 
 t1 = float(ws[0].split()[2])

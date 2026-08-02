@@ -19,15 +19,19 @@ def unpack(bits):
     if i3 == 0:
         n3, bits71 = get_bitfields(bits74,[3])
         if n3 <= 4:
-            return (['Free text', 'DXpedition','Field Day', 'Field Day', 'Telemetry'][n3],'not','implemented')
+            return (['Free text', 'DXpedition', 'Field Day', 'Field Day', 'Telemetry'][n3], 'not', 'implemented')
         else:
-            return ('Unknown mode','not','implemented')
+            #return ('Unknown mode','not','implemented')
+            return None
     elif i3 == 1 or i3 == 2: # 1 = Std Msg incl /R 2 = 'EU VHF' = Std Msg incl /P
         return unpack_std(bits74, i3)
     elif i3 == 3:
-        return ('RTTY RU','not','implemented')
+        #return ('RTTY RU','not','implemented')
+        return None
     elif i3 == 4:
-        cq, rrr, swp, c58, hsh, _ = get_bitfields(bits74, [1,2,1,58,12]) 
+        cq, rrr, swp, c58, hsh, _ = get_bitfields(bits74, [1,2,1,58,12])
+        if cq and rrr or (not cq and not rrr):
+            return None
         ca = "CQ" if cq else f"<{call_hashes.get((hsh,12), '...')}>"
         cb = ""
         for i in range(12):
@@ -38,11 +42,14 @@ def unpack(bits):
         (ca, cb) = (cb, ca) if swp else (ca, cb)
         return (ca, cb, ('', 'RRR', 'RR73', '73')[rrr])
     elif i3 == 5:
-        return ('EU VHF','not','implemented')
+        #return ('EU VHF','not','implemented')
+        return None
 
 def unpack_std(bits74, i3):
     g16, cb29, ca29, _ = get_bitfields(bits74,[16,29,29])
     g15 = g16 & 0x7FFF
+    if g15 == 0:
+        return None
     if g15 < 32400:
         a, nn = divmod(g15, 1800)
         b, nn = divmod(nn, 100)
@@ -54,7 +61,7 @@ def unpack_std(bits74, i3):
         prefix = 'R' if (g16 >> 15) else ''
         grid_rpt = prefix + f"{(g15 - 32435):+03d}"
     msg_tuple = (call_29(ca29, i3), call_29(cb29, i3), grid_rpt)
-    if msg_tuple != ('','','') and msg_tuple is not None:
+    if not ('' in msg_tuple) and not (None in msg_tuple):
         return msg_tuple
 
 def call_29(call_int29, i3):    
@@ -76,6 +83,8 @@ def call_29(call_int29, i3):
         call = standard_call28(call_int28, i3)
         if portable_rover:
             call = call + ('/P' if i3 == 2 else '/R')
+        if call.endswith("/R") and not call[0] in ['A','K','N','W']:
+            return None
         add_call_hashes(call)
         return call
 
@@ -196,3 +205,57 @@ def osd_01(llr):
             msg_tuple = crc_unpack91(cw)
             if msg_tuple:
                 return msg_tuple
+
+def osd_012(llr, singleflips = 15, doubleflips = 2):
+    G = G0.copy()
+    rowperm = np.arange(91)
+    colperm = np.argsort(-np.abs(llr))
+    curr_row = 0
+    for curr_col in range(174):
+        ones_below = np.where(G[rowperm[curr_row:], colperm[curr_col]] == 1)[0]
+        if ones_below.size > 0:
+            swap_row = curr_row + ones_below[0]
+            rowperm[[curr_row, swap_row]] = rowperm[[swap_row, curr_row]]
+            r_curr = rowperm[curr_row]
+            c_curr = colperm[curr_col]
+            g_c_curr = G[:, c_curr].copy()
+            g_c_curr[r_curr] = 0
+            rows_to_xor = np.where(g_c_curr == 1)[0]
+            G[rows_to_xor, :] ^= G[r_curr, :]
+            colperm[[curr_row, curr_col]] = colperm[[curr_col, curr_row]]  
+            curr_row += 1
+            if curr_row > 90:
+                break
+    
+    G = G[:, :91]
+    chbits = (llr>0).astype(np.uint8)[colperm][:91]
+    chbits[rowperm] = chbits
+
+    cw = ((chbits @ G) & 1)
+    msg_tuple = crc_unpack91(cw)
+    if msg_tuple:
+        return msg_tuple
+    
+    fliplist = list(rowperm[::-1][:singleflips])
+
+    for i in range(singleflips):
+        bits = chbits.copy()
+        bits[fliplist[i]] ^= 1
+        cw = ((bits @ G) & 1)
+        msg_tuple = crc_unpack91(cw)
+        if msg_tuple:
+            return msg_tuple
+    
+    for i in range(singleflips):
+        for j in range(doubleflips):
+            if j < i:
+                bits = chbits.copy()
+                bits[fliplist[i]] ^= 1
+                bits[fliplist[j]] ^= 1
+                cw = ((bits @ G) & 1)
+                msg_tuple = crc_unpack91(cw)
+                if msg_tuple:
+                    return msg_tuple
+
+
+

@@ -2,7 +2,7 @@ import threading
 import numpy as np
 import pyaudio
 from PyFT8.time_utils import time_utils
-from PyFT8.decoders import ldpc_decode, osd_01, crc_unpack91
+from PyFT8.decoders import ldpc_decode, osd_012, crc_unpack91
 
 WATERFALL_DOWNSAMPLE = 2
 DEBUG_PRINTS = True
@@ -124,7 +124,7 @@ class Candidate:
         if not self.decode_result:
             pat_name, llr = patname_llr
             self.decode_notes = f'{source} OSD {pat_name}'
-            self.decode_result = osd_01(llr)
+            self.decode_result = osd_012(llr)
 
     def _get_llr_fine(self, all_audio_spectrum):
         df = SAMP_RATE / 192000
