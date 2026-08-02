@@ -185,7 +185,7 @@ def osd_01(llr):
     G = G[:, :91]
 
     best = 1e30
-    fliplist = [0] + list(rowperm[::-1])
+    fliplist = [0] + list(rowperm[::-1][:20])
     for i, bit in enumerate(fliplist):
         bits = chbits.copy()
         bits[bit] ^= (i>0)
