@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-with open('wsjtx_8_28_FAST.txt') as f:
+with open('wsjtx.txt') as f:
     ws = f.readlines()
 
 t1 = float(ws[0].split()[2])
@@ -52,7 +52,6 @@ for i, pc in enumerate(py_cycles):
         if not any([match2(w, p) for p in pc]):
              tab[2].append(w)
              w_only += 1
-
 
     for i in range(len(tab[0])):
         col1 = tab[0][i]

@@ -15,14 +15,15 @@ ax.yaxis.set_label_position("right")
 
 
 plot_from_file(ax, 'PyFT8_8_28_baseline.txt', 'PyFT8-baseline', 'green')
-plot_from_file(ax, 'PyFT8.txt', 'PyFT8', 'orange')
 plot_from_file(ax, 'WSJTx_8_28_FAST.txt', 'WSJT-x_2.7.0_FAST', 'blue')
+plot_from_file(ax, 'PyFT8.txt', 'PyFT8', 'orange')
+plot_from_file(ax, 'wsjtx.txt', 'WSJT-x v3.0.2 FAST', 'red')
 
 ax.legend()
         
 ax.set_xlabel("Time, seconds")
 ax.set_ylabel("Cumulative decodes (unique per cycle)")
-fig.suptitle("Cumulative decode count against time\nPyFT8 vs WSJT-x v2.7.0")
+fig.suptitle("Cumulative decode count against time\nPyFT8 vs WSJT-x")
 ax.legend()
 
 from matplotlib.ticker import AutoMinorLocator, MultipleLocator
