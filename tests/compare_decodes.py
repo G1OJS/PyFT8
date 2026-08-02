@@ -47,7 +47,7 @@ for i, pc in enumerate(py_cycles):
             p_only += 1
     for w in wc:
         if not any([match2(w, p) for p in pc]):
-             print(f"WSJTx only: {w}")
+             #print(f"WSJTx only: {w}")
              w_only += 1
 
 print(f"Total PyFT8-only: {p_only}")

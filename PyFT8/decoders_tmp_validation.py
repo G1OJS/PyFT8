@@ -1,6 +1,7 @@
 import numpy as np
 from PyFT8.time_utils import time_utils
 from PyFT8.databases import call_hashes, add_call_hashes
+from PyFT8.transmitter import pack_ft8_c29
 
 #=========== Unpacking functions ========================================
 def get_bitfields(bits, lengths):
@@ -43,19 +44,21 @@ def unpack(bits):
 def unpack_std(bits74, i3):
     g16, cb29, ca29, _ = get_bitfields(bits74,[16,29,29])
     g15 = g16 & 0x7FFF
+    msg_tuple = (call_29(ca29, i3), call_29(cb29, i3), unpack_grid_rpt(g16, g15))
+    if msg_tuple != ('','','') and msg_tuple is not None:
+        return msg_tuple
+
+def unpack_grid_rpt(g16, g15):
     if g15 < 32400:
         a, nn = divmod(g15, 1800)
         b, nn = divmod(nn, 100)
         c, d = divmod(nn, 10)
-        grid_rpt =  chr(65+a) + chr(65+b) + str(c) + str(d)
+        return chr(65+a) + chr(65+b) + str(c) + str(d)
     elif g15 - 32400 <= 4:
-        grid_rpt =  ('', '', 'RRR', 'RR73', '73')[g15 - 32400]
+        return ('', '', 'RRR', 'RR73', '73')[g15 - 32400]
     else:
         prefix = 'R' if (g16 >> 15) else ''
-        grid_rpt = prefix + f"{(g15 - 32435):+03d}"
-    msg_tuple = (call_29(ca29, i3), call_29(cb29, i3), grid_rpt)
-    if msg_tuple != ('','','') and msg_tuple is not None:
-        return msg_tuple
+        return prefix + f"{(g15 - 32435):+03d}"
 
 def call_29(call_int29, i3):    
     portable_rover = call_int29 & 1
@@ -91,7 +94,41 @@ def standard_call28(call_int28, i3):
     call = ''.join(chars).strip()
     return call
 
-def crc_unpack91(codeword91):
+def validate_tuple(test):
+    if test is not None:
+        if test[1] == 'not':
+            return True
+        valid = (test[0].startswith('CQ') or validate_callsign(test[0])) and validate_callsign(test[1])
+        if test[2] != '':
+            valid &= validate_grid_rpt(test[2])
+        if valid:
+            return True
+    print(f"{test} failed validation")
+
+def validate_grid_rpt(test):
+    if test in ['73','RR73','RRR']:
+        return True
+    if test[-2:].isnumeric():
+        if len(test) == 3 and test[0] in ['+','-']:
+            return True
+        if test[:2] in ['R+','R-']:
+            return True
+        if len(test) == 4:
+            sqlets = 'ABCDEFGHIJKLMNOPQR'
+            return (test[0] in sqlets) and (test[1] in sqlets) 
+
+def validate_callsign(test):
+    test = test.replace('<','').replace('>','')
+    if test == '...':
+        return True
+    valid = True
+    valid &= (' ' not in test)
+    valid &= ('/R' not in test or test[0] in ['A','K','N','W'])
+    valid &= not test[:3].isnumeric()
+    #valid &= (pack_ft8_c29(test) is not None)
+    return valid
+
+def crc_unpack91(codeword91, validate = True):
     bits91_int = 0
     for bit in (codeword91 > 0).astype(int).tolist():
         bits91_int = (bits91_int << 1) | bit
@@ -105,7 +142,12 @@ def crc_unpack91(codeword91):
             if bit14:
                 crc14_int ^= 0x2757
         if crc14_int == bits91_int & 0b11111111111111:
-            return unpack(bits77_int)
+            m = unpack(bits77_int)
+            if not validate:
+                return m
+            if validate_tuple(m):
+                return m
+            
 
 #============== LDPC ===========================================================
 CV6idx = np.array([[4,31,59,92,114,145],[5,23,60,93,121,150],[6,32,61,94,95,142],[5,31,63,96,125,137],[8,34,65,98,138,145],[9,35,66,99,106,125],[11,37,67,101,104,154],[12,38,68,102,148,161],[14,41,58,105,122,158],[0,32,71,105,106,156],[15,42,72,107,140,159],[10,43,74,109,120,165],[7,45,70,111,118,165],[18,37,76,103,115,162],[19,46,69,91,137,164],[1,47,73,112,127,159],[21,46,57,117,126,163],[15,38,61,111,133,157],[22,42,78,119,130,144],[19,35,62,93,135,160],[13,30,78,97,131,163],[2,43,79,123,126,168],[18,45,80,116,134,166],[11,49,60,117,118,143],[12,50,63,113,117,156],[23,51,75,128,147,148],[20,53,76,99,139,170],[34,81,132,141,170,173],[13,29,82,112,124,169],[3,28,67,119,133,172],[51,83,109,114,144,167],[6,49,80,98,131,172],[22,54,66,94,171,173],[25,40,76,108,140,147],[26,39,55,123,124,125],[17,48,54,123,140,166],[5,32,84,107,115,155],[8,53,62,130,146,154],[21,52,67,108,120,173],[2,12,47,77,94,122],[30,68,132,149,154,168],[4,38,74,101,135,166],[1,53,85,100,134,163],[14,55,86,107,118,170],[22,33,70,93,126,152],[10,48,87,91,141,156],[28,33,86,96,146,161],[21,56,84,92,139,158],[27,31,71,102,131,165],[0,25,44,79,127,146],[16,26,88,102,115,152],[50,56,97,162,164,171],[20,36,72,137,151,168],[15,46,75,129,136,153],[2,23,29,71,103,138],[8,39,89,105,133,150],[17,41,78,143,145,151],[24,37,64,98,121,159],[16,41,74,128,169,171]], dtype = np.int16)
@@ -156,7 +198,7 @@ for i, row in enumerate(kGEN):
         A[i, 90 - j] = (row >> j) & 1
 G0 = np.concatenate([np.eye(91, dtype=np.uint8), A.T],axis=1)
 
-def osd_decode_0_1(llr, flipwindows = [91,10]):
+def osd_decode_0_1(llr, flipwindows = [30,5]):
     G = G0.copy()
     rowperm = np.arange(91)
     colperm = np.argsort(-np.abs(llr))
@@ -187,7 +229,6 @@ def osd_decode_0_1(llr, flipwindows = [91,10]):
     G = G[:, :91]
 
     best = 1e30
-    cw_out = []
     for i, bit1 in enumerate(fliplist1):
         jmax = np.min([flipwindows[1], i+1])
         for j, bit2 in enumerate(fliplist2[:jmax]):
@@ -196,9 +237,18 @@ def osd_decode_0_1(llr, flipwindows = [91,10]):
             cw = ((chbits @ G) & 1)
             score = np.sum((cw ^ chbits) * chvals)
             if score < best:
-                msg_tuple = crc_unpack91(cw)
-                if msg_tuple:
-                    return msg_tuple
+                if score < 50:
+                    msg_tuple = crc_unpack91(cw)
+                    if msg_tuple:
+                        return msg_tuple
                 best = score
+                cw_out = cw
             chbits[bit1] ^= (i != 0)
             chbits[bit2] ^= (j != 0)
+            
+    msg_tuple = crc_unpack91(cw_out)
+    if msg_tuple:
+        return msg_tuple
+
+
+#print(validate_tuple(('<...>', 'LZ365BM', 'RR73')))

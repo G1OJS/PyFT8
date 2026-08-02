@@ -310,8 +310,8 @@ class AudioIn:
 #============== RECEIVER ===========================================================
         
 class Receiver():
-    def __init__(self, input_device_keywords, on_message, sync_score_min = 100, max_cands = 1000,
-                 search_freq_range = [100, 3000], search_timerange = [-2, 5], verbose = False):
+    def __init__(self, input_device_keywords, on_message, sync_score_min = 85, max_cands = 200,
+                 search_freq_range = [100, 3000], search_timerange = [-2.5, 3.5], verbose = False):
         self.audio_in = AudioIn(search_freq_range, input_device_keywords)
         self.on_message = on_message
         self.sync_score_min, self.max_cands = sync_score_min, max_cands

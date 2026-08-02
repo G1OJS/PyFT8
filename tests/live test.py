@@ -119,8 +119,7 @@ def do_test(input_device_keywords, wav_range = None):
 
     py_times, ws_times = [], []
     
-    receiver = Receiver(input_device_keywords, process_message, sync_score_min = 85, max_cands = 200,
-                  search_freq_range = [200, 2800], search_timerange = [-2.5, 3.5])
+    receiver = Receiver(input_device_keywords, process_message, search_freq_range = [200, 2800])
     if not receiver.audio_in.input_device_idx:
         time_utils.tlog(f"[Audio] No input audio device found matching {input_device_keywords}", verbose = True)
         sys.exit(1)
