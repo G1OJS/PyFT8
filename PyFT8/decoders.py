@@ -156,7 +156,7 @@ for i, row in enumerate(kGEN):
         A[i, 90 - j] = (row >> j) & 1
 G0 = np.concatenate([np.eye(91, dtype=np.uint8), A.T],axis=1)
 
-def osd_decode_0_1(llr, flipwindows = [91,10]):
+def osd_01(llr):
     G = G0.copy()
     rowperm = np.arange(91)
     colperm = np.argsort(-np.abs(llr))
@@ -182,23 +182,17 @@ def osd_decode_0_1(llr, flipwindows = [91,10]):
     chbits = (llr>0).astype(np.uint8)[colperm][:91]
     chbits[rowperm] = chbits
     
-    fliplist1 = [0] + list(rowperm[91-flipwindows[0]:][::-1])
-    fliplist2 = [0] + list(rowperm[90-flipwindows[1]:][::-1])
     G = G[:, :91]
 
     best = 1e30
-    cw_out = []
-    for i, bit1 in enumerate(fliplist1):
-        jmax = np.min([flipwindows[1], i+1])
-        for j, bit2 in enumerate(fliplist2[:jmax]):
-            chbits[bit1] ^= (i != 0)
-            chbits[bit2] ^= (j != 0)
-            cw = ((chbits @ G) & 1)
-            score = np.sum((cw ^ chbits) * chvals)
-            if score < best:
-                msg_tuple = crc_unpack91(cw)
-                if msg_tuple:
-                    return msg_tuple
-                best = score
-            chbits[bit1] ^= (i != 0)
-            chbits[bit2] ^= (j != 0)
+    fliplist = [0] + list(rowperm[::-1])
+    for i, bit in enumerate(fliplist):
+        bits = chbits.copy()
+        bits[bit] ^= (i>0)
+        cw = ((bits @ G) & 1)
+        score = np.sum((cw ^ chbits) * chvals)
+        if score < best:
+            best = score
+            msg_tuple = crc_unpack91(cw)
+            if msg_tuple:
+                return msg_tuple
