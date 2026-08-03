@@ -1,33 +1,37 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-with open('wsjtx302_8_28_FAST.txt') as f:
+with open('wsjtx.txt') as f:
     ws = f.readlines()
-
-t1 = float(ws[0].split()[2])
+    
 i1 = 0
 ws_cycles = []
+ws_curr = None
 for i, row in enumerate(ws):
     fields = row.split()
-    t2 = float(fields[2])
-    if (t2-t1 > 6):
+    if ws_curr is None:
+        ws_curr = fields[1]
+    if ws_curr != fields[1]:
         ws_cycles.append([' '.join(r.split()[3:]) for r in ws[i1:i]])
+        ws_curr = fields[1]
         i1 = i
-    t1 = t2
+
 
 with open('PyFT8.txt') as f:
     py = f.readlines()
 
-t1 = float(py[0].split()[2])
 i1 = 0
 py_cycles = []
+py_curr = None
 for i, row in enumerate(py):
     fields = row.split()
-    t2 = float(fields[2])
-    if (t2-t1 > 6):
+    if py_curr is None:
+        py_curr = fields[1]
+    if py_curr != fields[1]:
         py_cycles.append([' '.join(r.split()[9:]) for r in py[i1:i]])
+        py_curr = fields[1]
         i1 = i
-    t1 = t2
+
 
 def match2(a, b):
     aparts = a.split()

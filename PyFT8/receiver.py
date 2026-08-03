@@ -92,7 +92,7 @@ class Candidate:
                         all_txt_format = f"{o['cyclestart_string']} {their_snr} {(tsec-0.5):4.1f} {fHz:4.0f} ~ {msg_text}"
                         message = { "band":o['band'], "tsec":tsec, "fHz":fHz, "msg_tuple":self.decode_result,
                                     "their_snr": their_snr, "their_tx_cycle":o['odd_even'],
-                                    "all_txt_format": all_txt_format,
+                                    "all_txt_format": all_txt_format, 'cyclestart_string':o['cyclestart_string'],
                                     "decode_completed": time_utils.time(),  'tweaks':self.tweaks, 'decode_notes':decode_notes}
                         self.on_message(message)
                 self.decode_result = 'stop'

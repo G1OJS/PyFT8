@@ -70,7 +70,7 @@ class Wsjtx_all_tailer:
         for line in follow():
             ls = line.split()
             msg = ' '.join(ls[7:])
-            self.on_decode({'decode_completed':time_utils.time(),  'ws_msg':msg})
+            self.on_decode({'decode_completed':time_utils.time(),  'ws_msg':msg, 'ws_cycle':ls[0]})
 
 py_q = queue.Queue()
 ws_q = queue.Queue()
@@ -89,6 +89,8 @@ def do_test(input_device_keywords, wav_range = None):
     global baseline_times, py_times, ws_times
     global fig, ax
     from matplotlib.ticker import AutoMinorLocator, MultipleLocator
+    ws_cycle = ['', 0]
+    py_cycle = ['', 0]
 
     with open('PyFT8.txt','w') as f:
         f.write('')
@@ -130,12 +132,15 @@ def do_test(input_device_keywords, wav_range = None):
         while not py_q.empty():
             time_utils.sleep(0)
             m = py_q.get()
+            if m['cyclestart_string'] != py_cycle[0]:
+                py_cycle[0] = m['cyclestart_string']
+                py_cycle[1] += 1
             py_times.append(float(m['decode_completed']) - t_start)
             decode_notes = m['decode_notes'].replace(' ','_')
             decode_count = len(py_times)
             baseline_decode_count = len([t for t in baseline_times if t < py_times[-1]])
             diff = decode_count - baseline_decode_count
-            py_info  = f"{decode_count:03d} {diff:+02d} {py_times[-1]:7.2f} {decode_notes:16s} {m['all_txt_format']}"
+            py_info  = f"{decode_count:03d} {py_cycle[1]:3d} {py_times[-1]:7.2f} {decode_notes:16s} {m['all_txt_format']}"
             with open('PyFT8.txt', 'a') as f:
                 f.write(f"{py_info}\n")
             print(py_info)
@@ -144,11 +149,14 @@ def do_test(input_device_keywords, wav_range = None):
             time_utils.sleep(0)
             m = ws_q.get()
             wst = float(m['decode_completed']) - t_start
+            if m['ws_cycle'] != ws_cycle[0]:
+                ws_cycle[0] = m['ws_cycle']
+                ws_cycle[1] += 1
             if len(py_times):
                 if wst > py_times[0] - 5:
                     ws_times.append(wst)
                     decode_count = len(ws_times)
-                    ws_info  = f"{decode_count:03d} ~~~ {ws_times[-1]:7.2f} {m['ws_msg']}"
+                    ws_info  = f"{decode_count:03d} {ws_cycle[1]:3d} {ws_times[-1]:7.2f} {m['ws_msg']}"
                     with open('wsjtx.txt', 'a') as f:
                         f.write(f"{ws_info}\n")
                    # print(ws_info)
