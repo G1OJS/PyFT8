@@ -80,7 +80,7 @@ for f in np.linspace(1266.65, 1266.68, 10):
         llr = dB_to_llr(dB[PAYLOAD_SYMB_IDXS,:])
         res_osd = osd_012(llr, singleflips = 45, doubleflips = 25)
         res_ldpc = ldpc_decode(llr, 900, 100)
-        print(f"{f:6.2f} {t:6.2f} {res_osd} {res_ldpc[0]}")
+        print(f"{f:7.3f} {t:7.3f} {res_osd} {res_ldpc[0]}")
 
         dB = np.clip(dB, np.max(dB)-30, None)
         if im is None:
