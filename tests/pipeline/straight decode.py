@@ -67,28 +67,22 @@ all_audio_spectrum = np.fft.fft(samples)
 
 import matplotlib.pyplot as plt
 fig, ax = plt.subplots(figsize = (12,5))
-origin = {'f0':1266.5, 't0':1.6 + 0.5}
-#origin = {'f0':1262, 't0':0.9 + 0.5}
+#origin = {'f0':1266.5, 't0':1.6 + 0.5}
+origin = {'f0':1262, 't0':0.9 + 0.5}
 
-im = None
-for f in np.linspace(1266.65, 1266.68, 10):
-    for t in np.linspace(2.17, 2.19, 10):
-        origin = {'f0':f, 't0':t}
+candidate_tf_zgrid = get_candidate_tfgrid(all_audio_spectrum, origin)
+dB = np.log10(np.abs(candidate_tf_zgrid))
+llr = dB_to_llr(dB[PAYLOAD_SYMB_IDXS,:])
+res_osd = osd_012(llr, singleflips = 45, doubleflips = 25)
+res_ldpc = ldpc_decode(llr, 900, 100)
+print(f"{res_osd} {res_ldpc[0]}")
 
-        candidate_tf_zgrid = get_candidate_tfgrid(all_audio_spectrum, origin)
-        dB = np.log10(np.abs(candidate_tf_zgrid))
-        llr = dB_to_llr(dB[PAYLOAD_SYMB_IDXS,:])
-        res_osd = osd_012(llr, singleflips = 45, doubleflips = 25)
-        res_ldpc = ldpc_decode(llr, 900, 100)
-        print(f"{f:7.3f} {t:7.3f} {res_osd} {res_ldpc[0]}")
+dB = np.clip(dB, np.max(dB)-30, None)
 
-        dB = np.clip(dB, np.max(dB)-30, None)
-        if im is None:
-            im = ax.imshow(dB, origin = 'lower')
-        im.set_data(dB)
-        plt.pause(0.01)
+im = ax.imshow(dB, origin = 'lower')
+im.set_data(dB)
 
-#plt.show()
+plt.show()
 
 
 
