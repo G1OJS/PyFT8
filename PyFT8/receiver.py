@@ -54,25 +54,38 @@ class Candidate:
                         
             if self.ipass == 0:
                 self._get_llr_grid()
-                self._decode_good91()
-                self._decode_ldpc_AP([1, 0], 35, 5, False) # try CQ pattern first
+                self.llr0 = self.llr.copy()
+                for ap_pattern in ap_patterns:
+                    self._set_AP(ap_pattern)
+                    self._decode_good91()
+                    self._decode_ldpc(35, 5, False)
             
             if self.ipass == 1:
                 self._get_llr_fine()
-                self._decode_good91()       
+                self.llr0 = self.llr.copy()
+                for ap_pattern in ap_patterns:
+                    self._set_AP(ap_pattern)
+                    self._decode_good91()     
             if self.ipass == 2:
-                self._decode_ldpc_AP([1, 0], 35, 5, False)
+                for ap_pattern in ap_patterns:
+                    self._set_AP(ap_pattern)
+                    self._decode_ldpc(35, 5, False)
             if self.ipass == 3:
-                self._decode_ldpc_AP([0,1,2,3,4], 55, 25, True)
+                for ap_pattern in ap_patterns:
+                    self._set_AP(ap_pattern)
+                    self._decode_ldpc(55, 25, True)
             if self.ipass == 4:
-                self._decode_osd(('demap', self.llr))
-            i_saved = self.ipass - 4
-            if len(self.saved_llrs) > i_saved >= 0:
-                self._decode_osd(self.saved_llrs[i_saved])
+                for ap_pattern in ap_patterns:
+                    self._set_AP(ap_pattern)
+                    self._decode_osd()
+            if self.ipass == 5:
+                for pat_llr in self.saved_llrs:
+                    self.pat_name, self.llr = pat_llr
+                    self._decode_osd()
+            if self.ipass == 6:
+                self.decode_result = 'stop'
                 
             self.ipass +=1
-            if i_saved == len(self.saved_llrs):
-                self.decode_result = 'stop'
 
             if self.decode_result:
                 if self.decode_result != 'stop':
@@ -91,35 +104,33 @@ class Candidate:
                                     "decode_completed": time_utils.time(),  'tweaks':self.tweaks, 'decode_notes':decode_notes}
                         self.on_message(message)
                 self.decode_result = 'stop'
+
+    def _set_AP(self, ap_pattern):
+        self.pat_name, b0, bit_pattern = ap_pattern
+        self.llr = self.llr0.copy()
+        for b, bval in enumerate(bit_pattern):
+            self.llr[b0 + b] = (bval*2-1) * 5
+        if self.pat_name == 'CQ':
+            self.llr[74:76] = -5
+            self.llr[76] = 5
+            self.llr[57:59] = -5
                 
     def _decode_good91(self):
         if not self.decode_result:
-            self.decode_notes = f'{self.source} GOOD91'
+            self.decode_notes = f'{self.source} GOOD91 {self.pat_name}'
             self.decode_result = crc_unpack91(self.llr[:91])
                 
-    def _decode_ldpc_AP(self, ap_indexes, max_nc0, max_its, save_llr):
+    def _decode_ldpc(self, max_nc0, max_its, save_llr):
         if not self.decode_result:
-            for ipat in ap_indexes:
-                pat_name, b0, ap_pattern = ap_patterns[ipat]
-                llr = self.llr.copy()
-                for b, bval in enumerate(ap_pattern):
-                    llr[b0 + b] = (bval*2-1) * 5
-                if pat_name == 'CQ':
-                    llr[74:76] = -5
-                    llr[76] = 5
-                    llr[57:59] = -5
-                self.decode_notes = f'{self.source} LDPC {pat_name}'
-                self.decode_result, self.n_its, output_llr = ldpc_decode(llr, max_nc0, max_its)
-                if save_llr and not self.decode_result and len(output_llr) == 174:
-                    self.saved_llrs.append((pat_name, output_llr))
-                if self.decode_result:
-                    break
-                
-    def _decode_osd(self, patname_llr):
+            self.decode_notes = f'{self.source} LDPC {self.pat_name}'
+            self.decode_result, self.n_its, output_llr = ldpc_decode(self.llr, max_nc0, max_its)
+            if save_llr and not self.decode_result and len(output_llr) == 174:
+                self.saved_llrs.append((f"LDPC_{self.pat_name}", output_llr))
+
+    def _decode_osd(self):
         if not self.decode_result:
-            pat_name, llr = patname_llr
-            self.decode_notes = f'{self.source} OSD {pat_name}'
-            self.decode_result = osd_012(llr)
+            self.decode_notes = f'{self.source} OSD {self.pat_name}'
+            self.decode_result = osd_012(self.llr)
 
     def _get_llr_grid(self):
         self._dB_to_llr(self.payload_on_search_grid)
