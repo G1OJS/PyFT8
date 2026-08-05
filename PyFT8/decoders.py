@@ -19,7 +19,8 @@ def unpack(bits):
     if i3 == 0:
         n3, bits71 = get_bitfields(bits74,[3])
         if n3 <= 4:
-            return (['Free text', 'DXpedition', 'Field Day', 'Field Day', 'Telemetry'][n3], 'not', 'implemented')
+            #return (['Free text', 'DXpedition', 'Field Day', 'Field Day', 'Telemetry'][n3], 'not', 'implemented')
+            return None
         else:
             #return ('Unknown mode','not','implemented')
             return None
@@ -81,12 +82,13 @@ def call_29(call_int29, i3):
         return f"<{call_hashes.get((call_int28 - 2063592, 22), '...')}>"
     else:
         call = standard_call28(call_int28, i3)
-        if portable_rover:
-            call = call + ('/P' if i3 == 2 else '/R')
-        if call.endswith("/R") and not call[0] in ['A','K','N','W']:
-            return None
-        add_call_hashes(call)
-        return call
+        if call is not None:
+            if portable_rover:
+                call = call + ('/P' if i3 == 2 else '/R')
+            if call.endswith("/R") and not call[0] in ['A','K','N','W']:
+                return None
+            add_call_hashes(call)
+            return call
 
 def standard_call28(call_int28, i3):
     nn = call_int28 - (2063592 + 4194304)
@@ -98,7 +100,8 @@ def standard_call28(call_int28, i3):
         idx, nn = divmod(nn, div)
         chars.append(alphabet[idx])
     call = ''.join(chars).strip()
-    return call
+    if not ' ' in call:
+        return call
 
 def crc_unpack91(codeword91):
     bits91_int = 0
