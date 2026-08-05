@@ -71,11 +71,11 @@ class Candidate:
                     self._set_AP(ap_pattern)
                     self._decode_ldpc(35, 5, False)
             if self.ipass == 3:
-                for ap_pattern in ap_patterns[:2]:
+                for ap_pattern in ap_patterns:
                     self._set_AP(ap_pattern)
-                    self._decode_ldpc(55, 25, True)
+                    self._decode_ldpc(90, 20, True)
             if self.ipass == 4:
-                for ap_pattern in ap_patterns[:2]:
+                for ap_pattern in ap_patterns:
                     self._set_AP(ap_pattern)
                     self._decode_osd()
             if self.ipass == 5:
