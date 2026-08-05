@@ -63,19 +63,19 @@ class Candidate:
             if self.ipass == 1:
                 self._get_llr_fine()
                 self.llr0 = self.llr.copy()
-                for ap_pattern in ap_patterns:
+                for ap_pattern in ap_patterns[:2]:
                     self._set_AP(ap_pattern)
                     self._decode_good91()     
             if self.ipass == 2:
-                for ap_pattern in ap_patterns:
+                for ap_pattern in ap_patterns[:2]:
                     self._set_AP(ap_pattern)
                     self._decode_ldpc(35, 5, False)
             if self.ipass == 3:
-                for ap_pattern in ap_patterns:
+                for ap_pattern in ap_patterns[:2]:
                     self._set_AP(ap_pattern)
                     self._decode_ldpc(55, 25, True)
             if self.ipass == 4:
-                for ap_pattern in ap_patterns:
+                for ap_pattern in ap_patterns[:2]:
                     self._set_AP(ap_pattern)
                     self._decode_osd()
             if self.ipass == 5:
