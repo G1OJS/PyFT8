@@ -144,15 +144,6 @@ print(f"{res_osd} {res_ldpc[0]}")
 
 plt.show()
 
-
-
-
-
-
-
-
-
-
 """
 WSJT-x decodes
 usy/test_08      14.074 Rx FT8     16  1.0  763 UR7HN HB9BIN RR73
