@@ -76,7 +76,7 @@ def symbols_to_complex_audio(symbols, fs = SAMP_RATE, f_base=873.0, f_step=6.25)
 
 
 origin_wanted = {'f0':1266.65, 't0':2.177, 'symbols':[int(s) for s in '3140652000000001123025577110543426103140652637173536360504202406550477433140652']}
-origin_qrm = {'f0':1262.84, 't0':1.353, 'symbols':[int(s) for s in '3140652427540600505640165310555523223140652317130147565067602201255410233140652']}
+origin_qrm = {'f0':1262.80, 't0':1.354, 'symbols':[int(s) for s in '3140652427540600505640165310555523223140652317130147565067602201255410233140652']}
 
 target_samps_in = symbols_to_complex_audio(origin_wanted['symbols'], f_base = origin_wanted['f0'])
 target_s0 = int(SAMP_RATE * origin_wanted['t0'])
