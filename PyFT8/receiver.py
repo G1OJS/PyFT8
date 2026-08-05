@@ -38,6 +38,7 @@ class Candidate:
         self.ipass = 0
         self.csync_7x7 = None
         self.signal_grid = None
+        self.source = None
         self.tweaks = f"t:{0:+03d} f:{0:+03d}"
         self.saved_llrs = []
         self.decode_result = None
@@ -52,28 +53,22 @@ class Candidate:
         if (self.ipass <= current_max_ipass or current_max_ipass <3) and (self.decode_result != 'stop'):
                         
             if self.ipass == 0:
-                self.all_audio_spectrum = self.get_full_audio()
-                source = 'grid'
-                self._dB_to_llr(self.payload_on_search_grid)
-                if self.llr_sd > self.llr_sd_min:
-                    self._decode_good91(source)
-                    self._decode_ldpc_AP(source, [1, 0], 35, 5, False) # try CQ pattern first
+                self._get_llr_grid()
+                self._decode_good91()
+                self._decode_ldpc_AP([1, 0], 35, 5, False) # try CQ pattern first
             
-            source = 'fine'
             if self.ipass == 1:
-                self._get_llr_fine(self.all_audio_spectrum)
-                if self.n_sync_matches < 6 or self.llr_sd < self.llr_sd_min:
-                    self.decode_result = 'stop'
-                self._decode_good91(source)       
+                self._get_llr_fine()
+                self._decode_good91()       
             if self.ipass == 2:
-                self._decode_ldpc_AP(source, [1, 0], 35, 5, False)
+                self._decode_ldpc_AP([1, 0], 35, 5, False)
             if self.ipass == 3:
-                self._decode_ldpc_AP(source, [0,1,2,3,4], 55, 25, True)
+                self._decode_ldpc_AP([0,1,2,3,4], 55, 25, True)
             if self.ipass == 4:
-                self._decode_osd(source, ('demap', self.llr))
+                self._decode_osd(('demap', self.llr))
             i_saved = self.ipass - 4
             if len(self.saved_llrs) > i_saved >= 0:
-                self._decode_osd(source, self.saved_llrs[i_saved])
+                self._decode_osd(self.saved_llrs[i_saved])
                 
             self.ipass +=1
             if i_saved == len(self.saved_llrs):
@@ -97,12 +92,12 @@ class Candidate:
                         self.on_message(message)
                 self.decode_result = 'stop'
                 
-    def _decode_good91(self, source):
+    def _decode_good91(self):
         if not self.decode_result:
-            self.decode_notes = f'{source} GOOD91'
+            self.decode_notes = f'{self.source} GOOD91'
             self.decode_result = crc_unpack91(self.llr[:91])
                 
-    def _decode_ldpc_AP(self, source, ap_indexes, max_nc0, max_its, save_llr):
+    def _decode_ldpc_AP(self, ap_indexes, max_nc0, max_its, save_llr):
         if not self.decode_result:
             for ipat in ap_indexes:
                 pat_name, b0, ap_pattern = ap_patterns[ipat]
@@ -113,44 +108,44 @@ class Candidate:
                     llr[74:76] = -5
                     llr[76] = 5
                     llr[57:59] = -5
-                self.decode_notes = f'{source} LDPC {pat_name}'
+                self.decode_notes = f'{self.source} LDPC {pat_name}'
                 self.decode_result, self.n_its, output_llr = ldpc_decode(llr, max_nc0, max_its)
                 if save_llr and not self.decode_result and len(output_llr) == 174:
                     self.saved_llrs.append((pat_name, output_llr))
                 if self.decode_result:
                     break
                 
-    def _decode_osd(self, source, patname_llr):
+    def _decode_osd(self, patname_llr):
         if not self.decode_result:
             pat_name, llr = patname_llr
-            self.decode_notes = f'{source} OSD {pat_name}'
+            self.decode_notes = f'{self.source} OSD {pat_name}'
             self.decode_result = osd_012(llr)
 
-    def _get_llr_fine(self, all_audio_spectrum):
-        df = SAMP_RATE / 192000
+    def _get_llr_grid(self):
+        self._dB_to_llr(self.payload_on_search_grid)
+        self.source = 'grid'
+
+    def _get_llr_fine(self):
         fHz, tsec = self.origin['fHz'], self.origin['tsec']
-        fb_0 = int(0.5 + fHz / df )
-        fb_top = int(0.5 + (fHz + 8.5*SYM_RATE) / df )
-        fb_bot = int(0.5 + (fHz - 1.5*SYM_RATE) / df )
-        dt = 0.005
-        tb_0 = int(tsec/dt)
+        fb_0 = int(0.5 + fHz * 192000 / SAMP_RATE )
+        tb_0 = int(tsec/0.005)
         ftweak, ttweak = 0, 0
 
         ttweaks = range(-16, 0, 4) # 4 steps = 20ms = 1/8 sample, 1/4 sample = 8 steps
         scores = []
         for ttweak in ttweaks:
-            self._get_signal_grid_fine(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
+            self._get_signal_grid_fine(fb_0+ftweak, tb_0+ttweak)
             scores.append(self.score)
         ttweak = ttweaks[np.argmax(scores)]
 
         ftweaks = range(-50, 51, 16) # 16 steps = 1Hz, 6.25Hz = 100 steps
         scores = []
         for ftweak in ftweaks:
-            self._get_signal_grid_fine(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
+            self._get_signal_grid_fine(fb_0+ftweak, tb_0+ttweak)
             scores.append(self.score)
         ftweak = ftweaks[np.argmax(scores)]
 
-        self._get_signal_grid_fine(all_audio_spectrum, fb_0+ftweak, fb_bot+ftweak, fb_top+ftweak, tb_0+ttweak)
+        self._get_signal_grid_fine(fb_0+ftweak, tb_0+ttweak)
         self.tweaks = f"t:{ttweak:+03d} f:{ftweak:+03d}"
 
         costas_abs_grid = self.signal_grid[COSTAS_SYMB_IDXS, :]
@@ -164,13 +159,14 @@ class Candidate:
         else:
             self.decode_result = 'stop'
 
-    def _get_signal_grid_fine(self, all_audio_spectrum, fb_0, fb_bot, fb_top, tb_0): 
-
+    def _get_signal_grid_fine(self, fb_0, tb_0):
+        self.source = 'fine'
+        all_audio_spectrum = self.get_full_audio()
         fft1_len = len(all_audio_spectrum)
-
+        
         # downsample to 32 samples per symbol / 200 samples per sec
-        self.reused_spectrum_array[:(fb_top - fb_0)] = all_audio_spectrum[fb_0:fb_top]
-        self.reused_spectrum_array[-(fb_0-fb_bot):] = all_audio_spectrum[fb_bot:fb_0]
+        self.reused_spectrum_array[:850] = all_audio_spectrum[fb_0:fb_0+850]
+        self.reused_spectrum_array[-150:] = all_audio_spectrum[fb_0-150:fb_0]
         candidate_zsig = np.fft.ifft(self.reused_spectrum_array)
 
         # get candidate symbol spectra x79 with df = 1 tone spacing
@@ -200,6 +196,8 @@ class Candidate:
         var = np.mean(llr*llr) - mean*mean
         self.llr_sd = np.sqrt(var)
         self.llr = 2.83 * llr / self.llr_sd
+        if self.llr_sd <= self.llr_sd_min:
+            self.decode_result = 'stop'
 
 #============== AUDIO IN ===========================================================
 class AudioIn:

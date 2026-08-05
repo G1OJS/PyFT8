@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-with open('wsjtx.txt') as f:
+with open('WSJTx302_8_28_FAST.txt') as f:
     ws = f.readlines()
     
 i1 = 0
