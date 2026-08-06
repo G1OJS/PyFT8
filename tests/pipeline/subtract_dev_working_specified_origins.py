@@ -103,7 +103,7 @@ def _symbols_to_complex_audio(symbols, fs = SAMP_RATE, f_base=873.0, f_step=6.25
 
 
 origin_wanted = {'f0':1266.6, 't0':2.177, 'symbols':[int(s) for s in '3140652000000001123025577110543426103140652637173536360504202406550477433140652']}
-origin_qrm = {'f0':1262.8, 't0':1.353, 'symbols':[int(s) for s in '3140652427540600505640165310555523223140652317130147565067602201255410233140652']}
+origin_qrm = {'f0':1261.25, 't0':1.355, 'symbols':[int(s) for s in '3140652427540600505640165310555523223140652317130147565067602201255410233140652']}
 
 target_samps_in = symbols_to_complex_audio(origin_wanted['symbols'], f_base = origin_wanted['f0'])
 target_s0 = int(SAMP_RATE * origin_wanted['t0'])
@@ -126,7 +126,7 @@ complex_amp = np.zeros(192000, dtype = np.complex64)
 complex_amp[:len(qrm_samps)] = combined_samps[qrm_s0:qrm_s0+len(qrm_samps)] * np.conj(qrm_samps)
 
 complex_amp = np.fft.fft(complex_amp)
-nfilt = 20
+nfilt = 75  #~18 to 180. 75 makes sensitivity to QRM f broad, e.g. 1259.5 to 1263, though time is still sensitive
 window = np.cos(np.arange(0,np.pi/2,nfilt))**2
 complex_amp[:nfilt] *= window/(np.sum(window)/len(window))
 complex_amp[nfilt:] = 0
