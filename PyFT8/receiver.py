@@ -73,7 +73,7 @@ class Candidate:
             if self.ipass == 3:
                 for ap_pattern in ap_patterns:
                     self._set_AP(ap_pattern)
-                    self._decode_ldpc(90, 20, True)
+                    self._decode_ldpc(90, 25, True)
             if self.ipass == 4:
                 for ap_pattern in ap_patterns:
                     self._set_AP(ap_pattern)
@@ -117,19 +117,19 @@ class Candidate:
                 
     def _decode_good91(self):
         if not self.decode_result:
-            self.decode_notes = f'{self.source} GOOD91 {self.pat_name}'
+            self.decode_notes = f'{self.source}_{self.pat_name}_GOOD91 '
             self.decode_result = crc_unpack91(self.llr[:91])
                 
     def _decode_ldpc(self, max_nc0, max_its, save_llr):
         if not self.decode_result:
-            self.decode_notes = f'{self.source} LDPC {self.pat_name}'
+            self.decode_notes = f'{self.source}_{self.pat_name}_LDPC'
             self.decode_result, self.n_its, output_llr = ldpc_decode(self.llr, max_nc0, max_its)
             if save_llr and not self.decode_result and len(output_llr) == 174:
-                self.saved_llrs.append((f"LDPC_{self.pat_name}", output_llr))
+                self.saved_llrs.append((f"{self.pat_name}_LDPC", output_llr))
 
     def _decode_osd(self):
         if not self.decode_result:
-            self.decode_notes = f'{self.source} OSD {self.pat_name}'
+            self.decode_notes = f'{self.source}_{self.pat_name}_OSD'
             self.decode_result = osd_012(self.llr)
 
     def _get_llr_grid(self):

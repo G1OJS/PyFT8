@@ -1,3 +1,6 @@
+import win32api,win32process
+win32process.SetPriorityClass(win32api.GetCurrentProcess(), win32process.HIGH_PRIORITY_CLASS)
+
 import numpy as np
 import pickle, threading, pyaudio, sys, queue
 from PyFT8.time_utils import time_utils
@@ -35,7 +38,7 @@ class SoundcardOut:
         time_utils.sleep(t)
         dt = 0.6/4
         for i, w in enumerate(wav_files):
-            print(f"File {i}")
+            print(f"Start playing wav file {w}")
             wv = wave.open(w, 'rb')
             audio_bytes = wv.readframes(sr*16)
             audio_bytes = audio_bytes[-int(sr*(15-dt))*2:]
@@ -136,11 +139,11 @@ def do_test(input_device_keywords, wav_range = None):
                 py_cycle[0] = m['cyclestart_string']
                 py_cycle[1] += 1
             py_times.append(float(m['decode_completed']) - t_start)
-            decode_notes = m['decode_notes'].replace(' ','_')
+            decode_notes = m['decode_notes']
             decode_count = len(py_times)
             baseline_decode_count = len([t for t in baseline_times if t < py_times[-1]])
             diff = decode_count - baseline_decode_count
-            py_info  = f"{decode_count:03d} {py_cycle[1]:3d} {py_times[-1]:7.2f} {decode_notes:16s} {m['all_txt_format']}"
+            py_info  = f"{decode_count:03d} {py_cycle[1]:3d} {py_times[-1]:7.2f} {decode_notes:20s} {m['all_txt_format']}"
             with open('PyFT8.txt', 'a') as f:
                 f.write(f"{py_info}\n")
             print(py_info)
@@ -156,13 +159,12 @@ def do_test(input_device_keywords, wav_range = None):
                 if wst > py_times[0] - 5:
                     ws_times.append(wst)
                     decode_count = len(ws_times)
-                    ws_info  = f"{decode_count:03d} {ws_cycle[1]:3d} {ws_times[-1]:7.2f} {m['ws_msg']}"
+                    ws_info  = f"{decode_count:03d} {ws_cycle[1]:3d} {ws_times[-1]:7.2f} ~ {m['ws_msg']}"
                     with open('wsjtx.txt', 'a') as f:
                         f.write(f"{ws_info}\n")
                    # print(ws_info)
 
-import win32api,win32process
-win32process.SetPriorityClass(win32api.GetCurrentProcess(), win32process.HIGH_PRIORITY_CLASS)
+
 
 data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy"
 wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
