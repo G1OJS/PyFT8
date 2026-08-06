@@ -105,12 +105,14 @@ def standard_call28(call_int28, i3):
     return simple_validate_call(call)
 
 def simple_validate_call(call):
-    if not ' ' in call:
-        if call[0] in CALLSIGN_PREFIXES1 and call[1].isnumeric:
+    if not ' ' in call and len(call)>=3:
+        if call[0] in CALLSIGN_PREFIXES1 and call[1].isnumeric():
+            if not (call[0] in "B,F,G,I,K,M,N,R,W" and call[2].isnumeric()):
+                return call
+        if call[:2] in CALLSIGN_PREFIXES2 and call[2].isnumeric():
             return call
-        if call[:2] in CALLSIGN_PREFIXES2 and call[2].isnumeric:
-            return call
-    print(call)
+    with open('rejected_callsigns.txt','a') as f:
+        f.write(f"{call}\n")
         
 def crc_unpack91(codeword91):
     bits91_int = 0
@@ -218,7 +220,7 @@ def osd_01(llr):
             if msg_tuple:
                 return msg_tuple
 
-def osd_012(llr, singleflips = 15, doubleflips = 2):
+def osd_012(llr, singleflips = 20, doubleflips = 4):
     G = G0.copy()
     rowperm = np.arange(91)
     colperm = np.argsort(-np.abs(llr))
