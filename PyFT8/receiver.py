@@ -122,10 +122,10 @@ class Candidate:
                 
     def _decode_ldpc(self, max_nc0, max_its, save_llr):
         if not self.decode_result:
-            self.decode_notes = f'{self.source}_{self.pat_name}_LDPC'
+            self.decode_notes = f'{self.source}_{self.pat_name}_LDPC{max_its}'
             self.decode_result, self.n_its, output_llr = ldpc_decode(self.llr, max_nc0, max_its)
             if save_llr and not self.decode_result and len(output_llr) == 174:
-                self.saved_llrs.append((f"{self.pat_name}_LDPC", output_llr))
+                self.saved_llrs.append((f"{self.pat_name}_LDPC{max_its}", output_llr))
 
     def _decode_osd(self):
         if not self.decode_result:

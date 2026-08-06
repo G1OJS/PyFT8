@@ -18,7 +18,9 @@ def read_cycles(filename):
             cycle_start_row_number = row_number
     return cycles
 
-files = ['PyFT8.txt', 'wsjtx.txt']
+files = ['WSJTx302_8_28_FAST.txt', 'WSJTx302_8_28_NORM.txt']
+#files = ['PyFT8.txt', 'WSJTx302_8_28_FAST.txt']
+#files = ['PyFT8.txt', 'PyFT8_8_28_baseline.txt']
 
 a_cycles = read_cycles(files[0])
 b_cycles = read_cycles(files[1])
