@@ -220,7 +220,7 @@ def osd_01(llr):
             if msg_tuple:
                 return msg_tuple
 
-def osd_012(llr, singleflips = 20, doubleflips = 4):
+def osd_012(llr, singleflips = 30, doubleflips = 2):
     G = G0.copy()
     rowperm = np.arange(91)
     colperm = np.argsort(-np.abs(llr))
