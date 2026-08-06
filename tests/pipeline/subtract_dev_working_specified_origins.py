@@ -11,6 +11,7 @@ N_SYMS = 79
 T_CYC = 15
 PAYLOAD_SYMB_IDXS = list(range(7, 36)) + list(range(43, 72))
 
+
 def read_wav(wav_file = 'test_08.wav'):
     wf = wave.open(wav_file, "rb")
     all_audio_frames = wf.readframes(SAMP_RATE * T_CYC)
@@ -60,7 +61,33 @@ def get_candidate_tfgrid(all_audio_spectrum, origin):
 
     return candidate_tf_zgrid
 
-def symbols_to_complex_audio(symbols, fs = SAMP_RATE, f_base=873.0, f_step=6.25):
+
+def gen_pulse(bt = 2.0):
+    from scipy.special import erf
+    samps_per_sym = int(SAMP_RATE / SYM_RATE)
+    fchk = N_SYMS + samps_per_sym + bt + SAMP_RATE
+    c = np.pi*np.sqrt(2.0/np.log(2.0))
+    pulse = np.zeros(3*samps_per_sym)
+    for i in range(3*samps_per_sym):
+        tt = (i-1.5*samps_per_sym) / samps_per_sym
+        pulse[i] = 0.5*(erf(c*bt*(tt+0.5))-erf(c*bt*(tt-0.5)))
+    return pulse
+pulse = gen_pulse()
+
+def symbols_to_complex_audio(symbols, f_base = 100):
+    samps_per_sym = int(SAMP_RATE / SYM_RATE)
+    dphi_peak = 2.0*np.pi / samps_per_sym
+    nsamps = int(samps_per_sym*(len(symbols)+2))
+    dphi = np.zeros(nsamps)
+    for isym, tone in enumerate(symbols):
+        samp0 = isym * samps_per_sym
+        t0 = isym * 0.16
+        dphi[samp0: samp0 + len(pulse)] += dphi_peak * pulse * tone
+    phi = np.add.accumulate(dphi) + 2*np.pi*f_base*np.arange(nsamps)/SAMP_RATE
+    wf = np.exp(1j * (phi % (2*np.pi)))
+    return wf
+
+def _symbols_to_complex_audio(symbols, fs = SAMP_RATE, f_base=873.0, f_step=6.25):
     symbol_len = int(fs * 0.160)
     t = np.arange(symbol_len) / fs
     phase = 0
@@ -75,8 +102,8 @@ def symbols_to_complex_audio(symbols, fs = SAMP_RATE, f_base=873.0, f_step=6.25)
     return waveform
 
 
-origin_wanted = {'f0':1266.65, 't0':2.177, 'symbols':[int(s) for s in '3140652000000001123025577110543426103140652637173536360504202406550477433140652']}
-origin_qrm = {'f0':1262.80, 't0':1.354, 'symbols':[int(s) for s in '3140652427540600505640165310555523223140652317130147565067602201255410233140652']}
+origin_wanted = {'f0':1266.6, 't0':2.177, 'symbols':[int(s) for s in '3140652000000001123025577110543426103140652637173536360504202406550477433140652']}
+origin_qrm = {'f0':1262.8, 't0':1.353, 'symbols':[int(s) for s in '3140652427540600505640165310555523223140652317130147565067602201255410233140652']}
 
 target_samps_in = symbols_to_complex_audio(origin_wanted['symbols'], f_base = origin_wanted['f0'])
 target_s0 = int(SAMP_RATE * origin_wanted['t0'])
@@ -84,7 +111,7 @@ target_samps = np.zeros(192000, dtype = np.complex64)
 target_samps[target_s0:target_s0+len(target_samps_in)] = target_samps_in
 
 qrm_samps = symbols_to_complex_audio(origin_qrm['symbols'], f_base = origin_qrm['f0'])
-qrm_s0 = int(SAMP_RATE * origin_qrm['t0'])
+qrm_s0 = int(SAMP_RATE * (origin_qrm['t0'] - 0.16))
 
 use_fake_composite = False
 if use_fake_composite:
