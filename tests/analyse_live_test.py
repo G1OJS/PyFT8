@@ -21,6 +21,7 @@ def plot_staircase(defs):
             lines = f.readlines()
             times = [float(l.split()[2]) for l in lines]
             ax.plot(times, np.array(range(len(times))), label = d[1], color = d[2], marker = 'o', markersize = 3)
+    ax.plot(ft8_lib_times, ft8_lib_counts, label = 'FT8_lib', color = 'pink', marker = 'o', markersize = 3)
     ax.legend()
     plt.show()
 
@@ -59,6 +60,13 @@ def list_methods(file):
 list_methods('PyFT8_8_28_baseline.txt')
 list_methods('PyFT8.txt')
 
+ft8_lib_per_file = [18,19,12,17,20,21,19,19,18,18,19,15,21,16,21,17,19,17,21,17,19,19,19,20,20,18,20,16,18,19,20,22,19,17,19,16,16,13]
+ft8_lib_counts = []
+n = 0
+for i in range(8, 28):
+    ft8_lib_counts.append(n)
+    n += ft8_lib_per_file[i]
+ft8_lib_times = 30 + 15*np.arange(0,len(ft8_lib_counts))
 plot_staircase([('PyFT8_8_28_baseline.txt', 'PyFT8-baseline', 'green'),
                 ('WSJTx302_8_28_FAST.txt', 'WSJT-x_3.0.2_FAST', 'blue'),
                 ('WSJTx302_8_28_NORM.txt', 'WSJT-x_3.0.2_NORM', 'purple'),
