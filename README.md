@@ -9,6 +9,7 @@ If you're interested in how this works, maybe have a look at [MiniPyFT8](https:/
 
 ## Features
  - Rx and Tx of standard messages with optional /P and /R
+ - Tx uses GFSK waveform as defined in FT8 standard
  - RX of nonstandard calls plus hashed calls
  - Launches quickly (~2 seconds on my old Dell Optiplex 790)
  - Use with or without gui (receive and send messages via command line commands)
