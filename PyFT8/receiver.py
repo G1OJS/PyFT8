@@ -474,7 +474,7 @@ class Receiver():
                     if c.decode_result is not None:
                         if c.decode_result != 'stop':
                             c.check_and_package(duplicate_filter)
-                            if not c.subtracted and float(c.snr) > 10:
+                            if not c.subtracted and float(c.snr) > 5:
                                 c.refine_time_origin()
                                 self.subtract_signal(c)
                                 c.reset()              
