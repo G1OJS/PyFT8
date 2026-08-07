@@ -29,6 +29,7 @@ plt.show()
 
 #0.22 1263.375
 #2.24 1267.8125 = success
+#1.02 1268.125 = success?
 
 #usy/test_08      14.074 Rx FT8    -13  0.9 1264 SV2BRA I4WQH JN54
 #usy/test_08      14.074 Rx FT8    -23  1.6 1267 CQ OR7EG JO11

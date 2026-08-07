@@ -81,8 +81,6 @@ class Candidate:
         score = -1e40
         origin_orig = self.origin_string()
         self._get_signal_grid_fine(fb_0, tb_0)
-        if self.serial_id == 170:
-            self.dump('before_refine_origin.pkl')
         for fb in fb_range:
             for tb in tb_range:
                 self._get_signal_grid_fine(fb, tb)
@@ -92,8 +90,6 @@ class Candidate:
                     self.origin['tsec'] = tb / 200
         with open('subtraction.txt', 'a') as f:
             f.write(f"Refine origin of {self.serial_id} ({self.msg_text}) SNR = {self.snr:6.0f} from {origin_orig} to {self.origin_string()}\n")
-        if self.serial_id == 170:
-            self.dump('after_refine_origin.pkl')
 
     def origin_string(self):
         return f"{self.origin['fHz']:6.2f}Hz {self.origin['tsec'] - 0.5:6.2f}s" 
@@ -138,11 +134,6 @@ class Candidate:
                 for ap_pattern in ap_patterns[:2]:
                     self._set_AP(ap_pattern)
                     self._decode_good91()
-                if self.serial_id == 10:
-                    if not self.subtracted:
-                        self.dump('before_subtract.pkl')
-                    else:
-                        self.dump('after_subtract.pkl')
             if self.ipass == 2:
                 for ap_pattern in ap_patterns[:2]:
                     self._set_AP(ap_pattern)
@@ -446,7 +437,7 @@ class Receiver():
         symbols = encode_bits174(bits174_int)
         sig_audio = symbols_to_complex_audio(symbols, f_base = c.origin['fHz'] - 0.5) 
         amp = np.zeros(192000, dtype = np.complex64)
-        sig_s0 = int(SAMP_RATE*(c.origin['tsec']))
+        sig_s0 = int(0.5+SAMP_RATE*(c.origin['tsec']))
         if (sig_s0 > 0 and sig_s0 + len(sig_audio) < 192000):
             amp[:len(sig_audio)] = self.audio_in.cycle_audio_buffer[sig_s0:sig_s0+len(sig_audio)] * np.conj(sig_audio)
             amp = np.fft.fft(amp)

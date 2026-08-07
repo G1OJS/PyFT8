@@ -170,7 +170,7 @@ data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib
 wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
 
 #do_test("Mic, CODEC")
-do_test("CABLE, Output", [8,28])
+do_test("CABLE, Output", [8,9])
 
 
 
