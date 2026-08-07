@@ -132,3 +132,313 @@ Refine origin of 10 (SV2BRA I4WQH JN54) SNR =     -3 from 1263.38Hz  -0.26s to 1
 Reset 10 coarse origin to 1267.12Hz   0.54s
 Re-decode RESULT pass 0 for 10: None
 Re-decode RESULT pass 1 for 10: ('CQ', 'OR7EG', 'JO11')
+Refine origin of 10 (SV2BRA I4WQH JN54) SNR =     -4 from 1263.38Hz  -0.14s to 1263.38Hz  -0.13s
+Reset 10 coarse origin to 1267.12Hz   0.62s
+Re-decode RESULT pass 0 for 10: None
+Re-decode RESULT pass 1 for 10: ('CQ', 'OR7EG', 'JO11')
+Refine origin of 295 (CQ 9A9A JN75) SNR =     24 from 2043.75Hz  -0.18s to 2043.75Hz  -0.21s
+Reset 295 coarse origin to 2047.50Hz  -0.26s
+Refine origin of 309 (<...> LZ365BM RR73) SNR =     24 from 2131.25Hz   0.14s to 2131.25Hz   0.16s
+Reset 309 coarse origin to 2135.50Hz   0.14s
+Refine origin of 237 (SQ6PZL MM0IMC -06) SNR =     24 from 1681.25Hz  -0.18s to 1681.25Hz  -0.16s
+Reset 237 coarse origin to 1686.00Hz  -0.26s
+Refine origin of 10 (CT3IQ EI8GVB IO63) SNR =     24 from 262.50Hz   0.34s to 262.50Hz   0.31s
+Reset 10 coarse origin to 266.25Hz   0.30s
+Refine origin of 403 (CQ R4HM LO43) SNR =      9 from 2718.75Hz  -0.34s to 2718.75Hz  -0.30s
+Reset 403 coarse origin to 2723.50Hz  -0.34s
+Refine origin of 137 (CQ EA5OL IM99) SNR =     24 from 1056.25Hz  -0.18s to 1056.25Hz  -0.16s
+Reset 137 coarse origin to 1061.00Hz  -0.26s
+Refine origin of 208 (RX3ASQ TA3AHJ -08) SNR =     24 from 1500.00Hz   0.34s to 1500.00Hz   0.35s
+Reset 208 coarse origin to 1504.75Hz   2.86s
+Refine origin of 380 (<...> DL8RCH JN68) SNR =     -9 from 2575.00Hz  -0.18s to 2575.00Hz  -0.20s
+Reset 380 coarse origin to 2579.25Hz  -0.18s
+Re-decode RESULT pass 0 for 295: None
+Re-decode RESULT pass 0 for 403: None
+Re-decode RESULT pass 0 for 309: None
+Re-decode RESULT pass 0 for 237: None
+Re-decode RESULT pass 0 for 10: None
+Re-decode RESULT pass 0 for 137: None
+Re-decode RESULT pass 0 for 208: None
+Re-decode RESULT pass 0 for 380: None
+Refine origin of 225 (OZ5VO IT9HVZ JM78) SNR =     24 from 1606.25Hz   0.70s to 1606.25Hz   0.68s
+Reset 225 coarse origin to 1610.00Hz   0.70s
+Refine origin of 249 (CQ ON3JJT JO20) SNR =     24 from 1756.25Hz   1.62s to 1756.25Hz   1.65s
+Reset 249 coarse origin to 1760.00Hz   1.58s
+Re-decode RESULT pass 0 for 249: None
+Re-decode RESULT pass 0 for 225: None
+Re-decode RESULT pass 1 for 295: None
+Re-decode RESULT pass 1 for 249: None
+Re-decode RESULT pass 1 for 403: None
+Re-decode RESULT pass 1 for 309: ('<...>', 'LZ365BM', 'RR73')
+Re-decode RESULT pass 1 for 225: None
+Re-decode RESULT pass 1 for 237: None
+Re-decode RESULT pass 1 for 10: None
+Re-decode RESULT pass 1 for 137: ('CQ', 'EA5OL', 'IM99')
+Re-decode RESULT pass 1 for 208: stop
+Re-decode RESULT pass 1 for 380: None
+Refine origin of 310 (<...> LZ365BM RR73) SNR =     24 from 2135.38Hz   0.12s to 2135.38Hz   0.12s
+Reset 310 coarse origin to 2139.12Hz   0.86s
+Refine origin of 90 (UR7HN HB9BIN RR73) SNR =      5 from 762.38Hz  -0.06s to 762.38Hz  -0.06s
+Reset 90 coarse origin to 766.12Hz  -0.10s
+Refine origin of 250 (CQ ON3JJT JO20) SNR =     16 from 1760.38Hz   1.60s to 1760.38Hz   1.60s
+Reset 250 coarse origin to 1764.12Hz  -0.42s
+Refine origin of 31 (M0XMX RV6AFG 73) SNR =      1 from 393.62Hz  -0.22s to 393.62Hz  -0.22s
+Reset 31 coarse origin to 397.88Hz   2.78s
+Refine origin of 371 (CQ F5CCX JN18) SNR =     19 from 2519.62Hz   0.24s to 2519.62Hz   0.23s
+Reset 371 coarse origin to 2524.38Hz   1.50s
+Refine origin of 138 (CQ EA5OL IM99) SNR =     13 from 1061.38Hz  -0.24s to 1061.38Hz  -0.24s
+Reset 138 coarse origin to 1066.12Hz  -0.34s
+Refine origin of 41 (CQ ON2RK JO20) SNR =      5 from 456.12Hz  -0.02s to 456.12Hz  -0.02s
+Reset 41 coarse origin to 460.88Hz   1.42s
+Refine origin of 22 (CQ JO1COV PM95) SNR =     -8 from 337.38Hz  -0.18s to 337.38Hz  -0.18s
+Reset 22 coarse origin to 341.12Hz   1.66s
+Re-decode RESULT pass 0 for 90: None
+Re-decode RESULT pass 0 for 31: None
+Re-decode RESULT pass 0 for 371: None
+Re-decode RESULT pass 0 for 250: None
+Re-decode RESULT pass 0 for 41: None
+Re-decode RESULT pass 0 for 138: None
+Re-decode RESULT pass 0 for 22: None
+Re-decode RESULT pass 0 for 310: None
+Re-decode RESULT pass 1 for 90: None
+Re-decode RESULT pass 1 for 31: stop
+Re-decode RESULT pass 1 for 371: None
+Re-decode RESULT pass 1 for 250: stop
+Re-decode RESULT pass 1 for 41: stop
+Re-decode RESULT pass 1 for 138: None
+Re-decode RESULT pass 1 for 22: stop
+Re-decode RESULT pass 1 for 310: stop
+Re-decode RESULT pass 2 for 295: ('CQ', '9A9A', 'JN75')
+Re-decode RESULT pass 2 for 403: ('CQ', 'R4HM', 'LO43')
+Re-decode RESULT pass 2 for 225: ('OZ5VO', 'IT9HVZ', 'JM78')
+Re-decode RESULT pass 2 for 371: None
+Re-decode RESULT pass 2 for 249: ('CQ', 'ON3JJT', 'JO20')
+Re-decode RESULT pass 2 for 237: ('SQ6PZL', 'MM0IMC', '-06')
+Re-decode RESULT pass 2 for 10: ('CT3IQ', 'EI8GVB', 'IO63')
+Re-decode RESULT pass 2 for 380: None
+Re-decode RESULT pass 2 for 90: None
+Re-decode RESULT pass 2 for 138: None
+Refine origin of 238 (SQ6PZL MM0IMC -06) SNR =     14 from 1686.38Hz  -0.24s to 1686.38Hz  -0.22s
+Reset 238 coarse origin to 1691.12Hz   0.62s
+Refine origin of 209 (RX3ASQ TA3AHJ -08) SNR =      1 from 1505.12Hz   0.28s to 1505.12Hz   0.29s
+Reset 209 coarse origin to 1508.88Hz   2.86s
+Refine origin of 170 (SV2BRA I4WQH JN54) SNR =      8 from 1263.38Hz  -0.20s to 1263.38Hz  -0.19s
+Reset 170 coarse origin to 1267.12Hz   0.54s
+Refine origin of 404 (CQ R4HM LO43) SNR =      2 from 2723.88Hz  -0.36s to 2723.88Hz  -0.36s
+Reset 404 coarse origin to 2727.62Hz   0.14s
+Re-decode RESULT pass 0 for 238: None
+Re-decode RESULT pass 0 for 209: None
+Re-decode RESULT pass 0 for 170: None
+Re-decode RESULT pass 0 for 404: None
+Re-decode RESULT pass 1 for 238: None
+Re-decode RESULT pass 1 for 209: stop
+Re-decode RESULT pass 1 for 170: None
+Re-decode RESULT pass 1 for 404: stop
+Re-decode RESULT pass 2 for 238: None
+Re-decode RESULT pass 2 for 170: None
+Re-decode RESULT pass 3 for 371: None
+Re-decode RESULT pass 3 for 238: None
+Re-decode RESULT pass 3 for 380: None
+Re-decode RESULT pass 3 for 90: None
+Re-decode RESULT pass 3 for 170: None
+Re-decode RESULT pass 3 for 138: None
+Refine origin of 46 (OK6LZ 2E0LDW +06) SNR =     -5 from 490.38Hz  -0.14s to 490.38Hz  -0.17s
+Reset 46 coarse origin to 495.12Hz   2.46s
+Refine origin of 276 (RW6PA UA3NFG 73) SNR =      4 from 1925.88Hz   0.30s to 1925.88Hz   0.33s
+Reset 276 coarse origin to 1930.62Hz   0.38s
+Refine origin of 187 (SP9LKP F4VTS R-12) SNR =      0 from 1367.62Hz  -0.18s to 1367.62Hz  -0.15s
+Reset 187 coarse origin to 1371.38Hz   2.22s
+Refine origin of 126 (RA3TPE TA1NGE RR73) SNR =      0 from 987.38Hz  -0.22s to 987.38Hz  -0.24s
+Reset 126 coarse origin to 991.12Hz   2.94s
+Re-decode RESULT pass 0 for 46: None
+Re-decode RESULT pass 0 for 276: None
+Re-decode RESULT pass 0 for 187: None
+Re-decode RESULT pass 0 for 126: None
+Re-decode RESULT pass 1 for 46: stop
+Re-decode RESULT pass 1 for 276: None
+Re-decode RESULT pass 1 for 187: stop
+Re-decode RESULT pass 1 for 126: stop
+Re-decode RESULT pass 2 for 276: None
+Re-decode RESULT pass 3 for 276: None
+Re-decode RESULT pass 4 for 371: None
+Re-decode RESULT pass 4 for 238: None
+Re-decode RESULT pass 4 for 380: None
+Re-decode RESULT pass 4 for 276: None
+Re-decode RESULT pass 4 for 90: None
+Re-decode RESULT pass 4 for 170: None
+Re-decode RESULT pass 4 for 138: None
+Refine origin of 295 (CQ 9A9A JN75) SNR =     24 from 2043.75Hz  -0.22s to 2043.75Hz  -0.23s
+Reset 295 coarse origin to 2047.50Hz  -0.26s
+Refine origin of 309 (<...> LZ365BM RR73) SNR =     24 from 2131.25Hz   0.14s to 2131.25Hz   0.13s
+Reset 309 coarse origin to 2136.00Hz   0.06s
+Refine origin of 237 (SQ6PZL MM0IMC -06) SNR =     24 from 1681.25Hz  -0.22s to 1681.25Hz  -0.18s
+Reset 237 coarse origin to 1686.00Hz  -0.26s
+Refine origin of 10 (CT3IQ EI8GVB IO63) SNR =     24 from 262.50Hz   0.34s to 262.50Hz   0.30s
+Reset 10 coarse origin to 266.25Hz   0.30s
+Refine origin of 403 (CQ R4HM LO43) SNR =      3 from 2718.75Hz  -0.34s to 2718.75Hz  -0.32s
+Reset 403 coarse origin to 2723.50Hz  -0.42s
+Refine origin of 137 (CQ EA5OL IM99) SNR =     24 from 1056.25Hz  -0.22s to 1056.25Hz  -0.19s
+Reset 137 coarse origin to 1061.00Hz  -0.26s
+Refine origin of 208 (RX3ASQ TA3AHJ -08) SNR =     24 from 1500.00Hz   0.30s to 1500.00Hz   0.33s
+Reset 208 coarse origin to 1504.75Hz   2.78s
+Refine origin of 380 (<...> DL8RCH JN68) SNR =     -7 from 2575.00Hz  -0.22s to 2575.00Hz  -0.22s
+Reset 380 coarse origin to 2578.75Hz   2.62s
+Re-decode RESULT pass 0 for 295: None
+Re-decode RESULT pass 0 for 309: None
+Re-decode RESULT pass 0 for 403: None
+Re-decode RESULT pass 0 for 237: None
+Re-decode RESULT pass 0 for 10: None
+Re-decode RESULT pass 0 for 137: None
+Re-decode RESULT pass 0 for 208: None
+Re-decode RESULT pass 0 for 380: None
+Refine origin of 225 (OZ5VO IT9HVZ JM78) SNR =     24 from 1606.25Hz   0.70s to 1606.25Hz   0.66s
+Reset 225 coarse origin to 1610.00Hz   0.62s
+Refine origin of 249 (CQ ON3JJT JO20) SNR =     24 from 1756.25Hz   1.62s to 1756.25Hz   1.62s
+Reset 249 coarse origin to 1760.50Hz   1.58s
+Re-decode RESULT pass 0 for 249: None
+Re-decode RESULT pass 0 for 225: None
+Re-decode RESULT pass 1 for 295: None
+Re-decode RESULT pass 1 for 309: None
+Re-decode RESULT pass 1 for 249: ('CQ', 'ON3JJT', 'JO20')
+Re-decode RESULT pass 1 for 403: None
+Re-decode RESULT pass 1 for 237: None
+Re-decode RESULT pass 1 for 225: None
+Re-decode RESULT pass 1 for 10: ('CT3IQ', 'EI8GVB', 'IO63')
+Re-decode RESULT pass 1 for 137: ('CQ', 'EA5OL', 'IM99')
+Re-decode RESULT pass 1 for 208: stop
+Re-decode RESULT pass 1 for 380: stop
+Refine origin of 310 (<...> LZ365BM RR73) SNR =     -3 from 2135.38Hz   0.10s to 2135.38Hz   0.09s
+Reset 310 coarse origin to 2139.12Hz   0.86s
+Refine origin of 90 (UR7HN HB9BIN RR73) SNR =      1 from 762.38Hz  -0.08s to 762.38Hz  -0.08s
+Reset 90 coarse origin to 766.12Hz  -0.10s
+Refine origin of 371 (CQ F5CCX JN18) SNR =     12 from 2519.62Hz   0.20s to 2519.62Hz   0.20s
+Reset 371 coarse origin to 2524.38Hz   1.50s
+Refine origin of 250 (CQ ON3JJT JO20) SNR =     16 from 1760.38Hz   1.58s to 1760.38Hz   1.58s
+Reset 250 coarse origin to 1765.12Hz   2.70s
+Refine origin of 31 (M0XMX RV6AFG 73) SNR =     15 from 393.62Hz  -0.24s to 393.62Hz  -0.24s
+Reset 31 coarse origin to 398.38Hz   1.50s
+Refine origin of 138 (CQ EA5OL IM99) SNR =     -2 from 1061.38Hz  -0.26s to 1061.38Hz  -0.27s
+Reset 138 coarse origin to 1065.62Hz  -0.34s
+Refine origin of 404 (CQ R4HM LO43) SNR =      0 from 2723.88Hz  -0.38s to 2723.88Hz  -0.39s
+Reset 404 coarse origin to 2728.62Hz  -0.50s
+Refine origin of 209 (RX3ASQ TA3AHJ -08) SNR =      4 from 1505.12Hz   0.26s to 1505.12Hz   0.26s
+Reset 209 coarse origin to 1508.88Hz   2.78s
+Refine origin of 22 (CQ JO1COV PM95) SNR =     -2 from 337.38Hz  -0.20s to 337.38Hz  -0.20s
+Reset 22 coarse origin to 341.12Hz   1.58s
+Refine origin of 41 (CQ ON2RK JO20) SNR =      3 from 456.12Hz  -0.04s to 456.12Hz  -0.04s
+Reset 41 coarse origin to 460.88Hz   1.42s
+Re-decode RESULT pass 0 for 90: None
+Re-decode RESULT pass 0 for 31: None
+Re-decode RESULT pass 0 for 371: None
+Re-decode RESULT pass 0 for 41: None
+Re-decode RESULT pass 0 for 250: None
+Re-decode RESULT pass 0 for 138: None
+Re-decode RESULT pass 0 for 209: None
+Re-decode RESULT pass 0 for 310: None
+Re-decode RESULT pass 0 for 22: None
+Re-decode RESULT pass 0 for 404: None
+Re-decode RESULT pass 1 for 90: None
+Re-decode RESULT pass 1 for 31: stop
+Re-decode RESULT pass 1 for 371: stop
+Re-decode RESULT pass 1 for 41: stop
+Re-decode RESULT pass 1 for 250: stop
+Re-decode RESULT pass 1 for 138: None
+Re-decode RESULT pass 1 for 209: stop
+Re-decode RESULT pass 1 for 310: stop
+Re-decode RESULT pass 1 for 22: stop
+Re-decode RESULT pass 1 for 404: stop
+Re-decode RESULT pass 2 for 295: ('CQ', '9A9A', 'JN75')
+Re-decode RESULT pass 2 for 237: ('SQ6PZL', 'MM0IMC', '-06')
+Re-decode RESULT pass 2 for 403: ('CQ', 'R4HM', 'LO43')
+Re-decode RESULT pass 2 for 309: None
+Re-decode RESULT pass 2 for 90: None
+Re-decode RESULT pass 2 for 225: None
+Re-decode RESULT pass 2 for 138: None
+Refine origin of 238 (SQ6PZL MM0IMC -06) SNR =      2 from 1686.38Hz  -0.26s to 1686.38Hz  -0.26s
+Reset 238 coarse origin to 1691.12Hz   1.50s
+Refine origin of 170 (SV2BRA I4WQH JN54) SNR =     15 from 1263.38Hz  -0.22s to 1263.38Hz  -0.22s
+Reset 170 coarse origin to 1267.12Hz   0.54s
+Refine origin of 187 (SP9LKP F4VTS R-12) SNR =      4 from 1367.62Hz  -0.20s to 1367.62Hz  -0.20s
+Reset 187 coarse origin to 1372.38Hz   2.70s
+Re-decode RESULT pass 0 for 238: None
+Re-decode RESULT pass 0 for 170: None
+Re-decode RESULT pass 0 for 187: None
+Re-decode RESULT pass 1 for 238: None
+Re-decode RESULT pass 1 for 170: None
+Re-decode RESULT pass 1 for 187: stop
+Re-decode RESULT pass 2 for 170: None
+Re-decode RESULT pass 2 for 238: None
+Re-decode RESULT pass 3 for 170: None
+Re-decode RESULT pass 3 for 309: ('<...>', 'LZ365BM', 'RR73')
+Re-decode RESULT pass 3 for 238: None
+Re-decode RESULT pass 3 for 90: None
+Re-decode RESULT pass 3 for 225: None
+Re-decode RESULT pass 3 for 138: None
+Refine origin of 46 (OK6LZ 2E0LDW +06) SNR =     -9 from 490.38Hz  -0.16s to 490.38Hz  -0.12s
+Reset 46 coarse origin to 495.12Hz   2.94s
+Refine origin of 126 (RA3TPE TA1NGE RR73) SNR =     -9 from 987.38Hz  -0.24s to 987.38Hz  -0.27s
+Reset 126 coarse origin to 991.12Hz   2.86s
+Re-decode RESULT pass 0 for 46: None
+Re-decode RESULT pass 0 for 126: None
+Re-decode RESULT pass 1 for 46: stop
+Re-decode RESULT pass 1 for 126: stop
+Re-decode RESULT pass 4 for 170: None
+Re-decode RESULT pass 4 for 238: None
+Re-decode RESULT pass 4 for 90: None
+Re-decode RESULT pass 4 for 225: None
+Re-decode RESULT pass 4 for 138: None
+Refine origin of 276 (RW6PA UA3NFG 73) SNR =      4 from 1925.88Hz   0.28s to 1925.88Hz   0.25s
+Reset 276 coarse origin to 1930.62Hz   2.62s
+Re-decode RESULT pass 0 for 276: None
+Refine origin of 295 (CQ 9A9A JN75) SNR =     24 from 2043.75Hz  -0.22s to 2043.75Hz  -0.24s
+Reset 295 coarse origin to 2047.50Hz  -0.26s
+Refine origin of 225 (OZ5VO IT9HVZ JM78) SNR =     24 from 1606.25Hz   0.66s to 1606.25Hz   0.64s
+Reset 225 coarse origin to 1610.00Hz  -0.50s
+Refine origin of 309 (<...> LZ365BM RR73) SNR =     24 from 2131.25Hz   0.10s to 2131.25Hz   0.12s
+Reset 309 coarse origin to 2135.50Hz   0.06s
+Refine origin of 10 (CT3IQ EI8GVB IO63) SNR =     24 from 262.50Hz   0.30s to 262.50Hz   0.27s
+Reset 10 coarse origin to 266.25Hz   0.30s
+Refine origin of 237 (SQ6PZL MM0IMC -06) SNR =     24 from 1681.25Hz  -0.22s to 1681.25Hz  -0.20s
+Reset 237 coarse origin to 1686.00Hz  -0.26s
+Refine origin of 403 (CQ R4HM LO43) SNR =     15 from 2718.75Hz  -0.38s to 2718.75Hz  -0.34s
+Reset 403 coarse origin to 2723.50Hz  -0.42s
+Refine origin of 137 (CQ EA5OL IM99) SNR =     24 from 1056.25Hz  -0.22s to 1056.25Hz  -0.21s
+Reset 137 coarse origin to 1061.00Hz  -0.26s
+Refine origin of 208 (RX3ASQ TA3AHJ -08) SNR =     24 from 1500.00Hz   0.30s to 1500.00Hz   0.31s
+Reset 208 coarse origin to 1504.75Hz   2.78s
+Re-decode RESULT pass 0 for 295: None
+Re-decode RESULT pass 0 for 309: None
+Re-decode RESULT pass 0 for 403: None
+Re-decode RESULT pass 0 for 225: None
+Re-decode RESULT pass 0 for 237: None
+Re-decode RESULT pass 0 for 10: None
+Re-decode RESULT pass 0 for 137: None
+Re-decode RESULT pass 0 for 208: None
+Refine origin of 249 (CQ ON3JJT JO20) SNR =     24 from 1756.25Hz   1.58s to 1756.25Hz   1.61s
+Reset 249 coarse origin to 1761.00Hz   1.58s
+Re-decode RESULT pass 0 for 249: None
+Re-decode RESULT pass 1 for 295: ('CQ', '9A9A', 'JN75')
+Re-decode RESULT pass 1 for 249: ('CQ', 'ON3JJT', 'JO20')
+Re-decode RESULT pass 1 for 309: ('<...>', 'LZ365BM', 'RR73')
+Re-decode RESULT pass 1 for 403: None
+Re-decode RESULT pass 1 for 225: stop
+Re-decode RESULT pass 1 for 237: None
+Re-decode RESULT pass 1 for 10: None
+Re-decode RESULT pass 1 for 137: ('CQ', 'EA5OL', 'IM99')
+Re-decode RESULT pass 1 for 208: stop
+Refine origin of 90 (UR7HN HB9BIN RR73) SNR =     18 from 762.38Hz  -0.10s to 762.38Hz  -0.10s
+Reset 90 coarse origin to 766.12Hz  -0.10s
+Refine origin of 250 (CQ ON3JJT JO20) SNR =     16 from 1760.38Hz   1.56s to 1760.38Hz   1.56s
+Reset 250 coarse origin to 1764.12Hz   2.70s
+Refine origin of 371 (CQ F5CCX JN18) SNR =     11 from 2519.62Hz   0.20s to 2519.62Hz   0.19s
+Reset 371 coarse origin to 2524.38Hz   1.50s
+Re-decode RESULT pass 0 for 90: None
+Re-decode RESULT pass 0 for 371: None
+Re-decode RESULT pass 0 for 250: None
+Re-decode RESULT pass 1 for 90: None
+Re-decode RESULT pass 1 for 371: stop
+Re-decode RESULT pass 1 for 250: stop
+Re-decode RESULT pass 2 for 237: ('SQ6PZL', 'MM0IMC', '-06')
+Re-decode RESULT pass 2 for 10: ('CT3IQ', 'EI8GVB', 'IO63')
+Re-decode RESULT pass 2 for 90: ('UR7HN', 'HB9BIN', 'RR73')
+Re-decode RESULT pass 2 for 403: ('CQ', 'R4HM', 'LO43')

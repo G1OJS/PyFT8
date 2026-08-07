@@ -119,9 +119,6 @@ class Candidate:
                     self._set_AP(ap_pattern)
                     self._decode_good91()
                     self._decode_ldpc(35, 5, False)
-
-            if self.subtracted:
-                print(f"PSUB2 {self.ipass} {self.serial_id}")
             
             if self.ipass == 1:
                 self._get_llr_fine()
@@ -436,7 +433,7 @@ class Receiver():
         if (sig_s0 > 0 and sig_s0 + len(sig_audio) < 192000):
             amp[:len(sig_audio)] = self.audio_in.cycle_audio_buffer[sig_s0:sig_s0+len(sig_audio)] * np.conj(sig_audio)
             amp = np.fft.fft(amp)
-            nfilt = 20 # still to check
+            nfilt = 40 # still to check
             window = np.cos(np.arange(0,np.pi/2,nfilt))**2
             amp[:nfilt] *= window/(np.sum(window)/len(window))
             amp[nfilt:] = 0
@@ -477,7 +474,7 @@ class Receiver():
                     if c.decode_result is not None:
                         if c.decode_result != 'stop':
                             c.check_and_package(duplicate_filter)
-                            if not c.subtracted and float(c.snr) > -10:
+                            if not c.subtracted and float(c.snr) > 10:
                                 c.refine_time_origin()
                                 self.subtract_signal(c)
                                 c.reset()              
