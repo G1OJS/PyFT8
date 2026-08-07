@@ -2,7 +2,8 @@ import threading
 import numpy as np
 import pyaudio, pickle
 from PyFT8.time_utils import time_utils
-from PyFT8.decoders import good91, ldpc_decode, osd_012
+from PyFT8.decoders import ldpc_decode, osd_012, crc_unpack91
+from PyFT8.transmitter import symbols_to_complex_audio
 
 WATERFALL_DOWNSAMPLE = 2
 DEBUG_PRINTS = True
@@ -29,94 +30,71 @@ ap_patterns = [
 class Candidate:
     def __init__(self, origin, search_grid_bounds, payload_on_search_grid, get_full_audio, on_message, llr_sd_min = 5):
         self.origin = origin
-        self.snr = -30
         self.search_grid_bounds = search_grid_bounds
         self.payload_on_search_grid = payload_on_search_grid
         self.get_full_audio = get_full_audio
-        self.subtract_eligible = True
         self.on_message = on_message
         self.llr_sd = 0
         self.llr_sd_min = llr_sd_min
-        self.n_sync_matches_min = 7
-        self.llr_old = None
         self.ipass = 0
-        self.source = 'fine'
         self.csync_7x7 = None
         self.signal_grid = None
+        self.source = None
         self.tweaks = f"t:{0:+03d} f:{0:+03d}"
         self.saved_llrs = []
         self.decode_result = None
         self.n_sync_matches = 100
+        self.n_sync_matches_min = 6
         self.fft2_len = 3200
         self.reused_spectrum_array = np.zeros(self.fft2_len, dtype = np.complex64)
         self.serial_id = None
         self.decode_notes = ''
-        self.symbols = None
-        self.msg_text = None
+        self.subtracted = False
 
-    def decode(self, current_max_ipass):
-        time_utils.sleep(0)
-        if (self.ipass <= current_max_ipass or current_max_ipass <3) and (self.decode_result != 'stop'):
-            if self.ipass == 0:
-                self.all_audio_spectrum = self.get_full_audio()
-                self._get_llr_fine()
-            if self.ipass == 1:
-                self._decode_good91()       
-            if self.ipass == 2:
-                self._decode_ldpc_AP([1, 0], 35, 5, False)
-            if self.ipass == 3:
-                self._decode_ldpc_AP([0,1,2,3,4], 55, 25, True)
-            if self.ipass == 4:
-                self._decode_osd(('demap', self.llr))
-            i_saved = self.ipass - 4
-            if i_saved > 0:
-                if i_saved < len(self.saved_llrs):
-                    if self.source != 'psub':
-                        self._decode_osd(self.saved_llrs[i_saved])
-                else:
-                    self.decode_result = 'stop'
+    def dump(self, file):
+        with open(file, 'wb') as f:
+            pickle.dump((self.origin, self.signal_grid), f)
 
-            if self.source == 'psub':
-                with open('subtraction.txt', 'a') as f:
-                    f.write(f"Re-decode RESULT pass {self.ipass} for {self.serial_id}: {self.decode_result}\n")                    
+    def reset(self):
+        fb_0 = int(0.5 + self.origin['fHz'] * 192000/SAMP_RATE )
+        score = -1e40
+        for tb in range(0, 700, 16): # 16 per 1/2 symbol
+            for fb in range(fb_0+60, fb_0+80, 8):
+                self._get_signal_grid_fine(fb, tb)
+                if self.score > score:
+                    score = self.score
+                    self.origin['tsec'] = tb / 200
+                    self.origin['fHz']  = fb / 16
+        with open('subtraction.txt', 'a') as f:
+            f.write(f"Reset {self.serial_id} coarse origin to {self.origin_string()}\n")
+        self.decode_result = None
+        self.subtracted = True
+        self.ipass = 0
+        self.saved_llrs = []
+        
+    def refine_time_origin(self):
+        fb_0 = int(0.5 + self.origin['fHz'] * 192000/SAMP_RATE )
+        tb_0 = int(self.origin['tsec'] * 200)
+        tb_range = range(tb_0 - 8, tb_0 + 8) # 16 per 1/2 symbol
+        score = -1e40
+        origin_orig = self.origin_string()
+        for tb in tb_range:
+            self._get_signal_grid_fine(fb_0, tb)
+            if self.score > score:
+                score = self.score
+                self.origin['tsec'] = tb / 200
+        with open('subtraction.txt', 'a') as f:
+            f.write(f"Refine origin of {self.serial_id} ({self.msg_text}) SNR = {self.snr:6.0f} from {origin_orig} to {self.origin_string()}\n")
 
-            self.ipass +=1
-
-    def _decode_good91(self):
-        if not self.decode_result:
-            self.decode_notes = f'{self.source} GOOD91'
-            self.decode_result, self.symbols = good91(self.llr)
-                
-    def _decode_ldpc_AP(self, ap_indexes, max_nc0, max_its, save_llr):
-        if not self.decode_result:
-            for ipat in ap_indexes:
-                pat_name, b0, ap_pattern = ap_patterns[ipat]
-                llr = self.llr.copy()
-                for b, bval in enumerate(ap_pattern):
-                    llr[b0 + b] = (bval*2-1) * 5
-                if pat_name == 'CQ':
-                    llr[74:76] = -5
-                    llr[76] = 5
-                    llr[57:59] = -5
-                self.decode_notes = f'{self.source} LDPC {pat_name}'
-                self.decode_result, self.symbols, output_llr = ldpc_decode(llr, max_nc0, max_its)
-                if save_llr and not self.decode_result and len(output_llr) == 174:
-                    self.saved_llrs.append((pat_name, output_llr))
-                if self.decode_result:
-                    break
-                
-    def _decode_osd(self, patname_llr):
-        if not self.decode_result:
-            pat_name, llr = patname_llr
-            self.decode_notes = f'{self.source} OSD {pat_name}'
-            self.decode_result, self.symbols = osd_012(llr)
+    def origin_string(self):
+        return f"{self.origin['fHz']:6.2f}Hz {self.origin['tsec'] - 0.5:6.2f}s" 
 
     def check_and_package(self, duplicate_filter):
         self.msg_text = ' '.join(self.decode_result)
         key = self.origin['cyclestart_string'] + self.msg_text
         if (key not in duplicate_filter):
             duplicate_filter.add(key)
-            if self.source == 'psub':
+            if self.subtracted:
                 print("SUBTRACTION SUCCESS")
             o = self.origin
             decode_notes = self.decode_notes
@@ -130,92 +108,144 @@ class Candidate:
             self.on_message(message)
         self.decode_result = 'stop'
 
+    def decode(self, current_max_ipass):
+        time_utils.sleep(0)
+        if (self.ipass <= current_max_ipass) and (self.decode_result != 'stop'):
+                        
+            if self.ipass == 0 and not self.subtracted:
+                self._get_llr_grid()
+                self.llr0 = self.llr.copy()
+                for ap_pattern in ap_patterns:
+                    self._set_AP(ap_pattern)
+                    self._decode_good91()
+                    self._decode_ldpc(35, 5, False)
+            
+            if self.ipass == 1:
+                self._get_llr_fine()
+                self.llr0 = self.llr.copy()
+                for ap_pattern in ap_patterns[:2]:
+                    self._set_AP(ap_pattern)
+                    self._decode_good91()
+            if self.ipass == 2:
+                for ap_pattern in ap_patterns[:2]:
+                    self._set_AP(ap_pattern)
+                    self._decode_ldpc(35, 5, False)
+            if self.ipass == 3:
+                for ap_pattern in ap_patterns:
+                    self._set_AP(ap_pattern)
+                    self._decode_ldpc(90, 20, True)
+            if self.ipass == 4:
+                for ap_pattern in ap_patterns:
+                    self._set_AP(ap_pattern)
+                    self._decode_osd()
+            if self.ipass == 5:
+                for pat_llr in self.saved_llrs:
+                    self.pat_name, self.llr = pat_llr
+                    self._decode_osd()
+            if self.ipass == 6:
+                self.decode_result = 'stop'
+                
+            if self.subtracted:
+                with open('subtraction.txt', 'a') as f:
+                    f.write(f"Re-decode RESULT pass {self.ipass} for {self.serial_id}: {self.decode_result}\n")
 
-    def dump(self, file):
-        with open(file, 'wb') as f:
-            pickle.dump((self.origin, self.all_audio_spectrum, self.signal_grid, self.score), f)
+            self.ipass +=1
 
-    def origin_string(self):
-        return f"{self.origin['fHz']:6.2f}Hz {self.origin['tsec'] - 0.5:6.2f}s" 
 
-    def refine_origin(self):
-        self.all_audio_spectrum = self.get_full_audio()
-        fb_0 = int(0.5 + self.origin['fHz'] * 192000/SAMP_RATE )
-        tb_0 = int(self.origin['tsec'] * 200)
-        fb_range = range(fb_0 - 16, fb_0 + 16) # 16 per Hz
-        tb_range = range(tb_0 - 8, tb_0 + 8) # 16 per 1/2 symbol
-        score = -1e40
-        origin_orig = self.origin_string()
-        for fb in fb_range:
-            for tb in tb_range:
-                self._get_signal_grid_fine(fb, tb)
-                if self.score > score:
-                    score = self.score
-                    self.origin['fHz']  = fb / 16
-                    self.origin['tsec'] = tb / 200
-        with open('subtraction.txt', 'a') as f:
-            f.write(f"Refine origin of {self.serial_id} ({self.msg_text}) SNR = {self.snr:6.0f} from {origin_orig} to {self.origin_string()}\n")
 
-    def reset(self):
-        self.decode_result = None
-        self.symbols = None
-        self.subtract_eligible = False
-        self.msg_text = None
-        self.ipass = 0
-        self.saved_llrs = []
-        self.llr_sd_min = 0
-        self.n_sync_matches_min = 0
-        self.source = 'psub'
-        tb_range = range(100, 200, 16) # 16 per 1/2 symbol
-        score = -1e40
-        fb_0 = int(0.5 + self.origin['fHz'] * 192000/SAMP_RATE )
-        for tb in tb_range:
-            for fb in range(fb_0+32, fb_0+64, 16):
-                self._get_signal_grid_fine(fb, tb)
-                if self.score > score:
-                    score = self.score
-                    self.origin['tsec'] = tb / 200
-                    self.origin['fHz']  = fb / 16
-        with open('subtraction.txt', 'a') as f:
-            f.write(f"Reset {self.serial_id} coarse origin to {self.origin_string()}\n")
+    def _set_AP(self, ap_pattern):
+        self.pat_name, b0, bit_pattern = ap_pattern
+        self.llr = self.llr0.copy()
+        for b, bval in enumerate(bit_pattern):
+            self.llr[b0 + b] = (bval*2-1) * 5
+        if self.pat_name == 'CQ':
+            self.llr[74:76] = -5
+            self.llr[76] = 5
+            self.llr[57:59] = -5
+                
+    def _decode_good91(self):
+        if not self.decode_result:
+            self.decode_notes = f'{self.source}_{self.pat_name}_GOOD91 '
+            self.decode_result = crc_unpack91(self.llr[:91])
+                
+    def _decode_ldpc(self, max_nc0, max_its, save_llr):
+        if not self.decode_result:
+            self.decode_notes = f'{self.source}_{self.pat_name}_LDPC{max_its}'
+            self.decode_result, self.n_its, output_llr = ldpc_decode(self.llr, max_nc0, max_its)
+            if save_llr and not self.decode_result and len(output_llr) == 174:
+                self.saved_llrs.append((f"{self.pat_name}_LDPC{max_its}", output_llr))
 
+    def _decode_osd(self):
+        if not self.decode_result:
+            self.decode_notes = f'{self.source}_{self.pat_name}_OSD'
+            self.decode_result = osd_012(self.llr)
+
+    def _get_llr_grid(self):
+        self._dB_to_llr(self.payload_on_search_grid)
+        self.source = 'grid'
 
     def _get_llr_fine(self):
-        fb_0 = int(0.5 + self.origin['fHz'] * 192000/SAMP_RATE )
-        tb_0 = int(self.origin['tsec'] * 200)
-        fb_range = range(fb_0 - 50, fb_0 + 50, 16) # 16 per Hz
-        tb_range = range(tb_0 - 16, tb_0, 8) # 16 per 1/2 symbol
-        score = -1e40
-        for tb_0 in tb_range:
-            self._get_signal_grid_fine(fb_0, tb_0)
-            if self.score > score:
-                score = self.score
-                self.origin['tsec'] = tb_0 / 200
-        for fb_0 in fb_range:
-            self._get_signal_grid_fine(fb_0, tb_0)
-            if self.score > score:
-                score = self.score
-                self.origin['fHz']  = fb_0 / 16
-        fb_0 = int(0.5 + self.origin['fHz'] * 192000/SAMP_RATE )
-        tb_0 = int(self.origin['tsec'] * 200)
-        self._get_signal_grid_fine(fb_0, tb_0)                
+        fHz, tsec = self.origin['fHz'], self.origin['tsec']
+        fb_0 = int(0.5 + fHz * 192000 / SAMP_RATE )
+        tb_0 = int(tsec/0.005)
+        ftweak, ttweak = 0, 0
+
+        ttweaks = range(-16, 0, 4) # 4 steps = 20ms = 1/8 sample, 1/4 sample = 8 steps
+        scores = []
+        for ttweak in ttweaks:
+            self._get_signal_grid_fine(fb_0+ftweak, tb_0+ttweak)
+            scores.append(self.score)
+        ttweak = ttweaks[np.argmax(scores)]
+
+        ftweaks = range(-50, 51, 16) # 16 steps = 1Hz, 6.25Hz = 100 steps
+        scores = []
+        for ftweak in ftweaks:
+            self._get_signal_grid_fine(fb_0+ftweak, tb_0+ttweak)
+            scores.append(self.score)
+        ftweak = ftweaks[np.argmax(scores)]
+
+        self._get_signal_grid_fine(fb_0+ftweak, tb_0+ttweak)
+        self.tweaks = f"t:{ttweak:+03d} f:{ftweak:+03d}"
+
         costas_abs_grid = self.signal_grid[COSTAS_SYMB_IDXS, :]
         ccheck = np.argmax(costas_abs_grid, axis = 1) - (COSTAS * 3)
         self.n_sync_matches = len([c for c in ccheck if c == 0])
-        if self.n_sync_matches >= self.n_sync_matches_min:
-            self._sig_grid_to_llr()
-            if self.llr_sd < self.llr_sd_min:
-                self.decode_result = 'stop' 
+        if self.n_sync_matches > self.n_sync_matches_min:
+            self.origin.update({'tsec': float(self.origin['tsec'] + ttweak / 200),
+                                'fHz':float(self.origin['fHz'] + ftweak / 16) })
+            payload_dB_grid = 20*np.log10(self.signal_grid[PAYLOAD_SYMB_IDXS, :])
+            self._dB_to_llr(payload_dB_grid)
         else:
             self.decode_result = 'stop'
 
-        if self.source == 'psub':
-            with open('subtraction.txt', 'a') as f:
-                f.write(f"Get llr of {self.serial_id} at fine origin to {self.origin_string()}\n")
+    def _get_signal_grid_fine(self, fb_0, tb_0):
+        self.source = 'fine'
+        all_audio_spectrum = self.get_full_audio()
+        fft1_len = len(all_audio_spectrum)
+        
+        # downsample to 32 samples per symbol / 200 samples per sec
+        self.reused_spectrum_array[:850] = all_audio_spectrum[fb_0:fb_0+850]
+        self.reused_spectrum_array[-150:] = all_audio_spectrum[fb_0-150:fb_0]
+        candidate_zsig = np.fft.ifft(self.reused_spectrum_array)
 
+        # get candidate symbol spectra x79 with df = 1 tone spacing
+        symbols = np.empty((N_SYMS, 32), dtype=np.complex64)
+        idx = tb_0 + np.arange(N_SYMS)*32
+        idx = np.clip(idx, 0, len(candidate_zsig)-32)
+        symbols = np.empty((N_SYMS,32), dtype=np.complex64)
+        for j, i0 in enumerate(idx):
+            symbols[j,:] = candidate_zsig[i0:i0+32]
+        self.signal_grid = np.abs(np.fft.fft(symbols, axis=1)[:, :8])
 
-    def _sig_grid_to_llr(self):
-        p = 20*np.log10(self.signal_grid[PAYLOAD_SYMB_IDXS, :])
+        if self.csync_7x7 is None:
+            csync = np.full((7, 7), -1/6, np.float32)
+            for sym_idx, tone in enumerate([3,1,4,0,6,5,2]):
+                csync[sym_idx, tone] = 1.0
+            self.csync_7x7 =  csync.ravel()
+        self.score = float(np.dot(self.signal_grid[36:43, :7].ravel(), self.csync_7x7))
+
+    def _dB_to_llr(self, payload_dB_grid):
+        p = payload_dB_grid 
         self.snr = np.clip(int(np.max(p) - np.min(p) - 58), -24, 24)
         llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
         llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
@@ -225,30 +255,8 @@ class Candidate:
         var = np.mean(llr*llr) - mean*mean
         self.llr_sd = np.sqrt(var)
         self.llr = 2.83 * llr / self.llr_sd
-
-    def _get_signal_grid_fine(self, fb_0, tb_0): 
-        fft1_len = len(self.all_audio_spectrum)
-        # downsample to 32 samples per symbol / 200 samples per sec
-        self.reused_spectrum_array[:850] = self.all_audio_spectrum[fb_0:fb_0 + 850]
-        self.reused_spectrum_array[-150:] = self.all_audio_spectrum[fb_0 - 150:fb_0]
-        candidate_zsig = np.fft.ifft(self.reused_spectrum_array)
-        # get candidate symbol spectra x79 with df = 1 tone spacing
-        symbols = np.empty((N_SYMS, 32), dtype=np.complex64)
-        idx = tb_0 + np.arange(N_SYMS)*32
-        idx = np.clip(idx, 0, len(candidate_zsig)-32)
-        symbols = np.empty((N_SYMS,32), dtype=np.complex64)
-        for j, i0 in enumerate(idx):
-            symbols[j,:] = candidate_zsig[i0:i0+32]
-        self.signal_grid = np.abs(np.fft.fft(symbols, axis=1)[:, :8])
-        
-        if self.csync_7x7 is None:
-            csync = np.full((7, 7), -1/6, np.float32)
-            for sym_idx, tone in enumerate([3,1,4,0,6,5,2]):
-                csync[sym_idx, tone] = 1.0
-            self.csync_7x7 =  csync.ravel()
-        self.score = float(np.dot(self.signal_grid[36:43, :7].ravel(), self.csync_7x7))
-
-
+        if self.llr_sd <= self.llr_sd_min:
+            self.decode_result = 'stop'
 
 #============== AUDIO IN ===========================================================
 class AudioIn:
@@ -278,17 +286,14 @@ class AudioIn:
         self.adj, self.cycle_audio_buffer_ptr_prev, self.t_prev = 1.0, -1, None
         self._set_pointers()
         self._find_input_device(input_device_keywords)
-        self.signal_subtracted = False
 
         threading.Thread(target = self._load_streamed_audio, daemon=True).start()
         threading.Thread(target = self._manage_audio_in_cycle, daemon=True).start()
 
     def get_full_audio_spectrum(self):
-        moved_pointer = np.abs(self.search_grid_ptr - self.search_grid_ptr_at_last_spectrum_calc) > 0
-        if  moved_pointer or self.signal_subtracted: 
+        if np.abs(self.search_grid_ptr - self.search_grid_ptr_at_last_spectrum_calc) > 0 : 
             self.search_grid_ptr_at_last_spectrum_calc = self.search_grid_ptr
             self.all_audio_spectrum = np.fft.rfft(self.cycle_audio_buffer) # only calc full spectrum if more samples received
-            self.signal_subtracted = False
         return self.all_audio_spectrum
 
     def _find_input_device(self, input_device_keywords):
@@ -387,11 +392,10 @@ class Receiver():
         time_utils.sleep(0.5)
         threading.Thread(target=self.manage_cycle, daemon=True).start()
         
-    def search(self, cyclestart_string, odd_even, cycle_h0, search_f_idxs = None):
+    def search(self, cyclestart_string, odd_even, cycle_h0):
         cands = []
         hops_per_sig = self.audio_in.search_hps * PAYLOAD_SYMB_IDXS[-1]
-        if search_f_idxs is None:
-            search_f_idxs = range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 2)
+        search_f_idxs = range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 2)
         for cand_serial, f0_idx in enumerate(search_f_idxs):
             p = self.audio_in.search_grid[:, f0_idx: f0_idx + 7*self.audio_in.search_bpt]
             origin = {'score':0}
@@ -414,33 +418,22 @@ class Receiver():
                 c.serial_id = cand_serial
                 cands.append(c)
         cands.sort(key = lambda c: c.origin['score'], reverse = True)
-        return cands[:self.max_cands]
-
-    def set_band(self, band):
-        self.band = band
-
-    def symbols_to_complex_audio(self, symbols, fs = SAMP_RATE, f_base=873.0, f_step=6.25):
-        symbol_len = int(fs * 0.160)
-        t = np.arange(symbol_len) / fs
-        phase = 0
-        waveform = []
-        for s in symbols:
-            f = f_base + s * f_step
-            phase_inc = 2 * np.pi * f / fs
-            w = np.exp(1j * (phase + phase_inc * np.arange(symbol_len)))
-            waveform.append(w)
-            phase = (phase + phase_inc * symbol_len) % (2 * np.pi)
-        waveform = np.concatenate(waveform).astype(np.complex64)
-        return waveform
+        self.candidates = cands[:self.max_cands]
 
     def subtract_signal(self, c):
-        sig_audio = self.symbols_to_complex_audio(c.symbols, f_base = c.origin['fHz'] - 0.6 ) 
+        from PyFT8.transmitter import encode_bits174
+        bits174 = (c.llr>0).astype(np.uint8)
+        bits174_int = 0
+        for bit in bits174.tolist():
+            bits174_int = (bits174_int << 1) | bit
+        symbols = encode_bits174(bits174_int)
+        sig_audio = symbols_to_complex_audio(symbols, f_base = c.origin['fHz'] - 0.5) 
         amp = np.zeros(192000, dtype = np.complex64)
-        sig_s0 = int(SAMP_RATE*(c.origin['tsec']))
+        sig_s0 = int(0.5+SAMP_RATE*(c.origin['tsec'] - 0.005))
         if (sig_s0 > 0 and sig_s0 + len(sig_audio) < 192000):
             amp[:len(sig_audio)] = self.audio_in.cycle_audio_buffer[sig_s0:sig_s0+len(sig_audio)] * np.conj(sig_audio)
             amp = np.fft.fft(amp)
-            nfilt = 20
+            nfilt = 40 # still to check
             window = np.cos(np.arange(0,np.pi/2,nfilt))**2
             amp[:nfilt] *= window/(np.sum(window)/len(window))
             amp[nfilt:] = 0
@@ -451,6 +444,9 @@ class Receiver():
             self.audio_in.cycle_audio_buffer[sig_s0:sig_s0+len(sig_audio)] = new
             self.audio_in.signal_subtracted = True
 
+    def set_band(self, band):
+        self.band = band
+
     def manage_cycle(self):
         dashes = "======================================================"
         duplicate_filter = set()
@@ -460,7 +456,7 @@ class Receiver():
         cycle_searched = False
         to_decode = []
         while True:
-            time_utils.sleep(0.1)
+            time_utils.sleep(0.5)
 
             # reset cycle_searched at beginning of cycle
             if self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle < search_grid_ptr_prev:
@@ -471,18 +467,17 @@ class Receiver():
             to_decode = [c for c in self.candidates if (not c.decode_result) and (not (c.search_grid_bounds[0] <= self.audio_in.search_grid_ptr <= c.search_grid_bounds[1]))]
             if len(to_decode):
                 ipasses = [c.ipass for c in to_decode]
-                to_decode.sort(key=lambda c: -c.llr_sd)
+                to_decode.sort(key=lambda c: (c.subtracted, c.llr_sd), reverse=True)
                 max_ipass = np.min(ipasses)
                 for c in to_decode:
                     c.decode(max_ipass)
-                    if c.decode_result:
+                    if c.decode_result is not None:
                         if c.decode_result != 'stop':
                             c.check_and_package(duplicate_filter)
-                            if c.subtract_eligible and c.symbols and c.snr > 0:
-                                c.refine_origin()
+                            if not c.subtracted and float(c.snr) > 5:
+                                c.refine_time_origin()
                                 self.subtract_signal(c)
-                                c.reset()
-
+                                c.reset()              
 
             # if cycle not yet searched and search data available, search
             if not cycle_searched and self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle > self.search_start_hop:
@@ -492,9 +487,8 @@ class Receiver():
                 cyclestart_string = time_utils.cyclestart_string(time_utils.time())
                 if len(to_decode):
                     time_utils.tlog(f"[Receiver] Warning - {len(to_decode)} candidates ran out of decoding time, ipass = {ipasses}", verbose = True)
-                self.candidates = self.search(cyclestart_string, self.audio_in.odd_even, self.audio_in.cycle_h0)
+                self.search(cyclestart_string, self.audio_in.odd_even, self.audio_in.cycle_h0)
                 cycle_searched = True
-                end_decoding_message_printed = False
                 hstop = self.audio_in.search_grid_ptr
                 tsearch = (hstop-hstart)/ (SYM_RATE * self.audio_in.search_hps)
                 time_utils.tlog(f"[Cycle manager] New spectrum searched in {tsearch}s -> {len(self.candidates)} candidates", verbose = True) 
