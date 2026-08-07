@@ -56,11 +56,10 @@ class Candidate:
             pickle.dump((self.origin, self.signal_grid), f)
 
     def reset(self):
-        tb_range = range(0, 700, 16) # 16 per 1/2 symbol
-        score = -1e40
         fb_0 = int(0.5 + self.origin['fHz'] * 192000/SAMP_RATE )
-        for tb in tb_range:
-            for fb in range(fb_0+60, fb_0+80, 1):
+        score = -1e40
+        for tb in range(0, 700, 16): # 16 per 1/2 symbol
+            for fb in range(fb_0+60, fb_0+80, 8):
                 self._get_signal_grid_fine(fb, tb)
                 if self.score > score:
                     score = self.score
@@ -73,21 +72,17 @@ class Candidate:
         self.ipass = 0
         self.saved_llrs = []
         
-    def refine_origin(self):
+    def refine_time_origin(self):
         fb_0 = int(0.5 + self.origin['fHz'] * 192000/SAMP_RATE )
         tb_0 = int(self.origin['tsec'] * 200)
-        fb_range = range(fb_0 - 16, fb_0 + 16) # 16 per Hz
         tb_range = range(tb_0 - 8, tb_0 + 8) # 16 per 1/2 symbol
         score = -1e40
         origin_orig = self.origin_string()
-        self._get_signal_grid_fine(fb_0, tb_0)
-        for fb in fb_range:
-            for tb in tb_range:
-                self._get_signal_grid_fine(fb, tb)
-                if self.score > score:
-                    score = self.score
-                    self.origin['fHz']  = fb / 16
-                    self.origin['tsec'] = tb / 200
+        for tb in tb_range:
+            self._get_signal_grid_fine(fb_0, tb)
+            if self.score > score:
+                score = self.score
+                self.origin['tsec'] = tb / 200
         with open('subtraction.txt', 'a') as f:
             f.write(f"Refine origin of {self.serial_id} ({self.msg_text}) SNR = {self.snr:6.0f} from {origin_orig} to {self.origin_string()}\n")
 
@@ -437,11 +432,11 @@ class Receiver():
         symbols = encode_bits174(bits174_int)
         sig_audio = symbols_to_complex_audio(symbols, f_base = c.origin['fHz'] - 0.5) 
         amp = np.zeros(192000, dtype = np.complex64)
-        sig_s0 = int(0.5+SAMP_RATE*(c.origin['tsec']))
+        sig_s0 = int(0.5+SAMP_RATE*(c.origin['tsec'] - 0.005))
         if (sig_s0 > 0 and sig_s0 + len(sig_audio) < 192000):
             amp[:len(sig_audio)] = self.audio_in.cycle_audio_buffer[sig_s0:sig_s0+len(sig_audio)] * np.conj(sig_audio)
             amp = np.fft.fft(amp)
-            nfilt = 20
+            nfilt = 20 # still to check
             window = np.cos(np.arange(0,np.pi/2,nfilt))**2
             amp[:nfilt] *= window/(np.sum(window)/len(window))
             amp[nfilt:] = 0
@@ -482,8 +477,8 @@ class Receiver():
                     if c.decode_result is not None:
                         if c.decode_result != 'stop':
                             c.check_and_package(duplicate_filter)
-                            if not c.subtracted:
-                                #c.refine_origin()
+                            if not c.subtracted and float(c.snr) > -10:
+                                c.refine_time_origin()
                                 self.subtract_signal(c)
                                 c.reset()              
 
