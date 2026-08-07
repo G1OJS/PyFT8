@@ -172,6 +172,9 @@ print(f"{res_osd} {res_ldpc[0]}")
 plt.show()
 
 """
+usy/test_08      14.074 Rx FT8    -13  0.9 1264 SV2BRA I4WQH JN54
+usy/test_08      14.074 Rx FT8    -23  1.6 1267 CQ OR7EG JO11
+
 WSJT-x decodes
 usy/test_08      14.074 Rx FT8     16  1.0  763 UR7HN HB9BIN RR73
 usy/test_08      14.074 Rx FT8     28  0.8 2046 CQ 9A9A JN75

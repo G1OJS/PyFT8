@@ -1,0 +1,55 @@
+Reset 10 coarse origin to 1269.50Hz  -0.42s
+Re-decode RESULT pass 0 for 10: None
+Re-decode RESULT pass 1 for 10: stop
+Reset 10 coarse origin to 1265.62Hz  -0.18s
+Reset 2 coarse origin to 1218.62Hz   2.54s
+Re-decode RESULT pass 0 for 2: None
+Re-decode RESULT pass 0 for 10: None
+Re-decode RESULT pass 1 for 2: stop
+Re-decode RESULT pass 1 for 10: ('I4WQH', 'SV2BRA', '-06')
+Reset 10 coarse origin to 1265.62Hz  -0.10s
+Re-decode RESULT pass 0 for 10: None
+Re-decode RESULT pass 1 for 10: None
+Re-decode RESULT pass 2 for 10: ('SV2BRA', 'I4WQH', 'R-09')
+Reset 10 coarse origin to 1266.50Hz  -0.26s
+Re-decode RESULT pass 0 for 10: None
+Re-decode RESULT pass 1 for 10: None
+Re-decode RESULT pass 2 for 10: None
+Re-decode RESULT pass 3 for 10: None
+Re-decode RESULT pass 4 for 10: None
+Re-decode RESULT pass 5 for 10: None
+Re-decode RESULT pass 6 for 10: stop
+Reset 10 coarse origin to 1265.62Hz  -0.26s
+Reset 2 coarse origin to 1215.62Hz   1.74s
+Re-decode RESULT pass 0 for 10: None
+Re-decode RESULT pass 0 for 2: None
+Re-decode RESULT pass 1 for 10: ('I4WQH', 'SV2BRA', '-06')
+Re-decode RESULT pass 1 for 2: stop
+Reset 10 coarse origin to 1266.50Hz  -0.26s
+Re-decode RESULT pass 0 for 10: None
+Re-decode RESULT pass 1 for 10: stop
+Reset 2 coarse origin to 1218.69Hz   2.46s
+Re-decode RESULT pass 0 for 2: None
+Reset 10 coarse origin to 1265.62Hz  -0.26s
+Re-decode RESULT pass 0 for 10: None
+Re-decode RESULT pass 1 for 2: None
+Re-decode RESULT pass 1 for 10: None
+Re-decode RESULT pass 2 for 10: ('I4WQH', 'SV2BRA', '-06')
+Re-decode RESULT pass 2 for 2: None
+Re-decode RESULT pass 3 for 2: None
+Re-decode RESULT pass 4 for 2: None
+Re-decode RESULT pass 5 for 2: None
+Re-decode RESULT pass 6 for 2: stop
+Reset 10 coarse origin to 1268.06Hz   0.54s
+Re-decode RESULT pass 0 for 10: None
+Re-decode RESULT pass 1 for 10: None
+Re-decode RESULT pass 2 for 10: None
+Re-decode RESULT pass 3 for 10: None
+Re-decode RESULT pass 4 for 10: None
+Re-decode RESULT pass 5 for 10: ('CQ', 'OR7EG', 'JO11')
+Reset 10 coarse origin to 1266.25Hz  -0.26s
+Reset 2 coarse origin to 1217.44Hz   1.50s
+Re-decode RESULT pass 0 for 10: None
+Re-decode RESULT pass 0 for 2: None
+Re-decode RESULT pass 1 for 10: None
+Re-decode RESULT pass 1 for 2: stop
