@@ -435,7 +435,7 @@ class Receiver():
         if (sig_s0 > 0 and sig_s0 + len(sig_audio) < 192000):
             amp[:len(sig_audio)] = self.audio_in.cycle_audio_buffer[sig_s0:sig_s0+len(sig_audio)] * np.conj(sig_audio)
             amp = np.fft.fft(amp)
-            nfilt = 60 # still to check
+            nfilt = 20 # still to check
             window = np.cos(np.arange(0,np.pi/2,nfilt))**2
             amp[:nfilt] *= window/(np.sum(window)/len(window))
             amp[nfilt:] = 0
@@ -477,7 +477,9 @@ class Receiver():
                         if c.decode_result != 'stop':
                             c.check_and_package(duplicate_filter)
                             if not c.subtracted and float(c.snr) > -5:
-                                if c.origin['odd_even'] == self.audio_in.odd_even:
+                                # next two lines prevent asking the 15 second audio buffer for spectrum from wrong cycle
+                                n = self.audio_in.search_hops_per_cycle
+                                if not (c.search_grid_bounds[0] % n <= self.audio_in.search_grid_ptr %n <= c.search_grid_bounds[1] %n):
                                     print(f"Subtract {c.serial_id} {c.msg_text}")
                                     c.refine_time_origin()
                                     self.subtract_signal(c)

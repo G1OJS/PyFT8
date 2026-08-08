@@ -124,7 +124,7 @@ def do_test(input_device_keywords, wav_range = None):
 
     py_times, ws_times = [], []
     
-    receiver = Receiver(input_device_keywords, process_message, search_freq_range = [200, 2800])
+    receiver = Receiver(input_device_keywords, process_message, search_freq_range = [1200, 1300])
     if not receiver.audio_in.input_device_idx:
         time_utils.tlog(f"[Audio] No input audio device found matching {input_device_keywords}", verbose = True)
         sys.exit(1)
@@ -170,7 +170,7 @@ data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib
 wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
 
 #do_test("Mic, CODEC")
-do_test("CABLE, Output", [8,28])
+do_test("CABLE, Output", [8,9])
 
 
 
