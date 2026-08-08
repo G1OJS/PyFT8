@@ -78,7 +78,7 @@ class Candidate:
         if (key not in duplicate_filter):
             duplicate_filter.add(key)
             if self.subtracted:
-                msg = f"SUBTRACTION SUCCESS for {self.serial_id}: {self.decode_result}"
+                msg = f"SUBTRACTION SUCCESS at {self.origin_string()}: {self.decode_result}"
                 with open('subtraction.txt', 'a') as f:
                     f.write(f"{msg}\n")
                 print(msg)
