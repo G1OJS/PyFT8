@@ -68,7 +68,7 @@ for i in range(8, 28):
     n += ft8_lib_per_file[i]
 ft8_lib_times = 15 + 15*np.arange(0,len(ft8_lib_counts))
 plot_staircase([('PyFT8_8_28_baseline.txt', 'PyFT8-baseline', 'green'),
-               # ('WSJTx302_8_28_FAST.txt', 'WSJT-x_3.0.2_FAST', 'blue'),
+                ('WSJTx302_8_28_FAST.txt', 'WSJT-x_3.0.2_FAST', 'blue'),
                 ('WSJTx302_8_28_NORM.txt', 'WSJT-x_3.0.2_NORM', 'purple'),
                 ('PyFT8.txt', 'PyFT8', 'orange')])
 
