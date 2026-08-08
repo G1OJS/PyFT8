@@ -1,0 +1,2655 @@
+Refine origin of 833 (IU8WQA DJ1TU JN48) SNR =     24 from 2400.00Hz   0.06s to 2400.00Hz   0.04s
+Refine origin of 535 (KC2NDA GM4ZTO -15) SNR =     24 from 537.50Hz  -0.18s to 537.50Hz  -0.20s
+Refine origin of 852 (YO3BMI SP9UPH JO90) SNR =     24 from 2518.75Hz  -0.02s to 2518.75Hz  -0.04s
+Re-decode RESULT pass 0 for 932: None
+Re-decode RESULT pass 0 for 931: None
+Re-decode RESULT pass 0 for 929: None
+Re-decode RESULT pass 0 for 936: None
+Re-decode RESULT pass 0 for 935: None
+Re-decode RESULT pass 0 for 940: None
+Re-decode RESULT pass 0 for 939: None
+Refine origin of 684 (PD1HPB CR5VP +07) SNR =     24 from 1468.75Hz   0.46s to 1468.75Hz   0.45s
+Re-decode RESULT pass 0 for 944: None
+Re-decode RESULT pass 0 for 943: None
+Re-decode RESULT pass 0 for 942: None
+Re-decode RESULT pass 0 for 933: None
+Re-decode RESULT pass 0 for 934: None
+Re-decode RESULT pass 1 for 932: ('IU8WQA', 'DJ1TU', 'JN48')
+Re-decode RESULT pass 1 for 931: None
+Re-decode RESULT pass 1 for 929: None
+Re-decode RESULT pass 1 for 936: None
+Re-decode RESULT pass 1 for 935: None
+Re-decode RESULT pass 1 for 933: None
+Re-decode RESULT pass 1 for 934: None
+Re-decode RESULT pass 1 for 940: ('YO3BMI', 'SP9UPH', 'JO90')
+Re-decode RESULT pass 1 for 939: None
+Re-decode RESULT pass 1 for 944: None
+Re-decode RESULT pass 1 for 943: None
+Re-decode RESULT pass 1 for 942: None
+Re-decode RESULT pass 2 for 936: ('KC2NDA', 'GM4ZTO', '-15')
+Re-decode RESULT pass 2 for 944: ('PD1HPB', 'CR5VP', '+07')
+Re-decode RESULT pass 2 for 931: None
+Re-decode RESULT pass 2 for 935: None
+Re-decode RESULT pass 2 for 933: None
+Re-decode RESULT pass 2 for 942: None
+Re-decode RESULT pass 2 for 929: None
+Re-decode RESULT pass 2 for 934: None
+Re-decode RESULT pass 2 for 939: None
+Re-decode RESULT pass 2 for 943: None
+Refine origin of 536 (KC2NDA GM4ZTO -15) SNR =     -3 from 542.62Hz  -0.26s to 542.62Hz  -0.25s
+Refine origin of 692 (R8ACF EA3CVI JN11) SNR =      6 from 1519.62Hz  -0.02s to 1519.62Hz  -0.03s
+Re-decode RESULT pass 3 for 931: None
+Re-decode RESULT pass 3 for 935: ('KC2NDA', 'GM4ZTO', '-15')
+Re-decode RESULT pass 3 for 933: None
+Re-decode RESULT pass 3 for 942: None
+Re-decode RESULT pass 3 for 929: None
+Re-decode RESULT pass 3 for 934: None
+Re-decode RESULT pass 3 for 939: None
+Re-decode RESULT pass 3 for 943: None
+Re-decode RESULT pass 4 for 931: None
+Re-decode RESULT pass 4 for 933: None
+Re-decode RESULT pass 4 for 942: None
+Re-decode RESULT pass 4 for 929: None
+Re-decode RESULT pass 4 for 934: None
+Re-decode RESULT pass 4 for 939: None
+Re-decode RESULT pass 4 for 943: None
+Re-decode RESULT pass 5 for 931: None
+Re-decode RESULT pass 5 for 933: None
+Re-decode RESULT pass 5 for 942: None
+Re-decode RESULT pass 5 for 929: None
+Re-decode RESULT pass 5 for 934: None
+Re-decode RESULT pass 5 for 939: ('YO3BMI', 'SP9UPH', 'JO90')
+Re-decode RESULT pass 5 for 943: None
+Re-decode RESULT pass 6 for 931: stop
+Re-decode RESULT pass 6 for 933: stop
+Re-decode RESULT pass 6 for 942: stop
+Re-decode RESULT pass 6 for 929: stop
+Re-decode RESULT pass 6 for 934: stop
+Re-decode RESULT pass 6 for 943: stop
+Refine origin of 302 (VE9PHX OK2CNI JN79) SNR =      0 from 2281.25Hz   0.14s to 2281.25Hz   0.12s
+Refine origin of 21 (RA9J IW2DNI JN45) SNR =      2 from 525.00Hz   0.02s to 525.00Hz   0.00s
+Refine origin of 224 (XE1TZP KB1HKN FN42) SNR =     -4 from 1793.75Hz   0.10s to 1793.75Hz   0.08s
+Refine origin of 359 (F8MYM HA5KN JN97) SNR =     -2 from 2637.50Hz   0.02s to 2637.50Hz   0.00s
+Refine origin of 159 (CQ SM5NBE JP80) SNR =      2 from 1387.50Hz   0.18s to 1387.50Hz   0.18s
+Refine origin of 34 (CQ DL5NDD JN58) SNR =      0 from 606.25Hz   0.06s to 606.25Hz   0.06s
+Re-decode RESULT pass 0 for 419: None
+Re-decode RESULT pass 0 for 420: None
+Re-decode RESULT pass 0 for 418: None
+Re-decode RESULT pass 0 for 417: None
+Re-decode RESULT pass 0 for 423: None
+Re-decode RESULT pass 0 for 424: None
+Re-decode RESULT pass 0 for 422: None
+Re-decode RESULT pass 0 for 421: None
+Re-decode RESULT pass 0 for 427: None
+Re-decode RESULT pass 0 for 428: None
+Re-decode RESULT pass 0 for 426: None
+Re-decode RESULT pass 0 for 431: None
+Re-decode RESULT pass 0 for 432: None
+Re-decode RESULT pass 0 for 430: None
+Re-decode RESULT pass 0 for 429: None
+Re-decode RESULT pass 0 for 436: None
+Re-decode RESULT pass 0 for 435: None
+Re-decode RESULT pass 0 for 433: None
+Re-decode RESULT pass 0 for 434: None
+Re-decode RESULT pass 0 for 440: None
+Re-decode RESULT pass 0 for 439: None
+Re-decode RESULT pass 1 for 419: ('VE9PHX', 'OK2CNI', 'JN79')
+Re-decode RESULT pass 1 for 420: ('VE9PHX', 'OK2CNI', 'JN79')
+Re-decode RESULT pass 1 for 418: None
+Re-decode RESULT pass 1 for 417: None
+Re-decode RESULT pass 1 for 423: None
+Re-decode RESULT pass 1 for 424: ('RA9J', 'IW2DNI', 'JN45')
+Re-decode RESULT pass 1 for 422: None
+Re-decode RESULT pass 1 for 421: None
+Re-decode RESULT pass 1 for 427: ('XE1TZP', 'KB1HKN', 'FN42')
+Re-decode RESULT pass 1 for 428: ('XE1TZP', 'KB1HKN', 'FN42')
+Re-decode RESULT pass 1 for 426: None
+Re-decode RESULT pass 1 for 431: None
+Re-decode RESULT pass 1 for 432: ('F8MYM', 'HA5KN', 'JN97')
+Re-decode RESULT pass 1 for 430: None
+Re-decode RESULT pass 1 for 429: None
+Re-decode RESULT pass 1 for 436: None
+Re-decode RESULT pass 1 for 435: None
+Re-decode RESULT pass 1 for 433: None
+Re-decode RESULT pass 1 for 434: None
+Re-decode RESULT pass 1 for 440: None
+Re-decode RESULT pass 1 for 439: None
+Refine origin of 35 (CQ DL5NDD JN58) SNR =      1 from 611.38Hz   0.00s to 611.38Hz  -0.01s
+Refine origin of 171 (CQ HA1BF JN86) SNR =     -2 from 1463.38Hz  -0.06s to 1463.38Hz  -0.05s
+Re-decode RESULT pass 2 for 440: ('CQ', 'DL5NDD', 'JN58')
+Re-decode RESULT pass 2 for 431: ('F8MYM', 'HA5KN', 'JN97')
+Re-decode RESULT pass 2 for 436: ('CQ', 'SM5NBE', 'JP80')
+Re-decode RESULT pass 2 for 423: ('RA9J', 'IW2DNI', 'JN45')
+Re-decode RESULT pass 2 for 435: ('CQ', 'SM5NBE', 'JP80')
+Re-decode RESULT pass 2 for 439: ('CQ', 'DL5NDD', 'JN58')
+Re-decode RESULT pass 2 for 434: None
+Re-decode RESULT pass 2 for 417: None
+Re-decode RESULT pass 2 for 429: None
+Re-decode RESULT pass 2 for 433: None
+Re-decode RESULT pass 2 for 421: None
+Re-decode RESULT pass 2 for 422: None
+Re-decode RESULT pass 2 for 430: None
+Re-decode RESULT pass 2 for 418: None
+Re-decode RESULT pass 2 for 426: None
+Refine origin of 285 (F4AWT SP2LMG +00) SNR =     13 from 2177.88Hz   0.36s to 2177.88Hz   0.36s
+Refine origin of 265 (EP2AES SP7AAO JO91) SNR =      2 from 2048.88Hz  -0.04s to 2048.88Hz  -0.04s
+Refine origin of 160 (CQ SM5NBE JP80) SNR =     16 from 1392.62Hz   0.12s to 1392.62Hz   0.11s
+Re-decode RESULT pass 3 for 434: None
+Re-decode RESULT pass 3 for 417: None
+Re-decode RESULT pass 3 for 429: None
+Re-decode RESULT pass 3 for 433: None
+Re-decode RESULT pass 3 for 421: None
+Re-decode RESULT pass 3 for 422: None
+Re-decode RESULT pass 3 for 430: None
+Re-decode RESULT pass 3 for 418: None
+Re-decode RESULT pass 3 for 426: None
+Refine origin of 291 (CQ SQ8AA KN19) SNR =      0 from 2211.38Hz  -0.06s to 2211.38Hz  -0.05s
+Re-decode RESULT pass 4 for 434: None
+Re-decode RESULT pass 4 for 417: None
+Re-decode RESULT pass 4 for 429: None
+Re-decode RESULT pass 4 for 433: None
+Re-decode RESULT pass 4 for 421: None
+Re-decode RESULT pass 4 for 422: None
+Re-decode RESULT pass 4 for 430: None
+Re-decode RESULT pass 4 for 418: None
+Re-decode RESULT pass 4 for 426: None
+Re-decode RESULT pass 5 for 434: None
+Re-decode RESULT pass 5 for 417: None
+Re-decode RESULT pass 5 for 429: None
+Re-decode RESULT pass 5 for 433: None
+Re-decode RESULT pass 5 for 421: None
+Re-decode RESULT pass 5 for 422: None
+Re-decode RESULT pass 5 for 430: None
+Re-decode RESULT pass 5 for 418: None
+Re-decode RESULT pass 5 for 426: None
+Refine origin of 22 (RA9J IW2DNI JN45) SNR =     13 from 528.12Hz  -0.12s to 528.12Hz  -0.10s
+Re-decode RESULT pass 0 for 465: None
+Refine origin of 837 (IU8WQA DJ1TU JN48) SNR =     -3 from 2400.00Hz   0.06s to 2400.00Hz   0.04s
+Re-decode RESULT pass 0 for 936: None
+Re-decode RESULT pass 0 for 935: None
+Re-decode RESULT pass 0 for 934: None
+Re-decode RESULT pass 1 for 936: None
+Re-decode RESULT pass 1 for 935: None
+Re-decode RESULT pass 1 for 934: None
+Refine origin of 872 (<...> DL1R JN58) SNR =      4 from 2617.62Hz  -0.06s to 2617.62Hz  -0.07s
+Refine origin of 551 (DL5NDD SP2KW JO92) SNR =      3 from 611.38Hz   0.44s to 611.38Hz   0.44s
+Re-decode RESULT pass 0 for 937: None
+Re-decode RESULT pass 1 for 937: None
+Re-decode RESULT pass 2 for 936: ('IU8WQA', 'DJ1TU', 'JN48')
+Re-decode RESULT pass 2 for 934: None
+Re-decode RESULT pass 2 for 935: None
+Refine origin of 540 (KC2NDA GM4ZTO -13) SNR =     -4 from 542.62Hz  -0.26s to 542.62Hz  -0.26s
+Refine origin of 817 (SP6CA OZ9FF R-19) SNR =      7 from 2273.88Hz  -0.38s to 2273.88Hz  -0.38s
+Re-decode RESULT pass 3 for 934: None
+Re-decode RESULT pass 3 for 935: ('IU8WQA', 'DJ1TU', 'JN48')
+Re-decode RESULT pass 4 for 934: None
+Re-decode RESULT pass 5 for 934: None
+Re-decode RESULT pass 6 for 934: stop
+Re-decode RESULT pass 0 for 939: None
+Refine origin of 207 (WH6GNK SP7NC JO91) SNR =      7 from 1687.50Hz   0.06s to 1687.50Hz   0.04s
+Refine origin of 302 (VE9PHX OK2CNI JN79) SNR =     -2 from 2281.25Hz   0.14s to 2281.25Hz   0.12s
+Refine origin of 21 (RA9J IW2DNI JN45) SNR =      8 from 525.00Hz   0.02s to 525.00Hz   0.00s
+Refine origin of 285 (F4AWT SP2LMG +00) SNR =     -1 from 2175.00Hz   0.42s to 2175.00Hz   0.40s
+Refine origin of 224 (XE1TZP KB1HKN FN42) SNR =      0 from 1793.75Hz   0.10s to 1793.75Hz   0.08s
+Refine origin of 275 (YV5JLO CT1FIU -20) SNR =      6 from 2112.50Hz  -1.22s to 2112.50Hz  -1.23s
+Refine origin of 158 (CQ SM5NBE JP80) SNR =     -3 from 1381.25Hz   0.18s to 1381.25Hz   0.18s
+Refine origin of 253 (UA4POO YO6PPX KN26) SNR =      0 from 1975.00Hz  -0.34s to 1975.00Hz  -0.35s
+Re-decode RESULT pass 0 for 419: None
+Re-decode RESULT pass 0 for 418: None
+Re-decode RESULT pass 0 for 420: None
+Re-decode RESULT pass 0 for 417: None
+Re-decode RESULT pass 0 for 423: None
+Re-decode RESULT pass 0 for 424: None
+Re-decode RESULT pass 0 for 422: None
+Re-decode RESULT pass 0 for 421: None
+Re-decode RESULT pass 0 for 427: None
+Re-decode RESULT pass 0 for 428: None
+Re-decode RESULT pass 0 for 426: None
+Re-decode RESULT pass 0 for 425: None
+Re-decode RESULT pass 0 for 431: None
+Re-decode RESULT pass 0 for 432: None
+Re-decode RESULT pass 0 for 430: None
+Re-decode RESULT pass 0 for 435: None
+Re-decode RESULT pass 0 for 436: None
+Re-decode RESULT pass 0 for 434: None
+Re-decode RESULT pass 0 for 433: None
+Re-decode RESULT pass 0 for 440: None
+Re-decode RESULT pass 0 for 439: None
+Re-decode RESULT pass 0 for 438: None
+Re-decode RESULT pass 0 for 444: None
+Re-decode RESULT pass 0 for 443: None
+Re-decode RESULT pass 0 for 441: None
+Re-decode RESULT pass 0 for 442: None
+Re-decode RESULT pass 0 for 448: None
+Re-decode RESULT pass 0 for 447: None
+Re-decode RESULT pass 0 for 445: None
+Re-decode RESULT pass 0 for 446: None
+Re-decode RESULT pass 1 for 419: None
+Re-decode RESULT pass 1 for 418: None
+Re-decode RESULT pass 1 for 420: None
+Re-decode RESULT pass 1 for 417: None
+Re-decode RESULT pass 1 for 423: ('VE9PHX', 'OK2CNI', 'JN79')
+Re-decode RESULT pass 1 for 424: ('VE9PHX', 'OK2CNI', 'JN79')
+Re-decode RESULT pass 1 for 422: None
+Re-decode RESULT pass 1 for 421: None
+Re-decode RESULT pass 1 for 427: None
+Re-decode RESULT pass 1 for 428: None
+Re-decode RESULT pass 1 for 426: None
+Re-decode RESULT pass 1 for 425: None
+Re-decode RESULT pass 1 for 431: None
+Re-decode RESULT pass 1 for 432: None
+Re-decode RESULT pass 1 for 430: None
+Re-decode RESULT pass 1 for 435: ('XE1TZP', 'KB1HKN', 'FN42')
+Re-decode RESULT pass 1 for 436: ('XE1TZP', 'KB1HKN', 'FN42')
+Re-decode RESULT pass 1 for 434: None
+Re-decode RESULT pass 1 for 433: None
+Re-decode RESULT pass 1 for 440: None
+Re-decode RESULT pass 1 for 439: None
+Re-decode RESULT pass 1 for 438: None
+Re-decode RESULT pass 1 for 444: ('CQ', 'SM5NBE', 'JP80')
+Re-decode RESULT pass 1 for 443: None
+Re-decode RESULT pass 1 for 441: None
+Re-decode RESULT pass 1 for 442: None
+Re-decode RESULT pass 1 for 448: ('UA4POO', 'YO6PPX', 'KN26')
+Re-decode RESULT pass 1 for 447: None
+Re-decode RESULT pass 1 for 445: None
+Re-decode RESULT pass 1 for 446: None
+Refine origin of 254 (UA4POO YO6PPX KN26) SNR =      4 from 1980.12Hz  -0.42s to 1980.12Hz  -0.43s
+Re-decode RESULT pass 2 for 419: ('WH6GNK', 'SP7NC', 'JO91')
+Re-decode RESULT pass 2 for 420: ('WH6GNK', 'SP7NC', 'JO91')
+Re-decode RESULT pass 2 for 439: ('YV5JLO', 'CT1FIU', '-20')
+Re-decode RESULT pass 2 for 432: ('F4AWT', 'SP2LMG', '+00')
+Re-decode RESULT pass 2 for 440: ('YV5JLO', 'CT1FIU', '-20')
+Re-decode RESULT pass 2 for 428: ('RA9J', 'IW2DNI', 'JN45')
+Re-decode RESULT pass 2 for 431: ('F4AWT', 'SP2LMG', '+00')
+Re-decode RESULT pass 2 for 427: ('RA9J', 'IW2DNI', 'JN45')
+Re-decode RESULT pass 2 for 445: None
+Re-decode RESULT pass 2 for 418: None
+Re-decode RESULT pass 2 for 425: None
+Re-decode RESULT pass 2 for 433: None
+Re-decode RESULT pass 2 for 447: None
+Re-decode RESULT pass 2 for 421: None
+Re-decode RESULT pass 2 for 417: None
+Re-decode RESULT pass 2 for 430: None
+Re-decode RESULT pass 2 for 442: None
+Re-decode RESULT pass 2 for 446: None
+Re-decode RESULT pass 2 for 438: None
+Re-decode RESULT pass 2 for 422: None
+Re-decode RESULT pass 2 for 434: None
+Re-decode RESULT pass 2 for 426: None
+Re-decode RESULT pass 2 for 443: None
+Re-decode RESULT pass 2 for 441: None
+Re-decode RESULT pass 3 for 445: None
+Re-decode RESULT pass 3 for 418: None
+Re-decode RESULT pass 3 for 425: None
+Re-decode RESULT pass 3 for 433: None
+Re-decode RESULT pass 3 for 447: ('UA4POO', 'YO6PPX', 'KN26')
+Re-decode RESULT pass 3 for 421: None
+Re-decode RESULT pass 3 for 417: None
+Re-decode RESULT pass 3 for 430: None
+Re-decode RESULT pass 3 for 442: None
+Re-decode RESULT pass 3 for 446: None
+Re-decode RESULT pass 3 for 438: None
+Re-decode RESULT pass 3 for 422: None
+Re-decode RESULT pass 3 for 434: None
+Re-decode RESULT pass 3 for 426: None
+Re-decode RESULT pass 3 for 443: None
+Re-decode RESULT pass 3 for 441: None
+Refine origin of 35 (SP2KW DL5NDD -03) SNR =     -3 from 611.38Hz   0.00s to 611.38Hz  -0.01s
+Re-decode RESULT pass 4 for 445: None
+Re-decode RESULT pass 4 for 418: ('WH6GNK', 'SP7NC', 'JO91')
+Re-decode RESULT pass 4 for 425: None
+Re-decode RESULT pass 4 for 433: None
+Re-decode RESULT pass 4 for 421: None
+Re-decode RESULT pass 4 for 417: None
+Re-decode RESULT pass 4 for 430: None
+Re-decode RESULT pass 4 for 442: None
+Re-decode RESULT pass 4 for 446: None
+Re-decode RESULT pass 4 for 438: None
+Re-decode RESULT pass 4 for 422: None
+Re-decode RESULT pass 4 for 434: None
+Re-decode RESULT pass 4 for 426: None
+Re-decode RESULT pass 4 for 443: None
+Re-decode RESULT pass 4 for 441: None
+Refine origin of 291 (4M6BMO FN1VWH RR73) SNR =      6 from 2213.38Hz  -0.12s to 2213.38Hz  -0.12s
+Re-decode RESULT pass 5 for 445: None
+Re-decode RESULT pass 5 for 425: None
+Re-decode RESULT pass 5 for 433: None
+Re-decode RESULT pass 5 for 421: None
+Re-decode RESULT pass 5 for 417: None
+Re-decode RESULT pass 5 for 430: None
+Re-decode RESULT pass 5 for 442: None
+Re-decode RESULT pass 5 for 446: None
+Re-decode RESULT pass 5 for 438: None
+Re-decode RESULT pass 5 for 422: None
+Re-decode RESULT pass 5 for 434: None
+Re-decode RESULT pass 5 for 426: None
+Re-decode RESULT pass 5 for 443: None
+Re-decode RESULT pass 5 for 441: None
+Refine origin of 594 (EA4ITN CR7BRV IM58) SNR =     11 from 931.25Hz  -0.02s to 931.25Hz  -0.04s
+Refine origin of 829 (IU8WQA DJ1TU JN48) SNR =     -1 from 2400.00Hz   0.06s to 2400.00Hz   0.04s
+Refine origin of 680 (CQ CR5VP IM59) SNR =     -2 from 1468.75Hz   0.46s to 1468.75Hz   0.45s
+Re-decode RESULT pass 0 for 928: None
+Re-decode RESULT pass 0 for 927: None
+Re-decode RESULT pass 0 for 925: None
+Re-decode RESULT pass 0 for 926: None
+Re-decode RESULT pass 0 for 931: None
+Re-decode RESULT pass 0 for 932: None
+Re-decode RESULT pass 0 for 930: None
+Re-decode RESULT pass 0 for 929: None
+Re-decode RESULT pass 0 for 936: None
+Re-decode RESULT pass 0 for 935: None
+Re-decode RESULT pass 0 for 934: None
+Re-decode RESULT pass 1 for 928: None
+Re-decode RESULT pass 1 for 927: None
+Re-decode RESULT pass 1 for 925: None
+Re-decode RESULT pass 1 for 926: None
+Re-decode RESULT pass 1 for 931: ('IU8WQA', 'DJ1TU', 'JN48')
+Re-decode RESULT pass 1 for 932: ('IU8WQA', 'DJ1TU', 'JN48')
+Re-decode RESULT pass 1 for 930: None
+Re-decode RESULT pass 1 for 929: None
+Re-decode RESULT pass 1 for 936: ('CQ', 'CR5VP', 'IM59')
+Re-decode RESULT pass 1 for 935: ('CQ', 'CR5VP', 'IM59')
+Re-decode RESULT pass 1 for 934: None
+Refine origin of 830 (IU8WQA DJ1TU JN48) SNR =      0 from 2403.12Hz  -0.02s to 2403.12Hz  -0.03s
+Refine origin of 681 (CQ CR5VP IM59) SNR =     -4 from 1473.88Hz   0.38s to 1473.88Hz   0.39s
+Refine origin of 644 (IK4ANJ CT1BFP R-15) SNR =      8 from 1244.62Hz   1.04s to 1244.62Hz   1.04s
+Refine origin of 864 (<...> DL1R JN58) SNR =      3 from 2617.62Hz  -0.08s to 2617.62Hz  -0.09s
+Refine origin of 543 (DL5NDD SP2KW R-07) SNR =      1 from 611.38Hz   0.44s to 611.38Hz   0.44s
+Re-decode RESULT pass 0 for 951: None
+Re-decode RESULT pass 2 for 928: ('EA4ITN', 'CR7BRV', 'IM58')
+Re-decode RESULT pass 2 for 926: None
+Re-decode RESULT pass 2 for 934: None
+Re-decode RESULT pass 2 for 927: ('EA4ITN', 'CR7BRV', 'IM58')
+Re-decode RESULT pass 2 for 925: None
+Re-decode RESULT pass 2 for 929: None
+Re-decode RESULT pass 2 for 930: None
+Refine origin of 663 (OE3MEI M3DCJ R-17) SNR =     10 from 1363.38Hz  -0.02s to 1363.38Hz  -0.02s
+Refine origin of 595 (EA4ITN CR7BRV IM58) SNR =      7 from 936.38Hz  -0.06s to 936.38Hz  -0.08s
+Refine origin of 569 (CQ RA9J MP80) SNR =     -3 from 771.88Hz  -0.12s to 771.88Hz  -0.14s
+Re-decode RESULT pass 3 for 926: None
+Re-decode RESULT pass 3 for 934: None
+Re-decode RESULT pass 3 for 925: None
+Re-decode RESULT pass 3 for 929: None
+Re-decode RESULT pass 3 for 930: None
+Re-decode RESULT pass 4 for 926: None
+Re-decode RESULT pass 4 for 934: None
+Re-decode RESULT pass 4 for 925: None
+Re-decode RESULT pass 4 for 929: None
+Re-decode RESULT pass 4 for 930: None
+Re-decode RESULT pass 5 for 926: None
+Re-decode RESULT pass 5 for 934: None
+Re-decode RESULT pass 5 for 925: None
+Re-decode RESULT pass 5 for 929: None
+Re-decode RESULT pass 5 for 930: None
+Re-decode RESULT pass 6 for 926: stop
+Re-decode RESULT pass 6 for 934: stop
+Re-decode RESULT pass 6 for 925: stop
+Re-decode RESULT pass 6 for 929: stop
+Re-decode RESULT pass 6 for 930: stop
+Refine origin of 318 (VE9PHX OK2CNI JN79) SNR =      2 from 2281.25Hz   0.14s to 2281.25Hz   0.12s
+Refine origin of 163 (HA1ZW SP7AAO JO91) SNR =     -4 from 1312.50Hz   0.02s to 1312.50Hz   0.00s
+Refine origin of 364 (VE9PHX SM6KKX JO67) SNR =     -4 from 2568.75Hz  -0.02s to 2568.75Hz  -0.04s
+Refine origin of 375 (F8MYM HA5KN JN97) SNR =     -2 from 2637.50Hz   0.02s to 2637.50Hz   0.00s
+Refine origin of 279 (CQ 9A3AUH JN75) SNR =      0 from 2037.50Hz  -0.02s to 2037.50Hz  -0.04s
+Refine origin of 173 (CQ SM5NBE JP80) SNR =      0 from 1375.00Hz   0.18s to 1375.00Hz   0.19s
+Refine origin of 269 (UA4POO YO6PPX KN26) SNR =      0 from 1975.00Hz  -0.34s to 1975.00Hz  -0.36s
+Re-decode RESULT pass 0 for 435: None
+Re-decode RESULT pass 0 for 436: None
+Re-decode RESULT pass 0 for 434: None
+Re-decode RESULT pass 0 for 433: None
+Re-decode RESULT pass 0 for 439: None
+Re-decode RESULT pass 0 for 438: None
+Re-decode RESULT pass 0 for 440: None
+Re-decode RESULT pass 0 for 443: None
+Re-decode RESULT pass 0 for 444: None
+Re-decode RESULT pass 0 for 442: None
+Re-decode RESULT pass 0 for 447: None
+Re-decode RESULT pass 0 for 448: None
+Re-decode RESULT pass 0 for 446: None
+Re-decode RESULT pass 0 for 452: None
+Re-decode RESULT pass 0 for 451: None
+Re-decode RESULT pass 0 for 456: None
+Re-decode RESULT pass 0 for 455: None
+Re-decode RESULT pass 0 for 454: None
+Re-decode RESULT pass 0 for 453: None
+Re-decode RESULT pass 0 for 460: None
+Re-decode RESULT pass 0 for 459: None
+Re-decode RESULT pass 0 for 457: None
+Re-decode RESULT pass 1 for 435: ('VE9PHX', 'OK2CNI', 'JN79')
+Re-decode RESULT pass 1 for 436: ('VE9PHX', 'OK2CNI', 'JN79')
+Re-decode RESULT pass 1 for 434: None
+Re-decode RESULT pass 1 for 433: None
+Re-decode RESULT pass 1 for 439: ('HA1ZW', 'SP7AAO', 'JO91')
+Re-decode RESULT pass 1 for 438: None
+Re-decode RESULT pass 1 for 440: None
+Re-decode RESULT pass 1 for 443: ('VE9PHX', 'SM6KKX', 'JO67')
+Re-decode RESULT pass 1 for 444: None
+Re-decode RESULT pass 1 for 442: None
+Re-decode RESULT pass 1 for 447: None
+Re-decode RESULT pass 1 for 448: None
+Re-decode RESULT pass 1 for 446: None
+Re-decode RESULT pass 1 for 452: None
+Re-decode RESULT pass 1 for 451: None
+Re-decode RESULT pass 1 for 456: ('CQ', 'SM5NBE', 'JP80')
+Re-decode RESULT pass 1 for 455: None
+Re-decode RESULT pass 1 for 454: None
+Re-decode RESULT pass 1 for 453: None
+Re-decode RESULT pass 1 for 460: None
+Re-decode RESULT pass 1 for 459: None
+Re-decode RESULT pass 1 for 457: None
+Re-decode RESULT pass 2 for 447: ('F8MYM', 'HA5KN', 'JN97')
+Re-decode RESULT pass 2 for 448: ('F8MYM', 'HA5KN', 'JN97')
+Re-decode RESULT pass 2 for 440: ('HA1ZW', 'SP7AAO', 'JO91')
+Re-decode RESULT pass 2 for 460: ('UA4POO', 'YO6PPX', 'KN26')
+Re-decode RESULT pass 2 for 444: ('VE9PHX', 'SM6KKX', 'JO67')
+Re-decode RESULT pass 2 for 452: ('CQ', '9A3AUH', 'JN75')
+Re-decode RESULT pass 2 for 455: ('CQ', 'SM5NBE', 'JP80')
+Re-decode RESULT pass 2 for 453: None
+Re-decode RESULT pass 2 for 438: None
+Re-decode RESULT pass 2 for 433: None
+Re-decode RESULT pass 2 for 442: None
+Re-decode RESULT pass 2 for 454: None
+Re-decode RESULT pass 2 for 446: None
+Re-decode RESULT pass 2 for 451: None
+Re-decode RESULT pass 2 for 434: None
+Re-decode RESULT pass 2 for 459: None
+Re-decode RESULT pass 2 for 457: None
+Refine origin of 74 (PE1LDS N2WK +00) SNR =      7 from 753.12Hz  -0.08s to 753.12Hz  -0.08s
+Refine origin of 73 (PE1LDS N2WK +00) SNR =     -4 from 752.88Hz  -0.04s to 752.88Hz  -0.03s
+Re-decode RESULT pass 3 for 453: None
+Re-decode RESULT pass 3 for 438: ('HA1ZW', 'SP7AAO', 'JO91')
+Re-decode RESULT pass 3 for 433: None
+Re-decode RESULT pass 3 for 442: None
+Re-decode RESULT pass 3 for 454: None
+Re-decode RESULT pass 3 for 446: None
+Re-decode RESULT pass 3 for 451: None
+Re-decode RESULT pass 3 for 434: None
+Re-decode RESULT pass 3 for 459: None
+Re-decode RESULT pass 3 for 457: None
+Refine origin of 136 (EA4IPN IU8RIR JN70) SNR =      0 from 1140.62Hz  -0.10s to 1140.62Hz  -0.09s
+Re-decode RESULT pass 4 for 453: None
+Re-decode RESULT pass 4 for 433: None
+Re-decode RESULT pass 4 for 442: None
+Re-decode RESULT pass 4 for 454: None
+Re-decode RESULT pass 4 for 446: None
+Re-decode RESULT pass 4 for 451: None
+Re-decode RESULT pass 4 for 434: None
+Re-decode RESULT pass 4 for 459: None
+Re-decode RESULT pass 4 for 457: None
+Re-decode RESULT pass 5 for 453: None
+Re-decode RESULT pass 5 for 433: None
+Re-decode RESULT pass 5 for 442: None
+Re-decode RESULT pass 5 for 454: None
+Re-decode RESULT pass 5 for 446: None
+Re-decode RESULT pass 5 for 451: ('CQ', '9A3AUH', 'JN75')
+Re-decode RESULT pass 5 for 434: None
+Re-decode RESULT pass 5 for 459: None
+Re-decode RESULT pass 5 for 457: None
+Refine origin of 135 (EA4IPN IU8RIR JN70) SNR =      6 from 1140.38Hz  -0.04s to 1140.38Hz  -0.06s
+Refine origin of 306 (CQ SQ8AA KN19) SNR =      6 from 2209.12Hz  -0.08s to 2209.12Hz  -0.10s
+Re-decode RESULT pass 6 for 453: stop
+Re-decode RESULT pass 6 for 433: stop
+Re-decode RESULT pass 6 for 442: stop
+Re-decode RESULT pass 6 for 454: stop
+Re-decode RESULT pass 6 for 446: stop
+Re-decode RESULT pass 6 for 434: stop
+Re-decode RESULT pass 6 for 459: stop
+Re-decode RESULT pass 6 for 457: stop
+Re-decode RESULT pass 0 for 463: None
+Re-decode RESULT pass 0 for 464: None
+Refine origin of 614 (EA4ITN CR7BRV R-03) SNR =     15 from 931.25Hz  -0.02s to 931.25Hz  -0.01s
+Refine origin of 838 (EA5GX EA3HKA RR73) SNR =     -4 from 2331.25Hz  -1.10s to 2331.25Hz  -1.12s
+Refine origin of 674 (TA1MB IS0LYN JN40) SNR =      4 from 1306.25Hz   0.22s to 1306.25Hz   0.20s
+Refine origin of 849 (IU8WQA DJ1TU JN48) SNR =     -1 from 2400.00Hz   0.06s to 2400.00Hz   0.04s
+Refine origin of 627 (CQ SQ5NAP KO02) SNR =      0 from 1012.50Hz   0.14s to 1012.50Hz   0.12s
+Re-decode RESULT pass 0 for 948: None
+Re-decode RESULT pass 0 for 947: None
+Re-decode RESULT pass 0 for 946: None
+Re-decode RESULT pass 0 for 951: None
+Re-decode RESULT pass 0 for 950: None
+Re-decode RESULT pass 0 for 952: None
+Re-decode RESULT pass 0 for 956: None
+Re-decode RESULT pass 0 for 955: None
+Re-decode RESULT pass 0 for 959: None
+Re-decode RESULT pass 0 for 960: None
+Re-decode RESULT pass 0 for 964: None
+Re-decode RESULT pass 0 for 963: None
+Refine origin of 791 (9A3AUH CT1BFP IM59) SNR =     12 from 2037.50Hz   1.14s to 2037.50Hz   1.12s
+Refine origin of 688 (CQ SP6AMI JO90) SNR =     -2 from 1393.75Hz   1.22s to 1393.75Hz   1.20s
+Refine origin of 700 (CQ CR5VP IM59) SNR =      2 from 1468.75Hz   0.46s to 1468.75Hz   0.45s
+Re-decode RESULT pass 0 for 954: None
+Re-decode RESULT pass 0 for 953: None
+Re-decode RESULT pass 0 for 968: None
+Re-decode RESULT pass 0 for 967: None
+Re-decode RESULT pass 0 for 966: None
+Re-decode RESULT pass 0 for 965: None
+Re-decode RESULT pass 0 for 972: None
+Re-decode RESULT pass 0 for 971: None
+Re-decode RESULT pass 0 for 970: None
+Re-decode RESULT pass 0 for 976: None
+Re-decode RESULT pass 0 for 975: None
+Re-decode RESULT pass 1 for 948: ('EA4ITN', 'CR7BRV', 'R-03')
+Re-decode RESULT pass 1 for 947: None
+Re-decode RESULT pass 1 for 946: None
+Re-decode RESULT pass 1 for 951: None
+Re-decode RESULT pass 1 for 950: None
+Re-decode RESULT pass 1 for 952: None
+Re-decode RESULT pass 1 for 956: None
+Re-decode RESULT pass 1 for 955: None
+Re-decode RESULT pass 1 for 954: None
+Re-decode RESULT pass 1 for 953: None
+Re-decode RESULT pass 1 for 959: None
+Re-decode RESULT pass 1 for 960: None
+Re-decode RESULT pass 1 for 964: None
+Re-decode RESULT pass 1 for 963: None
+Re-decode RESULT pass 1 for 968: None
+Re-decode RESULT pass 1 for 967: None
+Re-decode RESULT pass 1 for 966: None
+Re-decode RESULT pass 1 for 965: None
+Re-decode RESULT pass 1 for 972: ('CQ', 'SP6AMI', 'JO90')
+Re-decode RESULT pass 1 for 971: None
+Re-decode RESULT pass 1 for 970: None
+Re-decode RESULT pass 1 for 976: ('CQ', 'CR5VP', 'IM59')
+Re-decode RESULT pass 1 for 975: None
+Refine origin of 701 (CQ CR5VP IM59) SNR =     -2 from 1473.88Hz   0.38s to 1473.88Hz   0.38s
+Refine origin of 884 (<...> DL1R JN58) SNR =      1 from 2617.62Hz  -0.10s to 2617.62Hz  -0.09s
+Refine origin of 869 (YO3BMI SP9UPH JO90) SNR =     -1 from 2523.88Hz  -0.12s to 2523.88Hz  -0.12s
+Refine origin of 563 (DL5NDD SP2KW 73) SNR =      6 from 611.38Hz   0.50s to 611.38Hz   0.49s
+Re-decode RESULT pass 2 for 946: None
+Re-decode RESULT pass 2 for 968: ('9A3AUH', 'CT1BFP', 'IM59')
+Re-decode RESULT pass 2 for 951: ('EA5GX', 'EA3HKA', 'RR73')
+Re-decode RESULT pass 2 for 963: ('CQ', 'SQ5NAP', 'KO02')
+Re-decode RESULT pass 2 for 970: None
+Re-decode RESULT pass 2 for 975: ('CQ', 'CR5VP', 'IM59')
+Re-decode RESULT pass 2 for 967: ('9A3AUH', 'CT1BFP', 'IM59')
+Re-decode RESULT pass 2 for 956: ('TA1MB', 'IS0LYN', 'JN40')
+Re-decode RESULT pass 2 for 964: ('CQ', 'SQ5NAP', 'KO02')
+Re-decode RESULT pass 2 for 966: None
+Re-decode RESULT pass 2 for 971: None
+Re-decode RESULT pass 2 for 965: None
+Re-decode RESULT pass 2 for 960: ('IU8WQA', 'DJ1TU', 'JN48')
+Re-decode RESULT pass 2 for 947: None
+Re-decode RESULT pass 2 for 952: None
+Re-decode RESULT pass 2 for 950: None
+Re-decode RESULT pass 2 for 955: None
+Re-decode RESULT pass 2 for 953: None
+Re-decode RESULT pass 2 for 954: None
+Re-decode RESULT pass 2 for 959: None
+Refine origin of 552 (KC2NDA GM4ZTO -16) SNR =     -3 from 542.62Hz  -0.26s to 542.62Hz  -0.26s
+Refine origin of 683 (OE3MEI M3DCJ R-17) SNR =      0 from 1363.38Hz  -0.02s to 1363.38Hz  -0.03s
+Refine origin of 792 (9A3AUH CT1BFP IM59) SNR =     16 from 2042.62Hz   1.04s to 2042.62Hz   1.05s
+Refine origin of 615 (EA4ITN CR7BRV R-03) SNR =     -1 from 934.38Hz  -0.10s to 934.38Hz  -0.10s
+Refine origin of 732 (R5KH RJ2T RR73) SNR =      6 from 1667.62Hz  -0.08s to 1667.62Hz  -0.09s
+Re-decode RESULT pass 3 for 946: None
+Re-decode RESULT pass 3 for 970: None
+Re-decode RESULT pass 3 for 966: None
+Re-decode RESULT pass 3 for 971: ('CQ', 'SP6AMI', 'JO90')
+Re-decode RESULT pass 3 for 965: None
+Re-decode RESULT pass 3 for 947: ('EA4ITN', 'CR7BRV', 'R-03')
+Re-decode RESULT pass 3 for 952: None
+Re-decode RESULT pass 3 for 950: ('EA5GX', 'EA3HKA', 'RR73')
+Re-decode RESULT pass 3 for 955: None
+Re-decode RESULT pass 3 for 953: None
+Re-decode RESULT pass 3 for 954: None
+Re-decode RESULT pass 3 for 959: None
+Re-decode RESULT pass 4 for 946: None
+Re-decode RESULT pass 4 for 970: None
+Re-decode RESULT pass 4 for 966: None
+Re-decode RESULT pass 4 for 965: None
+Re-decode RESULT pass 4 for 952: None
+Re-decode RESULT pass 4 for 955: None
+Re-decode RESULT pass 4 for 953: None
+Re-decode RESULT pass 4 for 954: None
+Re-decode RESULT pass 4 for 959: None
+Re-decode RESULT pass 5 for 946: None
+Re-decode RESULT pass 5 for 970: None
+Re-decode RESULT pass 5 for 966: None
+Re-decode RESULT pass 5 for 965: None
+Re-decode RESULT pass 5 for 952: None
+Re-decode RESULT pass 5 for 955: None
+Re-decode RESULT pass 5 for 953: None
+Re-decode RESULT pass 5 for 954: None
+Re-decode RESULT pass 5 for 959: None
+Re-decode RESULT pass 6 for 946: stop
+Re-decode RESULT pass 6 for 970: stop
+Re-decode RESULT pass 6 for 966: stop
+Re-decode RESULT pass 6 for 965: stop
+Re-decode RESULT pass 6 for 952: stop
+Re-decode RESULT pass 6 for 955: stop
+Re-decode RESULT pass 6 for 953: stop
+Re-decode RESULT pass 6 for 954: stop
+Re-decode RESULT pass 6 for 959: stop
+Refine origin of 362 (VE9PHX OK2CNI JN79) SNR =     -2 from 2281.25Hz   0.14s to 2281.25Hz   0.12s
+Refine origin of 419 (F8MYM HA5KN JN97) SNR =     -4 from 2637.50Hz   0.02s to 2637.50Hz   0.00s
+Refine origin of 323 (CQ 9A3AUH JN75) SNR =      0 from 2037.50Hz  -0.02s to 2037.50Hz  -0.04s
+Refine origin of 216 (CQ SM5NBE JP80) SNR =      5 from 1368.75Hz   0.18s to 1368.75Hz   0.18s
+Refine origin of 284 (XE1TZP KB1HKN FN42) SNR =      5 from 1793.75Hz   0.10s to 1793.75Hz   0.08s
+Refine origin of 179 (EA4IPN IU8RIR JN70) SNR =     -1 from 1137.50Hz   0.02s to 1137.50Hz   0.00s
+Refine origin of 81 (RA9J IW2DNI JN45) SNR =     -3 from 525.00Hz   0.02s to 525.00Hz   0.00s
+Re-decode RESULT pass 0 for 479: None
+Re-decode RESULT pass 0 for 480: None
+Re-decode RESULT pass 0 for 478: None
+Re-decode RESULT pass 0 for 477: None
+Re-decode RESULT pass 0 for 483: None
+Re-decode RESULT pass 0 for 484: None
+Re-decode RESULT pass 0 for 482: None
+Re-decode RESULT pass 0 for 488: None
+Re-decode RESULT pass 0 for 487: None
+Re-decode RESULT pass 0 for 485: None
+Re-decode RESULT pass 0 for 486: None
+Re-decode RESULT pass 0 for 492: None
+Re-decode RESULT pass 0 for 491: None
+Re-decode RESULT pass 0 for 489: None
+Re-decode RESULT pass 0 for 490: None
+Re-decode RESULT pass 0 for 495: None
+Re-decode RESULT pass 0 for 496: None
+Re-decode RESULT pass 0 for 494: None
+Re-decode RESULT pass 0 for 500: None
+Re-decode RESULT pass 0 for 499: None
+Re-decode RESULT pass 0 for 503: None
+Re-decode RESULT pass 0 for 504: None
+Re-decode RESULT pass 1 for 479: ('VE9PHX', 'OK2CNI', 'JN79')
+Re-decode RESULT pass 1 for 480: ('VE9PHX', 'OK2CNI', 'JN79')
+Re-decode RESULT pass 1 for 478: None
+Re-decode RESULT pass 1 for 477: None
+Re-decode RESULT pass 1 for 483: None
+Re-decode RESULT pass 1 for 484: None
+Re-decode RESULT pass 1 for 482: None
+Re-decode RESULT pass 1 for 488: None
+Re-decode RESULT pass 1 for 487: None
+Re-decode RESULT pass 1 for 485: None
+Re-decode RESULT pass 1 for 486: None
+Re-decode RESULT pass 1 for 492: ('CQ', 'SM5NBE', 'JP80')
+Re-decode RESULT pass 1 for 491: None
+Re-decode RESULT pass 1 for 489: None
+Re-decode RESULT pass 1 for 490: None
+Re-decode RESULT pass 1 for 495: None
+Re-decode RESULT pass 1 for 496: None
+Re-decode RESULT pass 1 for 494: None
+Re-decode RESULT pass 1 for 500: None
+Re-decode RESULT pass 1 for 499: None
+Re-decode RESULT pass 1 for 503: ('RA9J', 'IW2DNI', 'JN45')
+Re-decode RESULT pass 1 for 504: None
+Refine origin of 307 (TA1EDG SP9MRP JO90) SNR =      4 from 1936.38Hz  -0.10s to 1936.38Hz  -0.09s
+Re-decode RESULT pass 2 for 488: ('CQ', '9A3AUH', 'JN75')
+Re-decode RESULT pass 2 for 500: ('EA4IPN', 'IU8RIR', 'JN70')
+Re-decode RESULT pass 2 for 483: None
+Re-decode RESULT pass 2 for 496: ('XE1TZP', 'KB1HKN', 'FN42')
+Re-decode RESULT pass 2 for 495: ('XE1TZP', 'KB1HKN', 'FN42')
+Re-decode RESULT pass 2 for 484: None
+Re-decode RESULT pass 2 for 490: None
+Re-decode RESULT pass 2 for 487: ('CQ', '9A3AUH', 'JN75')
+Re-decode RESULT pass 2 for 477: None
+Re-decode RESULT pass 2 for 499: ('EA4IPN', 'IU8RIR', 'JN70')
+Re-decode RESULT pass 2 for 504: None
+Re-decode RESULT pass 2 for 486: None
+Re-decode RESULT pass 2 for 491: None
+Re-decode RESULT pass 2 for 478: None
+Re-decode RESULT pass 2 for 485: None
+Re-decode RESULT pass 2 for 489: None
+Re-decode RESULT pass 2 for 494: None
+Re-decode RESULT pass 2 for 482: None
+Refine origin of 351 (CQ SQ8AA KN19) SNR =     -2 from 2211.38Hz  -0.12s to 2211.38Hz  -0.12s
+Refine origin of 345 (CQ SP2LMG JO94) SNR =      1 from 2177.88Hz   0.38s to 2177.88Hz   0.36s
+Refine origin of 324 (CQ 9A3AUH JN75) SNR =      0 from 2042.62Hz  -0.10s to 2042.62Hz  -0.09s
+Refine origin of 117 (PE1LDS N2WK -01) SNR =     -4 from 752.88Hz  -0.04s to 752.88Hz  -0.06s
+Re-decode RESULT pass 3 for 483: None
+Re-decode RESULT pass 3 for 484: None
+Re-decode RESULT pass 3 for 490: None
+Re-decode RESULT pass 3 for 477: None
+Re-decode RESULT pass 3 for 504: None
+Re-decode RESULT pass 3 for 486: None
+Re-decode RESULT pass 3 for 491: None
+Re-decode RESULT pass 3 for 478: None
+Re-decode RESULT pass 3 for 485: None
+Re-decode RESULT pass 3 for 489: None
+Re-decode RESULT pass 3 for 494: None
+Re-decode RESULT pass 3 for 482: None
+Refine origin of 408 (ON3SD SM6KKX -16) SNR =     -2 from 2571.62Hz  -0.10s to 2571.62Hz  -0.10s
+Re-decode RESULT pass 4 for 483: None
+Re-decode RESULT pass 4 for 484: None
+Re-decode RESULT pass 4 for 490: None
+Re-decode RESULT pass 4 for 477: None
+Re-decode RESULT pass 4 for 504: ('RA9J', 'IW2DNI', 'JN45')
+Re-decode RESULT pass 4 for 486: None
+Re-decode RESULT pass 4 for 491: ('CQ', 'SM5NBE', 'JP80')
+Re-decode RESULT pass 4 for 478: None
+Re-decode RESULT pass 4 for 485: None
+Re-decode RESULT pass 4 for 489: None
+Re-decode RESULT pass 4 for 494: None
+Re-decode RESULT pass 4 for 482: None
+Re-decode RESULT pass 5 for 483: None
+Re-decode RESULT pass 5 for 484: None
+Re-decode RESULT pass 5 for 490: None
+Re-decode RESULT pass 5 for 477: None
+Re-decode RESULT pass 5 for 486: None
+Re-decode RESULT pass 5 for 478: None
+Re-decode RESULT pass 5 for 485: None
+Re-decode RESULT pass 5 for 489: None
+Re-decode RESULT pass 5 for 494: None
+Re-decode RESULT pass 5 for 482: None
+Refine origin of 662 (EA4ITN CR7BRV 73) SNR =      1 from 931.25Hz  -0.02s to 931.25Hz  -0.04s
+Refine origin of 886 (CQ EA3HKA JN11) SNR =      0 from 2331.25Hz  -1.10s to 2331.25Hz  -1.12s
+Re-decode RESULT pass 0 for 996: None
+Re-decode RESULT pass 0 for 995: None
+Re-decode RESULT pass 0 for 999: None
+Re-decode RESULT pass 0 for 998: None
+Refine origin of 839 (9A3AUH CT1BFP IM59) SNR =      4 from 2037.50Hz   1.14s to 2037.50Hz   1.12s
+Re-decode RESULT pass 0 for 4: None
+Re-decode RESULT pass 0 for 3: None
+Re-decode RESULT pass 0 for 2: None
+Re-decode RESULT pass 0 for 1: None
+Re-decode RESULT pass 0 for 993: None
+Re-decode RESULT pass 0 for 994: None
+Re-decode RESULT pass 1 for 996: None
+Re-decode RESULT pass 1 for 995: None
+Re-decode RESULT pass 1 for 993: None
+Re-decode RESULT pass 1 for 994: None
+Re-decode RESULT pass 1 for 999: ('CQ', 'EA3HKA', 'JN11')
+Re-decode RESULT pass 1 for 998: None
+Re-decode RESULT pass 1 for 4: None
+Re-decode RESULT pass 1 for 3: None
+Re-decode RESULT pass 1 for 2: None
+Re-decode RESULT pass 1 for 1: None
+Refine origin of 600 (KC2NDA GM4ZTO -16) SNR =      8 from 542.62Hz  -0.26s to 542.62Hz  -0.26s
+Re-decode RESULT pass 2 for 996: ('EA4ITN', 'CR7BRV', '73')
+Re-decode RESULT pass 2 for 4: ('9A3AUH', 'CT1BFP', 'IM59')
+Re-decode RESULT pass 2 for 993: None
+Re-decode RESULT pass 2 for 2: None
+Re-decode RESULT pass 2 for 3: None
+Re-decode RESULT pass 2 for 995: ('EA4ITN', 'CR7BRV', '73')
+Re-decode RESULT pass 2 for 994: None
+Re-decode RESULT pass 2 for 1: None
+Re-decode RESULT pass 2 for 998: None
+Refine origin of 932 (<...> DL1R JN58) SNR =      0 from 2617.62Hz  -0.10s to 2617.62Hz  -0.09s
+Refine origin of 731 (OE3MEI M3DCJ R-17) SNR =      6 from 1363.38Hz  -0.04s to 1363.38Hz  -0.04s
+Refine origin of 840 (9A3AUH CT1BFP IM59) SNR =     -4 from 2042.62Hz   1.04s to 2042.62Hz   1.04s
+Refine origin of 663 (EA4ITN CR7BRV 73) SNR =     -4 from 934.38Hz  -0.10s to 934.38Hz  -0.10s
+Re-decode RESULT pass 3 for 993: None
+Re-decode RESULT pass 3 for 2: None
+Re-decode RESULT pass 3 for 3: None
+Re-decode RESULT pass 3 for 994: None
+Re-decode RESULT pass 3 for 1: None
+Re-decode RESULT pass 3 for 998: ('CQ', 'EA3HKA', 'JN11')
+Refine origin of 737 (CQ SP6AMI JO90) SNR =      6 from 1396.88Hz   1.14s to 1396.88Hz   1.15s
+Re-decode RESULT pass 4 for 993: None
+Re-decode RESULT pass 4 for 2: None
+Re-decode RESULT pass 4 for 3: None
+Re-decode RESULT pass 4 for 994: None
+Re-decode RESULT pass 4 for 1: None
+Re-decode RESULT pass 5 for 993: None
+Re-decode RESULT pass 5 for 2: None
+Re-decode RESULT pass 5 for 3: None
+Re-decode RESULT pass 5 for 994: None
+Re-decode RESULT pass 5 for 1: None
+Re-decode RESULT pass 6 for 993: stop
+Re-decode RESULT pass 6 for 2: stop
+Re-decode RESULT pass 6 for 3: stop
+Re-decode RESULT pass 6 for 994: stop
+Re-decode RESULT pass 6 for 1: stop
+Refine origin of 97 (RA9J IW2DNI JN45) SNR =      0 from 525.00Hz   0.02s to 525.00Hz   0.00s
+Refine origin of 435 (SQ5NAP HA5KN JN97) SNR =      3 from 2637.50Hz   0.02s to 2637.50Hz   0.00s
+Refine origin of 300 (XE1TZP KB1HKN FN42) SNR =     14 from 1793.75Hz   0.10s to 1793.75Hz   0.08s
+Refine origin of 351 (YV5JLO CT1FIU -20) SNR =     -3 from 2112.50Hz   0.02s to 2112.50Hz   0.00s
+Refine origin of 339 (CQ 9A3AUH JN75) SNR =     -4 from 2037.50Hz  -0.02s to 2037.50Hz  -0.04s
+Refine origin of 424 (ON3SD SM6KKX RR73) SNR =      0 from 2568.75Hz  -0.02s to 2568.75Hz  -0.04s
+Refine origin of 123 (<...> IZ2TKX JN45) SNR =     -4 from 687.50Hz   0.06s to 687.50Hz   0.04s
+Refine origin of 378 (VE9PHX OK2CNI JN79) SNR =      6 from 2281.25Hz   0.14s to 2281.25Hz   0.12s
+Re-decode RESULT pass 0 for 495: None
+Re-decode RESULT pass 0 for 496: None
+Re-decode RESULT pass 0 for 494: None
+Re-decode RESULT pass 0 for 493: None
+Re-decode RESULT pass 0 for 499: None
+Re-decode RESULT pass 0 for 500: None
+Re-decode RESULT pass 0 for 498: None
+Re-decode RESULT pass 0 for 497: None
+Re-decode RESULT pass 0 for 503: None
+Re-decode RESULT pass 0 for 502: None
+Re-decode RESULT pass 0 for 504: None
+Re-decode RESULT pass 0 for 501: None
+Re-decode RESULT pass 0 for 507: None
+Re-decode RESULT pass 0 for 508: None
+Re-decode RESULT pass 0 for 506: None
+Re-decode RESULT pass 0 for 512: None
+Re-decode RESULT pass 0 for 511: None
+Re-decode RESULT pass 0 for 510: None
+Re-decode RESULT pass 0 for 515: None
+Re-decode RESULT pass 0 for 516: None
+Re-decode RESULT pass 0 for 513: None
+Re-decode RESULT pass 0 for 514: None
+Re-decode RESULT pass 0 for 520: None
+Re-decode RESULT pass 0 for 519: None
+Re-decode RESULT pass 0 for 523: None
+Re-decode RESULT pass 0 for 524: None
+Re-decode RESULT pass 0 for 522: None
+Re-decode RESULT pass 0 for 521: None
+Re-decode RESULT pass 1 for 495: ('RA9J', 'IW2DNI', 'JN45')
+Re-decode RESULT pass 1 for 496: ('RA9J', 'IW2DNI', 'JN45')
+Re-decode RESULT pass 1 for 494: None
+Re-decode RESULT pass 1 for 493: None
+Re-decode RESULT pass 1 for 499: None
+Re-decode RESULT pass 1 for 500: ('SQ5NAP', 'HA5KN', 'JN97')
+Re-decode RESULT pass 1 for 498: None
+Re-decode RESULT pass 1 for 497: None
+Re-decode RESULT pass 1 for 503: None
+Re-decode RESULT pass 1 for 502: None
+Re-decode RESULT pass 1 for 504: None
+Re-decode RESULT pass 1 for 501: None
+Re-decode RESULT pass 1 for 507: ('YV5JLO', 'CT1FIU', '-20')
+Re-decode RESULT pass 1 for 508: ('YV5JLO', 'CT1FIU', '-20')
+Re-decode RESULT pass 1 for 506: None
+Re-decode RESULT pass 1 for 512: ('CQ', '9A3AUH', 'JN75')
+Re-decode RESULT pass 1 for 511: ('CQ', '9A3AUH', 'JN75')
+Re-decode RESULT pass 1 for 510: None
+Re-decode RESULT pass 1 for 515: None
+Re-decode RESULT pass 1 for 516: None
+Re-decode RESULT pass 1 for 513: None
+Re-decode RESULT pass 1 for 514: None
+Re-decode RESULT pass 1 for 520: None
+Re-decode RESULT pass 1 for 519: None
+Re-decode RESULT pass 1 for 523: None
+Re-decode RESULT pass 1 for 524: None
+Re-decode RESULT pass 1 for 522: None
+Re-decode RESULT pass 1 for 521: None
+Refine origin of 232 (G4UJS SM5NBE R-07) SNR =     -1 from 1367.62Hz   0.10s to 1367.62Hz   0.09s
+Refine origin of 340 (CQ 9A3AUH JN75) SNR =     -4 from 2042.62Hz  -0.08s to 2042.62Hz  -0.08s
+Refine origin of 401 (CQ MI0UFT IO64) SNR =      0 from 2423.88Hz  -0.14s to 2423.88Hz  -0.16s
+Re-decode RESULT pass 2 for 499: ('SQ5NAP', 'HA5KN', 'JN97')
+Re-decode RESULT pass 2 for 515: None
+Re-decode RESULT pass 2 for 503: ('XE1TZP', 'KB1HKN', 'FN42')
+Re-decode RESULT pass 2 for 514: None
+Re-decode RESULT pass 2 for 524: None
+Re-decode RESULT pass 2 for 516: None
+Re-decode RESULT pass 2 for 504: ('XE1TZP', 'KB1HKN', 'FN42')
+Re-decode RESULT pass 2 for 523: None
+Re-decode RESULT pass 2 for 513: None
+Re-decode RESULT pass 2 for 519: ('<...>', 'IZ2TKX', 'JN45')
+Re-decode RESULT pass 2 for 520: None
+Re-decode RESULT pass 2 for 501: None
+Re-decode RESULT pass 2 for 521: None
+Re-decode RESULT pass 2 for 494: None
+Re-decode RESULT pass 2 for 498: None
+Re-decode RESULT pass 2 for 510: None
+Re-decode RESULT pass 2 for 493: None
+Re-decode RESULT pass 2 for 497: None
+Re-decode RESULT pass 2 for 502: None
+Re-decode RESULT pass 2 for 522: None
+Re-decode RESULT pass 2 for 506: None
+Refine origin of 361 (TA1EDG SP9MRP JO90) SNR =      1 from 2171.88Hz  -0.10s to 2171.88Hz  -0.09s
+Re-decode RESULT pass 3 for 515: None
+Re-decode RESULT pass 3 for 514: None
+Re-decode RESULT pass 3 for 524: ('VE9PHX', 'OK2CNI', 'JN79')
+Re-decode RESULT pass 3 for 516: None
+Re-decode RESULT pass 3 for 523: ('VE9PHX', 'OK2CNI', 'JN79')
+Re-decode RESULT pass 3 for 513: None
+Re-decode RESULT pass 3 for 520: ('<...>', 'IZ2TKX', 'JN45')
+Re-decode RESULT pass 3 for 501: None
+Re-decode RESULT pass 3 for 521: None
+Re-decode RESULT pass 3 for 494: None
+Re-decode RESULT pass 3 for 498: None
+Re-decode RESULT pass 3 for 510: None
+Re-decode RESULT pass 3 for 493: None
+Re-decode RESULT pass 3 for 497: None
+Re-decode RESULT pass 3 for 502: None
+Re-decode RESULT pass 3 for 522: None
+Re-decode RESULT pass 3 for 506: None
+Refine origin of 367 (CQ SQ8AA KN19) SNR =      8 from 2211.38Hz  -0.12s to 2211.38Hz  -0.12s
+Refine origin of 386 (IS0LYN TA1MB +01) SNR =     -2 from 2332.12Hz  -0.02s to 2332.12Hz  -0.04s
+Re-decode RESULT pass 4 for 515: ('ON3SD', 'SM6KKX', 'RR73')
+Re-decode RESULT pass 4 for 514: None
+Re-decode RESULT pass 4 for 516: ('ON3SD', 'SM6KKX', 'RR73')
+Re-decode RESULT pass 4 for 513: None
+Re-decode RESULT pass 4 for 501: None
+Re-decode RESULT pass 4 for 521: None
+Re-decode RESULT pass 4 for 494: None
+Re-decode RESULT pass 4 for 498: None
+Re-decode RESULT pass 4 for 510: None
+Re-decode RESULT pass 4 for 493: None
+Re-decode RESULT pass 4 for 497: None
+Re-decode RESULT pass 4 for 502: None
+Re-decode RESULT pass 4 for 522: None
+Re-decode RESULT pass 4 for 506: None
+Re-decode RESULT pass 5 for 514: None
+Re-decode RESULT pass 5 for 513: None
+Re-decode RESULT pass 5 for 501: None
+Re-decode RESULT pass 5 for 521: None
+Re-decode RESULT pass 5 for 494: None
+Re-decode RESULT pass 5 for 498: None
+Re-decode RESULT pass 5 for 510: None
+Re-decode RESULT pass 5 for 493: None
+Re-decode RESULT pass 5 for 497: None
+Re-decode RESULT pass 5 for 502: None
+Re-decode RESULT pass 5 for 522: None
+Re-decode RESULT pass 5 for 506: None
+Refine origin of 906 (TA1MB IS0LYN R-06) SNR =      1 from 2331.25Hz  -0.06s to 2331.25Hz  -0.08s
+Refine origin of 917 (IU8WQA DJ1TU JN48) SNR =      1 from 2400.00Hz   0.06s to 2400.00Hz   0.04s
+Refine origin of 768 (CQ CR5VP IM59) SNR =      7 from 1468.75Hz   0.50s to 1468.75Hz   0.50s
+Refine origin of 951 (<...> DL1R JN58) SNR =      7 from 2612.50Hz  -0.02s to 2612.50Hz  -0.02s
+Re-decode RESULT pass 0 for 15: None
+Re-decode RESULT pass 0 for 16: None
+Re-decode RESULT pass 0 for 14: None
+Re-decode RESULT pass 0 for 19: None
+Re-decode RESULT pass 0 for 20: None
+Re-decode RESULT pass 0 for 18: None
+Re-decode RESULT pass 0 for 17: None
+Re-decode RESULT pass 0 for 24: None
+Re-decode RESULT pass 0 for 23: None
+Re-decode RESULT pass 0 for 28: None
+Re-decode RESULT pass 0 for 27: None
+Refine origin of 756 (CQ SP6AMI JO90) SNR =     -2 from 1393.75Hz   1.22s to 1393.75Hz   1.20s
+Refine origin of 859 (9A3AUH CT1BFP IM59) SNR =      2 from 2037.50Hz   1.14s to 2037.50Hz   1.12s
+Re-decode RESULT pass 0 for 32: None
+Re-decode RESULT pass 0 for 31: None
+Re-decode RESULT pass 0 for 29: None
+Re-decode RESULT pass 0 for 30: None
+Re-decode RESULT pass 0 for 36: None
+Re-decode RESULT pass 0 for 35: None
+Re-decode RESULT pass 0 for 33: None
+Re-decode RESULT pass 0 for 34: None
+Re-decode RESULT pass 1 for 15: None
+Re-decode RESULT pass 1 for 16: None
+Re-decode RESULT pass 1 for 14: None
+Re-decode RESULT pass 1 for 19: None
+Re-decode RESULT pass 1 for 20: ('IU8WQA', 'DJ1TU', 'JN48')
+Re-decode RESULT pass 1 for 18: None
+Re-decode RESULT pass 1 for 17: None
+Re-decode RESULT pass 1 for 24: ('CQ', 'CR5VP', 'IM59')
+Re-decode RESULT pass 1 for 23: None
+Re-decode RESULT pass 1 for 28: None
+Re-decode RESULT pass 1 for 27: None
+Re-decode RESULT pass 1 for 32: ('CQ', 'SP6AMI', 'JO90')
+Re-decode RESULT pass 1 for 31: None
+Re-decode RESULT pass 1 for 29: None
+Re-decode RESULT pass 1 for 30: None
+Re-decode RESULT pass 1 for 36: None
+Re-decode RESULT pass 1 for 35: None
+Re-decode RESULT pass 1 for 33: None
+Re-decode RESULT pass 1 for 34: None
+Refine origin of 769 (CQ CR5VP IM59) SNR =     -4 from 1473.88Hz   0.44s to 1473.88Hz   0.44s
+Refine origin of 980 (G6UJJ EA5ET IM99) SNR =     -3 from 2792.62Hz   0.04s to 2792.62Hz   0.04s
+Refine origin of 841 (CQ OZ1NIB JO57) SNR =     -3 from 1923.88Hz  -0.10s to 1923.88Hz  -0.09s
+Re-decode RESULT pass 2 for 36: ('9A3AUH', 'CT1BFP', 'IM59')
+Re-decode RESULT pass 2 for 34: None
+Re-decode RESULT pass 2 for 16: ('TA1MB', 'IS0LYN', 'R-06')
+Re-decode RESULT pass 2 for 15: ('TA1MB', 'IS0LYN', 'R-06')
+Re-decode RESULT pass 2 for 31: ('CQ', 'SP6AMI', 'JO90')
+Re-decode RESULT pass 2 for 28: ('<...>', 'DL1R', 'JN58')
+Re-decode RESULT pass 2 for 18: None
+Re-decode RESULT pass 2 for 35: None
+Re-decode RESULT pass 2 for 23: None
+Re-decode RESULT pass 2 for 19: None
+Re-decode RESULT pass 2 for 29: None
+Re-decode RESULT pass 2 for 14: None
+Re-decode RESULT pass 2 for 30: None
+Re-decode RESULT pass 2 for 33: None
+Re-decode RESULT pass 2 for 27: None
+Re-decode RESULT pass 2 for 17: None
+Refine origin of 952 (<...> DL1R JN58) SNR =      7 from 2617.62Hz  -0.08s to 2617.62Hz  -0.08s
+Re-decode RESULT pass 3 for 34: None
+Re-decode RESULT pass 3 for 18: None
+Re-decode RESULT pass 3 for 35: ('9A3AUH', 'CT1BFP', 'IM59')
+Re-decode RESULT pass 3 for 23: None
+Re-decode RESULT pass 3 for 19: ('IU8WQA', 'DJ1TU', 'JN48')
+Re-decode RESULT pass 3 for 29: None
+Re-decode RESULT pass 3 for 14: None
+Re-decode RESULT pass 3 for 30: None
+Re-decode RESULT pass 3 for 33: None
+Re-decode RESULT pass 3 for 27: None
+Re-decode RESULT pass 3 for 17: None
+Refine origin of 735 (CQ KP2B FK77) SNR =      1 from 1263.38Hz   0.36s to 1263.38Hz   0.36s
+Refine origin of 897 (IU8RIR OZ9FF -10) SNR =     -4 from 2273.88Hz  -0.38s to 2273.88Hz  -0.37s
+Re-decode RESULT pass 4 for 34: None
+Re-decode RESULT pass 4 for 18: None
+Re-decode RESULT pass 4 for 23: None
+Re-decode RESULT pass 4 for 29: None
+Re-decode RESULT pass 4 for 14: None
+Re-decode RESULT pass 4 for 30: None
+Re-decode RESULT pass 4 for 33: None
+Re-decode RESULT pass 4 for 27: None
+Re-decode RESULT pass 4 for 17: None
+Re-decode RESULT pass 5 for 34: None
+Re-decode RESULT pass 5 for 18: None
+Re-decode RESULT pass 5 for 23: None
+Re-decode RESULT pass 5 for 29: None
+Re-decode RESULT pass 5 for 14: None
+Re-decode RESULT pass 5 for 30: None
+Re-decode RESULT pass 5 for 33: None
+Re-decode RESULT pass 5 for 27: None
+Re-decode RESULT pass 5 for 17: ('CQ AKU', 'BP9QOF', 'OF00')
+SUBTRACTION SUCCESS for 17: ('CQ AKU', 'BP9QOF', 'OF00')
+Re-decode RESULT pass 6 for 34: stop
+Re-decode RESULT pass 6 for 18: stop
+Re-decode RESULT pass 6 for 23: stop
+Re-decode RESULT pass 6 for 29: stop
+Re-decode RESULT pass 6 for 14: stop
+Re-decode RESULT pass 6 for 30: stop
+Re-decode RESULT pass 6 for 33: stop
+Re-decode RESULT pass 6 for 27: stop
+Re-decode RESULT pass 0 for 51: None
+Re-decode RESULT pass 0 for 52: None
+Re-decode RESULT pass 0 for 55: None
+Refine origin of 467 (SQ5NAP HA5KN JN97) SNR =     -3 from 2637.50Hz   0.02s to 2637.50Hz   0.00s
+Refine origin of 180 (CQ GM3AND IO86) SNR =     -2 from 843.75Hz   0.06s to 843.75Hz   0.04s
+Refine origin of 244 (R3QX EA3FH JN01) SNR =     -3 from 1243.75Hz   0.02s to 1243.75Hz   0.00s
+Refine origin of 332 (XE1TZP KB1HKN FN42) SNR =      6 from 1793.75Hz   0.10s to 1793.75Hz   0.08s
+Re-decode RESULT pass 0 for 527: None
+Re-decode RESULT pass 0 for 528: None
+Re-decode RESULT pass 0 for 526: None
+Re-decode RESULT pass 0 for 525: None
+Re-decode RESULT pass 0 for 531: None
+Re-decode RESULT pass 0 for 530: None
+Re-decode RESULT pass 0 for 532: None
+Re-decode RESULT pass 0 for 529: None
+Re-decode RESULT pass 0 for 535: None
+Re-decode RESULT pass 0 for 536: None
+Re-decode RESULT pass 0 for 534: None
+Re-decode RESULT pass 0 for 539: None
+Re-decode RESULT pass 1 for 527: None
+Re-decode RESULT pass 1 for 528: None
+Re-decode RESULT pass 1 for 526: None
+Re-decode RESULT pass 1 for 525: None
+Re-decode RESULT pass 1 for 531: None
+Re-decode RESULT pass 1 for 530: None
+Re-decode RESULT pass 1 for 532: ('CQ', 'GM3AND', 'IO86')
+Re-decode RESULT pass 1 for 529: None
+Re-decode RESULT pass 1 for 535: None
+Re-decode RESULT pass 1 for 536: None
+Re-decode RESULT pass 1 for 534: None
+Re-decode RESULT pass 1 for 539: None
+Refine origin of 263 (G4UJS SM5NBE 73) SNR =      3 from 1363.38Hz   0.10s to 1363.38Hz   0.09s
+Refine origin of 409 (OZ9FF IU8RIR R-05) SNR =     -3 from 2275.88Hz  -0.08s to 2275.88Hz  -0.08s
+Re-decode RESULT pass 2 for 527: ('SQ5NAP', 'HA5KN', 'JN97')
+Re-decode RESULT pass 2 for 528: None
+Re-decode RESULT pass 2 for 539: ('XE1TZP', 'KB1HKN', 'FN42')
+Re-decode RESULT pass 2 for 531: ('CQ', 'GM3AND', 'IO86')
+Re-decode RESULT pass 2 for 526: None
+Re-decode RESULT pass 2 for 525: None
+Re-decode RESULT pass 2 for 536: None
+Re-decode RESULT pass 2 for 529: None
+Re-decode RESULT pass 2 for 535: None
+Re-decode RESULT pass 2 for 530: None
+Re-decode RESULT pass 2 for 534: None
+Re-decode RESULT pass 3 for 528: ('SQ5NAP', 'HA5KN', 'JN97')
+Re-decode RESULT pass 3 for 526: None
+Re-decode RESULT pass 3 for 525: None
+Re-decode RESULT pass 3 for 536: None
+Re-decode RESULT pass 3 for 529: None
+Re-decode RESULT pass 3 for 535: None
+Re-decode RESULT pass 3 for 530: None
+Re-decode RESULT pass 3 for 534: None
+Re-decode RESULT pass 4 for 526: None
+Re-decode RESULT pass 4 for 525: None
+Re-decode RESULT pass 4 for 536: ('R3QX', 'EA3FH', 'JN01')
+Re-decode RESULT pass 4 for 529: None
+Re-decode RESULT pass 4 for 535: ('R3QX', 'EA3FH', 'JN01')
+Re-decode RESULT pass 4 for 530: None
+Re-decode RESULT pass 4 for 534: None
+Re-decode RESULT pass 5 for 526: None
+Re-decode RESULT pass 5 for 525: None
+Re-decode RESULT pass 5 for 529: None
+Re-decode RESULT pass 5 for 530: None
+Re-decode RESULT pass 5 for 534: None
+Refine origin of 255 (HA1ZW SP7AAO R-03) SNR =     -4 from 1313.38Hz  -0.02s to 1313.38Hz  -0.04s
+Re-decode RESULT pass 6 for 526: stop
+Re-decode RESULT pass 6 for 525: stop
+Re-decode RESULT pass 6 for 529: stop
+Re-decode RESULT pass 6 for 530: stop
+Re-decode RESULT pass 6 for 534: stop
+Refine origin of 921 (IU8WQA DJ1TU JN48) SNR =      4 from 2400.00Hz   0.06s to 2400.00Hz   0.04s
+Refine origin of 686 (CT1FIU CR7BRV IM58) SNR =      2 from 931.25Hz  -0.02s to 931.25Hz  -0.04s
+Refine origin of 699 (CQ SQ5NAP KO02) SNR =     -1 from 1012.50Hz   0.14s to 1012.50Hz   0.12s
+Refine origin of 983 (G6UJJ EA5ET IM99) SNR =      0 from 2787.50Hz   0.14s to 2787.50Hz   0.12s
+Re-decode RESULT pass 0 for 19: None
+Re-decode RESULT pass 0 for 20: None
+Re-decode RESULT pass 0 for 18: None
+Re-decode RESULT pass 0 for 17: None
+Re-decode RESULT pass 0 for 24: None
+Re-decode RESULT pass 0 for 23: None
+Re-decode RESULT pass 0 for 22: None
+Re-decode RESULT pass 0 for 27: None
+Re-decode RESULT pass 0 for 28: None
+Re-decode RESULT pass 0 for 32: None
+Re-decode RESULT pass 0 for 31: None
+Refine origin of 760 (CQ SP6AMI JO90) SNR =      3 from 1393.75Hz   1.22s to 1393.75Hz   1.20s
+Refine origin of 863 (9A3AUH CT1BFP IM59) SNR =      8 from 2037.50Hz   1.14s to 2037.50Hz   1.12s
+Re-decode RESULT pass 0 for 25: None
+Re-decode RESULT pass 0 for 26: None
+Re-decode RESULT pass 0 for 36: None
+Re-decode RESULT pass 0 for 35: None
+Re-decode RESULT pass 0 for 34: None
+Re-decode RESULT pass 0 for 40: None
+Re-decode RESULT pass 0 for 39: None
+Re-decode RESULT pass 0 for 38: None
+Re-decode RESULT pass 0 for 37: None
+Re-decode RESULT pass 1 for 19: None
+Re-decode RESULT pass 1 for 20: None
+Re-decode RESULT pass 1 for 18: None
+Re-decode RESULT pass 1 for 17: None
+Re-decode RESULT pass 1 for 24: None
+Re-decode RESULT pass 1 for 23: None
+Re-decode RESULT pass 1 for 22: None
+Re-decode RESULT pass 1 for 27: None
+Re-decode RESULT pass 1 for 28: None
+Re-decode RESULT pass 1 for 25: None
+Re-decode RESULT pass 1 for 26: None
+Re-decode RESULT pass 1 for 32: ('G6UJJ', 'EA5ET', 'IM99')
+Re-decode RESULT pass 1 for 31: None
+Re-decode RESULT pass 1 for 36: ('CQ', 'SP6AMI', 'JO90')
+Re-decode RESULT pass 1 for 35: None
+Re-decode RESULT pass 1 for 34: None
+Re-decode RESULT pass 1 for 40: ('9A3AUH', 'CT1BFP', 'IM59')
+Re-decode RESULT pass 1 for 39: None
+Re-decode RESULT pass 1 for 38: None
+Re-decode RESULT pass 1 for 37: None
+Refine origin of 984 (G6UJJ EA5ET IM99) SNR =      0 from 2792.62Hz   0.04s to 2792.62Hz   0.03s
+Refine origin of 624 (KC2NDA GM4ZTO -16) SNR =     -2 from 542.62Hz  -0.26s to 542.62Hz  -0.26s
+Refine origin of 901 (IU8RIR OZ9FF RR73) SNR =      5 from 2273.88Hz  -0.38s to 2273.88Hz  -0.39s
+Re-decode RESULT pass 0 for 49: None
+Re-decode RESULT pass 0 for 52: None
+Re-decode RESULT pass 1 for 49: None
+Re-decode RESULT pass 1 for 52: None
+Re-decode RESULT pass 2 for 19: ('IU8WQA', 'DJ1TU', 'JN48')
+Re-decode RESULT pass 2 for 34: None
+Re-decode RESULT pass 2 for 24: ('CT1FIU', 'CR7BRV', 'IM58')
+Re-decode RESULT pass 2 for 28: ('CQ', 'SQ5NAP', 'KO02')
+Re-decode RESULT pass 2 for 20: ('IU8WQA', 'DJ1TU', 'JN48')
+Re-decode RESULT pass 2 for 26: None
+Re-decode RESULT pass 2 for 35: ('CQ', 'SP6AMI', 'JO90')
+Re-decode RESULT pass 2 for 27: ('CQ', 'SQ5NAP', 'KO02')
+Re-decode RESULT pass 2 for 23: ('CT1FIU', 'CR7BRV', 'IM58')
+Re-decode RESULT pass 2 for 25: None
+Re-decode RESULT pass 2 for 18: None
+Re-decode RESULT pass 2 for 39: ('9A3AUH', 'CT1BFP', 'IM59')
+Re-decode RESULT pass 2 for 38: None
+Re-decode RESULT pass 2 for 37: None
+Re-decode RESULT pass 2 for 17: None
+Re-decode RESULT pass 2 for 22: None
+Re-decode RESULT pass 2 for 31: None
+Re-decode RESULT pass 2 for 49: None
+Refine origin of 910 (TA1MB IS0LYN 73) SNR =      0 from 2332.12Hz   0.02s to 2332.12Hz   0.00s
+Refine origin of 874 (CQ YU65AEC ) SNR =      5 from 2103.12Hz  -0.04s to 2103.12Hz  -0.04s
+Refine origin of 687 (CT1FIU CR7BRV IM58) SNR =      0 from 936.38Hz  -0.08s to 936.38Hz  -0.09s
+Re-decode RESULT pass 3 for 34: None
+Re-decode RESULT pass 3 for 26: None
+Re-decode RESULT pass 3 for 25: None
+Re-decode RESULT pass 3 for 18: None
+Re-decode RESULT pass 3 for 38: None
+Re-decode RESULT pass 3 for 37: None
+Re-decode RESULT pass 3 for 17: None
+Re-decode RESULT pass 3 for 22: None
+Re-decode RESULT pass 3 for 31: None
+Re-decode RESULT pass 4 for 34: None
+Re-decode RESULT pass 4 for 26: None
+Re-decode RESULT pass 4 for 25: None
+Re-decode RESULT pass 4 for 18: None
+Re-decode RESULT pass 4 for 38: None
+Re-decode RESULT pass 4 for 37: None
+Re-decode RESULT pass 4 for 17: None
+Re-decode RESULT pass 4 for 22: None
+Re-decode RESULT pass 4 for 31: None
+Re-decode RESULT pass 5 for 34: None
+Re-decode RESULT pass 5 for 26: None
+Re-decode RESULT pass 5 for 25: None
+Re-decode RESULT pass 5 for 18: None
+Re-decode RESULT pass 5 for 38: None
+Re-decode RESULT pass 5 for 37: None
+Re-decode RESULT pass 5 for 17: None
+Re-decode RESULT pass 5 for 22: None
+Re-decode RESULT pass 5 for 31: None
+Re-decode RESULT pass 6 for 34: stop
+Re-decode RESULT pass 6 for 26: stop
+Re-decode RESULT pass 6 for 25: stop
+Re-decode RESULT pass 6 for 18: stop
+Re-decode RESULT pass 6 for 38: stop
+Re-decode RESULT pass 6 for 37: stop
+Re-decode RESULT pass 6 for 17: stop
+Re-decode RESULT pass 6 for 22: stop
+Re-decode RESULT pass 6 for 31: stop
+Refine origin of 471 (SQ5NAP HA5KN JN97) SNR =      7 from 2637.50Hz   0.02s to 2637.50Hz   0.00s
+Re-decode RESULT pass 0 for 531: None
+Re-decode RESULT pass 0 for 532: None
+Re-decode RESULT pass 0 for 529: None
+Re-decode RESULT pass 1 for 531: None
+Re-decode RESULT pass 1 for 532: None
+Re-decode RESULT pass 1 for 529: None
+Refine origin of 259 (HA1ZW SP7AAO R-03) SNR =     -1 from 1313.38Hz  -0.04s to 1313.38Hz  -0.03s
+Refine origin of 349 (TA1EDG SP9MRP R-09) SNR =      1 from 1875.88Hz   0.82s to 1875.88Hz   0.82s
+Refine origin of 152 (CQ SA0WAE JO99) SNR =      3 from 642.62Hz  -0.62s to 642.62Hz  -0.62s
+Re-decode RESULT pass 2 for 531: None
+Re-decode RESULT pass 2 for 532: None
+Re-decode RESULT pass 2 for 529: None
+Refine origin of 397 (US5LD SP2LMG RR73) SNR =     -4 from 2177.88Hz   0.72s to 2177.88Hz   0.71s
+Refine origin of 403 (CQ SQ8AA KN19) SNR =      8 from 2211.38Hz  -0.06s to 2211.38Hz  -0.05s
+Re-decode RESULT pass 3 for 531: None
+Re-decode RESULT pass 3 for 532: None
+Re-decode RESULT pass 3 for 529: None
+Refine origin of 197 (OZ7CL UT8EZ KN78) SNR =      0 from 925.88Hz  -0.10s to 925.88Hz  -0.09s
+Re-decode RESULT pass 4 for 531: None
+Re-decode RESULT pass 4 for 532: None
+Re-decode RESULT pass 4 for 529: None
+Refine origin of 333 (CQ R2FBW JO94) SNR =      0 from 1775.88Hz  -0.62s to 1775.88Hz  -0.62s
+Refine origin of 283 (CQ HA1BF JN86) SNR =      1 from 1461.38Hz  -0.06s to 1461.38Hz  -0.06s
+Re-decode RESULT pass 5 for 531: None
+Re-decode RESULT pass 5 for 532: None
+Re-decode RESULT pass 5 for 529: None
+Refine origin of 295 (EA8DSX EA5GX IM99) SNR =      5 from 1536.38Hz  -0.06s to 1536.38Hz  -0.06s
+Re-decode RESULT pass 6 for 531: stop
+Re-decode RESULT pass 6 for 532: stop
+Re-decode RESULT pass 6 for 529: stop
+Refine origin of 901 (CQ SP2LMG JO94) SNR =     -2 from 2175.00Hz   0.42s to 2175.00Hz   0.40s
+Refine origin of 702 (CT1FIU CR7BRV IM58) SNR =      2 from 931.25Hz  -0.02s to 931.25Hz  -0.04s
+Refine origin of 725 (F4ILK E76TP 73) SNR =      1 from 1075.00Hz  -0.90s to 1075.00Hz  -0.90s
+Refine origin of 762 (G0LUH DL6RBG 73) SNR =     -2 from 1306.25Hz   0.58s to 1306.25Hz   0.56s
+Refine origin of 971 (<...> DL1R JN58) SNR =     -1 from 2612.50Hz  -0.02s to 2612.50Hz  -0.03s
+Refine origin of 715 (CQ SQ5NAP KO02) SNR =     -4 from 1012.50Hz   0.14s to 1012.50Hz   0.12s
+Refine origin of 999 (G6UJJ EA5ET IM99) SNR =     -3 from 2787.50Hz   0.14s to 2787.50Hz   0.12s
+Re-decode RESULT pass 0 for 35: None
+Re-decode RESULT pass 0 for 36: None
+Re-decode RESULT pass 0 for 34: None
+Re-decode RESULT pass 0 for 33: None
+Re-decode RESULT pass 0 for 40: None
+Re-decode RESULT pass 0 for 39: None
+Re-decode RESULT pass 0 for 37: None
+Re-decode RESULT pass 0 for 44: None
+Re-decode RESULT pass 0 for 43: None
+Re-decode RESULT pass 0 for 41: None
+Re-decode RESULT pass 0 for 42: None
+Re-decode RESULT pass 0 for 47: None
+Re-decode RESULT pass 0 for 46: None
+Re-decode RESULT pass 0 for 45: None
+Re-decode RESULT pass 0 for 48: None
+Re-decode RESULT pass 0 for 52: None
+Re-decode RESULT pass 0 for 51: None
+Re-decode RESULT pass 0 for 55: None
+Re-decode RESULT pass 0 for 56: None
+Re-decode RESULT pass 0 for 54: None
+Re-decode RESULT pass 0 for 60: None
+Re-decode RESULT pass 0 for 59: None
+Refine origin of 776 (CQ SP6AMI JO90) SNR =      0 from 1393.75Hz   1.22s to 1393.75Hz   1.20s
+Re-decode RESULT pass 0 for 64: None
+Re-decode RESULT pass 0 for 63: None
+Re-decode RESULT pass 0 for 62: None
+Re-decode RESULT pass 1 for 35: None
+Re-decode RESULT pass 1 for 36: ('CQ', 'SP2LMG', 'JO94')
+Re-decode RESULT pass 1 for 34: None
+Re-decode RESULT pass 1 for 33: None
+Re-decode RESULT pass 1 for 40: None
+Re-decode RESULT pass 1 for 39: None
+Re-decode RESULT pass 1 for 37: None
+Re-decode RESULT pass 1 for 44: ('F4ILK', 'E76TP', '73')
+Re-decode RESULT pass 1 for 43: None
+Re-decode RESULT pass 1 for 41: None
+Re-decode RESULT pass 1 for 42: None
+Re-decode RESULT pass 1 for 47: None
+Re-decode RESULT pass 1 for 46: None
+Re-decode RESULT pass 1 for 45: None
+Re-decode RESULT pass 1 for 48: None
+Re-decode RESULT pass 1 for 52: None
+Re-decode RESULT pass 1 for 51: None
+Re-decode RESULT pass 1 for 55: None
+Re-decode RESULT pass 1 for 56: None
+Re-decode RESULT pass 1 for 54: None
+Re-decode RESULT pass 1 for 60: ('G6UJJ', 'EA5ET', 'IM99')
+Re-decode RESULT pass 1 for 59: None
+Re-decode RESULT pass 1 for 64: ('CQ', 'SP6AMI', 'JO90')
+Re-decode RESULT pass 1 for 63: ('CQ', 'SP6AMI', 'JO90')
+Re-decode RESULT pass 1 for 62: None
+Refine origin of 789 (CQ CR5VP IM59) SNR =      7 from 1473.88Hz   0.38s to 1473.88Hz   0.39s
+Refine origin of 0 (G6UJJ EA5ET IM99) SNR =      0 from 2792.62Hz   0.06s to 2792.62Hz   0.05s
+Re-decode RESULT pass 2 for 41: None
+Re-decode RESULT pass 2 for 33: None
+Re-decode RESULT pass 2 for 35: ('CQ', 'SP2LMG', 'JO94')
+Re-decode RESULT pass 2 for 40: ('CT1FIU', 'CR7BRV', 'IM58')
+Re-decode RESULT pass 2 for 47: ('G0LUH', 'DL6RBG', '73')
+Re-decode RESULT pass 2 for 39: ('CT1FIU', 'CR7BRV', 'IM58')
+Re-decode RESULT pass 2 for 42: None
+Re-decode RESULT pass 2 for 56: None
+Re-decode RESULT pass 2 for 62: None
+Re-decode RESULT pass 2 for 52: ('<...>', 'DL1R', 'JN58')
+Re-decode RESULT pass 2 for 55: None
+Re-decode RESULT pass 2 for 45: None
+Re-decode RESULT pass 2 for 34: None
+Re-decode RESULT pass 2 for 46: None
+Re-decode RESULT pass 2 for 43: ('F4ILK', 'E76TP', '73')
+Re-decode RESULT pass 2 for 37: None
+Re-decode RESULT pass 2 for 51: None
+Re-decode RESULT pass 2 for 59: None
+Re-decode RESULT pass 2 for 48: None
+Re-decode RESULT pass 2 for 54: None
+Refine origin of 751 (R6YG CT1BFP IM59) SNR =      0 from 1236.38Hz   1.04s to 1236.38Hz   1.04s
+Refine origin of 703 (CT1FIU CR7BRV IM58) SNR =      0 from 936.38Hz  -0.08s to 936.38Hz  -0.09s
+Refine origin of 889 (M9LHX <YU65AEC> -16) SNR =      3 from 2102.88Hz   1.16s to 2102.88Hz   1.14s
+Re-decode RESULT pass 3 for 41: None
+Re-decode RESULT pass 3 for 33: None
+Re-decode RESULT pass 3 for 42: None
+Re-decode RESULT pass 3 for 56: ('CQ', 'SQ5NAP', 'KO02')
+Re-decode RESULT pass 3 for 62: None
+Re-decode RESULT pass 3 for 55: None
+Re-decode RESULT pass 3 for 45: None
+Re-decode RESULT pass 3 for 34: None
+Re-decode RESULT pass 3 for 46: None
+Re-decode RESULT pass 3 for 37: None
+Re-decode RESULT pass 3 for 51: None
+Re-decode RESULT pass 3 for 59: None
+Re-decode RESULT pass 3 for 48: None
+Re-decode RESULT pass 3 for 54: None
+Re-decode RESULT pass 4 for 41: None
+Re-decode RESULT pass 4 for 33: None
+Re-decode RESULT pass 4 for 42: None
+Re-decode RESULT pass 4 for 62: None
+Re-decode RESULT pass 4 for 55: None
+Re-decode RESULT pass 4 for 45: None
+Re-decode RESULT pass 4 for 34: None
+Re-decode RESULT pass 4 for 46: None
+Re-decode RESULT pass 4 for 37: None
+Re-decode RESULT pass 4 for 51: None
+Re-decode RESULT pass 4 for 59: None
+Re-decode RESULT pass 4 for 48: None
+Re-decode RESULT pass 4 for 54: None
+Re-decode RESULT pass 5 for 41: None
+Re-decode RESULT pass 5 for 33: None
+Re-decode RESULT pass 5 for 42: None
+Re-decode RESULT pass 5 for 62: None
+Re-decode RESULT pass 5 for 55: ('<...>', 'XG8OZA', 'AJ86')
+SUBTRACTION SUCCESS for 55: ('<...>', 'XG8OZA', 'AJ86')
+Re-decode RESULT pass 5 for 45: None
+Re-decode RESULT pass 5 for 34: None
+Re-decode RESULT pass 5 for 46: None
+Re-decode RESULT pass 5 for 37: None
+Re-decode RESULT pass 5 for 51: None
+Re-decode RESULT pass 5 for 59: None
+Re-decode RESULT pass 5 for 48: None
+Re-decode RESULT pass 5 for 54: None
+Refine origin of 268 (R3QX EA3FH JN01) SNR =     -3 from 1243.75Hz  -0.02s to 1243.75Hz  -0.04s
+Refine origin of 407 (CQ CT1FIU IN50) SNR =     -1 from 2112.50Hz  -0.02s to 2112.50Hz  -0.04s
+Refine origin of 353 (CQ R2FBW JO94) SNR =     -1 from 1775.00Hz  -0.54s to 1775.00Hz  -0.56s
+Refine origin of 204 (CQ GM3AND IO86) SNR =      7 from 843.75Hz   0.06s to 843.75Hz   0.07s
+Refine origin of 422 (CQ SQ8AA KN19) SNR =     -2 from 2206.25Hz  -0.06s to 2206.25Hz  -0.06s
+Refine origin of 243 (PD0PWH CT7BSA -14) SNR =      7 from 1087.50Hz  -1.14s to 1087.50Hz  -1.12s
+Re-decode RESULT pass 0 for 551: None
+Re-decode RESULT pass 0 for 552: None
+Re-decode RESULT pass 0 for 550: None
+Re-decode RESULT pass 0 for 555: None
+Re-decode RESULT pass 0 for 556: None
+Re-decode RESULT pass 0 for 559: None
+Re-decode RESULT pass 0 for 558: None
+Re-decode RESULT pass 0 for 560: None
+Re-decode RESULT pass 0 for 563: None
+Re-decode RESULT pass 0 for 562: None
+Re-decode RESULT pass 0 for 564: None
+Re-decode RESULT pass 0 for 568: None
+Re-decode RESULT pass 0 for 567: None
+Re-decode RESULT pass 0 for 565: None
+Re-decode RESULT pass 0 for 572: None
+Re-decode RESULT pass 0 for 571: None
+Re-decode RESULT pass 0 for 569: None
+Re-decode RESULT pass 1 for 551: None
+Re-decode RESULT pass 1 for 552: None
+Re-decode RESULT pass 1 for 550: None
+Re-decode RESULT pass 1 for 555: None
+Re-decode RESULT pass 1 for 556: None
+Re-decode RESULT pass 1 for 559: None
+Re-decode RESULT pass 1 for 558: None
+Re-decode RESULT pass 1 for 560: None
+Re-decode RESULT pass 1 for 563: None
+Re-decode RESULT pass 1 for 562: None
+Re-decode RESULT pass 1 for 564: None
+Re-decode RESULT pass 1 for 568: ('CQ', 'SQ8AA', 'KN19')
+Re-decode RESULT pass 1 for 567: None
+Re-decode RESULT pass 1 for 565: None
+Re-decode RESULT pass 1 for 572: None
+Re-decode RESULT pass 1 for 571: None
+Re-decode RESULT pass 1 for 569: None
+Refine origin of 244 (PD0PWH CT7BSA -14) SNR =      3 from 1092.62Hz  -1.22s to 1092.62Hz  -1.21s
+Refine origin of 423 (CQ SQ8AA KN19) SNR =     -2 from 2211.38Hz  -0.14s to 2211.38Hz  -0.14s
+Refine origin of 318 (CQ DL2VEL JN37) SNR =      4 from 1557.12Hz   0.04s to 1557.12Hz   0.04s
+Re-decode RESULT pass 2 for 572: ('PD0PWH', 'CT7BSA', '-14')
+Re-decode RESULT pass 2 for 560: ('CQ', 'R2FBW', 'JO94')
+Re-decode RESULT pass 2 for 559: ('CQ', 'R2FBW', 'JO94')
+Re-decode RESULT pass 2 for 565: None
+Re-decode RESULT pass 2 for 556: ('CQ', 'CT1FIU', 'IN50')
+Re-decode RESULT pass 2 for 552: ('R3QX', 'EA3FH', 'JN01')
+Re-decode RESULT pass 2 for 551: ('R3QX', 'EA3FH', 'JN01')
+Re-decode RESULT pass 2 for 567: ('CQ', 'SQ8AA', 'KN19')
+Re-decode RESULT pass 2 for 564: None
+Re-decode RESULT pass 2 for 571: None
+Re-decode RESULT pass 2 for 558: None
+Re-decode RESULT pass 2 for 555: ('CQ', 'CT1FIU', 'IN50')
+Re-decode RESULT pass 2 for 563: None
+Re-decode RESULT pass 2 for 569: None
+Re-decode RESULT pass 2 for 550: None
+Re-decode RESULT pass 2 for 562: None
+Refine origin of 172 (CQ SA0WAE JO99) SNR =     -2 from 642.62Hz  -0.62s to 642.62Hz  -0.62s
+Refine origin of 166 (CQ IN3JRZ JN56) SNR =     -3 from 609.12Hz   0.02s to 609.12Hz   0.00s
+Re-decode RESULT pass 3 for 565: None
+Re-decode RESULT pass 3 for 564: ('CQ', 'GM3AND', 'IO86')
+Re-decode RESULT pass 3 for 571: ('PD0PWH', 'CT7BSA', '-14')
+Re-decode RESULT pass 3 for 558: None
+Re-decode RESULT pass 3 for 563: None
+Re-decode RESULT pass 3 for 569: None
+Re-decode RESULT pass 3 for 550: None
+Re-decode RESULT pass 3 for 562: None
+Refine origin of 369 (TA1EDG SP9MRP 73) SNR =      3 from 1875.88Hz  -0.06s to 1875.88Hz  -0.07s
+Refine origin of 118 (CQ IZ3VCN JN66) SNR =      0 from 307.12Hz  -0.10s to 307.12Hz  -0.10s
+Re-decode RESULT pass 4 for 565: None
+Re-decode RESULT pass 4 for 558: ('CQ', 'R2FBW', 'JO94')
+Re-decode RESULT pass 4 for 563: ('CQ', 'GM3AND', 'IO86')
+Re-decode RESULT pass 4 for 569: None
+Re-decode RESULT pass 4 for 550: None
+Re-decode RESULT pass 4 for 562: None
+Refine origin of 484 (RZ4FWA GM3DRA -17) SNR =     -2 from 2594.62Hz  -0.48s to 2594.62Hz  -0.48s
+Re-decode RESULT pass 5 for 565: None
+Re-decode RESULT pass 5 for 569: None
+Re-decode RESULT pass 5 for 550: None
+Re-decode RESULT pass 5 for 562: None
+Re-decode RESULT pass 6 for 565: stop
+Re-decode RESULT pass 6 for 569: stop
+Re-decode RESULT pass 6 for 550: stop
+Re-decode RESULT pass 6 for 562: stop
+Refine origin of 738 (CT1FIU CR7BRV IM58) SNR =      3 from 931.25Hz  -0.02s to 931.25Hz  -0.04s
+Refine origin of 962 (CQ EA3HKA JN11) SNR =      4 from 2331.25Hz  -1.10s to 2331.25Hz  -1.12s
+Re-decode RESULT pass 0 for 72: None
+Re-decode RESULT pass 0 for 71: None
+Re-decode RESULT pass 0 for 70: None
+Re-decode RESULT pass 0 for 75: None
+Re-decode RESULT pass 0 for 74: None
+Re-decode RESULT pass 0 for 76: None
+Refine origin of 824 (CQ CR5VP IM59) SNR =      0 from 1468.75Hz   0.50s to 1468.75Hz   0.51s
+Refine origin of 937 (CQ SP2LMG JO94) SNR =      0 from 2175.00Hz   0.46s to 2175.00Hz   0.44s
+Refine origin of 786 (R6YG CT1BFP IM59) SNR =      4 from 1231.25Hz   1.10s to 1231.25Hz   1.11s
+Re-decode RESULT pass 0 for 80: None
+Re-decode RESULT pass 0 for 79: None
+Re-decode RESULT pass 0 for 83: None
+Re-decode RESULT pass 0 for 84: None
+Re-decode RESULT pass 0 for 88: None
+Re-decode RESULT pass 0 for 87: None
+Re-decode RESULT pass 1 for 72: None
+Re-decode RESULT pass 1 for 71: None
+Re-decode RESULT pass 1 for 70: None
+Re-decode RESULT pass 1 for 75: ('CQ', 'EA3HKA', 'JN11')
+Re-decode RESULT pass 1 for 74: None
+Re-decode RESULT pass 1 for 76: None
+Re-decode RESULT pass 1 for 80: ('CQ', 'CR5VP', 'IM59')
+Re-decode RESULT pass 1 for 79: None
+Re-decode RESULT pass 1 for 83: None
+Re-decode RESULT pass 1 for 84: None
+Re-decode RESULT pass 1 for 88: None
+Re-decode RESULT pass 1 for 87: None
+Refine origin of 926 (M9LHX <YU65AEC> -16) SNR =      6 from 2103.12Hz  -0.04s to 2103.12Hz  -0.04s
+Refine origin of 953 (TA1MB OZ9FF -12) SNR =      3 from 2273.88Hz  -0.38s to 2273.88Hz  -0.38s
+Refine origin of 676 (KC2NDA GM4ZTO -20) SNR =      0 from 544.62Hz  -0.26s to 544.62Hz  -0.26s
+Refine origin of 729 (IK4ANJ SP2KW R+01) SNR =     -2 from 875.88Hz   0.52s to 875.88Hz   0.52s
+Re-decode RESULT pass 2 for 70: None
+Re-decode RESULT pass 2 for 72: ('CT1FIU', 'CR7BRV', 'IM58')
+Re-decode RESULT pass 2 for 76: None
+Re-decode RESULT pass 2 for 79: ('CQ', 'CR5VP', 'IM59')
+Re-decode RESULT pass 2 for 88: ('R6YG', 'CT1BFP', 'IM59')
+Re-decode RESULT pass 2 for 83: ('CQ', 'SP2LMG', 'JO94')
+Re-decode RESULT pass 2 for 71: None
+Re-decode RESULT pass 2 for 74: ('CQ', 'EA3HKA', 'JN11')
+Re-decode RESULT pass 2 for 84: ('CQ', 'SP2LMG', 'JO94')
+Re-decode RESULT pass 2 for 87: None
+Refine origin of 787 (R6YG CT1BFP IM59) SNR =      4 from 1236.38Hz   1.04s to 1236.38Hz   1.04s
+Refine origin of 878 (CT7BSA LZ2VQ KN23) SNR =      4 from 1805.12Hz  -0.18s to 1805.12Hz  -0.17s
+Re-decode RESULT pass 3 for 70: None
+Re-decode RESULT pass 3 for 76: None
+Re-decode RESULT pass 3 for 71: ('CT1FIU', 'CR7BRV', 'IM58')
+Re-decode RESULT pass 3 for 87: None
+Refine origin of 856 (RO3ZR RJ2T -13) SNR =     -4 from 1667.62Hz  -0.12s to 1667.62Hz  -0.11s
+Re-decode RESULT pass 4 for 70: None
+Re-decode RESULT pass 4 for 76: None
+Re-decode RESULT pass 4 for 87: None
+Re-decode RESULT pass 5 for 70: None
+Re-decode RESULT pass 5 for 76: None
+Re-decode RESULT pass 5 for 87: ('R6YG', 'CT1BFP', 'IM59')
+Re-decode RESULT pass 6 for 70: stop
+Re-decode RESULT pass 6 for 76: stop
+Re-decode RESULT pass 0 for 105: None
+Refine origin of 316 (CQ SM5NBE JP80) SNR =      8 from 1343.75Hz   0.18s to 1343.75Hz   0.16s
+Refine origin of 185 (RA9J IW2DNI JN45) SNR =     -4 from 525.00Hz  -0.02s to 525.00Hz  -0.04s
+Refine origin of 198 (CQ IN3JRZ JN56) SNR =      2 from 606.25Hz   0.10s to 606.25Hz   0.08s
+Refine origin of 540 (CQ DM8KM JN69) SNR =      7 from 2743.75Hz   0.02s to 2743.75Hz   0.00s
+Refine origin of 454 (CQ SQ8AA KN19) SNR =      1 from 2206.25Hz  -0.06s to 2206.25Hz  -0.07s
+Re-decode RESULT pass 0 for 584: None
+Re-decode RESULT pass 0 for 583: None
+Re-decode RESULT pass 0 for 581: None
+Re-decode RESULT pass 0 for 582: None
+Re-decode RESULT pass 0 for 587: None
+Re-decode RESULT pass 0 for 588: None
+Re-decode RESULT pass 0 for 586: None
+Re-decode RESULT pass 0 for 585: None
+Re-decode RESULT pass 0 for 591: None
+Re-decode RESULT pass 0 for 592: None
+Re-decode RESULT pass 0 for 590: None
+Re-decode RESULT pass 0 for 589: None
+Re-decode RESULT pass 0 for 595: None
+Re-decode RESULT pass 0 for 596: None
+Re-decode RESULT pass 0 for 600: None
+Re-decode RESULT pass 0 for 599: None
+Re-decode RESULT pass 1 for 584: None
+Re-decode RESULT pass 1 for 583: None
+Re-decode RESULT pass 1 for 581: None
+Re-decode RESULT pass 1 for 582: None
+Re-decode RESULT pass 1 for 587: None
+Re-decode RESULT pass 1 for 588: ('RA9J', 'IW2DNI', 'JN45')
+Re-decode RESULT pass 1 for 586: None
+Re-decode RESULT pass 1 for 585: None
+Re-decode RESULT pass 1 for 591: None
+Re-decode RESULT pass 1 for 592: None
+Re-decode RESULT pass 1 for 590: None
+Re-decode RESULT pass 1 for 589: None
+Re-decode RESULT pass 1 for 595: None
+Re-decode RESULT pass 1 for 596: None
+Re-decode RESULT pass 1 for 600: ('CQ', 'SQ8AA', 'KN19')
+Re-decode RESULT pass 1 for 599: None
+Refine origin of 204 (DL9PN SA0WAE -13) SNR =     15 from 642.62Hz  -0.62s to 642.62Hz  -0.60s
+Refine origin of 465 (OZ9FF TA1MB R-07) SNR =      5 from 2273.88Hz   0.00s to 2273.88Hz   0.01s
+Re-decode RESULT pass 2 for 583: ('CQ', 'SM5NBE', 'JP80')
+Re-decode RESULT pass 2 for 584: ('CQ', 'SM5NBE', 'JP80')
+Re-decode RESULT pass 2 for 587: ('RA9J', 'IW2DNI', 'JN45')
+Re-decode RESULT pass 2 for 581: None
+Re-decode RESULT pass 2 for 591: ('CQ', 'IN3JRZ', 'JN56')
+Re-decode RESULT pass 2 for 592: ('CQ', 'IN3JRZ', 'JN56')
+Re-decode RESULT pass 2 for 599: ('CQ', 'SQ8AA', 'KN19')
+Re-decode RESULT pass 2 for 582: None
+Re-decode RESULT pass 2 for 595: ('CQ', 'DM8KM', 'JN69')
+Re-decode RESULT pass 2 for 590: None
+Re-decode RESULT pass 2 for 586: None
+Re-decode RESULT pass 2 for 585: None
+Re-decode RESULT pass 2 for 596: ('CQ', 'DM8KM', 'JN69')
+Re-decode RESULT pass 2 for 589: None
+Refine origin of 317 (CQ SM5NBE JP80) SNR =     -2 from 1346.88Hz   0.12s to 1346.88Hz   0.10s
+Re-decode RESULT pass 3 for 581: None
+Re-decode RESULT pass 3 for 582: None
+Re-decode RESULT pass 3 for 590: None
+Re-decode RESULT pass 3 for 586: None
+Re-decode RESULT pass 3 for 585: None
+Re-decode RESULT pass 3 for 589: None
+Refine origin of 280 (N4PIQ DF3IS JN49) SNR =      9 from 1119.62Hz  -0.06s to 1119.62Hz  -0.08s
+Re-decode RESULT pass 4 for 581: None
+Re-decode RESULT pass 4 for 582: None
+Re-decode RESULT pass 4 for 590: None
+Re-decode RESULT pass 4 for 586: None
+Re-decode RESULT pass 4 for 585: None
+Re-decode RESULT pass 4 for 589: None
+Re-decode RESULT pass 5 for 581: None
+Re-decode RESULT pass 5 for 582: None
+Re-decode RESULT pass 5 for 590: None
+Re-decode RESULT pass 5 for 586: None
+Re-decode RESULT pass 5 for 585: None
+Re-decode RESULT pass 5 for 589: None
+Re-decode RESULT pass 6 for 581: stop
+Re-decode RESULT pass 6 for 582: stop
+Re-decode RESULT pass 6 for 590: stop
+Re-decode RESULT pass 6 for 586: stop
+Re-decode RESULT pass 6 for 585: stop
+Re-decode RESULT pass 6 for 589: stop
+Refine origin of 750 (CT1FIU CR7BRV IM58) SNR =     15 from 931.25Hz  -0.02s to 931.25Hz  -0.04s
+Refine origin of 985 (IU8WQA DJ1TU JN48) SNR =     -3 from 2400.00Hz   0.06s to 2400.00Hz   0.04s
+Refine origin of 836 (CQ CR5VP IM59) SNR =     11 from 1468.75Hz   0.46s to 1468.75Hz   0.45s
+Re-decode RESULT pass 0 for 84: None
+Re-decode RESULT pass 0 for 83: None
+Re-decode RESULT pass 0 for 81: None
+Re-decode RESULT pass 0 for 87: None
+Re-decode RESULT pass 0 for 88: None
+Re-decode RESULT pass 0 for 86: None
+Re-decode RESULT pass 0 for 92: None
+Re-decode RESULT pass 0 for 91: None
+Re-decode RESULT pass 1 for 84: None
+Re-decode RESULT pass 1 for 83: None
+Re-decode RESULT pass 1 for 81: None
+Re-decode RESULT pass 1 for 87: None
+Re-decode RESULT pass 1 for 88: None
+Re-decode RESULT pass 1 for 86: None
+Re-decode RESULT pass 1 for 92: None
+Re-decode RESULT pass 1 for 91: None
+Refine origin of 783 (CQ CR7BUJ IM58) SNR =      8 from 1136.38Hz  -0.06s to 1136.38Hz  -0.05s
+Refine origin of 965 (TA1MB OZ9FF RR73) SNR =     10 from 2273.88Hz  -0.38s to 2273.88Hz  -0.39s
+Re-decode RESULT pass 2 for 84: ('CT1FIU', 'CR7BRV', 'IM58')
+Re-decode RESULT pass 2 for 92: ('CQ', 'CR5VP', 'IM59')
+Re-decode RESULT pass 2 for 87: ('IU8WQA', 'DJ1TU', 'JN48')
+Re-decode RESULT pass 2 for 81: None
+Re-decode RESULT pass 2 for 88: ('IU8WQA', 'DJ1TU', 'JN48')
+Re-decode RESULT pass 2 for 91: None
+Re-decode RESULT pass 2 for 83: None
+Re-decode RESULT pass 2 for 86: None
+Refine origin of 837 (CQ CR5VP IM59) SNR =      4 from 1473.88Hz   0.38s to 1473.88Hz   0.38s
+Refine origin of 810 (M7CYY DL6RBG RRR) SNR =     10 from 1307.12Hz   0.48s to 1307.12Hz   0.48s
+Refine origin of 751 (CT1FIU CR7BRV IM58) SNR =      0 from 934.38Hz  -0.10s to 934.38Hz  -0.10s
+Refine origin of 741 (IK4ANJ SP2KW 73) SNR =      3 from 875.88Hz   0.44s to 875.88Hz   0.43s
+Re-decode RESULT pass 3 for 81: None
+Re-decode RESULT pass 3 for 91: ('CQ', 'CR5VP', 'IM59')
+Re-decode RESULT pass 3 for 83: None
+Re-decode RESULT pass 3 for 86: None
+Re-decode RESULT pass 4 for 81: None
+Re-decode RESULT pass 4 for 83: None
+Re-decode RESULT pass 4 for 86: None
+Refine origin of 753 (CQ A92TPR MK13) SNR =     -2 from 948.88Hz  -0.80s to 948.88Hz  -0.78s
+Re-decode RESULT pass 5 for 81: None
+Re-decode RESULT pass 5 for 83: None
+Re-decode RESULT pass 5 for 86: None
+Re-decode RESULT pass 6 for 81: stop
+Re-decode RESULT pass 6 for 83: stop
+Re-decode RESULT pass 6 for 86: stop
+Refine origin of 284 (N4PIQ DF3IS JN49) SNR =     -4 from 1118.75Hz   0.02s to 1118.75Hz   0.00s
+Refine origin of 458 (CQ SQ8AA KN19) SNR =     -2 from 2206.25Hz  -0.06s to 2206.25Hz  -0.07s
+Re-decode RESULT pass 0 for 587: None
+Re-decode RESULT pass 0 for 586: None
+Re-decode RESULT pass 0 for 588: None
+Re-decode RESULT pass 0 for 585: None
+Re-decode RESULT pass 0 for 592: None
+Re-decode RESULT pass 0 for 591: None
+Re-decode RESULT pass 0 for 589: None
+Re-decode RESULT pass 1 for 587: ('N4PIQ', 'DF3IS', 'JN49')
+Re-decode RESULT pass 1 for 586: None
+Re-decode RESULT pass 1 for 588: ('N4PIQ', 'DF3IS', 'JN49')
+Re-decode RESULT pass 1 for 585: None
+Re-decode RESULT pass 1 for 592: ('CQ', 'SQ8AA', 'KN19')
+Re-decode RESULT pass 1 for 591: None
+Re-decode RESULT pass 1 for 589: None
+Refine origin of 459 (CQ SQ8AA KN19) SNR =     -2 from 2211.38Hz  -0.14s to 2211.38Hz  -0.14s
+Re-decode RESULT pass 2 for 589: None
+Re-decode RESULT pass 2 for 591: None
+Re-decode RESULT pass 2 for 586: None
+Re-decode RESULT pass 2 for 585: None
+Refine origin of 319 (CQ SM5NBE JP80) SNR =     -4 from 1340.38Hz   0.16s to 1340.38Hz   0.14s
+Refine origin of 234 (CQ TA2ANK KM69) SNR =     -3 from 805.12Hz  -0.10s to 805.12Hz  -0.11s
+Re-decode RESULT pass 3 for 589: None
+Re-decode RESULT pass 3 for 591: ('CQ', 'SQ8AA', 'KN19')
+Re-decode RESULT pass 3 for 586: None
+Re-decode RESULT pass 3 for 585: None
+Refine origin of 520 (RZ4FWA GM3DRA -17) SNR =     -3 from 2594.62Hz  -0.48s to 2594.62Hz  -0.48s
+Re-decode RESULT pass 4 for 589: None
+Re-decode RESULT pass 4 for 586: None
+Re-decode RESULT pass 4 for 585: None
+Refine origin of 389 (CQ R2FBW JO94) SNR =     -2 from 1775.88Hz  -0.62s to 1775.88Hz  -0.62s
+Re-decode RESULT pass 5 for 589: None
+Re-decode RESULT pass 5 for 586: None
+Re-decode RESULT pass 5 for 585: None
+Refine origin of 527 (SQ5NAP HA5KN JN97) SNR =      1 from 2640.38Hz  -0.06s to 2640.38Hz  -0.08s
+Re-decode RESULT pass 6 for 589: stop
+Re-decode RESULT pass 6 for 586: stop
+Re-decode RESULT pass 6 for 585: stop
+Refine origin of 872 (<...> IS0LYN JN40) SNR =     17 from 1693.75Hz  -0.02s to 1693.75Hz  -0.04s
+Refine origin of 763 (CQ SQ5NAP KO02) SNR =      1 from 1012.50Hz   0.14s to 1012.50Hz   0.12s
+Refine origin of 750 (CT1FIU CR7BRV IM58) SNR =     -1 from 931.25Hz  -0.02s to 931.25Hz  -0.04s
+Refine origin of 810 (CQ DL6RBG JN68) SNR =      0 from 1306.25Hz   0.46s to 1306.25Hz   0.44s
+Refine origin of 937 (CQ YU65AEC ) SNR =     -3 from 2100.00Hz   0.06s to 2100.00Hz   0.04s
+Refine origin of 836 (CQ CR5VP IM59) SNR =      7 from 1468.75Hz   0.46s to 1468.75Hz   0.45s
+Refine origin of 782 (CQ CR7BUJ IM58) SNR =      5 from 1131.25Hz   0.02s to 1131.25Hz   0.02s
+Re-decode RESULT pass 0 for 83: None
+Re-decode RESULT pass 0 for 84: None
+Re-decode RESULT pass 0 for 82: None
+Re-decode RESULT pass 0 for 87: None
+Re-decode RESULT pass 0 for 88: None
+Re-decode RESULT pass 0 for 86: None
+Re-decode RESULT pass 0 for 92: None
+Re-decode RESULT pass 0 for 91: None
+Re-decode RESULT pass 0 for 90: None
+Re-decode RESULT pass 0 for 89: None
+Re-decode RESULT pass 0 for 95: None
+Re-decode RESULT pass 0 for 94: None
+Re-decode RESULT pass 0 for 96: None
+Re-decode RESULT pass 0 for 99: None
+Re-decode RESULT pass 0 for 100: None
+Re-decode RESULT pass 0 for 97: None
+Re-decode RESULT pass 0 for 98: None
+Re-decode RESULT pass 0 for 104: None
+Re-decode RESULT pass 0 for 103: None
+Re-decode RESULT pass 0 for 108: None
+Re-decode RESULT pass 0 for 107: None
+Re-decode RESULT pass 0 for 81: None
+Re-decode RESULT pass 0 for 85: None
+Re-decode RESULT pass 1 for 83: None
+Re-decode RESULT pass 1 for 84: None
+Re-decode RESULT pass 1 for 82: None
+Re-decode RESULT pass 1 for 81: None
+Re-decode RESULT pass 1 for 87: ('CQ', 'SQ5NAP', 'KO02')
+Re-decode RESULT pass 1 for 88: ('CQ', 'SQ5NAP', 'KO02')
+Re-decode RESULT pass 1 for 86: None
+Re-decode RESULT pass 1 for 85: None
+Re-decode RESULT pass 1 for 92: None
+Re-decode RESULT pass 1 for 91: None
+Re-decode RESULT pass 1 for 90: None
+Re-decode RESULT pass 1 for 89: None
+Re-decode RESULT pass 1 for 95: ('CQ', 'DL6RBG', 'JN68')
+Re-decode RESULT pass 1 for 94: None
+Re-decode RESULT pass 1 for 96: None
+Re-decode RESULT pass 1 for 99: None
+Re-decode RESULT pass 1 for 100: None
+Re-decode RESULT pass 1 for 97: None
+Re-decode RESULT pass 1 for 98: None
+Re-decode RESULT pass 1 for 104: ('CQ', 'CR5VP', 'IM59')
+Re-decode RESULT pass 1 for 103: None
+Re-decode RESULT pass 1 for 108: None
+Re-decode RESULT pass 1 for 107: None
+Refine origin of 837 (CQ CR5VP IM59) SNR =     -2 from 1473.88Hz   0.38s to 1473.88Hz   0.38s
+Re-decode RESULT pass 0 for 110: None
+Re-decode RESULT pass 0 for 109: None
+Re-decode RESULT pass 2 for 92: ('CT1FIU', 'CR7BRV', 'IM58')
+Re-decode RESULT pass 2 for 81: None
+Re-decode RESULT pass 2 for 84: ('<...>', 'IS0LYN', 'JN40')
+Re-decode RESULT pass 2 for 91: ('CT1FIU', 'CR7BRV', 'IM58')
+Re-decode RESULT pass 2 for 89: None
+Re-decode RESULT pass 2 for 100: ('CQ', 'YU65AEC', '')
+Re-decode RESULT pass 2 for 85: None
+Re-decode RESULT pass 2 for 96: ('CQ', 'DL6RBG', 'JN68')
+Re-decode RESULT pass 2 for 82: None
+Re-decode RESULT pass 2 for 83: None
+Re-decode RESULT pass 2 for 103: None
+Re-decode RESULT pass 2 for 90: None
+Re-decode RESULT pass 2 for 86: None
+Re-decode RESULT pass 2 for 99: ('CQ', 'YU65AEC', '')
+Re-decode RESULT pass 2 for 107: None
+Re-decode RESULT pass 2 for 108: None
+Re-decode RESULT pass 2 for 98: None
+Re-decode RESULT pass 2 for 97: None
+Re-decode RESULT pass 2 for 94: None
+Refine origin of 873 (<...> IS0LYN JN40) SNR =     -3 from 1696.88Hz  -0.10s to 1696.88Hz  -0.10s
+Refine origin of 751 (CT1FIU CR7BRV IM58) SNR =     -3 from 934.38Hz  -0.10s to 934.38Hz  -0.10s
+Refine origin of 799 (R6YG CT1BFP 73) SNR =     10 from 1236.38Hz   1.02s to 1236.38Hz   1.01s
+Refine origin of 783 (CQ CR7BUJ IM58) SNR =     -4 from 1136.38Hz  -0.06s to 1136.38Hz  -0.06s
+Re-decode RESULT pass 3 for 81: None
+Re-decode RESULT pass 3 for 89: None
+Re-decode RESULT pass 3 for 85: None
+Re-decode RESULT pass 3 for 82: None
+Re-decode RESULT pass 3 for 83: ('<...>', 'IS0LYN', 'JN40')
+Re-decode RESULT pass 3 for 103: ('CQ', 'CR5VP', 'IM59')
+Re-decode RESULT pass 3 for 90: None
+Re-decode RESULT pass 3 for 86: None
+Re-decode RESULT pass 3 for 107: None
+Re-decode RESULT pass 3 for 108: None
+Re-decode RESULT pass 3 for 98: None
+Re-decode RESULT pass 3 for 97: None
+Re-decode RESULT pass 3 for 94: None
+Re-decode RESULT pass 4 for 81: None
+Re-decode RESULT pass 4 for 89: None
+Re-decode RESULT pass 4 for 85: None
+Re-decode RESULT pass 4 for 82: None
+Re-decode RESULT pass 4 for 90: None
+Re-decode RESULT pass 4 for 86: None
+Re-decode RESULT pass 4 for 107: None
+Re-decode RESULT pass 4 for 108: ('CQ', 'CR7BUJ', 'IM58')
+Re-decode RESULT pass 4 for 98: None
+Re-decode RESULT pass 4 for 97: None
+Re-decode RESULT pass 4 for 94: None
+Re-decode RESULT pass 5 for 81: None
+Re-decode RESULT pass 5 for 89: None
+Re-decode RESULT pass 5 for 85: None
+Re-decode RESULT pass 5 for 82: None
+Re-decode RESULT pass 5 for 90: None
+Re-decode RESULT pass 5 for 86: None
+Re-decode RESULT pass 5 for 107: None
+Re-decode RESULT pass 5 for 98: None
+Re-decode RESULT pass 5 for 97: None
+Re-decode RESULT pass 5 for 94: None
+Re-decode RESULT pass 6 for 81: stop
+Re-decode RESULT pass 6 for 89: stop
+Re-decode RESULT pass 6 for 85: stop
+Re-decode RESULT pass 6 for 82: stop
+Re-decode RESULT pass 6 for 90: stop
+Re-decode RESULT pass 6 for 86: stop
+Re-decode RESULT pass 6 for 107: stop
+Re-decode RESULT pass 6 for 98: stop
+Re-decode RESULT pass 6 for 97: stop
+Re-decode RESULT pass 6 for 94: stop
+Refine origin of 292 (N4PIQ DF3IS JN49) SNR =      4 from 1118.75Hz  -0.02s to 1118.75Hz  -0.04s
+Refine origin of 535 (SQ5NAP HA5KN JN97) SNR =     -1 from 2637.50Hz   0.02s to 2637.50Hz   0.00s
+Re-decode RESULT pass 0 for 595: None
+Re-decode RESULT pass 0 for 594: None
+Re-decode RESULT pass 0 for 596: None
+Re-decode RESULT pass 0 for 600: None
+Re-decode RESULT pass 0 for 599: None
+Re-decode RESULT pass 1 for 595: ('N4PIQ', 'DF3IS', 'JN49')
+Re-decode RESULT pass 1 for 594: None
+Re-decode RESULT pass 1 for 596: ('N4PIQ', 'DF3IS', 'JN49')
+Re-decode RESULT pass 1 for 600: None
+Re-decode RESULT pass 1 for 599: None
+Refine origin of 467 (CQ SQ8AA KN19) SNR =     -3 from 2211.38Hz  -0.04s to 2211.38Hz  -0.04s
+Refine origin of 327 (CQ SM5NBE JP80) SNR =      0 from 1336.38Hz   0.12s to 1336.38Hz   0.11s
+Re-decode RESULT pass 2 for 600: ('SQ5NAP', 'HA5KN', 'JN97')
+Re-decode RESULT pass 2 for 599: ('SQ5NAP', 'HA5KN', 'JN97')
+Re-decode RESULT pass 2 for 594: None
+Refine origin of 216 (SP9UPH SA0WAE -04) SNR =     -4 from 642.62Hz  -0.62s to 642.62Hz  -0.62s
+Re-decode RESULT pass 3 for 594: ('N4PIQ', 'DF3IS', 'JN49')
+Refine origin of 759 (CQ SQ5NAP KO02) SNR =     -1 from 1012.50Hz   0.14s to 1012.50Hz   0.12s
+Refine origin of 746 (CT1FIU CR7BRV IM58) SNR =      7 from 931.25Hz  -0.02s to 931.25Hz  -0.04s
+Refine origin of 868 (<...> IS0LYN JN40) SNR =     -1 from 1693.75Hz   0.06s to 1693.75Hz   0.04s
+Refine origin of 981 (IU8WQA DJ1TU JN48) SNR =      3 from 2400.00Hz   0.06s to 2400.00Hz   0.04s
+Refine origin of 832 (CQ CR5VP IM59) SNR =     -4 from 1468.75Hz   0.46s to 1468.75Hz   0.45s
+Refine origin of 43 (G6UJJ EA5ET IM99) SNR =     -2 from 2787.50Hz   0.14s to 2787.50Hz   0.12s
+Re-decode RESULT pass 0 for 79: None
+Re-decode RESULT pass 0 for 80: None
+Re-decode RESULT pass 0 for 78: None
+Re-decode RESULT pass 0 for 84: None
+Re-decode RESULT pass 0 for 83: None
+Re-decode RESULT pass 0 for 82: None
+Re-decode RESULT pass 0 for 87: None
+Re-decode RESULT pass 0 for 88: None
+Re-decode RESULT pass 0 for 86: None
+Re-decode RESULT pass 0 for 91: None
+Re-decode RESULT pass 0 for 92: None
+Re-decode RESULT pass 0 for 90: None
+Re-decode RESULT pass 0 for 89: None
+Re-decode RESULT pass 0 for 96: None
+Re-decode RESULT pass 0 for 95: None
+Re-decode RESULT pass 0 for 100: None
+Re-decode RESULT pass 0 for 99: None
+Re-decode RESULT pass 0 for 77: None
+Re-decode RESULT pass 1 for 79: None
+Re-decode RESULT pass 1 for 80: None
+Re-decode RESULT pass 1 for 78: None
+Re-decode RESULT pass 1 for 77: None
+Re-decode RESULT pass 1 for 84: ('CT1FIU', 'CR7BRV', 'IM58')
+Re-decode RESULT pass 1 for 83: ('CT1FIU', 'CR7BRV', 'IM58')
+Re-decode RESULT pass 1 for 82: None
+Re-decode RESULT pass 1 for 87: None
+Re-decode RESULT pass 1 for 88: None
+Re-decode RESULT pass 1 for 86: None
+Re-decode RESULT pass 1 for 91: None
+Re-decode RESULT pass 1 for 92: None
+Re-decode RESULT pass 1 for 90: None
+Re-decode RESULT pass 1 for 89: None
+Re-decode RESULT pass 1 for 96: None
+Re-decode RESULT pass 1 for 95: None
+Re-decode RESULT pass 1 for 100: None
+Re-decode RESULT pass 1 for 99: None
+Refine origin of 747 (CT1FIU CR7BRV IM58) SNR =      4 from 936.38Hz  -0.10s to 936.38Hz  -0.10s
+Refine origin of 806 (CQ DL6RBG JN68) SNR =      0 from 1307.12Hz   0.46s to 1307.12Hz   0.45s
+Re-decode RESULT pass 2 for 80: ('CQ', 'SQ5NAP', 'KO02')
+Re-decode RESULT pass 2 for 79: ('CQ', 'SQ5NAP', 'KO02')
+Re-decode RESULT pass 2 for 88: ('<...>', 'IS0LYN', 'JN40')
+Re-decode RESULT pass 2 for 87: ('<...>', 'IS0LYN', 'JN40')
+Re-decode RESULT pass 2 for 91: ('IU8WQA', 'DJ1TU', 'JN48')
+Re-decode RESULT pass 2 for 92: ('IU8WQA', 'DJ1TU', 'JN48')
+Re-decode RESULT pass 2 for 96: ('CQ', 'CR5VP', 'IM59')
+Re-decode RESULT pass 2 for 100: ('G6UJJ', 'EA5ET', 'IM99')
+Re-decode RESULT pass 2 for 77: None
+Re-decode RESULT pass 2 for 78: None
+Re-decode RESULT pass 2 for 86: None
+Re-decode RESULT pass 2 for 82: None
+Re-decode RESULT pass 2 for 95: None
+Re-decode RESULT pass 2 for 90: None
+Re-decode RESULT pass 2 for 99: None
+Re-decode RESULT pass 2 for 89: None
+Refine origin of 799 (JE2LPC KP2B RR73) SNR =      2 from 1263.38Hz   0.34s to 1263.38Hz   0.32s
+Refine origin of 44 (G6UJJ EA5ET IM99) SNR =     -1 from 2792.62Hz   0.04s to 2792.62Hz   0.04s
+Refine origin of 695 (IN3JRZ CT1BFP IM59) SNR =      7 from 609.38Hz   1.02s to 609.38Hz   1.03s
+Refine origin of 833 (CQ CR5VP IM59) SNR =     -2 from 1473.88Hz   0.38s to 1473.88Hz   0.38s
+Re-decode RESULT pass 3 for 77: None
+Re-decode RESULT pass 3 for 78: None
+Re-decode RESULT pass 3 for 86: None
+Re-decode RESULT pass 3 for 82: None
+Re-decode RESULT pass 3 for 95: None
+Re-decode RESULT pass 3 for 90: None
+Re-decode RESULT pass 3 for 99: None
+Re-decode RESULT pass 3 for 89: None
+Refine origin of 700 (SA0WAE SP9UPH R+04) SNR =      4 from 644.62Hz  -0.12s to 644.62Hz  -0.13s
+Re-decode RESULT pass 4 for 77: None
+Re-decode RESULT pass 4 for 78: None
+Re-decode RESULT pass 4 for 86: None
+Re-decode RESULT pass 4 for 82: None
+Re-decode RESULT pass 4 for 95: None
+Re-decode RESULT pass 4 for 90: None
+Re-decode RESULT pass 4 for 99: None
+Re-decode RESULT pass 4 for 89: None
+Refine origin of 694 (IN3JRZ CT1BFP IM59) SNR =     -1 from 609.12Hz   1.08s to 609.12Hz   1.08s
+Re-decode RESULT pass 5 for 77: None
+Re-decode RESULT pass 5 for 78: ('CQ', 'SQ5NAP', 'KO02')
+Re-decode RESULT pass 5 for 86: None
+Re-decode RESULT pass 5 for 82: None
+Re-decode RESULT pass 5 for 95: ('CQ', 'CR5VP', 'IM59')
+Re-decode RESULT pass 5 for 90: None
+Re-decode RESULT pass 5 for 99: None
+Re-decode RESULT pass 5 for 89: None
+Re-decode RESULT pass 6 for 77: stop
+Re-decode RESULT pass 6 for 86: stop
+Re-decode RESULT pass 6 for 82: stop
+Re-decode RESULT pass 6 for 90: stop
+Re-decode RESULT pass 6 for 99: stop
+Re-decode RESULT pass 6 for 89: stop
+Refine origin of 539 (SQ5NAP HA5KN JN97) SNR =     -3 from 2637.50Hz   0.02s to 2637.50Hz   0.00s
+Refine origin of 455 (CQ CT1FIU IN50) SNR =     -2 from 2112.50Hz  -0.02s to 2112.50Hz  -0.04s
+Refine origin of 556 (CQ DM8KM JN69) SNR =     -2 from 2743.75Hz   0.02s to 2743.75Hz   0.00s
+Refine origin of 316 (R3QX EA3FH JN01) SNR =     -3 from 1243.75Hz  -0.02s to 1243.75Hz  -0.04s
+Refine origin of 470 (CQ SQ8AA KN19) SNR =      5 from 2206.25Hz  -0.02s to 2206.25Hz  -0.03s
+Re-decode RESULT pass 0 for 599: None
+Re-decode RESULT pass 0 for 600: None
+Re-decode RESULT pass 0 for 598: None
+Re-decode RESULT pass 0 for 604: None
+Re-decode RESULT pass 0 for 603: None
+Re-decode RESULT pass 0 for 601: None
+Re-decode RESULT pass 0 for 607: None
+Re-decode RESULT pass 0 for 608: None
+Re-decode RESULT pass 0 for 606: None
+Re-decode RESULT pass 0 for 611: None
+Re-decode RESULT pass 0 for 612: None
+Re-decode RESULT pass 0 for 609: None
+Re-decode RESULT pass 0 for 616: None
+Re-decode RESULT pass 0 for 615: None
+Re-decode RESULT pass 1 for 599: ('SQ5NAP', 'HA5KN', 'JN97')
+Re-decode RESULT pass 1 for 600: None
+Re-decode RESULT pass 1 for 598: None
+Re-decode RESULT pass 1 for 604: None
+Re-decode RESULT pass 1 for 603: None
+Re-decode RESULT pass 1 for 601: None
+Re-decode RESULT pass 1 for 607: None
+Re-decode RESULT pass 1 for 608: None
+Re-decode RESULT pass 1 for 606: None
+Re-decode RESULT pass 1 for 611: None
+Re-decode RESULT pass 1 for 612: None
+Re-decode RESULT pass 1 for 609: None
+Re-decode RESULT pass 1 for 616: ('CQ', 'SQ8AA', 'KN19')
+Re-decode RESULT pass 1 for 615: None
+Refine origin of 330 (CQ SM5NBE JP80) SNR =      0 from 1332.12Hz   0.10s to 1332.12Hz   0.09s
+Re-decode RESULT pass 2 for 600: ('SQ5NAP', 'HA5KN', 'JN97')
+Re-decode RESULT pass 2 for 601: None
+Re-decode RESULT pass 2 for 604: ('CQ', 'CT1FIU', 'IN50')
+Re-decode RESULT pass 2 for 603: None
+Re-decode RESULT pass 2 for 615: ('CQ', 'SQ8AA', 'KN19')
+Re-decode RESULT pass 2 for 608: ('CQ', 'DM8KM', 'JN69')
+Re-decode RESULT pass 2 for 598: None
+Re-decode RESULT pass 2 for 607: None
+Re-decode RESULT pass 2 for 612: None
+Re-decode RESULT pass 2 for 611: None
+Re-decode RESULT pass 2 for 606: None
+Re-decode RESULT pass 2 for 609: None
+Re-decode RESULT pass 3 for 601: None
+Re-decode RESULT pass 3 for 603: ('CQ', 'CT1FIU', 'IN50')
+Re-decode RESULT pass 3 for 598: None
+Re-decode RESULT pass 3 for 607: ('CQ', 'DM8KM', 'JN69')
+Re-decode RESULT pass 3 for 612: None
+Re-decode RESULT pass 3 for 611: None
+Re-decode RESULT pass 3 for 606: None
+Re-decode RESULT pass 3 for 609: None
+Re-decode RESULT pass 4 for 601: None
+Re-decode RESULT pass 4 for 598: None
+Re-decode RESULT pass 4 for 612: ('R3QX', 'EA3FH', 'JN01')
+Re-decode RESULT pass 4 for 611: None
+Re-decode RESULT pass 4 for 606: None
+Re-decode RESULT pass 4 for 609: None
+Refine origin of 482 (TA1EDG OK2CNI JN79) SNR =     12 from 2282.12Hz   0.08s to 2282.12Hz   0.07s
+Refine origin of 481 (F1PBZ IU8RIR 73) SNR =      4 from 2275.88Hz  -0.08s to 2275.88Hz  -0.09s
+Re-decode RESULT pass 5 for 601: None
+Re-decode RESULT pass 5 for 598: None
+Re-decode RESULT pass 5 for 611: None
+Re-decode RESULT pass 5 for 606: None
+Re-decode RESULT pass 5 for 609: None
+Re-decode RESULT pass 6 for 601: stop
+Re-decode RESULT pass 6 for 598: stop
+Re-decode RESULT pass 6 for 611: stop
+Re-decode RESULT pass 6 for 606: stop
+Re-decode RESULT pass 6 for 609: stop
+Refine origin of 775 (R8ACF SQ5NAP +00) SNR =      0 from 1012.50Hz   0.14s to 1012.50Hz   0.12s
+Refine origin of 997 (IU8WQA DJ1TU JN48) SNR =     -4 from 2400.00Hz   0.06s to 2400.00Hz   0.04s
+Refine origin of 884 (<...> IS0LYN JN40) SNR =     -2 from 1693.75Hz  -0.02s to 1693.75Hz  -0.04s
+Refine origin of 762 (CT1FIU CR7BRV IM58) SNR =      7 from 931.25Hz  -0.02s to 931.25Hz  -0.04s
+Refine origin of 848 (CQ CR5VP IM59) SNR =      2 from 1468.75Hz   0.46s to 1468.75Hz   0.45s
+Refine origin of 822 (CQ DL6RBG JN68) SNR =      3 from 1306.25Hz   0.50s to 1306.25Hz   0.48s
+Refine origin of 809 (PD4RJ SP7ROM R-13) SNR =     -4 from 1225.00Hz   0.10s to 1225.00Hz   0.08s
+Re-decode RESULT pass 0 for 95: None
+Re-decode RESULT pass 0 for 96: None
+Re-decode RESULT pass 0 for 94: None
+Re-decode RESULT pass 0 for 99: None
+Re-decode RESULT pass 0 for 100: None
+Re-decode RESULT pass 0 for 98: None
+Re-decode RESULT pass 0 for 97: None
+Re-decode RESULT pass 0 for 103: None
+Re-decode RESULT pass 0 for 104: None
+Re-decode RESULT pass 0 for 102: None
+Re-decode RESULT pass 0 for 108: None
+Re-decode RESULT pass 0 for 107: None
+Re-decode RESULT pass 0 for 105: None
+Re-decode RESULT pass 0 for 112: None
+Re-decode RESULT pass 0 for 111: None
+Re-decode RESULT pass 0 for 115: None
+Re-decode RESULT pass 0 for 114: None
+Re-decode RESULT pass 0 for 116: None
+Re-decode RESULT pass 0 for 120: None
+Re-decode RESULT pass 0 for 119: None
+Refine origin of 710 (IN3JRZ CT1BFP IM59) SNR =      9 from 606.25Hz   1.14s to 606.25Hz   1.12s
+Re-decode RESULT pass 0 for 101: None
+Re-decode RESULT pass 0 for 124: None
+Re-decode RESULT pass 0 for 123: None
+Re-decode RESULT pass 0 for 122: None
+Re-decode RESULT pass 0 for 121: None
+Re-decode RESULT pass 1 for 95: ('R8ACF', 'SQ5NAP', '+00')
+Re-decode RESULT pass 1 for 96: ('R8ACF', 'SQ5NAP', '+00')
+Re-decode RESULT pass 1 for 94: None
+Re-decode RESULT pass 1 for 99: None
+Re-decode RESULT pass 1 for 100: ('IU8WQA', 'DJ1TU', 'JN48')
+Re-decode RESULT pass 1 for 98: None
+Re-decode RESULT pass 1 for 97: None
+Re-decode RESULT pass 1 for 103: None
+Re-decode RESULT pass 1 for 104: None
+Re-decode RESULT pass 1 for 102: None
+Re-decode RESULT pass 1 for 101: None
+Re-decode RESULT pass 1 for 108: None
+Re-decode RESULT pass 1 for 107: None
+Re-decode RESULT pass 1 for 105: None
+Re-decode RESULT pass 1 for 112: ('CQ', 'CR5VP', 'IM59')
+Re-decode RESULT pass 1 for 111: None
+Re-decode RESULT pass 1 for 115: None
+Re-decode RESULT pass 1 for 114: None
+Re-decode RESULT pass 1 for 116: None
+Re-decode RESULT pass 1 for 120: None
+Re-decode RESULT pass 1 for 119: None
+Re-decode RESULT pass 1 for 124: None
+Re-decode RESULT pass 1 for 123: None
+Re-decode RESULT pass 1 for 122: None
+Re-decode RESULT pass 1 for 121: None
+Refine origin of 977 (TA1MB SP2LMG JO94) SNR =     -2 from 2273.88Hz   0.38s to 2273.88Hz   0.36s
+Re-decode RESULT pass 2 for 108: ('CT1FIU', 'CR7BRV', 'IM58')
+Re-decode RESULT pass 2 for 124: ('IN3JRZ', 'CT1BFP', 'IM59')
+Re-decode RESULT pass 2 for 103: ('<...>', 'IS0LYN', 'JN40')
+Re-decode RESULT pass 2 for 105: None
+Re-decode RESULT pass 2 for 104: ('<...>', 'IS0LYN', 'JN40')
+Re-decode RESULT pass 2 for 97: None
+Re-decode RESULT pass 2 for 120: ('PD4RJ', 'SP7ROM', 'R-13')
+Re-decode RESULT pass 2 for 111: ('CQ', 'CR5VP', 'IM59')
+Re-decode RESULT pass 2 for 119: ('PD4RJ', 'SP7ROM', 'R-13')
+Re-decode RESULT pass 2 for 101: None
+Re-decode RESULT pass 2 for 107: ('CT1FIU', 'CR7BRV', 'IM58')
+Re-decode RESULT pass 2 for 121: None
+Re-decode RESULT pass 2 for 123: ('IN3JRZ', 'CT1BFP', 'IM59')
+Re-decode RESULT pass 2 for 99: ('IU8WQA', 'DJ1TU', 'JN48')
+Re-decode RESULT pass 2 for 115: ('CQ', 'DL6RBG', 'JN68')
+Re-decode RESULT pass 2 for 102: None
+Re-decode RESULT pass 2 for 116: None
+Re-decode RESULT pass 2 for 122: None
+Re-decode RESULT pass 2 for 98: None
+Re-decode RESULT pass 2 for 114: None
+Re-decode RESULT pass 2 for 94: None
+Refine origin of 795 (CT7BSA CR7BUJ IM58) SNR =      0 from 1136.38Hz  -0.06s to 1136.38Hz  -0.05s
+Refine origin of 763 (CT1FIU CR7BRV IM58) SNR =      7 from 936.38Hz  -0.10s to 936.38Hz  -0.10s
+Refine origin of 711 (IN3JRZ CT1BFP IM59) SNR =     -2 from 611.38Hz   1.06s to 611.38Hz   1.05s
+Refine origin of 815 (PA0GSP KP2B -04) SNR =      3 from 1263.38Hz   0.32s to 1263.38Hz   0.32s
+Refine origin of 862 (DL2VEL SP2KW JO92) SNR =     -3 from 1557.12Hz   0.42s to 1557.12Hz   0.43s
+Re-decode RESULT pass 3 for 105: None
+Re-decode RESULT pass 3 for 97: None
+Re-decode RESULT pass 3 for 101: None
+Re-decode RESULT pass 3 for 121: None
+Re-decode RESULT pass 3 for 102: None
+Re-decode RESULT pass 3 for 116: None
+Re-decode RESULT pass 3 for 122: None
+Re-decode RESULT pass 3 for 98: None
+Re-decode RESULT pass 3 for 114: None
+Re-decode RESULT pass 3 for 94: None
+Re-decode RESULT pass 4 for 105: None
+Re-decode RESULT pass 4 for 97: None
+Re-decode RESULT pass 4 for 101: None
+Re-decode RESULT pass 4 for 121: None
+Re-decode RESULT pass 4 for 102: None
+Re-decode RESULT pass 4 for 116: None
+Re-decode RESULT pass 4 for 122: None
+Re-decode RESULT pass 4 for 98: None
+Re-decode RESULT pass 4 for 114: None
+Re-decode RESULT pass 4 for 94: None
+Re-decode RESULT pass 5 for 105: None
+Re-decode RESULT pass 5 for 97: None
+Re-decode RESULT pass 5 for 101: None
+Re-decode RESULT pass 5 for 121: None
+Re-decode RESULT pass 5 for 102: None
+Re-decode RESULT pass 5 for 116: None
+Re-decode RESULT pass 5 for 122: None
+Re-decode RESULT pass 5 for 98: None
+Re-decode RESULT pass 5 for 114: None
+Re-decode RESULT pass 5 for 94: None
+Re-decode RESULT pass 6 for 105: stop
+Re-decode RESULT pass 6 for 97: stop
+Re-decode RESULT pass 6 for 101: stop
+Re-decode RESULT pass 6 for 121: stop
+Re-decode RESULT pass 6 for 102: stop
+Re-decode RESULT pass 6 for 116: stop
+Re-decode RESULT pass 6 for 122: stop
+Re-decode RESULT pass 6 for 98: stop
+Re-decode RESULT pass 6 for 114: stop
+Re-decode RESULT pass 6 for 94: stop
+Refine origin of 478 (VE9PHX SM6KKX JO67) SNR =     -3 from 2156.25Hz  -0.02s to 2156.25Hz  -0.04s
+Refine origin of 217 (RA9J IW2DNI JN45) SNR =      6 from 525.00Hz  -0.02s to 525.00Hz  -0.04s
+Refine origin of 555 (SQ5NAP HA5KN JN97) SNR =     -4 from 2637.50Hz   0.02s to 2637.50Hz   0.00s
+Refine origin of 307 (CR7BUJ CT7BSA -04) SNR =      0 from 1087.50Hz  -1.14s to 1087.50Hz  -1.12s
+Re-decode RESULT pass 0 for 616: None
+Re-decode RESULT pass 0 for 615: None
+Re-decode RESULT pass 0 for 613: None
+Re-decode RESULT pass 0 for 619: None
+Re-decode RESULT pass 0 for 618: None
+Re-decode RESULT pass 0 for 620: None
+Re-decode RESULT pass 0 for 623: None
+Re-decode RESULT pass 0 for 624: None
+Re-decode RESULT pass 0 for 628: None
+Re-decode RESULT pass 0 for 627: None
+Re-decode RESULT pass 0 for 626: None
+Refine origin of 356 (CQ SP6AMI JO90) SNR =     -2 from 1393.75Hz   1.22s to 1393.75Hz   1.20s
+Re-decode RESULT pass 0 for 632: None
+Re-decode RESULT pass 0 for 631: None
+Re-decode RESULT pass 0 for 629: None
+Re-decode RESULT pass 0 for 630: None
+Re-decode RESULT pass 1 for 616: ('VE9PHX', 'SM6KKX', 'JO67')
+Re-decode RESULT pass 1 for 615: None
+Re-decode RESULT pass 1 for 613: None
+Re-decode RESULT pass 1 for 619: None
+Re-decode RESULT pass 1 for 618: None
+Re-decode RESULT pass 1 for 620: None
+Re-decode RESULT pass 1 for 623: None
+Re-decode RESULT pass 1 for 624: None
+Re-decode RESULT pass 1 for 628: None
+Re-decode RESULT pass 1 for 627: None
+Re-decode RESULT pass 1 for 626: None
+Re-decode RESULT pass 1 for 632: ('CQ', 'SP6AMI', 'JO90')
+Re-decode RESULT pass 1 for 631: None
+Re-decode RESULT pass 1 for 629: None
+Re-decode RESULT pass 1 for 630: None
+Refine origin of 479 (VE9PHX SM6KKX JO67) SNR =      1 from 2161.38Hz  -0.10s to 2161.38Hz  -0.10s
+Refine origin of 487 (CQ SQ8AA KN19) SNR =     -4 from 2211.38Hz  -0.14s to 2211.38Hz  -0.14s
+Re-decode RESULT pass 2 for 623: ('SQ5NAP', 'HA5KN', 'JN97')
+Re-decode RESULT pass 2 for 628: ('CR7BUJ', 'CT7BSA', '-04')
+Re-decode RESULT pass 2 for 624: ('SQ5NAP', 'HA5KN', 'JN97')
+Re-decode RESULT pass 2 for 613: None
+Re-decode RESULT pass 2 for 619: ('RA9J', 'IW2DNI', 'JN45')
+Re-decode RESULT pass 2 for 620: ('RA9J', 'IW2DNI', 'JN45')
+Re-decode RESULT pass 2 for 615: ('VE9PHX', 'SM6KKX', 'JO67')
+Re-decode RESULT pass 2 for 631: ('CQ', 'SP6AMI', 'JO90')
+Re-decode RESULT pass 2 for 626: None
+Re-decode RESULT pass 2 for 618: None
+Re-decode RESULT pass 2 for 630: None
+Re-decode RESULT pass 2 for 627: None
+Re-decode RESULT pass 2 for 629: None
+Refine origin of 254 (RU9AD OK2UPG JN99) SNR =      2 from 757.12Hz  -0.06s to 757.12Hz  -0.07s
+Re-decode RESULT pass 3 for 613: None
+Re-decode RESULT pass 3 for 626: None
+Re-decode RESULT pass 3 for 618: None
+Re-decode RESULT pass 3 for 630: None
+Re-decode RESULT pass 3 for 627: None
+Re-decode RESULT pass 3 for 629: None
+Refine origin of 382 (DK4BP R5AV -04) SNR =     -4 from 1559.12Hz  -0.10s to 1559.12Hz  -0.11s
+Re-decode RESULT pass 4 for 613: None
+Re-decode RESULT pass 4 for 626: None
+Re-decode RESULT pass 4 for 618: None
+Re-decode RESULT pass 4 for 630: None
+Re-decode RESULT pass 4 for 627: None
+Re-decode RESULT pass 4 for 629: None
+Re-decode RESULT pass 5 for 613: None
+Re-decode RESULT pass 5 for 626: None
+Re-decode RESULT pass 5 for 618: None
+Re-decode RESULT pass 5 for 630: ('2V0TAR', '5H0FBY', '73')
+SUBTRACTION SUCCESS for 630: ('2V0TAR', '5H0FBY', '73')
+Re-decode RESULT pass 5 for 627: None
+Re-decode RESULT pass 5 for 629: None
+Re-decode RESULT pass 6 for 613: stop
+Re-decode RESULT pass 6 for 626: stop
+Re-decode RESULT pass 6 for 618: stop
+Re-decode RESULT pass 6 for 627: stop
+Re-decode RESULT pass 6 for 629: stop
+Refine origin of 782 (R6YG CR7BRV IM58) SNR =      6 from 931.25Hz  -0.02s to 931.25Hz  -0.04s
+Refine origin of 795 (R8ACF SQ5NAP RR73) SNR =      2 from 1012.50Hz   0.14s to 1012.50Hz   0.12s
+Refine origin of 17 (IU8WQA DJ1TU JN48) SNR =     -4 from 2400.00Hz   0.06s to 2400.00Hz   0.04s
+Refine origin of 969 (CQ YU65AEC ) SNR =     -2 from 2100.00Hz   0.06s to 2100.00Hz   0.04s
+Re-decode RESULT pass 0 for 116: None
+Re-decode RESULT pass 0 for 115: None
+Re-decode RESULT pass 0 for 114: None
+Re-decode RESULT pass 0 for 119: None
+Re-decode RESULT pass 0 for 120: None
+Re-decode RESULT pass 0 for 118: None
+Re-decode RESULT pass 0 for 123: None
+Re-decode RESULT pass 0 for 124: None
+Re-decode RESULT pass 0 for 122: None
+Re-decode RESULT pass 0 for 128: None
+Re-decode RESULT pass 0 for 127: None
+Re-decode RESULT pass 0 for 125: None
+Re-decode RESULT pass 0 for 126: None
+Refine origin of 730 (IN3JRZ CT1BFP IM59) SNR =      4 from 606.25Hz   1.14s to 606.25Hz   1.12s
+Refine origin of 868 (CQ CR5VP IM59) SNR =     12 from 1468.75Hz   0.46s to 1468.75Hz   0.44s
+Re-decode RESULT pass 0 for 121: None
+Re-decode RESULT pass 0 for 132: None
+Re-decode RESULT pass 0 for 131: None
+Re-decode RESULT pass 0 for 130: None
+Re-decode RESULT pass 0 for 129: None
+Re-decode RESULT pass 0 for 136: None
+Re-decode RESULT pass 0 for 135: None
+Re-decode RESULT pass 0 for 133: None
+Re-decode RESULT pass 1 for 116: None
+Re-decode RESULT pass 1 for 115: None
+Re-decode RESULT pass 1 for 114: None
+Re-decode RESULT pass 1 for 119: ('R8ACF', 'SQ5NAP', 'RR73')
+Re-decode RESULT pass 1 for 120: ('R8ACF', 'SQ5NAP', 'RR73')
+Re-decode RESULT pass 1 for 118: None
+Re-decode RESULT pass 1 for 123: None
+Re-decode RESULT pass 1 for 124: None
+Re-decode RESULT pass 1 for 122: None
+Re-decode RESULT pass 1 for 121: None
+Re-decode RESULT pass 1 for 128: ('CQ', 'YU65AEC', '')
+Re-decode RESULT pass 1 for 127: None
+Re-decode RESULT pass 1 for 125: None
+Re-decode RESULT pass 1 for 126: None
+Re-decode RESULT pass 1 for 132: ('IN3JRZ', 'CT1BFP', 'IM59')
+Re-decode RESULT pass 1 for 131: None
+Re-decode RESULT pass 1 for 130: None
+Re-decode RESULT pass 1 for 129: None
+Re-decode RESULT pass 1 for 136: ('CQ', 'CR5VP', 'IM59')
+Re-decode RESULT pass 1 for 135: None
+Re-decode RESULT pass 1 for 133: None
+Refine origin of 869 (CQ CR5VP IM59) SNR =     -2 from 1473.88Hz   0.38s to 1473.88Hz   0.38s
+Refine origin of 970 (CQ YU65AEC ) SNR =      0 from 2105.12Hz  -0.04s to 2105.12Hz  -0.04s
+Refine origin of 843 (CQ HA1ZW JN86) SNR =      1 from 1313.38Hz  -0.10s to 1313.38Hz  -0.10s
+Refine origin of 997 (TA1MB SP2LMG JO94) SNR =      0 from 2273.88Hz   0.38s to 2273.88Hz   0.36s
+Re-decode RESULT pass 0 for 148: None
+Re-decode RESULT pass 1 for 148: None
+Re-decode RESULT pass 2 for 116: ('R6YG', 'CR7BRV', 'IM58')
+Re-decode RESULT pass 2 for 133: None
+Re-decode RESULT pass 2 for 124: ('IU8WQA', 'DJ1TU', 'JN48')
+Re-decode RESULT pass 2 for 126: None
+Re-decode RESULT pass 2 for 123: ('IU8WQA', 'DJ1TU', 'JN48')
+Re-decode RESULT pass 2 for 121: None
+Re-decode RESULT pass 2 for 135: None
+Re-decode RESULT pass 2 for 127: ('CQ', 'YU65AEC', '')
+Re-decode RESULT pass 2 for 131: ('IN3JRZ', 'CT1BFP', 'IM59')
+Re-decode RESULT pass 2 for 130: None
+Re-decode RESULT pass 2 for 129: None
+Re-decode RESULT pass 2 for 114: None
+Re-decode RESULT pass 2 for 115: None
+Re-decode RESULT pass 2 for 122: None
+Re-decode RESULT pass 2 for 125: None
+Re-decode RESULT pass 2 for 118: None
+Refine origin of 830 (PD4RJ SP7ROM 73) SNR =     -3 from 1228.12Hz   0.00s to 1228.12Hz   0.01s
+Refine origin of 815 (CT7BSA CR7BUJ R-18) SNR =      0 from 1136.38Hz  -0.06s to 1136.38Hz  -0.06s
+Refine origin of 720 (MM0INS N9VD R-07) SNR =     -2 from 542.62Hz  -0.06s to 542.62Hz  -0.04s
+Refine origin of 783 (R6YG CR7BRV IM58) SNR =     -1 from 934.38Hz  -0.12s to 934.38Hz  -0.10s
+Refine origin of 900 (M7CYY SP2KW JO92) SNR =     -2 from 1667.62Hz   0.50s to 1667.62Hz   0.50s
+Refine origin of 950 (CQ UA4POO LO65) SNR =     -2 from 1982.12Hz   0.10s to 1982.12Hz   0.11s
+Re-decode RESULT pass 3 for 133: None
+Re-decode RESULT pass 3 for 126: None
+Re-decode RESULT pass 3 for 121: None
+Re-decode RESULT pass 3 for 135: ('CQ', 'CR5VP', 'IM59')
+Re-decode RESULT pass 3 for 130: None
+Re-decode RESULT pass 3 for 129: None
+Re-decode RESULT pass 3 for 114: None
+Re-decode RESULT pass 3 for 115: None
+Re-decode RESULT pass 3 for 122: None
+Re-decode RESULT pass 3 for 125: None
+Re-decode RESULT pass 3 for 118: None
+Refine origin of 835 (PA0GSP KP2B RR73) SNR =     -4 from 1263.38Hz   0.32s to 1263.38Hz   0.32s
+Refine origin of 829 (PD4RJ SP7ROM 73) SNR =     -4 from 1227.88Hz   0.04s to 1227.88Hz   0.03s
+Refine origin of 719 (MM0INS N9VD R-07) SNR =     -3 from 540.38Hz   0.00s to 540.38Hz  -0.02s
+Re-decode RESULT pass 4 for 133: None
+Re-decode RESULT pass 4 for 126: None
+Re-decode RESULT pass 4 for 121: None
+Re-decode RESULT pass 4 for 130: None
+Re-decode RESULT pass 4 for 129: None
+Re-decode RESULT pass 4 for 114: None
+Re-decode RESULT pass 4 for 115: ('R6YG', 'CR7BRV', 'IM58')
+Re-decode RESULT pass 4 for 122: None
+Re-decode RESULT pass 4 for 125: None
+Refine origin of 339 (OZ9FF SQ8AA 73) SNR =     24 from 2211.38Hz  -0.22s to 2211.38Hz  -0.22s
+Refine origin of 237 (CQ IU6WRW JN62) SNR =      7 from 1573.88Hz  -0.50s to 1573.88Hz  -0.51s
+Refine origin of 611 (CQ SQ5NAP KO02) SNR =     24 from 1012.50Hz   0.38s to 1012.50Hz   0.36s
+Refine origin of 868 (G6UJJ EA1AHP 73) SNR =     24 from 2618.75Hz   0.18s to 2618.75Hz   0.18s
+Refine origin of 851 (<...> OH2CGU R-10) SNR =     24 from 2512.50Hz   0.14s to 2512.50Hz   0.12s
+Refine origin of 812 (CQ OZ9FF JO75) SNR =     24 from 2268.75Hz  -0.10s to 2268.75Hz  -0.10s
+Re-decode RESULT pass 0 for 931: None
+Re-decode RESULT pass 0 for 932: None
+Re-decode RESULT pass 0 for 930: None
+Re-decode RESULT pass 0 for 936: None
+Re-decode RESULT pass 0 for 935: None
+Re-decode RESULT pass 0 for 940: None
+Re-decode RESULT pass 0 for 939: None
+Re-decode RESULT pass 0 for 937: None
+Re-decode RESULT pass 0 for 944: None
+Re-decode RESULT pass 0 for 943: None
+Re-decode RESULT pass 0 for 942: None
+Refine origin of 684 (TA1YZG CR5VP -23) SNR =     24 from 1468.75Hz   0.66s to 1468.75Hz   0.64s
+Re-decode RESULT pass 0 for 948: None
+Re-decode RESULT pass 0 for 947: None
+Re-decode RESULT pass 0 for 929: None
+Re-decode RESULT pass 0 for 945: None
+Re-decode RESULT pass 0 for 946: None
+Re-decode RESULT pass 1 for 931: None
+Re-decode RESULT pass 1 for 932: ('CQ', 'SQ5NAP', 'KO02')
+Re-decode RESULT pass 1 for 930: None
+Re-decode RESULT pass 1 for 929: None
+Re-decode RESULT pass 1 for 936: None
+Re-decode RESULT pass 1 for 935: None
+Re-decode RESULT pass 1 for 940: ('<...>', 'OH2CGU', 'R-10')
+Re-decode RESULT pass 1 for 939: None
+Re-decode RESULT pass 1 for 937: None
+Re-decode RESULT pass 1 for 944: ('CQ', 'OZ9FF', 'JO75')
+Re-decode RESULT pass 1 for 943: None
+Re-decode RESULT pass 1 for 942: None
+Re-decode RESULT pass 1 for 948: None
+Re-decode RESULT pass 1 for 947: None
+Re-decode RESULT pass 1 for 945: None
+Re-decode RESULT pass 1 for 946: None
+Refine origin of 852 (<...> OH2CGU R-10) SNR =      8 from 2517.62Hz   0.06s to 2517.62Hz   0.05s
+Refine origin of 631 (CQ CR7BUJ IM58) SNR =      8 from 1136.38Hz   0.14s to 1136.38Hz   0.15s
+Refine origin of 786 (<...> YU65AEC RR73) SNR =     -3 from 2105.12Hz   0.16s to 2105.12Hz   0.16s
+Refine origin of 768 (M7KEV CT1BFP IM59) SNR =      0 from 1994.62Hz   1.24s to 1994.62Hz   1.24s
+Refine origin of 837 (CQ CT7BSA IM59) SNR =     -4 from 2423.88Hz  -1.02s to 2423.88Hz  -1.02s
+Re-decode RESULT pass 2 for 948: ('TA1YZG', 'CR5VP', '-23')
+Re-decode RESULT pass 2 for 942: None
+Re-decode RESULT pass 2 for 937: None
+Re-decode RESULT pass 2 for 936: ('G6UJJ', 'EA1AHP', '73')
+Re-decode RESULT pass 2 for 929: None
+Re-decode RESULT pass 2 for 947: ('TA1YZG', 'CR5VP', '-23')
+Re-decode RESULT pass 2 for 931: ('CQ', 'SQ5NAP', 'KO02')
+Re-decode RESULT pass 2 for 943: None
+Re-decode RESULT pass 2 for 935: None
+Re-decode RESULT pass 2 for 939: None
+Re-decode RESULT pass 2 for 946: None
+Re-decode RESULT pass 2 for 930: None
+Re-decode RESULT pass 2 for 945: None
+Refine origin of 521 (G7RES DK9NP -10) SNR =     -4 from 448.88Hz   0.70s to 448.88Hz   0.71s
+Refine origin of 685 (TA1YZG CR5VP -23) SNR =      0 from 1473.88Hz   0.60s to 1473.88Hz   0.59s
+Refine origin of 651 (KC9HEK KP2B -09) SNR =      0 from 1263.38Hz   0.52s to 1263.38Hz   0.51s
+Refine origin of 699 (IK0XBU EA1FG IN53) SNR =      0 from 1559.38Hz   0.08s to 1559.38Hz   0.09s
+Refine origin of 698 (IK0XBU EA1FG IN53) SNR =      7 from 1559.12Hz   0.12s to 1559.12Hz   0.10s
+Re-decode RESULT pass 3 for 942: None
+Re-decode RESULT pass 3 for 937: None
+Re-decode RESULT pass 3 for 929: None
+Re-decode RESULT pass 3 for 943: None
+Re-decode RESULT pass 3 for 935: None
+Re-decode RESULT pass 3 for 939: None
+Re-decode RESULT pass 3 for 946: None
+Re-decode RESULT pass 3 for 930: None
+Re-decode RESULT pass 3 for 945: None
+Re-decode RESULT pass 4 for 942: None
+Re-decode RESULT pass 4 for 937: None
+Re-decode RESULT pass 4 for 929: None
+Re-decode RESULT pass 4 for 943: None
+Re-decode RESULT pass 4 for 935: ('G6UJJ', 'EA1AHP', '73')
+Re-decode RESULT pass 4 for 939: None
+Re-decode RESULT pass 4 for 946: None
+Re-decode RESULT pass 4 for 930: None
+Re-decode RESULT pass 4 for 945: None
+Re-decode RESULT pass 5 for 942: None
+Re-decode RESULT pass 5 for 937: None
+Re-decode RESULT pass 5 for 929: None
+Re-decode RESULT pass 5 for 943: ('CQ', 'OZ9FF', 'JO75')
+Re-decode RESULT pass 5 for 939: None
+Re-decode RESULT pass 5 for 946: None
+Re-decode RESULT pass 5 for 930: None
+Re-decode RESULT pass 5 for 945: None
+Re-decode RESULT pass 6 for 942: stop
+Re-decode RESULT pass 6 for 937: stop
+Re-decode RESULT pass 6 for 929: stop
+Re-decode RESULT pass 6 for 939: stop
+Re-decode RESULT pass 6 for 946: stop
+Re-decode RESULT pass 6 for 930: stop
+Re-decode RESULT pass 6 for 945: stop
+Refine origin of 338 (PA0VJB OK2CNI JN79) SNR =     24 from 2281.25Hz   0.34s to 2281.25Hz   0.32s
+Refine origin of 57 (RA9J IW2DNI JN45) SNR =     24 from 525.00Hz   0.18s to 525.00Hz   0.16s
+Refine origin of 326 (CQ SQ8AA KN19) SNR =     24 from 2206.25Hz   0.22s to 2206.25Hz   0.20s
+Refine origin of 232 (CR5VP YO2DSA KN05) SNR =     24 from 1618.75Hz  -0.02s to 1618.75Hz  -0.04s
+Re-decode RESULT pass 0 for 455: None
+Re-decode RESULT pass 0 for 456: None
+Re-decode RESULT pass 0 for 454: None
+Re-decode RESULT pass 0 for 459: None
+Re-decode RESULT pass 0 for 458: None
+Re-decode RESULT pass 0 for 460: None
+Re-decode RESULT pass 0 for 464: None
+Re-decode RESULT pass 0 for 463: None
+Re-decode RESULT pass 0 for 467: None
+Re-decode RESULT pass 0 for 468: None
+Re-decode RESULT pass 0 for 466: None
+Refine origin of 389 (CQ 9A2LM JN86) SNR =     -1 from 2600.00Hz   1.02s to 2600.00Hz   1.00s
+Re-decode RESULT pass 0 for 457: None
+Re-decode RESULT pass 0 for 471: None
+Re-decode RESULT pass 0 for 472: None
+Re-decode RESULT pass 0 for 453: None
+Re-decode RESULT pass 1 for 455: ('PA0VJB', 'OK2CNI', 'JN79')
+Re-decode RESULT pass 1 for 456: ('PA0VJB', 'OK2CNI', 'JN79')
+Re-decode RESULT pass 1 for 454: None
+Re-decode RESULT pass 1 for 453: None
+Re-decode RESULT pass 1 for 459: ('RA9J', 'IW2DNI', 'JN45')
+Re-decode RESULT pass 1 for 458: None
+Re-decode RESULT pass 1 for 460: None
+Re-decode RESULT pass 1 for 457: None
+Re-decode RESULT pass 1 for 464: None
+Re-decode RESULT pass 1 for 463: None
+Re-decode RESULT pass 1 for 467: None
+Re-decode RESULT pass 1 for 468: None
+Re-decode RESULT pass 1 for 466: None
+Re-decode RESULT pass 1 for 471: None
+Re-decode RESULT pass 1 for 472: None
+Refine origin of 115 (DF1WR N2WK R-10) SNR =     -3 from 886.38Hz   0.12s to 886.38Hz   0.11s
+Refine origin of 327 (CQ SQ8AA KN19) SNR =      1 from 2211.38Hz   0.14s to 2211.38Hz   0.14s
+Refine origin of 207 (CQ HA1BF JN86) SNR =     -4 from 1461.38Hz   0.14s to 1461.38Hz   0.15s
+Re-decode RESULT pass 0 for 483: None
+Re-decode RESULT pass 0 for 482: None
+Re-decode RESULT pass 0 for 484: None
+Re-decode RESULT pass 1 for 483: None
+Re-decode RESULT pass 1 for 482: None
+Re-decode RESULT pass 1 for 484: None
+Re-decode RESULT pass 2 for 460: ('RA9J', 'IW2DNI', 'JN45')
+Re-decode RESULT pass 2 for 453: None
+Re-decode RESULT pass 2 for 458: None
+Re-decode RESULT pass 2 for 464: ('CQ', 'SQ8AA', 'KN19')
+Re-decode RESULT pass 2 for 454: None
+Re-decode RESULT pass 2 for 472: ('CQ', '9A2LM', 'JN86')
+Re-decode RESULT pass 2 for 468: None
+Re-decode RESULT pass 2 for 467: None
+Re-decode RESULT pass 2 for 457: None
+Re-decode RESULT pass 2 for 471: ('CQ', '9A2LM', 'JN86')
+Re-decode RESULT pass 2 for 463: None
+Re-decode RESULT pass 2 for 466: None
+Re-decode RESULT pass 3 for 453: None
+Re-decode RESULT pass 3 for 458: None
+Re-decode RESULT pass 3 for 454: None
+Re-decode RESULT pass 3 for 468: ('CR5VP', 'YO2DSA', 'KN05')
+Re-decode RESULT pass 3 for 467: None
+Re-decode RESULT pass 3 for 457: None
+Re-decode RESULT pass 3 for 463: None
+Re-decode RESULT pass 3 for 466: None
+Re-decode RESULT pass 4 for 453: None
+Re-decode RESULT pass 4 for 458: ('RA9J', 'IW2DNI', 'JN45')
+Re-decode RESULT pass 4 for 454: None
+Re-decode RESULT pass 4 for 467: None
+Re-decode RESULT pass 4 for 457: None
+Re-decode RESULT pass 4 for 463: None
+Re-decode RESULT pass 4 for 466: None
+Re-decode RESULT pass 5 for 453: None
+Re-decode RESULT pass 5 for 454: None
+Re-decode RESULT pass 5 for 467: None
+Re-decode RESULT pass 5 for 457: None
+Re-decode RESULT pass 5 for 463: ('CQ', 'SQ8AA', 'KN19')
+Re-decode RESULT pass 5 for 466: None
+Re-decode RESULT pass 6 for 453: stop
+Re-decode RESULT pass 6 for 454: stop
+Re-decode RESULT pass 6 for 467: stop
+Re-decode RESULT pass 6 for 457: stop
+Re-decode RESULT pass 6 for 466: stop
+Refine origin of 631 (CQ SQ5NAP KO02) SNR =      1 from 1012.50Hz   0.34s to 1012.50Hz   0.32s
+Refine origin of 650 (CQ CR7BUJ IM58) SNR =     -1 from 1131.25Hz   0.22s to 1131.25Hz   0.20s
+Re-decode RESULT pass 0 for 951: None
+Re-decode RESULT pass 0 for 952: None
+Re-decode RESULT pass 0 for 950: None
+Re-decode RESULT pass 0 for 956: None
+Re-decode RESULT pass 0 for 955: None
+Refine origin of 788 (M7KEV CT1BFP IM59) SNR =     -4 from 1993.75Hz   1.30s to 1993.75Hz   1.28s
+Refine origin of 678 (CQ DL6RBG JN68) SNR =     -4 from 1306.25Hz   0.62s to 1306.25Hz   0.60s
+Refine origin of 704 (TA1YZG CR5VP -23) SNR =      9 from 1468.75Hz   0.66s to 1468.75Hz   0.64s
+Refine origin of 504 (EI8HY SP2KW JO92) SNR =      1 from 218.75Hz   0.70s to 218.75Hz   0.68s
+Re-decode RESULT pass 0 for 953: None
+Re-decode RESULT pass 0 for 959: None
+Re-decode RESULT pass 0 for 958: None
+Re-decode RESULT pass 0 for 960: None
+Re-decode RESULT pass 0 for 957: None
+Re-decode RESULT pass 0 for 963: None
+Re-decode RESULT pass 0 for 962: None
+Re-decode RESULT pass 0 for 964: None
+Re-decode RESULT pass 0 for 968: None
+Re-decode RESULT pass 0 for 967: None
+Re-decode RESULT pass 0 for 965: None
+Re-decode RESULT pass 0 for 972: None
+Re-decode RESULT pass 0 for 971: None
+Re-decode RESULT pass 0 for 949: None
+Re-decode RESULT pass 1 for 951: ('CQ', 'SQ5NAP', 'KO02')
+Re-decode RESULT pass 1 for 952: ('CQ', 'SQ5NAP', 'KO02')
+Re-decode RESULT pass 1 for 950: None
+Re-decode RESULT pass 1 for 949: None
+Re-decode RESULT pass 1 for 956: None
+Re-decode RESULT pass 1 for 955: None
+Re-decode RESULT pass 1 for 953: None
+Re-decode RESULT pass 1 for 959: ('M7KEV', 'CT1BFP', 'IM59')
+Re-decode RESULT pass 1 for 958: None
+Re-decode RESULT pass 1 for 960: ('M7KEV', 'CT1BFP', 'IM59')
+Re-decode RESULT pass 1 for 957: None
+Re-decode RESULT pass 1 for 963: None
+Re-decode RESULT pass 1 for 962: None
+Re-decode RESULT pass 1 for 964: None
+Re-decode RESULT pass 1 for 968: ('TA1YZG', 'CR5VP', '-23')
+Re-decode RESULT pass 1 for 967: ('TA1YZG', 'CR5VP', '-23')
+Re-decode RESULT pass 1 for 965: None
+Re-decode RESULT pass 1 for 972: None
+Re-decode RESULT pass 1 for 971: None
+Refine origin of 872 (VE1MDF/VY2 <OH2CGU> 73) SNR =     -2 from 2517.62Hz   0.04s to 2517.62Hz   0.04s
+Refine origin of 806 (CQ YU65AEC ) SNR =     -2 from 2105.12Hz   0.16s to 2105.12Hz   0.16s
+Re-decode RESULT pass 2 for 956: ('CQ', 'CR7BUJ', 'IM58')
+Re-decode RESULT pass 2 for 972: ('EI8HY', 'SP2KW', 'JO92')
+Re-decode RESULT pass 2 for 949: None
+Re-decode RESULT pass 2 for 963: ('CQ', 'DL6RBG', 'JN68')
+Re-decode RESULT pass 2 for 964: ('CQ', 'DL6RBG', 'JN68')
+Re-decode RESULT pass 2 for 971: ('EI8HY', 'SP2KW', 'JO92')
+Re-decode RESULT pass 2 for 965: None
+Re-decode RESULT pass 2 for 958: None
+Re-decode RESULT pass 2 for 950: None
+Re-decode RESULT pass 2 for 957: None
+Re-decode RESULT pass 2 for 955: None
+Re-decode RESULT pass 2 for 953: None
+Re-decode RESULT pass 2 for 962: None
+Refine origin of 833 (CQ OZ9FF JO75) SNR =      8 from 2273.88Hz  -0.20s to 2273.88Hz  -0.22s
+Refine origin of 651 (CQ CR7BUJ IM58) SNR =      0 from 1136.38Hz   0.12s to 1136.38Hz   0.11s
+Re-decode RESULT pass 0 for 983: None
+Re-decode RESULT pass 3 for 949: None
+Re-decode RESULT pass 3 for 965: None
+Re-decode RESULT pass 3 for 958: None
+Re-decode RESULT pass 3 for 950: None
+Re-decode RESULT pass 3 for 957: None
+Re-decode RESULT pass 3 for 955: ('CQ', 'CR7BUJ', 'IM58')
+Re-decode RESULT pass 3 for 953: None
+Re-decode RESULT pass 3 for 962: ('CQ', 'DL6RBG', 'JN68')
+Re-decode RESULT pass 4 for 949: None
+Re-decode RESULT pass 4 for 965: None
+Re-decode RESULT pass 4 for 958: None
+Re-decode RESULT pass 4 for 950: None
+Re-decode RESULT pass 4 for 957: None
+Re-decode RESULT pass 4 for 953: None
+Re-decode RESULT pass 5 for 949: None
+Re-decode RESULT pass 5 for 965: None
+Re-decode RESULT pass 5 for 958: None
+Re-decode RESULT pass 5 for 950: None
+Re-decode RESULT pass 5 for 957: None
+Re-decode RESULT pass 5 for 953: None
+Re-decode RESULT pass 6 for 949: stop
+Re-decode RESULT pass 6 for 965: stop
+Re-decode RESULT pass 6 for 958: stop
+Re-decode RESULT pass 6 for 950: stop
+Re-decode RESULT pass 6 for 957: stop
+Re-decode RESULT pass 6 for 953: stop
+Refine origin of 338 (PA0VJB OK2CNI JN79) SNR =      1 from 2281.25Hz   0.30s to 2281.25Hz   0.28s
+Refine origin of 57 (RA9J IW2DNI JN45) SNR =      1 from 525.00Hz   0.18s to 525.00Hz   0.16s
+Refine origin of 172 (R3QX EA3FH JN01) SNR =      0 from 1243.75Hz   0.14s to 1243.75Hz   0.12s
+Refine origin of 218 (EA8DSX EA4DKJ R-13) SNR =     -4 from 1531.25Hz   0.18s to 1531.25Hz   0.16s
+Refine origin of 326 (CQ SQ8AA KN19) SNR =     -1 from 2206.25Hz   0.22s to 2206.25Hz   0.20s
+Re-decode RESULT pass 0 for 455: None
+Re-decode RESULT pass 0 for 456: None
+Re-decode RESULT pass 0 for 454: None
+Re-decode RESULT pass 0 for 459: None
+Re-decode RESULT pass 0 for 458: None
+Re-decode RESULT pass 0 for 460: None
+Re-decode RESULT pass 0 for 457: None
+Re-decode RESULT pass 0 for 463: None
+Re-decode RESULT pass 0 for 464: None
+Re-decode RESULT pass 0 for 462: None
+Re-decode RESULT pass 0 for 468: None
+Re-decode RESULT pass 0 for 467: None
+Re-decode RESULT pass 0 for 472: None
+Re-decode RESULT pass 0 for 471: None
+Re-decode RESULT pass 0 for 453: None
+Re-decode RESULT pass 1 for 455: None
+Re-decode RESULT pass 1 for 456: ('PA0VJB', 'OK2CNI', 'JN79')
+Re-decode RESULT pass 1 for 454: None
+Re-decode RESULT pass 1 for 453: None
+Re-decode RESULT pass 1 for 459: ('RA9J', 'IW2DNI', 'JN45')
+Re-decode RESULT pass 1 for 458: None
+Re-decode RESULT pass 1 for 460: None
+Re-decode RESULT pass 1 for 457: None
+Re-decode RESULT pass 1 for 463: None
+Re-decode RESULT pass 1 for 464: None
+Re-decode RESULT pass 1 for 462: None
+Re-decode RESULT pass 1 for 468: None
+Re-decode RESULT pass 1 for 467: None
+Re-decode RESULT pass 1 for 472: ('CQ', 'SQ8AA', 'KN19')
+Re-decode RESULT pass 1 for 471: ('CQ', 'SQ8AA', 'KN19')
+Refine origin of 219 (EA8DSX EA4DKJ R-13) SNR =     -2 from 1536.38Hz   0.12s to 1536.38Hz   0.11s
+Re-decode RESULT pass 2 for 468: ('EA8DSX', 'EA4DKJ', 'R-13')
+Re-decode RESULT pass 2 for 455: ('PA0VJB', 'OK2CNI', 'JN79')
+Re-decode RESULT pass 2 for 460: ('RA9J', 'IW2DNI', 'JN45')
+Re-decode RESULT pass 2 for 453: None
+Re-decode RESULT pass 2 for 467: ('EA8DSX', 'EA4DKJ', 'R-13')
+Re-decode RESULT pass 2 for 464: ('R3QX', 'EA3FH', 'JN01')
+Re-decode RESULT pass 2 for 463: ('R3QX', 'EA3FH', 'JN01')
+Re-decode RESULT pass 2 for 457: None
+Re-decode RESULT pass 2 for 458: None
+Re-decode RESULT pass 2 for 454: None
+Re-decode RESULT pass 2 for 462: None
+Refine origin of 115 (DF1WR N2WK R-09) SNR =     21 from 886.38Hz   0.10s to 886.38Hz   0.10s
+Re-decode RESULT pass 3 for 453: None
+Re-decode RESULT pass 3 for 457: None
+Re-decode RESULT pass 3 for 458: None
+Re-decode RESULT pass 3 for 454: None
+Re-decode RESULT pass 3 for 462: None
+Re-decode RESULT pass 4 for 453: None
+Re-decode RESULT pass 4 for 457: None
+Re-decode RESULT pass 4 for 458: None
+Re-decode RESULT pass 4 for 454: None
+Re-decode RESULT pass 4 for 462: None
+Re-decode RESULT pass 5 for 453: None
+Re-decode RESULT pass 5 for 457: None
+Re-decode RESULT pass 5 for 458: None
+Re-decode RESULT pass 5 for 454: None
+Re-decode RESULT pass 5 for 462: None
+Refine origin of 213 (VE1XOR YV5JLO 73) SNR =      8 from 1498.88Hz  -0.06s to 1498.88Hz  -0.07s
+Re-decode RESULT pass 6 for 453: stop
+Re-decode RESULT pass 6 for 457: stop
+Re-decode RESULT pass 6 for 458: stop
+Re-decode RESULT pass 6 for 454: stop
+Re-decode RESULT pass 6 for 462: stop
+Refine origin of 650 (CQ CR7BUJ IM58) SNR =      2 from 1131.25Hz   0.22s to 1131.25Hz   0.21s
+Refine origin of 601 (MW0UPH RA1WU 73) SNR =      2 from 825.00Hz   0.14s to 825.00Hz   0.12s
+Refine origin of 805 (EA3GVL <YU65AEC> +05) SNR =     -4 from 2100.00Hz   0.22s to 2100.00Hz   0.22s
+Re-decode RESULT pass 0 for 952: None
+Re-decode RESULT pass 0 for 951: None
+Re-decode RESULT pass 0 for 955: None
+Re-decode RESULT pass 0 for 956: None
+Re-decode RESULT pass 0 for 954: None
+Re-decode RESULT pass 0 for 960: None
+Re-decode RESULT pass 0 for 959: None
+Refine origin of 704 (TA1YZG CR5VP -23) SNR =     -1 from 1468.75Hz   0.66s to 1468.75Hz   0.66s
+Refine origin of 788 (M7KEV CT1BFP IM59) SNR =      1 from 1993.75Hz   1.30s to 1993.75Hz   1.28s
+Re-decode RESULT pass 0 for 964: None
+Re-decode RESULT pass 0 for 963: None
+Re-decode RESULT pass 0 for 961: None
+Re-decode RESULT pass 0 for 967: None
+Re-decode RESULT pass 0 for 966: None
+Re-decode RESULT pass 0 for 965: None
+Re-decode RESULT pass 0 for 949: None
+Re-decode RESULT pass 0 for 968: None
+Re-decode RESULT pass 1 for 952: ('CQ', 'CR7BUJ', 'IM58')
+Re-decode RESULT pass 1 for 951: None
+Re-decode RESULT pass 1 for 949: None
+Re-decode RESULT pass 1 for 955: None
+Re-decode RESULT pass 1 for 956: None
+Re-decode RESULT pass 1 for 954: None
+Re-decode RESULT pass 1 for 960: ('EA3GVL', '<YU65AEC>', '+05')
+Re-decode RESULT pass 1 for 959: None
+Re-decode RESULT pass 1 for 964: ('TA1YZG', 'CR5VP', '-23')
+Re-decode RESULT pass 1 for 963: None
+Re-decode RESULT pass 1 for 961: None
+Re-decode RESULT pass 1 for 967: ('M7KEV', 'CT1BFP', 'IM59')
+Re-decode RESULT pass 1 for 966: None
+Re-decode RESULT pass 1 for 968: None
+Re-decode RESULT pass 1 for 965: None
+Refine origin of 806 (EA3GVL <YU65AEC> +05) SNR =      0 from 2105.12Hz   0.14s to 2105.12Hz   0.15s
+Refine origin of 505 (EI8HY SP2KW JO92) SNR =     -1 from 223.88Hz   0.62s to 223.88Hz   0.62s
+Refine origin of 863 (F4ILK R6YG R+05) SNR =     -2 from 2459.38Hz  -0.14s to 2459.38Hz  -0.13s
