@@ -113,18 +113,19 @@ def do_test(input_device_keywords, wav_range = None):
 
     wsjtx_all_tailer = Wsjtx_all_tailer(on_wsjtx_decode, silent = False)
 
+    if wav_files:
+       soundout = SoundcardOut("CABLE, Input", wav_files, wav_file_time_offset = -1)
+
     t = 15-time_utils.cycle_time()
     if t > 0.05:
         print(f"Waiting to start test on next cycle ({t:6.1f}s)")
         time_utils.sleep(t)
     t_start = time_utils.time()
 
-    if wav_files:
-       soundout = SoundcardOut("CABLE, Input", wav_files, wav_file_time_offset = -1)
 
     py_times, ws_times = [], []
     
-    receiver = Receiver(input_device_keywords, process_message, search_freq_range = [1200, 1300])
+    receiver = Receiver(input_device_keywords, process_message, search_freq_range = [200, 2800], sync_score_min = 150)
     if not receiver.audio_in.input_device_idx:
         time_utils.tlog(f"[Audio] No input audio device found matching {input_device_keywords}", verbose = True)
         sys.exit(1)

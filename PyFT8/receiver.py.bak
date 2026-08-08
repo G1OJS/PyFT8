@@ -204,7 +204,7 @@ class Candidate:
 
     def _get_signal_grid_fine(self, fb_0, tb_0):
         self.source = 'fine'
-        all_audio_spectrum = self.get_full_audio(priority = self.subtracted)
+        all_audio_spectrum = self.get_full_audio()
         fft1_len = len(all_audio_spectrum)
         
         # downsample to 32 samples per symbol / 200 samples per sec
@@ -280,8 +280,8 @@ class AudioIn:
         threading.Thread(target = self._load_streamed_audio, daemon=True).start()
         threading.Thread(target = self._manage_audio_in_cycle, daemon=True).start()
 
-    def get_full_audio_spectrum(self, priority = False):
-        if priority or np.abs(self.search_grid_ptr - self.search_grid_ptr_at_last_spectrum_calc) > 0 : 
+    def get_full_audio_spectrum(self):
+        if np.abs(self.search_grid_ptr - self.search_grid_ptr_at_last_spectrum_calc) > 0 : 
             self.search_grid_ptr_at_last_spectrum_calc = self.search_grid_ptr
             self.all_audio_spectrum = np.fft.rfft(self.cycle_audio_buffer) # only calc full spectrum if more samples received
         return self.all_audio_spectrum
@@ -394,7 +394,7 @@ class Receiver():
         time_utils.sleep(0.5)
         threading.Thread(target=self.manage_cycle, daemon=True).start()
         
-    def search(self, cyclestart_string, odd_even, cycle_h0, search_f_idxs, ignore_sync_score_min = False):
+    def search(self, cyclestart_string, odd_even, cycle_h0, search_f_idxs):
         cands = []
         hops_per_sig = self.audio_in.search_hps * PAYLOAD_SYMB_IDXS[-1]
         for f0_idx in search_f_idxs:
@@ -408,11 +408,10 @@ class Receiver():
                              'fHz':SYM_RATE * f0_idx / self.audio_in.search_bpt, 'score':score}
                 if test_sync['score'] > origin['score']:
                     origin = test_sync
-            minscore = self.sync_score_min if not ignore_sync_score_min else 0
-            if origin['score'] > minscore:
+            if origin['score'] > self.sync_score_min:
                 h0, tsec = origin['h0_idx'], origin['tsec']
                 origin.update({'cyclestart_string':cyclestart_string, 'band':self.band, 'odd_even':odd_even})
-                search_grid_h0 = cycle_h0 + h0 + 7 * self.audio_in.search_hps
+                search_grid_h0 = cycle_h0 + h0
                 search_grid_hn = cycle_h0 + h0 + hops_per_sig
                 hops = np.array([(search_grid_h0 + self.audio_in.search_hps * (s + 1)) % self.audio_in.search_hops_per_grid for s in PAYLOAD_SYMB_IDXS])
                 freqs = np.array([origin['f0_idx'] + self.audio_in.search_bpt//2 + t * self.audio_in.search_bpt for t in range(8)])
@@ -436,7 +435,7 @@ class Receiver():
         if (sig_s0 > 0 and sig_s0 + len(sig_audio) < 192000):
             amp[:len(sig_audio)] = self.audio_in.cycle_audio_buffer[sig_s0:sig_s0+len(sig_audio)] * np.conj(sig_audio)
             amp = np.fft.fft(amp)
-            nfilt = 30 # still to check
+            nfilt = 20 # still to check
             window = np.cos(np.arange(0,np.pi/2,nfilt))**2
             amp[:nfilt] *= window/(np.sum(window)/len(window))
             amp[nfilt:] = 0
@@ -459,7 +458,7 @@ class Receiver():
         cycle_searched = False
         to_decode = []
         while True:
-            time_utils.sleep(0.005)
+            time_utils.sleep(0.5)
 
             # reset cycle_searched at beginning of cycle
             if self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle < search_grid_ptr_prev:
@@ -470,14 +469,14 @@ class Receiver():
             to_decode = [c for c in self.candidates if (not c.decode_result) and (not (c.search_grid_bounds[0] <= self.audio_in.search_grid_ptr <= c.search_grid_bounds[1]))]
             if len(to_decode):
                 ipasses = [c.ipass for c in to_decode]
-                to_decode.sort(key=lambda c: (c.subtracted, -c.search_grid_bounds[0], c.llr_sd), reverse=True)
+                to_decode.sort(key=lambda c: (c.subtracted, c.llr_sd), reverse=True)
                 max_ipass = np.min(ipasses)
                 for c in to_decode:
                     c.decode(max_ipass)
                     if c.decode_result is not None:
                         if c.decode_result != 'stop':
                             c.check_and_package(duplicate_filter)
-                            if not c.subtracted and float(c.snr) > -8:
+                            if not c.subtracted and float(c.snr) > -5:
                                 # next two lines prevent asking the 15 second audio buffer for spectrum from wrong cycle
                                 n = self.audio_in.search_hops_per_cycle
                                 if not (c.search_grid_bounds[0] % n <= self.audio_in.search_grid_ptr %n <= c.search_grid_bounds[1] %n):
@@ -488,8 +487,7 @@ class Receiver():
                                         self.audio_in.calc_grid_spectrum(grid_ptr)
                                     f0_idx = c.origin['f0_idx']
                                     search_f_idxs = range(f0_idx - 2, f0_idx +2)
-                                    local_candidates = self.search(cyclestart_string, self.audio_in.odd_even,
-                                                                   self.audio_in.cycle_h0, search_f_idxs, ignore_sync_score_min = True)
+                                    local_candidates = self.search(cyclestart_string, self.audio_in.odd_even, self.audio_in.cycle_h0, search_f_idxs)
                                     for c in local_candidates:
                                         c.subtracted = True
                                         self.candidates.append(c)
