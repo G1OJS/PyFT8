@@ -100,11 +100,12 @@ def do_test(input_device_keywords, wav_range = None):
     with open('wsjtx.txt','w') as f:
         f.write('')
     baseline_times = []
-    baseline_file = 'PyFT8_8_28_baseline.txt'
-    with open(baseline_file, 'r') as f:
-        lines = f.readlines()
-    baseline_times = [float(l.split()[2]) for l in lines]
-    print(f"Loaded {len(baseline_times)} decode times from {baseline_file}")
+    baseline_file = ''
+    if baseline_file:
+        with open(baseline_file, 'r') as f:
+            lines = f.readlines()
+        baseline_times = [float(l.split()[2]) for l in lines]
+        print(f"Loaded {len(baseline_times)} decode times from {baseline_file}")
 
     wav_files = []
     if wav_range:
@@ -113,14 +114,16 @@ def do_test(input_device_keywords, wav_range = None):
 
     wsjtx_all_tailer = Wsjtx_all_tailer(on_wsjtx_decode, silent = False)
 
+    if wav_files:
+       soundout = SoundcardOut("CABLE, Input", wav_files, wav_file_time_offset = -1)
+
     t = 15-time_utils.cycle_time()
     if t > 0.05:
         print(f"Waiting to start test on next cycle ({t:6.1f}s)")
         time_utils.sleep(t)
     t_start = time_utils.time()
 
-    if wav_files:
-       soundout = SoundcardOut("CABLE, Input", wav_files, wav_file_time_offset = -1)
+
 
     py_times, ws_times = [], []
     
