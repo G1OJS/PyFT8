@@ -268,6 +268,7 @@ class AudioIn:
         self.search_grid_ptr = 0
         self.search_grid_ptr_at_last_spectrum_calc = 0
         self.waterfall_data = self._set_waterfall_data()
+        self.grid_ptr_list = {}
 
         self.search_fft_in = np.zeros(self.search_fft_len, dtype=np.float32)        
         self.search_audio = np.zeros(self.search_fft_len, dtype=np.float32)        
@@ -338,29 +339,28 @@ class AudioIn:
             self.search_grid_ptr = search_grid_ptr
         time_utils.tlog(f"[Audio] Grid pointers adjusted (t={deltasecs:6.2f}s, h={deltahops}, s={deltasamps})", verbose = DEBUG_PRINTS)
 
-    def calc_hop_spectrum(self, hop):
-        samp_n = hop * self.samples_perhop % self.samples_per_cycle
-        samp_0 = ( samp_n - self.search_fft_len) % self.samples_per_cycle
-        if (samp_n > samp_0):
-            self.search_audio = self.cycle_audio_buffer[samp_0:samp_n]
-        else:
-            first = self.cycle_audio_buffer[samp_0:self.samples_per_cycle]
-            n = len(first)
-            self.search_audio[:n] = first 
-            self.search_audio[n:] = self.cycle_audio_buffer[:samp_n]
-        np.multiply(self.search_audio, self.search_fft_window, out = self.search_fft_in)
-        z = np.fft.rfft(self.search_fft_in)[:self.search_grid.shape[1]]
-        self.search_grid[hop, :] = 20*np.log10(np.abs(z)+1e-12)        
+    def calc_grid_spectrum(self, grid_ptr):
+        if grid_ptr in self.grid_ptr_list:
+            samp_0, samp_n = self.grid_ptr_list[grid_ptr]
+            if (samp_0 >= 0):
+                self.search_audio = self.cycle_audio_buffer[samp_0:samp_n]
+            else:
+                wrap = self.samples_per_cycle
+                self.search_audio[-samp_n:] = self.cycle_audio_buffer[:samp_n]    
+                self.search_audio[:-samp_0] = self.cycle_audio_buffer[wrap + samp_0:wrap]               
+            np.multiply(self.search_audio, self.search_fft_window, out = self.search_fft_in)
+            z = np.fft.rfft(self.search_fft_in)[:self.search_grid.shape[1]]
+            self.search_grid[grid_ptr, :] = 20*np.log10(np.abs(z)+1e-12)        
         
     def _callback(self, in_data, frame_count, time_info, status_flags):
         samples = np.frombuffer(in_data, dtype=np.int16)#.astype(np.float32)
         samp_n = self.cycle_audio_buffer_ptr + self.samples_perhop
-        samp_0 = self.cycle_audio_buffer_ptr
+        self.cycle_audio_buffer[self.cycle_audio_buffer_ptr: samp_n] = samples
+        self.grid_ptr_list[self.search_grid_ptr] = (samp_n - self.search_fft_len, samp_n)
 
-        self.cycle_audio_buffer[samp_0:samp_n] = samples
+        self.calc_grid_spectrum(self.search_grid_ptr)
+
         self.cycle_audio_buffer_ptr = samp_n % self.samples_per_cycle
-        
-        self.calc_hop_spectrum(self.search_grid_ptr)
         self.search_grid_ptr = (self.search_grid_ptr + 1) % self.search_hops_per_grid
 
         return (None, pyaudio.paContinue)
@@ -477,17 +477,18 @@ class Receiver():
                         if c.decode_result != 'stop':
                             c.check_and_package(duplicate_filter)
                             if not c.subtracted and float(c.snr) > -5:
-                                print(f"Subtract {c.serial_id} {c.msg_text}")
-                                c.refine_time_origin()
-                                self.subtract_signal(c)
-                                for hop in c.search_grid_bounds:
-                                    self.audio_in.calc_hop_spectrum(hop)
-                                f0_idx = c.origin['f0_idx']
-                                search_f_idxs = range(f0_idx - 2, f0_idx +2)
-                                local_candidates = self.search(cyclestart_string, self.audio_in.odd_even, self.audio_in.cycle_h0, search_f_idxs)
-                                for c in local_candidates:
-                                    c.subtracted = True
-                                    self.candidates.append(c)
+                                if c.origin['odd_even'] == self.audio_in.odd_even:
+                                    print(f"Subtract {c.serial_id} {c.msg_text}")
+                                    c.refine_time_origin()
+                                    self.subtract_signal(c)
+                                    for grid_ptr in range(c.search_grid_bounds[0], c.search_grid_bounds[1]):
+                                        self.audio_in.calc_grid_spectrum(grid_ptr)
+                                    f0_idx = c.origin['f0_idx']
+                                    search_f_idxs = range(f0_idx - 2, f0_idx +2)
+                                    local_candidates = self.search(cyclestart_string, self.audio_in.odd_even, self.audio_in.cycle_h0, search_f_idxs)
+                                    for c in local_candidates:
+                                        c.subtracted = True
+                                        self.candidates.append(c)
 
 
             # if cycle not yet searched and search data available, search

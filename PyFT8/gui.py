@@ -25,8 +25,8 @@ def add_my_axes(fig, pos, bgcol = '#2a2b2b'):
     ax.set_facecolor(bgcol)
     return ax
 
-MESSAGE_TYPES = {'generic':{'bg':'blue', 'fg':'white', 'alpha':0.2}, 'CQ':{'bg':'green', 'fg':'white', 'alpha':0.2},
-                 'from_me': {'bg':'yellow', 'fg':'black', 'alpha':0.2}, 'to_me':{'bg':'red', 'fg':'white', 'alpha':0.2}} 
+MESSAGE_TYPES = {'generic':{'bg':'blue', 'fg':'white', 'alpha':0.4}, 'CQ':{'bg':'green', 'fg':'white', 'alpha':0.7},
+                 'from_me': {'bg':'yellow', 'fg':'black', 'alpha':0.9}, 'to_me':{'bg':'red', 'fg':'white', 'alpha':0.9}} 
 class Msg_box:
     def __init__(self, fig, ax, w, h):
         from matplotlib.patches import Rectangle
