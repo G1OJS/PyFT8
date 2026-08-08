@@ -57,8 +57,8 @@ class Candidate:
   
     def refine_time_origin(self):
         fb_0 = int(0.5 + self.origin['fHz'] * 192000/SAMP_RATE )
-        tb_0 = int(self.origin['tsec'] * 200)
-        tb_range = range(tb_0 - 4, tb_0 + 4) # 16 per 1/2 symbol
+        tb_0 = int(0.5 + self.origin['tsec'] * 200)
+        tb_range = range(tb_0 - 6, tb_0 + 6) # 16 per 1/2 symbol
         score = -1e40
         origin_orig = self.origin_string()
         for tb in tb_range:
@@ -98,7 +98,7 @@ class Candidate:
         time_utils.sleep(0)
         if (self.ipass <= current_max_ipass) and (self.decode_result != 'stop'):
                         
-            if self.ipass == 0 and not self.subtracted:
+            if self.ipass == 0:
                 self._get_llr_grid()
                 self.llr0 = self.llr.copy()
                 for ap_pattern in ap_patterns:
@@ -162,7 +162,7 @@ class Candidate:
     def _decode_osd(self):
         if not self.decode_result:
             self.decode_notes = f'{self.source}_{self.pat_name}_OSD'
-            self.decode_result = osd_012(self.llr)
+            self.decode_result = osd_012(self.llr, singleflips = 40, doubleflips = 1)
 
     def _get_llr_grid(self):
         self._dB_to_llr(self.payload_on_search_grid)
@@ -174,14 +174,14 @@ class Candidate:
         tb_0 = int(tsec/0.005)
         ftweak, ttweak = 0, 0
 
-        ttweaks = range(-16, 0, 4) # 4 steps = 20ms = 1/8 sample, 1/4 sample = 8 steps
+        ttweaks = range(-16, 0, 6) # 4 steps = 20ms = 1/8 sample, 1/4 sample = 8 steps
         scores = []
         for ttweak in ttweaks:
             self._get_signal_grid_fine(fb_0+ftweak, tb_0+ttweak)
             scores.append(self.score)
         ttweak = ttweaks[np.argmax(scores)]
 
-        ftweaks = range(-50, 51, 32) # 16 steps = 1Hz, 6.25Hz = 100 steps
+        ftweaks = range(-50, 51, 12) # 16 steps = 1Hz, 6.25Hz = 100 steps
         scores = []
         for ftweak in ftweaks:
             self._get_signal_grid_fine(fb_0+ftweak, tb_0+ttweak)
@@ -412,7 +412,7 @@ class Receiver():
             if origin['score'] > minscore:
                 h0, tsec = origin['h0_idx'], origin['tsec']
                 origin.update({'cyclestart_string':cyclestart_string, 'band':self.band, 'odd_even':odd_even})
-                search_grid_h0 = cycle_h0 + h0 + 7 * self.audio_in.search_hps
+                search_grid_h0 = cycle_h0 + h0 
                 search_grid_hn = cycle_h0 + h0 + hops_per_sig
                 hops = np.array([(search_grid_h0 + self.audio_in.search_hps * (s + 1)) % self.audio_in.search_hops_per_grid for s in PAYLOAD_SYMB_IDXS])
                 freqs = np.array([origin['f0_idx'] + self.audio_in.search_bpt//2 + t * self.audio_in.search_bpt for t in range(8)])
@@ -432,11 +432,11 @@ class Receiver():
         symbols = encode_bits174(bits174_int)
         sig_audio = symbols_to_complex_audio(symbols, f_base = c.origin['fHz'] - 0.5) 
         amp = np.zeros(192000, dtype = np.complex64)
-        sig_s0 = int(0.5+SAMP_RATE*(c.origin['tsec'] - 0.003))
+        sig_s0 = int(0.5+SAMP_RATE*(c.origin['tsec'] - 0.005))
         if (sig_s0 > 0 and sig_s0 + len(sig_audio) < 192000):
             amp[:len(sig_audio)] = self.audio_in.cycle_audio_buffer[sig_s0:sig_s0+len(sig_audio)] * np.conj(sig_audio)
             amp = np.fft.fft(amp)
-            nfilt = 30 # still to check
+            nfilt = 50 # still to check
             window = np.cos(np.arange(0,np.pi/2,nfilt))**2
             amp[:nfilt] *= window/(np.sum(window)/len(window))
             amp[nfilt:] = 0
@@ -459,7 +459,7 @@ class Receiver():
         cycle_searched = False
         to_decode = []
         while True:
-            time_utils.sleep(0.005)
+            time_utils.sleep(0.01)
 
             # reset cycle_searched at beginning of cycle
             if self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle < search_grid_ptr_prev:
@@ -481,7 +481,6 @@ class Receiver():
                                 # next two lines prevent asking the 15 second audio buffer for spectrum from wrong cycle
                                 n = self.audio_in.search_hops_per_cycle
                                 if not (c.search_grid_bounds[0] % n <= self.audio_in.search_grid_ptr %n <= c.search_grid_bounds[1] %n):
-                                    print(f"Subtract {c.serial_id} {c.msg_text}")
                                     c.refine_time_origin()
                                     self.subtract_signal(c)
                                     for grid_ptr in range(c.search_grid_bounds[0], c.search_grid_bounds[1]):
