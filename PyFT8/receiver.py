@@ -432,11 +432,11 @@ class Receiver():
         symbols = encode_bits174(bits174_int)
         sig_audio = symbols_to_complex_audio(symbols, f_base = c.origin['fHz'] - 0.5) 
         amp = np.zeros(192000, dtype = np.complex64)
-        sig_s0 = int(0.5+SAMP_RATE*(c.origin['tsec'] - 0.005))
+        sig_s0 = int(0.5+SAMP_RATE*(c.origin['tsec'] - 0.003))
         if (sig_s0 > 0 and sig_s0 + len(sig_audio) < 192000):
             amp[:len(sig_audio)] = self.audio_in.cycle_audio_buffer[sig_s0:sig_s0+len(sig_audio)] * np.conj(sig_audio)
             amp = np.fft.fft(amp)
-            nfilt = 50 # still to check
+            nfilt = 30 # still to check
             window = np.cos(np.arange(0,np.pi/2,nfilt))**2
             amp[:nfilt] *= window/(np.sum(window)/len(window))
             amp[nfilt:] = 0
@@ -486,7 +486,7 @@ class Receiver():
                                     for grid_ptr in range(c.search_grid_bounds[0], c.search_grid_bounds[1]):
                                         self.audio_in.calc_grid_spectrum(grid_ptr)
                                     f0_idx = c.origin['f0_idx']
-                                    search_f_idxs = range(f0_idx - 2, f0_idx +2)
+                                    search_f_idxs = range(f0_idx - 1, f0_idx + 1)
                                     local_candidates = self.search(cyclestart_string, self.audio_in.odd_even,
                                                                    self.audio_in.cycle_h0, search_f_idxs, ignore_sync_score_min = True)
                                     for c in local_candidates:
