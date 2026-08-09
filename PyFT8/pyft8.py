@@ -10,7 +10,7 @@ from PyFT8.databases import History
 from PyFT8.qso_manager import QSO_manager
 from PyFT8.databases import History
 
-VER = '3.8.0'
+VER = '3.9.0'
 PSKR_REFRESH_MINS = 20
 
 def get_config(config_folder):
@@ -48,6 +48,7 @@ def cli():
             print(text)
 
     def process_message(m):
+        #return
         if gui:
             gui.process_message(m)
 
