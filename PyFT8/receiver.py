@@ -276,7 +276,8 @@ class AudioIn:
         #if (time_utils.time() - self.last_get_cycle_spectrum) < 0.05:
         #    return
         self.last_get_cycle_spectrum = time_utils.time()
-        self.fft1_buffer[:self.samples_per_cycle] = self.audio_buffer[-self.samples_per_cycle:]
+        samps_offset = (T_CYC - time_utils.cycle_time()) * SAMP_RATE
+        self.fft1_buffer[:self.samples_per_cycle] = np.roll(self.audio_buffer[-self.samples_per_cycle:], - samps_offset)
         self.cycle_spectrum = np.fft.rfft(self.fft1_buffer)
         return self.cycle_spectrum
             
