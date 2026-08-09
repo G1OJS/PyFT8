@@ -48,6 +48,7 @@ def cli():
             print(text)
 
     def process_message(m):
+        #return
         if gui:
             gui.process_message(m)
 

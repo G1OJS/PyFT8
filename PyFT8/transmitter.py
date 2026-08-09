@@ -198,6 +198,9 @@ def gray_encode(bits: int) -> list[int]:
 def encode_bits77(bits77_int):
     bits91_int, bits14_int = append_crc(bits77_int)
     bits174_int, bits83_int = ldpc_encode(bits91_int)
+    return encode_bits174(bits174_int)
+    
+def encode_bits174(bits174_int):
     syms = gray_encode(bits174_int)
     costas=[3,1,4,0,6,5,2]
     return costas + syms[:29] + costas + syms[29:] + costas
@@ -230,7 +233,7 @@ if __name__ == "__main__":
             ("CQ","CT7ARQ/R","JO03")]
     for msg_tx in msgs:
         symbols, bits77 = pack_message(*msg_tx)
-        from PyFT8.receiver import unpack
+        from PyFT8.decoders import unpack
         msg_rx = unpack(bits77)
         print(f"\n{msg_tx}\n{msg_rx}")
         OK = OK and (msg_tx == msg_rx) or 'implemented' in msg_rx
@@ -247,7 +250,7 @@ if __name__ == "__main__":
                         "3140652564261623472565070174400214333140652601351750040163007617513443213140652"]
     for i, msg_tx in enumerate(msgs):
         symbols, bits77 = pack_message(*msg_tx)
-        from PyFT8.receiver import unpack
+        from PyFT8.decoders import unpack
         msg_rx = unpack(bits77)
         print(f"\n{msg_tx}\n{msg_rx}")
         OK = OK and (msg_tx == msg_rx) or 'implemented' in msg_rx

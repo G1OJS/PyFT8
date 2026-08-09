@@ -233,7 +233,7 @@ class Gui:
                 if not m['priority']:
                     self._display_message(m)
 
-                if m['message_type'] == 'CQ':
+                if m['message_type'] == 'CQ' and self.history:
                     for mb in self.msg_boxes:
                         if mb.patch.get_visible():
                             if mb.message['msg_tuple'] == m['msg_tuple']:
@@ -265,7 +265,8 @@ class Gui:
         m.update( {'message_type':message_type, 'priority':priority} )                    
         if priority:
             self._display_message(m)
-        self.qso_manager.process_message(m)
+        if self.qso_manager:
+            self.qso_manager.process_message(m)
         self.message_queue_non_time_critical.put(m)
 
     def _display_message(self, m):
@@ -334,13 +335,14 @@ class Gui:
                 self.home_panel.print_row(f"{n_spotted:<7} {rx_lead[1]:<7}", 4, color = '#b6f0c6' )
 
     def _refresh_band_buttons(self):
-        current_band = self.band_info['current_band']
-        grd = self.myGrid[:4]
-        for bb in self.button_boxes:
-            bb.set_state(bb.id == current_band)
-            if bb.id in self.history.home_activity:
-                cnts = self.history.home_activity[bb.id]
-                bb.set_info_text(f"{cnts[0]}Tx, {cnts[1]}Rx")
+        if self.history is not None:
+            current_band = self.band_info['current_band']
+            grd = self.myGrid[:4]
+            for bb in self.button_boxes:
+                bb.set_state(bb.id == current_band)
+                if bb.id in self.history.home_activity:
+                    cnts = self.history.home_activity[bb.id]
+                    bb.set_info_text(f"{cnts[0]}Tx, {cnts[1]}Rx")
 
     def _refresh_hearing(self):
         current_band = self.band_info['current_band']
