@@ -144,14 +144,14 @@ class Candidate:
         tb_0 = int(0.5 + tsec/0.005)
         ftweak, ttweak = 0, 0
 
-        ttweaks = range(-16, 16, 4) # 32 steps = 1 symbol
+        ttweaks = range(-8, 8, 2) # 32 steps = 1 symbol
         scores = []
         for ttweak in ttweaks:
             self._get_signal_grid_fine(cycle_spectrum, fb_0+ftweak, tb_0+ttweak)
             scores.append(self.score)
         ttweak = ttweaks[np.argmax(scores)]
 
-        ftweaks = range(-50, 50, 4) # 16 steps = 1Hz, 6.25Hz = 100 steps
+        ftweaks = range(-32, 33, 8) # 16 steps = 1Hz, 6.25Hz = 100 steps
         scores = []
         for ftweak in ftweaks:
             self._get_signal_grid_fine(cycle_spectrum, fb_0+ftweak, tb_0+ttweak)
@@ -331,14 +331,14 @@ class Receiver():
         
     def search(self, cyclestart_string, odd_even, search_f_idxs, ignore_sync_score_min = False):
         cands = []
-        cycle_gridstep0 = odd_even * self.audio_in.search_hops_per_cycle
+        cycle_h0 = odd_even * self.audio_in.search_hops_per_cycle
         hops_per_sig = self.audio_in.search_hps * PAYLOAD_SYMB_IDXS[-1]
         for f0_idx in search_f_idxs:
             self.cand_serial = (self.cand_serial + 1) % 1000
             p = self.audio_in.search_grid[:, f0_idx: f0_idx + 7*self.audio_in.search_bpt]
             origin = {'score':0}
             for h0_idx in range(self.search_h0_range[0], self.search_h0_range[1]):
-                score = float(np.dot(p[h0_idx + cycle_gridstep0 + self.base_search_hops + self.audio_in.search_hps, :].ravel(), self.csync_search))
+                score = float(np.dot(p[h0_idx + cycle_h0 + self.base_search_hops + self.audio_in.search_hps, :].ravel(), self.csync_search))
 
                 test_sync = {'h0_idx': h0_idx,  'f0_idx':f0_idx,
                              'tsec':   h0_idx / (self.audio_in.search_hps * SYM_RATE),
@@ -350,8 +350,8 @@ class Receiver():
             if origin['score'] > minscore:
                 h0, tsec = origin['h0_idx'], origin['tsec']
                 origin.update({'cyclestart_string':cyclestart_string, 'band':self.band, 'odd_even':odd_even})
-                search_grid_h0 = cycle_gridstep0 + h0 + self.audio_in.search_hps
-                search_grid_hn = cycle_gridstep0 + h0 + hops_per_sig
+                search_grid_h0 = cycle_h0 + h0 + self.audio_in.search_hps
+                search_grid_hn = cycle_h0 + h0 + hops_per_sig
                 hops = np.array([(search_grid_h0 + self.audio_in.search_hps * s) % self.audio_in.search_hops_per_grid for s in PAYLOAD_SYMB_IDXS])
                 freqs = np.array([origin['f0_idx'] + self.audio_in.search_bpt//2 + t * self.audio_in.search_bpt for t in range(8)])
                 payload_on_search_grid = self.audio_in.search_grid[hops,:][:, freqs]
@@ -373,7 +373,7 @@ class Receiver():
         cycle_searched = False
         to_decode = []
         while True:
-            time_utils.sleep(0.01)
+            time_utils.sleep(0.1)
 
             # reset cycle_searched at beginning of cycle
             if self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle < search_grid_ptr_prev:
