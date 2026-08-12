@@ -48,7 +48,6 @@ def cli():
             print(text)
 
     def process_message(m):
-        #return
         if gui:
             gui.process_message(m)
 
@@ -61,6 +60,12 @@ def cli():
                                            m['their_snr'], 'FT8', 1, int(time_utils.time()))
 
         print(f"{m['all_txt_format']:50s} decoded@ {m['decode_completed']%15 :5.1f}s, dec = {m['decode_notes']}")
+
+    def on_update(msg_tuple, action):
+        if gui:
+            mb = gui.find_msg_box(msg_tuple)
+            if mb:
+                mb.patch.set_alpha(0.1)
     
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-c', '--config_folder', help = 'Location of config folder e.g. C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', default = './') 
@@ -134,7 +139,7 @@ def cli():
 
 # Set up for receiving with or without Gui
     receiver = Receiver(args.inputcard_keywords, process_message, sync_score_min = 100, max_cands = 150,
-                  search_freq_range = [100, 3000], search_timerange = [-2, 3])
+                  search_freq_range = [100, 3000], search_timerange = [-2, 3], on_update = on_update)
     if not receiver.audio_in.input_device_idx:
         time_utils.tlog(f"[Audio] No input audio device found matching {input_device_keywords}", verbose = True)
         sys.exit(1)

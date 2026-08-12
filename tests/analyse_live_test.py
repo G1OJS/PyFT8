@@ -29,6 +29,7 @@ def list_methods(file):
     with open(file, 'r') as f:
         lines = f.readlines()
 
+    total_subtracted = 0
     counter = {}
     for l in lines:
         cat = l.split()[3]
@@ -48,12 +49,15 @@ def list_methods(file):
     catvals = []
     for c in counter.keys():
         catvals.append((c, counter[c]))
+        if "_SUB" in c:
+            total_subtracted += 1
     catvals.sort(key = lambda cv: -sortorder(cv))
 
     print(f"\nBreakdown for '{file}'")
     for l in catvals:
         print(f"{l[0]:30s} {l[1]:>3d}")
     print(f"{'Total':>30s} {len(lines)}")
+    print(f"{'Total subs':>30s} {total_subtracted}")
 
 
 

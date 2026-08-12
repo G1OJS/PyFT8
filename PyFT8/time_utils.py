@@ -25,13 +25,17 @@ class Time_utils:
     def odd_even(self):
         return int( self.grid_time() / self.cycle_seconds)
 
-    def cyclestart_string(self, t):
-        cst = self.cycle_seconds * int(t / self.cycle_seconds)
-        return time.strftime("%y%m%d_%H%M%S", time.gmtime(cst))
+    def cyclestart(self, t_abs_local):
+        t_abs_local_cyc = self.cycle_seconds * int(t_abs_local / self.cycle_seconds)
+        cst_local = self.cycle_seconds * int(t_abs_local_cyc / self.cycle_seconds)
+        return {'string':time.strftime("%y%m%d_%H%M%S", time.gmtime(cst_local)), 't_abs_local_cyc':t_abs_local_cyc}
 
     def tlog(self, txt, verbose = False):
         if(verbose):
-            print(f"{self.cyclestart_string(self.time())} {self.cycle_time():5.2f} {txt}")
+            print(f"{self.cyclestart(self.time())['string']} {self.cycle_time():5.2f} {txt}")
+
+    def format_HMS(self, t):
+        return time.strftime("%H%M%S", time.gmtime(t))
 
     def format_duration(self, seconds):
         intervals = ( ('yr', 314496000), ('wk', 604800), ('day', 86400), ('hr', 3600), ('min', 60), ('sec', 1) )

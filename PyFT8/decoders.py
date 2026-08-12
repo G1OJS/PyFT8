@@ -111,8 +111,6 @@ def simple_validate_call(call):
                 return call
         if call[:2] in CALLSIGN_PREFIXES2 and call[2].isnumeric():
             return call
-    with open('rejected_callsigns.txt','a') as f:
-        f.write(f"{call}\n")
         
 def crc_unpack91(codeword91):
     bits91_int = 0

@@ -146,7 +146,7 @@ def do_test(input_device_keywords, wav_range = None):
             decode_count = len(py_times)
             baseline_decode_count = len([t for t in baseline_times if t < py_times[-1]])
             diff = decode_count - baseline_decode_count
-            py_info  = f"{decode_count:03d} {py_cycle[1]:3d} {py_times[-1]:7.2f} {decode_notes:20s} {m['all_txt_format']}"
+            py_info  = f"{decode_count:03d} {py_cycle[1]:3d} {py_times[-1]:7.2f} {decode_notes:30s} {m['all_txt_format']}"
             with open('PyFT8.txt', 'a') as f:
                 f.write(f"{py_info}\n")
             print(py_info)

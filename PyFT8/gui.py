@@ -48,6 +48,10 @@ class Msg_box:
         self.text_inst.set_color(message_type_params['fg'])
         self.patch.set_facecolor(message_type_params['bg'])
         self.patch.set_alpha(message_type_params['alpha'])
+        if message['decode_notes'].endswith('_SUB'):
+            self.text_inst.set_color('black')
+            self.patch.set_facecolor('white')
+            self.patch.set_alpha(1.0)
         self.text_inst.set_position((x, y+1))
         self.patch.set_xy((x, y))
         if message['priority']:
@@ -245,6 +249,12 @@ class Gui:
                                 geo_text = self.history.get_geo_text(m['msg_tuple'][1])
                                 new_text = f"{' '.join(m['msg_tuple'])} {hearing_me} {wb_text} {geo_text}"
                                 mb.set_text(new_text)
+
+    def find_msg_box(self, msg_tuple):
+        for mb in self.msg_boxes:
+            if mb.patch.get_visible():
+                if mb.message['msg_tuple'] == msg_tuple:
+                    return mb
 
     def _refresh_panels(self):
         self._refresh_home_panel()
