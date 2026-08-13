@@ -55,7 +55,7 @@ class Candidate:
         self.snr = -30
         self.msg_text = ''
         self.msg_tuple = None
-        self.neigh = False
+        self.has_neighbours = False
 
     def dump(self, file):
         with open(file, 'wb') as f:
@@ -73,8 +73,8 @@ class Candidate:
                 self._get_signal_grid_fine(cycle_spectrum, fb_0, tb)
                 if self.score > score:
                     score = self.score
-                    self.origin['tsec'] = (tb + 0.0) / 200
-                    self.origin['fHz'] = (fb_0 + 0.0) / 16
+                    self.origin['tsec'] = tb  / 200
+                    self.origin['fHz'] =  fb  / 16
 
     def origin_string(self):
         return f"{self.origin['fHz']:6.2f}Hz {self.origin['tsec'] - 0.5:6.2f}s" 
@@ -340,8 +340,8 @@ class AudioIn:
         self.audio_buffer[-ns:] = samples
         self.last_audio_buffer_insert = time_utils.time()
         self.audio_buffer_zero = self.audio_buffer_zero - ns
-        if self.audio_buffer_zero <= len(self.audio_buffer) - self.samples_per_cycle:
-            self.audio_buffer_zero = len(self.audio_buffer)
+        if self.audio_buffer_zero <= 0:
+            self.audio_buffer_zero += self.samples_per_cycle
         self.search_grid_ptr = (self.search_grid_ptr + 1) % self.search_hops_per_grid
         if self.search_grid_ptr == 0:
             tg = time_utils.grid_time()
@@ -388,7 +388,7 @@ class Receiver():
         time_utils.sleep(0.5)
         threading.Thread(target=self.manage_cycle, daemon=True).start()
         
-    def search(self, cyclestart, odd_even, search_f_idxs, weed_neighbours = False):
+    def search(self, cyclestart, odd_even, search_f_idxs, cherrypick_neighbouring_candidates = False):
         #print(f"Search cycle starting at {time_utils.format_HMS(cyclestart['t_abs_local_cyc'])}")
         cands = []
         cycle_h0 = odd_even * self.audio_in.search_hops_per_cycle
@@ -422,20 +422,26 @@ class Receiver():
                 c = Candidate(origin, signal_hop_bounds, payload_hop_bounds, payload_on_search_grid, self.audio_in.get_cycle_spectrum, self.on_message)
                 c.serial_id = self.cand_serial
                 cands.append(c)
-        cands_out = []
         for c in cands:
             neigh = [cn for cn in cands if np.abs(c.origin['fHz'] - cn.origin['fHz']) < self.min_cand_separation_Hz
                      and c.origin['f0_idx'] != cn.origin['f0_idx']
                      and not cn.subtracted
-                     and cn.origin['score'] > 0.5 * c.origin['score']]
-            if weed_neighbours and len(neigh):  
-                idx = np.argmax([c.origin['score'] for c in neigh])
-                c_out = neigh[idx]
-                if c_out not in cands_out:
-                    c_out.neigh = True
-                    cands_out.append(c_out)
-            else:
+                     and cn.origin['score'] > 0.75 * c.origin['score']]
+            if len(neigh):
+                c.neighbours = neigh
+                c.has_neighbours = True
+
+        cands_out = []
+        for c in cands:
+            if not c.has_neighbours or not cherrypick_neighbouring_candidates:
                 cands_out.append(c)
+            else:                
+                idx = np.argmax([c.origin['score'] for c in neigh])
+                best_neighbour = neigh[idx]
+                if best_neighbour not in cands_out:
+                    best_neighbour.has_neighbours = True
+                    cands_out.append(best_neighbour)
+
         #print(','.join([f"{c.origin['fHz']:6.1f}" for c in cands_out]))
         cands_out.sort(key = lambda c: c.origin['score'], reverse = True)
         return cands_out[:self.max_cands]
@@ -452,12 +458,15 @@ class Receiver():
     def subtract_signal(self, c, f_offset = 0, t_offset = 0):
         if np.abs(c.origin['fHz'] - self.last_sub_fHz) < self.min_sub_separation_Hz:
             c.subtracted = True
+            print(f"Rejected - too close in frequency to last subtracted signal")
             return
         from PyFT8.transmitter import pack_message
         if '<' in c.msg_tuple[0] or '<' in c.msg_tuple[1]:
+            print(f"Rejected - callsign is hashed")
             return
         symbols, bits77 = pack_message(c.msg_tuple[0], c.msg_tuple[1], c.msg_tuple[2])
         if not symbols:
+            print(f"Rejected - couldnt generate symbols")
             return
 
         reference_audio = symbols_to_complex_audio(symbols, f_base = c.origin['fHz'] + f_offset)        
@@ -477,6 +486,9 @@ class Receiver():
                 self.last_sub_fHz = c.origin['fHz']
                 print(f"Sub at {self.last_sub_fHz:7.2f}Hz {c.origin['tsec']:6.1f}s")
                 return True
+
+        print(f"Rejected sig length {len_sig} starting point {sig_start_in_audio_buffer} not in range 0 to {len(self.audio_in.audio_buffer) - len_sig}")
+
 
     def set_band(self, band):
         self.band = band
@@ -527,16 +539,16 @@ class Receiver():
             subtracted = []
             ct = time_utils.cycle_time()
             if ct > 13 or ct < 1:
-                to_subtract = [c for c in self.candidates if c.msg_tuple and not c.subtracted and not c.new_after_subtraction
-                                    and not (c.signal_hop_bounds[0] <= self.audio_in.search_grid_ptr <= c.signal_hop_bounds[1])]
-                to_subtract.sort(key = lambda c: (c.signal_hop_bounds[0], not c.neigh))
+                to_subtract = [c for c in self.candidates if c.msg_tuple and not c.subtracted and not c.new_after_subtraction and
+                               not (c.signal_hop_bounds[0] < self.audio_in.search_grid_ptr < c.signal_hop_bounds[1] )]
+                to_subtract.sort(key = lambda c: (-c.signal_hop_bounds[0], c.has_neighbours), reverse = True)
                 for c in to_subtract:
                     if n_subtractions < self.max_subtractions:
-                        n_subtractions += 1
                         c.refine_time_origin()
                         success = self.subtract_signal(c)
                         c.subtracted = True
                         if success:
+                            n_subtractions += 1
                             subtracted.append(c)
 
             if len(subtracted):
@@ -572,7 +584,7 @@ class Receiver():
                 cyclestart = time_utils.cyclestart(time_utils.time())
                 search_f_idxs = range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 2)
                 self.candidates = self.search(cyclestart, odd_even, search_f_idxs)
-                neigh_count = len([c for c in self.candidates if c.neigh])
+                neigh_count = len([c for c in self.candidates if c.has_neighbours])
                 time_utils.tlog(f"[Cycle manager] New spectrum searched in {time_utils.time() - tstart:6.2f}s -> {len(self.candidates)} candidates ({neigh_count} with neighbours)", verbose = True) 
 
                 n_subtractions = 0
