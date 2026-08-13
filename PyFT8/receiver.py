@@ -4,6 +4,7 @@ import pyaudio
 from PyFT8.time_utils import time_utils
 from PyFT8.decoders import ldpc_decode, osd_012, crc_unpack91
 from PyFT8.transmitter import symbols_to_complex_audio
+import pickle
 
 WATERFALL_DOWNSAMPLE = 2
 DEBUG_PRINTS = True
@@ -477,11 +478,13 @@ class Receiver():
             print(f"Rejected - too close in frequency to last subtracted signal")
             return
         
-        symbols = self.get_symbols_from_bits77int(c)
-        symbols1 = self.get_symbols_from_msg_tuple(c)
-        #if symbols1 != symbols:
+        symbols_from_bits77 = self.get_symbols_from_bits77int(c)
+        symbols_from_msg_tuple = self.get_symbols_from_msg_tuple(c)
+        if symbols_from_msg_tuple != symbols_from_bits77:
+            with open(f'{c.serial_id}.pkl','wb') as f:
+                pickle.dump((c.msg_tuple, c.bits77_int, symbols_from_bits77, symbols_from_msg_tuple), f)
         #    print(f"{c.decode_notes} {c.msg_tuple} -> Mismatched symbols")
-
+        symbols = symbols_from_bits77
         if not symbols:
             print(f"Rejected - couldnt generate symbols")
             return
@@ -490,6 +493,7 @@ class Receiver():
         len_sig = len(reference_audio)
         sig_start_in_audio_buffer = self.audio_in.audio_buffer_zero + int(float(c.origin['tsec']) * SAMP_RATE)
         if sig_start_in_audio_buffer >=0 and sig_start_in_audio_buffer + len_sig < len(self.audio_in.audio_buffer):
+            t0 = time_utils.time()
             received_audio = self.audio_in.audio_buffer[sig_start_in_audio_buffer: sig_start_in_audio_buffer + len_sig]
             self.camp[:] = 0
             self.camp[:len_sig] = received_audio * np.conj(reference_audio)
@@ -498,10 +502,11 @@ class Receiver():
             self.camp = np.fft.ifft(self.camp)
             sub = 2*np.real(self.camp[:len_sig] * reference_audio)
             sig_start_in_audio_buffer = self.audio_in.audio_buffer_zero + int(float(c.origin['tsec']) * SAMP_RATE)
+            t_sub = time_utils.time()-t0
             if sig_start_in_audio_buffer >=0 and sig_start_in_audio_buffer + len_sig < len(self.audio_in.audio_buffer):
                 self.audio_in.audio_buffer[sig_start_in_audio_buffer: sig_start_in_audio_buffer + len_sig] -= sub
                 self.last_sub_fHz = c.origin['fHz']
-                #print(f"Sub at {self.last_sub_fHz:7.2f}Hz {c.origin['tsec']:6.1f}s")
+                print(f"Sub at {self.last_sub_fHz:7.2f}Hz {c.origin['tsec']:6.1f}s calcs = {t_sub*1000:6.1f}ms")
                 return True
 
         print(f"Rejected sig length {len_sig} starting point {sig_start_in_audio_buffer} not in range 0 to {len(self.audio_in.audio_buffer) - len_sig}")
