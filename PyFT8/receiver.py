@@ -69,9 +69,9 @@ class Candidate:
         score = -1e40
         origin_orig = self.origin_string()
         cycle_spectrum = self.get_cycle_spectrum()
-        for fb in range(fb_0 -2, fb_0 +2):
+        for fb in range(fb_0 -1, fb_0 +1):
             for tb in tb_range:
-                self._get_signal_grid_fine(cycle_spectrum, fb_0, tb)
+                self._get_signal_grid_fine(cycle_spectrum, fb_0, tb, scoring = [1,1,1])
                 if self.score > score:
                     score = self.score
                     self.origin['tsec'] = tb  / 200
@@ -211,7 +211,7 @@ class Candidate:
         else:
             self.decode_result = 'stop'
 
-    def _get_signal_grid_fine(self, cycle_spectrum, fb_0, tb_0):
+    def _get_signal_grid_fine(self, cycle_spectrum, fb_0, tb_0, scoring = [0,1,0]):
         self.source = 'fine'
         fft1_len = len(cycle_spectrum)
         
@@ -234,11 +234,13 @@ class Candidate:
             for sym_idx, tone in enumerate([3,1,4,0,6,5,2]):
                 csync[sym_idx, tone] = 1.0
             self.csync_7x7 =  csync.ravel()
-        #s0 = float(np.dot(self.signal_grid[:7, :7].ravel(), self.csync_7x7))
-        s1 = float(np.dot(self.signal_grid[36:43, :7].ravel(), self.csync_7x7))
-        #s2 = float(np.dot(self.signal_grid[72:, :7].ravel(), self.csync_7x7))
-        #self.score = np.max([s0, s1, s2])
-        self.score = s1
+        self.score = 0
+        if scoring[0]:
+            self.score += float(np.dot(self.signal_grid[:7, :7].ravel(), self.csync_7x7))
+        if scoring[1]:
+            self.score += float(np.dot(self.signal_grid[36:43, :7].ravel(), self.csync_7x7))
+        if scoring[2]:
+            self.score += float(np.dot(self.signal_grid[72:, :7].ravel(), self.csync_7x7))
 
     def _dB_to_llr(self, payload_dB_grid):
         if payload_dB_grid is None:
