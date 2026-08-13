@@ -3,7 +3,7 @@ import numpy as np
 import pyaudio
 from PyFT8.time_utils import time_utils
 from PyFT8.decoders import ldpc_decode, osd_012, crc_unpack91
-from PyFT8.transmitter import symbols_to_complex_audio
+from PyFT8.transmitter import symbols_to_complex_audio, encode_bits77
 import pickle
 
 WATERFALL_DOWNSAMPLE = 2
@@ -450,19 +450,6 @@ class Receiver():
         cands_out.sort(key = lambda c: c.origin['score'], reverse = True)
         return cands_out[:self.max_cands]
 
-    def get_symbols_from_msg_tuple(self, c):
-        from PyFT8.transmitter import pack_message
-        if '<' in c.msg_tuple[0] or '<' in c.msg_tuple[1]:
-            print(f"Rejected - callsign is hashed")
-            return
-        symbols, bits77 = pack_message(c.msg_tuple[0], c.msg_tuple[1], c.msg_tuple[2])
-        return symbols
-
-    def get_symbols_from_bits77int(self, c):
-        from PyFT8.transmitter import encode_bits77
-        symbols = encode_bits77(c.bits77_int)
-        return symbols
-
     def init_subtraction(self, subtraction_filterlen = 2000):
         window = np.cos(np.linspace(0, np.pi/2, subtraction_filterlen))**2
         subtraction_window = np.zeros(192000)
@@ -477,18 +464,10 @@ class Receiver():
             c.subtracted = True
             print(f"Rejected - too close in frequency to last subtracted signal")
             return
-        
-        symbols_from_bits77 = self.get_symbols_from_bits77int(c)
-        symbols_from_msg_tuple = self.get_symbols_from_msg_tuple(c)
-        if symbols_from_msg_tuple != symbols_from_bits77:
-            with open(f'{c.serial_id}.pkl','wb') as f:
-                pickle.dump((c.msg_tuple, c.bits77_int, symbols_from_bits77, symbols_from_msg_tuple), f)
-        #    print(f"{c.decode_notes} {c.msg_tuple} -> Mismatched symbols")
-        symbols = symbols_from_bits77
+        symbols = symbols = encode_bits77(c.bits77_int)
         if not symbols:
             print(f"Rejected - couldnt generate symbols")
             return
-            
         reference_audio = symbols_to_complex_audio(symbols, f_base = c.origin['fHz'] + f_offset)        
         len_sig = len(reference_audio)
         sig_start_in_audio_buffer = self.audio_in.audio_buffer_zero + int(float(c.origin['tsec']) * SAMP_RATE)
@@ -508,7 +487,6 @@ class Receiver():
                 self.last_sub_fHz = c.origin['fHz']
                 print(f"Sub at {self.last_sub_fHz:7.2f}Hz {c.origin['tsec']:6.1f}s calcs = {t_sub*1000:6.1f}ms")
                 return True
-
         print(f"Rejected sig length {len_sig} starting point {sig_start_in_audio_buffer} not in range 0 to {len(self.audio_in.audio_buffer) - len_sig}")
 
 
