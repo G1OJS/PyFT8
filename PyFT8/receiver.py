@@ -154,24 +154,22 @@ class Candidate:
     def _decode_good91(self):
         if not self.decode_result:
             self.decode_notes = f'{self.source}_{self.pat_name}_GOOD91 '
-            self.decode_result = crc_unpack91(self.llr[:91])
+            self.decode_result, self.bits77_int = crc_unpack91(self.llr[:91])
                 
     def _decode_ldpc(self, max_nc0, max_its, save_llr):
         if not self.decode_result:
             self.decode_notes = f'{self.source}_{self.pat_name}_LDPC{max_its}'
-            self.decode_result, self.n_its, output_llr = ldpc_decode(self.llr, max_nc0, max_its)
+            self.decode_result, self.n_its, output = ldpc_decode(self.llr, max_nc0, max_its)
             if not self.decode_result:
-                if save_llr and len(output_llr) == 174:
-                    self.saved_llrs.append((f"{self.pat_name}_LDPC{max_its}", output_llr))
+                if save_llr and len(output) == 174:
+                    self.saved_llrs.append((f"{self.pat_name}_LDPC{max_its}", output))
             else:
-                self.llr = output_llr
+                self.bits77_int = output
 
     def _decode_osd(self):
         if not self.decode_result:
             self.decode_notes = f'{self.source}_{self.pat_name}_OSD'
-            self.decode_result, cw = osd_012(self.llr)
-            if self.decode_result:
-                self.llr = [2*int(b)-1 for b in cw]
+            self.decode_result, self.bits77_int = osd_012(self.llr)
 
     def _get_llr_grid(self):
         self._dB_to_llr(self.payload_on_search_grid)
@@ -459,12 +457,9 @@ class Receiver():
         symbols, bits77 = pack_message(c.msg_tuple[0], c.msg_tuple[1], c.msg_tuple[2])
         return symbols
 
-    def get_symbols_from_llr(self, c):
+    def get_symbols_from_bits77int(self, c):
         from PyFT8.transmitter import encode_bits77
-        bits77_int = 0
-        for bit in (c.llr[:77] > 0).astype(int).tolist():
-            bits77_int = (bits77_int << 1) | bit
-        symbols = encode_bits77(bits77_int)
+        symbols = encode_bits77(c.bits77_int)
         return symbols
 
     def init_subtraction(self, subtraction_filterlen = 2000):
@@ -482,13 +477,14 @@ class Receiver():
             print(f"Rejected - too close in frequency to last subtracted signal")
             return
         
-        symbols = self.get_symbols_from_llr(c)
+        symbols = self.get_symbols_from_bits77int(c)
+        symbols1 = self.get_symbols_from_msg_tuple(c)
+        #if symbols1 != symbols:
+        #    print(f"{c.decode_notes} {c.msg_tuple} -> Mismatched symbols")
+
         if not symbols:
             print(f"Rejected - couldnt generate symbols")
             return
-        symbols1 = self.get_symbols_from_msg_tuple(c)
-        if symbols1 != symbols:
-            print(f"{c.decode_notes} {c.msg_tuple} -> Mismatched symbols")
             
         reference_audio = symbols_to_complex_audio(symbols, f_base = c.origin['fHz'] + f_offset)        
         len_sig = len(reference_audio)
