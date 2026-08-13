@@ -159,7 +159,7 @@ def ldpc_decode(llr, max_ncheck0, max_iters):
         if ncheck == 0:
             msg_tuple = crc_unpack91(llr[:91])
             if msg_tuple:
-                return msg_tuple, n_its, []
+                return msg_tuple, n_its, llr
         else:
             update_collector = np.zeros_like(llr)
             mC2V_prev6 = pass_ldpc_messages(llr, CV6idx, mC2V_prev6, update_collector)
@@ -246,7 +246,7 @@ def osd_012(llr, singleflips = 30, doubleflips = 2):
     cw = ((chbits @ G) & 1)
     msg_tuple = crc_unpack91(cw)
     if msg_tuple:
-        return msg_tuple
+        return msg_tuple, cw
     
     fliplist = list(rowperm[::-1][:singleflips])
 
@@ -256,7 +256,7 @@ def osd_012(llr, singleflips = 30, doubleflips = 2):
         cw = ((bits @ G) & 1)
         msg_tuple = crc_unpack91(cw)
         if msg_tuple:
-            return msg_tuple
+            return msg_tuple, cw
     
     for i in range(singleflips):
         for j in range(doubleflips):
@@ -267,7 +267,9 @@ def osd_012(llr, singleflips = 30, doubleflips = 2):
                 cw = ((bits @ G) & 1)
                 msg_tuple = crc_unpack91(cw)
                 if msg_tuple:
-                    return msg_tuple
+                    return msg_tuple, cw
+
+    return None, None
 
 
 

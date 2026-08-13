@@ -160,13 +160,18 @@ class Candidate:
         if not self.decode_result:
             self.decode_notes = f'{self.source}_{self.pat_name}_LDPC{max_its}'
             self.decode_result, self.n_its, output_llr = ldpc_decode(self.llr, max_nc0, max_its)
-            if save_llr and not self.decode_result and len(output_llr) == 174:
-                self.saved_llrs.append((f"{self.pat_name}_LDPC{max_its}", output_llr))
+            if not self.decode_result:
+                if save_llr and len(output_llr) == 174:
+                    self.saved_llrs.append((f"{self.pat_name}_LDPC{max_its}", output_llr))
+            else:
+                self.llr = output_llr
 
     def _decode_osd(self):
         if not self.decode_result:
             self.decode_notes = f'{self.source}_{self.pat_name}_OSD'
-            self.decode_result = osd_012(self.llr)
+            self.decode_result, cw = osd_012(self.llr)
+            if self.decode_result:
+                self.llr = [2*int(b)-1 for b in cw]
 
     def _get_llr_grid(self):
         self._dB_to_llr(self.payload_on_search_grid)
@@ -446,6 +451,22 @@ class Receiver():
         cands_out.sort(key = lambda c: c.origin['score'], reverse = True)
         return cands_out[:self.max_cands]
 
+    def get_symbols_from_msg_tuple(self, c):
+        from PyFT8.transmitter import pack_message
+        if '<' in c.msg_tuple[0] or '<' in c.msg_tuple[1]:
+            print(f"Rejected - callsign is hashed")
+            return
+        symbols, bits77 = pack_message(c.msg_tuple[0], c.msg_tuple[1], c.msg_tuple[2])
+        return symbols
+
+    def get_symbols_from_llr(self, c):
+        from PyFT8.transmitter import encode_bits77
+        bits77_int = 0
+        for bit in (c.llr[:77] > 0).astype(int).tolist():
+            bits77_int = (bits77_int << 1) | bit
+        symbols = encode_bits77(bits77_int)
+        return symbols
+
     def init_subtraction(self, subtraction_filterlen = 2000):
         window = np.cos(np.linspace(0, np.pi/2, subtraction_filterlen))**2
         subtraction_window = np.zeros(192000)
@@ -460,15 +481,15 @@ class Receiver():
             c.subtracted = True
             print(f"Rejected - too close in frequency to last subtracted signal")
             return
-        from PyFT8.transmitter import pack_message
-        if '<' in c.msg_tuple[0] or '<' in c.msg_tuple[1]:
-            print(f"Rejected - callsign is hashed")
-            return
-        symbols, bits77 = pack_message(c.msg_tuple[0], c.msg_tuple[1], c.msg_tuple[2])
+        
+        symbols = self.get_symbols_from_llr(c)
         if not symbols:
             print(f"Rejected - couldnt generate symbols")
             return
-
+        symbols1 = self.get_symbols_from_msg_tuple(c)
+        if symbols1 != symbols:
+            print(f"{c.decode_notes} {c.msg_tuple} -> Mismatched symbols")
+            
         reference_audio = symbols_to_complex_audio(symbols, f_base = c.origin['fHz'] + f_offset)        
         len_sig = len(reference_audio)
         sig_start_in_audio_buffer = self.audio_in.audio_buffer_zero + int(float(c.origin['tsec']) * SAMP_RATE)
@@ -484,7 +505,7 @@ class Receiver():
             if sig_start_in_audio_buffer >=0 and sig_start_in_audio_buffer + len_sig < len(self.audio_in.audio_buffer):
                 self.audio_in.audio_buffer[sig_start_in_audio_buffer: sig_start_in_audio_buffer + len_sig] -= sub
                 self.last_sub_fHz = c.origin['fHz']
-                print(f"Sub at {self.last_sub_fHz:7.2f}Hz {c.origin['tsec']:6.1f}s")
+                #print(f"Sub at {self.last_sub_fHz:7.2f}Hz {c.origin['tsec']:6.1f}s")
                 return True
 
         print(f"Rejected sig length {len_sig} starting point {sig_start_in_audio_buffer} not in range 0 to {len(self.audio_in.audio_buffer) - len_sig}")
