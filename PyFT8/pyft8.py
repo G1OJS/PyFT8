@@ -48,6 +48,7 @@ def cli():
             print(text)
 
     def process_message(m):
+        #return
         if gui:
             gui.process_message(m)
 
@@ -139,7 +140,7 @@ def cli():
 
 # Set up for receiving with or without Gui
     receiver = Receiver(args.inputcard_keywords, process_message, sync_score_min = 100, max_cands = 150,
-                  search_freq_range = [100, 3000], search_timerange = [-2, 3], on_update = on_update)
+                  search_freq_range = [100, 3500], search_timerange = [-2, 3], on_update = on_update)
     if not receiver.audio_in.input_device_idx:
         time_utils.tlog(f"[Audio] No input audio device found matching {input_device_keywords}", verbose = True)
         sys.exit(1)
