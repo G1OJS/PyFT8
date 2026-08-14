@@ -366,7 +366,7 @@ class Receiver():
     def __init__(self, input_device_keywords, on_message, sync_score_min = 85, max_cands = 200,
                  on_update = None,
                  search_freq_range = [100, 3000], search_timerange = [-2.5, 3.5], verbose = False,
-                 min_cand_separation_Hz = 15, min_sub_separation_Hz = 5, max_subtractions = 30):
+                 min_cand_separation_Hz = 15, min_sub_separation_Hz = 1, max_subtractions = 30):
         self.audio_in = AudioIn(search_freq_range, input_device_keywords)
         self.on_message = on_message
         self.on_update = on_update
@@ -466,59 +466,49 @@ class Receiver():
         self.camp = np.zeros(192000, dtype = np.complex64)
 
     def subtract_signal(self, c, f_offset = 0, t_offset = 0):
-        # whole sub takes about 60~70 ms, half is the camp calc
-        # might still need a guard against s0 < 0?
-
         t0 = time_utils.time()
-        if np.abs(c.origin['fHz'] - self.last_sub_fHz) < self.min_sub_separation_Hz:
-            c.subtracted = True
-            print(f"Rejected {c.msg_text} - too close in frequency to last subtracted signal {self.last_msg_text}")
-            return
         symbols = symbols = encode_bits77(c.bits77_int)
-        if not symbols:
-            print(f"Rejected - couldnt generate symbols")
-            return
-
-        len_buffer = len(self.audio_in.audio_buffer)
-        def get_buffer_params(tsec, len_sig):
-            buff_zero = self.audio_in.audio_buffer_zero
-            b0 = buff_zero + int(tsec * SAMP_RATE)
-            bn = b0 + len_sig
-            s0, sn = 0, len_sig
-            if b0 < 0:
-                s0 = - b0
-                b0 = 0
-            if bn > len_buffer:
-                sn = len_sig - (bn - len_buffer)
-                bn = len_buffer            
-            return b0, bn, s0, sn
-        
-        reference_audio = symbols_to_complex_audio(symbols, f_base = c.origin['fHz'] + f_offset)        
-        len_sig = len(reference_audio)
-
-        with self.audio_in.audio_buffer_lock:
-            b0, bn, s0, sn = get_buffer_params(c.origin['tsec'], len_sig)
-            received_audio = self.audio_in.audio_buffer[b0:bn].copy()
-        len_sig = sn - s0
-        reference_audio = reference_audio[s0:sn]
-        self.camp[:] = 0
-        self.camp[:len_sig] = received_audio * np.conj(reference_audio)
-        self.camp = np.fft.fft(self.camp)
-        self.camp *= self.filter_mult
-        self.camp = np.fft.ifft(self.camp)
-        sub = 2*np.real(self.camp[:len_sig] * reference_audio)
-
-        with self.audio_in.audio_buffer_lock:
-            b0, bn, s0, sn = get_buffer_params(c.origin['tsec'], len_sig)
-            self.audio_in.audio_buffer[b0: bn] -= sub[s0:sn]
+        if symbols:
+            len_buffer = len(self.audio_in.audio_buffer)
             
-        self.last_sub_fHz = c.origin['fHz']
-        t_sub = time_utils.time()-t0
-        self.last_msg_text = c.msg_text
-        #print(f"Sub at {self.last_sub_fHz:7.2f}Hz {c.origin['tsec']:6.1f}s calcs = {t_sub*1000:6.1f}ms")
-        return True
-     
+            def get_buffer_params(tsec, len_sig):
+                buff_zero = self.audio_in.audio_buffer_zero
+                b0 = buff_zero + int(tsec * SAMP_RATE)
+                bn = b0 + len_sig
+                s0, sn = 0, len_sig
+                if b0 < 0:
+                    s0 = - b0
+                    b0 = 0
+                if bn > len_buffer:
+                    sn = len_sig - (bn - len_buffer)
+                    bn = len_buffer            
+                return b0, bn, s0, sn
+            
+            reference_audio = symbols_to_complex_audio(symbols, f_base = c.origin['fHz'] + f_offset)        
+            len_sig = len(reference_audio)
 
+            with self.audio_in.audio_buffer_lock:
+                b0, bn, s0, sn = get_buffer_params(c.origin['tsec'], len_sig)
+                received_audio = self.audio_in.audio_buffer[b0:bn].copy()
+            len_sig = sn - s0
+            reference_audio = reference_audio[s0:sn]
+            self.camp[:] = 0
+            self.camp[:len_sig] = received_audio * np.conj(reference_audio)
+            self.camp = np.fft.fft(self.camp)
+            self.camp *= self.filter_mult
+            self.camp = np.fft.ifft(self.camp)
+            sub = 2*np.real(self.camp[:len_sig] * reference_audio)
+
+            with self.audio_in.audio_buffer_lock:
+                b0, bn, s0, sn = get_buffer_params(c.origin['tsec'], len_sig)
+                self.audio_in.audio_buffer[b0: bn] -= sub[s0:sn]
+                
+            self.last_sub_fHz = c.origin['fHz']
+            t_sub = time_utils.time()-t0
+            self.last_msg_text = c.msg_text
+            #print(f"Sub at {self.last_sub_fHz:7.2f}Hz {c.origin['tsec']:6.1f}s calcs = {t_sub*1000:6.1f}ms")
+            return True
+     
     def set_band(self, band):
         self.band = band
 
@@ -576,12 +566,14 @@ class Receiver():
                 to_subtract.sort(key = lambda c: (-c.signal_hop_bounds[0], c.has_neighbours), reverse = True)
             for c in to_subtract[:4]:
                 if n_subtractions < self.max_subtractions:
-                    c.refine_origin()
-                    success = self.subtract_signal(c)
-                    if success:
-                        c.subtracted = True
-                        n_subtractions += 1
-                        subtracted.append(c)
+                    if True or np.abs(c.origin['fHz'] - self.last_sub_fHz) > self.min_sub_separation_Hz:
+                        c.refine_origin()
+                        success = self.subtract_signal(c)
+                        if success:
+                            c.subtracted = True
+                            n_subtractions += 1
+                            subtracted.append(c)
+                            self.last_sub_fHz = c.origin['fHz']
 
             if len(subtracted):
                 recalc_hops = [10000, -10000]
