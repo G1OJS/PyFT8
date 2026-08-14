@@ -335,7 +335,10 @@ class AudioIn:
         return self.cycle_spectrum
 
     def get_grid_spectrum(self, grid_ptr):
-        samp_n = len(self.audio_buffer) - int(self.samples_perhop * (self.search_grid_ptr - grid_ptr))
+        delta = self.search_grid_ptr - grid_ptr
+        if delta < 0:
+            delta += self.search_hops_per_grid
+        samp_n = len(self.audio_buffer) - int(self.samples_perhop * delta)
         samp_0 = samp_n - self.search_fft_len
         if samp_0 < 0 or samp_n > len(self.audio_buffer):
             return
@@ -571,16 +574,15 @@ class Receiver():
                         success = self.subtract_signal(c)
                         if success:
                             c.subtracted = True
+                            self.subtracted_cycle = c.origin['odd_even']
                             n_subtractions += 1
                             subtracted.append(c)
                             self.last_sub_fHz = c.origin['fHz']
 
             if len(subtracted):
-                recalc_hops = [10000, -10000]
-                for c in subtracted:
-                    recalc_hops[0] = recalc_hops[0] if c.signal_hop_bounds[0] > recalc_hops[0] else c.signal_hop_bounds[0]
-                    recalc_hops[1] = recalc_hops[1] if c.signal_hop_bounds[1] < recalc_hops[1] else c.signal_hop_bounds[1]
-                for grid_ptr in range(recalc_hops[0], recalc_hops[1]):
+                h0 = self.subtracted_cycle * self.audio_in.search_hops_per_cycle
+                print(h0, h0 + self.audio_in.search_hops_per_cycle)
+                for grid_ptr in range(h0, h0 + self.audio_in.search_hops_per_cycle):
                     self.audio_in.get_grid_spectrum(grid_ptr)
                 for c in subtracted:
                     f0_idx = c.origin['f0_idx']
