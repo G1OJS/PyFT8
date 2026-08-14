@@ -462,6 +462,7 @@ class Receiver():
         self.camp = np.zeros(192000, dtype = np.complex64)
 
     def subtract_signal(self, c, f_offset = 0, t_offset = 0):
+        t0 = time_utils.time()
         if np.abs(c.origin['fHz'] - self.last_sub_fHz) < self.min_sub_separation_Hz:
             c.subtracted = True
             print(f"Rejected - too close in frequency to last subtracted signal")
@@ -472,25 +473,27 @@ class Receiver():
             return
         reference_audio = symbols_to_complex_audio(symbols, f_base = c.origin['fHz'] + f_offset)        
         len_sig = len(reference_audio)
-        sig_start_in_audio_buffer = self.audio_in.audio_buffer_zero + int(float(c.origin['tsec']) * SAMP_RATE)
-        if sig_start_in_audio_buffer >=0 and sig_start_in_audio_buffer + len_sig < len(self.audio_in.audio_buffer):
-            t0 = time_utils.time()
-            received_audio = self.audio_in.audio_buffer[sig_start_in_audio_buffer: sig_start_in_audio_buffer + len_sig]
-            self.camp[:] = 0
-            self.camp[:len_sig] = received_audio * np.conj(reference_audio)
-            self.camp = np.fft.fft(self.camp)
-            self.camp *= self.filter_mult
-            self.camp = np.fft.ifft(self.camp)
-            sub = 2*np.real(self.camp[:len_sig] * reference_audio)
-            sig_start_in_audio_buffer = self.audio_in.audio_buffer_zero + int(float(c.origin['tsec']) * SAMP_RATE)
-            t_sub = time_utils.time()-t0
-            if sig_start_in_audio_buffer >=0 and sig_start_in_audio_buffer + len_sig < len(self.audio_in.audio_buffer):
-                self.audio_in.audio_buffer[sig_start_in_audio_buffer: sig_start_in_audio_buffer + len_sig] -= sub
-                self.last_sub_fHz = c.origin['fHz']
-                print(f"Sub at {self.last_sub_fHz:7.2f}Hz {c.origin['tsec']:6.1f}s calcs = {t_sub*1000:6.1f}ms")
-                return True
-        print(f"Rejected sig length {len_sig} starting point {sig_start_in_audio_buffer} not in range 0 to {len(self.audio_in.audio_buffer) - len_sig}")
-
+        len_buffer = len(self.audio_in.audio_buffer)
+        buff_zero = self.audio_in.audio_buffer_zero
+        s0 = buff_zero + int(float(c.origin['tsec']) * SAMP_RATE)
+        sn = np.min([s0 + len_sig, len_buffer])
+        len_sig = sn - s0
+        received_audio = self.audio_in.audio_buffer[s0: sn]
+        reference_audio = reference_audio[:len_sig]
+        self.camp[:] = 0
+        self.camp[:len_sig] = received_audio * np.conj(reference_audio)
+        self.camp = np.fft.fft(self.camp)
+        self.camp *= self.filter_mult
+        self.camp = np.fft.ifft(self.camp)
+        sub = 2*np.real(self.camp[:len_sig] * reference_audio)
+        buffer_moved = self.audio_in.audio_buffer_zero - buff_zero
+        s0, sn = s0 + buffer_moved, sn + buffer_moved
+        self.audio_in.audio_buffer[s0: sn] -= sub
+        self.last_sub_fHz = c.origin['fHz']
+        t_sub = time_utils.time()-t0
+        print(f"Sub at {self.last_sub_fHz:7.2f}Hz {c.origin['tsec']:6.1f}s calcs = {t_sub*1000:6.1f}ms")
+        return True
+     
 
     def set_band(self, band):
         self.band = band
@@ -517,6 +520,7 @@ class Receiver():
             search_grid_ptr_prev = self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle
 
             # list candidates still to decode, and decode them
+            decodes = []
             to_decode = [c for c in self.candidates if (not c.decode_result) and (not (c.payload_hop_bounds[0] <= self.audio_in.search_grid_ptr <= c.payload_hop_bounds[1]))]
             if len(to_decode):
                 ipasses = [c.ipass for c in to_decode]
@@ -527,6 +531,7 @@ class Receiver():
                     if c.decode_result is not None:
                         if c.decode_result != 'stop':
                             c.check_and_package(duplicate_filter)
+                            decodes.append(c)
                             if c.new_after_subtraction:
                                 post_subtraction_successes += 1
                             if c.post_subtraction_success:
@@ -540,9 +545,8 @@ class Receiver():
             # subtract candidate signals once audio is clear of the *whole* signal including Costas blocks
             subtracted = []
             ct = time_utils.cycle_time()
-            if ct > 13 or ct < 1:
-                to_subtract = [c for c in self.candidates if c.msg_tuple and not c.subtracted and not c.new_after_subtraction and
-                               not (c.signal_hop_bounds[0] < self.audio_in.search_grid_ptr < c.signal_hop_bounds[1] )]
+            if ct > 12 or ct < 3:
+                to_subtract = [c for c in decodes if not c.new_after_subtraction]
                 to_subtract.sort(key = lambda c: (-c.signal_hop_bounds[0], c.has_neighbours), reverse = True)
                 for c in to_subtract:
                     if n_subtractions < self.max_subtractions:
