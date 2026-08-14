@@ -296,7 +296,9 @@ class AudioIn:
 
     def _set_pointers(self):
         self.search_grid_ptr = int(time_utils.grid_time() * self.search_hops_per_grid / (2 * T_CYC))
-        self.audio_buffer_zero = len(self.audio_buffer) - int(SAMP_RATE * time_utils.cycle_time())
+        self.audio_buffer_zero = len(self.audio_buffer) - int(SAMP_RATE * time_utils.cycle_time()) - self.samples_per_cycle
+        if self.audio_buffer_zero < 0:
+            self.audio_buffer_zero += self.samples_per_cycle
 
     def _find_input_device(self, input_device_keywords):
         pya = pyaudio.PyAudio()
@@ -568,11 +570,11 @@ class Receiver():
             # subtract candidate signals once audio is clear of the *whole* signal including Costas blocks
             subtracted = []
             ct = time_utils.cycle_time()
-            if ct > 12 or ct < 3:
-                to_subtract = [c for c in primary_decodes if not c.subtracted and not c.new_after_subtraction]
-                             #  and not c.signal_hop_bounds[0] < self.audio_in.search_grid_ptr < c.signal_hop_bounds[1]]
+            if ct > 13 or ct < 1:
+                to_subtract = [c for c in primary_decodes if not c.subtracted and not c.new_after_subtraction
+                               and not c.signal_hop_bounds[0] < self.audio_in.search_grid_ptr < c.signal_hop_bounds[1]]
                 to_subtract.sort(key = lambda c: (-c.signal_hop_bounds[0], c.has_neighbours), reverse = True)
-                for c in to_subtract:
+                for c in to_subtract[:3]:
                     if n_subtractions < self.max_subtractions:
                         c.refine_origin()
                         success = self.subtract_signal(c)

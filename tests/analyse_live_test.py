@@ -29,13 +29,15 @@ def list_methods(file):
     with open(file, 'r') as f:
         lines = f.readlines()
 
-    total_subtracted = 0
+    post_subtraction = []
     counter = {}
     for l in lines:
         cat = l.split()[3]
         if cat not in counter:
             counter[cat]=0
         counter[cat] +=1
+        if cat.endswith("_SUB"):
+            post_subtraction.append(l.split('~')[1].strip())
 
     def sortorder(cv):
         v = 0
@@ -49,15 +51,16 @@ def list_methods(file):
     catvals = []
     for c in counter.keys():
         catvals.append((c, counter[c]))
-        if "_SUB" in c:
-            total_subtracted += 1
+
     catvals.sort(key = lambda cv: -sortorder(cv))
 
     print(f"\nBreakdown for '{file}'")
     for l in catvals:
         print(f"{l[0]:30s} {l[1]:>3d}")
     print(f"{'Total':>30s} {len(lines)}")
-    print(f"{'Total subs':>30s} {total_subtracted}")
+    print(f"{'Total subs':>30s} {len(post_subtraction)}")
+    for m in post_subtraction:
+        print(m)
 
 
 

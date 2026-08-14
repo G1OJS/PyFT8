@@ -59,7 +59,7 @@ def cli():
                 pskr_upload.add_report(their_call, int(1000000*fMHz + fHz),
                                            m['their_snr'], 'FT8', 1, int(time_utils.time()))
 
-        print(f"{m['all_txt_format']:50s} decoded@ {m['decode_completed']%15 :5.1f}s, dec = {m['decode_notes']}")
+        print(f"{m['all_txt_format']:60s} decoded@ {m['decode_completed']%15 :5.1f}s, dec = {m['decode_notes']}")
 
     def on_update(msg_tuple, action):
         if gui:
