@@ -280,6 +280,7 @@ class Gui:
         self.message_queue_non_time_critical.put(m)
 
     def _display_message(self, m):
+        return
         mb = self._get_message_box()
         x = int(m['tsec'] / self.waterfall_data['dt'] + m['their_tx_cycle'] * self.waterfall_data['pixels_per_cycle'])
         y = int(m['fHz'] / self.waterfall_data['df'])

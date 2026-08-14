@@ -288,13 +288,13 @@ class AudioIn:
         self.audio_buffer_zero = 0
         self.buffer192000_float32  = np.zeros(192000, dtype=np.float32)
         self._find_input_device(input_device_keywords)
-        self._set_pointers(time_utils.grid_time())
+        self._set_pointers()
 
         threading.Thread(target = self._load_streamed_audio, daemon=True).start()
 
-    def _set_pointers(self, tg):
-        self.search_grid_ptr = int(tg * self.search_hops_per_grid / (2 * T_CYC))
-        self.audio_buffer_zero = len(self.audio_buffer) - (self.search_grid_ptr % self.search_hops_per_cycle) * self.samples_perhop
+    def _set_pointers(self):
+        self.search_grid_ptr = int(time_utils.grid_time() * self.search_hops_per_grid / (2 * T_CYC))
+        self.audio_buffer_zero = len(self.audio_buffer) - int(SAMP_RATE * time_utils.cycle_time())
 
     def _find_input_device(self, input_device_keywords):
         pya = pyaudio.PyAudio()
@@ -352,7 +352,7 @@ class AudioIn:
         if self.search_grid_ptr == 0:
             tg = time_utils.grid_time()
             if tg > 0.1:
-                self._set_pointers(tg)
+                self._set_pointers()
         self.get_grid_spectrum(self.search_grid_ptr)
         return (None, pyaudio.paContinue)
 
@@ -474,8 +474,10 @@ class Receiver():
         reference_audio = symbols_to_complex_audio(symbols, f_base = c.origin['fHz'] + f_offset)        
         len_sig = len(reference_audio)
         len_buffer = len(self.audio_in.audio_buffer)
+        
         buff_zero = self.audio_in.audio_buffer_zero
         s0 = buff_zero + int(float(c.origin['tsec']) * SAMP_RATE)
+        #sn = s0 + len_sig
         sn = np.min([s0 + len_sig, len_buffer])
         len_sig = sn - s0
         received_audio = self.audio_in.audio_buffer[s0: sn]
@@ -510,6 +512,7 @@ class Receiver():
         post_subtraction_successes = 0
         post_subtraction_successes_unique = 0
         new_cands = []
+        decodes = []
         recovered_callsigns = []
         while True:
             time_utils.sleep(0.1)
@@ -520,7 +523,7 @@ class Receiver():
             search_grid_ptr_prev = self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle
 
             # list candidates still to decode, and decode them
-            decodes = []
+            
             to_decode = [c for c in self.candidates if (not c.decode_result) and (not (c.payload_hop_bounds[0] <= self.audio_in.search_grid_ptr <= c.payload_hop_bounds[1]))]
             if len(to_decode):
                 ipasses = [c.ipass for c in to_decode]
@@ -546,7 +549,8 @@ class Receiver():
             subtracted = []
             ct = time_utils.cycle_time()
             if ct > 12 or ct < 3:
-                to_subtract = [c for c in decodes if not c.new_after_subtraction]
+                to_subtract = [c for c in decodes if not c.subtracted and not c.new_after_subtraction
+                               and not c.signal_hop_bounds[0] < self.audio_in.search_grid_ptr < c.signal_hop_bounds[1]]
                 to_subtract.sort(key = lambda c: (-c.signal_hop_bounds[0], c.has_neighbours), reverse = True)
                 for c in to_subtract:
                     if n_subtractions < self.max_subtractions:
@@ -590,6 +594,7 @@ class Receiver():
                 cyclestart = time_utils.cyclestart(time_utils.time())
                 search_f_idxs = range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 2)
                 self.candidates = self.search(cyclestart, odd_even, search_f_idxs)
+                decodes = []
                 neigh_count = len([c for c in self.candidates if c.has_neighbours])
                 time_utils.tlog(f"[Cycle manager] New spectrum searched in {time_utils.time() - tstart:6.2f}s -> {len(self.candidates)} candidates ({neigh_count} with neighbours)", verbose = True) 
 
