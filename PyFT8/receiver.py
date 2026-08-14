@@ -533,6 +533,7 @@ class Receiver():
         post_subtraction_successes = 0
         post_subtraction_successes_unique = 0
         new_cands = []
+        to_subtract = []
         primary_decodes = []
         recovered_callsigns = []
         while True:
@@ -570,18 +571,18 @@ class Receiver():
             # subtract candidate signals once audio is clear of the *whole* signal including Costas blocks
             subtracted = []
             ct = time_utils.cycle_time()
-            if ct > 13 or ct < 1:
+            if ct > 12 or ct < 1:
                 to_subtract = [c for c in primary_decodes if not c.subtracted and not c.new_after_subtraction
                                and not c.signal_hop_bounds[0] < self.audio_in.search_grid_ptr < c.signal_hop_bounds[1]]
                 to_subtract.sort(key = lambda c: (-c.signal_hop_bounds[0], c.has_neighbours), reverse = True)
-                for c in to_subtract[:3]:
-                    if n_subtractions < self.max_subtractions:
-                        c.refine_origin()
-                        success = self.subtract_signal(c)
-                        if success:
-                            c.subtracted = True
-                            n_subtractions += 1
-                            subtracted.append(c)
+            for c in to_subtract[:2]:
+                if n_subtractions < self.max_subtractions:
+                    c.refine_origin()
+                    success = self.subtract_signal(c)
+                    if success:
+                        c.subtracted = True
+                        n_subtractions += 1
+                        subtracted.append(c)
 
             if len(subtracted):
                 recalc_hops = [10000, -10000]
