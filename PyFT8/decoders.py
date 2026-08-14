@@ -111,8 +111,6 @@ def simple_validate_call(call):
                 return call
         if call[:2] in CALLSIGN_PREFIXES2 and call[2].isnumeric():
             return call
-    with open('rejected_callsigns.txt','a') as f:
-        f.write(f"{call}\n")
         
 def crc_unpack91(codeword91):
     bits91_int = 0
@@ -128,7 +126,8 @@ def crc_unpack91(codeword91):
             if bit14:
                 crc14_int ^= 0x2757
         if crc14_int == bits91_int & 0b11111111111111:
-            return unpack(bits77_int)
+            return unpack(bits77_int), bits77_int
+    return None, None
 
 #============== LDPC ===========================================================
 CV6idx = np.array([[4,31,59,92,114,145],[5,23,60,93,121,150],[6,32,61,94,95,142],[5,31,63,96,125,137],[8,34,65,98,138,145],[9,35,66,99,106,125],[11,37,67,101,104,154],[12,38,68,102,148,161],[14,41,58,105,122,158],[0,32,71,105,106,156],[15,42,72,107,140,159],[10,43,74,109,120,165],[7,45,70,111,118,165],[18,37,76,103,115,162],[19,46,69,91,137,164],[1,47,73,112,127,159],[21,46,57,117,126,163],[15,38,61,111,133,157],[22,42,78,119,130,144],[19,35,62,93,135,160],[13,30,78,97,131,163],[2,43,79,123,126,168],[18,45,80,116,134,166],[11,49,60,117,118,143],[12,50,63,113,117,156],[23,51,75,128,147,148],[20,53,76,99,139,170],[34,81,132,141,170,173],[13,29,82,112,124,169],[3,28,67,119,133,172],[51,83,109,114,144,167],[6,49,80,98,131,172],[22,54,66,94,171,173],[25,40,76,108,140,147],[26,39,55,123,124,125],[17,48,54,123,140,166],[5,32,84,107,115,155],[8,53,62,130,146,154],[21,52,67,108,120,173],[2,12,47,77,94,122],[30,68,132,149,154,168],[4,38,74,101,135,166],[1,53,85,100,134,163],[14,55,86,107,118,170],[22,33,70,93,126,152],[10,48,87,91,141,156],[28,33,86,96,146,161],[21,56,84,92,139,158],[27,31,71,102,131,165],[0,25,44,79,127,146],[16,26,88,102,115,152],[50,56,97,162,164,171],[20,36,72,137,151,168],[15,46,75,129,136,153],[2,23,29,71,103,138],[8,39,89,105,133,150],[17,41,78,143,145,151],[24,37,64,98,121,159],[16,41,74,128,169,171]], dtype = np.int16)
@@ -159,9 +158,9 @@ def ldpc_decode(llr, max_ncheck0, max_iters):
         if n_its == 0 and ncheck > max_ncheck0:
             return None, -1, []
         if ncheck == 0:
-            msg_tuple = crc_unpack91(llr[:91])
+            msg_tuple, bits77_int = crc_unpack91(llr[:91])
             if msg_tuple:
-                return msg_tuple, n_its, []
+                return msg_tuple, n_its, bits77_int
         else:
             update_collector = np.zeros_like(llr)
             mC2V_prev6 = pass_ldpc_messages(llr, CV6idx, mC2V_prev6, update_collector)
@@ -216,9 +215,9 @@ def osd_01(llr):
         score = np.sum((cw ^ chbits) * chvals)
         if score < best:
             best = score
-            msg_tuple = crc_unpack91(cw)
+            msg_tuple, bits77_int = crc_unpack91(cw)
             if msg_tuple:
-                return msg_tuple
+                return msg_tuple, bits77_int
 
 def osd_012(llr, singleflips = 30, doubleflips = 2):
     G = G0.copy()
@@ -246,9 +245,9 @@ def osd_012(llr, singleflips = 30, doubleflips = 2):
     chbits[rowperm] = chbits
 
     cw = ((chbits @ G) & 1)
-    msg_tuple = crc_unpack91(cw)
+    msg_tuple, bits77_int = crc_unpack91(cw)
     if msg_tuple:
-        return msg_tuple
+        return msg_tuple, bits77_int
     
     fliplist = list(rowperm[::-1][:singleflips])
 
@@ -256,9 +255,9 @@ def osd_012(llr, singleflips = 30, doubleflips = 2):
         bits = chbits.copy()
         bits[fliplist[i]] ^= 1
         cw = ((bits @ G) & 1)
-        msg_tuple = crc_unpack91(cw)
+        msg_tuple, bits77_int = crc_unpack91(cw)
         if msg_tuple:
-            return msg_tuple
+            return msg_tuple, bits77_int
     
     for i in range(singleflips):
         for j in range(doubleflips):
@@ -267,9 +266,11 @@ def osd_012(llr, singleflips = 30, doubleflips = 2):
                 bits[fliplist[i]] ^= 1
                 bits[fliplist[j]] ^= 1
                 cw = ((bits @ G) & 1)
-                msg_tuple = crc_unpack91(cw)
+                msg_tuple, bits77_int = crc_unpack91(cw)
                 if msg_tuple:
-                    return msg_tuple
+                    return msg_tuple, bits77_int
+
+    return None, None
 
 
 

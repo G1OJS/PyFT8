@@ -48,6 +48,10 @@ class Msg_box:
         self.text_inst.set_color(message_type_params['fg'])
         self.patch.set_facecolor(message_type_params['bg'])
         self.patch.set_alpha(message_type_params['alpha'])
+        if message['decode_notes'].endswith('_SUB'):
+            self.text_inst.set_color('black')
+            self.patch.set_facecolor('white')
+            self.patch.set_alpha(1.0)
         self.text_inst.set_position((x, y+1))
         self.patch.set_xy((x, y))
         if message['priority']:
@@ -132,7 +136,8 @@ class Panel:
 
 class Gui:
     def __init__(self, myCall, myGrid, console_print, qso_manager, history,
-                 band_frequencies, set_receiver_band, waterfall_data, hearing_me_since_mins, geo_units):
+                 band_frequencies, set_receiver_band, waterfall_data, hearing_me_since_mins, geo_units, nodisplay = False):
+        self.nodisplay = nodisplay
         self.hearing_me_since_mins = hearing_me_since_mins
         self.waterfall_data = waterfall_data
         self.qso_manager = qso_manager
@@ -246,6 +251,12 @@ class Gui:
                                 new_text = f"{' '.join(m['msg_tuple'])} {hearing_me} {wb_text} {geo_text}"
                                 mb.set_text(new_text)
 
+    def find_msg_box(self, msg_tuple):
+        for mb in self.msg_boxes:
+            if mb.patch.get_visible():
+                if mb.message['msg_tuple'] == msg_tuple:
+                    return mb
+
     def _refresh_panels(self):
         self._refresh_home_panel()
         self._refresh_band_buttons()
@@ -270,6 +281,8 @@ class Gui:
         self.message_queue_non_time_critical.put(m)
 
     def _display_message(self, m):
+        if self.nodisplay:
+            return
         mb = self._get_message_box()
         x = int(m['tsec'] / self.waterfall_data['dt'] + m['their_tx_cycle'] * self.waterfall_data['pixels_per_cycle'])
         y = int(m['fHz'] / self.waterfall_data['df'])
