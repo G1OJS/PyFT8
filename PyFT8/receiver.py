@@ -155,7 +155,7 @@ class Candidate:
                 
     def _decode_good91(self):
         if not self.decode_result:
-            self.decode_notes = f'{self.source}_{self.pat_name}_GOOD91 '
+            self.decode_notes = f'{self.source}_{self.pat_name}_GOOD91'
             self.decode_result, self.bits77_int = crc_unpack91(self.llr[:91])
                 
     def _decode_ldpc(self, max_nc0, max_its, save_llr):
@@ -472,7 +472,7 @@ class Receiver():
         t0 = time_utils.time()
         if np.abs(c.origin['fHz'] - self.last_sub_fHz) < self.min_sub_separation_Hz:
             c.subtracted = True
-            print(f"Rejected - too close in frequency to last subtracted signal")
+            print(f"Rejected {c.msg_text} - too close in frequency to last subtracted signal {self.last_msg_text}")
             return
         symbols = symbols = encode_bits77(c.bits77_int)
         if not symbols:
@@ -514,6 +514,7 @@ class Receiver():
             
         self.last_sub_fHz = c.origin['fHz']
         t_sub = time_utils.time()-t0
+        self.last_msg_text = c.msg_text
         #print(f"Sub at {self.last_sub_fHz:7.2f}Hz {c.origin['tsec']:6.1f}s calcs = {t_sub*1000:6.1f}ms")
         return True
      
@@ -530,8 +531,8 @@ class Receiver():
         cycle_searched = False
         to_decode = []
         n_subtractions = 0
-        post_subtraction_successes = 0
-        post_subtraction_successes_unique = 0
+        post_subtraction_decodes = 0
+        post_subtraction_decodes_unique = 0
         new_cands = []
         to_subtract = []
         primary_decodes = []
@@ -559,23 +560,21 @@ class Receiver():
                             if not c.new_after_subtraction:
                                 primary_decodes.append(c)
                             if c.new_after_subtraction:
-                                post_subtraction_successes += 1
+                                post_subtraction_decodes += 1
                             if c.post_subtraction_success:
                                 for call in c.msg_tuple[:2]:
                                     if not call.startswith('CQ') and not call in recovered_callsigns:
                                         recovered_callsigns.append(call)
-                                        with open('recovered_callsigns.txt','a') as f:
-                                            f.write(f"{call}\n")
-                                post_subtraction_successes_unique += 1
+                                post_subtraction_decodes_unique += 1
 
             # subtract candidate signals once audio is clear of the *whole* signal including Costas blocks
             subtracted = []
             ct = time_utils.cycle_time()
-            if ct > 12 or ct < 1:
+            if ct < 3:
                 to_subtract = [c for c in primary_decodes if not c.subtracted and not c.new_after_subtraction
                                and not c.signal_hop_bounds[0] < self.audio_in.search_grid_ptr < c.signal_hop_bounds[1]]
                 to_subtract.sort(key = lambda c: (-c.signal_hop_bounds[0], c.has_neighbours), reverse = True)
-            for c in to_subtract[:2]:
+            for c in to_subtract[:4]:
                 if n_subtractions < self.max_subtractions:
                     c.refine_origin()
                     success = self.subtract_signal(c)
@@ -595,20 +594,21 @@ class Receiver():
                     f0_idx = c.origin['f0_idx']
                     search_f_idxs = range(f0_idx-5, f0_idx+5) # one idx = 6.25 / bpt Hz (3.125 if bpt == 2)
                     potential_new_cands = self.search(cyclestart, c.origin['odd_even'], search_f_idxs)
-                    for c in potential_new_cands:
-                        if not c in new_cands:
-                            new_cands.append(c)        
-                for c in new_cands:
-                    if not c in self.candidates:
-                        c.new_after_subtraction = True
-                        self.candidates.append(c)
-                        #print(f"New at {c.origin['fHz']:6.1f} {c.origin['tsec']:6.1f}s")
+                    for cn in potential_new_cands:
+                        if not any([c for c in self.candidates if np.abs(cn.origin['fHz'] - c.origin['fHz'])<1]):
+                            if not any([c for c in new_cands if np.abs(cn.origin['fHz'] - c.origin['fHz'])<1]):
+                                cn.new_after_subtraction = True
+                                new_cands.append(cn)
+                for cn in new_cands:
+                    if not cn in self.candidates:
+                        self.candidates.append(cn)
+                        #print(f"New at {cn.origin['fHz']:6.1f} {cn.origin['tsec']:6.1f}s")
                 
             # if cycle not yet searched and search data available, search
             if not cycle_searched and self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle > self.search_start_hop:
                 if len(to_decode):
                     time_utils.tlog(f"[Receiver] Warning - {len(to_decode)} candidates ran out of decoding time, ipass = {ipasses}", verbose = True)
-                print(f"Previous cycle got {post_subtraction_successes} decodes ({post_subtraction_successes_unique} unique) from {len(new_cands)} candidates")
+                print(f"Previous cycle got {post_subtraction_decodes} decodes ({post_subtraction_decodes_unique} unique) from {len(new_cands)} candidates")
                 print(f"added after {n_subtractions} subtractions from {len(primary_decodes)} primary decodes")
                 print(f"Callsigns recovered: {','.join(recovered_callsigns)}")
                 odd_even = time_utils.odd_even()
@@ -623,8 +623,8 @@ class Receiver():
                 time_utils.tlog(f"[Cycle manager] New spectrum searched in {time_utils.time() - tstart:6.2f}s -> {len(self.candidates)} candidates ({neigh_count} with neighbours)", verbose = True) 
 
                 n_subtractions = 0
-                post_subtraction_successes = 0
-                post_subtraction_successes_unique = 0
+                post_subtraction_decodes = 0
+                post_subtraction_decodes_unique = 0
                 new_cands = []
                 cycle_searched = True
 
