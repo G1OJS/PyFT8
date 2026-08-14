@@ -369,7 +369,7 @@ class Receiver():
     def __init__(self, input_device_keywords, on_message, sync_score_min = 85, max_cands = 200,
                  on_update = None,
                  search_freq_range = [100, 3000], search_timerange = [-2.5, 3.5], verbose = False,
-                 min_cand_separation_Hz = 15, max_subtractions = 30):
+                 min_cand_separation_Hz = 15, max_subtractions = 0):
         self.audio_in = AudioIn(search_freq_range, input_device_keywords)
         self.on_message = on_message
         self.on_update = on_update
@@ -562,7 +562,7 @@ class Receiver():
             # subtract candidate signals once audio is clear of the *whole* signal including Costas blocks
             subtracted_cands = []
             ct = time_utils.cycle_time()
-            if ct < 3:
+            if ct < 3 and self.max_subtractions > 0:
                 to_subtract = [c for c in primary_decodes if not c.subtracted
                                and not c.signal_hop_bounds[0] < self.audio_in.search_grid_ptr < c.signal_hop_bounds[1]]
                 to_subtract.sort(key = lambda c: (-c.signal_hop_bounds[0], c.has_neighbours), reverse = True)
