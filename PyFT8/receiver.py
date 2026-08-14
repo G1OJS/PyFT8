@@ -285,7 +285,7 @@ class AudioIn:
         self.last_get_cycle_spectrum = 0
         self.waterfall_data = self._set_waterfall_data()
        
-        self.audio_buffer = np.zeros(int(18*SAMP_RATE), dtype=np.float32)
+        self.audio_buffer = np.ones(int(18*SAMP_RATE), dtype=np.float32)
         self.audio_buffer_zero = 0
         self.buffer192000_float32  = np.zeros(192000, dtype=np.float32)
         self._find_input_device(input_device_keywords)
@@ -369,7 +369,7 @@ class Receiver():
     def __init__(self, input_device_keywords, on_message, sync_score_min = 85, max_cands = 200,
                  on_update = None,
                  search_freq_range = [100, 3000], search_timerange = [-2.5, 3.5], verbose = False,
-                 min_cand_separation_Hz = 15, min_sub_separation_Hz = 1, max_subtractions = 30):
+                 min_cand_separation_Hz = 15, max_subtractions = 30):
         self.audio_in = AudioIn(search_freq_range, input_device_keywords)
         self.on_message = on_message
         self.on_update = on_update
@@ -391,7 +391,6 @@ class Receiver():
         self.last_sub_fHz = 0
         self.max_subtractions = max_subtractions
         self.min_cand_separation_Hz = min_cand_separation_Hz
-        self.min_sub_separation_Hz = min_sub_separation_Hz
         self.dump_subtraction_info = False
 
         time_utils.set_cycle_length(T_CYC)
@@ -569,19 +568,16 @@ class Receiver():
                 to_subtract.sort(key = lambda c: (-c.signal_hop_bounds[0], c.has_neighbours), reverse = True)
             for c in to_subtract[:4]:
                 if n_subtractions < self.max_subtractions:
-                    if True or np.abs(c.origin['fHz'] - self.last_sub_fHz) > self.min_sub_separation_Hz:
-                        c.refine_origin()
-                        success = self.subtract_signal(c)
-                        if success:
-                            c.subtracted = True
-                            self.subtracted_cycle = c.origin['odd_even']
-                            n_subtractions += 1
-                            subtracted.append(c)
-                            self.last_sub_fHz = c.origin['fHz']
+                    c.refine_origin()
+                    success = self.subtract_signal(c)
+                    if success:
+                        c.subtracted = True
+                        self.subtracted_cycle = c.origin['odd_even']
+                        n_subtractions += 1
+                        subtracted.append(c)
 
             if len(subtracted):
                 h0 = self.subtracted_cycle * self.audio_in.search_hops_per_cycle
-                print(h0, h0 + self.audio_in.search_hops_per_cycle)
                 for grid_ptr in range(h0, h0 + self.audio_in.search_hops_per_cycle):
                     self.audio_in.get_grid_spectrum(grid_ptr)
                 for c in subtracted:

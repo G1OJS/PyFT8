@@ -159,7 +159,7 @@ def cli():
         qso_manager.update_history_from_log(history)
             
         gui = Gui(myCall, myGrid, console_print, qso_manager, history, band_frequencies, receiver.set_band,
-                  waterfall_data, hearing_me_since_mins, geo_units, nodisplay = True)
+                  waterfall_data, hearing_me_since_mins, geo_units, nodisplay = False)
 
 # wait or show gui as appropriate
     if gui is None:
