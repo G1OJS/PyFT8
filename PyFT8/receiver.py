@@ -466,6 +466,7 @@ class Receiver():
     def subtract_signal(self, c, f_offset = 0, t_offset = 0):
         # whole sub takes about 60~70 ms, half is the camp calc
         # might still need a guard against s0 < 0?
+
         t0 = time_utils.time()
         if np.abs(c.origin['fHz'] - self.last_sub_fHz) < self.min_sub_separation_Hz:
             c.subtracted = True
@@ -475,19 +476,29 @@ class Receiver():
         if not symbols:
             print(f"Rejected - couldnt generate symbols")
             return
+
+        len_buffer = len(self.audio_in.audio_buffer)
+        def get_buffer_params(tsec, len_sig):
+            buff_zero = self.audio_in.audio_buffer_zero
+            b0 = buff_zero + int(tsec * SAMP_RATE)
+            bn = b0 + len_sig
+            s0, sn = 0, len_sig
+            if b0 < 0:
+                s0 = - b0
+                b0 = 0
+            if bn > len_buffer:
+                sn = len_sig - (bn - len_buffer)
+                bn = len_buffer            
+            return b0, bn, s0, sn
         
         reference_audio = symbols_to_complex_audio(symbols, f_base = c.origin['fHz'] + f_offset)        
         len_sig = len(reference_audio)
-        len_buffer = len(self.audio_in.audio_buffer)
 
         with self.audio_in.audio_buffer_lock:
-            buff_zero = self.audio_in.audio_buffer_zero
-            s0 = buff_zero + int(float(c.origin['tsec']) * SAMP_RATE)
-            sn = np.min([s0 + len_sig, len_buffer])
-            len_sig = sn - s0
-            received_audio = self.audio_in.audio_buffer[s0:sn].copy()
-            
-        reference_audio = reference_audio[:len_sig]
+            b0, bn, s0, sn = get_buffer_params(c.origin['tsec'], len_sig)
+            received_audio = self.audio_in.audio_buffer[b0:bn].copy()
+        len_sig = sn - s0
+        reference_audio = reference_audio[s0:sn]
         self.camp[:] = 0
         self.camp[:len_sig] = received_audio * np.conj(reference_audio)
         self.camp = np.fft.fft(self.camp)
@@ -496,9 +507,8 @@ class Receiver():
         sub = 2*np.real(self.camp[:len_sig] * reference_audio)
 
         with self.audio_in.audio_buffer_lock:
-            buffer_moved = self.audio_in.audio_buffer_zero - buff_zero
-            s0, sn = s0 + buffer_moved, sn + buffer_moved
-            self.audio_in.audio_buffer[s0: sn] -= sub
+            b0, bn, s0, sn = get_buffer_params(c.origin['tsec'], len_sig)
+            self.audio_in.audio_buffer[b0: bn] -= sub[s0:sn]
             
         self.last_sub_fHz = c.origin['fHz']
         t_sub = time_utils.time()-t0
@@ -521,7 +531,7 @@ class Receiver():
         post_subtraction_successes = 0
         post_subtraction_successes_unique = 0
         new_cands = []
-        decodes = []
+        primary_decodes = []
         recovered_callsigns = []
         while True:
             time_utils.sleep(0.1)
@@ -543,7 +553,8 @@ class Receiver():
                     if c.decode_result is not None:
                         if c.decode_result != 'stop':
                             c.check_and_package(duplicate_filter)
-                            decodes.append(c)
+                            if not c.new_after_subtraction:
+                                primary_decodes.append(c)
                             if c.new_after_subtraction:
                                 post_subtraction_successes += 1
                             if c.post_subtraction_success:
@@ -558,15 +569,15 @@ class Receiver():
             subtracted = []
             ct = time_utils.cycle_time()
             if ct > 12 or ct < 3:
-                to_subtract = [c for c in decodes if not c.subtracted and not c.new_after_subtraction
-                               and not c.signal_hop_bounds[0] < self.audio_in.search_grid_ptr < c.signal_hop_bounds[1]]
+                to_subtract = [c for c in primary_decodes if not c.subtracted and not c.new_after_subtraction]
+                             #  and not c.signal_hop_bounds[0] < self.audio_in.search_grid_ptr < c.signal_hop_bounds[1]]
                 to_subtract.sort(key = lambda c: (-c.signal_hop_bounds[0], c.has_neighbours), reverse = True)
                 for c in to_subtract:
                     if n_subtractions < self.max_subtractions:
                         c.refine_origin()
                         success = self.subtract_signal(c)
-                        c.subtracted = True
                         if success:
+                            c.subtracted = True
                             n_subtractions += 1
                             subtracted.append(c)
 
@@ -595,7 +606,7 @@ class Receiver():
                 if len(to_decode):
                     time_utils.tlog(f"[Receiver] Warning - {len(to_decode)} candidates ran out of decoding time, ipass = {ipasses}", verbose = True)
                 print(f"Previous cycle got {post_subtraction_successes} decodes ({post_subtraction_successes_unique} unique) from {len(new_cands)} candidates")
-                print(f"added after {n_subtractions} subtractions from {len(decodes)} decodes")
+                print(f"added after {n_subtractions} subtractions from {len(primary_decodes)} primary decodes")
                 print(f"Callsigns recovered: {','.join(recovered_callsigns)}")
                 odd_even = time_utils.odd_even()
                 hstart = self.audio_in.search_grid_ptr
@@ -604,7 +615,7 @@ class Receiver():
                 cyclestart = time_utils.cyclestart(time_utils.time())
                 search_f_idxs = range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 2)
                 self.candidates = self.search(cyclestart, odd_even, search_f_idxs)
-                decodes = []
+                primary_decodes = []
                 neigh_count = len([c for c in self.candidates if c.has_neighbours])
                 time_utils.tlog(f"[Cycle manager] New spectrum searched in {time_utils.time() - tstart:6.2f}s -> {len(self.candidates)} candidates ({neigh_count} with neighbours)", verbose = True) 
 
