@@ -52,7 +52,7 @@ class Candidate:
         self.decode_notes = ''
         self.subtracted = False
         self.new_after_subtraction = False
-        self.post_subtraction_success = False
+        self.new_to_duplicate_filter = False
         self.snr = -30
         self.msg_text = ''
         self.msg_tuple = None
@@ -99,7 +99,7 @@ class Candidate:
                         "all_txt_format": all_txt_format, 'cyclestart_string':o['cyclestart_string'],
                         "decode_completed": time_utils.time(),  'tweaks':self.tweaks, 'decode_notes':decode_notes}
             self.on_message(message)
-            self.post_subtraction_success = self.new_after_subtraction
+            self.new_to_duplicate_filter = True
         self.decode_result = 'stop'
 
     def decode(self, current_max_ipass):
@@ -551,36 +551,36 @@ class Receiver():
                             c.check_and_package(duplicate_filter)
                             if not c.new_after_subtraction:
                                 primary_decodes.append(c)
-                            if c.new_after_subtraction:
+                            else:
                                 post_subtraction_decodes += 1
-                            if c.post_subtraction_success:
-                                for call in c.msg_tuple[:2]:
-                                    if not call.startswith('CQ') and not call in recovered_callsigns:
-                                        recovered_callsigns.append(call)
-                                post_subtraction_decodes_unique += 1
+                                if c.new_to_duplicate_filter:
+                                    post_subtraction_decodes_unique += 1
+                                    for call in c.msg_tuple[:2]:
+                                        if not call.startswith('CQ') and not call in recovered_callsigns:
+                                            recovered_callsigns.append(call)
 
             # subtract candidate signals once audio is clear of the *whole* signal including Costas blocks
-            subtracted = []
+            subtracted_cands = []
             ct = time_utils.cycle_time()
             if ct < 3:
-                to_subtract = [c for c in primary_decodes if not c.subtracted and not c.new_after_subtraction
+                to_subtract = [c for c in primary_decodes if not c.subtracted
                                and not c.signal_hop_bounds[0] < self.audio_in.search_grid_ptr < c.signal_hop_bounds[1]]
                 to_subtract.sort(key = lambda c: (-c.signal_hop_bounds[0], c.has_neighbours), reverse = True)
             for c in to_subtract[:4]:
-                if n_subtractions < self.max_subtractions:
+                if not c.subtracted and n_subtractions < self.max_subtractions:
                     c.refine_origin()
                     success = self.subtract_signal(c)
                     if success:
                         c.subtracted = True
-                        self.subtracted_cycle = c.origin['odd_even']
                         n_subtractions += 1
-                        subtracted.append(c)
+                        subtracted_cands.append(c)
+                        self.subtracted_cycle = c.origin['odd_even']
 
-            if len(subtracted):
+            if len(subtracted_cands):
                 h0 = self.subtracted_cycle * self.audio_in.search_hops_per_cycle
                 for grid_ptr in range(h0, h0 + self.audio_in.search_hops_per_cycle):
                     self.audio_in.get_grid_spectrum(grid_ptr)
-                for c in subtracted:
+                for c in subtracted_cands:
                     f0_idx = c.origin['f0_idx']
                     search_f_idxs = range(f0_idx-5, f0_idx+5) # one idx = 6.25 / bpt Hz (3.125 if bpt == 2)
                     potential_new_cands = self.search(cyclestart, c.origin['odd_even'], search_f_idxs)
@@ -601,6 +601,14 @@ class Receiver():
                 print(f"Previous cycle got {post_subtraction_decodes} decodes ({post_subtraction_decodes_unique} unique) from {len(new_cands)} candidates")
                 print(f"added after {n_subtractions} subtractions from {len(primary_decodes)} primary decodes")
                 print(f"Callsigns recovered: {','.join(recovered_callsigns)}")
+
+                n_subtractions = 0
+                post_subtraction_decodes = 0
+                post_subtraction_decodes_unique = 0
+                new_cands = []
+                primary_decodes = []
+                cycle_searched = True
+                
                 odd_even = time_utils.odd_even()
                 hstart = self.audio_in.search_grid_ptr
                 tstart = time_utils.time()
@@ -608,13 +616,8 @@ class Receiver():
                 cyclestart = time_utils.cyclestart(time_utils.time())
                 search_f_idxs = range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 2)
                 self.candidates = self.search(cyclestart, odd_even, search_f_idxs)
-                primary_decodes = []
                 neigh_count = len([c for c in self.candidates if c.has_neighbours])
                 time_utils.tlog(f"[Cycle manager] New spectrum searched in {time_utils.time() - tstart:6.2f}s -> {len(self.candidates)} candidates ({neigh_count} with neighbours)", verbose = True) 
 
-                n_subtractions = 0
-                post_subtraction_decodes = 0
-                post_subtraction_decodes_unique = 0
-                new_cands = []
-                cycle_searched = True
+
 
