@@ -462,6 +462,8 @@ class Receiver():
         self.camp = np.zeros(192000, dtype = np.complex64)
 
     def subtract_signal(self, c, f_offset = 0, t_offset = 0):
+        # whole sub takes about 60~70 ms, half is the camp calc
+        # might still need a guard against s0 < 0?
         t0 = time_utils.time()
         if np.abs(c.origin['fHz'] - self.last_sub_fHz) < self.min_sub_separation_Hz:
             c.subtracted = True
@@ -493,7 +495,7 @@ class Receiver():
         self.audio_in.audio_buffer[s0: sn] -= sub
         self.last_sub_fHz = c.origin['fHz']
         t_sub = time_utils.time()-t0
-        print(f"Sub at {self.last_sub_fHz:7.2f}Hz {c.origin['tsec']:6.1f}s calcs = {t_sub*1000:6.1f}ms")
+        #print(f"Sub at {self.last_sub_fHz:7.2f}Hz {c.origin['tsec']:6.1f}s calcs = {t_sub*1000:6.1f}ms")
         return True
      
 
