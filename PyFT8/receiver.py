@@ -374,7 +374,7 @@ class Receiver():
     def __init__(self, input_device_keywords, on_message, sync_score_min = 85, max_cands = 200,
                  on_update = None,
                  search_freq_range = [100, 3000], search_timerange = [-2.5, 3.5], verbose = False,
-                 min_cand_separation_Hz = 15, max_subtractions = 0):
+                 min_cand_separation_Hz = 15, subtract_decodes = False):
         self.audio_in = AudioIn(search_freq_range, input_device_keywords)
         self.on_message = on_message
         self.on_update = on_update
@@ -394,9 +394,10 @@ class Receiver():
         self.cand_serial = 0
         self.init_subtraction()
         self.last_sub_fHz = 0
-        self.max_subtractions = max_subtractions
+        self.subtract_decodes = subtract_decodes
         self.min_cand_separation_Hz = min_cand_separation_Hz
         self.dump_subtraction_info = False
+        self.t_start = time_utils.time()
 
         time_utils.set_cycle_length(T_CYC)
         time_utils.tlog(f"[Receiver] Search hops {self.search_h0_range[0]:3d} to {self.search_h0_range[1]:3d}", verbose = self.verbose)
@@ -530,7 +531,6 @@ class Receiver():
         search_grid_ptr_prev = 0
         cycle_searched = False
         to_decode = []
-        n_subtractions = 0
         post_subtraction_decodes = 0
         post_subtraction_decodes_unique = 0
         to_subtract = []
@@ -546,7 +546,6 @@ class Receiver():
             search_grid_ptr_prev = self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle
 
             # list candidates still to decode, and decode them
-            
             to_decode = [c for c in self.candidates if not c.decode_result and not self.signal_arriving(c)]
             if len(to_decode):
                 ipasses = [c.ipass for c in to_decode]
@@ -567,20 +566,17 @@ class Receiver():
                                         if not call.startswith('CQ') and not call in recovered_callsigns:
                                             recovered_callsigns.append(call)
 
-            if (ct > 12 or ct < 3) and self.max_subtractions > 0:
+            if (ct > 12 or ct < 3) and self.subtract_decodes:
                 to_subtract = [c for c in primary_decodes if not c.subtracted and not self.signal_arriving(c)]
-                to_subtract.sort(key = lambda c: (-c.signal_hop_bounds[0], c.has_neighbours), reverse = True)
                 subtracted_cands = []
                 t0 = time_utils.time()
-                for c in to_subtract[:4]:
-                    if not c.subtracted and n_subtractions < self.max_subtractions:
-                        c.refine_origin()
-                        success = self.subtract_signal(c)
-                        if success:
-                            c.subtracted = True
-                            n_subtractions += 1
-                            subtracted_cands.append(c)
-                            self.subtracted_cycle = c.origin['odd_even']
+                for c in to_subtract:
+                    c.refine_origin()
+                    success = self.subtract_signal(c)
+                    if success:
+                        c.subtracted = True
+                        subtracted_cands.append(c)
+                        self.subtracted_cycle = c.origin['odd_even']
                 if len(subtracted_cands):
                     self.audio_in.recalculate_grid(self.subtracted_cycle)
                 t1 = time_utils.time()
@@ -597,8 +593,8 @@ class Receiver():
                             n+=1
                             #print(f"New at {cn.origin['fHz']:6.1f} {cn.origin['tsec']:6.1f}s")
                 if len(subtracted_cands):
-                    print(f"Subtracted {len(subtracted_cands)} signals in {(t1-t0)*1000:5.0f}ms")
-                    print(f"Found {n} 2nd generation candidates in {(time_utils.time()-t1)*1000:5.0f}ms")
+                    print(f"{'':9s}{time_utils.time() - self.t_start: 7.2f} Subtracted {len(subtracted_cands)} of {len(to_subtract)} signals in {(t1-t0)*1000:5.0f}ms")
+                    print(f"{'':9s}         and found {n} 2nd generation candidates in {(time_utils.time()-t1)*1000:5.0f}ms")
                 
             # if cycle not yet searched and search data available, search
             if not cycle_searched and self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle > self.search_start_hop:
@@ -606,7 +602,6 @@ class Receiver():
                     time_utils.tlog(f"[Receiver] Warning - {len(to_decode)} candidates ran out of decoding time, ipass = {ipasses}", verbose = True)
                 print(f"Callsigns recovered: {','.join(recovered_callsigns)}")
 
-                n_subtractions = 0
                 post_subtraction_decodes = 0
                 post_subtraction_decodes_unique = 0
                 primary_decodes = []
