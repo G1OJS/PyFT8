@@ -567,7 +567,7 @@ class Receiver():
                                         if not call.startswith('CQ') and not call in recovered_callsigns:
                                             recovered_callsigns.append(call)
 
-            if (ct > 12) and self.max_subtractions > 0:
+            if (ct > 12 or ct < 3) and self.max_subtractions > 0:
                 to_subtract = [c for c in primary_decodes if not c.subtracted and not self.signal_arriving(c)]
                 to_subtract.sort(key = lambda c: (-c.signal_hop_bounds[0], c.has_neighbours), reverse = True)
                 subtracted_cands = []
