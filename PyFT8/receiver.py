@@ -533,7 +533,6 @@ class Receiver():
         n_subtractions = 0
         post_subtraction_decodes = 0
         post_subtraction_decodes_unique = 0
-        new_cands = []
         to_subtract = []
         primary_decodes = []
         recovered_callsigns = []
@@ -568,10 +567,11 @@ class Receiver():
                                         if not call.startswith('CQ') and not call in recovered_callsigns:
                                             recovered_callsigns.append(call)
 
-            if ct < 2 and self.max_subtractions > 0:
+            if (ct > 12) and self.max_subtractions > 0:
                 to_subtract = [c for c in primary_decodes if not c.subtracted and not self.signal_arriving(c)]
                 to_subtract.sort(key = lambda c: (-c.signal_hop_bounds[0], c.has_neighbours), reverse = True)
                 subtracted_cands = []
+                t0 = time_utils.time()
                 for c in to_subtract[:4]:
                     if not c.subtracted and n_subtractions < self.max_subtractions:
                         c.refine_origin()
@@ -583,37 +583,39 @@ class Receiver():
                             self.subtracted_cycle = c.origin['odd_even']
                 if len(subtracted_cands):
                     self.audio_in.recalculate_grid(self.subtracted_cycle)
+                t1 = time_utils.time()
                     
+                n = 0
                 for c in subtracted_cands:
                     f0_idx = c.origin['f0_idx']
                     search_f_idxs = range(f0_idx-5, f0_idx+5) # one idx = 6.25 / bpt Hz (3.125 if bpt == 2)
                     potential_new_cands = self.search(cyclestart, c.origin['odd_even'], search_f_idxs)
                     for cn in potential_new_cands:
                         if not any([c for c in self.candidates if np.abs(cn.origin['fHz'] - c.origin['fHz'])<1]):
-                            if not any([c for c in new_cands if np.abs(cn.origin['fHz'] - c.origin['fHz'])<1]):
-                                cn.new_after_subtraction = True
-                                new_cands.append(cn)
-                                self.candidates.append(cn)
-                                #print(f"New at {cn.origin['fHz']:6.1f} {cn.origin['tsec']:6.1f}s")
+                            cn.new_after_subtraction = True
+                            self.candidates.append(cn)
+                            n+=1
+                            #print(f"New at {cn.origin['fHz']:6.1f} {cn.origin['tsec']:6.1f}s")
+                if len(subtracted_cands):
+                    print(f"Subtracted {len(subtracted_cands)} signals in {(t1-t0)*1000:5.0f}ms")
+                    print(f"Found {n} 2nd generation candidates in {(time_utils.time()-t1)*1000:5.0f}ms")
                 
             # if cycle not yet searched and search data available, search
             if not cycle_searched and self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle > self.search_start_hop:
                 if len(to_decode):
                     time_utils.tlog(f"[Receiver] Warning - {len(to_decode)} candidates ran out of decoding time, ipass = {ipasses}", verbose = True)
-                print(f"Previous cycle got {post_subtraction_decodes} decodes ({post_subtraction_decodes_unique} unique) from {len(new_cands)} candidates")
-                print(f"added after {n_subtractions} subtractions from {len(primary_decodes)} primary decodes")
                 print(f"Callsigns recovered: {','.join(recovered_callsigns)}")
 
                 n_subtractions = 0
                 post_subtraction_decodes = 0
                 post_subtraction_decodes_unique = 0
-                new_cands = []
                 primary_decodes = []
                 cycle_searched = True
                 
                 odd_even = time_utils.odd_even()
                 hstart = self.audio_in.search_grid_ptr
                 tstart = time_utils.time()
+                print("=" * 80)
                 time_utils.tlog(f"[Cycle manager] start search at hop {hstart} ({time_utils.cycle_time():6.2f}s)", verbose = True)
                 cyclestart = time_utils.cyclestart(time_utils.time())
                 search_f_idxs = range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 2)
