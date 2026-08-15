@@ -334,7 +334,12 @@ class AudioIn:
         self.last_get_cycle_spectrum = time_utils.time()
         return self.cycle_spectrum
 
-    def get_grid_spectrum(self, grid_ptr):
+    def recalculate_grid(self, odd_even):
+        h0 = odd_even * self.search_hops_per_cycle
+        for grid_ptr in range(h0, h0 + self.search_hops_per_cycle):
+            self._get_grid_spectrum(grid_ptr)
+
+    def _get_grid_spectrum(self, grid_ptr):
         delta = self.search_grid_ptr - grid_ptr
         if delta < 0:
             delta += self.search_hops_per_grid
@@ -360,7 +365,7 @@ class AudioIn:
             tg = time_utils.grid_time()
             if tg > 0.1:
                 self._set_pointers()
-        self.get_grid_spectrum(self.search_grid_ptr)
+        self._get_grid_spectrum(self.search_grid_ptr)
         return (None, pyaudio.paContinue)
 
 #============== RECEIVER ===========================================================
@@ -514,6 +519,9 @@ class Receiver():
     def set_band(self, band):
         self.band = band
 
+    def signal_arriving(self, c):
+        return c.signal_hop_bounds[0] < self.audio_in.search_grid_ptr < c.signal_hop_bounds[1]
+        
     def manage_cycle(self):
         dashes = "======================================================"
         duplicate_filter = set()
@@ -531,6 +539,7 @@ class Receiver():
         recovered_callsigns = []
         while True:
             time_utils.sleep(0.1)
+            ct = time_utils.cycle_time()
 
             # reset cycle_searched at beginning of cycle
             if self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle < search_grid_ptr_prev:
@@ -539,7 +548,7 @@ class Receiver():
 
             # list candidates still to decode, and decode them
             
-            to_decode = [c for c in self.candidates if (not c.decode_result) and (not (c.payload_hop_bounds[0] <= self.audio_in.search_grid_ptr <= c.payload_hop_bounds[1]))]
+            to_decode = [c for c in self.candidates if not c.decode_result and not self.signal_arriving(c)]
             if len(to_decode):
                 ipasses = [c.ipass for c in to_decode]
                 to_decode.sort(key=lambda c: (-c.payload_hop_bounds[0], c.new_after_subtraction, c.llr_sd), reverse=True)
@@ -559,27 +568,22 @@ class Receiver():
                                         if not call.startswith('CQ') and not call in recovered_callsigns:
                                             recovered_callsigns.append(call)
 
-            # subtract candidate signals once audio is clear of the *whole* signal including Costas blocks
-            subtracted_cands = []
-            ct = time_utils.cycle_time()
-            if ct < 3 and self.max_subtractions > 0:
-                to_subtract = [c for c in primary_decodes if not c.subtracted
-                               and not c.signal_hop_bounds[0] < self.audio_in.search_grid_ptr < c.signal_hop_bounds[1]]
+            if ct < 2 and self.max_subtractions > 0:
+                to_subtract = [c for c in primary_decodes if not c.subtracted and not self.signal_arriving(c)]
                 to_subtract.sort(key = lambda c: (-c.signal_hop_bounds[0], c.has_neighbours), reverse = True)
-            for c in to_subtract[:4]:
-                if not c.subtracted and n_subtractions < self.max_subtractions:
-                    c.refine_origin()
-                    success = self.subtract_signal(c)
-                    if success:
-                        c.subtracted = True
-                        n_subtractions += 1
-                        subtracted_cands.append(c)
-                        self.subtracted_cycle = c.origin['odd_even']
-
-            if len(subtracted_cands):
-                h0 = self.subtracted_cycle * self.audio_in.search_hops_per_cycle
-                for grid_ptr in range(h0, h0 + self.audio_in.search_hops_per_cycle):
-                    self.audio_in.get_grid_spectrum(grid_ptr)
+                subtracted_cands = []
+                for c in to_subtract[:4]:
+                    if not c.subtracted and n_subtractions < self.max_subtractions:
+                        c.refine_origin()
+                        success = self.subtract_signal(c)
+                        if success:
+                            c.subtracted = True
+                            n_subtractions += 1
+                            subtracted_cands.append(c)
+                            self.subtracted_cycle = c.origin['odd_even']
+                if len(subtracted_cands):
+                    self.audio_in.recalculate_grid(self.subtracted_cycle)
+                    
                 for c in subtracted_cands:
                     f0_idx = c.origin['f0_idx']
                     search_f_idxs = range(f0_idx-5, f0_idx+5) # one idx = 6.25 / bpt Hz (3.125 if bpt == 2)
@@ -589,10 +593,8 @@ class Receiver():
                             if not any([c for c in new_cands if np.abs(cn.origin['fHz'] - c.origin['fHz'])<1]):
                                 cn.new_after_subtraction = True
                                 new_cands.append(cn)
-                for cn in new_cands:
-                    if not cn in self.candidates:
-                        self.candidates.append(cn)
-                        #print(f"New at {cn.origin['fHz']:6.1f} {cn.origin['tsec']:6.1f}s")
+                                self.candidates.append(cn)
+                                #print(f"New at {cn.origin['fHz']:6.1f} {cn.origin['tsec']:6.1f}s")
                 
             # if cycle not yet searched and search data available, search
             if not cycle_searched and self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle > self.search_start_hop:
