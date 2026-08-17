@@ -238,6 +238,7 @@ class AudioIn:
 
         self.search_grid_ptr = int(time_utils.grid_time() * self.search_hops_per_grid / (2 * T_CYC))
         self.last_get_cycle_spectrum = 0
+        self.last_get_hop_spectrum = 0
         self.waterfall_data = self._set_waterfall_data()
        
         self.audio_buffer = np.zeros(self.samples_per_cycle, dtype=np.float32)
@@ -273,18 +274,19 @@ class AudioIn:
         return {'data':data, 'df':df, 'dt':dt, 'sig_w':sig_w, 'sig_h':sig_h, 'pixels_per_cycle':pixels_per_cycle}
 
     def get_cycle_spectrum(self):
-        #if (time_utils.time() - self.last_get_cycle_spectrum) < 0.05:
-        #    return
-        self.last_get_cycle_spectrum = time_utils.time()
-        samps_offset = (T_CYC - time_utils.cycle_time()) * SAMP_RATE
-        self.fft1_buffer[:self.samples_per_cycle] = np.roll(self.audio_buffer[-self.samples_per_cycle:], - samps_offset)
-        self.cycle_spectrum = np.fft.rfft(self.fft1_buffer)
+        if self.search_grid_ptr != self.last_get_cycle_spectrum:
+            samps_offset = (T_CYC - time_utils.cycle_time()) * SAMP_RATE
+            self.fft1_buffer[:self.samples_per_cycle] = np.roll(self.audio_buffer[-self.samples_per_cycle:], - samps_offset)
+            self.cycle_spectrum = np.fft.rfft(self.fft1_buffer)
+            self.last_get_cycle_spectrum = self.search_grid_ptr
         return self.cycle_spectrum
             
-    def get_grid_spectrum(self, grid_ptr):
-        np.multiply(self.audio_buffer[-self.search_fft_len:], self.search_fft_window, out = self.search_fft_in)
-        z = np.fft.rfft(self.search_fft_in)[:self.search_grid.shape[1]]
-        self.search_grid[grid_ptr, :] = 20*np.log10(np.abs(z)+1e-12)        
+    def get_hop_spectrum(self, grid_ptr):
+        if grid_ptr != self.last_get_hop_spectrum:
+            np.multiply(self.audio_buffer[-self.search_fft_len:], self.search_fft_window, out = self.search_fft_in)
+            z = np.fft.rfft(self.search_fft_in)[:self.search_grid.shape[1]]
+            self.search_grid[grid_ptr, :] = 20*np.log10(np.abs(z)+1e-12)
+            self.last_get_hop_spectrum = grid_ptr
         
     def _callback(self, in_data, frame_count, time_info, status_flags):
         samples = np.frombuffer(in_data, dtype=np.int16)#.astype(np.float32)
@@ -297,7 +299,7 @@ class AudioIn:
             print(tg)
             if tg > 0.1:
                 self.search_grid_ptr = int(tg * self.search_hops_per_grid / (2 * T_CYC))
-        self.get_grid_spectrum(self.search_grid_ptr)
+        self.get_hop_spectrum(self.search_grid_ptr)
         return (None, pyaudio.paContinue)
 
 #============== RECEIVER ===========================================================
