@@ -110,7 +110,8 @@ def do_test(input_device_keywords, wav_range = None):
     wav_files = []
     if wav_range:
         for idx in range(*wav_range):
-            wav_files.append(f"{wav_folder}/test_{idx:02d}.wav")
+            #wav_files.append(f"{wav_folder}/20m_busy/test_{idx:02d}.wav")
+            wav_files.append(f"{wav_folder}/websdr_test{idx}.wav")
 
     wsjtx_all_tailer = Wsjtx_all_tailer(on_wsjtx_decode, silent = False)
 
@@ -167,10 +168,7 @@ def do_test(input_device_keywords, wav_range = None):
                         f.write(f"{ws_info}\n")
                    # print(ws_info)
 
-
-
-data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy"
-wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
+wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav"
 
 #do_test("Mic, CODEC")
 do_test("CABLE, Output", [8,28])
