@@ -177,6 +177,7 @@ class Candidate:
         fft1_len = len(cycle_spectrum)
         
         # downsample to 32 samples per symbol / 200 samples per sec
+        self.reused_spectrum_array[:] = 0
         self.reused_spectrum_array[150:1000] = cycle_spectrum[fb_0:fb_0+850]
         self.reused_spectrum_array[:150] = cycle_spectrum[fb_0-150:fb_0]
         self.reused_spectrum_array[900:1000] *= 0.5*(1+np.cos(np.linspace(np.pi,0,100)))
@@ -308,7 +309,7 @@ class AudioIn:
         
 class Receiver():
     def __init__(self, input_device_keywords, on_message, sync_score_min = 85, max_cands = 200,
-                 search_freq_range = [100, 3000], search_time_range = [-2.5+0.6, 2.5+0.6],
+                 search_freq_range = [100, 3000], search_time_range = [-2.5+0.5, 2.5+0.5],
                  verbose = False):
         self.audio_in = AudioIn(search_freq_range, input_device_keywords)
         self.on_message = on_message
@@ -362,11 +363,6 @@ class Receiver():
                 c = Candidate(origin, [search_grid_h0, search_grid_hn], payload_on_search_grid, self.audio_in.get_cycle_spectrum, self.on_message)
                 c.serial_id = self.cand_serial
                 cands.append(c)
-   #     cands = [c for c in cands if not any(
-  #                  [c2 for c2 in cands if c.serial_id != c2.serial_id
-  #                     and np.abs(c2.origin['f0_idx'] - c.origin['f0_idx']) < 2
-  #                       and np.abs(c2.origin['h0_idx'] - c.origin['h0_idx']) < 3])
-  #              ]
         cands.sort(key = lambda c: c.origin['score'], reverse = True)
         return cands[:self.max_cands]
 
