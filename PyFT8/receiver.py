@@ -177,8 +177,11 @@ class Candidate:
         fft1_len = len(cycle_spectrum)
         
         # downsample to 32 samples per symbol / 200 samples per sec
-        self.reused_spectrum_array[:850] = cycle_spectrum[fb_0:fb_0+850]
-        self.reused_spectrum_array[-150:] = cycle_spectrum[fb_0-150:fb_0]
+        self.reused_spectrum_array[150:1000] = cycle_spectrum[fb_0:fb_0+850]
+        self.reused_spectrum_array[:150] = cycle_spectrum[fb_0-150:fb_0]
+        self.reused_spectrum_array[900:1000] *= 0.5*(1+np.cos(np.linspace(np.pi,0,100)))
+        self.reused_spectrum_array[:100] *= 0.5*(1+np.cos(np.linspace(-np.pi,0,100)))
+        self.reused_spectrum_array = np.roll(self.reused_spectrum_array, -150)
         candidate_zsig = np.fft.ifft(self.reused_spectrum_array)
 
         # get candidate symbol spectra x79 with df = 1 tone spacing
@@ -296,7 +299,6 @@ class AudioIn:
         self.search_grid_ptr = (self.search_grid_ptr + 1) % self.search_hops_per_grid
         if self.search_grid_ptr == 0:
             tg = time_utils.grid_time()
-            print(tg)
             if tg > 0.1:
                 self.search_grid_ptr = int(tg * self.search_hops_per_grid / (2 * T_CYC))
         self.get_hop_spectrum(self.search_grid_ptr)
