@@ -2,7 +2,7 @@ import win32api,win32process
 win32process.SetPriorityClass(win32api.GetCurrentProcess(), win32process.HIGH_PRIORITY_CLASS)
 
 import numpy as np
-import pickle, threading, pyaudio, sys, queue
+import pickle, threading, pyaudio, sys, queue, os
 from PyFT8.time_utils import time_utils
 from matplotlib.animation import FuncAnimation
 from PyFT8.receiver import Receiver
@@ -38,16 +38,17 @@ class SoundcardOut:
         time_utils.sleep(t)
         dt = 0.6/4
         for i, w in enumerate(wav_files):
-            print(f"Start playing wav file {w}")
-            wv = wave.open(w, 'rb')
-            audio_bytes = wv.readframes(sr*16)
-            audio_bytes = audio_bytes[-int(sr*(15-dt))*2:]
+            if os.path.exists(w):
+                print(f"Start playing wav file {w}")
+                wv = wave.open(w, 'rb')
+                audio_bytes = wv.readframes(sr*16)
+                audio_bytes = audio_bytes[-int(sr*(15-dt))*2:]
 
-            stream = self.pya.open(format=pyaudio.paInt16, channels=1, rate = sr, output=True,
-                              output_device_index = self.output_device_index)
-            stream.write(audio_bytes)
-            stream.stop_stream()
-            stream.close()
+                stream = self.pya.open(format=pyaudio.paInt16, channels=1, rate = sr, output=True,
+                                  output_device_index = self.output_device_index)
+                stream.write(audio_bytes)
+                stream.stop_stream()
+                stream.close()
         time_utils.sleep(5)
         finished_audio = True
 
@@ -110,13 +111,13 @@ def do_test(input_device_keywords, wav_range = None):
     wav_files = []
     if wav_range:
         for idx in range(*wav_range):
-            #wav_files.append(f"{wav_folder}/20m_busy/test_{idx:02d}.wav")
-            wav_files.append(f"{wav_folder}/websdr_test{idx}.wav")
+            wav_files.append(f"{wav_folder}/20m_busy/test_{idx:02d}.wav")
+            #wav_files.append(f"{wav_folder}/websdr_test{idx}.wav")
 
     wsjtx_all_tailer = Wsjtx_all_tailer(on_wsjtx_decode, silent = False)
 
     if wav_files:
-       soundout = SoundcardOut("CABLE, Input", wav_files, wav_file_time_offset = -1)
+       soundout = SoundcardOut("CABLE, Input", wav_files, wav_file_time_offset = -0.75)
 
     t = 15-time_utils.cycle_time()
     if t > 0.05:
@@ -124,11 +125,9 @@ def do_test(input_device_keywords, wav_range = None):
         time_utils.sleep(t)
     t_start = time_utils.time()
 
-
-
     py_times, ws_times = [], []
     
-    receiver = Receiver(input_device_keywords, process_message, search_freq_range = [200, 2800])
+    receiver = Receiver(input_device_keywords, process_message)
     if not receiver.audio_in.input_device_idx:
         time_utils.tlog(f"[Audio] No input audio device found matching {input_device_keywords}", verbose = True)
         sys.exit(1)

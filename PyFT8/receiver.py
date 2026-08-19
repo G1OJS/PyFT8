@@ -57,7 +57,7 @@ class Candidate:
             decode_notes = self.decode_notes + self.tweaks
             tsec, fHz = o['tsec'], o['fHz']
             their_snr = f"{self.snr:+03d}"
-            all_txt_format = f"{o['cyclestart_string']} {their_snr} {(tsec-0.5):4.1f} {fHz:4.0f} ~ {self.msg_text}"
+            all_txt_format = f"{o['cyclestart_string']} {their_snr} {(tsec-0.6):4.1f} {fHz:4.0f} ~ {self.msg_text}"
             message = { "band":o['band'], "tsec":tsec, "fHz":fHz, "msg_tuple":self.decode_result,
                         "their_snr": their_snr, "their_tx_cycle":o['odd_even'],
                         "all_txt_format": all_txt_format, 'cyclestart_string':o['cyclestart_string'],
@@ -306,13 +306,14 @@ class AudioIn:
         
 class Receiver():
     def __init__(self, input_device_keywords, on_message, sync_score_min = 85, max_cands = 200,
-                 search_freq_range = [100, 3000], search_timerange = [-2.5, 3.5], verbose = False):
+                 search_freq_range = [100, 3000], search_time_range = [-2.5+0.6, 2.5+0.6],
+                 verbose = False):
         self.audio_in = AudioIn(search_freq_range, input_device_keywords)
         self.on_message = on_message
         self.sync_score_min, self.max_cands = sync_score_min, max_cands
         self.candidates = []
         self.verbose = verbose
-        self.search_h0_range = [int((t+0.5)*self.audio_in.search_hps*SYM_RATE) for t in search_timerange]
+        self.search_h0_range = [int((t+0.5)*self.audio_in.search_hps*SYM_RATE) for t in search_time_range]
         self.search_start_hop = self.search_h0_range[1] + 43 * self.audio_in.search_hps
         dt = 1.0 / (SYM_RATE * self.audio_in.search_hps)
         self.base_search_hops = 36 * self.audio_in.search_hps + np.arange(7) * self.audio_in.search_hps 
@@ -331,7 +332,7 @@ class Receiver():
         time_utils.sleep(0.5)
         threading.Thread(target=self.manage_cycle, daemon=True).start()
         
-    def search(self, cyclestart_string, odd_even, search_f_idxs, ignore_sync_score_min = False):
+    def search(self, cyclestart_string, odd_even, search_f_idxs):
         cands = []
         cycle_h0 = odd_even * self.audio_in.search_hops_per_cycle
         hops_per_sig = self.audio_in.search_hps * PAYLOAD_SYMB_IDXS[-1]
@@ -348,8 +349,7 @@ class Receiver():
                              'score':  score}
                 if test_sync['score'] > origin['score']:
                     origin = test_sync
-            minscore = self.sync_score_min if not ignore_sync_score_min else 0
-            if origin['score'] > minscore:
+            if origin['score'] > self.sync_score_min:
                 h0, tsec = origin['h0_idx'], origin['tsec']
                 origin.update({'cyclestart_string':cyclestart_string, 'band':self.band, 'odd_even':odd_even})
                 search_grid_h0 = cycle_h0 + h0 + self.audio_in.search_hps
@@ -360,6 +360,11 @@ class Receiver():
                 c = Candidate(origin, [search_grid_h0, search_grid_hn], payload_on_search_grid, self.audio_in.get_cycle_spectrum, self.on_message)
                 c.serial_id = self.cand_serial
                 cands.append(c)
+   #     cands = [c for c in cands if not any(
+  #                  [c2 for c2 in cands if c.serial_id != c2.serial_id
+  #                     and np.abs(c2.origin['f0_idx'] - c.origin['f0_idx']) < 2
+  #                       and np.abs(c2.origin['h0_idx'] - c.origin['h0_idx']) < 3])
+  #              ]
         cands.sort(key = lambda c: c.origin['score'], reverse = True)
         return cands[:self.max_cands]
 
@@ -402,7 +407,7 @@ class Receiver():
                 cyclestart_string = time_utils.cyclestart_string(time_utils.time())
                 if len(to_decode):
                     time_utils.tlog(f"[Receiver] Warning - {len(to_decode)} candidates ran out of decoding time, ipass = {ipasses}", verbose = True)
-                search_f_idxs = range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 2)
+                search_f_idxs = range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1])
                 odd_even = time_utils.odd_even()
                 self.candidates = self.search(cyclestart_string, odd_even, search_f_idxs)
                 cycle_searched = True

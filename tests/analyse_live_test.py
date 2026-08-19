@@ -72,5 +72,7 @@ plot_staircase([('PyFT8_8_28_baseline.txt', 'PyFT8-baseline', 'green'),
                 ('WSJTx302_8_28_NORM.txt', 'WSJT-x_3.0.2_NORM', 'purple'),
                 ('PyFT8.txt', 'PyFT8', 'orange')])
 
-
+#plot_staircase([
+#                ('WSJTx.txt', 'WSJT-x_3.0.2_FAST', 'blue'),
+#                ('PyFT8.txt', 'PyFT8', 'orange')])
 
