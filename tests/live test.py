@@ -164,7 +164,7 @@ def do_test(input_device_keywords, wav_range = None):
 
     threading.Thread(target = monitor_decodes, daemon = True).start()
     receiver = Receiver(input_device_keywords, process_message,
-                        search_freq_range = [200, 2800], subtract_decodes  = False)
+                        search_freq_range = [200, 2800], subtract_decodes  = True)
     if not receiver.audio_in.input_device_idx:
         time_utils.tlog(f"[Audio] No input audio device found matching {input_device_keywords}", verbose = True)
         sys.exit(1)
