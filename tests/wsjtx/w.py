@@ -21,10 +21,12 @@ def do_test(wav_range = None):
             t_start = time.time()
             with Popen(["w.exe", f"{wav_folder}/test_{idx:02d}.wav"], stdout=PIPE, bufsize=1, universal_newlines=True) as p:
                 for line in p.stdout:
+                    ls = line.split()
                     t = 15*cycle + time.time()-t_start
-                    msg = line.split()[3:]
+                    msg = ls[3:]
+                    dt, f = float(ls[0]), float(ls[1]) 
                     decode_count += 1
-                    ws_info  = f"{decode_count:03d} {cycle:3d} {t:7.2f} ~ {' '.join(msg)}"
+                    ws_info  = f"{decode_count:03d} {cycle:3d} {t:06.2f} +24 {dt:+05.3f} {f:07.2f} ~ {' '.join(msg)}"
                     with open('wsjtx.txt', 'a') as f:
                         f.write(f"{ws_info}\n")
                     print(ws_info)
