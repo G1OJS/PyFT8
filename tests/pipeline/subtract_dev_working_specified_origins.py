@@ -87,21 +87,6 @@ def symbols_to_complex_audio(symbols, f_base = 100):
     wf = np.exp(1j * (phi % (2*np.pi)))
     return wf
 
-def _symbols_to_complex_audio(symbols, fs = SAMP_RATE, f_base=873.0, f_step=6.25):
-    symbol_len = int(fs * 0.160)
-    t = np.arange(symbol_len) / fs
-    phase = 0
-    waveform = []
-    for s in symbols:
-        f = f_base + s * f_step
-        phase_inc = 2 * np.pi * f / fs
-        w = np.exp(1j * (phase + phase_inc * np.arange(symbol_len)))
-        waveform.append(w)
-        phase = (phase + phase_inc * symbol_len) % (2 * np.pi)
-    waveform = np.concatenate(waveform).astype(np.complex64)
-    return waveform
-
-
 origin_wanted = {'f0':1266.6, 't0':2.177, 'symbols':[int(s) for s in '3140652000000001123025577110543426103140652637173536360504202406550477433140652']}
 origin_qrm = {'f0':1261.25, 't0':1.355, 'symbols':[int(s) for s in '3140652427540600505640165310555523223140652317130147565067602201255410233140652']}
 
@@ -126,9 +111,10 @@ complex_amp = np.zeros(192000, dtype = np.complex64)
 complex_amp[:len(qrm_samps)] = combined_samps[qrm_s0:qrm_s0+len(qrm_samps)] * np.conj(qrm_samps)
 
 complex_amp = np.fft.fft(complex_amp)
-nfilt = 75  #~18 to 180. 75 makes sensitivity to QRM f broad, e.g. 1259.5 to 1263, though time is still sensitive
+nfilt = 100  #~18 to 180. 75 makes sensitivity to QRM f broad, e.g. 1259.5 to 1263, though time is still sensitive
 window = np.cos(np.arange(0,np.pi/2,nfilt))**2
-complex_amp[:nfilt] *= window/(np.sum(window)/len(window))
+window /= np.mean(window)
+complex_amp[:nfilt] *= window
 complex_amp[nfilt:] = 0
 complex_amp = np.fft.ifft(complex_amp)
 

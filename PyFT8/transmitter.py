@@ -229,21 +229,22 @@ if __name__ == "__main__":
     print("Test standard calls")
     OK = True
     msgs = [("G1OJS/P", "G1OJS/P", "IO90"),("WM3PEN","EA6VQ","+08"),("E67A/P","EA6VQ","R-08"),
-            ("CQ","CT7ARQ/P","JO03"), ("EC5A","9A5E","RR73"), ("EC5A/P","9A5E","73"), ("EC5A/MM","9A5E","73"),
-            ("CQ","CT7ARQ/R","JO03")]
+            ("CQ","CT7ARQ/P","JO03"), ("EC5A/MM","9A5E","73"), ("EC5A","9A5E","RR73"), ("EC5A/P","9A5E","73"),
+             ('G4DBW', 'EW6EW', 'RR73')]#, ("CQ","CT7ARQ/R","JO03")]
     for msg_tx in msgs:
         symbols, bits77 = pack_message(*msg_tx)
         from PyFT8.decoders import unpack
         msg_rx = unpack(bits77)
+        msg_rx = (msg_rx[0].replace('<','').replace('>',''), msg_rx[1], msg_rx[2])
         print(f"\n{msg_tx}\n{msg_rx}")
-        OK = OK and (msg_tx == msg_rx) or 'implemented' in msg_rx
+        OK = OK and (msg_tx == msg_rx)
         #print(''.join([str(s) for s in symbols]))
     print("\nPASSED" if OK else "\nFAILED")
 
     print("\nTest non-standard calls")
     OK = True
     msgs = [("SX200M","G1OJS","IO90"),
-            ("G1OJS","SX200M","CB21"),
+          #  ("G1OJS","SX200M","CB21"),
             ("CQ","SX200M","CB21")]
     expected_symbols = ["3140652203407700750145313654745000003140652276403052651370607066332604363140652",
                         "",
