@@ -67,11 +67,12 @@ for i in range(8, 28):
     ft8_lib_counts.append(n)
     n += ft8_lib_per_file[i]
 ft8_lib_times = 15 + 15*np.arange(0,len(ft8_lib_counts))
-plot_staircase([('PyFT8_8_28_baseline.txt', 'PyFT8-baseline', 'green'),
-                ('WSJTx302_8_28_FAST.txt', 'WSJT-x_3.0.2_FAST', 'blue'),
-                ('WSJTx302_8_28_NORM.txt', 'WSJT-x_3.0.2_NORM', 'purple'),
-                ('wsjtx_decoder.txt', 'wsjtx_decoder', 'red'),
-                ('PyFT8.txt', 'PyFT8', 'orange')])
+plot_staircase([('PyFT8_8_28_baseline.txt', 'PyFT8-baseline', 'orange'),
+                ('wsjtx-ft8d.txt', 'wsjtx-ft8d', 'black'),
+                ('wsjtx-jt9.txt', 'wsjtx-jt9', 'blue'),
+                ('WSJTx302_8_28_FAST.txt', 'WSJT-x_3.0.2_FAST', 'purple'),
+                ('WSJTx302_8_28_NORM.txt', 'WSJT-x_3.0.2_NORM', 'red'),
+                ('PyFT8.txt', 'PyFT8', 'lime')])
 
 #plot_staircase([
 #                ('WSJTx.txt', 'WSJT-x_3.0.2_FAST', 'blue'),
