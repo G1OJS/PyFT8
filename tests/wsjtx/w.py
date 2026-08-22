@@ -20,7 +20,7 @@ def do_test(wav_range = None):
             cycle += 1
             t_start = time.time()
             dedupe = []
-            with Popen(["c:/wsjt/wsjtx/bin/jt9.exe", f"{wav_folder}/test_{idx:02d}.wav"], stdout=PIPE, bufsize=1, universal_newlines=True) as p:
+            with Popen(["jt9-depth1-no-sub.exe", f"{wav_folder}/test_{idx:02d}.wav"], stdout=PIPE, bufsize=1, universal_newlines=True) as p:
                 for line in p.stdout:
                     ls = line.split()
                     t = 15*cycle + time.time()-t_start
