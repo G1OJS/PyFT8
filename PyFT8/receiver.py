@@ -79,10 +79,11 @@ class Candidate:
     def decode(self, current_max_ipass):
         time_utils.sleep(0)
         if (self.ipass <= current_max_ipass) and (self.decode_result != 'stop'):
+            n_ap_patterns = len(ap_patterns)
             
             if self.ipass == 0:
                 self._get_ch_llr_from_grid()
-                self._set_AP()
+                self._set_AP('grid')
                 for llr in self.ch_ap_llrs[:2]:
                     self._decode_good91(llr)
                     self._decode_ldpc(llr, 35, 5, False)
@@ -93,11 +94,11 @@ class Candidate:
                     self.decode_result = 'stop'
 
             if self.ipass == 2:
-                self._set_AP()
-                for llr in self.ch_ap_llrs[:2]:
+                self._set_AP('fine')
+                for llr in self.ch_ap_llrs[n_ap_patterns:n_ap_patterns+2]:
                     self._decode_good91(llr)     
             if self.ipass == 3:
-                for llr in self.ch_ap_llrs[:2]:
+                for llr in self.ch_ap_llrs[n_ap_patterns:n_ap_patterns+2]:
                     self._decode_ldpc(llr, 35, 5, False)
             if self.ipass == 4:
                 for llr in self.ch_ap_llrs:
@@ -114,7 +115,7 @@ class Candidate:
 
             self.ipass +=1
 
-    def _set_AP(self):
+    def _set_AP(self, source):
         for pat in ap_patterns:
             pat_name, b0, bit_pattern = pat
             llr = self.ch_llr.copy()
@@ -124,7 +125,7 @@ class Candidate:
                 llr[74:76] = -5
                 llr[76] = 5
                 llr[57:59] = -5
-            self.ch_ap_llrs.append((pat_name, llr))
+            self.ch_ap_llrs.append((source + '_' + pat_name, llr))
 
     def _decode_good91(self, pat_llr):
         if not self.decode_result:
