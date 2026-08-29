@@ -2,7 +2,7 @@ import win32api,win32process
 win32process.SetPriorityClass(win32api.GetCurrentProcess(), win32process.HIGH_PRIORITY_CLASS)
 
 import numpy as np
-import pickle, threading, pyaudio, sys, queue
+import pickle, threading, pyaudio, sys, queue, os
 from PyFT8.time_utils import time_utils
 from matplotlib.animation import FuncAnimation
 from PyFT8.receiver import Receiver
@@ -137,8 +137,8 @@ def do_test(input_device_keywords, wav_range = None):
     with open('wsjtx.txt','w') as f:
         f.write('')
     baseline_counts = []
-    baseline_file = 'PyFT8_8_28_baseline.txt'
-    if baseline_file:
+    
+    if os.path.exists(baseline_file):
         with open(baseline_file, 'r') as f:
             lines = f.readlines()
         cycle_prev = lines[0].split()[1]
@@ -177,7 +177,9 @@ def do_test(input_device_keywords, wav_range = None):
   #  gui = Gui('G1OJS', 'IO90', None, None, None, {'band':'20m', 'fHz':14074000}, None, receiver.audio_in.waterfall_data, 5, 'km', nodisplay = True) 
   #  gui.start(testing = True)
 
+
 wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
+baseline_file = 'PyFT8_1_38_baseline.txt'
 
 #do_test("Mic, CODEC")
-do_test("CABLE, Output", [8,28])
+do_test("CABLE, Output", [1,39])
