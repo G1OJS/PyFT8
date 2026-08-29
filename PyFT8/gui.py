@@ -132,11 +132,12 @@ class Panel:
 
 class Gui:
     def __init__(self, myCall, myGrid, console_print, qso_manager, history,
-                 band_frequencies, set_receiver_band, waterfall_data, hearing_me_since_mins, geo_units):
+                 band_frequencies, set_receiver_band, waterfall_data, hearing_me_since_mins, geo_units, nodisplay = False):
         self.hearing_me_since_mins = hearing_me_since_mins
         self.waterfall_data = waterfall_data
         self.qso_manager = qso_manager
         self.history = history
+        self.nodisplay = nodisplay
         self.set_receiver_band = set_receiver_band
 
         self.myCall, self.myGrid = myCall, myGrid
@@ -270,10 +271,11 @@ class Gui:
         self.message_queue_non_time_critical.put(m)
 
     def _display_message(self, m):
-        mb = self._get_message_box()
-        x = int(m['tsec'] / self.waterfall_data['dt'] + m['their_tx_cycle'] * self.waterfall_data['pixels_per_cycle'])
-        y = int(m['fHz'] / self.waterfall_data['df'])
-        mb.set_props(x, y, m)
+        if not self.nodisplay:
+            mb = self._get_message_box()
+            x = int(m['tsec'] / self.waterfall_data['dt'] + m['their_tx_cycle'] * self.waterfall_data['pixels_per_cycle'])
+            y = int(m['fHz'] / self.waterfall_data['df'])
+            mb.set_props(x, y, m)
 
     def set_bandstats_title(self, txt):
         self.home_panel.ax.set_title(txt, fontsize = 10)

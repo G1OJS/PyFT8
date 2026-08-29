@@ -10,6 +10,7 @@ from PyFT8.transmitter import SoundcardOut
 from PyFT8.gui import Gui
 
 finished_audio = False
+gui = None
 
 class SoundcardOut:
     def __init__(self, outputcard_keywords, wav_files, wav_file_time_offset = 0):
@@ -81,57 +82,14 @@ ws_q = queue.Queue()
 def process_message(m):
     global py_q
     py_q.put(m)
+    if gui:
+        gui.process_message(m)
 
 def on_wsjtx_decode(m):
     global ws_q
     ws_q.put(m)
 
-def do_test(input_device_keywords, wav_range = None):
-    global both_started
-    global gui, rx, t_start, comms_hub
-    global baseline_times, py_times, ws_times
-    global fig, ax
-    from matplotlib.ticker import AutoMinorLocator, MultipleLocator
-    ws_cycle = ['', 0]
-    py_cycle = ['', 0]
-
-    with open('PyFT8.txt','w') as f:
-        f.write('')
-    with open('wsjtx.txt','w') as f:
-        f.write('')
-    baseline_times = []
-    baseline_file = ''
-    if baseline_file:
-        with open(baseline_file, 'r') as f:
-            lines = f.readlines()
-        baseline_times = [float(l.split()[2]) for l in lines]
-        print(f"Loaded {len(baseline_times)} decode times from {baseline_file}")
-
-    wav_files = []
-    if wav_range:
-        for idx in range(*wav_range):
-            wav_files.append(f"{wav_folder}/test_{idx:02d}.wav")
-
-    wsjtx_all_tailer = Wsjtx_all_tailer(on_wsjtx_decode, silent = False)
-
-    if wav_files:
-       soundout = SoundcardOut("CABLE, Input", wav_files, wav_file_time_offset = -1)
-
-    t = 15-time_utils.cycle_time()
-    if t > 0.05:
-        print(f"Waiting to start test on next cycle ({t:6.1f}s)")
-        time_utils.sleep(t)
-    t_start = time_utils.time()
-
-
-
-    py_times, ws_times = [], []
-    
-    receiver = Receiver(input_device_keywords, process_message, search_freq_range = [200, 2800])
-    if not receiver.audio_in.input_device_idx:
-        time_utils.tlog(f"[Audio] No input audio device found matching {input_device_keywords}", verbose = True)
-        sys.exit(1)
-
+def monitor_decodes():
     while not finished_audio:
         time_utils.sleep(5)
         
@@ -139,14 +97,14 @@ def do_test(input_device_keywords, wav_range = None):
             time_utils.sleep(0)
             m = py_q.get()
             if m['cyclestart_string'] != py_cycle[0]:
+                baseline_decode_count = baseline_counts[py_cycle[1]] if py_cycle[1] < len(baseline_counts) else 0
                 py_cycle[0] = m['cyclestart_string']
                 py_cycle[1] += 1
             py_times.append(float(m['decode_completed']) - t_start)
             decode_notes = m['decode_notes']
             decode_count = len(py_times)
-            baseline_decode_count = len([t for t in baseline_times if t < py_times[-1]])
             diff = decode_count - baseline_decode_count
-            py_info  = f"{decode_count:03d} {py_cycle[1]:3d} {py_times[-1]:7.2f} {decode_notes:20s} {m['all_txt_format']}"
+            py_info  = f"{decode_count:03d}({diff:+03d}) {py_cycle[1]:03d} {py_times[-1]:7.2f} {decode_notes:30s} {m['all_txt_format']}"
             with open('PyFT8.txt', 'a') as f:
                 f.write(f"{py_info}\n")
             print(py_info)
@@ -168,14 +126,58 @@ def do_test(input_device_keywords, wav_range = None):
                    # print(ws_info)
 
 
+def do_test(input_device_keywords, wav_range = None):
+    global t_start, gui, ws_cycle, py_cycle
+    global baseline_counts, py_times, ws_times
+    ws_cycle = ['', 0]
+    py_cycle = ['', 0]
 
-data_folder = "C:/Users/drala/Documents/Projects/GitHub/PyFT8/tests/data/ft8_lib_20m_busy"
+    with open('PyFT8.txt','w') as f:
+        f.write('')
+    with open('wsjtx.txt','w') as f:
+        f.write('')
+    baseline_counts = []
+    baseline_file = 'PyFT8_8_28_baseline.txt'
+    if baseline_file:
+        with open(baseline_file, 'r') as f:
+            lines = f.readlines()
+        cycle_prev = lines[0].split()[1]
+        for i, l in enumerate(lines):
+            cycle = l.split()[1]
+            if cycle != cycle_prev:
+                cycle_prev = cycle
+                baseline_counts.append(i)
+        baseline_counts.append(i)
+        print(f"Loaded {len(baseline_counts)} cycle decode counts from {baseline_file}")
+
+    wav_files = []
+    if wav_range:
+        for idx in range(*wav_range):
+            wav_files.append(f"{wav_folder}/test_{idx:02d}.wav")
+
+    wsjtx_all_tailer = Wsjtx_all_tailer(on_wsjtx_decode, silent = False)
+
+    if wav_files:
+       soundout = SoundcardOut("CABLE, Input", wav_files, wav_file_time_offset = -1)
+
+    t = 15-time_utils.cycle_time()
+    if t > 0.05:
+        print(f"Waiting to start test on next cycle ({t:6.1f}s)")
+        time_utils.sleep(t)
+    t_start = time_utils.time()
+
+    py_times, ws_times = [], []
+
+    threading.Thread(target = monitor_decodes, daemon = True).start()
+    receiver = Receiver(input_device_keywords, process_message,
+                        search_freq_range = [200, 2800])
+    if not receiver.audio_in.input_device_idx:
+        time_utils.tlog(f"[Audio] No input audio device found matching {input_device_keywords}", verbose = True)
+        sys.exit(1)
+  #  gui = Gui('G1OJS', 'IO90', None, None, None, {'band':'20m', 'fHz':14074000}, None, receiver.audio_in.waterfall_data, 5, 'km', nodisplay = True) 
+  #  gui.start(testing = True)
+
 wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
 
 #do_test("Mic, CODEC")
 do_test("CABLE, Output", [8,28])
-
-
-
-
-
