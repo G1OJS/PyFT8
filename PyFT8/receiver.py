@@ -81,14 +81,14 @@ class Candidate:
         if (self.ipass <= current_max_ipass) and (self.decode_result != 'stop'):
             
             if self.ipass == 0:
-                self._get_ch_llr_grid()
+                self._get_ch_llr_from_grid()
                 self._set_AP()
                 for llr in self.ch_ap_llrs[:2]:
                     self._decode_good91(llr)
                     self._decode_ldpc(llr, 35, 5, False)
 
             if self.ipass == 1:
-                self._get_ch_llr()
+                self._get_ch_llr_from_spectrum()
                 if self.ch_llr_sd < 0.5:
                     self.decode_result = 'stop'
 
@@ -146,9 +146,8 @@ class Candidate:
             self.pat_name, self.llr = pat_llr
             self.decode_result, self.bits77_int = osd_012(self.llr, maxord)
 
-    def _get_ch_llr_grid(self):
-        p = self.payload_on_search_grid
-        self.snr = np.clip(int(np.max(p) - np.min(p) - 58), -24, 24)
+    def _power_to_llr(self, power_grid):
+        p = power_grid
         llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
         llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
         llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
@@ -158,7 +157,12 @@ class Candidate:
         self.ch_llr_sd = np.sqrt(var)
         self.ch_llr = 2.83 * llr / self.ch_llr_sd
 
-    def _get_ch_llr(self):
+    def _get_ch_llr_from_grid(self):
+        p = self.payload_on_search_grid
+        self.snr = np.clip(int(np.max(p) - np.min(p) - 58), -24, 24)
+        self._power_to_llr(p) # called with dB not power
+
+    def _get_ch_llr_from_spectrum(self):
         # first part similar to calls to sync8d except latter scores costas in time domain
         # meaning that df can be applied as a linear phase shift
         # (could try this here by calculating zsig only once and applying shifts the same way)
@@ -187,19 +191,9 @@ class Candidate:
             return
         
         idf, idt = fb - fb0, tb - tb0
-
         self.origin.update({'tsec': float(self.origin['tsec'] + idt / 200),
                             'fHz':float(self.origin['fHz'] + idf / 16) })
-        
-        p = self.symbol_grid[PAYLOAD_SYMB_IDXS, :]
-        llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
-        llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
-        llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
-        llr = np.column_stack((llra, llrb, llrc)).ravel()
-        mean = np.mean(llr)
-        var = np.mean(llr*llr) - mean*mean
-        self.ch_llr_sd = np.sqrt(var)
-        self.ch_llr = 2.83 * llr / self.ch_llr_sd
+        self._power_to_llr(self.symbol_grid[PAYLOAD_SYMB_IDXS, :])
 
  #       with open('tweaks.txt','a') as f:
  #           f.write(f"{idf}, {idt}\n")
