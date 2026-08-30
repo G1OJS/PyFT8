@@ -1,0 +1,253 @@
+import numpy as np
+from PyFT8.time_utils import time_utils
+from PyFT8.databases import call_hashes, add_call_hashes
+CALLSIGN_PREFIXES1 = "A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,R,S,T,U,V,W,X,Y,Z"
+CALLSIGN_PREFIXES2 = "2A,2B,2C,2D,2E,2F,2G,2H,2I,2J,2K,2L,2M,2N,2O,2P,2Q,2R,2S,2T,2U,2V,2W,2X,2Y,2Z,3A,3B,3C,3D,3D,3E,3F,3G,3H,3I,3J,3K,3L,3M,3N,3O,3P,3Q,3R,3S,3T,3U,3V,3W,3X,3Y,3Z,4A,4B,4C,4D,4E,4F,4G,4H,4I,4J,4K,4L,4M,4O,4P,4Q,4R,4S,4T,4U,4V,4W,4X,4Y,4Z,5A,5B,5C,5D,5E,5F,5G,5H,5I,5J,5K,5L,5M,5N,5O,5P,5Q,5R,5S,5T,5U,5V,5W,5X,5Y,5Z,6A,6B,6C,6D,6E,6F,6G,6H,6I,6J,6K,6L,6M,6N,6O,6P,6Q,6R,6S,6T,6U,6V,6W,6X,6Y,6Z,7A,7B,7C,7D,7E,7F,7G,7H,7I,7J,7K,7L,7M,7N,7O,7P,7Q,7R,7S,7T,7U,7V,7W,7X,7Y,7Z,8A,8B,8C,8D,8E,8F,8G,8H,8I,8J,8K,8L,8M,8N,8O,8P,8Q,8R,8S,8T,8U,8V,8W,8X,8Y,8Z,9A,9B,9C,9D,9E,9F,9G,9H,9I,9J,9K,9L,9M,9N,9O,9P,9Q,9R,9S,9T,9U,9V,9W,9X,9Y,9Z,A2,A3,A4,A5,A6,A7,A8,A9,AA,AB,AC,AD,AE,AF,AG,AH,AI,AJ,AK,AL,AM,AN,AO,AP,AQ,AR,AS,AT,AU,AV,AW,AX,AY,AZ,BA,BB,BC,BD,BE,BF,BG,BH,BI,BJ,BK,BL,BM,BN,BO,BP,BQ,BR,BS,BT,BU,BV,BW,BX,BY,BZ,C2,C3,C4,C5,C6,C7,C8,C9,CA,CB,CC,CD,CE,CF,CG,CH,CI,CJ,CK,CL,CM,CN,CO,CP,CQ,CR,CS,CT,CU,CV,CW,CX,CY,CZ,D2,D3,D4,D5,D6,D7,D8,D9,DA,DB,DC,DD,DE,DF,DG,DH,DI,DJ,DK,DL,DM,DN,DO,DP,DQ,DR,DS,DT,DU,DV,DW,DX,DY,DZ,E2,E3,E4,E5,E6,E7,EA,EB,EC,ED,EE,EF,EG,EH,EI,EJ,EK,EL,EM,EN,EO,EP,EQ,ER,ES,ET,EU,EV,EW,EX,EY,EZ,FA,FB,FC,FD,FE,FF,FG,FH,FI,FJ,FK,FL,FM,FN,FO,FP,FQ,FR,FS,FT,FU,FV,FW,FX,FY,FZ,GA,GB,GC,GD,GE,GF,GG,GH,GI,GJ,GK,GL,GM,GN,GO,GP,GQ,GR,GS,GT,GU,GV,GW,GX,GY,GZ,H2,H3,H4,H6,H7,H8,H9,HA,HB,HC,HD,HE,HF,HG,HH,HI,HJ,HK,HL,HM,HN,HO,HP,HQ,HR,HS,HT,HU,HV,HW,HX,HY,HZ,IA,IB,IC,ID,IE,IF,IG,IH,II,IJ,IK,IL,IM,IN,IO,IP,IQ,IR,IS,IT,IU,IV,IW,IX,IY,IZ,J2,J3,J4,J5,J6,J7,J8,JA,JB,JC,JD,JE,JF,JG,JH,JI,JJ,JK,JL,JM,JN,JO,JP,JQ,JR,JS,JT,JU,JV,JW,JX,JY,JZ,KA,KB,KC,KD,KE,KF,KG,KH,KI,KJ,KK,KL,KM,KN,KO,KP,KQ,KR,KS,KT,KU,KV,KW,KX,KY,KZ,L2,L3,L4,L5,L6,L7,L8,L9,LA,LB,LC,LD,LE,LF,LG,LH,LI,LJ,LK,LL,LM,LN,LO,LP,LQ,LR,LS,LT,LU,LV,LW,LX,LY,LZ,MA,MB,MC,MD,ME,MF,MG,MH,MI,MJ,MK,ML,MM,MN,MO,MP,MQ,MR,MS,MT,MU,MV,MW,MX,MY,MZ,NA,NB,NC,ND,NE,NF,NG,NH,NI,NJ,NK,NL,NM,NN,NO,NP,NQ,NR,NS,NT,NU,NV,NW,NX,NY,NZ,OA,OB,OC,OD,OE,OF,OG,OH,OI,OJ,OK,OL,OM,ON,OO,OP,OQ,OR,OS,OT,OU,OV,OW,OX,OY,OZ,P2,P3,P4,P5,P6,P7,P8,P9,PA,PB,PC,PD,PE,PF,PG,PH,PI,PJ,PJ,PJ,PK,PL,PM,PN,PO,PP,PQ,PR,PS,PT,PU,PV,PW,PX,PY,PZ,RA,RB,RC,RD,RE,RF,RG,RH,RI,RJ,RK,RL,RM,RN,RO,RP,RQ,RR,RS,RT,RU,RV,RW,RX,RY,RZ,S2,S3,S5,S6,S7,S8,S9,SA,SB,SC,SD,SE,SF,SG,SH,SI,SJ,SK,SL,SM,SN,SO,SP,SQ,SR,SS,SS,ST,SU,SV,SW,SX,SY,SZ,T2,T3,T4,T5,T6,T7,T8,TA,TB,TC,TD,TE,TF,TG,TH,TI,TJ,TK,TL,TM,TN,TO,TP,TQ,TR,TS,TT,TU,TV,TW,TX,TY,TZ,UA,UB,UC,UD,UE,UF,UG,UH,UI,UJ,UK,UL,UM,UN,UO,UP,UQ,UR,US,UT,UU,UV,UW,UX,UY,UZ,V2,V3,V4,V5,V6,V7,V8,VA,VB,VC,VD,VE,VF,VG,VH,VI,VJ,VK,VL,VM,VN,VO,VP,VQ,VR,VS,VT,VU,VV,VW,VX,VY,VZ,WA,WB,WC,WD,WE,WF,WG,WH,WI,WJ,WK,WL,WM,WN,WO,WP,WQ,WR,WS,WT,WU,WV,WW,WX,WY,WZ,XA,XB,XC,XD,XE,XF,XG,XH,XI,XJ,XK,XL,XM,XN,XO,XP,XQ,XR,XS,XT,XU,XV,XW,XX,XY,XZ,Y2,Y3,Y4,Y5,Y6,Y7,Y8,Y9,YA,YB,YC,YD,YE,YF,YG,YH,YI,YJ,YK,YL,YM,YN,YO,YP,YQ,YR,YS,YT,YU,YV,YW,YX,YY,Z2,Z3,Z8,ZA,ZB,ZC,ZD,ZE,ZF,ZG,ZH,ZI,ZJ,ZK,ZL,ZM,ZN,ZO,ZP,ZQ,ZR,ZS,ZT,ZU,ZV,ZW,ZX,ZY,ZZ"
+
+#=========== Unpacking functions ========================================
+def get_bitfields(bits, lengths):
+    fields = []
+    for n in lengths:
+        mask = (1 << n) - 1
+        fields.append(bits & mask)
+        bits >>= n
+    return *fields, bits
+
+def unpack(bits):
+    if not bits:
+        return None
+    
+    i3, bits74 = get_bitfields(bits,[3])
+    if i3 == 0:
+        n3, bits71 = get_bitfields(bits74,[3])
+        if n3 <= 4:
+            #return (['Free text', 'DXpedition', 'Field Day', 'Field Day', 'Telemetry'][n3], 'not', 'implemented')
+            return None
+        else:
+            #return ('Unknown mode','not','implemented')
+            return None
+    elif i3 == 1 or i3 == 2: # 1 = Std Msg incl /R 2 = 'EU VHF' = Std Msg incl /P
+        return unpack_std(bits74, i3)
+    elif i3 == 3:
+        #return ('RTTY RU','not','implemented')
+        return None
+    elif i3 == 4:
+        cq, rrr, swp, c58, hsh, _ = get_bitfields(bits74, [1,2,1,58,12])
+        if cq and rrr or (not cq and not rrr):
+            return None
+        ca = "CQ" if cq else f"<{call_hashes.get((hsh,12), '...')}>"
+        cb = ""
+        for i in range(12):
+            cb = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ/"[c58 % 38] + cb
+            c58 = c58 // 38
+        cb =  cb.strip()
+        add_call_hashes(cb)
+        (ca, cb) = (cb, ca) if swp else (ca, cb)
+        return (ca, cb, ('', 'RRR', 'RR73', '73')[rrr])
+    elif i3 == 5:
+        #return ('EU VHF','not','implemented')
+        return None
+
+def unpack_std(bits74, i3):
+    g16, cb29, ca29, _ = get_bitfields(bits74,[16,29,29])
+    g15 = g16 & 0x7FFF
+    if g15 == 0:
+        return None
+    if g15 < 32400:
+        a, nn = divmod(g15, 1800)
+        b, nn = divmod(nn, 100)
+        c, d = divmod(nn, 10)
+        grid_rpt =  chr(65+a) + chr(65+b) + str(c) + str(d)
+    elif g15 - 32400 <= 4:
+        grid_rpt =  ('', '', 'RRR', 'RR73', '73')[g15 - 32400]
+    else:
+        prefix = 'R' if (g16 >> 15) else ''
+        grid_rpt = prefix + f"{(g15 - 32435):+03d}"
+    msg_tuple = (call_29(ca29, i3), call_29(cb29, i3), grid_rpt)
+    if not ('' in msg_tuple) and not (None in msg_tuple):
+        return msg_tuple
+
+def call_29(call_int29, i3):    
+    portable_rover = call_int29 & 1
+    call_int28 = call_int29>>1
+    if call_int28 < 3:
+        return ['DE', 'QRZ', 'CQ'][call_int28]
+    elif call_int28 < 1004:
+        return f"CQ {call_int28 - 3:03d}"
+    elif call_int28 < 21443:
+        x, txt = call_int28 - 1003, ''
+        for i in range(4):
+            txt = " ABCDEFGHIJKLMNOPQRSTUVWXYZ"[int(x % 27)] + txt
+            x //= 27
+        return f"CQ {txt.strip()}"
+    elif call_int28 < 2063592+4194303:
+        return f"<{call_hashes.get((call_int28 - 2063592, 22), '...')}>"
+    else:
+        call = standard_call28(call_int28, i3)
+        if call is not None:
+            if portable_rover:
+                call = call + ('/P' if i3 == 2 else '/R')
+            if call.endswith("/R") and not call[0] in ['A','K','N','W']:
+                return None
+            add_call_hashes(call)
+            return call
+
+def standard_call28(call_int28, i3):
+    nn = call_int28 - (2063592 + 4194304)
+    from string import ascii_uppercase as ltrs, digits as digs
+    call_fields = [ (' ' + digs + ltrs, 36*10*27**3),   (digs + ltrs, 10*27**3), (digs + ' ' * 17, 27**3),
+                    (' ' + ltrs, 27**2),           (' ' + ltrs,   27), (' ' + ltrs,   1) ]
+    chars = []
+    for alphabet, div in call_fields:
+        idx, nn = divmod(nn, div)
+        chars.append(alphabet[idx])
+    call = ''.join(chars).strip()
+    return simple_validate_call(call)
+
+def simple_validate_call(call):
+    if not ' ' in call and len(call)>=3:
+        if call[0] in CALLSIGN_PREFIXES1 and call[1].isnumeric():
+            if not (call[0] in "B,F,G,I,K,M,N,R,W" and call[2].isnumeric()):
+                return call
+        if call[:2] in CALLSIGN_PREFIXES2 and call[2].isnumeric():
+            return call
+        
+def crc_unpack91(codeword91):
+    bits91_int = 0
+    for bit in (codeword91 > 0).astype(int).tolist():
+        bits91_int = (bits91_int << 1) | bit
+    bits77_int = bits91_int >> 14
+    msg = None
+    if(bits77_int > 0):
+        crc14_int = 0
+        for i in range(96):
+            inbit = ((bits77_int >> (76 - i)) & 1) if i < 77 else 0
+            bit14 = (crc14_int >> (14 - 1)) & 1
+            crc14_int = ((crc14_int << 1) & ((1 << 14) - 1)) | inbit
+            if bit14:
+                crc14_int ^= 0x2757
+        if crc14_int == bits91_int & 0b11111111111111:
+            msg = unpack(bits77_int) 
+    return msg, bits77_int
+
+#============== LDPC ===========================================================
+CV6idx = np.array([[4,31,59,92,114,145],[5,23,60,93,121,150],[6,32,61,94,95,142],[5,31,63,96,125,137],[8,34,65,98,138,145],[9,35,66,99,106,125],[11,37,67,101,104,154],[12,38,68,102,148,161],[14,41,58,105,122,158],[0,32,71,105,106,156],[15,42,72,107,140,159],[10,43,74,109,120,165],[7,45,70,111,118,165],[18,37,76,103,115,162],[19,46,69,91,137,164],[1,47,73,112,127,159],[21,46,57,117,126,163],[15,38,61,111,133,157],[22,42,78,119,130,144],[19,35,62,93,135,160],[13,30,78,97,131,163],[2,43,79,123,126,168],[18,45,80,116,134,166],[11,49,60,117,118,143],[12,50,63,113,117,156],[23,51,75,128,147,148],[20,53,76,99,139,170],[34,81,132,141,170,173],[13,29,82,112,124,169],[3,28,67,119,133,172],[51,83,109,114,144,167],[6,49,80,98,131,172],[22,54,66,94,171,173],[25,40,76,108,140,147],[26,39,55,123,124,125],[17,48,54,123,140,166],[5,32,84,107,115,155],[8,53,62,130,146,154],[21,52,67,108,120,173],[2,12,47,77,94,122],[30,68,132,149,154,168],[4,38,74,101,135,166],[1,53,85,100,134,163],[14,55,86,107,118,170],[22,33,70,93,126,152],[10,48,87,91,141,156],[28,33,86,96,146,161],[21,56,84,92,139,158],[27,31,71,102,131,165],[0,25,44,79,127,146],[16,26,88,102,115,152],[50,56,97,162,164,171],[20,36,72,137,151,168],[15,46,75,129,136,153],[2,23,29,71,103,138],[8,39,89,105,133,150],[17,41,78,143,145,151],[24,37,64,98,121,159],[16,41,74,128,169,171]], dtype = np.int16)
+CV7idx = np.array([[3,30,58,90,91,95,152],[7,24,62,82,92,95,147],[4,33,64,77,97,106,153],[10,36,66,86,100,138,157],[7,39,69,81,103,113,144],[13,40,70,87,101,122,155],[16,36,73,80,108,130,153],[44,54,63,110,129,160,172],[17,35,75,88,112,113,142],[20,44,77,82,116,120,150],[18,34,58,72,109,124,160],[6,48,57,89,99,104,167],[24,52,68,89,100,129,155],[19,45,64,79,119,139,169],[0,3,51,56,85,135,151],[25,50,55,90,121,136,167],[1,26,40,60,61,114,132],[27,47,69,84,104,128,157],[11,42,65,88,96,134,158],[9,43,81,90,110,143,148],[29,49,59,85,136,141,161],[9,52,65,83,111,127,164],[27,28,83,87,116,142,149],[14,57,59,73,110,149,162]], dtype = np.int16)
+
+import warnings
+warnings.filterwarnings("error")
+
+def pass_ldpc_messages(llr, CVidx, mC2V_prev, update_collector):
+    mV2C = llr[CVidx] - mC2V_prev
+    tanh_mV2C = np.tanh(-mV2C)
+    tanh_mC2V = np.prod(tanh_mV2C, axis=1, keepdims=True)
+    orig_err = np.geterr()
+    np.seterr(all = 'ignore')
+    tanh_mC2V = np.divide(tanh_mC2V, tanh_mV2C)
+    np.seterr(**orig_err)
+    alpha_atanh_approx = 1.18
+    mC2V_curr  = tanh_mC2V / ((tanh_mC2V - alpha_atanh_approx) * (alpha_atanh_approx + tanh_mC2V))
+    np.add.at(update_collector, CVidx, mC2V_curr - mC2V_prev)
+    return mC2V_curr
+
+def ldpc_decode(llr, max_ncheck0, max_iters):
+    mC2V_prev6, mC2V_prev7 = np.zeros(CV6idx.shape, dtype=np.float32), np.zeros(CV7idx.shape, dtype=np.float32)
+    for n_its in range(max_iters):
+        bits6, bits7 = llr[CV6idx] > 0, llr[CV7idx] > 0
+        parity6, parity7 = np.sum(bits6, axis=1) & 1, np.sum(bits7, axis=1) & 1
+        ncheck = int(np.sum(parity7) + np.sum(parity6))
+        if n_its == 0 and ncheck > max_ncheck0:
+            return None, -1, []
+        if ncheck == 0:
+            msg_tuple, bits77_int = crc_unpack91(llr[:91])
+            if msg_tuple:
+                return msg_tuple, n_its, bits77_int
+        else:
+            update_collector = np.zeros_like(llr)
+            mC2V_prev6 = pass_ldpc_messages(llr, CV6idx, mC2V_prev6, update_collector)
+            mC2V_prev7 = pass_ldpc_messages(llr, CV7idx, mC2V_prev7, update_collector)
+            llr += update_collector
+
+    return None, -1, llr
+
+#============== OSD ===========================================================
+generator_matrix_rows = ["8329ce11bf31eaf509f27fc",  "761c264e25c259335493132",  "dc265902fb277c6410a1bdc",  "1b3f417858cd2dd33ec7f62",  "09fda4fee04195fd034783a",  "077cccc11b8873ed5c3d48a",  "29b62afe3ca036f4fe1a9da",  "6054faf5f35d96d3b0c8c3e",  "e20798e4310eed27884ae90",  "775c9c08e80e26ddae56318",  "b0b811028c2bf997213487c",  "18a0c9231fc60adf5c5ea32",  "76471e8302a0721e01b12b8",  "ffbccb80ca8341fafb47b2e",  "66a72a158f9325a2bf67170",  "c4243689fe85b1c51363a18",  "0dff739414d1a1b34b1c270",  "15b48830636c8b99894972e",  "29a89c0d3de81d665489b0e",  "4f126f37fa51cbe61bd6b94",  "99c47239d0d97d3c84e0940",  "1919b75119765621bb4f1e8",  "09db12d731faee0b86df6b8",  "488fc33df43fbdeea4eafb4",  "827423ee40b675f756eb5fe",  "abe197c484cb74757144a9a",  "2b500e4bc0ec5a6d2bdbdd0",  "c474aa53d70218761669360",  "8eba1a13db3390bd6718cec",  "753844673a27782cc42012e",  "06ff83a145c37035a5c1268",  "3b37417858cc2dd33ec3f62",  "9a4a5a28ee17ca9c324842c",  "bc29f465309c977e89610a4",  "2663ae6ddf8b5ce2bb29488",  "46f231efe457034c1814418",  "3fb2ce85abe9b0c72e06fbe",  "de87481f282c153971a0a2e",  "fcd7ccf23c69fa99bba1412",  "f0261447e9490ca8e474cec",  "4410115818196f95cdd7012",  "088fc31df4bfbde2a4eafb4",  "b8fef1b6307729fb0a078c0",  "5afea7acccb77bbc9d99a90",  "49a7016ac653f65ecdc9076",  "1944d085be4e7da8d6cc7d0",  "251f62adc4032f0ee714002",  "56471f8702a0721e00b12b8",  "2b8e4923f2dd51e2d537fa0",  "6b550a40a66f4755de95c26",  "a18ad28d4e27fe92a4f6c84",  "10c2e586388cb82a3d80758",  "ef34a41817ee02133db2eb0",  "7e9c0c54325a9c15836e000",  "3693e572d1fde4cdf079e86",  "bfb2cec5abe1b0c72e07fbe",  "7ee18230c583cccc57d4b08",  "a066cb2fedafc9f52664126",  "bb23725abc47cc5f4cc4cd2",  "ded9dba3bee40c59b5609b4",  "d9a7016ac653e6decdc9036",  "9ad46aed5f707f280ab5fc4",  "e5921c77822587316d7d3c2",  "4f14da8242a8b86dca73352",  "8b8b507ad467d4441df770e",  "22831c9cf1169467ad04b68",  "213b838fe2ae54c38ee7180",  "5d926b6dd71f085181a4e12",  "66ab79d4b29ee6e69509e56",  "958148682d748a38dd68baa",  "b8ce020cf069c32a723ab14",  "f4331d6d461607e95752746",  "6da23ba424b9596133cf9c8",  "a636bcbc7b30c5fbeae67fe",  "5cb0d86a07df654a9089a20",  "f11f106848780fc9ecdd80a",  "1fbb5364fb8d2c9d730d5ba",  "fcb86bc70a50c9d02a5d034",  "a534433029eac15f322e34c",  "c989d9c7c3d3b8c55d75130",  "7bb38b2f0186d46643ae962",  "2644ebadeb44b9467d1f42c",  "608cc857594bfbb55d69600"]
+kGEN = np.array([int(row,16)>>1 for row in generator_matrix_rows])
+A = np.zeros((83, 91), dtype=np.uint8)
+for i, row in enumerate(kGEN):
+    for j in range(91):
+        A[i, 90 - j] = (row >> j) & 1
+G = np.concatenate([np.eye(91, dtype=np.uint8), A.T],axis=1)
+
+import pickle
+with open('osdpats.pkl','rb') as f:
+    osd_patterns = pickle.load(f)
+
+def osd_012(llr, maxord):
+    # create indexes rowperm and colperm to index G so that we don't have to move the data of G around
+    rowperm = np.arange(91)
+    colperm = np.argsort(-np.abs(llr))
+    # do Gauss-Jordan elimination by indexing G rather than moving its data
+    curr_row = 0
+    for curr_col in range(174):
+        ones_below = np.where(G[rowperm[curr_row:], colperm[curr_col]] == 1)[0]
+        if ones_below.size > 0:
+            swap_row = curr_row + ones_below[0]
+            rowperm[[curr_row, swap_row]] = rowperm[[swap_row, curr_row]]
+            r_curr = rowperm[curr_row]
+            c_curr = colperm[curr_col]
+            g_c_curr = G[:, c_curr].copy()
+            g_c_curr[r_curr] = 0
+            rows_to_xor = np.where(g_c_curr == 1)[0]
+            G[rows_to_xor, :] ^= G[r_curr, :]
+            colperm[[curr_row, curr_col]] = colperm[[curr_col, curr_row]]   
+            curr_row += 1
+            if curr_row > 90:
+                break
+    # G[rowperm, colperm] is now ordered by reliability (llr[rowperm] now has most reliable values first), and
+    # G[rowperm, colperm] is systematic, i.e. G[rowperm, colperm] = [I][P]
+    # Note however that G itself is unchanged, and hence not systematic, G != [I][P]
+    # At this point, (llr>0)[colperm][:91] @ G = codeword[rowperm]
+    
+    # Record the channel bits in the correct order to premultiply G, (llr>0)[colperm][:91] @ G = codeword[:91][rowperm],
+    # whilst keeping a full 174 bit copy (llr>0) to do distance calculations
+    chbits174 = (llr>0).astype(np.uint8)
+    chbits91 = chbits174[colperm][:91]
+    chbits91[rowperm] = chbits91
+    # record the abs(llr) values in the same order as chbits to enable easy distance calculations
+    chvals174 = np.abs(llr)
+    chvals91 = chvals174[colperm][:91]
+    chvals91[rowperm] = chvals91
+
+    # get a codeword consistent with the 91 most reliable received bits by premultipltying G by the newly-ordered chbits
+    # i.e. 'project' the most reliable channel bits onto the code to get a (the? - if not, which?) codeword consistent with these bits
+    cw174 = ((chbits91 @ G) & 1)
+    # if the codeword passes CRC, take it as the answer
+    msg_tuple, bits77_int = crc_unpack91(cw174[:91])
+    if msg_tuple:
+        return msg_tuple, bits77_int, 0
+
+    # if doing higher orders, compute the distance of the zero-order codeword from the received values, and see if
+    # flipping bits can find a codeword 'closer' to the received bits. If so, check if these codewords pass crc,
+    # and if so, take as the answer
+    if maxord >0:
+        current_best_distance = np.sum(chvals174 * np.bitwise_xor(cw174.astype(np.uint8),chbits174))
+        cw_out91 = []
+        for ipat, pat in enumerate(osd_patterns):
+            bits = chbits91.copy()
+            for b in pat:
+                bits[rowperm[90-b]] ^= 1
+            cw174 = ((bits @ G) & 1)
+            distance = np.sum(chvals174 * np.bitwise_xor(cw174.astype(np.uint8),chbits174))
+            if distance < current_best_distance:
+                cw_out91 = cw174[:91]
+                current_best_distance = distance
+                iwinner = ipat
+        if any(cw_out91):
+            msg_tuple, bits77_int = crc_unpack91(cw_out91)
+            if msg_tuple:
+                return msg_tuple, bits77_int, iwinner
+
+    return None, None, -1
+
+
