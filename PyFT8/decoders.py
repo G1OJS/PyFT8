@@ -177,10 +177,9 @@ A = np.zeros((83, 91), dtype=np.uint8)
 for i, row in enumerate(kGEN):
     for j in range(91):
         A[i, 90 - j] = (row >> j) & 1
-G0 = np.concatenate([np.eye(91, dtype=np.uint8), A.T],axis=1)
+G = np.concatenate([np.eye(91, dtype=np.uint8), A.T],axis=1)
 
 def osd_012(llr, maxord, singleflips = 30, doubleflips = 2):
-    G = G0.copy()
     rowperm = np.arange(91)
     colperm = np.argsort(-np.abs(llr))
     curr_row = 0
@@ -200,14 +199,14 @@ def osd_012(llr, maxord, singleflips = 30, doubleflips = 2):
             if curr_row > 90:
                 break
     
-    G = G[:, :91]
+    Gsq = G[:, :91]
     chbits = (llr>0).astype(np.uint8)[colperm][:91]
     chbits[rowperm] = chbits
 
-    cw = ((chbits @ G) & 1)
+    cw = ((chbits @ Gsq) & 1)
     msg_tuple, bits77_int = crc_unpack91(cw)
     if msg_tuple:
-        return msg_tuple, bits77_int
+        return msg_tuple, bits77_int, 0
 
     if maxord >0:
         fliplist = list(rowperm[::-1][:singleflips])
@@ -215,10 +214,10 @@ def osd_012(llr, maxord, singleflips = 30, doubleflips = 2):
         for i in range(singleflips):
             bits = chbits.copy()
             bits[fliplist[i]] ^= 1
-            cw = ((bits @ G) & 1)
+            cw = ((bits @ Gsq) & 1)
             msg_tuple, bits77_int = crc_unpack91(cw)
             if msg_tuple:
-                return msg_tuple, bits77_int
+                return msg_tuple, bits77_int, 1
 
         if maxord > 1:
             for i in range(singleflips):
@@ -227,12 +226,183 @@ def osd_012(llr, maxord, singleflips = 30, doubleflips = 2):
                         bits = chbits.copy()
                         bits[fliplist[i]] ^= 1
                         bits[fliplist[j]] ^= 1
-                        cw = ((bits @ G) & 1)
+                        cw = ((bits @ Gsq) & 1)
                         msg_tuple, bits77_int = crc_unpack91(cw)
                         if msg_tuple:
-                            return msg_tuple, bits77_int
+                            return msg_tuple, bits77_int, 2
 
-    return None, None
+    return None, None, -1
 
 
+def osd_012_dist(llr, maxord, singleflips = 30, doubleflips = 2):
+    # create indexes rowperm and colperm to index G so that we don't have to move the data of G around
+    rowperm = np.arange(91)
+    colperm = np.argsort(-np.abs(llr))
+    # do Gauss-Jordan elimination by indexing G rather than moving its data
+    curr_row = 0
+    for curr_col in range(174):
+        ones_below = np.where(G[rowperm[curr_row:], colperm[curr_col]] == 1)[0]
+        if ones_below.size > 0:
+            swap_row = curr_row + ones_below[0]
+            rowperm[[curr_row, swap_row]] = rowperm[[swap_row, curr_row]]
+            r_curr = rowperm[curr_row]
+            c_curr = colperm[curr_col]
+            g_c_curr = G[:, c_curr].copy()
+            g_c_curr[r_curr] = 0
+            rows_to_xor = np.where(g_c_curr == 1)[0]
+            G[rows_to_xor, :] ^= G[r_curr, :]
+            colperm[[curr_row, curr_col]] = colperm[[curr_col, curr_row]]  
+            curr_row += 1
+            if curr_row > 90:
+                break
+    # G[rowperm, colperm] is now ordered by reliability (llr[colperm] now has most reliable values first), and
+    # G[rowperm, colperm] is systematic, i.e. G[rowperm, colperm] = [I][P]
+    # Note however that G itself is unchanged, and hence not systematic, G != [I][P]
+    # At this point, (llr>0)[colperm][:91] @ G = codeword[rowperm]
+    
+    # Record the channel bits in the correct order to premultiply G, (llr>0)[colperm][:91] @ G = codeword[:91][rowperm],
+    # whilst keeping a full 174 bit copy (llr>0) to do distance calculations
+    chbits174 = (llr>0).astype(np.uint8)
+    chbits91 = chbits174[colperm][:91]
+    chbits91[rowperm] = chbits91
+    # record the abs(llr) values in the same order as chbits to enable easy distance calculations
+    chvals174 = np.abs(llr)
+    chvals91 = chvals174[colperm][:91]
+    chvals91[rowperm] = chvals91
 
+    # get a codeword consistent with the 91 most reliable received bits by premultipltying G by the newly-ordered chbits
+    # i.e. 'project' the most reliable channel bits onto the code to get a (the? - if not, which?) codeword consistent with these bits
+    cw174 = ((chbits91 @ G) & 1)
+    # if the codeword passes CRC, take it as the answer
+    msg_tuple, bits77_int = crc_unpack91(cw174[:91])
+    if msg_tuple:
+        return msg_tuple, bits77_int, 0
+
+    # if doing higher orders, compute the distance of the zero-order codeword from the received values, and see if
+    # flipping bits can find a codeword 'closer' to the received bits. If so, check if these codewords pass crc,
+    # and if so, take as the answer
+    if maxord >0:
+        fliplist = list(rowperm[::-1][:singleflips])
+        current_best_distance = np.sum(chvals174 * np.bitwise_xor(cw174.astype(np.uint8),chbits174))
+        
+        cw_out91 = []
+        for i in range(singleflips):
+            bits = chbits91.copy()
+            bits[fliplist[i]] ^= 1
+            cw174 = ((bits @ G) & 1)
+            distance = np.sum(chvals174 * np.bitwise_xor(cw174.astype(np.uint8),chbits174))
+            if distance < current_best_distance:
+                cw_out91 = cw174[:91]
+                current_best_distance = distance
+        if any(cw_out91):
+            msg_tuple, bits77_int = crc_unpack91(cw_out91)
+            if msg_tuple:
+                return msg_tuple, bits77_int, 1
+
+        if maxord > 1:
+            cw_out91 = []
+            for i in range(singleflips):
+                for j in range(doubleflips):
+                    if j < i:
+                        bits = chbits91.copy()
+                        bits[fliplist[i]] ^= 1
+                        bits[fliplist[j]] ^= 1
+                        cw174 = ((bits @ G) & 1)
+                        distance = np.sum(chvals174 * np.bitwise_xor(cw174.astype(np.uint8),chbits174))
+                        if distance < current_best_distance:
+                            cw_out91 = cw174[:91]
+                            current_best_distance = distance
+            if any(cw_out91):
+                msg_tuple, bits77_int = crc_unpack91(cw_out91)
+                if msg_tuple:
+                    return msg_tuple, bits77_int, 2
+
+    return None, None, -1
+
+
+def osd_012_91x91_dist(llr, maxord, singleflips = 30, doubleflips = 2):
+    # create indexes rowperm and colperm to index G so that we don't have to move the data of G around
+    rowperm = np.arange(91)
+    colperm = np.argsort(-np.abs(llr))
+    # do Gauss-Jordan elimination by indexing G rather than moving its data
+    curr_row = 0
+    for curr_col in range(174):
+        ones_below = np.where(G[rowperm[curr_row:], colperm[curr_col]] == 1)[0]
+        if ones_below.size > 0:
+            swap_row = curr_row + ones_below[0]
+            rowperm[[curr_row, swap_row]] = rowperm[[swap_row, curr_row]]
+            r_curr = rowperm[curr_row]
+            c_curr = colperm[curr_col]
+            g_c_curr = G[:, c_curr].copy()
+            g_c_curr[r_curr] = 0
+            rows_to_xor = np.where(g_c_curr == 1)[0]
+            G[rows_to_xor, :] ^= G[r_curr, :]
+            colperm[[curr_row, curr_col]] = colperm[[curr_col, curr_row]]  
+            curr_row += 1
+            if curr_row > 90:
+                break
+    # G[rowperm, colperm] is now ordered by reliability (llr[colperm] now has most reliable values first), and
+    # G[rowperm, colperm] is systematic, i.e. G[rowperm, colperm] = [I][P]
+    # Note however that G itself is unchanged, and hence not systematic, G != [I][P]
+    # At this point, (llr>0)[colperm] @ G = codeword[rowperm]
+    
+    # Create a truncated copy of G as a square matrix 91x91 so that the output of uGsq is only the needed message+crc bits
+    Gsq = G[:, :91]
+    # record the channel bits in the correct order to premultiply G, (llr>0)[colperm][:91] @ G = codeword[:91][rowperm]
+    # noting that if u[rowperm] = llr>0)[colperm][:91], then u @ G = codeword[:91]
+    chbits91 = (llr>0).astype(np.uint8)[:91]
+    chbits_permed91 = (llr>0).astype(np.uint8)[colperm][:91]
+    chbits_permed91[rowperm] = chbits_permed91
+    # record the abs(llr) values in the same order as chbits to enable easy distance calculations
+    chvals91 = np.abs(llr)[:91]
+    chvals_permed91 = np.abs(llr)[colperm][:91]
+    chvals_permed91[rowperm] = chvals_permed91
+
+    # get a codeword consistent with the 91 most reliable received bits by premultipltying G by the newly-ordered chbits
+    # i.e. 'project' the most reliable channel bits onto the code to get a (the? - if not, which?) codeword consistent with these bits
+    cw91 = ((chbits_permed91 @ Gsq) & 1)
+    # if the codeword passes CRC, take it as the answer
+    msg_tuple, bits77_int = crc_unpack91(cw91)
+    if msg_tuple:
+        return msg_tuple, bits77_int, 0
+
+    # if doing higher orders, compute the distance of the zero-order codeword from the received values, and see if
+    # flipping bits can find a codeword 'closer' to the received bits. If so, check if these codewords pass crc,
+    # and if so, take as the answer
+    if maxord >0:
+        fliplist = list(rowperm[::-1][:singleflips])
+        current_best_distance = np.sum(chvals91 * np.bitwise_xor(cw91.astype(np.uint8),chbits91))
+        
+        cw_out91 = []
+        for i in range(singleflips):
+            bits = chbits_permed91.copy()
+            bits[fliplist[i]] ^= 1
+            cw91 = ((bits @ Gsq) & 1)
+            distance = np.sum(chvals91 * np.bitwise_xor(cw91.astype(np.uint8),chbits91))
+            if distance < current_best_distance:
+                cw_out91 = cw91
+                current_best_distance = distance
+        if any(cw_out91):
+            msg_tuple, bits77_int = crc_unpack91(cw_out91)
+            if msg_tuple:
+                return msg_tuple, bits77_int, 1
+
+        if maxord > 1:
+            cw_out91 = []
+            for i in range(singleflips):
+                for j in range(doubleflips):
+                    if j < i:
+                        bits = chbits_permed91.copy()
+                        bits[fliplist[i]] ^= 1
+                        bits[fliplist[j]] ^= 1
+                        cw = ((bits @ Gsq) & 1)
+                        distance = np.sum(chvals91 * np.bitwise_xor(cw91.astype(np.uint8),chbits91))
+                        if distance < current_best_distance:
+                            cw_out91 = cw91
+                            current_best_distance = distance
+            if any(cw_out91):
+                msg_tuple, bits77_int = crc_unpack91(cw_out91)
+                if msg_tuple:
+                    return msg_tuple, bits77_int, 2
+
+    return None, None, -1

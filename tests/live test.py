@@ -179,7 +179,7 @@ def do_test(input_device_keywords, wav_range = None):
 
 
 wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
-baseline_file = 'PyFT8_1_38_baseline.txt'
+baseline_file = 'PyFT8_8_28_baseline.txt'
 
 #do_test("Mic, CODEC")
-do_test("CABLE, Output", [1,39])
+do_test("CABLE, Output", [8,28])

@@ -49,7 +49,6 @@ class Candidate:
         self.ipass = 0
         self.csync_7x7 = None
         self.symbol_grid = None
-        self.tweaks = f"t:{0:+03d} f:{0:+03d}"
         self.decode_result = None
         self.serial_id = None
         self.decode_notes = ''
@@ -64,15 +63,14 @@ class Candidate:
         if (key not in duplicate_filter):
             duplicate_filter.add(key)
             o = self.origin
-           # decode_notes = self.decode_notes + " " + self.tweaks
-            decode_notes = f"{self.ipass - 1}_{self.pat_name}"
+            decode_notes = self.decode_notes
             tsec, fHz = o['tsec'], o['fHz']
             their_snr = f"{self.snr:+03d}"
             all_txt_format = f"{o['cyclestart_string']} {their_snr} {(tsec-0.6):4.1f} {fHz:4.0f} ~ {self.msg_text}"
             message = { "band":o['band'], "tsec":tsec, "fHz":fHz, "msg_tuple":self.decode_result,
                         "their_snr": their_snr, "their_tx_cycle":o['odd_even'],
                         "all_txt_format": all_txt_format, 'cyclestart_string':o['cyclestart_string'],
-                        "decode_completed": time_utils.time(),  'tweaks':self.tweaks, 'decode_notes':decode_notes}
+                        "decode_completed": time_utils.time(), 'decode_notes':decode_notes}
             self.on_message(message)
         self.decode_result = 'stop'
 
@@ -131,21 +129,28 @@ class Candidate:
         if not self.decode_result:
             self.pat_name, self.llr = pat_llr
             self.decode_result, self.bits77_int = crc_unpack91(self.llr[:91])
+            if self.decode_result:
+                self.decode_notes = f"{self.pat_name}_GOOD91"
                 
     def _decode_ldpc(self, pat_llr, max_nc0, max_its, save_llr):
         if not self.decode_result:
             self.pat_name, self.llr = pat_llr
             self.decode_result, self.n_its, output = ldpc_decode(self.llr, max_nc0, max_its)
+            #notes = f"{self.pat_name}_LDPC({self.n_its}/{max_its})"
+            notes = f"{self.pat_name}_LDPC({max_its})"
             if not self.decode_result:
                 if save_llr and len(output) == 174:
-                    self.ch_ap_ldpc_llrs.append((f"{f'{self.ipass}'}({max_its})_{self.pat_name}", output))
+                    self.ch_ap_ldpc_llrs.append((notes, output))
             else:
                 self.bits77_int = output
+                self.decode_notes = notes
 
     def _decode_osd(self, pat_llr, maxord):
         if not self.decode_result:
             self.pat_name, self.llr = pat_llr
-            self.decode_result, self.bits77_int = osd_012(self.llr, maxord)
+            self.decode_result, self.bits77_int, osd_order_success = osd_012(self.llr, maxord, singleflips = 30, doubleflips = 2)
+            if self.decode_result:
+                self.decode_notes = f"{self.pat_name}_OSD({osd_order_success})"
 
     def _power_to_llr(self, power_grid):
         p = power_grid
