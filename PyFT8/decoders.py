@@ -179,7 +179,7 @@ for i, row in enumerate(kGEN):
         A[i, 90 - j] = (row >> j) & 1
 G = np.concatenate([np.eye(91, dtype=np.uint8), A.T],axis=1)
 
-def _osd(llr):
+def osd(llr):
     # create indexes rowperm and colperm to index G so that we don't have to move the data of G around
     rowperm = np.arange(91)
     colperm = np.argsort(-np.abs(llr))
@@ -216,8 +216,8 @@ def _osd(llr):
     chvals91[rowperm] = chvals91
 
     dist_best = 1e20
-    for j in range(-1, 3):
-        imax = [15,10,5,70][j]
+    for j in range(-1, 7):
+        imax = [50,10,10,10,10,10,10,70][j]
         cw_out = []
         for i in range(j, imax):
             bits91 = chbits91.copy()
@@ -245,7 +245,7 @@ def _osd(llr):
 
 
 
-def osd(llr):
+def _osd(llr):
     # create indexes rowperm and colperm to index G so that we don't have to move the data of G around
     rowperm = np.arange(91)
     colperm = np.argsort(-np.abs(llr))
