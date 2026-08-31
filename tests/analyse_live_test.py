@@ -58,19 +58,14 @@ def list_methods(file):
 
 
 
-#list_methods('PyFT8_8_28_baseline.txt')
-#list_methods('PyFT8.txt')
+list_methods('PyFT8_8_28_baseline.txt')
+list_methods('PyFT8.txt')
 
-#plot_staircase([('PyFT8_8_28_baseline.txt', 'PyFT8-baseline', 'green'),
-#                ('WSJTx302_8_28_FAST.txt', 'WSJT-x_3.0.2_FAST', 'blue'),
-#                ('WSJTx302_8_28_NORM.txt', 'WSJT-x_3.0.2_NORM', 'purple'),
-#                ('PyFT8.txt', 'PyFT8', 'orange')])
-
-
-plot_staircase([('WSJTx302_8_28_FAST.txt', 'WSJT-x_3.0.2_FAST', 'blue'),
+plot_staircase([('PyFT8_8_28_baseline.txt', 'PyFT8-baseline', 'green'),
+                ('WSJTx302_8_28_FAST.txt', 'WSJT-x_3.0.2_FAST', 'blue'),
                 ('WSJTx302_8_28_NORM.txt', 'WSJT-x_3.0.2_NORM', 'purple'),
-                ('PyFT8_8_28_baseline_CH_CQ.txt', 'PyFT8_CH_CQ', 'black'),
-                ('PyFT8_8_28_baseline_CH_RR.txt', 'PyFT8_CH_RR', 'green'),
-                ('PyFT8_8_28_baseline_CH_CQ_RR.txt', 'PyFT8_CH_CQ_RR', 'lime')])
+                ('PyFT8.txt', 'PyFT8', 'orange')])
+
+
 
 

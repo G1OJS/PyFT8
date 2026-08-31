@@ -2,7 +2,7 @@ import threading
 import numpy as np
 import pyaudio
 from PyFT8.time_utils import time_utils
-from PyFT8.decoders import ldpc_decode, osd_012, crc_unpack91
+from PyFT8.decoders import ldpc_decode, osd, crc_unpack91
 
 WATERFALL_DOWNSAMPLE = 2
 DEBUG_PRINTS = True
@@ -162,8 +162,8 @@ class Candidate:
             self.decode_notes = notes
 
     def _decode_osd(self, pat_llr, maxord):
-        self.decode_result, self.bits77_int, osd_order_success = osd_012(pat_llr[1], maxord, singleflips = 30, doubleflips = 2)
-        if self.decode_result:
+         self.decode_result, self.bits77_int, osd_order_success = osd(pat_llr[1])
+         if self.decode_result:
             self.decode_notes = f"{pat_llr[0]}_OSD({osd_order_success})"
             
     def _power_to_llr(self, power_grid):
