@@ -118,16 +118,25 @@ class Candidate:
             self.ipass +=1
 
     def _set_AP(self, source, llr):
-        llr0 = llr.copy()
-        self.ch_llrs.append((source + '_CH', llr))
-        """
+        self.ch_llrs.append((source + '_CH', llr.copy()))
         llr[:29] = -5
         llr[26] = 5
         llr[74:76] = -5
         llr[76] = 5
         llr[57:59] = -5
         self.ch_llrs.append((source + '_CQ', llr))
-        """
+
+
+    def _set_AP_3(self, source, llr):
+        llr0 = llr.copy()
+        self.ch_llrs.append((source + '_CH', llr))
+        llr = llr0.copy()
+        llr[:29] = -5
+        llr[26] = 5
+        llr[74:76] = -5
+        llr[76] = 5
+        llr[57:59] = -5
+        self.ch_llrs.append((source + '_CQ', llr))
         llr = llr0.copy()
         llr[58] = -5
         llr[59:65] = 5
@@ -136,7 +145,6 @@ class Candidate:
         llr[70] = -5
         llr[74:76] = -5
         self.ch_llrs.append((source + '_RR', llr))
-        
         
     def _decode_good91(self, pat_llr):
         self.decode_result, self.bits77_int = crc_unpack91(pat_llr[1][:91])
