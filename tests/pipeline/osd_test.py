@@ -111,7 +111,8 @@ def osd(llr):
             bits[fliplist[i]] ^= 1
             if j>=0:
                 bits[fliplist[j]] ^= 1
-            cw174 = ((bits @ G) & 1).astype(np.uint8)
+            cw174 = (bits.dot(G) & 1).astype(np.uint8)
+
             distance = np.dot(chvals174, np.bitwise_xor(cw174, chbits174))
             if distance < current_best_distance:
                 cw_out91 = cw174[:91]
