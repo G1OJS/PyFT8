@@ -106,25 +106,25 @@ class Candidate:
                 for llr in self.ch_llrs:
                     self._decode_ldpc(llr, 90, 20, True)
                     if self.decode_result: break
-
+        
             if self.ipass == 8:
                 for llr in self.ch_ldpc_llrs:
                     self._decode_osd(llr, 0)
                     if self.decode_result: break
-
+        
             if self.ipass == 9:
                 self.decode_result = 'stop'
             
             self.ipass +=1
 
     def _set_AP(self, source, llr):
-        self.ch_llrs.append((source + '_CH', llr.copy()))
+        self.ch_llrs.append((source + "_CH", llr.copy()))
         llr[:29] = -5
         llr[26] = 5
         llr[74:76] = -5
         llr[76] = 5
         llr[57:59] = -5
-        self.ch_llrs.append((source + '_CQ', llr))
+        self.ch_llrs.append((source + "_CQ", llr))
 
 
     def _set_AP_3(self, source, llr):
@@ -156,15 +156,17 @@ class Candidate:
         notes = f"{pat_llr[0]}_LDPC({max_its})"
         if not self.decode_result:
             if save_llr and len(output) == 174:
-                self.ch_ldpc_llrs.append((notes, output))
+                if not np.isnan(np.sum(output)):
+                    self.ch_ldpc_llrs.append((notes, output))
         else:
             self.bits77_int = output
             self.decode_notes = notes
 
     def _decode_osd(self, pat_llr, maxord):
-         self.decode_result, self.bits77_int, osd_order_success = osd(pat_llr[1])
-         if self.decode_result:
-            self.decode_notes = f"{pat_llr[0]}_OSD({osd_order_success})"
+        if not np.isnan(np.sum(pat_llr[1])):
+            self.decode_result, self.bits77_int, osd_order_success = osd(pat_llr[1])
+            if self.decode_result:
+                self.decode_notes = f"{pat_llr[0]}_OSD({osd_order_success})"
             
     def _power_to_llr(self, power_grid):
         p = power_grid
@@ -175,17 +177,18 @@ class Candidate:
         mean = np.mean(llr)
         var = np.mean(llr*llr) - mean*mean
         self.ch_llr_sd = np.sqrt(var)
-        if self.ch_llr_sd < 0.5:
-            self.decode_result = 'stop'
-        else:
-            return 2.83 * llr / self.ch_llr_sd
+        return 2.83 * llr / self.ch_llr_sd
 
     def _get_ch_llrs_from_grid(self):
         p = self.payload_on_search_grid
         self.snr = np.clip(int(np.max(p) - np.min(p) - 58), -24, 24)
         llr = self._power_to_llr(p) # called with dB not power
         if llr is not None:
-            self._set_AP('grid', llr)
+            if not np.isnan(np.sum(llr)):
+                if self.ch_llr_sd > 5:
+                    self._set_AP('grid', llr)
+                    return
+        self.decode_result = 'stop'
 
     def _get_ch_llrs_from_spectrum(self):
         # first part similar to calls to sync8d except latter scores costas in time domain
@@ -220,7 +223,12 @@ class Candidate:
                             'fHz':float(self.origin['fHz'] + idf / 16) })
         llr = self._power_to_llr(self.symbol_grid[PAYLOAD_SYMB_IDXS, :])
         if llr is not None:
-            self._set_AP('fine', llr)
+            if not np.isnan(np.sum(llr)):
+                self.ch_llr_sd = 20*np.log10(self.ch_llr_sd)
+                if self.ch_llr_sd > 5:
+                    self._set_AP('fine', llr)
+                    return
+        self.decode_result = 'stop'
 
 
  #       with open('tweaks.txt','a') as f:
@@ -340,7 +348,7 @@ class AudioIn:
 #============== RECEIVER ===========================================================
         
 class Receiver():
-    def __init__(self, input_device_keywords, on_message, sync_score_min = 95, max_cands = 250,
+    def __init__(self, input_device_keywords, on_message, sync_score_min = 100, max_cands = 250,
                  search_freq_range = [100, 3000], search_timerange = [-2.5, 3.5], verbose = False):
         self.audio_in = AudioIn(search_freq_range, input_device_keywords)
         self.on_message = on_message
