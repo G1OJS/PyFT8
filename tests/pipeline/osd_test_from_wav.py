@@ -1,4 +1,5 @@
 import numpy as np
+import wave
 from PyFT8.decoders import crc_unpack91
 import time
 
@@ -106,22 +107,18 @@ def osd(llr):
     chbits91 = chbits174[colperm][:91].astype(np.uint8)
     chbits91[rowperm] = chbits91
 
-    """
     cw174 = ((chbits91 @ G) & 1)
     msg_tuple, bits77_int = crc_unpack91(cw174[:91])
     if msg_tuple:
         return msg_tuple, bits77_int, 0
-    """
-    
-    parbits_idx = colperm[91:][:20]
+
+    parbits_idx = colperm[91:][:25]
     Gp = G[:, parbits_idx].astype(np.uint8)
     chbits_par = chbits174[parbits_idx].astype(np.uint8)
 
     cw_out91 = None
-    jj_min = 65
-    max_dist = 600
+    jj_min = 80
     current_best_distance = 1e20
-    starting_distance = current_best_distance
     for ii in range(-1, 91):
         jjmin = ii if ii > jj_min else jj_min
         for jj in range(jjmin, 91):
@@ -138,51 +135,113 @@ def osd(llr):
                 if distance < current_best_distance:
                     cw_out91 = cw174[:91]
                     current_best_distance = distance
-                    iwin, jwin = ii, jj
-                    if ii < 0:
-                        starting_distance = current_best_distance
-                        if starting_distance > max_dist:
-                            return None, None, -1
-                        
-    if cw_out91 is not None:
+
+    if not cw_out91 is None:
         msg_tuple, bits77_int = crc_unpack91(cw_out91)
         if msg_tuple:
-         #   info = f"{iwin},{jwin},{int(starting_distance)}->{int(current_best_distance)}"
-         #   with open('osd_wins.txt','a') as f:
-         #       f.write(f"{info}\n")
-            return msg_tuple, bits77_int, ""
+            return msg_tuple, bits77_int, 1
     
     return None, None, -1
-                    
 
-with open('osd_llrs.txt','r') as f:
-    llrs = f.readlines()
 
-t_ref, t_test = 0,0
-n_ref, n_test, t_trials = 0,0,0
-for row in llrs:
-    llr = np.array([float(v) for v in row.split()])
+
+SAMP_RATE = 12000
+SYM_RATE = 6.25
+N_SYMS = 79
+T_CYC = 15
+PAYLOAD_SYMB_IDXS = list(range(7, 36)) + list(range(43, 72))
+
+def dB_to_llr(payload_dB_grid):
+    p = payload_dB_grid 
+    snr = np.clip(int(np.max(p) - np.min(p) - 58), -24, 24)
+    llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
+    llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
+    llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
+    llr = np.column_stack((llra, llrb, llrc)).ravel()
+    mean = np.mean(llr)
+    var = np.mean(llr*llr) - mean*mean
+    llr_sd = np.sqrt(var)
+    llr = 2.83 * llr / llr_sd
+    return llr
+
+def get_candidate_tfgrid(all_audio_spectrum, origin):
+    fft1_len = len(all_audio_spectrum)
+    global candidate_spectrum, candidate_tf_zgrid
+
+    # downsample to 32 samples per symbol / 200 samples per sec
+    df = SAMP_RATE / fft1_len
+    fb_0 = int(0.5 + origin['f0'] / df )
+    fb_top = int(0.5 + (origin['f0'] + 8.5*SYM_RATE) / df )
+    fb_bot = int(0.5 + (origin['f0'] - 1.5*SYM_RATE) / df )
+
+    candidate_spectrum[:(fb_top - fb_0)] = all_audio_spectrum[fb_0:fb_top]
+    candidate_spectrum[-(fb_0-fb_bot):] = all_audio_spectrum[fb_bot:fb_0]
+    candidate_zsig = np.fft.ifft(candidate_spectrum)
+
+    # get candidate symbol spectra x79 with df = 1 tone spacing
+    dt = (1 / SAMP_RATE) * fft1_len / fft2_len
+    symbols = np.empty((N_SYMS, 32), dtype=np.complex64)
+    start = int(origin['t0']/dt)
+    idx = start + np.arange(N_SYMS)*32
+    idx = np.clip(idx, 0, len(candidate_zsig)-32)
+    symbols = np.empty((N_SYMS,32), dtype=np.complex64)
+    for j, i0 in enumerate(idx):
+        symbols[j,:] = candidate_zsig[i0:i0+32]
+    candidate_tf_zgrid = np.fft.fft(symbols, axis=1)[:, :8]
+
+    return candidate_tf_zgrid
+
+fft2_len = 3200
+candidate_spectrum = np.zeros(fft2_len, dtype = np.complex64)
+candidate_tf_zgrid = np.ones((N_SYMS, 8), dtype = np.complex64)
+wav_file = 'test_08.wav'
+# get full audio spectrum 
+wf = wave.open(wav_file, "rb")
+all_audio_frames = wf.readframes(SAMP_RATE * T_CYC)
+wf.close()
+fft1_len = 192000
+samples = np.zeros(fft1_len)
+samps_in = np.frombuffer(all_audio_frames, dtype=np.int16).astype(np.float32)
+samples[:len(samps_in)] = samps_in 
+all_audio_spectrum = np.fft.fft(samples)
+
+for origin in [{'f0':1505, 't0':1.3 + 0.5}, {'f0':1262, 't0':0.9 + 0.5}, {'f0':763, 't0':1.0 + 0.5}]:
+    candidate_tf_zgrid = get_candidate_tfgrid(all_audio_spectrum, origin)
+    dB = np.log10(np.abs(candidate_tf_zgrid))
+    llr = dB_to_llr(dB[PAYLOAD_SYMB_IDXS,:])
+
     print('')
     
     t = time.time()
     res_osd = osd_ref(llr)
-    t = time.time()-t
-    t_ref += t
-    if res_osd[0]:
-        n_ref +=1
-    print(f"Ref:  {t:7.3f} {res_osd[0]}")
+    print(f"Ref:  {time.time()-t:7.3f} {res_osd[0]}")
 
     t = time.time()
     res_osd = osd(llr)
-    t = time.time()-t
-    t_test += t
-    if res_osd[0]:
-        n_test +=1
-    print(f"Test: {t:7.3f} {res_osd[0]}")
+    print(f"Test: {time.time()-t:7.3f} {res_osd[0]}")
 
-    n_trials += 1
 
-print('')
-print(f"Ref:  {n_ref}/{n_trials} decodes in {t_ref:8.3f}s")
-print(f"Test: {n_test}/{n_trials} decodes in {t_test:8.3f}s")
+"""
+WSJT-x decodes
+usy/test_08      14.074 Rx FT8     16  1.0  763 UR7HN HB9BIN RR73
+usy/test_08      14.074 Rx FT8     28  0.8 2046 CQ 9A9A JN75
+usy/test_08      14.074 Rx FT8      3  1.3 2519 CQ F5CCX JN18
+usy/test_08      14.074 Rx FT8      5  1.0  456 CQ ON2RK JO20
+usy/test_08      14.074 Rx FT8    -18  1.3 1505 RX3ASQ TA3AHJ -08
+usy/test_08      14.074 Rx FT8      2  0.7 2724 CQ R4HM LO43
+usy/test_08      14.074 Rx FT8    -11  0.8 1062 CQ EA5OL IM99
+usy/test_08      14.074 Rx FT8      8  0.8  394 M0XMX RV6AFG 73
+usy/test_08      14.074 Rx FT8    -13  0.9 1264 SV2BRA I4WQH JN54
+usy/test_08      14.074 Rx FT8     -6  0.8 1687 SQ6PZL MM0IMC -06
+usy/test_08      14.074 Rx FT8    -16  1.7 1608 OZ5VO IT9HVZ JM78
+usy/test_08      14.074 Rx FT8     -3  0.9  491 OK6LZ 2E0LDW +06
+usy/test_08      14.074 Rx FT8    -13  1.4  265 CT3IQ EI8GVB IO63
+usy/test_08      14.074 Rx FT8    -23  1.6 1267 CQ OR7EG JO11
+usy/test_08      14.074 Rx FT8    -15  0.9  336 CQ JO1COV PM95
+usy/test_08      14.074 Rx FT8    -24  0.8  987 RA3TPE TA1NGE RR73
+usy/test_08      14.074 Rx FT8    -24  1.3 1927 RW6PA UA3NFG 73
+usy/test_08      14.074 Rx FT8    -24  0.9 1368 SP9LKP F4VTS R-12
+usy/test_08      14.074 Rx FT8    -17  1.2 2135 <...> LZ365BM RR73
+"""
+
 

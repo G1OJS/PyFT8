@@ -222,7 +222,7 @@ def osd(llr):
 
     cw_out91 = None
     jj_min = 65
-    max_dist = 400
+    max_dist = 600
     current_best_distance = 1e20
     starting_distance = current_best_distance
     for ii in range(-1, 91):
