@@ -13,17 +13,10 @@ A = np.zeros((83, 91), dtype=np.uint8)
 for i, row in enumerate(kGEN):
     for j in range(91):
         A[i, 90 - j] = (row >> j) & 1
-G0 = np.concatenate([np.eye(91, dtype=np.uint8), A.T],axis=1)
-
-def enc(u, G):
-    cw = np.zeros(174, dtype = np.uint8)
-    for i in range(91):
-        if u[i]:
-            cw = cw ^ G[i,:]
-    return cw
+G = np.concatenate([np.eye(91, dtype=np.uint8), A.T],axis=1)
 
 def osd_ref(llr):
-    G = G0.copy()
+
     rowperm = np.arange(91)
     colperm = np.argsort(-np.abs(llr))
     curr_row = 0
@@ -77,7 +70,7 @@ def osd_ref(llr):
     return None, None, -1
  
 def osd(llr):
-    G = G0.copy()
+
     rowperm = np.arange(91)
     colperm = np.argsort(-np.abs(llr))
     curr_row = 0
@@ -101,8 +94,8 @@ def osd(llr):
     chbits91 = chbits174[colperm][:91]
     chbits91[rowperm] = chbits91
     chvals174 = np.abs(llr)
+    maxvals = np.max(chvals174)
 
-    
     cw174 = ((chbits91 @ G) & 1)
     msg_tuple, bits77_int = crc_unpack91(cw174[:91])
     if msg_tuple:
@@ -111,22 +104,22 @@ def osd(llr):
     fliplist = list(rowperm[::-1])
     current_best_distance = 1e20
     
-    cw_out91 = []
+    cw_out91 = None
     for i in range(91):
-        for j in range(-1, i):
+        for j in range(-1, 0 if i == 0 else i):
             bits = chbits91.copy()
             bits[fliplist[i]] ^= 1
             if j>=0:
                 bits[fliplist[j]] ^= 1
-            cw174 = ((bits @ G) & 1)
-            distance = np.sum(chvals174 * np.bitwise_xor(cw174.astype(np.uint8),chbits174))
+            cw174 = ((bits @ G) & 1).astype(np.uint8)
+            distance = np.dot(chvals174, np.bitwise_xor(cw174, chbits174))
             if distance < current_best_distance:
                 cw_out91 = cw174[:91]
                 current_best_distance = distance
-    if any(cw_out91):
-        msg_tuple, bits77_int = crc_unpack91(cw_out91)
-        if msg_tuple:
-            return msg_tuple, bits77_int, 1
+        if cw_out91 is not None:
+            msg_tuple, bits77_int = crc_unpack91(cw_out91)
+            if msg_tuple:
+                return msg_tuple, bits77_int, 1
     
     return None, None, -1
                     
@@ -159,6 +152,6 @@ for row in llrs:
     n_trials += 1
 
 print('')
-print(f"Ref:  {n_ref}/{n_trials} decodes in {t_ref:8.3f}s")
-print(f"Test: {n_test}/{n_trials} decodes in {t_test:8.3f}s")
+print(f"Ref:  {n_ref}/{n_trials} decodes in {t_ref:8.3f}s, {t_ref/n_trials:8.3f}s per trial")
+print(f"Test: {n_test}/{n_trials} decodes in {t_test:8.3f}s, {t_test/n_trials:8.3f}s per trial")
 
