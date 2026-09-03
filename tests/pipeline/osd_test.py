@@ -16,10 +16,13 @@ for i, row in enumerate(kGEN):
 G0 = np.concatenate([np.eye(91, dtype=np.uint8), A.T],axis=1)
 
 def osd_ref(llr):
-    G = G0.copy()
+    chbits174 = (llr>0).astype(np.uint8)
+    chvals174 = np.abs(llr)
+
     rowperm = np.arange(91)
     colperm = np.argsort(-np.abs(llr))
     curr_row = 0
+    G = G0.copy()
     for curr_col in range(174):
         ones_below = np.where(G[rowperm[curr_row:], colperm[curr_col]] == 1)[0]
         if ones_below.size > 0:
@@ -36,81 +39,17 @@ def osd_ref(llr):
             if curr_row > 90:
                 break
           
-    chbits174 = (llr>0).astype(np.uint8)
     chbits91 = chbits174[colperm][:91]
     chbits91[rowperm] = chbits91
-    chvals174 = np.abs(llr)
-    maxvals = np.max(chvals174)
 
-    cw174 = ((chbits91 @ G) & 1)
-    msg_tuple, bits77_int = crc_unpack91(cw174[:91])
+    base_cw = ((chbits91 @ G) & 1)
+    msg_tuple, bits77_int = crc_unpack91(base_cw[:91])
     if msg_tuple:
         return msg_tuple, bits77_int, 0
 
-    fliplist = list(rowperm[::-1])
-    current_best_distance = 1e20
-    
-    cw_out91 = None
-    ij = None
-    for i in range(91):
-        for j in range(-1, 0 if i == 0 else i):
-            bits = chbits91.copy()
-            bits[fliplist[i]] ^= 1
-            if j>=0:
-                bits[fliplist[j]] ^= 1
-            cw174 = (bits.dot(G) & 1).astype(np.uint8)
-
-            distance = np.dot(chvals174, np.bitwise_xor(cw174, chbits174))
-            if distance < current_best_distance:
-                cw_out91 = cw174[:91]
-                current_best_distance = distance
-                ij = (i,j)
-                
-        if cw_out91 is not None:
-            msg_tuple, bits77_int = crc_unpack91(cw_out91)
-            if msg_tuple:
-                return msg_tuple, bits77_int, 0
-    
-    return None, None, -1
- 
-def osd(llr):
-    G = G0.copy()
-   
-    rowperm = np.arange(91)
-    colperm = np.argsort(-np.abs(llr))
-    curr_row = 0
-    for curr_col in range(174):
-        ones_below = np.where(G[rowperm[curr_row:], colperm[curr_col]] == 1)[0]
-        if ones_below.size > 0:
-            swap_row = curr_row + ones_below[0]
-            rowperm[[curr_row, swap_row]] = rowperm[[swap_row, curr_row]]
-            r_curr = rowperm[curr_row]
-            c_curr = colperm[curr_col]
-            g_c_curr = G[:, c_curr].copy()
-            g_c_curr[r_curr] = 0
-            rows_to_xor = np.where(g_c_curr == 1)[0]
-            G[rows_to_xor, :] ^= G[r_curr, :]
-            colperm[[curr_row, curr_col]] = colperm[[curr_col, curr_row]]  
-            curr_row += 1
-            if curr_row > 90:
-                break
-          
-    chbits174 = (llr>0).astype(np.uint8)
-    chbits91 = chbits174[colperm][:91]
-    chbits91[rowperm] = chbits91
-    chvals174 = np.abs(llr)
-    maxvals = np.max(chvals174)
-
-    cw174 = ((chbits91 @ G) & 1)
-    msg_tuple, bits77_int = crc_unpack91(cw174[:91])
-    if msg_tuple:
-        return msg_tuple, bits77_int, 0
-
-    base_cw = (chbits91 @ G) & 1
     fliplist = rowperm[::-1]
     current_best_distance = 1e20
     cw_out91 = None
-    
     for i in range(91):
         # Single flip
         cw = base_cw ^ G[fliplist[i]]
@@ -121,18 +60,76 @@ def osd(llr):
         else:
             candidates = cw[None, :]
 
-        distances = np.sum(np.abs(llr)[None, :] *(candidates != chbits174), axis=1)
-        best = np.argmin(distances)
-
-        if distances[best] < current_best_distance:
-            current_best_distance = distances[best]
-            cw_out91 = candidates[best, :91].copy()
+        distances = np.sum(np.abs(llr)[None, :] * (candidates != chbits174), axis=1)
+        best_idx = np.argmin(distances)
+        if distances[best_idx] < current_best_distance:
+            current_best_distance = distances[best_idx]
+            cw_out91 = candidates[best_idx, :91].copy()
 
         if cw_out91 is not None:
             msg_tuple, bits77_int = crc_unpack91(cw_out91)
             if msg_tuple:
                 return msg_tuple, bits77_int, 0
+            
+    return None, None, 0
 
+
+def osd(llr):
+    chbits174 = (llr>0).astype(np.uint8)
+    chvals174 = np.abs(llr)
+
+    rowperm = np.arange(91)
+    colperm = np.argsort(-np.abs(llr))
+    curr_row = 0
+    G = G0.copy()
+    for curr_col in range(174):
+        ones_below = np.where(G[rowperm[curr_row:], colperm[curr_col]] == 1)[0]
+        if ones_below.size > 0:
+            swap_row = curr_row + ones_below[0]
+            rowperm[[curr_row, swap_row]] = rowperm[[swap_row, curr_row]]
+            r_curr = rowperm[curr_row]
+            c_curr = colperm[curr_col]
+            g_c_curr = G[:, c_curr].copy()
+            g_c_curr[r_curr] = 0
+            rows_to_xor = np.where(g_c_curr == 1)[0]
+            G[rows_to_xor, :] ^= G[r_curr, :]
+            colperm[[curr_row, curr_col]] = colperm[[curr_col, curr_row]]  
+            curr_row += 1
+            if curr_row > 90:
+                break
+          
+    chbits91 = chbits174[colperm][:91]
+    chbits91[rowperm] = chbits91
+
+    base_cw = ((chbits91 @ G) & 1)
+    msg_tuple, bits77_int = crc_unpack91(base_cw[:91])
+    if msg_tuple:
+        return msg_tuple, bits77_int, 0
+
+    fliplist = rowperm[::-1]
+    current_best_distance = 1e20
+    cw_out91 = None
+    for i in range(91):
+        # Single flip
+        cw = base_cw ^ G[fliplist[i]]
+        # Double flips with every j < i
+        if i:
+            cw2 = base_cw ^ G[fliplist[i]] ^ G[fliplist[:i]]
+            candidates = np.vstack((cw, cw2))
+        else:
+            candidates = cw[None, :]
+
+        distances = np.sum(np.abs(llr)[None, :] * (candidates != chbits174), axis=1)
+        best_idx = np.argmin(distances)
+        if distances[best_idx] < current_best_distance:
+            current_best_distance = distances[best_idx]
+            cw_out91 = candidates[best_idx, :91].copy()
+
+        if cw_out91 is not None:
+            msg_tuple, bits77_int = crc_unpack91(cw_out91)
+            if msg_tuple:
+                return msg_tuple, bits77_int, 0
+            
     return None, None, 0
                         
 
@@ -151,7 +148,7 @@ for row in llrs:
     t_ref += t
     if res_osd[0]:
         n_ref +=1
-    print(f"Ref:  {t:7.3f} {res_osd[0]}")
+    print(f"Ref:  {t*1000:7.2f}ms {res_osd[0]}")
     
     t = time.time()
     res_osd = osd(llr)
@@ -159,12 +156,12 @@ for row in llrs:
     t_test += t
     if res_osd[0]:
         n_test +=1
-    print(f"Test: {t:7.3f} {res_osd[0]}")
+    print(f"Test: {t*1000:7.2f}ms {res_osd[0]}")
 
 
     n_trials += 1
 
 print('')
-print(f"Ref:  {n_ref}/{n_trials} decodes in {t_ref:8.3f}s, {t_ref/n_trials:8.3f}s per trial")
-print(f"Test: {n_test}/{n_trials} decodes in {t_test:8.3f}s, {t_test/n_trials:8.3f}s per trial")
+print(f"Ref:  {n_ref}/{n_trials} decodes in {t_ref:8.3f}s, {1000 * t_ref/n_trials:7.2f}ms per trial")
+print(f"Test: {n_test}/{n_trials} decodes in {t_test:8.3f}s, {1000 * t_test/n_trials:7.2f}ms per trial")
 
