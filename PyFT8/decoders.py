@@ -177,9 +177,10 @@ A = np.zeros((83, 91), dtype=np.uint8)
 for i, row in enumerate(kGEN):
     for j in range(91):
         A[i, 90 - j] = (row >> j) & 1
-G = np.concatenate([np.eye(91, dtype=np.uint8), A.T],axis=1)
+G0 = np.concatenate([np.eye(91, dtype=np.uint8), A.T],axis=1)
 
 def osd(llr):
+    G = G0.copy()
     rowperm = np.arange(91)
     colperm = np.argsort(-np.abs(llr))
     curr_row = 0
@@ -210,28 +211,46 @@ def osd(llr):
     if msg_tuple:
         return msg_tuple, bits77_int, 0
 
-    fliplist = list(rowperm[::-1])
+    base_cw = (chbits91 @ G) & 1
+
+    fliplist = rowperm[::-1]
     current_best_distance = 1e20
     
     cw_out91 = None
+    ij = None
     for i in range(91):
-        for j in range(-1, 0 if i == 0 else i):
-            bits = chbits91.copy()
-            bits[fliplist[i]] ^= 1
-            if j>=0:
-                bits[fliplist[j]] ^= 1
-            cw174 = (bits.dot(G) & 1).astype(np.uint8)
 
-            distance = np.dot(chvals174, np.bitwise_xor(cw174, chbits174))
-            if distance < current_best_distance:
-                cw_out91 = cw174[:91]
-                current_best_distance = distance
+        # Single flip
+        cw = base_cw ^ G[fliplist[i]]
+
+        # Double flips with every j < i
+        if i:
+            cw2 = base_cw ^ G[fliplist[i]] ^ G[fliplist[:i]]
+            candidates = np.vstack((cw, cw2))
+        else:
+            candidates = cw[None, :]
+
+        distances = np.sum(
+            np.abs(llr)[None, :] *
+            (candidates != chbits174),
+            axis=1
+        )
+
+        best = np.argmin(distances)
+
+        if distances[best] < current_best_distance:
+            current_best_distance = distances[best]
+            cw_out91 = candidates[best, :91].copy()
+            ij = (i, -1 if best == 0 else best - 1)
+
         if cw_out91 is not None:
             msg_tuple, bits77_int = crc_unpack91(cw_out91)
             if msg_tuple:
                 return msg_tuple, bits77_int, 1
-    
+
     return None, None, -1
+                        
+
                     
 
 

@@ -14,6 +14,7 @@ for i, row in enumerate(kGEN):
     for j in range(91):
         A[i, 90 - j] = (row >> j) & 1
 G0 = np.concatenate([np.eye(91, dtype=np.uint8), A.T],axis=1)
+G00 = G0.copy()
 
 def osd_ref(llr):
     G = G0.copy()
@@ -69,13 +70,13 @@ def osd_ref(llr):
         if cw_out91 is not None:
             msg_tuple, bits77_int = crc_unpack91(cw_out91)
             if msg_tuple:
-                return msg_tuple, bits77_int, 0
+                return msg_tuple, bits77_int, 1
     
     return None, None, -1
  
 def osd(llr):
-    G = G0.copy()
-   
+    G = G0
+    t = time.time()    
     rowperm = np.arange(91)
     colperm = np.argsort(-np.abs(llr))
     curr_row = 0
@@ -110,6 +111,7 @@ def osd(llr):
     fliplist = rowperm[::-1]
     current_best_distance = 1e20
     cw_out91 = None
+    ij = None
     
     for i in range(91):
         # Single flip
@@ -127,13 +129,17 @@ def osd(llr):
         if distances[best] < current_best_distance:
             current_best_distance = distances[best]
             cw_out91 = candidates[best, :91].copy()
+            ij = (i, -1 if best == 0 else int(best) - 1)
 
+        
         if cw_out91 is not None:
             msg_tuple, bits77_int = crc_unpack91(cw_out91)
             if msg_tuple:
-                return msg_tuple, bits77_int, 0
+                t = time.time() - t
+                print(np.array_equal(G0, G00), ij, current_best_distance, bits77_int, msg_tuple, t)
+                return msg_tuple, bits77_int, t
 
-    return None, None, 0
+    return None, None, time.time() - t
                         
 
 with open('osd_llrs.txt','r') as f:
@@ -143,8 +149,9 @@ t_ref, t_test = 0,0
 n_ref, n_test, n_trials = 0,0,0
 for row in llrs:
     llr = np.array([float(v) for v in row.split()])
-    print('')
+    #print('')
 
+    """
     t = time.time()
     res_osd = osd_ref(llr)
     t = time.time()-t
@@ -152,14 +159,13 @@ for row in llrs:
     if res_osd[0]:
         n_ref +=1
     print(f"Ref:  {t:7.3f} {res_osd[0]}")
+    """
     
-    t = time.time()
     res_osd = osd(llr)
-    t = time.time()-t
-    t_test += t
+    t_test += res_osd[2]
     if res_osd[0]:
         n_test +=1
-    print(f"Test: {t:7.3f} {res_osd[0]}")
+    #print(f"Test: {t:7.3f} {res_osd[0]}")
 
 
     n_trials += 1
