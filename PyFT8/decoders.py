@@ -180,10 +180,13 @@ for i, row in enumerate(kGEN):
 G0 = np.concatenate([np.eye(91, dtype=np.uint8), A.T],axis=1)
 
 def osd(llr):
-    G = G0.copy()
+    chbits174 = (llr>0).astype(np.uint8)
+    chvals174 = np.abs(llr)
+
     rowperm = np.arange(91)
     colperm = np.argsort(-np.abs(llr))
     curr_row = 0
+    G = G0.copy()
     for curr_col in range(174):
         ones_below = np.where(G[rowperm[curr_row:], colperm[curr_col]] == 1)[0]
         if ones_below.size > 0:
@@ -200,29 +203,20 @@ def osd(llr):
             if curr_row > 90:
                 break
           
-    chbits174 = (llr>0).astype(np.uint8)
     chbits91 = chbits174[colperm][:91]
     chbits91[rowperm] = chbits91
-    chvals174 = np.abs(llr)
-    maxvals = np.max(chvals174)
 
-    cw174 = ((chbits91 @ G) & 1)
-    msg_tuple, bits77_int = crc_unpack91(cw174[:91])
+    base_cw = ((chbits91 @ G) & 1)
+    msg_tuple, bits77_int = crc_unpack91(base_cw[:91])
     if msg_tuple:
-        return msg_tuple, bits77_int, 0
-
-    base_cw = (chbits91 @ G) & 1
+        return msg_tuple, bits77_int
 
     fliplist = rowperm[::-1]
     current_best_distance = 1e20
-    
     cw_out91 = None
-    ij = None
     for i in range(91):
-
         # Single flip
         cw = base_cw ^ G[fliplist[i]]
-
         # Double flips with every j < i
         if i:
             cw2 = base_cw ^ G[fliplist[i]] ^ G[fliplist[:i]]
@@ -230,26 +224,20 @@ def osd(llr):
         else:
             candidates = cw[None, :]
 
-        distances = np.sum(
-            np.abs(llr)[None, :] *
-            (candidates != chbits174),
-            axis=1
-        )
-
-        best = np.argmin(distances)
-
-        if distances[best] < current_best_distance:
-            current_best_distance = distances[best]
-            cw_out91 = candidates[best, :91].copy()
-            ij = (i, -1 if best == 0 else best - 1)
+        # np.dot maybe?
+        distances = np.sum(np.abs(llr)[None, :] * (candidates != chbits174), axis=1)
+        best_idx = np.argmin(distances)
+        if distances[best_idx] < current_best_distance:
+            current_best_distance = distances[best_idx]
+            cw_out91 = candidates[best_idx, :91].copy()
 
         if cw_out91 is not None:
             msg_tuple, bits77_int = crc_unpack91(cw_out91)
             if msg_tuple:
-                return msg_tuple, bits77_int, 1
-
-    return None, None, -1
-                        
+                return msg_tuple, bits77_int
+            
+    return None, None
+ 
 
                     
 

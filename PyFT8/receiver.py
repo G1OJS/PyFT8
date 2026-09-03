@@ -79,7 +79,7 @@ class Candidate:
 
             if self.ipass == 2:
                 for llr in self.ch_llrs:                    
-                    self._decode_ldpc(llr, 35, 5, False)
+                    self._decode_ldpc(llr, 35, 4, False)
                     if self.decode_result: break
 
             if self.ipass == 3:
@@ -94,22 +94,22 @@ class Candidate:
             if self.ipass == 5:
                 for llr in self.ch_llrs:
                     if llr[0] != 'grid':
-                        self._decode_ldpc(llr, 35, 5, False)
+                        self._decode_ldpc(llr, 35, 4, False)
                         if self.decode_result: break
 
             if self.ipass == 6:
                 for llr in self.ch_llrs:
-                    self._decode_osd(llr, 2)
+                    self._decode_osd(llr)
                     if self.decode_result: break
 
             if self.ipass == 7:
                 for llr in self.ch_llrs:
-                    self._decode_ldpc(llr, 90, 20, True)
+                    self._decode_ldpc(llr, 90, 15, True)
                     if self.decode_result: break
         
             if self.ipass == 8:
                 for llr in self.ch_ldpc_llrs:
-                    self._decode_osd(llr, 0)
+                    self._decode_osd(llr)
                     if self.decode_result: break
         
             if self.ipass == 9:
@@ -124,28 +124,8 @@ class Candidate:
         llr[74:76] = -5
         llr[76] = 5
         llr[57:59] = -5
-        self.ch_llrs.append((source + "_CQ", llr))
-
-
-    def _set_AP_3(self, source, llr):
-        llr0 = llr.copy()
-        self.ch_llrs.append((source + '_CH', llr))
-        llr = llr0.copy()
-        llr[:29] = -5
-        llr[26] = 5
-        llr[74:76] = -5
-        llr[76] = 5
-        llr[57:59] = -5
         self.ch_llrs.append((source + '_CQ', llr))
-        llr = llr0.copy()
-        llr[58] = -5
-        llr[59:65] = 5
-        llr[65] = -5
-        llr[69] = 5
-        llr[70] = -5
-        llr[74:76] = -5
-        self.ch_llrs.append((source + '_RR', llr))
-        
+
     def _decode_good91(self, pat_llr):
         self.decode_result, self.bits77_int = crc_unpack91(pat_llr[1][:91])
         if self.decode_result:
@@ -162,11 +142,11 @@ class Candidate:
             self.bits77_int = output
             self.decode_notes = notes
 
-    def _decode_osd(self, pat_llr, maxord):
+    def _decode_osd(self, pat_llr):
         if not np.isnan(np.sum(pat_llr[1])):
-            self.decode_result, self.bits77_int, osd_order_success = osd(pat_llr[1])
+            self.decode_result, self.bits77_int = osd(pat_llr[1])
             if self.decode_result:
-                self.decode_notes = f"{pat_llr[0]}_OSD({osd_order_success})"
+                self.decode_notes = f"{pat_llr[0]}_OSD"
             
     def _power_to_llr(self, power_grid):
         p = power_grid
@@ -229,10 +209,6 @@ class Candidate:
                     self._set_AP('fine', llr)
                     return
         self.decode_result = 'stop'
-
-
- #       with open('tweaks.txt','a') as f:
- #           f.write(f"{idf}, {idt}\n")
 
     def _count_costas_maxima(self):
         costas_symbol_grid = self.symbol_grid[COSTAS_SYMB_IDXS, :]
@@ -417,6 +393,7 @@ class Receiver():
         search_grid_ptr_prev = 0
         cycle_searched = False
         to_decode = []
+        search_f_idxs = range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 1)
         while True:
             time_utils.sleep(0.1)
 
@@ -439,15 +416,13 @@ class Receiver():
 
             # if cycle not yet searched and search data available, search
             if not cycle_searched and self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle > self.search_start_hop:
-                hstart = self.audio_in.search_grid_ptr
-                tstart = time_utils.time()
-                time_utils.tlog(f"[Cycle manager] start search at hop {hstart} ({time_utils.cycle_time():6.2f}s)", verbose = True)
                 cyclestart_string = time_utils.cyclestart_string(time_utils.time())
+                odd_even = time_utils.odd_even()
+                tstart = time_utils.time()
+                new_candidates = self.search(cyclestart_string, odd_even, search_f_idxs)
+                time_utils.tlog(f"[Cycle manager] New spectrum searched in {time_utils.time() - tstart:6.2f}s -> {len(self.candidates)} candidates", verbose = True) 
+                cycle_searched = True
+
                 if len(to_decode):
                     time_utils.tlog(f"[Receiver] Warning - {len(to_decode)} candidates ran out of decoding time, ipass = {ipasses}", verbose = True)
-                search_f_idxs = range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 1)
-                odd_even = time_utils.odd_even()
-                self.candidates = self.search(cyclestart_string, odd_even, search_f_idxs)
-                cycle_searched = True
-                time_utils.tlog(f"[Cycle manager] New spectrum searched in {time_utils.time() - tstart:6.2f}s -> {len(self.candidates)} candidates", verbose = True) 
-
+                self.candidates = new_candidates

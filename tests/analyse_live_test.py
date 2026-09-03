@@ -58,8 +58,9 @@ def list_methods(file):
     print(f"{'Total GOOD91':>30s} {np.sum([cv[1] for cv in catvals if 'GOOD91' in cv[0]])}")
     print(f"{'Total LDPC':>30s} {np.sum([cv[1] for cv in catvals if 'LDPC' in cv[0] and not 'OSD' in cv[0]])}")
     print(f"{'Total OSD':>30s} {np.sum([cv[1] for cv in catvals if 'OSD' in cv[0]])}")
-    print(f"{'Total CH':>30s} {np.sum([cv[1] for cv in catvals if 'CH' in cv[0]])}")
-    print(f"{'Total CQ':>30s} {np.sum([cv[1] for cv in catvals if 'CQ' in cv[0]])}")
+    print(f"{'Total CH':>30s} {np.sum([cv[1] for cv in catvals if '_CH' in cv[0]])}")
+    print(f"{'Total CQ':>30s} {np.sum([cv[1] for cv in catvals if '_CQ' in cv[0]])}")
+    print(f"{'Total RR':>30s} {np.sum([cv[1] for cv in catvals if '_RR' in cv[0]])}")
     print(f"{'Total grid':>30s} {np.sum([cv[1] for cv in catvals if 'grid' in cv[0]])}")
     print(f"{'Total fine':>30s} {np.sum([cv[1] for cv in catvals if 'fine' in cv[0]])}")
 
