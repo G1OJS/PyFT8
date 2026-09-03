@@ -54,7 +54,7 @@ class Candidate:
         if (key not in duplicate_filter):
             duplicate_filter.add(key)
             o = self.origin
-            decode_notes = self.decode_notes
+            decode_notes = self.decode_notes + f" {self.ch_llr_sd:5.1f}"
             tsec, fHz = o['tsec'], o['fHz']
             their_snr = f"{self.snr:+03d}"
             all_txt_format = f"{o['cyclestart_string']} {their_snr} {(tsec-0.6):4.1f} {fHz:4.0f} ~ {self.msg_text}"
@@ -79,7 +79,7 @@ class Candidate:
 
             if self.ipass == 2:
                 for llr in self.ch_llrs:                    
-                    self._decode_ldpc(llr, 35, 5, False)
+                    self._decode_ldpc(llr, 35, 4, False)
                     if self.decode_result: break
 
             if self.ipass == 3:
@@ -99,26 +99,26 @@ class Candidate:
 
             if self.ipass == 6:
                 for llr in self.ch_llrs:
-                    self._decode_osd(llr, 2)
+                    self._decode_osd(llr)
                     if self.decode_result: break
 
             if self.ipass == 7:
                 for llr in self.ch_llrs:
-                    self._decode_ldpc(llr, 90, 20, True)
+                    self._decode_ldpc(llr, 90, 25, True)
                     if self.decode_result: break
-
+        
             if self.ipass == 8:
                 for llr in self.ch_ldpc_llrs:
-                    self._decode_osd(llr, 0)
+                    self._decode_osd(llr)
                     if self.decode_result: break
-
+        
             if self.ipass == 9:
                 self.decode_result = 'stop'
             
             self.ipass +=1
 
     def _set_AP(self, source, llr):
-        self.ch_llrs.append((source + '_CH', llr.copy()))
+        self.ch_llrs.append((source + "_CH", llr.copy()))
         llr[:29] = -5
         llr[26] = 5
         llr[74:76] = -5
@@ -126,26 +126,6 @@ class Candidate:
         llr[57:59] = -5
         self.ch_llrs.append((source + '_CQ', llr))
 
-
-    def _set_AP_3(self, source, llr):
-        llr0 = llr.copy()
-        self.ch_llrs.append((source + '_CH', llr))
-        llr = llr0.copy()
-        llr[:29] = -5
-        llr[26] = 5
-        llr[74:76] = -5
-        llr[76] = 5
-        llr[57:59] = -5
-        self.ch_llrs.append((source + '_CQ', llr))
-        llr = llr0.copy()
-        llr[58] = -5
-        llr[59:65] = 5
-        llr[65] = -5
-        llr[69] = 5
-        llr[70] = -5
-        llr[74:76] = -5
-        self.ch_llrs.append((source + '_RR', llr))
-        
     def _decode_good91(self, pat_llr):
         self.decode_result, self.bits77_int = crc_unpack91(pat_llr[1][:91])
         if self.decode_result:
@@ -156,18 +136,21 @@ class Candidate:
         notes = f"{pat_llr[0]}_LDPC({max_its})"
         if not self.decode_result:
             if save_llr and len(output) == 174:
-                self.ch_ldpc_llrs.append((notes, output))
+                if not np.isnan(np.sum(output)):
+                    self.ch_ldpc_llrs.append((notes, output))
         else:
             self.bits77_int = output
             self.decode_notes = notes
 
-    def _decode_osd(self, pat_llr, maxord):
-         self.decode_result, self.bits77_int, osd_order_success = osd(pat_llr[1])
-         if self.decode_result:
-            self.decode_notes = f"{pat_llr[0]}_OSD({osd_order_success})"
+    def _decode_osd(self, pat_llr):
+        if not np.isnan(np.sum(pat_llr[1])):
+            self.decode_result, self.bits77_int = osd(pat_llr[1])
+            if self.decode_result:
+                self.decode_notes = f"{pat_llr[0]}_OSD"
             
-    def _power_to_llr(self, power_grid):
-        p = power_grid
+    def _get_ch_llrs_from_grid(self):
+        p = self.payload_on_search_grid
+        self.snr = np.clip(int(np.max(p) - np.min(p) - 58), -24, 24)
         llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
         llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
         llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
@@ -175,17 +158,12 @@ class Candidate:
         mean = np.mean(llr)
         var = np.mean(llr*llr) - mean*mean
         self.ch_llr_sd = np.sqrt(var)
-        if self.ch_llr_sd < 0.5:
-            self.decode_result = 'stop'
-        else:
-            return 2.83 * llr / self.ch_llr_sd
-
-    def _get_ch_llrs_from_grid(self):
-        p = self.payload_on_search_grid
-        self.snr = np.clip(int(np.max(p) - np.min(p) - 58), -24, 24)
-        llr = self._power_to_llr(p) # called with dB not power
-        if llr is not None:
-            self._set_AP('grid', llr)
+        llr = 2.83 * llr / self.ch_llr_sd
+        if not np.isnan(np.sum(llr)):
+            if self.ch_llr_sd > 7:
+                self._set_AP('grid', llr)
+                return
+        self.decode_result = 'stop'
 
     def _get_ch_llrs_from_spectrum(self):
         # first part similar to calls to sync8d except latter scores costas in time domain
@@ -197,11 +175,11 @@ class Candidate:
         fb, tb = fb0, tb0
         
         self._set_fb(fb)
-        refine = range(-10, 10, 2) # 32 steps = 1 symbol
+        refine = range(-10, 10, 4) # 32 steps = 1 symbol
         scores = [self._symbol_grid_score(tb + r) for r in refine]
         tb += refine[np.argmax(scores)]
         
-        refine = range(-45, 46, 4) # 6.25Hz = 100 steps, 2.5Hz = 40 steps
+        refine = range(-45, 46, 8) # 6.25Hz = 100 steps, 2.5Hz = 40 steps
         scores = []
         for r in refine:
             self._set_fb(fb + r)
@@ -218,13 +196,22 @@ class Candidate:
         idf, idt = fb - fb0, tb - tb0
         self.origin.update({'tsec': float(self.origin['tsec'] + idt / 200),
                             'fHz':float(self.origin['fHz'] + idf / 16) })
-        llr = self._power_to_llr(self.symbol_grid[PAYLOAD_SYMB_IDXS, :])
-        if llr is not None:
-            self._set_AP('fine', llr)
-
-
- #       with open('tweaks.txt','a') as f:
- #           f.write(f"{idf}, {idt}\n")
+        p = self.symbol_grid[PAYLOAD_SYMB_IDXS, :]
+        p = 20*np.log10(p)
+        llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
+        llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
+        llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
+        llr = np.column_stack((llra, llrb, llrc)).ravel()
+        mean = np.mean(llr)
+        var = np.mean(llr*llr) - mean*mean
+        self.ch_llr_sd = np.sqrt(var)
+        llr = 2.83 * llr / self.ch_llr_sd
+        if not np.isnan(np.sum(llr)):
+            self.ch_llr_sd = 20*np.log10(self.ch_llr_sd)
+            if self.ch_llr_sd > 7:
+                self._set_AP('fine', llr)
+                return
+        self.decode_result = 'stop'
 
     def _count_costas_maxima(self):
         costas_symbol_grid = self.symbol_grid[COSTAS_SYMB_IDXS, :]
@@ -311,8 +298,6 @@ class AudioIn:
         return {'data':data, 'df':df, 'dt':dt, 'sig_w':sig_w, 'sig_h':sig_h, 'pixels_per_cycle':pixels_per_cycle}
 
     def get_cycle_spectrum(self):
-        #if (time_utils.time() - self.last_get_cycle_spectrum) < 0.05:
-        #    return
         self.last_get_cycle_spectrum = time_utils.time()
         samps_offset = (T_CYC - time_utils.cycle_time()) * SAMP_RATE
         self.fft1_buffer[:self.samples_per_cycle] = np.roll(self.audio_buffer[-self.samples_per_cycle:], - samps_offset)
@@ -340,7 +325,7 @@ class AudioIn:
 #============== RECEIVER ===========================================================
         
 class Receiver():
-    def __init__(self, input_device_keywords, on_message, sync_score_min = 95, max_cands = 250,
+    def __init__(self, input_device_keywords, on_message, sync_score_min = 85, max_cands = 250,
                  search_freq_range = [100, 3000], search_timerange = [-2.5, 3.5], verbose = False):
         self.audio_in = AudioIn(search_freq_range, input_device_keywords)
         self.on_message = on_message
@@ -409,6 +394,7 @@ class Receiver():
         search_grid_ptr_prev = 0
         cycle_searched = False
         to_decode = []
+        search_f_idxs = range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 1)
         while True:
             time_utils.sleep(0.1)
 
@@ -431,15 +417,13 @@ class Receiver():
 
             # if cycle not yet searched and search data available, search
             if not cycle_searched and self.audio_in.search_grid_ptr % self.audio_in.search_hops_per_cycle > self.search_start_hop:
-                hstart = self.audio_in.search_grid_ptr
-                tstart = time_utils.time()
-                time_utils.tlog(f"[Cycle manager] start search at hop {hstart} ({time_utils.cycle_time():6.2f}s)", verbose = True)
                 cyclestart_string = time_utils.cyclestart_string(time_utils.time())
+                odd_even = time_utils.odd_even()
+                tstart = time_utils.time()
+                new_candidates = self.search(cyclestart_string, odd_even, search_f_idxs)
+                time_utils.tlog(f"[Cycle manager] New spectrum searched in {time_utils.time() - tstart:6.2f}s -> {len(new_candidates)} candidates", verbose = True) 
+                cycle_searched = True
+
                 if len(to_decode):
                     time_utils.tlog(f"[Receiver] Warning - {len(to_decode)} candidates ran out of decoding time, ipass = {ipasses}", verbose = True)
-                search_f_idxs = range(self.audio_in.search_f0_idx_range[0], self.audio_in.search_f0_idx_range[1], 1)
-                odd_even = time_utils.odd_even()
-                self.candidates = self.search(cyclestart_string, odd_even, search_f_idxs)
-                cycle_searched = True
-                time_utils.tlog(f"[Cycle manager] New spectrum searched in {time_utils.time() - tstart:6.2f}s -> {len(self.candidates)} candidates", verbose = True) 
-
+                self.candidates = new_candidates

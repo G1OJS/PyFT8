@@ -40,7 +40,7 @@ def list_methods(file):
     def sortorder(cv):
         v = 0
         if 'grid' in cv[0]: v += 10000
-        if 'NoAP' in cv[0]: v +=  9000
+        if 'CH' in cv[0]: v +=  9000
         if 'CQ' in cv[0]: v +=  8000
         if 'LDPC_OSD' in cv[0]: v -= 100000
         v += cv[1]
@@ -55,6 +55,14 @@ def list_methods(file):
     for l in catvals:
         print(f"{l[0]:30s} {l[1]:>3d}")
     print(f"{'Total':>30s} {len(lines)}")
+    print(f"{'Total GOOD91':>30s} {np.sum([cv[1] for cv in catvals if 'GOOD91' in cv[0]])}")
+    print(f"{'Total LDPC':>30s} {np.sum([cv[1] for cv in catvals if 'LDPC' in cv[0] and not 'OSD' in cv[0]])}")
+    print(f"{'Total OSD':>30s} {np.sum([cv[1] for cv in catvals if 'OSD' in cv[0]])}")
+    print(f"{'Total CH':>30s} {np.sum([cv[1] for cv in catvals if '_CH' in cv[0]])}")
+    print(f"{'Total CQ':>30s} {np.sum([cv[1] for cv in catvals if '_CQ' in cv[0]])}")
+    print(f"{'Total RR':>30s} {np.sum([cv[1] for cv in catvals if '_RR' in cv[0]])}")
+    print(f"{'Total grid':>30s} {np.sum([cv[1] for cv in catvals if 'grid' in cv[0]])}")
+    print(f"{'Total fine':>30s} {np.sum([cv[1] for cv in catvals if 'fine' in cv[0]])}")
 
 
 
