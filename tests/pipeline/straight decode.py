@@ -1,6 +1,6 @@
 import numpy as np
 import wave
-from PyFT8.decoders import ldpc_decode, osd_012, crc_unpack91
+from PyFT8.decoders import ldpc_decode, osd, crc_unpack91
 
 import win32api,win32process
 win32process.SetPriorityClass(win32api.GetCurrentProcess(), win32process.HIGH_PRIORITY_CLASS)
@@ -11,13 +11,41 @@ N_SYMS = 79
 T_CYC = 15
 PAYLOAD_SYMB_IDXS = list(range(7, 36)) + list(range(43, 72))
 
-def dB_to_llr(payload_dB_grid):
-    p = payload_dB_grid 
-    snr = np.clip(int(np.max(p) - np.min(p) - 58), -24, 24)
-    llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
-    llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
-    llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
-    llr = np.column_stack((llra, llrb, llrc)).ravel()
+def _z_to_llr(z):
+    llr = []
+    for sym_idx in PAYLOAD_SYMB_IDXS:
+        GRAY = [0,1,3,2,5,6,4,7]
+        s = np.abs(z[sym_idx, GRAY])
+        bl1 = np.max(s[[1,3,5,7]]) - np.max(s[[0,2,4,6]])
+        bl2 = np.max(s[[2,3,6,7]]) - np.max(s[[0,1,4,5]])
+        bl3 = np.max(s[[4,5,6,7]]) - np.max(s[[0,1,2,3]])
+        llr.append(bl3)
+        llr.append(bl2)
+        llr.append(bl1) 
+    return np.array(llr)
+
+def _z_to_llr_3(z):
+    llr = np.zeros(174)
+    GRAY = [0,1,3,2,5,6,4,7]
+    zg = z[:,GRAY]
+    s512 = np.zeros(512)
+    for payload_block in range(2):
+        for sym_rel_idx in range(0,29,3):
+            sym_abs_idx = sym_rel_idx + [7, 43][payload_block]
+            for i in range(512):
+                i2, i1, i0 = i & 7, (i & 63) // 8, i//64
+                z3 = np.sum([zg[sym_abs_idx,i0],zg[sym_abs_idx + 1,i1],zg[sym_abs_idx +2,i2]])
+                s512[i] = np.abs(z3)**2
+            bg = sym_rel_idx * 3 + 87 * payload_block
+            #print(sym_rel_idx, sym_abs_idx, bg, bg + 9)
+            for b in range(9):
+                bit_is_1 = ((np.arange(512) >> (8-b)) & 1) == 1
+                bit_is_0 = ((np.arange(512) >> (8-b)) & 1) == 0
+                if bg + b < 174:
+                    llr[bg + b] = np.max(s512[bit_is_1]) - np.max(s512[bit_is_0])
+    return llr
+
+def scale_llr(llr):
     mean = np.mean(llr)
     var = np.mean(llr*llr) - mean*mean
     llr_sd = np.sqrt(var)
@@ -67,20 +95,30 @@ all_audio_spectrum = np.fft.fft(samples)
 
 import matplotlib.pyplot as plt
 fig, ax = plt.subplots(figsize = (12,5))
-#origin = {'f0':1266.5, 't0':1.6 + 0.5}
-origin = {'f0':1262, 't0':0.9 + 0.5}
+origin = {'f0':763, 't0':1.0 + 0.5}
+#origin = {'f0':1262, 't0':0.9 + 0.5}
 
 candidate_tf_zgrid = get_candidate_tfgrid(all_audio_spectrum, origin)
-dB = np.log10(np.abs(candidate_tf_zgrid))
-llr = dB_to_llr(dB[PAYLOAD_SYMB_IDXS,:])
-res_osd = osd_012(llr, singleflips = 45, doubleflips = 25)
+llr = _z_to_llr(candidate_tf_zgrid)
+llr = scale_llr(llr)
+ax.plot(llr)
+res_osd = osd(llr)
 res_ldpc = ldpc_decode(llr, 900, 100)
-print(f"{res_osd} {res_ldpc[0]}")
+print(f"{res_osd[0]} {res_ldpc[0]}")
 
-dB = np.clip(dB, np.max(dB)-30, None)
+llr = _z_to_llr_3(candidate_tf_zgrid)
+llr = scale_llr(llr)
+ax.plot(llr)
+res_osd = osd(llr)
+res_ldpc = ldpc_decode(llr, 900, 100)
 
-im = ax.imshow(dB, origin = 'lower')
-im.set_data(dB)
+print(f"{res_osd[0]} {res_ldpc[0]}")
+
+#dB = 20*np.log10(np.abs(candidate_tf_zgrid))
+#dB = np.clip(dB, np.max(dB)-30, None)
+
+#im = ax.imshow(dB, origin = 'lower')
+#im.set_data(dB)
 
 plt.show()
 

@@ -81,7 +81,7 @@ class Candidate:
                 for llr in self.ch_llrs:                    
                     self._decode_ldpc(llr, 35, 4, False)
                     if self.decode_result: break
-
+            
             if self.ipass == 3:
                 self._get_ch_llrs_from_spectrum()
 
@@ -151,16 +151,16 @@ class Candidate:
     def _get_ch_llrs_from_grid(self):
         p = self.payload_on_search_grid
         self.snr = np.clip(int(np.max(p) - np.min(p) - 58), -24, 24)
-        llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
-        llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
-        llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
-        llr = np.column_stack((llra, llrb, llrc)).ravel()
-        mean = np.mean(llr)
-        var = np.mean(llr*llr) - mean*mean
-        self.ch_llr_sd = np.sqrt(var)
-        llr = 2.83 * llr / self.ch_llr_sd
-        if not np.isnan(np.sum(llr)):
-            if self.ch_llr_sd > 7:
+        if self.snr > -24:
+            llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
+            llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
+            llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
+            llr = np.column_stack((llra, llrb, llrc)).ravel()
+            mean = np.mean(llr)
+            var = np.mean(llr*llr) - mean*mean
+            self.ch_llr_sd = np.sqrt(var)
+            llr = 2.83 * llr / self.ch_llr_sd
+            if not np.isnan(np.sum(llr)):
                 self._set_AP('grid', llr)
                 return
         self.decode_result = 'stop'
@@ -188,7 +188,7 @@ class Candidate:
         self._set_fb(fb)
            
         self.symbol_grid = self._symbol_grid(tb)
-        
+
         if self._count_costas_maxima() < 7:
             self.decode_result = 'stop'
             return
@@ -196,25 +196,32 @@ class Candidate:
         idf, idt = fb - fb0, tb - tb0
         self.origin.update({'tsec': float(self.origin['tsec'] + idt / 200),
                             'fHz':float(self.origin['fHz'] + idf / 16) })
-        p = self.symbol_grid[PAYLOAD_SYMB_IDXS, :]
-        p = 20*np.log10(p)
-        llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
-        llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
-        llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
-        llr = np.column_stack((llra, llrb, llrc)).ravel()
-        mean = np.mean(llr)
-        var = np.mean(llr*llr) - mean*mean
-        self.ch_llr_sd = np.sqrt(var)
-        llr = 2.83 * llr / self.ch_llr_sd
-        if not np.isnan(np.sum(llr)):
-            self.ch_llr_sd = 20*np.log10(self.ch_llr_sd)
-            if self.ch_llr_sd > 7:
-                self._set_AP('fine', llr)
-                return
-        self.decode_result = 'stop'
+        good_llr = False
+
+        dB = 20*np.log10(np.abs(self.symbol_grid))
+        self.snr = np.clip(int(np.max(dB) - np.min(dB) - 58), -24, 24)
+
+        if self.snr > -24:
+            for iextract in range(2):
+                if iextract == 0:
+                    continue
+                if iextract == 0:
+                    llr = self._z_to_llr(self.symbol_grid)
+                else:
+                    llr = self._z_to_llr_3(self.symbol_grid)
+                mean = np.mean(llr)
+                var = np.mean(llr*llr) - mean*mean
+                self.ch_llr_sd = np.sqrt(var)
+                llr = 2.83 * llr / self.ch_llr_sd            
+                if not np.isnan(np.sum(llr)):
+                    good_llr = True
+                    self._set_AP(f"fine{iextract}", llr)
+                        
+        if not good_llr:
+            self.decode_result = 'stop'
 
     def _count_costas_maxima(self):
-        costas_symbol_grid = self.symbol_grid[COSTAS_SYMB_IDXS, :]
+        costas_symbol_grid = np.abs(self.symbol_grid[COSTAS_SYMB_IDXS, :])
         costas_delta_freqs = np.argmax(costas_symbol_grid, axis = 1) - (COSTAS * 3)
         return len([df for df in costas_delta_freqs if df == 0])
         
@@ -233,7 +240,7 @@ class Candidate:
         idx = np.clip(idx, 0, 3200-32)
         for j, i0 in enumerate(idx):
             CAND_GRID_79x32[j,:] = self.zsig[i0:i0+32]
-        return np.abs(np.fft.fft(CAND_GRID_79x32, axis=1)[:, :8])
+        return np.fft.fft(CAND_GRID_79x32, axis=1)[:, :8]
 
     def _symbol_grid_score(self, tb):
         idx = tb + (36+np.arange(7))*32
@@ -241,6 +248,36 @@ class Candidate:
             CAND_GRID_7x32[j,:] = self.zsig[i0:i0+32]
         costas_powers = np.abs(np.fft.fft(CAND_GRID_7x32, axis=1)[:, :7])
         return float(np.dot(costas_powers.ravel(), CSYNC49))
+
+    def _z_to_llr(self, z):
+        p = 20*np.log10(np.abs(z[PAYLOAD_SYMB_IDXS, :]))
+        llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
+        llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
+        llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
+        llr = np.column_stack((llra, llrb, llrc)).ravel()
+        return np.array(llr)
+
+    def _z_to_llr_3(self, z):
+        llr = np.zeros(174)
+        GRAY = [0,1,3,2,5,6,4,7]
+        zg = z[:,GRAY]
+        s512 = np.zeros(512)
+        for payload_block in range(2):
+            for sym_rel_idx in range(0,29,3):
+                sym_abs_idx = sym_rel_idx + [7, 43][payload_block]
+                for i in range(512):
+                    i2, i1, i0 = i & 7, (i & 63) // 8, i//64
+                    z3 = np.sum([zg[sym_abs_idx,i0],zg[sym_abs_idx + 1,i1],zg[sym_abs_idx +2,i2]])
+                    s512[i] = 20*np.log10(np.abs(z3))
+                bg = sym_rel_idx * 3 + 87 * payload_block
+                #print(sym_rel_idx, sym_abs_idx, bg, bg + 9)
+                for b in range(9):
+                    bit_is_1 = ((np.arange(512) >> (8-b)) & 1) == 1
+                    bit_is_0 = ((np.arange(512) >> (8-b)) & 1) == 0
+                    if bg + b < 174:
+                        llr[bg + b] = np.max(s512[bit_is_1]) - np.max(s512[bit_is_0])
+        return llr
+  
 
 #============== AUDIO IN ===========================================================
 class AudioIn:

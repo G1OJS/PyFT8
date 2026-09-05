@@ -60,7 +60,6 @@ def osd_ref(llr):
         else:
             candidates = cw[None, :]
 
-        # np.dot maybe?
         distances = np.sum(np.abs(llr)[None, :] * (candidates != chbits174), axis=1)
         best_idx = np.argmin(distances)
         if distances[best_idx] < current_best_distance:
