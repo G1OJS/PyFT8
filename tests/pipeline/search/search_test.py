@@ -1,5 +1,5 @@
 import numpy as np
-import wave
+import wave, time
 
 import win32api,win32process
 win32process.SetPriorityClass(win32api.GetCurrentProcess(), win32process.HIGH_PRIORITY_CLASS)
@@ -49,6 +49,7 @@ def get_data(file_number):
     return tfgrid, fdecs
 
 def get_f_costas1(tfgrid):
+    t0 = time.time()
     COSTAS = [3,1,4,0,6,5,2]
     test = np.ones_like(tfgrid)
     for i, t in enumerate(COSTAS):
@@ -56,17 +57,20 @@ def get_f_costas1(tfgrid):
         test /= np.max(test)
     test_grid = np.log10(test)
     test = np.max(test_grid, axis = 0)
-    return test, test_grid
+    return test, test_grid, time.time() - t0
 
 
 import matplotlib.pyplot as plt
 fig, axs = plt.subplots(3,1, figsize = (12,5), sharex = 'all', layout='constrained')
 
 
+
 tfgrid, fdecs = get_data(8)
-costas1, costas1_grid = get_f_costas1(tfgrid)
+
+costas1, costas1_grid, time_taken = get_f_costas1(tfgrid)
+print(time_taken)
 nfreqs = tfgrid.shape[1]
-freqs = 3.125 * np.arange(nfreqs)
+freqs = df * np.arange(nfreqs)
 
 dB = 20 * np.log10(tfgrid)
 im = axs[0].imshow(dB, origin = 'lower', extent = [0,freqs[-1], 0, 15*4/0.16])
@@ -76,7 +80,7 @@ im = axs[1].imshow(costas1_grid, origin = 'lower', extent = [0, freqs[-1], 0, 15
 axs[2].plot(freqs, costas1)
 axs[2].set_xlim(0,freqs[-1])
 for f in fdecs:
-    axs[2].axvline(f)
+    axs[2].axvline(f, color = 'grey', alpha = 0.4)
 
 plt.show()
 
