@@ -56,7 +56,7 @@ def get_f_costas1(tfgrid):
         test *=  np.roll(np.roll(tfgrid, -t * BPT, axis = 1),  -i*HPS, axis = 0)
         test /= np.max(test)
     test_grid = np.log10(test)
-    test = np.max(test_grid, axis = 0)
+    test = np.sum(test_grid, axis = 0)
     return test, test_grid, time.time() - t0
 
 
@@ -81,6 +81,11 @@ axs[2].plot(freqs, costas1)
 axs[2].set_xlim(0,freqs[-1])
 for f in fdecs:
     axs[2].axvline(f, color = 'grey', alpha = 0.4)
+
+from scipy.signal import find_peaks
+peaks, _ = find_peaks(costas1, distance = 16)
+for f in freqs[peaks]:
+    axs[2].axvline(f, color = 'red', alpha = 0.4)
 
 plt.show()
 
