@@ -39,6 +39,7 @@ def get_config(config_folder):
     return config
 
 def cli():
+    n_decodes = 0
 
     def console_print(text, color = 'white'):
         text = f"{time_utils.cycle_time():4.1f} {text}"
@@ -48,7 +49,7 @@ def cli():
             print(text)
 
     def process_message(m):
-        #return
+        nonlocal n_decodes
         if gui:
             gui.process_message(m)
 
@@ -59,8 +60,8 @@ def cli():
                 fHz = float(m['fHz'])
                 pskr_upload.add_report(their_call, int(1000000*fMHz + fHz),
                                            m['their_snr'], 'FT8', 1, int(time_utils.time()))
-
-        print(f"{m['all_txt_format']:50s} decoded@ {m['decode_completed']%15 :5.1f}s, dec = {m['decode_notes']}")
+        n_decodes += 1
+        print(f"{n_decodes:4d} {m['all_txt_format']:50s} decoded@ {m['decode_completed']%15 :5.1f}s, dec = {m['decode_notes']}")
     
     parser = argparse.ArgumentParser(prog='PyFT8rx', description = 'Command Line FT8 decoder')
     parser.add_argument('-c', '--config_folder', help = 'Location of config folder e.g. C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg', default = './') 
