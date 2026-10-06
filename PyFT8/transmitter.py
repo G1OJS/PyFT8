@@ -70,7 +70,7 @@ def symbols_to_complex_audio(symbols, f_base = 873):
     return wf
 
 def symbols_to_audio_bytes(symbols, fs = SAMP_RATE, f_base=873.0, amplitude = 0.5):
-    waveform = np.imag(symbols_to_complex_audio(symbols))
+    waveform = np.imag(symbols_to_complex_audio(symbols, f_base))
     waveform = waveform.astype(np.float32)
     waveform = amplitude * waveform / np.max(np.abs(waveform))
     waveform_bytes = np.int16(waveform * 32767).tobytes()
