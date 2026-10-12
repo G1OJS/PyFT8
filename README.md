@@ -7,6 +7,10 @@ PyFT8 is somewhat experimental, with a focus on demonstrating FT8 written in Pyt
 
 If you're interested in how this works, maybe have a look at [MiniPyFT8](https://github.com/G1OJS/MiniPyFT8) which puts all of the receive code in a single 300 line Python file.
 
+Based on my learning here, in October 2026 I started a new project which is a tidier version of PyFT8, called [PyFT8m](https://github.com/G1OJS/PyFT8m), which has:
+ - A Tkinter-based GUI
+ - A separable receiver and transmitter that communicate with the GUI via UDP only
+
 ## Features
  - Rx and Tx of standard messages with optional /P and /R
  - Tx uses GFSK waveform as defined in FT8 standard
