@@ -7,7 +7,7 @@ PyFT8 is somewhat experimental, with a focus on demonstrating FT8 written in Pyt
 
 If you're interested in how this works, maybe have a look at [MiniPyFT8](https://github.com/G1OJS/MiniPyFT8) which puts all of the receive code in a single 300 line Python file.
 <html>
- <table style = 'border: none; vertical-align:top;>
+ <table style = 'border: none; vertical-align:top;'>
   <tr><td>
    In October 2026 I started a new project which is a tidier version of PyFT8, called <a href='https://github.com/G1OJS/PyFT8m'>PyFT8m</a>, which has:
    <ul>
