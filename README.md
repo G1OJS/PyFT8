@@ -3,24 +3,7 @@
 
 This repository contains the source code for PyFT8, an all-Python open source FT8 transceiver that you can run as a basic GUI or from the command line to receive and transmit. Decoding performance (number of decodes) is very close (~90% of decodes) to that of WSJT-x 2.7.0 running in FAST mode. 
 
-PyFT8 is somewhat experimental, with a focus on demonstrating FT8 written in Python, but can be used as a standalone replacement for WSJT-x and other software.
-
-If you're interested in how this works, maybe have a look at [MiniPyFT8](https://github.com/G1OJS/MiniPyFT8) which puts all of the receive code in a single 300 line Python file.
-<html>
- <table style = 'border: none; vertical-align:top;'>
-  <tr><td>
-   In October 2026 I started a new project which is a tidier version of PyFT8, called <a href='https://github.com/G1OJS/PyFT8m'>PyFT8m</a>, which has:
-   <ul>
-    <li>A Tkinter-based GUI</li>
-    <li>A separable receiver and transmitter that communicate with the GUI via UDP only</li>
-   </ul> 
-  </td>
-   <td>
-    <img width="794" height="653" alt="673136630-e53ab21f-4e98-4dfa-b521-9fbeecc9917b" src="https://github.com/user-attachments/assets/50b3e35e-12bd-4b88-81a7-4318d821fedf" />
-   </td>
-  </tr>
- </table>
-</html>
+PyFT8 has a focus on demonstrating FT8 written in Python, but can be used as a standalone replacement for WSJT-x and other software.
 
 ## Features
  - Rx and Tx of standard messages with optional /P and /R
@@ -159,6 +142,25 @@ the publicly available WSJT-X source code and FT8 protocol descriptions. Origina
 and distributed under the GNU General Public License v3 (GPL-3.0), hence the use of GPL-3.0 in this repository.
 
 Also thanks to [Robert Morris](https://github.com/rtmrtmrtmrtm) for [basicft8(*1)](https://github.com/rtmrtmrtmrtm/basicft8) - the first code I properly read when I was wondering whether to start this journey. (*1 note: applies to FT8 pre V2)
+
+## My other FT8 repositories
+
+If you're interested in how this works, maybe have a look at [MiniPyFT8](https://github.com/G1OJS/MiniPyFT8) which puts all of the receive code in a single 300 line Python file.
+<html>
+ <table style = 'border: none; vertical-align:top;'>
+  <tr><td>
+   In October 2026 I started a new project which is a tidier version of PyFT8, called <a href='https://github.com/G1OJS/PyFT8m'>PyFT8m</a>, which has:
+   <ul>
+    <li>A Tkinter-based GUI</li>
+    <li>A separable receiver and transmitter that communicate with the GUI via UDP only</li>
+   </ul> 
+  </td>
+   <td>
+    <img width="794" height="653" alt="673136630-e53ab21f-4e98-4dfa-b521-9fbeecc9917b" src="https://github.com/user-attachments/assets/50b3e35e-12bd-4b88-81a7-4318d821fedf" />
+   </td>
+  </tr>
+ </table>
+</html>
 
 ## Useful resources:
 **The QEX paper**
