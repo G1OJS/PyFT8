@@ -7,9 +7,9 @@ PyFT8 is somewhat experimental, with a focus on demonstrating FT8 written in Pyt
 
 If you're interested in how this works, maybe have a look at [MiniPyFT8](https://github.com/G1OJS/MiniPyFT8) which puts all of the receive code in a single 300 line Python file.
 <html>
- <table>
+ <table style = 'border:none;'>
   <tr><td>
-   In October 2026 I started a new project which is a tidier version of PyFT8, called [PyFT8m](https://github.com/G1OJS/PyFT8m), which has:
+   In October 2026 I started a new project which is a tidier version of PyFT8, called <a href='https://github.com/G1OJS/PyFT8m'>PyFT8m</a>, which has:
    <ul>
     <li>A Tkinter-based GUI</li>
     <li>A separable receiver and transmitter that communicate with the GUI via UDP only</li>
