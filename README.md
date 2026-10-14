@@ -6,10 +6,21 @@ This repository contains the source code for PyFT8, an all-Python open source FT
 PyFT8 is somewhat experimental, with a focus on demonstrating FT8 written in Python, but can be used as a standalone replacement for WSJT-x and other software.
 
 If you're interested in how this works, maybe have a look at [MiniPyFT8](https://github.com/G1OJS/MiniPyFT8) which puts all of the receive code in a single 300 line Python file.
-
-Based on my learning here, in October 2026 I started a new project which is a tidier version of PyFT8, called [PyFT8m](https://github.com/G1OJS/PyFT8m), which has:
- - A Tkinter-based GUI
- - A separable receiver and transmitter that communicate with the GUI via UDP only
+<html>
+ <table>
+  <tr><td>
+   In October 2026 I started a new project which is a tidier version of PyFT8, called [PyFT8m](https://github.com/G1OJS/PyFT8m), which has:
+   <ul>
+    <li>A Tkinter-based GUI</li>
+    <li>A separable receiver and transmitter that communicate with the GUI via UDP only</li>
+   </ul> 
+  </td>
+   <td>
+    <img width="794" height="653" alt="673136630-e53ab21f-4e98-4dfa-b521-9fbeecc9917b" src="https://github.com/user-attachments/assets/50b3e35e-12bd-4b88-81a7-4318d821fedf" />
+   </td>
+  </tr>
+ </table>
+</html>
 
 ## Features
  - Rx and Tx of standard messages with optional /P and /R
