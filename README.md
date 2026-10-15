@@ -28,7 +28,8 @@ PyFT8 has a focus on demonstrating FT8 written in Python, but can be used as a s
  - Number of remote stations hearing your Tx, number of remote Txs that you're hearing, plus the same info for the 'best' station in your level 4 square
  - Data used for the above is cached to disk so is not lost when restarting the program
 
-<img width="983" height="1021" alt="screenshot" src="https://github.com/user-attachments/assets/591b4423-cf50-4be7-88c1-a9ba2347a326" />
+<img width="983" height="1021" alt="screenshot" src="https://github.com/user-attachments/assets/49447ae4-0d43-4428-95f9-8cdec8671d5a" />
+
 
 ## Motivation
 This started out as me thinking "How hard can it be, really?" after some frustration with Windows moving sound devices around and wanting to get a minimal decoder running that I can fully control. 
