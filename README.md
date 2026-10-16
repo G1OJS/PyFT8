@@ -41,7 +41,7 @@ pip install PyFT8
 ```
 pyft8gui
 ```
-You might have to open a new command window after pip install so that the command 'pyft8mgui' is recognised. I haven't written too much of a step by step quide here, as the project is really intended for people who want to poke around and maybe modify the code. But hopefully even if you're new to Python or coding, you can have a look and work out how it's done.
+You might have to open a new command window after pip install so that the command 'pyft8gui' is recognised. I haven't written too much of a step by step quide here, as the project is really intended for people who want to poke around and maybe modify the code. But hopefully even if you're new to Python or coding, you can have a look and work out how it's done.
 
 To control a rig's PTT and frequency, you'll need a copy of Hamlib's rigctl.exe.
 
