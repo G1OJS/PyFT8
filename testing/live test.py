@@ -3,7 +3,7 @@ win32process.SetPriorityClass(win32api.GetCurrentProcess(), win32process.HIGH_PR
 
 import numpy as np
 import time, pickle, threading, pyaudio, sys, os, socket, json
-from PyFT8m import Receiver
+from PyFT8 import Receiver
 
 finished_audio = False
 RCVR_SOCK = 2121
@@ -55,6 +55,8 @@ def monitor_decodes():
         rx_bytes, addres = sock.recvfrom(1024)
         if rx_bytes:
             msg_dict = json.loads(rx_bytes.decode('utf-8'))
+            if msg_dict['mtype'] == 'info':
+                print(msg_dict['info'])
             if msg_dict['mtype'] == 'decode':        
                 if msg_dict['cyclestart_string'] != py_cycle[0]:
                     baseline_decode_count = baseline_counts[py_cycle[1]] if py_cycle[1] < len(baseline_counts) else 0
@@ -108,7 +110,7 @@ def do_test(input_device_keywords, wav_range = None):
     soundout.start_wavs()
 
 wav_folder = "C:/Users/drala/Documents/Projects/GitHub/ft8_lib/test/wav/20m_busy"
-baseline_file = 'PyFT8m_baseline.txt'
-output_file = 'PyFT8m.txt'
+baseline_file = 'PyFT8_baseline.txt'
+output_file = 'PyFT8.txt'
 
 do_test("CABLE, Output", [8,28])

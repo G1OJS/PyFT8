@@ -275,12 +275,12 @@ def osd(llr_pack):
     chbits91[rowperm] = chbits91
 
     base_cw = ((chbits91 @ G) & 1)
-    """
-    bits91_int = bits_to_int(base_cw)
+    
+    bits91_int = bits_to_int(base_cw[:91])
     msg_tuple, bits77_int = crc_unpack91(bits91_int)
     if msg_tuple:
         return msg_tuple, f"OSD0{source}"
-    """
+    
     fliplist = rowperm[::-1]
     current_best_distance = 1e20
     cw_out91 = None
@@ -488,7 +488,7 @@ class Receiver:
                     c['decode_result'], c['decode_info'] = decode_raw91(p, itime)
                     self.check_and_send(c)
 
-        # ldpc, saving input and output llrs ONLY if score < 1.25 (limits OSD load to typically-useful range)
+        # ldpc, saving input and output llrs ONLY if score < 1.2 (limits OSD load to typically-useful range)
         for c in self.candidates:
             if not stop_decoding():
                 if not c['decode_result']:
@@ -497,7 +497,7 @@ class Receiver:
                     for itime in range(2):
                         p = self.audio_in.tfgrid[itime,:,:][c['p_idx']]
                         c['decode_result'], c['decode_info'], llr_out, ch_llr = decode(p, itime)
-                        if c['score'] < 1.25:
+                        if c['score'] < 1.2:
                             c['saved_llrs'].append((f"ch t={itime}", ch_llr))
                             if llr_out is not None:
                                 c['saved_llrs'].append((f"op t={itime}", llr_out))
