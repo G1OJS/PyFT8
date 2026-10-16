@@ -3,7 +3,7 @@ An FT8 Receiver, FT8 Transmitter, and GUI, written in three single & short Pytho
 
 Version 4.0.0 uses a tkinter-based GUI, a simplified receiver, and a simplified project structure. PyFT8 v3.9.0 has the Matplotlib-based GUI with decodes overlaid on the waterfall.
 
-<img width="794" height="653" alt="Capture" src="https://github.com/user-attachments/assets/e53ab21f-4e98-4dfa-b521-9fbeecc9917b" />
+<img width="901" height="669" alt="Capture" src="https://github.com/user-attachments/assets/28afcb1a-18cc-482a-b4c8-6c6359a7dde4" />
 
 ## Features
 As of version 4.0.0, the key features are:
