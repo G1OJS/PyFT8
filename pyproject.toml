@@ -1,22 +1,18 @@
 [project]
 name = "PyFT8"
-version = "3.9.0"
+version = "4.0.0"
 license = "GPL-3.0-or-later"
 
 authors = [
   { name="G1OJS", email="g1ojs@yahoo.com" },
 ]
-description = "FT8 Decoding and Encoding in Python with test/loopback code"
+description = "All-Python FT8 Transceiver with separable Transmitter and Receiver"
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
     "numpy>=1.24.0",
-    "scipy",
-    "matplotlib",
     "pyaudio",
-    "pyserial",
-    "paho-mqtt",
-    "psutil"
+    "paho-mqtt"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -26,12 +22,12 @@ classifiers = [
 keywords = ["ham radio", "radio", "FT8", "LDPC", "CPMFSK"]
 
 [project.urls]
-Homepage = "https://github.com/G1OJS/PyFT8"
-Issues = "https://github.com/G1OJS/PyFT8/issues"
+Homepage = "https://github.com/G1OJS/PyFT8m"
+Issues = "https://github.com/G1OJS/PyFT8m/issues"
 
 [tool.setuptools]
 packages = ["PyFT8"]
 license-files = ["LICENSE"]
 
 [project.scripts]
-pyft8 = "PyFT8.pyft8:cli"
+pyft8gui = "PyFT8.tk_gui:run"
