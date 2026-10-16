@@ -1,13 +1,15 @@
-# PyFT8m 
-An FT8 Receiver, FT8 Transmitter, and GUI, written in three single & short Python files plus a tiny udp_comms file. The Receiver and Transmitter can be run standalone.
+# PyFT8
+An FT8 Receiver, FT8 Transmitter, and GUI, written in three single & short Python files plus a tiny udp_comms file. The Receiver and Transmitter can be run standalone. 
 
-<img width="794" height="653" alt="Capture" src="https://github.com/user-attachments/assets/e53ab21f-4e98-4dfa-b521-9fbeecc9917b" />
+Version 4.0.0 uses a tkinter-based GUI, a simplified receiver, and a simplified project structure. [PyFT8 v3.9.1](https://github.com/G1OJS/PyFT8/releases/tag/PyPi_v3.9.1) has the Matplotlib-based GUI with decodes overlaid on the waterfall.
+
+<img width="901" height="669" alt="Capture" src="https://github.com/user-attachments/assets/28afcb1a-18cc-482a-b4c8-6c6359a7dde4" />
 
 ## Features
-As of version 1.1.1, the key features are:
+As of version 4.0.0, the key features are:
  * Written entirely in Python
  * Implements LDPC and OSD decoding
- * Demonstrated by a Tkinter GUI
+ * Tkinter GUI
  * Receiver and Transmitter can be used standalone
  * Internal connections are via UDP (so e.g. alternative Receivers / Transmitters could be easily swapped in)
  * Rx and Tx of standard messages with optional /P and /R
@@ -33,11 +35,11 @@ That's an FT8 transmitter / receiver *application* in about 1100 lines of Python
 ## Installation and use
 To use it as a 'turnkey' transceiver, just install the project via pip:
 ```
-pip install PyFT8m
+pip install PyFT8
 ```
 ... and then run the tk_gui either in a Python environment or by using the command: 
 ```
-pyft8mgui
+pyft8gui
 ```
 You might have to open a new command window after pip install so that the command 'pyft8mgui' is recognised. I haven't written too much of a step by step quide here, as the project is really intended for people who want to poke around and maybe modify the code. But hopefully even if you're new to Python or coding, you can have a look and work out how it's done.
 
@@ -46,7 +48,7 @@ To control a rig's PTT and frequency, you'll need a copy of Hamlib's rigctl.exe.
 ## Hacking it
 The transmitter and receiver may be run independently from the GUI, as they communicate only via UDP (see below). For example, to run the receiver from Python, 
 ```
-from PyFT8m import Receiver
+from PyFT8 import Receiver
 rx = Receiver(output_type = 'print', input_keywords = 'Mic, CODEC')
 ```
 Or of course copy the receiver.py file, add this line at the bottom (minus the import), and hack away.
