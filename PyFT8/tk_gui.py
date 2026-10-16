@@ -8,7 +8,7 @@ from PyFT8.receiver import Receiver
 from PyFT8.transmitter import Transmitter
 from PyFT8.udp_comms import UdpComms
 
-VERSION = "4.0.0"
+VERSION = "4.0.1"
 PORTS = {'gui_to_rx': 2121, 'rx_to_gui':2122, 'gui_to_tx': 2123, 'tx_to_gui': 2124}
 HEARING_ME_WINDOW_SECS = 300
 MAX_CYCLETIME_TX_START = 3
@@ -19,7 +19,7 @@ class HearingMe:
     def __init__(self, my_call, my_grid):
         self.hearing_me = []
         self.my_call = my_call
-        client_id = "PyFT8m_" + ''.join(random.choice('0123456789ABCDEF') for i in range(16))
+        client_id = "pyft8_" + ''.join(random.choice('0123456789ABCDEF') for i in range(16))
         mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id)
         mqttc._on_connect = lambda c,u,f,r,p: c.subscribe(f"pskr/filter/v2/+/FT8/+/+/{my_grid}/#")
         mqttc._on_message = lambda c,u,m: self._process_message(m)
@@ -261,7 +261,7 @@ class Gui:
         self.pskr_upload = None
         if self.config.has_section('pskreporter'):
             if self.config['pskreporter']['upload'] == 'Y':
-                self.pskr_upload = PSKR_upload(self.config['station']['call'], self.config['station']['grid'], "PyFT8m")
+                self.pskr_upload = PSKR_upload(self.config['station']['call'], self.config['station']['grid'], "pyft8")
         self.rig_base_command = None
         if self.config.has_section('rig_control'):
             cfg_keys = ['rigctl', 'model', 'port', 'baud_rate']
@@ -543,7 +543,7 @@ class Gui:
 
 def get_config(config_folder):
     config = configparser.ConfigParser()
-    ini_file = f"{config_folder}/PyFT8m.ini"
+    ini_file = f"{config_folder}/pyft8.ini"
     if not os.path.exists(ini_file):
         resp = input(f"No config file found at {ini_file}\nWould you like to create one (Y/N)? ")
         if resp.upper() !="Y":
@@ -558,10 +558,10 @@ def get_config(config_folder):
         config['rig_control'] = {'rigctl':'C:/Program Files/hamlib-w64-4.7.2/bin/rigctl.exe', 'port': 'COM4', 'baud_rate':9600, 'model':3070}
         config['soundcard'] = {'transmit':'Speak, CODEC', 'receive':'Mic, CODEC'}
         config['pskreporter'] = {'upload':'Y'}
-        config['logging'] = {'logfile': f"{config_folder}/PyFT8m.adi"}
+        config['logging'] = {'logfile': f"{config_folder}/pyft8.adi"}
         with open(ini_file, 'w') as f:
             config.write(f)
-        print(f"Wrote default config to {ini_file}. Please open and edit to add bands, frequencies and preferences and re-launch PyFT8m.")
+        print(f"Wrote default config to {ini_file}. Please open and edit to add bands, frequencies and preferences and re-launch pyft8.")
         sys.exit()
     #print(f"Reading config from {ini_file}")
     config.read(ini_file)

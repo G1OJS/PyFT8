@@ -23,7 +23,7 @@ class UdpComms:
         try:
             self.sock_listen.bind(('', self.ports['listen']))
         except:
-            print("Couldn't open upd socket - is PyFT8m already running?")
+            print("Couldn't open upd socket - is PyFT8 already running?")
             return
         threading.Thread(target = self._listen, daemon = True).start()
 
