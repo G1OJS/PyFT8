@@ -8,7 +8,7 @@ from PyFT8.receiver import Receiver
 from PyFT8.transmitter import Transmitter
 from PyFT8.udp_comms import UdpComms
 
-VERSION = "4.0.1"
+VERSION = "4.0.2"
 PORTS = {'gui_to_rx': 2121, 'rx_to_gui':2122, 'gui_to_tx': 2123, 'tx_to_gui': 2124}
 HEARING_ME_WINDOW_SECS = 300
 MAX_CYCLETIME_TX_START = 3
@@ -208,7 +208,7 @@ class Gui:
         self.mute_decodes_until = 0
         self._do_each_second()
         self._update_pskr_uploader()
-        self._update_pskr_uploader()
+        self._send_waterfall_row()
         self.qso_dict = {'cyclestart_string': '', 'fHz':'0', 'dt':'0', 'decode_info':'', 'msg_tuple':('','',''),
                          'call':self.config['station']['call'], 'grid':self.config['station']['grid'], 'my_snr':'-30',  
                          'their_call':'', 'their_grid':'', 'their_snr':'-30'}
@@ -261,7 +261,7 @@ class Gui:
         self.pskr_upload = None
         if self.config.has_section('pskreporter'):
             if self.config['pskreporter']['upload'] == 'Y':
-                self.pskr_upload = PSKR_upload(self.config['station']['call'], self.config['station']['grid'], "pyft8")
+                self.pskr_upload = PSKR_upload(self.config['station']['call'], self.config['station']['grid'], f"pyft8 v{VERSION}")
         self.rig_base_command = None
         if self.config.has_section('rig_control'):
             cfg_keys = ['rigctl', 'model', 'port', 'baud_rate']
@@ -485,7 +485,7 @@ class Gui:
             if self.running:
                 self.root.after(60000, self._update_pskr_uploader)
 
-    def _update_pskr_uploader(self):
+    def _send_waterfall_row(self):
         if self.waterfall_vals is None:
             self.waterfall_vals = self.waterfall_new_vals
         if self.waterfall_vals is not None:
@@ -499,7 +499,7 @@ class Gui:
             xys = [x1, 100, x1, 0, x2, 0, x2, 100]
             self.waterfall_canvas.coords(self.waterfall_tx_freq, xys)
         if self.running:
-            self.waterfall_canvas.after(250, self._update_pskr_uploader)
+            self.waterfall_canvas.after(250, self._send_waterfall_row)
 
     def _call_cq(self):
         self._queue_transmit(f"CQ {self.config['station']['call']} {self.config['station']['grid']}")
