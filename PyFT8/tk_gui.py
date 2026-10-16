@@ -1,5 +1,5 @@
 import tkinter as tk
-import time, threading, struct, random, json, os, queue, sys, psutil, subprocess
+import time, threading, struct, random, json, os, queue, sys, subprocess
 import configparser
 import numpy as np
 import paho.mqtt.client as mqtt
