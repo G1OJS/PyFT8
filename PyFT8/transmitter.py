@@ -1,43 +1,13 @@
 import numpy as np
-import wave
-import sys
-import pyaudio
-from PyFT8.time_utils import time_utils
-from PyFT8.databases import hashes_for_calls, add_call_hashes
+import wave, sys, pyaudio, time, threading
+from PyFT8.udp_comms import UdpComms
 
 SAMP_RATE = 12000
 SYM_RATE  = 6.25
-
-#==================== SOUNDCARD OUT ================================================================
-
-class SoundcardOut:
-    def __init__(self, outputcard_keywords):
-        self.output_device_index = None
-        self.pya = pyaudio.PyAudio()
-        
-        if outputcard_keywords:
-            for dev_idx in range(self.pya.get_device_count()):
-                name = self.pya.get_device_info_by_index(dev_idx)['name']
-                match = True
-                for pattern in outputcard_keywords.replace(' ','').split(','):
-                    if (not pattern in name): match = False
-                if(match):
-                    self.output_device_index = dev_idx
-                    break
-            if not self.output_device_index:
-                time_utils.tlog(f"[Audio Out] No output audio device found matching {outputcard_keywords}", verbose = True)
-                sys.exit(1)
-                    
-    def transmit_audio_data_bytes(self, audio_data_bytes, tx_delay = 0.05):
-        stream = self.pya.open(format=pyaudio.paInt16, channels=1, rate = SAMP_RATE, output=True,
-                          output_device_index = self.output_device_index)
-        time_utils.sleep(tx_delay)
-        stream.write(audio_data_bytes)
-        stream.stop_stream()
-        stream.close()
+T_CYC = 15
+TX_T0 = 0.5
 
 #==================== WAVE GENERATION =====================================
-
 def gen_pulse(bt = 2.0):
     from scipy.special import erf
     samps_per_sym = int(SAMP_RATE / SYM_RATE)
@@ -85,7 +55,6 @@ def write_wav_file(audio_data_bytes, wave_output_file):
     wavefile.close()
 
 #==================== PACK ================================================================
-
 def ifindex(arr, val, default = None):
     return arr.index(val) if val in arr else default
 
@@ -93,6 +62,20 @@ def get_ft8_symbols(text):
     c1, c2, grid_rpt = text.split(' ')
     symbols, bits77 = pack_message(c1, c2, grid_rpt)
     return symbols
+
+def _calc_hash_12(call):
+    chars = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ/"
+    call_padded = (call + "          ")[:11]
+    m = 12
+    x = 0
+    for c in call_padded:
+        x = 38*x + chars.find(c)
+        x = x & ((int(1) << 64) - 1)
+    x = x & ((1 << 64) - 1)
+    x = x * 47055833459
+    x = x & ((1 << 64) - 1)
+    x = x >> (64 - m)
+    return x
 
 def pack_message(c1, c2, gr):
     c29a, c29b = pack_ft8_c29(c1), pack_ft8_c29(c2)
@@ -105,8 +88,7 @@ def pack_message(c1, c2, gr):
         bits77 = (c28a<<28+1+1+1+15+3) | (p1a<<28+1+1+15+3) | (c28b<<1+1+15+3) | (p1b <<1+15+3) | (ir<<15+3) | (g15<< 3) | (i3)
         symbols  = encode_bits77(bits77)
     if c29b and not c29a:
-        add_call_hashes(c1)
-        c28a, p1a = 2063592 + hashes_for_calls[c1][2][0], 0
+        c28a, p1a = 2063592 + _calc_hash_12(c1), 0
         c28b, p1b = c29b
         i3 = 2 if c2.endswith('/P') else 1
         n3 = 0    
@@ -114,7 +96,7 @@ def pack_message(c1, c2, gr):
         symbols  = encode_bits77(bits77)
     if c29a and not c29b:
         add_call_hashes(c2)
-        c28b, p1b = 2063592 + hashes_for_calls[c2][2][0], 0
+        c28b, p1b = 2063592 + _calc_hash_12(c2), 0
         c28a, p1a = c29a
         i3 = 2 if c1.endswith('/P') else 1
         n3 = 0    
@@ -139,7 +121,7 @@ def pack_ft8_c29(call):
             return t, 0
         p1 = 1 if call[-2:] in ('/P', '/R')  else 0
         call = call.replace('/P','').replace('/R','')
-        if len(call) <= 6:
+        if 3 <= len(call) <= 6:
             prepend_space = '' if call[2].isdigit() else ' '
             call = (prepend_space + call + '  ')[:6]
             a = ' 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -222,42 +204,70 @@ def append_crc(bits77_int):
     bits91_int = (bits77_int << 14) | bits14_int
     return bits91_int, bits14_int
 
-#==================== TESTS ================================================================
+class Transmitter:
+    def __init__(self, ports = None, output_keywords = None):
+        self.tx_freq = 777
+        self.output_keywords = output_keywords
 
-if __name__ == "__main__":
+        self.output_device_index = None
+        self.pya = pyaudio.PyAudio()
+        self.audio_bytes = None
+        self.tx_enabled = False
+        self.tx_message = None
+        self.stream = None
+        self.running = True
 
-    print("Test standard calls")
-    OK = True
-    msgs = [("G1OJS/P", "G1OJS/P", "IO90"),("WM3PEN","EA6VQ","+08"),("E67A/P","EA6VQ","R-08"),
-            ("CQ","CT7ARQ/P","JO03"), ("EC5A","9A5E","RR73"), ("EC5A/P","9A5E","73"), ("EC5A/MM","9A5E","73"),
-            ("CQ","CT7ARQ/R","JO03")]
-    for msg_tx in msgs:
-        symbols, bits77 = pack_message(*msg_tx)
-        from PyFT8.decoders import unpack
-        msg_rx = unpack(bits77)
-        print(f"\n{msg_tx}\n{msg_rx}")
-        OK = OK and (msg_tx == msg_rx) or 'implemented' in msg_rx
-        #print(''.join([str(s) for s in symbols]))
-    print("\nPASSED" if OK else "\nFAILED")
-
-    print("\nTest non-standard calls")
-    OK = True
-    msgs = [("SX200M","G1OJS","IO90"),
-            ("G1OJS","SX200M","CB21"),
-            ("CQ","SX200M","CB21")]
-    expected_symbols = ["3140652203407700750145313654745000003140652276403052651370607066332604363140652",
-                        "",
-                        "3140652564261623472565070174400214333140652601351750040163007617513443213140652"]
-    for i, msg_tx in enumerate(msgs):
-        symbols, bits77 = pack_message(*msg_tx)
-        from PyFT8.decoders import unpack
-        msg_rx = unpack(bits77)
-        print(f"\n{msg_tx}\n{msg_rx}")
-        OK = OK and (msg_tx == msg_rx) or 'implemented' in msg_rx
-        print(f"exp: {expected_symbols[i]}")
-        print(f"gen: {''.join([str(s) for s in symbols])}")
-    print("\nPASSED" if OK else "\nFAILED")
-
-    print("\nUnpack 'CQ DX G1OJS IO90'")
-    print(unpack(int('00000000000000000100011011110000010010000000000111000001100011111000010010001',2)))
+        for dev_idx in range(self.pya.get_device_count()):
+            name = self.pya.get_device_info_by_index(dev_idx)['name']
+            match = True
+            for pattern in output_keywords.replace(' ','').split(','):
+                if (not pattern in name): match = False
+            if(match):
+                self.output_device_index = dev_idx
+                break
+            
+        self.udp_comms = UdpComms(ports, self.udp_received)
+        if self.output_device_index:
+            self.udp_comms.udp_send_dict({'mtype':'info', 'info':'Transmitter starting'})
+            self.udp_comms.udp_send_dict({'mtype':'STATUS', 'from':'transmitter', 'value':'OK'})
+            threading.Thread(target = self.transmit_daemon, daemon = True).start()
+        else:
+            info = f"[Transmitter] No output audio device found matching {output_keywords}"
+            self.udp_comms.udp_send_dict({'mtype':'info', 'info':info})
+            self.running = False
         
+    def udp_received(self, msg_dict):
+       # print(msg_dict)
+        if msg_dict['mtype'] == 'shutdown':
+            self.running = False
+        if msg_dict['mtype'] == 'set_tx_Hz':
+            self.tx_freq = int(msg_dict['value'])
+            #print(f"[Transmitter] Set tx freq to {self.tx_freq}Hz")
+        if msg_dict['mtype'] == 'generate_tx_audio':
+            self.tx_message = msg_dict['message']
+            if len(self.tx_message.split(' ')) == 3:
+                print(f"[Transmitter] Transmit audio generated for '{self.tx_message}'")
+                symbols = get_ft8_symbols(self.tx_message)
+                self.audio_bytes = symbols_to_audio_bytes(symbols, f_base = self.tx_freq)
+        if msg_dict['mtype'] == 'send_tx_audio':
+            self.tx_enabled = True
+        if msg_dict['mtype'] == 'stop_tx_audio':
+           # print(f"[Transmitter] Stop transmit audio")
+            self.tx_enabled = False
+            # can't actually cancel the audio from a different thread?
+        
+    def transmit_daemon(self):
+        while self.running:
+            time.sleep(0.1)
+            if self.tx_enabled:
+                if self.audio_bytes:
+                    print(f"[Transmitter] {time.time() % 60:5.1f} transmit '{self.tx_message}'")
+                    self.stream = self.pya.open(format=pyaudio.paInt16, channels=1, rate = SAMP_RATE, output=True,
+                                      output_device_index = self.output_device_index)
+                    self.stream.write(self.audio_bytes)
+                    self.stream.stop_stream()
+                    self.stream.close()
+                self.tx_enabled = False
+        self.udp_comms.udp_send_dict({'mtype':'info', 'info':'Transmitter is shut down'})
+
+

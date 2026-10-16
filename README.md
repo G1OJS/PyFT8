@@ -1,200 +1,69 @@
-# PyFT8 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/pyft8?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/pyft8) [![PyPI Downloads](https://static.pepy.tech/personalized-badge/pyft8?period=weekly&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads/wk)](https://pepy.tech/projects/pyft8) [PyPI link](https://pypi.org/project/PyFT8/)
-# All-Python FT8 Transceiver GUI / Command Line Modem
+# PyFT8m 
+An FT8 Receiver, FT8 Transmitter, and GUI, written in three single & short Python files plus a tiny udp_comms file. The Receiver and Transmitter can be run standalone.
 
-This repository contains the source code for PyFT8, an all-Python open source FT8 transceiver that you can run as a basic GUI or from the command line to receive and transmit. Decoding performance (number of decodes) is very close (~90% of decodes) to that of WSJT-x 2.7.0 running in FAST mode. 
-
-PyFT8 has a focus on demonstrating FT8 written in Python, but can be used as a standalone replacement for WSJT-x and other software.
+<img width="794" height="653" alt="Capture" src="https://github.com/user-attachments/assets/e53ab21f-4e98-4dfa-b521-9fbeecc9917b" />
 
 ## Features
- - Rx and Tx of standard messages with optional /P and /R
- - Tx uses GFSK waveform as defined in FT8 standard
- - RX of nonstandard calls plus hashed calls
- - Launches quickly (~2 seconds on my old Dell Optiplex 790)
- - Use with or without gui (receive and send messages via command line commands)
- - Automatically chooses clearest Tx frequency
- - Modern programming language throughout
- - Finds sound cards by keywords so follows them if windows moves them ...
- - Logs QSOs to ADIF file and all spots to WSJTX-style ALL.txt file
- - Uploads spots to pskreporter
- - Control rigs via Hamlib
+As of version 1.1.1, the key features are:
+ * Written entirely in Python
+ * Implements LDPC and OSD decoding
+ * Demonstrated by a Tkinter GUI
+ * Receiver and Transmitter can be used standalone
+ * Internal connections are via UDP (so e.g. alternative Receivers / Transmitters could be easily swapped in)
+ * Rx and Tx of standard messages with optional /P and /R
+ * Tx uses GFSK waveform as defined in FT8 standard
+ * RX of nonstandard calls plus hashed calls
+ * Launches quickly (~2 seconds on my old Dell Optiplex 790)
+ * Finds sound cards by keywords so follows them if e.g. Windows moves them ...
+ * Logs QSOs to user-specified ADIF file
+ * Uploads spots to pskreporter
+ * Controls rigs via Hamlib's rigctl.exe, which doesn't hog the rig's COM port(*)
+ * Click on the spectrum display to set Tx frequency
 
- The Gui shows:
- - Simultaneous views of odd and even cycles
- - Messages overlaid on waterfall signals that produce them
- - Worked-before info and fine grid locators / distance and bearing in the message boxes
- - List of stations hearing your transmissions on the selected band, alternating with list of stations you're hearing. On these lists, 'new' callsigns (first heard since program launch) are in white font.
- - Marker on message if 2nd call is hearing you
- - Band activity in your level 4 square live updated next to band select buttons
- - Number of remote stations hearing your Tx, number of remote Txs that you're hearing, plus the same info for the 'best' station in your level 4 square
- - Data used for the above is cached to disk so is not lost when restarting the program
+(*) Interactions with the rig are brief and infrequent (get/set frequency, set/unset PTT), and for my own purposes I prefer not having the Hamlib rigctld running, and having to check its run status and launch it if it's not running. In fact I'd prefer not to use Hamlib at all, and simply use a direct CAT command for the radio I'm using. I included Hamlib-style control so that people who don't have the same Icom rig as me can use this software.
 
-<img width="983" height="1021" alt="screenshot" src="https://github.com/user-attachments/assets/49447ae4-0d43-4428-95f9-8cdec8671d5a" />
+## Design philosophy
+This isn't meant to do anything 'better' than applications like WSJT-x and MSHV, but it illustrates what can be done in a very few lines of Python, and it is written to be free of bloat. Currently, the code comprises:
+ - Receiver ~ 300 lines, including LDPC and OSD decoding
+ - Transmitter ~ 300 lines
+ - Tkinter GUI ~ 500 lines
 
+That's an FT8 transmitter / receiver *application* in about 1100 lines of Python. The Receiver and Transmitter are implemented in single Python files (apart from common use of a small UDP class) and communicate with the GUI *only* via UDP. The point of doing this is to keep the interfaces here minimal, so that in theory it's easy to swap out either transmitter, receiver, or GUI and replace it with something written in any other language, subject to meeting / adapting the UDP commands reference below.
 
-## Motivation
-This started out as me thinking "How hard can it be, really?" after some frustration with Windows moving sound devices around and wanting to get a minimal decoder running that I can fully control. 
-
-I didn’t want to produce yet another port of the original Fortran / C into another language: instead I wanted to see how far I could get following audio -> spectrogram -> symbols -> bits -> error correction without resyncs and special treatments, writing my own code from scratch as far as possible. Also this has been, more than I expected, an exercise in writing Python ‘Pythonically’ for speed, which means absolutely not duplicating the big nested loops of Fortran and C. It also means writing code that is wide and short rather than thin and long, which suits my thinking style perfectly!
-
-## Installation
-If you want to install this software without getting into the code, you can install from PyPI using pip install, using
-
+## Installation and use
+To use it as a 'turnkey' transceiver, just install the project via pip:
 ```
-pip install PyFT8
+pip install PyFT8m
 ```
-
-Once installed, you can use the following commands to run it. Otherwise, please download or browse the code, or fork the repo and play with it! If you do fork it, please check back here as I'm constantly (as of April 2026) rewriting and improving.
-
-The use cases below are the ones held in the test cases at the bottom of the main pyft8.py file. Where a config folder and .ini file is required, if you leave off the '-c {folder}' option, you'll be asked if you want to create a .ini file in the current directory.
-
-|Usage | Command example| Notes |
-|----------------------|----------------------|----------------------|
-|Full GUI without Tx | pyft8 -i "Keyword1, Keyword2" -c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg| Keywords identify the input sound device - partial match is fine, e.g. "Mic, CODEC"|
-|Rx only without GUI | pyft8 -i "Keyword1, Keyword2" -c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg| Keywords identify the input sound device - partial match is fine, e.g. "Mic, CODEC"|
-|Full GUI with Tx| pyft8 -i "Keyword1, Keyword2" -o "Keyword1, Keyword2" -c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg| Keywords identify the input (-i) and output (-o) sound devices.|
-|Parse an 'ALL.txt' file in the specified config folder, save as json files, and exit| pyft8 -c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg -a||
-| Command line transmit | pyft8 -o "Keyword1, Keyword2" -m "CQ G1OJS IO90" -c C:/Users/drala/Documents/Projects/GitHub/G1OJS/PyFT8_cfg| Tx on next cycle. Config file is required to specify the rig control method. |
-| Command line create a wav file | pyft8 -w "Mywav.wav" -m "CQ G1OJS IO90"| No config folder / .ini file required |
-
-### Rig control 
-I designed PyFT8 to be minimal as far as possible, and it needs very limited control of the rig in order to transmit. However, whilst previous versions used direct CAT control and Hamlib as a fallback, Version 3.0.0 moves to Hamlib as the only interface.
-
-## Customising
-Even if you don't want to edit the code, there's quite a bit that you can change in the .ini file. I haven't written a user guide yet, so here's my own .ini file for reference. You'll note that my instance of rigctld is in C:/WSJT/wsjtx/bin/rigctld-wsjtx, but any rigctld should also work. PyFT8 launches this if it's not already running (to be precise, it launches it if it can't open a socket on localhost:4532).
-
+... and then run the tk_gui either in a Python environment or by using the command: 
 ```
-[station]
-call = G1OJS
-grid = IO******
-[gui]
-loc = km_deg
-wb = Y
-[hamlib_rig]
-rigctld = C:/WSJT/wsjtx/bin/rigctld-wsjtx
-port = COM4
-baud_rate = 9600
-model = 3070
-[pskreporter]
-upload = Y
-[bands]
-160m = 1.840
-80m = 3.573
-60m = 5.357
-40m = 7.074
-20m = 14.074
-15m = 21.074
-10m = 28.074
-6m = 50.313
-2m = 144.174
+pyft8mgui
 ```
+You might have to open a new command window after pip install so that the command 'pyft8mgui' is recognised. I haven't written too much of a step by step quide here, as the project is really intended for people who want to poke around and maybe modify the code. But hopefully even if you're new to Python or coding, you can have a look and work out how it's done.
 
-## Performance Compared with WSJT-x
+To control a rig's PTT and frequency, you'll need a copy of Hamlib's rigctl.exe.
 
-The image below shows the number of decodes from PyFT8, WSJT-x V2.7.0 running in NORM mode, using 5 minutes of busy 20m audio taken from the files used to test ft8_lib. On this dataset, WSJT-x performs almost the same on DEEP mode as it does on NORM, so the latter has been left off. Also, using AP with DEEP mode causes WSJT-x to be starved of CPU on my old PC (that's my theory), resulting in some cycles with hardly any decodes. PyFT8 gets about 89% of the decodes that WSJT-x gets on FAST mode, and about 77% of those it gets on DEEP mode.
+## Hacking it
+The transmitter and receiver may be run independently from the GUI, as they communicate only via UDP (see below). For example, to run the receiver from Python, 
+```
+from PyFT8m import Receiver
+rx = Receiver(output_type = 'print', input_keywords = 'Mic, CODEC')
+```
+Or of course copy the receiver.py file, add this line at the bottom (minus the import), and hack away.
 
-<img width="900" height="900" alt="decode_times" src="https://github.com/user-attachments/assets/6bdc3d97-5747-41d6-9c89-033f898102f2" />
+### UDP messages
+The following shows the main points of the way that the UDP messages are constructed - please see the code for the absolute reference.
+1. All UDP messages apart from those sent to pskreporter.info or the waterfall data sent from the receiver to the GUI, are Python dictionaries serialised with JSON and encoded to bytes.
+2. All dictionaries start with a key called 'mtype' meaning 'messsage type'. The main ones are 'decode' (indicating that the dictionary contains various entries from a decoded message), 'shutdown', 'waterfall', 'rollover', 'test_info', 'set_tx_Hz', 'generate_tx_audio', 'send_tx_audio', 'stop_tx_audio'.
 
-
-## Decoding approach
-The approach to decoding, as at v3.7.0, is as follows.
-
- - As audio arrives
-    - FFT to a spectrum 4 times per symbol duration & assemble a time-frequency grid with 2 bins per tone.
-    - Collect all audio samples for later full cycle FFT
- - Search the time frequency grid for candidates based on Costas array sync score (using middle Costas block)
- - Send candidates for decode using symbol & tone points drawn directly from the search grid to get early decodes using limited LDPC cycles.
-
-This often decodes around three quarters of the candidates decoded by WSJT-x, with the steps below getting most of the rest:
-
- - For candidates that haven't decoded:
-     - FFT the full cycle audio, downsample to 200 samples per second & shift the signal to f = 0
-     - Explore fine time and frequency offsets to maximise the Costas sync score
-     - Check for bad candidates (count maxima of Costas tones)
-     - Extract the LLR & wait for decoder to pick up the candidate
- - For candidates awaiting decode from above:
-     - Try more extensive LDPC
-     - Try several 'A Priori' masks and input to more LDPC attempts, recording the output LLR on failures
-     - Try Ordered Statistics Decoding on the base LLR
-     - Try Ordered Statistics Decoding on the LLRs output from the AP+LDPC runs above
-
-## Limitations
-PyFT8 doesn't decode / encode *all* message types. The table below shows which are handled.
-
-|i3.n3|Known as|Rx|Tx|notes|
-|------|--------|----|----|-----|
-|0.0|Free Text  |   |   | |
-|0.1|DXpedition   |   |   | Call1 RR73; Call2 +07| 
-|0.3|Field Day  |   |   |  |
-|0.4|Field Day  |   |   |  |
-|0.5|Telemetry  |   |   |  |
-|1|Std Msg  |Y| Y  |Standard <=6 char callsigns, can include /R  |
-|2|EU VHF  |Y|Y| Standard <=6 char callsigns,  can include /P |
-|3|RTTY RU   |   |   | |
-|4|NonStd Call   |Y|N| <=11 char callsigns + hashed call|
-|5|EU VHF  |   |   | |
+As the project grows, I might write a more formal spec for these messages.
 
 ## Acknowledgements
-This project implements a decoder for the FT8 digital mode.
-FT8 was developed by Joe Taylor, K1JT, Steve Franke, K9AN, and others as part of the WSJT-X project.
+This project implements a decoder for the FT8 digital mode. FT8 was developed by Joe Taylor, K1JT, Steve Franke, K9AN, and others as part of the WSJT-X project.
 Protocol details are based on information publicly described by the WSJT-X authors and in related open documentation.
 
 Some constants and tables (e.g. Costas synchronization sequence, LDPC structure, message packing scheme) are derived from 
 the publicly available WSJT-X source code and FT8 protocol descriptions. Original WSJT-X source is © the WSJT Development Group 
 and distributed under the GNU General Public License v3 (GPL-3.0), hence the use of GPL-3.0 in this repository.
 
-Also thanks to [Robert Morris](https://github.com/rtmrtmrtmrtm) for [basicft8(*1)](https://github.com/rtmrtmrtmrtm/basicft8) - the first code I properly read when I was wondering whether to start this journey. (*1 note: applies to FT8 pre V2)
 
-## My other FT8 repositories
-
-If you're interested in how this works, maybe have a look at [MiniPyFT8](https://github.com/G1OJS/MiniPyFT8) which puts all of the receive code in a single 300 line Python file.
-<html>
- <table style = 'border: none; vertical-align:top;'>
-  <tr><td>
-   In October 2026 I started a new project which is a tidier version of PyFT8, called <a href='https://github.com/G1OJS/PyFT8m'>PyFT8m</a>, which has:
-   <ul>
-    <li>A Tkinter-based GUI</li>
-    <li>A separable receiver and transmitter that communicate with the GUI via UDP only</li>
-   </ul> 
-  </td>
-   <td>
-    <img width="794" height="653" alt="673136630-e53ab21f-4e98-4dfa-b521-9fbeecc9917b" src="https://github.com/user-attachments/assets/50b3e35e-12bd-4b88-81a7-4318d821fedf" />
-   </td>
-  </tr>
- </table>
-</html>
-
-## Useful resources:
-**The QEX paper**
- - [The FT4 and FT8 Communication Protocols](https://wsjt.sourceforge.io/FT4_FT8_QEX.pdf)
- - [Ref 14 from the above paper at the Internet Archive](https://web.archive.org/web/20250409140104/https://www.arrl.org/files/file/QEX%20Binaries/2020/ft4_ft8_protocols.tgz)
-
-Note - section 9 of the QEX paper states that the above two WSJT-X resources are in the public domain, with some restrictions. All other WSJT-X resources including the WSJT-X source code are protected by copyright but licensed under Version 3 of the GNU General Public License (GPLv3).
-
-**WSJTx - focussed:**
- - [WSJT-X on Sourceforge](https://sourceforge.net/p/wsjt)
- - [W4KEK WSJT-x git mirror](https://www.repo.radio/w4kek/WSJT-X) (searchable)
-
-**Other FT8 decoding repos:**
-- [weakmon](https://github.com/rtmrtmrtmrtm/weakmon/)
-- [FT8_lib](https://github.com/kgoba/ft8_lib)
-- ['ft8modem - a command-line software modem for FT8'](https://www.kk5jy.net/ft8modem/) including [source code (C++ and Python)](https://www.kk5jy.net/ft8modem/Software/) (bottom of page)
-
-**FT8 decoding explorations / explanations**
- - [VK3JPK's FT8 notes](https://github.com/vk3jpk/ft8-notes) including comprehensive [Python source code](https://github.com/vk3jpk/ft8-notes/blob/master/ft8.py)
- - [G4JNT notes on LDPC coding process](http://www.g4jnt.com/WSJT-X_LdpcModesCodingProcess.pdf)
- - [Kristian Glass's 2025-05-06 Understanding the FT8 binary protocol](https://notes.doismellburning.co.uk/notebook/2025-05-06-understanding-the-ft8-binary-protocol/)
-
-**FT8 decoding in hardware**
- - [Optimizing the (Web-888) FT8 Skimmer Experience](https://www.rx-888.com/web/design/digi.html) (see also [RX-888 project](https://www.rx-888.com/) )
- - ['DX-FT8-Transceiver' source code](https://github.com/chillmf/DX-FT8-Transceiver-Source-Code_V2), the firmware part of the [DX-FT8 Transceiver project](https://github.com/WB2CBA/DX-FT8-FT8-MULTIBAND-TABLET-TRANSCEIVER)
-   
-**FT8 encode/decode simulators:**
- - [FT8Play - full details of message to bits etc](https://pengowray.github.io/ft8play/)
- - [Post about ft8play](https://groups.io/g/FT8-Digital-Mode/topic/i_made_a_thing_ft8play/107846361)
-
-**Browser-based decoder/encoders**
- - [ft8js by e04](https://e04.github.io/ft8js/example/browser/index.html) - source [github](https://github.com/e04/ft8js?tab=readme-ov-file), uses web-assembled version of [FT8_lib](https://github.com/kgoba/ft8_lib)
- - [ft8ts by e04](https://github.com/e04/ft8ts), - pure TypeScript implementation
- - [ChromeFT8 Browser Extension](https://github.com/Transwarp8/ChromeFT8), decoder adapted from [ft8js](https://e04.github.io/ft8js/example/browser/index.html)
-
-<script data-goatcounter="https://g1ojs-github.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
