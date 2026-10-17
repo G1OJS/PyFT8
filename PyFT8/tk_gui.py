@@ -241,7 +241,7 @@ class Gui:
         self.pskr_upload = None
         if self.config.has_section('pskreporter'):
             if self.config['pskreporter']['upload'] == 'Y':
-                self.pskr_upload = PSKR_upload(self.config['station']['call'], self.config['station']['grid'], f"pyft8 v{VERSION}")
+                self.pskr_upload = PSKR_upload(self.config['station']['call'], self.config['station']['grid'], f"PyFT8 v{VERSION}")
         self.rig_base_command = None
         if self.config.has_section('rig_control'):
             cfg_keys = ['rigctl', 'model', 'port', 'baud_rate']
