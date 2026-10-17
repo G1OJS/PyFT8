@@ -1,7 +1,9 @@
 # PyFT8
 An FT8 Receiver, FT8 Transmitter, and GUI, written in three single & short Python files plus a tiny udp_comms file. The Receiver and Transmitter can be run standalone. 
  
-Version 4.0.0 uses a tkinter-based GUI, a simplified receiver, and a simplified project structure. [PyFT8 v3.9.1](https://github.com/G1OJS/PyFT8/releases/tag/PyPi_v3.9.1) has the Matplotlib-based GUI with decodes overlaid on the waterfall.
+Version 4.0.0 uses a tkinter-based GUI, a simplified receiver, and a simplified project structure. 
+
+If you're looking for the Matplotlib-based GUI with decodes overlaid on the waterfall, that's available here: [PyFT8 v3.9.1](https://github.com/G1OJS/PyFT8/releases/tag/PyPi_v3.9.1).
 
 <img width="901" height="669" alt="Capture" src="https://github.com/user-attachments/assets/28afcb1a-18cc-482a-b4c8-6c6359a7dde4" />
 
