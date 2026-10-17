@@ -277,7 +277,6 @@ class Gui:
     def _command_rig(self, cmd):
         if self.rig_base_command:
             cmd_out = self.rig_base_command + cmd
-            print(cmd_out)
             proc = subprocess.run(cmd_out, creationflags = subprocess.CREATE_NO_WINDOW, capture_output = True)
             resp = proc.stdout.decode()
             return resp.strip()
