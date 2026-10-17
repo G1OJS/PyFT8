@@ -277,6 +277,7 @@ class Gui:
     def _command_rig(self, cmd):
         if self.rig_base_command:
             cmd_out = self.rig_base_command + cmd
+            print(cmd_out)
             proc = subprocess.run(cmd_out, creationflags = subprocess.CREATE_NO_WINDOW, capture_output = True)
             resp = proc.stdout.decode()
             return resp.strip()
@@ -295,6 +296,9 @@ class Gui:
         self.band_changed = time.time()
         self._command_rig(f"F {band_tuple[1]}")
         self.decodes_text.delete(1.0, tk.END)
+
+    def _set_power(self, power):
+        self._command_rig(f"L RFPOWER {float(power)/100:8.6f}")
 
 #-----------------------------------------------------------------------------------------------------
 
@@ -349,7 +353,13 @@ class Gui:
             btn = tk.Button(bc, width = 10, text = band, font = font_btn, command = lambda band_tuple = band_tuple: self._set_band(band_tuple))
             btn.pack(side = 'top', anchor = 'n', pady = 1)
             self.buttons.append(btn)
-            
+
+        if self.config.has_section('power'):
+            for p, v in self.config['power'].items():
+                btn = tk.Button(bc, width = 10, text = p, font = font_btn, command = lambda v = v: self._set_power(v))
+                btn.pack(side = 'top', anchor = 'n', pady = 1)
+                self.buttons.append(btn)
+                
         self.waterfall_canvas = tk.Canvas(self.waterfall_container, height = 100, bg = '#909090')
         self.waterfall_canvas.pack(side = 'top', fill = 'both')
         self.waterfall_info_txt = self.waterfall_canvas.create_text(25,10, text='')
