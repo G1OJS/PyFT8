@@ -203,8 +203,14 @@ class Gui:
         self._make_layout()
         self._start()
 
+    def _monitor_udp(self):
+        if not self.udp_q.empty():
+            self._handle_udp_message(self.udp_q.get())
+        if self.running:
+            self.root.after(100, self._monitor_udp)
+
+#-----------------------------------------------------------------------------------------------------
     def _start(self):
-        self.hearing_me = HearingMe(self.config['station']['call'], self.config['station']['grid'])
         self.mute_decodes_until = 0
         self._do_each_second()
         self._update_pskr_uploader()
@@ -219,34 +225,6 @@ class Gui:
         self._get_band()
         self.root.mainloop()
 
-    def _command_rig(self, cmd):
-        if self.rig_base_command:
-            cmd_out = self.rig_base_command + cmd
-            proc = subprocess.run(cmd_out, creationflags = subprocess.CREATE_NO_WINDOW, capture_output = True)
-            resp = proc.stdout.decode()
-            return resp.strip()
-
-    def _get_band(self):
-        fHz = self._command_rig('f')
-        if fHz:
-            if fHz.isnumeric():
-                fHz = int(fHz)
-                matched_band_tuples = [bt for bt in self.band_tuples if abs(int(bt[1]) - fHz) < 10000]
-                if len(matched_band_tuples) == 1:
-                    self.band_tuple = matched_band_tuples[0]
-                
-    def _set_band(self, band_tuple):
-        self.band_tuple = band_tuple
-        self.band_changed = time.time()
-        self._command_rig(f"F {band_tuple[1]}")
-        self.decodes_text.delete(1.0, tk.END)
-
-    def _monitor_udp(self):
-        if not self.udp_q.empty():
-            self._handle_udp_message(self.udp_q.get())
-        if self.running:
-            self.root.after(100, self._monitor_udp)
-
     def _start_components(self):
         self.component_status = {}
         self.udp_q = queue.Queue()
@@ -258,6 +236,7 @@ class Gui:
         self.root.after(2000, self._check_components)
 
     def _start_internals(self):
+        self.hearing_me = HearingMe(self.config['station']['call'], self.config['station']['grid'])
         self.pskr_upload = None
         if self.config.has_section('pskreporter'):
             if self.config['pskreporter']['upload'] == 'Y':
@@ -291,6 +270,32 @@ class Gui:
         self.root.after(1000, self.root.destroy)
         sys.exit()
         exit()
+
+#-----------------------------------------------------------------------------------------------------
+
+    def _command_rig(self, cmd):
+        if self.rig_base_command:
+            cmd_out = self.rig_base_command + cmd
+            proc = subprocess.run(cmd_out, creationflags = subprocess.CREATE_NO_WINDOW, capture_output = True)
+            resp = proc.stdout.decode()
+            return resp.strip()
+
+    def _get_band(self):
+        fHz = self._command_rig('f')
+        if fHz:
+            if fHz.isnumeric():
+                fHz = int(fHz)
+                matched_band_tuples = [bt for bt in self.band_tuples if abs(int(bt[1]) - fHz) < 10000]
+                if len(matched_band_tuples) == 1:
+                    self.band_tuple = matched_band_tuples[0]
+                
+    def _set_band(self, band_tuple):
+        self.band_tuple = band_tuple
+        self.band_changed = time.time()
+        self._command_rig(f"F {band_tuple[1]}")
+        self.decodes_text.delete(1.0, tk.END)
+
+#-----------------------------------------------------------------------------------------------------
 
     def _make_layout(self):
         font_clk = ('calibri', 14, 'bold')
@@ -368,6 +373,8 @@ class Gui:
         self.decodes_text.bind('<Button-1>', self._row_click)
         self.scrollbar.config(command=self.decodes_text.yview)
         self.decodes_header_txt.config(text = self._format_display_text('SNR','dt','fHz','Message','Wkd', '@'))
+
+#-----------------------------------------------------------------------------------------------------
 
     def _format_display_text(self, SNR,dt,fHz,Message,Wkd, hm):
         return f" {SNR:<3s} {dt:<5s} {fHz:<7s} ~ {Message:<22s} {Wkd:<8s} {hm:<1s}"
@@ -540,6 +547,7 @@ class Gui:
                 pass
             self._set_footer("Transmit cancelled")
 
+#-----------------------------------------------------------------------------------------------------
 
 def get_config(config_folder):
     config = configparser.ConfigParser()
