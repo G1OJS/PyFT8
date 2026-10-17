@@ -8,7 +8,7 @@ from PyFT8.receiver import Receiver
 from PyFT8.transmitter import Transmitter
 from PyFT8.udp_comms import UdpComms
 
-VERSION = "4.0.2"
+VERSION = "4.0.3"
 PORTS = {'gui_to_rx': 2121, 'rx_to_gui':2122, 'gui_to_tx': 2123, 'tx_to_gui': 2124}
 HEARING_ME_WINDOW_SECS = 300
 MAX_CYCLETIME_TX_START = 3
@@ -221,6 +221,7 @@ class Gui:
         self.pending_start_tx_stream = None
         self.pending_ptt_on = None
         self.last_rx_time = 0
+        self.tx_cycle = None
         self._set_tx_freq(777)
         self._get_band()
         self.root.mainloop()
@@ -459,6 +460,7 @@ class Gui:
             if "73" in reply:
                 self.adif_log.log(self.band_tuple, self.qso_dict)
                 self._set_footer(f"Logged QSO with {their_call}")
+                self.tx_cycle = None
 
     def _set_waterfall_info(self, e):
         w = self.waterfall_canvas.winfo_width()
@@ -519,22 +521,30 @@ class Gui:
         if not message:
             message = self.last_tx_message
         if message:
+            t_gen = time.time()
             generate_tx_audio(message)
-            ct = (time.time() + TX_T0) % T_CYC
-            if ct < MAX_CYCLETIME_TX_START or ct > 12:
+            ct = (t_gen + TX_T0) % T_CYC
+            if ct < MAX_CYCLETIME_TX_START or ct > 12 or message.startswith("CQ"):
                 delay = 0 if 0 < ct < MAX_CYCLETIME_TX_START else T_CYC - ct
-                self._set_footer(f"Transmit message = {message}")
-                self.pending_start_tx_stream = self.root.after(int(delay * 1000), start_tx_audio)
-                self.pending_ptt_on = self.root.after(int(delay * 1000), lambda: self._command_rig("T 1"))
-                self.root.after(int(delay * 1000 + 13000), lambda: self._command_rig("T 0"))
                 self.last_tx_message = message
+                cycle = int((t_gen + delay + 1) % (2 * T_CYC) / T_CYC)
+                if self.tx_cycle is None:
+                    self.tx_cycle = cycle
+                else:
+                    delay += (T_CYC if cycle != self.tx_cycle else 0)
+                self._set_footer(f"Transmit message = {message} ({['even','odd'][self.tx_cycle]})")
                 if self.config.has_section('gui'):
                     if self.config['gui']['decode OGM'] == "N":
                         self.mute_decodes_until = time.time() + 1.5 * T_CYC 
+                self.pending_start_tx_stream = self.root.after(int(delay * 1000), start_tx_audio)
+                self.pending_ptt_on = self.root.after(int(delay * 1000), lambda: self._command_rig("T 1"))
+                self.root.after(int(delay * 1000 + 13000), lambda: self._command_rig("T 0"))
+
 
     def _stop_transmit(self):
         self.udp_comms_txr.udp_send_dict({'mtype':'stop_tx_audio'})      
         self._command_rig("T 0")
+        self.tx_cycle = None
         if self.pending_ptt_on:
             try:
                 self.root.after_cancel(self.pending_ptt_on)
