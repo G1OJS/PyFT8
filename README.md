@@ -1,5 +1,5 @@
 # PyFT8
-An FT8 Receiver, FT8 Transmitter, and Tkinter GUI, written in three single & short Python files plus a tiny udp_comms file. The Receiver and Transmitter can be run standalone. Version 4 also introduces many simplifications.
+An FT8 Receiver, FT8 Transmitter, and Tkinter GUI, written in three single & short Python files plus a tiny udp_comms file. Version 4 is a rewrite introducting many simplifications, including a leaner receiver and Tkinter GUI replacing the Matplotlib-based GUI used previously. Also new in version 4, the Receiver and Transmitter can be run standalone and copied for use without the GUI if desired.
  
 If you're looking for the Matplotlib-based GUI with decodes overlaid on the waterfall, that's available here: [PyFT8 v3.9.1](https://github.com/G1OJS/PyFT8/releases/tag/PyPi_v3.9.1).
 
@@ -8,7 +8,8 @@ If you're looking for the Matplotlib-based GUI with decodes overlaid on the wate
 ## Features
 As of version 4.0.0, the key features are:
  * Written entirely in Python
- * Implements LDPC and OSD decoding
+ * Most decodes require only the 91 message bits
+ * LDPC and OSD decoding for the rest
  * Tkinter GUI
  * Receiver and Transmitter can be used standalone
  * Internal connections are via UDP (so e.g. alternative Receivers / Transmitters could be easily swapped in)
