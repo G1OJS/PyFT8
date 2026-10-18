@@ -170,18 +170,21 @@ def decode_raw91(p, itime, f0_idx, odd_even):
         for s in syms:
             bint = (bint << 3) | (s & 7)
         return bint
-    ch_syms = np.argmax(p[:31, :], axis = 1)
+    ch_syms_0 = np.argmax(p[:31, :], axis = 1)
+    ch_syms = ch_syms_0.copy()
     de_gray = [0,1,3,2,6,4,5,7]
     prev_decode_key = (f0_idx, odd_even)
     prev_syms = syms_previous.get(prev_decode_key)
     for j in range(3):
         AP = ''
         if j == 1:
-            ch_syms[:11] = 0
+            ch_syms = ch_syms_0.copy()
+            ch_syms[:10] = 0
             ch_syms[8] = 1
             AP = 'CQ'
         if j == 2 and prev_syms is not None:
-            ch_syms[:19] = prev_syms[:19]
+            ch_syms = ch_syms_0.copy()
+            ch_syms[9:20] = prev_syms[9:20]
             AP = 'AP'
         syms = [de_gray[s] for s in ch_syms]
         bits91_int = syms_to_int(syms) >> 2
@@ -206,7 +209,7 @@ def decode_ldpc(p, itime, f0_idx, odd_even):
     llr = np.column_stack((llra, llrb, llrc))
     llr = llr.ravel()
     llr = 2.55 * llr / (np.std(llr) + 1e-12)
-    llrs_saved = []
+    llrs_saved = [("ch", llr)]
     msg_tuple, llr_saved = ldpc(llr)
     if any(llr_saved):
         llrs_saved.append(("op", llr_saved))
@@ -219,20 +222,13 @@ def decode_ldpc(p, itime, f0_idx, odd_even):
         llr_prev = llrs_previous.get(prev_decode_key)
         if llr_prev is not None:
             llr[29:56] = llr_prev[29:56]
+            llrs_saved.append(("chAPtc", llr))
             msg_tuple, llr_saved = ldpc(llr)
             if any(llr_saved):
                 llrs_saved.append(("opAPtc", llr_saved))
             if msg_tuple:
                 llrs_previous[prev_decode_key] = llr
-                return msg_tuple, decode_info + " APtc", []
-            else:
-                llr[:56] = llr_prev[:56]
-                msg_tuple, llr_saved = ldpc(llr)
-                if any(llr_saved):
-                    llrs_saved.append(("opAPhtc", llr_saved))
-                if msg_tuple:
-                    llrs_previous[prev_decode_key] = llr
-                    return msg_tuple, decode_info + " APhtc", []          
+                return msg_tuple, decode_info + " APtc", []       
     return None, '', llrs_saved
 
 def bits_to_int(llr):

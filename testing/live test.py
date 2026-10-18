@@ -55,8 +55,8 @@ def monitor_decodes():
         rx_bytes, addres = sock.recvfrom(1024)
         if rx_bytes:
             msg_dict = json.loads(rx_bytes.decode('utf-8'))
-            if msg_dict['mtype'] == 'test_info':
-                print(msg_dict['info'])
+            #if msg_dict['mtype'] == 'test_info':
+            #    print(msg_dict['info'])
             if msg_dict['mtype'] == 'decode':        
                 if msg_dict['cyclestart_string'] != py_cycle[0]:
                     baseline_decode_count = baseline_counts[py_cycle[1]] if py_cycle[1] < len(baseline_counts) else 0
@@ -69,7 +69,7 @@ def monitor_decodes():
                 py_info  = f"{decode_count:03d}({diff:+03d}) {py_cycle[1]:03d} {py_times[-1]:7.2f} {txt}"
                 with open(output_file, 'a') as f:
                     f.write(f"{py_info}\n")
-                #print(py_info)
+                print(py_info)
             
 def do_test(input_device_keywords, wav_range = None):
     global t_start, py_cycle, baseline_counts, py_times
