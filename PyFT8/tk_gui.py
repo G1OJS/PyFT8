@@ -441,8 +441,10 @@ class Gui:
     def _row_click(self, e):
         curr = e.widget.index("current").split('.')[0]
         row_txt = e.widget.get(f"{curr}.0", f"{curr}.end")
-        msg_str = row_txt.split('|')[1].strip()
+        msg_str = row_txt.split('|')[1]
         msg_tuple = msg_str.split()
+        if len(msg_tuple) == 2:
+            msg_tuple = (msg_tuple[0], msg_tuple[1], '')
         if len(msg_tuple) == 4:
             msg_tuple = (f"{msg_tuple[0]} {msg_tuple[1]}", msg_tuple[2], msg_tuple[3])
         their_snr = row_txt.split()[0]
