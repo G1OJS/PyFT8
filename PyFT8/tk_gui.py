@@ -211,7 +211,6 @@ class Gui:
 
 #-----------------------------------------------------------------------------------------------------
     def _start(self):
-        self.mute_decodes_until = 0
         self._do_each_second()
         self._update_pskr_uploader()
         self._send_waterfall_row()
@@ -387,7 +386,7 @@ class Gui:
 #-----------------------------------------------------------------------------------------------------
 
     def _format_display_text(self, SNR,dt,fHz,Message,Wkd, hm):
-        return f" {SNR:<3s} {dt:<5s} {fHz:<7s} ~ {Message:<22s} {Wkd:<8s} {hm:<1s}"
+        return f" {SNR:<3s} {dt:<5s} {fHz:<7s} | {Message:<22s} | {Wkd:<8s} {hm:<1s}"
 
     def _set_footer(self, info, echo_to_print = False):
         self.footer_txt.config(text = info)
@@ -409,16 +408,16 @@ class Gui:
         if msg_dict['mtype'] == 'info':
             print(msg_dict['info'])
         if msg_dict['mtype'] == 'decode':
-            if time.time() > self.mute_decodes_until:
-                self._process_decode(msg_dict)
+            self._process_decode(msg_dict)
         elif msg_dict['mtype'] == 'waterfall':
             self.waterfall_new_vals = [int(v) for v in msg_dict['data'].split(',')]
 
     def _process_decode(self, msg_dict):
         self.last_rx_time = time.time()
         new_cycle = msg_dict['cyclestart_string'] != self.qso_dict['cyclestart_string']
-        if new_cycle and time.time() > self.mute_decodes_until:
-            self.decodes_text.delete(1.0, tk.END)
+        if new_cycle:
+            if not msg_dict['msg_tuple'][1] == self.qso_dict['call']:
+                self.decodes_text.delete(1.0, tk.END)
             self.qso_dict.update({'cyclestart_string': msg_dict['cyclestart_string']})
             self._set_footer('')
         if time.time() - self.band_changed > 10:
@@ -439,15 +438,16 @@ class Gui:
     def _row_click(self, e):
         curr = e.widget.index("current").split('.')[0]
         row_txt = e.widget.get(f"{curr}.0", f"{curr}.end")
-        if "~" in row_txt:
-            msg_str = row_txt.split('~')[1].strip()
-            msg_tuple = [s.replace(' ','') for s in msg_str.split()][:3]
-            their_snr = row_txt.split()[0]
-            self.qso_dict.update({'their_call':msg_tuple[1], 'their_snr': their_snr})
-            self._progress_qso(msg_tuple)
+        msg_str = row_txt.split('|')[1].strip()
+        msg_tuple = msg_str.split()
+        if len(msg_tuple) == 4:
+            msg_tuple = (f"{msg_tuple[0]} {msg_tuple[1]}", msg_tuple[2], msg_tuple[3])
+        their_snr = row_txt.split()[0]
+        self.qso_dict.update({'their_call':msg_tuple[1], 'their_snr': their_snr})
+        self._progress_qso(msg_tuple)
                     
     def _progress_qso(self, msg_tuple):
-        hail, their_call, grid_rpt = msg_tuple
+        hail, _, grid_rpt = msg_tuple
         reply = ''
         tcmc = f"{self.qso_dict['their_call']} {self.qso_dict['call']}"
         if hail.startswith("CQ"):
@@ -460,16 +460,17 @@ class Gui:
                 reply = f"{tcmc} RR73"
             if grid_rpt == 'RR73':
                 reply = f"{tcmc} 73"
-        if any([m for m in ['+','-'] if m in grid_rpt]): # grid_rpt == rpt
-            self.qso_dict['my_snr'] = grid_rpt
-        if not any([m for m in ['+','-','RR','73'] if m in grid_rpt]): # grid_rpt == grid
-            self.qso_dict['their_grid'] = grid_rpt
+            if any([m for m in ['+','-'] if m in grid_rpt]): # grid_rpt == rpt
+                self.qso_dict['my_snr'] = grid_rpt
+            if not any([m for m in ['+','-','RR','73'] if m in grid_rpt]): # grid_rpt == grid
+                self.qso_dict['their_grid'] = grid_rpt
         if reply:
             self._queue_transmit(reply)                
-            if "73" in reply:
-                self.adif_log.log(self.band_tuple, self.qso_dict)
-                self._set_footer(f"Logged QSO with {their_call}")
-                self.tx_cycle = None
+        if "73" in reply or "73" in grid_rpt:
+            self.adif_log.log(self.band_tuple, self.qso_dict)
+            self._set_footer(f"Logged QSO with {self.qso_dict['their_call']}")
+            self.tx_cycle = None
+            self.last_tx_message = ''
 
     def _set_waterfall_info(self, e):
         w = self.waterfall_canvas.winfo_width()
@@ -492,7 +493,7 @@ class Gui:
             f_str = f"{self.band_tuple[1]:,.0f}"
             self.band_lbl.config(text = f"{self.band_tuple[0]} {f_str}")
         tnow = time.time()
-        if tnow > self.last_rx_time + T_CYC and tnow > self.mute_decodes_until:
+        if tnow > self.last_rx_time + 2 * T_CYC:
             self.decodes_text.delete(1.0, tk.END)
         if self.running:
             self.clock_lbl.after(1000, self._do_each_second)
@@ -542,9 +543,6 @@ class Gui:
                 else:
                     delay += (T_CYC if cycle != self.tx_cycle else 0)
                 self._set_footer(f"Transmit message = {message} ({['even','odd'][self.tx_cycle]})")
-                if self.config.has_section('gui'):
-                    if self.config['gui']['decode OGM'] == "N":
-                        self.mute_decodes_until = time.time() + 1.5 * T_CYC 
                 self.pending_start_tx_stream = self.root.after(int(delay * 1000), start_tx_audio)
                 self.pending_ptt_on = self.root.after(int(delay * 1000), lambda: self._command_rig("T 1"))
                 self.root.after(int(delay * 1000 + 13000), lambda: self._command_rig("T 0"))
@@ -598,7 +596,6 @@ def get_config(config_folder):
             fHz = int(1000000 * float(config['bands'][band]))
             band_tuples.append((band, fHz))
     return config, band_tuples
-
 
 def run():
     config_folder = os.path.expanduser("~").replace('\\', '/')
