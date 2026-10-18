@@ -69,7 +69,7 @@ def monitor_decodes():
                 py_info  = f"{decode_count:03d}({diff:+03d}) {py_cycle[1]:03d} {py_times[-1]:7.2f} {txt}"
                 with open(output_file, 'a') as f:
                     f.write(f"{py_info}\n")
-                print(py_info)
+                #print(py_info)
             
 def do_test(input_device_keywords, wav_range = None):
     global t_start, py_cycle, baseline_counts, py_times

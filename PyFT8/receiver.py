@@ -161,8 +161,10 @@ def crc_unpack91(bits91_int):
 
 #============== Early decode if message bits are sound ===============================================
 llrs_previous = {}
+syms_previous = {}
 def decode_raw91(p, itime, f0_idx, odd_even):
     global llrs_previous
+    global syms_previous
     def syms_to_int(syms):
         bint = 0
         for s in syms:
@@ -170,20 +172,28 @@ def decode_raw91(p, itime, f0_idx, odd_even):
         return bint
     ch_syms = np.argmax(p[:31, :], axis = 1)
     de_gray = [0,1,3,2,6,4,5,7]
-    for j in range(2):
+    prev_decode_key = (f0_idx, odd_even)
+    prev_syms = syms_previous.get(prev_decode_key)
+    for j in range(3):
+        AP = ''
         if j == 1:
             ch_syms[:11] = 0
             ch_syms[8] = 1
+            AP = 'CQ'
+        if j == 2 and prev_syms is not None:
+            ch_syms[:19] = prev_syms[:19]
+            AP = 'AP'
         syms = [de_gray[s] for s in ch_syms]
         bits91_int = syms_to_int(syms) >> 2
         msg_tuple, bits77_int = crc_unpack91(bits91_int)
         if msg_tuple:
             prev_decode_key = (f0_idx, odd_even)
-            decode_info = f"GOOD91 t={itime} {['','CQ'][j]}"
+            decode_info = f"GOOD91 t={itime} {AP}"
             bits91 = [int(b) for b in f"{bits91_int:091b}"]
             llr = np.zeros(174)
             llr[:91] = [-5 + 10 * b for b in bits91]
             llrs_previous[prev_decode_key] = llr
+            syms_previous[prev_decode_key] = ch_syms
             return msg_tuple, decode_info
     return None, None
 
@@ -216,13 +226,13 @@ def decode_ldpc(p, itime, f0_idx, odd_even):
                 llrs_previous[prev_decode_key] = llr
                 return msg_tuple, decode_info + " APtc", []
             else:
-                llr[:29] = llr_prev[:29]
+                llr[:56] = llr_prev[:56]
                 msg_tuple, llr_saved = ldpc(llr)
                 if any(llr_saved):
                     llrs_saved.append(("opAPhtc", llr_saved))
                 if msg_tuple:
                     llrs_previous[prev_decode_key] = llr
-                    return msg_tuple, decode_info + " APhtc", []            
+                    return msg_tuple, decode_info + " APhtc", []          
     return None, '', llrs_saved
 
 def bits_to_int(llr):
@@ -402,7 +412,7 @@ class Receiver:
         self.max_freq = max_freq
         self.output_type = output_type
         self.candidates = []
-        self.duplicate_filter = []
+        self.duplicate_filter = {}
         payload_symb_idxs = list(range(7, 36)) + list(range(43, 72))
         self.base_payload_hops = np.array([HPS * s for s in payload_symb_idxs])
         self.hop_idxs_Costas =  np.arange(7) * HPS
@@ -470,7 +480,7 @@ class Receiver:
         info = f"{cycle_start_str} ========================================"
         self.send_output({'mtype':'rollover', 'info':info})
         self.candidates = self.search(t0_cyc, cycle_start_str)
-        self.duplicate_filter = []
+        self.duplicate_filter = {}
         info = f"Search finished at {time.time() % 15:6.1f} with {len(self.candidates)} candidates"
         self.send_output({'mtype':'test_info', 'info':info})
         info = self.decode(odd_even)
@@ -503,6 +513,9 @@ class Receiver:
         candidates.sort(key = lambda c: -c['score'])
         candidates = candidates[:MAX_CANDS]
         candidates.sort(key = lambda c: int(c['h0_idx']))
+        for c in candidates:
+            f = c['f0_idx']
+            c['neighbours'] = [n for n in candidates if n['f0_idx'] in [f-1, f+1]]
         return candidates
 
     def decode(self, odd_even):
@@ -520,38 +533,43 @@ class Receiver:
 
         # good91 after message symbols arrive
         for c in self.candidates:
-            if not stop_decoding():
+            if not stop_decoding() and not c['decode_result']:
                 while wait_for_signal(c, last_sym = 31):
                     time.sleep(0.05)
-                for itime in range(2):
-                    p = self.audio_in.tfgrid[itime,:,:][c['p_idx']]
-                    c['decode_result'], c['decode_info'] = decode_raw91(p, itime, c['f0_idx'], odd_even)
-                    self.check_and_send(c)
+                p = self.audio_in.tfgrid[0,:,:][c['p_idx']]
+                c['decode_result'], c['decode_info'] = decode_raw91(p, 0, c['f0_idx'], odd_even)
+                if not c['decode_result']:
+                    p = self.audio_in.tfgrid[1,:,:][c['p_idx']]
+                    c['decode_result'], c['decode_info'] = decode_raw91(p, 1, c['f0_idx'], odd_even)
+                self.check_and_send(c)
 
         # ldpc, saving input and output llrs ONLY if score < 1.2 (limits OSD load to typically-useful range)
         for c in self.candidates:
-            if not stop_decoding():
+            if not stop_decoding() and not c['decode_result']:
+                while wait_for_signal(c, last_sym = 57):
+                    time.sleep(0.05)
+                p = self.audio_in.tfgrid[0,:,:][c['p_idx']]
+                c['decode_result'], c['decode_info'], c['saved_llrs'] = decode_ldpc(p, 0, c['f0_idx'], odd_even)       
                 if not c['decode_result']:
-                    while wait_for_signal(c, last_sym = 57):
-                        time.sleep(0.05)
-                    for itime in range(2):
-                        p = self.audio_in.tfgrid[itime,:,:][c['p_idx']]
-                        c['decode_result'], c['decode_info'], c['saved_llrs'] = decode_ldpc(p, itime, c['f0_idx'], odd_even)       
-                        self.check_and_send(c)
+                    p = self.audio_in.tfgrid[1,:,:][c['p_idx']]
+                    c['decode_result'], c['decode_info'], c['saved_llrs'] = decode_ldpc(p, 1, c['f0_idx'], odd_even)  
+                self.check_and_send(c)
 
         # osd on all saved llrs
         self.candidates.sort(key = lambda c: -c['score'])
         for c in self.candidates:
-            if not stop_decoding():
+            if not stop_decoding() and not c['decode_result']:
                 if any(c['saved_llrs']):
                     for llr_pack in c['saved_llrs']:
                         source, llr = llr_pack
-                        #print(llr_pack)
-                        c['decode_result'], order = osd(llr)
-                        c['decode_info'] = f"{source} OSD{order}"
-                        self.check_and_send(c)
-                if not c['decode_result']:
-                    c['decode_result'] = 'stop'
+                        if not c['decode_result']:
+                            c['decode_result'], order = osd(llr)
+                            c['decode_info'] = f"{source} OSD{order}"
+                    self.check_and_send(c)
+                        
+        for c in self.candidates:
+            if not c['decode_result']:
+                c['decode_result'] = 'stop'
 
         n_remaining_with_saved_llrs = len([c for c in self.candidates if any(c['saved_llrs']) and not c['decode_result']])
         return (f"Last decode attempt {self.last_attempt_stop % 15:6.1f},"
@@ -559,12 +577,18 @@ class Receiver:
      
     def check_and_send(self, c):
         self.last_attempt_stop = time.time()
-        if c['decode_result']:
-            if not c['decode_result'] in self.duplicate_filter:
+        if c['decode_result'] and c['decode_result'] != 'stop':
+            if not c['decode_result'] in self.duplicate_filter.keys():
                 p = self.audio_in.tfgrid[0,:,:][c['p_idx']]
-                c['decode_info'] = f" s={c['score']:5.2f} {c['decode_info']}"
+                full_decode_info = f" s={c['score']:5.2f} {c['decode_info']}"
                 their_snr = np.clip(int(np.max(p)-np.min(p)) - 58, -24, 24)
-                self.duplicate_filter.append(c['decode_result'])
+                self.duplicate_filter[c['decode_result']] = [f"{c['f0_idx']:03d} = {c['decode_info']}"]
                 self.send_output({'mtype':'decode', 'cyclestart_string': c['cs'], 't_decode':time.time(),
-                                  'fHz':f"{c['fHz']:7.2f}", 'dt':f"{c['dt']:+04.2f}", 'decode_info':c['decode_info'],
+                                  'fHz':f"{c['fHz']:7.2f}", 'dt':f"{c['dt']:+04.2f}", 'decode_info':full_decode_info,
                                   'their_snr':f"{their_snr:+03d}", 'msg_tuple':c['decode_result']})
+            else:
+                self.duplicate_filter[c['decode_result']].append(f"{c['f0_idx']:03d} = {c['decode_info']}")
+                info = f"{' '.join(c['decode_result']):28s} {self.duplicate_filter[c['decode_result']]}"
+                self.send_output({'mtype':'test_info', 'info': info})
+            for n in c['neighbours']:
+                n['decode_result'] = 'stop'
