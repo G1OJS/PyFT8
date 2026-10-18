@@ -413,13 +413,14 @@ class Gui:
     def _process_decode(self, msg_dict):
         self.last_rx_time = time.time()
         new_cycle = msg_dict['cyclestart_string'] != self.qso_dict['cyclestart_string']
+        new_cycle &= msg_dict['msg_tuple'][1] != self.qso_dict['call']
         if new_cycle:
-            if not msg_dict['msg_tuple'][1] == self.qso_dict['call']:
-                self.decodes_text.delete(1.0, tk.END)
+            self.decodes_text.delete(1.0, tk.END)
             self.qso_dict.update({'cyclestart_string': msg_dict['cyclestart_string']})
             self._set_footer('')
         if time.time() - self.band_changed > 10:
-            self.pskr_upload.add_report(self.band_tuple, msg_dict)
+            if msg_dict['msg_tuple'][1] != self.qso_dict['call']:
+                self.pskr_upload.add_report(self.band_tuple, msg_dict)
             their_snr, dt, fHz, msg_tuple = msg_dict['their_snr'], msg_dict['dt'], msg_dict['fHz'], msg_dict['msg_tuple']
             wb = ''
             if self.adif_log:
