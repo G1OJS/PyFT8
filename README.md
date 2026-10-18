@@ -10,6 +10,7 @@ As of version 4.0.0, the key features are:
  * Written entirely in Python
  * Most decodes require only the 91 message bits
  * LDPC and OSD decoding for the rest
+ * Decodes typically > 90% of decodes caught by WSJT-x v3 in FAST mode
  * Tkinter GUI
  * Receiver and Transmitter can be used standalone
  * Internal connections are via UDP (so e.g. alternative Receivers / Transmitters could be easily swapped in)
