@@ -1,4 +1,4 @@
-# PyFT8
+# PyFT8 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/pyft8?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/pyft8) [![PyPI Downloads](https://static.pepy.tech/personalized-badge/pyft8?period=weekly&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads/wk)](https://pepy.tech/projects/pyft8) [PyPI link](https://pypi.org/project/PyFT8/)
 An FT8 Receiver, FT8 Transmitter, and Tkinter GUI, written in three single & short Python files plus a tiny udp_comms file. Version 4 is a rewrite introducing many simplifications, including a leaner receiver and Tkinter GUI replacing the Matplotlib-based GUI used previously. Also new in version 4, the Receiver and Transmitter can be run standalone and copied for use without the GUI if desired.
  
 If you're looking for the Matplotlib-based GUI with decodes overlaid on the waterfall, that's available here: [PyFT8 v3.9.1](https://github.com/G1OJS/PyFT8/releases/tag/PyPi_v3.9.1).
