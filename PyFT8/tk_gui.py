@@ -214,9 +214,7 @@ class Gui:
         self._do_each_second()
         self._update_pskr_uploader()
         self._send_waterfall_row()
-        self.qso_dict = {'cyclestart_string': '', 'fHz':'0', 'dt':'0', 'decode_info':'', 'msg_tuple':('','',''),
-                         'call':self.config['station']['call'], 'grid':self.config['station']['grid'], 'my_snr':'-30',  
-                         'their_call':'', 'their_grid':'', 'their_snr':'-30'}
+        self._reset_qso_dict()
         self.pending_start_tx_stream = None
         self.pending_ptt_on = None
         self.last_rx_time = 0
@@ -314,7 +312,7 @@ class Gui:
 
         self.right_sidebar_container = tk.Frame(self.app_container, width = 100, bg = 'orange')
         self.right_sidebar_container.pack(side = 'left', fill = 'both', anchor = 'e')
-        self.hm_text = tk.Text(self.right_sidebar_container, wrap=tk.WORD, width = 10)
+        self.hm_text = tk.Text(self.right_sidebar_container, wrap=tk.WORD, width = 12)
         self.hm_text.pack(side=tk.LEFT, fill='y', expand=True)
         self.hm_text.tag_config('me', foreground = 'blue')
         self.hm_text.insert(tk.END, "Hearing me", 'me')
@@ -386,7 +384,7 @@ class Gui:
 #-----------------------------------------------------------------------------------------------------
 
     def _format_display_text(self, SNR,dt,fHz,Message,Wkd, hm):
-        return f" {SNR:<3s} {dt:<5s} {fHz:<7s} | {Message:<22s} | {Wkd:<8s} {hm:<1s}"
+        return f" {SNR:<3s} {dt:<5s} {fHz:<7s} | {Message:<25s} | {Wkd:<8s} {hm:<1s}"
 
     def _set_footer(self, info, echo_to_print = False):
         self.footer_txt.config(text = info)
@@ -432,8 +430,13 @@ class Gui:
             display_type = ['norm','cq','to_me','from_me', 'from_me'][idx]
             self.decodes_text.insert(tk.END, f"{display_text}\n", display_type)
             self.decodes_text.see('end')
-            if msg_tuple[0] == self.qso_dict['call']:
+            if msg_tuple[0] == self.qso_dict['call'] and msg_tuple[1] == self.qso_dict['their_call']:
                 self._progress_qso(msg_tuple)
+
+    def _reset_qso_dict(self):
+        self.qso_dict = {'cyclestart_string': '', 'fHz':'0', 'dt':'0', 'decode_info':'', 'msg_tuple':('','',''),
+                 'call':self.config['station']['call'], 'grid':self.config['station']['grid'], 'my_snr':'-30',  
+                 'their_call':'', 'their_grid':'', 'their_snr':'-30'}
 
     def _row_click(self, e):
         curr = e.widget.index("current").split('.')[0]
@@ -471,6 +474,7 @@ class Gui:
             self._set_footer(f"Logged QSO with {self.qso_dict['their_call']}")
             self.tx_cycle = None
             self.last_tx_message = ''
+            self._reset_qso_dict()
 
     def _set_waterfall_info(self, e):
         w = self.waterfall_canvas.winfo_width()
