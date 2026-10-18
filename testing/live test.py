@@ -55,8 +55,8 @@ def monitor_decodes():
         rx_bytes, addres = sock.recvfrom(1024)
         if rx_bytes:
             msg_dict = json.loads(rx_bytes.decode('utf-8'))
-            if msg_dict['mtype'] == 'info':
-                print(msg_dict['info'])
+            #if msg_dict['mtype'] == 'test_info':
+            #    print(msg_dict['info'])
             if msg_dict['mtype'] == 'decode':        
                 if msg_dict['cyclestart_string'] != py_cycle[0]:
                     baseline_decode_count = baseline_counts[py_cycle[1]] if py_cycle[1] < len(baseline_counts) else 0
@@ -98,7 +98,7 @@ def do_test(input_device_keywords, wav_range = None):
         for idx in range(*wav_range):
             wav_files.append(f"{wav_folder}/test_{idx:02d}.wav")
 
-    rx = Receiver(ports = {'listen':None, 'send':2121}, input_keywords = input_device_keywords, latest_decode = 6)
+    rx = Receiver(ports = {'listen':None, 'send':2121}, input_keywords = input_device_keywords, latest_decode = 4)
     threading.Thread(target = monitor_decodes, daemon = True).start()
     soundout = SoundcardOut("CABLE, Input", wav_files)
 
