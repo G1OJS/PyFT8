@@ -160,8 +160,9 @@ def crc_unpack91(bits91_int):
     return msg, bits77_int
 
 #============== Early decode if message bits are sound ===============================================
-
-def decode_raw91(p, i):
+llrs_previous = {}
+def decode_raw91(p, itime, f0_idx, odd_even):
+    global llrs_previous
     def syms_to_int(syms):
         bint = 0
         for s in syms:
@@ -177,8 +178,45 @@ def decode_raw91(p, i):
         bits91_int = syms_to_int(syms) >> 2
         msg_tuple, bits77_int = crc_unpack91(bits91_int)
         if msg_tuple:
-            return msg_tuple, f"GOOD91 t={i} {['','CQ'][j]}"
+            prev_decode_key = (f0_idx, odd_even)
+            decode_info = f"GOOD91 t={itime} {['','CQ'][j]}"
+            bits91 = [int(b) for b in f"{bits91_int:091b}"]
+            llr = np.zeros(174)
+            llr[:91] = [-5 + 10 * b for b in bits91]
+            llrs_previous[prev_decode_key] = llr
+            return msg_tuple, decode_info
     return None, None
+
+#============== Later deep-dive decodes ===============================================
+def decode_ldpc(p, itime, f0_idx, odd_even):
+    global llrs_previous
+    llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
+    llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
+    llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
+    llr = np.column_stack((llra, llrb, llrc))
+    llr = llr.ravel()
+    llr = 2.55 * llr / (np.std(llr) + 1e-12)
+    llrs_saved = []
+    msg_tuple, llr_saved = ldpc(llr)
+    prev_decode_key = (f0_idx, odd_even)
+    decode_info = f"LDPC   t={itime} "
+    if msg_tuple:
+        llrs_previous[prev_decode_key] = llr
+        return msg_tuple, decode_info, []
+    else:
+        if any(llr_saved):
+            llrs_saved.append(("op", llr_saved))
+        llr_prev = llrs_previous.get(prev_decode_key)
+        if llr_prev is not None:
+            llr[29:56] = llr_prev[29:56]
+            msg_tuple, llr_saved = ldpc(llr)
+            if msg_tuple:
+                llrs_previous[prev_decode_key] = llr
+                return msg_tuple, decode_info + " AP", []
+            else:
+                if any(llr_saved):
+                    llrs_saved.append(("opAP", llr_saved))
+    return None, '', llrs_saved
 
 def bits_to_int(llr):
     bits_int = 0
@@ -192,7 +230,7 @@ llr175 = np.zeros(175, dtype=np.float32)
 mC2V_prev = np.zeros(CVidx_all.shape, dtype=np.float32)
 import warnings
 warnings.filterwarnings("error")
-def decode(p, i):
+def ldpc(llr):
     def atanh(x):
         a = 1.03
         y = -x / ((x-a)*(x+a))
@@ -200,12 +238,6 @@ def decode(p, i):
         y[(x < -a * 0.93)] = -7
         return y
     global llr175, mC2V_prev
-    llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
-    llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
-    llrc = np.max(p[:, [1,2,6,7]], axis=1) - np.max(p[:, [0,3,4,5]], axis=1)
-    llr = np.column_stack((llra, llrb, llrc))
-    llr = llr.ravel()
-    llr = 2.55 * llr / (np.std(llr) + 1e-12)
     llr175[1:] = llr
     llr_clip = 7
     llr175 = np.clip(llr175, -llr_clip, llr_clip)
@@ -232,10 +264,10 @@ def decode(p, i):
         if(ncheck == 0):
             bits91_int = bits_to_int(llr175[1:92])
             msg_tuple, bits77_int = crc_unpack91(bits91_int)
-            return msg_tuple, f"LDPC   t={i} its={ldpc_it+1}", llr_saved, ch_llr_saved
+            return msg_tuple, []
         if ldpc_it == 5:
             llr_saved = llr175[1:]
-    return None, '', llr_saved, ch_llr_saved
+    return None, llr_saved
 
 #============== OSD ===========================================================
 generator_matrix_rows = ["8329ce11bf31eaf509f27fc",  "761c264e25c259335493132",  "dc265902fb277c6410a1bdc",  "1b3f417858cd2dd33ec7f62",  "09fda4fee04195fd034783a",  "077cccc11b8873ed5c3d48a",  "29b62afe3ca036f4fe1a9da",  "6054faf5f35d96d3b0c8c3e",  "e20798e4310eed27884ae90",  "775c9c08e80e26ddae56318",  "b0b811028c2bf997213487c",  "18a0c9231fc60adf5c5ea32",  "76471e8302a0721e01b12b8",  "ffbccb80ca8341fafb47b2e",  "66a72a158f9325a2bf67170",  "c4243689fe85b1c51363a18",  "0dff739414d1a1b34b1c270",  "15b48830636c8b99894972e",  "29a89c0d3de81d665489b0e",  "4f126f37fa51cbe61bd6b94",  "99c47239d0d97d3c84e0940",  "1919b75119765621bb4f1e8",  "09db12d731faee0b86df6b8",  "488fc33df43fbdeea4eafb4",  "827423ee40b675f756eb5fe",  "abe197c484cb74757144a9a",  "2b500e4bc0ec5a6d2bdbdd0",  "c474aa53d70218761669360",  "8eba1a13db3390bd6718cec",  "753844673a27782cc42012e",  "06ff83a145c37035a5c1268",  "3b37417858cc2dd33ec3f62",  "9a4a5a28ee17ca9c324842c",  "bc29f465309c977e89610a4",  "2663ae6ddf8b5ce2bb29488",  "46f231efe457034c1814418",  "3fb2ce85abe9b0c72e06fbe",  "de87481f282c153971a0a2e",  "fcd7ccf23c69fa99bba1412",  "f0261447e9490ca8e474cec",  "4410115818196f95cdd7012",  "088fc31df4bfbde2a4eafb4",  "b8fef1b6307729fb0a078c0",  "5afea7acccb77bbc9d99a90",  "49a7016ac653f65ecdc9076",  "1944d085be4e7da8d6cc7d0",  "251f62adc4032f0ee714002",  "56471f8702a0721e00b12b8",  "2b8e4923f2dd51e2d537fa0",  "6b550a40a66f4755de95c26",  "a18ad28d4e27fe92a4f6c84",  "10c2e586388cb82a3d80758",  "ef34a41817ee02133db2eb0",  "7e9c0c54325a9c15836e000",  "3693e572d1fde4cdf079e86",  "bfb2cec5abe1b0c72e07fbe",  "7ee18230c583cccc57d4b08",  "a066cb2fedafc9f52664126",  "bb23725abc47cc5f4cc4cd2",  "ded9dba3bee40c59b5609b4",  "d9a7016ac653e6decdc9036",  "9ad46aed5f707f280ab5fc4",  "e5921c77822587316d7d3c2",  "4f14da8242a8b86dca73352",  "8b8b507ad467d4441df770e",  "22831c9cf1169467ad04b68",  "213b838fe2ae54c38ee7180",  "5d926b6dd71f085181a4e12",  "66ab79d4b29ee6e69509e56",  "958148682d748a38dd68baa",  "b8ce020cf069c32a723ab14",  "f4331d6d461607e95752746",  "6da23ba424b9596133cf9c8",  "a636bcbc7b30c5fbeae67fe",  "5cb0d86a07df654a9089a20",  "f11f106848780fc9ecdd80a",  "1fbb5364fb8d2c9d730d5ba",  "fcb86bc70a50c9d02a5d034",  "a534433029eac15f322e34c",  "c989d9c7c3d3b8c55d75130",  "7bb38b2f0186d46643ae962",  "2644ebadeb44b9467d1f42c",  "608cc857594bfbb55d69600"]
@@ -246,8 +278,7 @@ for i, row in enumerate(kGEN):
         A[i, 90 - j] = (row >> j) & 1
 G0 = np.concatenate([np.eye(91, dtype=np.uint8), A.T],axis=1)
 
-def osd(llr_pack):
-    source, llr = llr_pack
+def osd(llr):
     chbits174 = (llr>0).astype(np.uint8)
     chvals174 = np.abs(llr)
 
@@ -279,7 +310,7 @@ def osd(llr_pack):
     bits91_int = bits_to_int(base_cw[:91])
     msg_tuple, bits77_int = crc_unpack91(bits91_int)
     if msg_tuple:
-        return msg_tuple, f"OSD0{source}"
+        return msg_tuple, 0
     
     fliplist = rowperm[::-1]
     current_best_distance = 1e20
@@ -300,7 +331,7 @@ def osd(llr_pack):
             bits91_int = bits_to_int(cw_out91)
             msg_tuple, bits77_int = crc_unpack91(bits91_int)
             if msg_tuple:
-                return msg_tuple, f"OSD2{source}"
+                return msg_tuple, 2
     return None, ''
 
 #============== AUDIO ========================================================
@@ -425,7 +456,9 @@ class Receiver:
             self.send_output({'mtype':'waterfall', 'data':row}, noprint = True)
 
     def search_and_decode(self):
-        t0_cyc = 15 * int(time.time() / 15)
+        tnow = time.time()
+        t0_cyc = 15 * int(tnow / 15)
+        odd_even = int((tnow % 30) / 15)
         cycle_start_str = time.strftime("%y%m%d_%H%M%S", time.gmtime(t0_cyc))
         info = f"{cycle_start_str} ========================================"
         self.send_output({'mtype':'rollover', 'info':info})
@@ -433,7 +466,7 @@ class Receiver:
         self.duplicate_filter = []
         info = f"Search finished at {time.time() % 15:6.1f} with {len(self.candidates)} candidates"
         self.send_output({'mtype':'test_info', 'info':info})
-        info = self.decode()
+        info = self.decode(odd_even)
         self.send_output({'mtype':'test_info', 'info':info})
 
     def search(self, t0_cyc, cycle_start_str):
@@ -465,7 +498,7 @@ class Receiver:
         candidates.sort(key = lambda c: int(c['h0_idx']))
         return candidates
 
-    def decode(self):
+    def decode(self, odd_even):
         n_cands = len(self.candidates)
         self.last_attempt_stop = 0
         
@@ -485,7 +518,7 @@ class Receiver:
                     time.sleep(0.05)
                 for itime in range(2):
                     p = self.audio_in.tfgrid[itime,:,:][c['p_idx']]
-                    c['decode_result'], c['decode_info'] = decode_raw91(p, itime)
+                    c['decode_result'], c['decode_info'] = decode_raw91(p, itime, c['f0_idx'], odd_even)
                     self.check_and_send(c)
 
         # ldpc, saving input and output llrs ONLY if score < 1.2 (limits OSD load to typically-useful range)
@@ -496,20 +529,19 @@ class Receiver:
                         time.sleep(0.05)
                     for itime in range(2):
                         p = self.audio_in.tfgrid[itime,:,:][c['p_idx']]
-                        c['decode_result'], c['decode_info'], llr_out, ch_llr = decode(p, itime)
-                        if c['score'] < 1.2:
-                            c['saved_llrs'].append((f"ch t={itime}", ch_llr))
-                            if llr_out is not None:
-                                c['saved_llrs'].append((f"op t={itime}", llr_out))
+                        c['decode_result'], c['decode_info'], c['saved_llrs'] = decode_ldpc(p, itime, c['f0_idx'], odd_even)       
                         self.check_and_send(c)
 
         # osd on all saved llrs
         self.candidates.sort(key = lambda c: -c['score'])
         for c in self.candidates:
             if not stop_decoding():
-                if not c['decode_result']:
-                    for llr in c['saved_llrs']:
-                        c['decode_result'], c['decode_info'] = osd(llr)
+                if any(c['saved_llrs']):
+                    for llr_pack in c['saved_llrs']:
+                        source, llr = llr_pack
+                        #print(llr_pack)
+                        c['decode_result'], order = osd(llr)
+                        c['decode_info'] = f"{source} OSD{order}"
                         self.check_and_send(c)
                 if not c['decode_result']:
                     c['decode_result'] = 'stop'

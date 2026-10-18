@@ -55,7 +55,7 @@ def monitor_decodes():
         rx_bytes, addres = sock.recvfrom(1024)
         if rx_bytes:
             msg_dict = json.loads(rx_bytes.decode('utf-8'))
-            if msg_dict['mtype'] == 'info':
+            if msg_dict['mtype'] == 'test_info':
                 print(msg_dict['info'])
             if msg_dict['mtype'] == 'decode':        
                 if msg_dict['cyclestart_string'] != py_cycle[0]:
