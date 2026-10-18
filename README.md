@@ -3,7 +3,7 @@ An FT8 Receiver, FT8 Transmitter, and Tkinter GUI, written in three single & sho
  
 If you're looking for the Matplotlib-based GUI with decodes overlaid on the waterfall, that's available here: [PyFT8 v3.9.1](https://github.com/G1OJS/PyFT8/releases/tag/PyPi_v3.9.1).
 
-<img width="901" height="669" alt="Capture" src="https://github.com/user-attachments/assets/28afcb1a-18cc-482a-b4c8-6c6359a7dde4" />
+<img width="925" height="659" alt="Capture" src="https://github.com/user-attachments/assets/db0b9ced-8270-4683-92c7-a9a26c37d991" />
 
 ## Features
 As of version 4.0.0, the key features are:
