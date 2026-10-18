@@ -98,7 +98,7 @@ def do_test(input_device_keywords, wav_range = None):
         for idx in range(*wav_range):
             wav_files.append(f"{wav_folder}/test_{idx:02d}.wav")
 
-    rx = Receiver(ports = {'listen':None, 'send':2121}, input_keywords = input_device_keywords, latest_decode = 6)
+    rx = Receiver(ports = {'listen':None, 'send':2121}, input_keywords = input_device_keywords, latest_decode = 4)
     threading.Thread(target = monitor_decodes, daemon = True).start()
     soundout = SoundcardOut("CABLE, Input", wav_files)
 

@@ -162,7 +162,9 @@ def crc_unpack91(bits91_int):
 #============== Early decode if message bits are sound ===============================================
 llrs_previous = {}
 syms_previous = {}
-def decode_raw91(p, itime, f0_idx, odd_even):
+# CALLA = Symbols 0 to first bit of 9 inclusive. CQ Sym vals = [0,0,0,0,0,0,0,0,1] plus zero for first bit of sym 9
+# CALLB = Last bit of symbol 9 to symbol 18 inclusive
+def decode_raw91(p, prev_decode_key):
     global llrs_previous
     global syms_previous
     def syms_to_int(syms):
@@ -173,25 +175,23 @@ def decode_raw91(p, itime, f0_idx, odd_even):
     ch_syms_0 = np.argmax(p[:31, :], axis = 1)
     ch_syms = ch_syms_0.copy()
     de_gray = [0,1,3,2,6,4,5,7]
-    prev_decode_key = (f0_idx, odd_even)
     prev_syms = syms_previous.get(prev_decode_key)
     for j in range(3):
-        AP = ''
+        ap = ''
         if j == 1:
             ch_syms = ch_syms_0.copy()
             ch_syms[:10] = 0
             ch_syms[8] = 1
-            AP = 'CQ'
+            ap = 'CQ'
         if j == 2 and prev_syms is not None:
             ch_syms = ch_syms_0.copy()
-            ch_syms[9:20] = prev_syms[9:20]
-            AP = 'AP'
+            ch_syms[10:19] = prev_syms[10:19]
+            ap = 'AP'
         syms = [de_gray[s] for s in ch_syms]
         bits91_int = syms_to_int(syms) >> 2
         msg_tuple, bits77_int = crc_unpack91(bits91_int)
         if msg_tuple:
-            prev_decode_key = (f0_idx, odd_even)
-            decode_info = f"GOOD91 t={itime} {AP}"
+            decode_info = f"GOOD91 {ap}"
             bits91 = [int(b) for b in f"{bits91_int:091b}"]
             llr = np.zeros(174)
             llr[:91] = [-5 + 10 * b for b in bits91]
@@ -201,7 +201,8 @@ def decode_raw91(p, itime, f0_idx, odd_even):
     return None, None
 
 #============== Later deep-dive decodes ===============================================
-def decode_ldpc(p, itime, f0_idx, odd_even):
+# CallB = bits 29 to 56 inclusive
+def decode_ldpc(p, prev_decode_key):
     global llrs_previous
     llra = np.max(p[:, [4,5,6,7]], axis=1) - np.max(p[:, [0,1,2,3]], axis=1)
     llrb = np.max(p[:, [2,3,4,7]], axis=1) - np.max(p[:, [0,1,5,6]], axis=1)
@@ -213,22 +214,20 @@ def decode_ldpc(p, itime, f0_idx, odd_even):
     msg_tuple, llr_saved = ldpc(llr)
     if any(llr_saved):
         llrs_saved.append(("op", llr_saved))
-    prev_decode_key = (f0_idx, odd_even)
-    decode_info = f"LDPC   t={itime} "
     if msg_tuple:
         llrs_previous[prev_decode_key] = llr
-        return msg_tuple, decode_info, []
+        return msg_tuple, "LDPC    ", []
     else:
         llr_prev = llrs_previous.get(prev_decode_key)
         if llr_prev is not None:
-            llr[29:56] = llr_prev[29:56]
+            llr[29:57] = llr_prev[29:57]
             llrs_saved.append(("chAPtc", llr))
             msg_tuple, llr_saved = ldpc(llr)
             if any(llr_saved):
                 llrs_saved.append(("opAPtc", llr_saved))
             if msg_tuple:
                 llrs_previous[prev_decode_key] = llr
-                return msg_tuple, decode_info + " APtc", []       
+                return msg_tuple, "LDPC     APtc", []       
     return None, '', llrs_saved
 
 def bits_to_int(llr):
@@ -351,14 +350,13 @@ def osd(llr):
 class AudioIn:
     def __init__(self, input_keywords, max_freq):
         samples_per_hop = int(SAMP_RATE / (SYM_RATE * HPS))
-        self.samples_per_half_hop = int(samples_per_hop / 2)
         fft_len = int(BPT * SAMP_RATE // SYM_RATE)
         fft_out_len = fft_len // 2 + 1
         self.nFreqs = int(fft_out_len * 2 * max_freq / SAMP_RATE)
-        self.audio_buffer = np.zeros(fft_len + self.samples_per_half_hop, dtype=np.float32)
+        self.audio_buffer = np.zeros(fft_len, dtype=np.float32)
         self.fft_in = np.zeros(fft_len, dtype=np.float32)
         self.fft_window = np.hanning(fft_len).astype(np.float32)
-        self.tfgrid = np.ones((2, HPC, self.nFreqs), dtype = np.float32)
+        self.tfgrid = np.ones((HPC, self.nFreqs), dtype = np.float32)
         self.indev = self.find_device(input_keywords)
         self.tfgrid_ptr = 0
         self.check_pointer()
@@ -389,15 +387,9 @@ class AudioIn:
         self.audio_buffer[:-ns] = self.audio_buffer[ns:]
         self.audio_buffer[-ns:] = samples
         self.tfgrid_ptr = (self.tfgrid_ptr + 1) % HPC
-
-        np.multiply(self.audio_buffer[self.samples_per_half_hop:], self.fft_window, out=self.fft_in)
+        np.multiply(self.audio_buffer, self.fft_window, out=self.fft_in)
         z = np.fft.rfft(self.fft_in)[:self.nFreqs]
-        self.tfgrid[0, self.tfgrid_ptr, :] = 20*np.log10(np.abs(z))
-
-        np.multiply(self.audio_buffer[:-self.samples_per_half_hop], self.fft_window, out=self.fft_in)
-        z = np.fft.rfft(self.fft_in)[:self.nFreqs]
-        self.tfgrid[1, self.tfgrid_ptr, :] = 20*np.log10(np.abs(z))
-        
+        self.tfgrid[self.tfgrid_ptr, :] = 20*np.log10(np.abs(z))
         return (None, pyaudio.paContinue)
 
 class Receiver:
@@ -461,7 +453,7 @@ class Receiver:
     def send_waterfall_rows(self):
         while self.running:
             time.sleep(0.25)
-            row = self.audio_in.tfgrid[0,self.audio_in.tfgrid_ptr,:]
+            row = self.audio_in.tfgrid[self.audio_in.tfgrid_ptr,:]
             self.waterfall_max = np.max([np.max(row), 0.999 * self.waterfall_max])
             dBrng = 35
             row = (dBrng + np.clip(row - self.waterfall_max, -dBrng, 0)) / dBrng
@@ -487,7 +479,7 @@ class Receiver:
         for f0_idx in range(int(100 / 3.125), self.audio_in.nFreqs - 8 * BPT, 1):
             time.sleep(0)
             freq_idxs = f0_idx + self.base_freq_idxs
-            p = self.audio_in.tfgrid[1, :, f0_idx:f0_idx+8*BPT]
+            p = self.audio_in.tfgrid[:, f0_idx:f0_idx+8*BPT]
             new_origin = {'score':0}
             for h0_idx in range(H0_RANGE[0], H0_RANGE[1]):
                 vals = p[h0_idx + self.hop_idxs_Costas + 36 * HPS, :].ravel()
@@ -532,11 +524,9 @@ class Receiver:
             if not stop_decoding() and not c['decode_result']:
                 while wait_for_signal(c, last_sym = 31):
                     time.sleep(0.05)
-                p = self.audio_in.tfgrid[0,:,:][c['p_idx']]
-                c['decode_result'], c['decode_info'] = decode_raw91(p, 0, c['f0_idx'], odd_even)
-                if not c['decode_result']:
-                    p = self.audio_in.tfgrid[1,:,:][c['p_idx']]
-                    c['decode_result'], c['decode_info'] = decode_raw91(p, 1, c['f0_idx'], odd_even)
+                p = self.audio_in.tfgrid[c['p_idx']]
+                prev_decode_key = (c['f0_idx'], odd_even)
+                c['decode_result'], c['decode_info'] = decode_raw91(p, prev_decode_key)
                 self.check_and_send(c)
 
         # ldpc, saving input and output llrs ONLY if score < 1.2 (limits OSD load to typically-useful range)
@@ -544,11 +534,9 @@ class Receiver:
             if not stop_decoding() and not c['decode_result']:
                 while wait_for_signal(c, last_sym = 57):
                     time.sleep(0.05)
-                p = self.audio_in.tfgrid[0,:,:][c['p_idx']]
-                c['decode_result'], c['decode_info'], c['saved_llrs'] = decode_ldpc(p, 0, c['f0_idx'], odd_even)       
-                if not c['decode_result']:
-                    p = self.audio_in.tfgrid[1,:,:][c['p_idx']]
-                    c['decode_result'], c['decode_info'], c['saved_llrs'] = decode_ldpc(p, 1, c['f0_idx'], odd_even)  
+                p = self.audio_in.tfgrid[c['p_idx']]
+                prev_decode_key = (c['f0_idx'], odd_even)
+                c['decode_result'], c['decode_info'], c['saved_llrs'] = decode_ldpc(p, prev_decode_key)         
                 self.check_and_send(c)
 
         # osd on all saved llrs
@@ -575,7 +563,7 @@ class Receiver:
         self.last_attempt_stop = time.time()
         if c['decode_result'] and c['decode_result'] != 'stop':
             if not c['decode_result'] in self.duplicate_filter.keys():
-                p = self.audio_in.tfgrid[0,:,:][c['p_idx']]
+                p = self.audio_in.tfgrid[c['p_idx']]
                 full_decode_info = f" s={c['score']:5.2f} {c['decode_info']}"
                 their_snr = np.clip(int(np.max(p)-np.min(p)) - 58, -24, 24)
                 self.duplicate_filter[c['decode_result']] = [f"{c['f0_idx']:03d} = {c['decode_info']}"]
