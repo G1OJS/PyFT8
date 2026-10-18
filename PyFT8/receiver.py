@@ -198,24 +198,31 @@ def decode_ldpc(p, itime, f0_idx, odd_even):
     llr = 2.55 * llr / (np.std(llr) + 1e-12)
     llrs_saved = []
     msg_tuple, llr_saved = ldpc(llr)
+    if any(llr_saved):
+        llrs_saved.append(("op", llr_saved))
     prev_decode_key = (f0_idx, odd_even)
     decode_info = f"LDPC   t={itime} "
     if msg_tuple:
         llrs_previous[prev_decode_key] = llr
         return msg_tuple, decode_info, []
     else:
-        if any(llr_saved):
-            llrs_saved.append(("op", llr_saved))
         llr_prev = llrs_previous.get(prev_decode_key)
         if llr_prev is not None:
             llr[29:56] = llr_prev[29:56]
             msg_tuple, llr_saved = ldpc(llr)
+            if any(llr_saved):
+                llrs_saved.append(("opAPtc", llr_saved))
             if msg_tuple:
                 llrs_previous[prev_decode_key] = llr
-                return msg_tuple, decode_info + " AP", []
+                return msg_tuple, decode_info + " APtc", []
             else:
+                llr[:29] = llr_prev[:29]
+                msg_tuple, llr_saved = ldpc(llr)
                 if any(llr_saved):
-                    llrs_saved.append(("opAP", llr_saved))
+                    llrs_saved.append(("opAPhtc", llr_saved))
+                if msg_tuple:
+                    llrs_previous[prev_decode_key] = llr
+                    return msg_tuple, decode_info + " APhtc", []            
     return None, '', llrs_saved
 
 def bits_to_int(llr):
