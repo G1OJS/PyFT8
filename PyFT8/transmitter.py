@@ -63,10 +63,10 @@ def get_ft8_symbols(text):
     symbols, bits77 = pack_message(c1, c2, grid_rpt)
     return symbols
 
-def _calc_hash_12(call):
+def _calc_hash_22(call):
     chars = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ/"
     call_padded = (call + "          ")[:11]
-    m = 12
+    m = 22
     x = 0
     for c in call_padded:
         x = 38*x + chars.find(c)
@@ -88,7 +88,7 @@ def pack_message(c1, c2, gr):
         bits77 = (c28a<<28+1+1+1+15+3) | (p1a<<28+1+1+15+3) | (c28b<<1+1+15+3) | (p1b <<1+15+3) | (ir<<15+3) | (g15<< 3) | (i3)
         symbols  = encode_bits77(bits77)
     if c29b and not c29a:
-        c28a, p1a = 2063592 + _calc_hash_12(c1), 0
+        c28a, p1a = 2063592 + _calc_hash_22(c1), 0
         c28b, p1b = c29b
         i3 = 2 if c2.endswith('/P') else 1
         n3 = 0    
@@ -96,7 +96,7 @@ def pack_message(c1, c2, gr):
         symbols  = encode_bits77(bits77)
     if c29a and not c29b:
         add_call_hashes(c2)
-        c28b, p1b = 2063592 + _calc_hash_12(c2), 0
+        c28b, p1b = 2063592 + _calc_hash_22(c2), 0
         c28a, p1a = c29a
         i3 = 2 if c1.endswith('/P') else 1
         n3 = 0    
@@ -271,3 +271,5 @@ class Transmitter:
         self.udp_comms.udp_send_dict({'mtype':'info', 'info':'Transmitter is shut down'})
 
 
+#sym = get_ft8_symbols("ZW50B G1OJS IO90")
+#print(sym)

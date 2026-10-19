@@ -217,7 +217,6 @@ class Gui:
         self._reset_qso_dict()
         self.pending_start_tx_stream = None
         self.pending_ptt_on = None
-        self.last_rx_time = 0
         self.tx_cycle = None
         self._set_tx_freq(777)
         self._get_band()
@@ -247,8 +246,8 @@ class Gui:
         self.adif_log = None
         if self.config.has_section('logging'):
             self.adif_log = ADIF(self.config['logging']['logfile'])
-        self.last_rx_time = 0
         self.last_tx_message = None
+        self.last_rx_time = 0
 
     def _check_components(self):
         if not all([comp in self.component_status for comp in ['receiver','transmitter']]):
@@ -417,11 +416,11 @@ class Gui:
     def _display_decode(self, msg_dict):
         self.last_rx_time = time.time()
         new_cycle = msg_dict['cyclestart_string'] != self.qso_dict['cyclestart_string']
-        new_cycle &= msg_dict['msg_tuple'][1] != self.qso_dict['call']
+        #new_cycle &= msg_dict['msg_tuple'][1] != self.qso_dict['call']
         if new_cycle:
             self.decodes_text.delete(1.0, tk.END)
-            self.qso_dict.update({'cyclestart_string': msg_dict['cyclestart_string']})
             self._set_footer('')
+        self.qso_dict.update({'cyclestart_string': msg_dict['cyclestart_string']})
         if time.time() - self.band_changed > 10:
             if msg_dict['msg_tuple'][1] != self.qso_dict['call']:
                 self.pskr_upload.add_report(self.band_tuple, msg_dict)
