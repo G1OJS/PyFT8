@@ -528,6 +528,7 @@ class Gui:
             self.waterfall_canvas.after(250, self._send_waterfall_row)
 
     def _call_cq(self):
+        self.tx_cycle = None
         self._queue_transmit(f"CQ {self.config['station']['call']} {self.config['station']['grid']}")
 
     def _queue_transmit(self, message = None):
@@ -540,7 +541,7 @@ class Gui:
         if message:
             t_gen = time.time()
             generate_tx_audio(message)
-            ct = (t_gen + TX_T0) % T_CYC
+            ct = (t_gen - TX_T0) % T_CYC
             if ct < MAX_CYCLETIME_TX_START or ct > 12 or message.startswith("CQ"):
                 delay = 0 if 0 < ct < MAX_CYCLETIME_TX_START else T_CYC - ct
                 self.last_tx_message = message
