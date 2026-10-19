@@ -377,6 +377,7 @@ class Gui:
         self.decodes_text.tag_config('cq', foreground = 'white', background = 'green', font = font_msg)
         self.decodes_text.tag_config('to_me', foreground = 'white', background = 'red', font = font_msg)        
         self.decodes_text.tag_config('from_me', foreground = 'black', background = 'yellow', font = font_msg)
+        self.decodes_text.tag_config('highlight', foreground = 'black', background = 'yellow', font = font_msg)
         self.decodes_text.bind('<Button-1>', self._row_click)
         self.scrollbar.config(command=self.decodes_text.yview)
         self.decodes_header_txt.config(text = self._format_display_text('SNR','dt','fHz','Message','Wkd', '@'))
@@ -406,11 +407,14 @@ class Gui:
         if msg_dict['mtype'] == 'info':
             print(msg_dict['info'])
         if msg_dict['mtype'] == 'decode':
-            self._process_decode(msg_dict)
+            self._display_decode(msg_dict)
+            msg_tuple = msg_dict['msg_tuple']
+            if msg_tuple[0] == self.qso_dict['call'] and msg_tuple[1] == self.qso_dict['their_call']:
+                self._progress_qso(msg_tuple)
         elif msg_dict['mtype'] == 'waterfall':
             self.waterfall_new_vals = [int(v) for v in msg_dict['data'].split(',')]
 
-    def _process_decode(self, msg_dict):
+    def _display_decode(self, msg_dict):
         self.last_rx_time = time.time()
         new_cycle = msg_dict['cyclestart_string'] != self.qso_dict['cyclestart_string']
         new_cycle &= msg_dict['msg_tuple'][1] != self.qso_dict['call']
@@ -429,15 +433,20 @@ class Gui:
             display_text = self._format_display_text(their_snr, dt, f"{float(fHz):7.2f}", ' '.join(msg_tuple), wb, hm)
             idx = 1 * msg_tuple[0].startswith("CQ") + 2* msg_tuple[0].startswith(self.qso_dict['call']) + 3 * (msg_tuple[1] == self.qso_dict['call'])
             display_type = ['norm','cq','to_me','from_me', 'from_me'][idx]
-            self.decodes_text.insert(tk.END, f"{display_text}\n", display_type)
+            if self.highlight_call and self.highlight_call in display_text:
+                disp1 = display_text.split(self.highlight_call)
+                self.decodes_text.insert(tk.END, f"{disp1[0]}", display_type)
+                self.decodes_text.insert(tk.END, f"{self.highlight_call}", 'highlight')
+                self.decodes_text.insert(tk.END, f"{disp1[1]}\n", display_type)
+            else:
+                self.decodes_text.insert(tk.END, f"{display_text}\n", display_type)
             self.decodes_text.see('end')
-            if msg_tuple[0] == self.qso_dict['call'] and msg_tuple[1] == self.qso_dict['their_call']:
-                self._progress_qso(msg_tuple)
 
     def _reset_qso_dict(self):
         self.qso_dict = {'cyclestart_string': '', 'fHz':'0', 'dt':'0', 'decode_info':'', 'msg_tuple':('','',''),
                  'call':self.config['station']['call'], 'grid':self.config['station']['grid'], 'my_snr':'-30',  
                  'their_call':'', 'their_grid':'', 'their_snr':'-30'}
+        self.highlight_call = None
 
     def _row_click(self, e):
         curr = e.widget.index("current").split('.')[0]
@@ -450,6 +459,7 @@ class Gui:
             msg_tuple = (f"{msg_tuple[0]} {msg_tuple[1]}", msg_tuple[2], msg_tuple[3])
         their_snr = row_txt.split()[0]
         self.qso_dict.update({'their_call':msg_tuple[1], 'their_snr': their_snr})
+        self.highlight_call = msg_tuple[1]
         self._progress_qso(msg_tuple)
                     
     def _progress_qso(self, msg_tuple):
