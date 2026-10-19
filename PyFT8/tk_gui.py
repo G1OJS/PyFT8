@@ -8,7 +8,7 @@ from PyFT8.receiver import Receiver
 from PyFT8.transmitter import Transmitter
 from PyFT8.udp_comms import UdpComms
 
-VERSION = "4.0.3"
+VERSION = "4.0.4"
 PORTS = {'gui_to_rx': 2121, 'rx_to_gui':2122, 'gui_to_tx': 2123, 'tx_to_gui': 2124}
 HEARING_ME_WINDOW_SECS = 300
 MAX_CYCLETIME_TX_START = 3
